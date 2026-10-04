@@ -1,0 +1,54 @@
+// Material theming for Angular Material components (form fields, checkboxes,
+// selects, buttons). Tailwind (styles.css) handles layout and custom
+// (non-Material) elements; this file is the single place Material's
+// generated M3 tonal system lives.
+@use '@angular/material' as mat;
+@use './theme-colors' as theme;
+
+html {
+  height: 100%;
+  @include mat.theme(
+    (
+      color: (
+        theme-type: light,
+        primary: theme.$primary-palette,
+        tertiary: theme.$tertiary-palette,
+      ),
+      typography: (
+        plain-family: 'Inter',
+        brand-family: 'Inter',
+      ),
+      density: 0,
+    ),
+    // Pin the system roles that carry the brand color to the exact
+    // CareVerity hex values, rather than the nearest M3-derived tone, so
+    // buttons/focus rings/checked states match the design mockups exactly.
+    (
+      primary: #00a896,
+      on-primary: #ffffff,
+      primary-fixed: #00a896,
+      on-primary-fixed: #ffffff,
+      error: #ef4444,
+      on-error: #ffffff,
+    )
+  );
+}
+
+body {
+  color-scheme: light;
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  margin: 0;
+  height: 100%;
+}
+
+// Outline form fields (bordered, rounded) to match the mockups instead of
+// Material's default fill appearance.
+.mat-mdc-form-field {
+  width: 100%;
+  // Match the corner radius used everywhere else (buttons, cards) instead of
+  // MDC's default ~4px, which read as a sharper, less "designed" mismatch
+  // next to rounded-lg/rounded-xl surfaces throughout the rest of the app.
+  --mdc-outlined-text-field-container-shape: 0.625rem;
+}
