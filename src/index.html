@@ -2,12 +2,44 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Admin</title>
+    <title>CareVerity</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0f2d4a" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined"
+      rel="stylesheet"
+    />
   </head>
   <body>
-    <app-root></app-root>
+    <app-root>
+      <!-- Shown until Angular bootstraps; Angular replaces this on first render. -->
+      <div style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #f8fafc">
+        <div
+          style="
+            width: 32px;
+            height: 32px;
+            border-radius: 9999px;
+            border: 3px solid #e5e7eb;
+            border-top-color: #00a896;
+            animation: cv-boot-spin 0.7s linear infinite;
+          "
+        ></div>
+      </div>
+      <style>
+        @keyframes cv-boot-spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      </style>
+    </app-root>
   </body>
 </html>
