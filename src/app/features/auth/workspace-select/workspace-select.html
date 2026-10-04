@@ -1,0 +1,70 @@
+<cv-auth-centered-layout width="md">
+  <h1 class="text-3xl font-bold tracking-tight text-ink">Select your workspace</h1>
+  <p class="mt-1.5 text-sm text-slate">You have access to multiple care companies.</p>
+
+  <div class="relative mt-5">
+    <span class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-slate">
+      search
+    </span>
+    <input
+      type="text"
+      placeholder="Search companies…"
+      class="h-11 w-full rounded-lg border border-line pl-10 pr-3 text-sm text-ink outline-none transition-all duration-150 focus:border-teal focus:shadow-card focus:ring-2 focus:ring-teal/25"
+      [value]="search()"
+      (input)="search.set($any($event.target).value)"
+    />
+  </div>
+
+  <ul class="mt-4 flex max-h-96 flex-col gap-2.5 overflow-y-auto pr-1">
+    @if (loading()) {
+      @for (row of skeletonRows; track $index) {
+        <li class="flex items-center gap-3 rounded-xl border border-line p-3.5">
+          <cv-skeleton sizeClass="h-10 w-10 shrink-0 rounded-lg" />
+          <span class="flex-1 space-y-1.5">
+            <cv-skeleton sizeClass="h-3.5 w-40" />
+            <cv-skeleton sizeClass="h-3 w-28" />
+          </span>
+        </li>
+      }
+    } @else {
+      @for (workspace of filtered(); track workspace.id) {
+      <li>
+        <button
+          type="button"
+          class="group flex w-full items-center gap-3 rounded-xl border border-line p-3.5 text-left transition-all duration-150 hover:-translate-y-0.5 hover:border-teal/40 hover:bg-teal-50/40 hover:shadow-card disabled:pointer-events-none disabled:opacity-60"
+          [disabled]="!!switching()"
+          (click)="select(workspace.id)"
+        >
+          <span
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white shadow-sm {{
+              workspace.colorClass
+            }}"
+          >
+            {{ workspace.shortCode }}
+          </span>
+          <span class="flex-1">
+            <span class="block text-sm font-semibold text-ink">{{ workspace.name }}</span>
+            <span class="block text-xs text-slate">{{ workspace.careType }} · {{ workspace.serviceUserCount }} service users</span>
+          </span>
+          @if (switching() === workspace.id) {
+            <span class="text-xs font-medium text-teal">Switching…</span>
+          } @else {
+            <span
+              class="material-symbols-outlined text-[20px] text-slate transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-teal"
+              >chevron_right</span
+            >
+          }
+        </button>
+      </li>
+      }
+    }
+  </ul>
+
+  <p class="mt-5 text-center text-sm">
+    <a
+      href="mailto:support@careverity.com"
+      class="font-medium text-teal transition-colors hover:text-teal-600 hover:underline"
+      >+ Add or request access to a company</a
+    >
+  </p>
+</cv-auth-centered-layout>

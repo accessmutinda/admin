@@ -1,0 +1,125 @@
+<div class="flex flex-col gap-6 lg:flex-row">
+  <section class="min-w-0 flex-1">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-bold tracking-tight text-ink">Recent login activity</h1>
+        <p class="mt-1 text-sm text-slate">Track sign-ins, trusted devices and access events.</p>
+      </div>
+    </div>
+
+    <div class="mt-5 overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
+      <table class="w-full min-w-[640px] text-left text-sm">
+        <thead class="bg-cloud text-xs uppercase tracking-wide text-slate">
+          <tr>
+            <th class="px-4 py-3 font-semibold">Date &amp; time</th>
+            <th class="px-4 py-3 font-semibold">Location</th>
+            <th class="px-4 py-3 font-semibold">Device</th>
+            <th class="px-4 py-3 font-semibold">Method</th>
+            <th class="px-4 py-3 font-semibold">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          @if (loading()) {
+            @for (row of skeletonEventRows; track $index) {
+              <tr>
+                <td class="px-4 py-3"><cv-skeleton sizeClass="h-3.5 w-28" /></td>
+                <td class="px-4 py-3"><cv-skeleton sizeClass="h-3.5 w-20" /></td>
+                <td class="px-4 py-3"><cv-skeleton sizeClass="h-3.5 w-24" /></td>
+                <td class="px-4 py-3"><cv-skeleton sizeClass="h-3.5 w-28" /></td>
+                <td class="px-4 py-3"><cv-skeleton sizeClass="h-5 w-16 rounded-full" /></td>
+              </tr>
+            }
+          } @else {
+            @for (event of events; track event.id) {
+              <tr class="transition-colors hover:bg-cloud/60">
+                <td class="whitespace-nowrap px-4 py-3 text-ink">{{ event.dateTime }}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-slate">{{ event.location }}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-slate">{{ event.device }}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-slate">{{ event.method }}</td>
+                <td class="whitespace-nowrap px-4 py-3">
+                  <span
+                    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                    [class.bg-success-50]="event.status === 'Success'"
+                    [class.text-success]="event.status === 'Success'"
+                    [class.bg-error-50]="event.status === 'Blocked'"
+                    [class.text-error]="event.status === 'Blocked'"
+                  >
+                    <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
+                    {{ event.status }}
+                  </span>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <aside class="w-full shrink-0 lg:w-72">
+    <h2 class="text-sm font-bold tracking-tight text-ink">Trusted devices</h2>
+    <p class="mt-1 text-xs text-slate">Manage devices that don't require MFA.</p>
+
+    <ul class="mt-4 flex flex-col gap-2.5">
+      @if (loading()) {
+        @for (row of skeletonDeviceRows; track $index) {
+          <li class="flex items-center gap-2.5 rounded-xl border border-line bg-white p-3.5">
+            <cv-skeleton sizeClass="h-9 w-9 shrink-0 rounded-lg" />
+            <span class="flex-1 space-y-1.5">
+              <cv-skeleton sizeClass="h-3.5 w-24" />
+              <cv-skeleton sizeClass="h-3 w-32" />
+            </span>
+          </li>
+        }
+      } @else {
+        @for (device of devices(); track device.id) {
+        <li
+          class="flex items-center justify-between gap-3 rounded-xl border p-3.5 shadow-sm transition-all duration-150 hover:shadow-card {{
+            pendingRevokeId() === device.id ? 'border-error/40 bg-error-50/50' : 'border-line bg-white'
+          }}"
+        >
+          <div class="flex items-center gap-2.5">
+            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-cloud text-slate">
+              <span class="material-symbols-outlined text-[18px]">laptop_windows</span>
+            </span>
+            <div>
+              <p class="text-sm font-semibold text-ink">{{ device.name }}</p>
+              <p class="text-xs text-slate">{{ device.detail }} · Added {{ device.addedOn }}</p>
+            </div>
+          </div>
+          @if (pendingRevokeId() === device.id) {
+            <div class="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                class="text-xs font-medium text-slate transition-colors hover:text-ink"
+                (click)="cancelRevoke()"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="rounded-lg bg-error px-2.5 py-1 text-xs font-semibold text-white transition-all hover:bg-error/90 active:scale-[0.97]"
+                (click)="requestRevoke(device.id)"
+              >
+                Confirm revoke
+              </button>
+            </div>
+          } @else {
+            <button
+              type="button"
+              class="shrink-0 text-xs font-semibold text-error transition-colors hover:text-error/80 hover:underline"
+              (click)="requestRevoke(device.id)"
+            >
+              Revoke
+            </button>
+          }
+        </li>
+        } @empty {
+          <li class="rounded-xl border border-dashed border-line p-4 text-center text-xs text-slate">
+            No trusted devices
+          </li>
+        }
+      }
+    </ul>
+  </aside>
+</div>

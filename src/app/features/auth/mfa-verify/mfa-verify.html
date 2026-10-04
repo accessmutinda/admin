@@ -1,0 +1,63 @@
+<cv-auth-centered-layout width="md">
+  <div class="text-center">
+    <h1 class="text-3xl font-bold tracking-tight text-ink">Verify it's you</h1>
+    <p class="mt-1.5 text-sm text-slate">We've sent a verification code to {{ maskedTarget }}.</p>
+  </div>
+
+  @if (errorMessage()) {
+    <div class="mt-5">
+      <cv-alert tone="error">{{ errorMessage() }}</cv-alert>
+    </div>
+  }
+
+  <div class="mt-6 flex justify-center">
+    <cv-otp-input (valueChange)="onCodeChange($event)" (complete)="verify()" />
+  </div>
+
+  <div class="mt-4 text-center text-sm text-slate">
+    @if (secondsLeft() > 0) {
+      Resend code ({{ secondsLeft() }}s)
+    } @else {
+      <button
+        type="button"
+        class="font-medium text-teal transition-colors hover:text-teal-600 hover:underline"
+        (click)="resend()"
+      >
+        Resend code
+      </button>
+    }
+  </div>
+
+  <div class="mt-5 flex items-center gap-2">
+    <mat-checkbox [checked]="trustDevice()" (change)="trustDevice.set($event.checked)" color="primary">
+      Trust this device
+    </mat-checkbox>
+  </div>
+  <p class="-mt-1 pl-8 text-xs text-slate">Don't ask for a code on this device for 30 days.</p>
+
+  <button
+    mat-flat-button
+    color="primary"
+    type="button"
+    class="!mt-6 !h-11 !w-full !rounded-lg !bg-gradient-to-b !from-teal !to-teal-600 !text-base !shadow-card !transition-all !duration-150 hover:!shadow-card-hover active:!scale-[0.98]"
+    [disabled]="code().length !== 6 || loading()"
+    (click)="verify()"
+  >
+    {{ loading() ? 'Verifying…' : 'Verify and continue' }}
+  </button>
+
+  <p class="mt-4 text-center text-sm">
+    <a
+      routerLink="/auth/sign-in"
+      class="font-medium text-teal transition-colors hover:text-teal-600 hover:underline"
+      >Try a different method</a
+    >
+  </p>
+
+  <div class="mt-6">
+    <cv-alert tone="info">
+      <span class="font-semibold">Keep your account safe.</span>
+      Multi-factor authentication helps protect the people and data you care about.
+    </cv-alert>
+  </div>
+</cv-auth-centered-layout>

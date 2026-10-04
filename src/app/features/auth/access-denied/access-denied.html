@@ -1,0 +1,43 @@
+<cv-auth-centered-layout width="md">
+  <div class="text-center">
+    <span
+      class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-error/15 to-error/5 ring-1 ring-error/20"
+    >
+      <span class="material-symbols-outlined text-[30px] text-error">lock</span>
+    </span>
+    <h1 class="mt-4 text-3xl font-bold tracking-tight text-ink">Access restricted</h1>
+    <p class="mt-1.5 text-sm text-slate">You don't have permission to access this area.</p>
+  </div>
+
+  @if (requiredRoleLabels.length) {
+    <div class="mt-6">
+      <cv-alert tone="error">
+        <span class="font-semibold">Required permission</span>
+        <br />
+        This area is only accessible to {{ requiredRoleLabels.join(', ') }}.
+      </cv-alert>
+    </div>
+  }
+
+  <!-- Natural-width buttons centered in a row (not flex-1) so the longer
+       label never gets squeezed into wrapping against the shorter one;
+       stacks full-width on narrow screens via flex-col's default stretch. -->
+  <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
+    <button
+      mat-flat-button
+      color="primary"
+      type="button"
+      class="!h-11 !rounded-lg !bg-gradient-to-b !from-teal !to-teal-600 !px-6 !text-base !shadow-card !transition-all !duration-150 hover:!shadow-card-hover active:!scale-[0.98]"
+      (click)="goToDashboard()"
+    >
+      Go to your dashboard
+    </button>
+    <a
+      mat-stroked-button
+      href="mailto:support@careverity.com?subject=Access%20request"
+      class="!flex !h-11 !items-center !justify-center !rounded-lg !px-6 !text-base !transition-all !duration-150 hover:!border-slate/50 hover:!shadow-card active:!scale-[0.98]"
+    >
+      Request access
+    </a>
+  </div>
+</cv-auth-centered-layout>
