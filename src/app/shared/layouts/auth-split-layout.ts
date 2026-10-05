@@ -16,31 +16,36 @@ import { Logo } from '../ui/logo';
               Bring care delivery, your workforce and compliance together in one clear workspace.
             </p>
           </div>
-          <div class="cv-entry-photo">
-            <img
-              src="/brand/sign-in-care.jpg"
-              alt="A care professional and an older woman sharing a warm smile"
-              width="1536"
-              height="1024"
-            />
-          </div>
-          <div class="cv-entry-capabilities">
-            <p class="cv-entry-capabilities-heading">
-              <span aria-hidden="true" class="material-symbols-outlined">hub</span>
-              One workspace. Better connected.
-            </p>
-            <div class="cv-entry-capability-grid">
-              @for (item of capabilities; track item.label) {
-                <div class="cv-entry-capability">
-                  <span aria-hidden="true" class="material-symbols-outlined" [class]="item.tone">{{
-                    item.icon
-                  }}</span>
-                  <span
-                    ><strong>{{ item.label }}</strong
-                    ><small>{{ item.description }}</small></span
-                  >
-                </div>
-              }
+          <div class="cv-entry-visual">
+            <div class="cv-entry-photo">
+              <img
+                src="/brand/sign-in-care.jpg"
+                alt="A care professional and an older woman sharing a warm smile"
+                width="1536"
+                height="1024"
+              />
+            </div>
+            <div class="cv-entry-capabilities">
+              <p class="cv-entry-capabilities-heading">
+                <span aria-hidden="true" class="material-symbols-outlined">hub</span>
+                One workspace. Better connected.
+              </p>
+              <div class="cv-entry-capability-grid">
+                @for (item of capabilities; track item.label) {
+                  <div class="cv-entry-capability">
+                    <span
+                      aria-hidden="true"
+                      class="material-symbols-outlined"
+                      [class]="item.tone"
+                      >{{ item.icon }}</span
+                    >
+                    <span
+                      ><strong>{{ item.label }}</strong
+                      ><small>{{ item.description }}</small></span
+                    >
+                  </div>
+                }
+              </div>
             </div>
           </div>
         </aside>
@@ -71,18 +76,19 @@ import { Logo } from '../ui/logo';
       min-height: 100svh;
       align-items: center;
       padding: 24px;
-      background: radial-gradient(ellipse at top left, #e6f7f5 0, transparent 48%), #f3f6f9;
+      background:
+        radial-gradient(ellipse at top left, var(--color-teal-50) 0, transparent 48%),
+        var(--color-cloud);
     }
     .cv-entry-frame {
       display: grid;
-      grid-template-columns: 58% 42%;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
       width: 100%;
-      max-width: 1360px;
-      min-height: 744px;
+      max-width: 1048px;
       margin-inline: auto;
       overflow: hidden;
-      border: 1px solid #e1e7ed;
-      border-radius: 24px;
+      border: 1px solid var(--color-line);
+      border-radius: 20px;
       background: white;
       box-shadow: 0 20px 70px -28px rgba(15, 45, 74, 0.28);
     }
@@ -91,7 +97,7 @@ import { Logo } from '../ui/logo';
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      padding: 40px;
+      padding: 32px 25px 24px;
       background: var(--color-navy);
       color: white;
       isolation: isolate;
@@ -104,14 +110,14 @@ import { Logo } from '../ui/logo';
     .cv-entry-story {
       position: relative;
       z-index: 2;
-      margin-top: 40px;
+      margin-top: 32px;
       max-width: 540px;
     }
     .cv-entry-eyebrow {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin: 0 0 18px;
+      gap: 8px;
+      margin: 0 0 16px;
       color: #c4e8e5;
       font-size: 12px;
       font-weight: 500;
@@ -125,8 +131,8 @@ import { Logo } from '../ui/logo';
     }
     h2 {
       margin: 0;
-      font-size: clamp(36px, 3.5vw, 48px);
-      line-height: 1.12;
+      font-size: clamp(36px, 3.5vw, 44px);
+      line-height: 1.2;
       letter-spacing: -0.04em;
       font-weight: 600;
     }
@@ -135,17 +141,29 @@ import { Logo } from '../ui/logo';
     }
     .cv-entry-description {
       max-width: 405px;
-      margin: 18px 0 0;
+      margin: 16px 0 0;
       color: #d0dde8;
       font-size: 14px;
       line-height: 1.7;
     }
+    .cv-entry-visual {
+      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      margin: 24px -25px -24px;
+      padding: 180px 25px 24px;
+    }
     .cv-entry-photo {
       position: absolute;
-      inset: 285px 0 0;
+      inset: 0;
+      overflow: hidden;
       z-index: 0;
     }
     .cv-entry-photo img {
+      position: absolute;
+      inset: 0;
       height: 100%;
       width: 100%;
       object-fit: cover;
@@ -165,10 +183,10 @@ import { Logo } from '../ui/logo';
     .cv-entry-capabilities {
       position: relative;
       z-index: 2;
-      margin-top: auto;
-      padding: 18px;
+      margin-top: 0;
+      padding: 16px;
       border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 14px;
+      border-radius: 12px;
       background: rgba(15, 45, 74, 0.88);
     }
     .cv-entry-capabilities-heading {
@@ -200,8 +218,8 @@ import { Logo } from '../ui/logo';
       flex-shrink: 0;
       height: 32px;
       width: 32px;
-      border-radius: 9px;
-      font-size: 19px;
+      border-radius: 8px;
+      font-size: 20px;
     }
     .care {
       background: rgba(0, 168, 150, 0.2);
@@ -232,9 +250,8 @@ import { Logo } from '../ui/logo';
       display: flex;
       flex-direction: column;
       justify-content: center;
-      position: relative;
       min-width: 0;
-      padding: 48px 40px 64px;
+      padding: 32px 25px 24px;
     }
     .cv-entry-content {
       width: 100%;
@@ -248,17 +265,22 @@ import { Logo } from '../ui/logo';
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
+      align-items: center;
       gap: 6px;
-      margin: 24px 0 0;
-      padding-top: 20px;
+      margin: 16px 0 0;
+      padding-top: 16px;
       border-top: 1px solid var(--color-line);
       color: var(--color-slate);
       font-size: 12px;
     }
+    .cv-entry-support a {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 40px;
+    }
     .cv-entry-footer {
-      position: absolute;
-      bottom: 24px;
-      inset-inline: 24px;
+      margin: 16px 0 0;
       display: flex;
       justify-content: center;
       flex-wrap: wrap;
@@ -266,18 +288,7 @@ import { Logo } from '../ui/logo';
       color: var(--color-slate);
       font-size: 11px;
     }
-    @media (min-width: 1280px) {
-      .cv-entry-brand {
-        padding: 40px 48px;
-      }
-      .cv-entry-main {
-        padding-inline: 48px;
-      }
-    }
-    @media (max-width: 1279px) {
-      .cv-entry-capability-grid {
-        gap: 10px;
-      }
+    @media (min-width: 1024px) {
       .cv-entry-capability {
         flex-direction: column;
       }
@@ -285,7 +296,7 @@ import { Logo } from '../ui/logo';
     @media (max-width: 1023px) {
       .cv-entry-frame {
         display: block;
-        max-width: 520px;
+        max-width: 432px;
         min-height: 0;
         border-radius: 20px;
       }
@@ -293,17 +304,13 @@ import { Logo } from '../ui/logo';
         display: none;
       }
       .cv-entry-main {
-        padding: 32px 40px;
+        padding: 32px;
       }
       .cv-entry-mobile-logo {
         display: block;
         width: 100%;
         max-width: 368px;
-        margin: 0 auto 32px;
-      }
-      .cv-entry-footer {
-        position: static;
-        margin: 28px 0 0;
+        margin: 0 auto 24px;
       }
     }
     @media (max-width: 599px) {
@@ -313,6 +320,7 @@ import { Logo } from '../ui/logo';
         align-items: start;
       }
       .cv-entry-frame {
+        max-width: none;
         min-height: 100svh;
         border: 0;
         border-radius: 0;
@@ -325,17 +333,6 @@ import { Logo } from '../ui/logo';
       }
       .cv-entry-mobile-logo {
         margin-bottom: 24px;
-      }
-      .cv-entry-support {
-        align-items: center;
-        margin-top: 16px;
-        padding-top: 8px;
-      }
-      .cv-entry-support a {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        min-height: 40px;
       }
       .cv-entry-footer {
         margin-top: auto;

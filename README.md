@@ -23,6 +23,13 @@ Open `http://localhost:4200`. It redirects straight to sign-in.
 
 Other scripts: `npm run build` (production build), `npm test` (unit tests).
 
+## Design reference
+
+Read [BRANDING-DESIGN-GUIDE.md](BRANDING-DESIGN-GUIDE.md) before changing the UI.
+It records the settled shared styles and feature layouts. Update it alongside
+agreed design changes. The guide is a local reference and is intentionally ignored
+by Git.
+
 ## Signing in
 
 | Field    | Value                 |
