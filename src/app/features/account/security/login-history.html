@@ -1,4 +1,4 @@
-<div class="flex flex-col gap-6 lg:flex-row">
+<div class="flex flex-col gap-6 xl:flex-row">
   <section class="min-w-0 flex-1">
     <div class="flex items-center justify-between">
       <div>
@@ -7,7 +7,43 @@
       </div>
     </div>
 
-    <div class="mt-5 overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
+    <!-- Phones get a stacked list; the five-column table needs ~640px. -->
+    <ul class="mt-5 divide-y divide-line rounded-2xl border border-line bg-white shadow-card md:hidden">
+      @if (loading()) {
+        @for (row of skeletonEventRows; track $index) {
+          <li class="space-y-2 px-4 py-3.5">
+            <span class="flex items-center justify-between gap-3">
+              <cv-skeleton sizeClass="h-3.5 w-32" />
+              <cv-skeleton sizeClass="h-5 w-16 rounded-full" />
+            </span>
+            <cv-skeleton sizeClass="h-3 w-48" />
+          </li>
+        }
+      } @else {
+        @for (event of events; track event.id) {
+          <li class="px-4 py-3.5">
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-sm font-medium text-ink">{{ event.dateTime }}</p>
+              <span
+                class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                [class.bg-success-50]="event.status === 'Success'"
+                [class.text-success]="event.status === 'Success'"
+                [class.bg-error-50]="event.status === 'Blocked'"
+                [class.text-error]="event.status === 'Blocked'"
+              >
+                <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
+                {{ event.status }}
+              </span>
+            </div>
+            <p class="mt-1 text-xs leading-relaxed text-slate">
+              {{ event.location }} · {{ event.device }} · {{ event.method }}
+            </p>
+          </li>
+        }
+      }
+    </ul>
+
+    <div class="mt-5 hidden overflow-x-auto rounded-2xl border border-line bg-white shadow-card md:block">
       <table class="w-full min-w-[640px] text-left text-sm">
         <thead class="bg-cloud text-xs uppercase tracking-wide text-slate">
           <tr>
@@ -33,9 +69,9 @@
             @for (event of events; track event.id) {
               <tr class="transition-colors hover:bg-cloud/60">
                 <td class="whitespace-nowrap px-4 py-3 text-ink">{{ event.dateTime }}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate">{{ event.location }}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate">{{ event.device }}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate">{{ event.method }}</td>
+                <td class="px-4 py-3 text-slate">{{ event.location }}</td>
+                <td class="px-4 py-3 text-slate">{{ event.device }}</td>
+                <td class="px-4 py-3 text-slate">{{ event.method }}</td>
                 <td class="whitespace-nowrap px-4 py-3">
                   <span
                     class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
@@ -56,11 +92,11 @@
     </div>
   </section>
 
-  <aside class="w-full shrink-0 lg:w-72">
+  <aside class="w-full shrink-0 xl:w-72">
     <h2 class="text-sm font-bold tracking-tight text-ink">Trusted devices</h2>
     <p class="mt-1 text-xs text-slate">Manage devices that don't require MFA.</p>
 
-    <ul class="mt-4 flex flex-col gap-2.5">
+    <ul class="mt-4 grid gap-2.5 md:grid-cols-2 xl:grid-cols-1">
       @if (loading()) {
         @for (row of skeletonDeviceRows; track $index) {
           <li class="flex items-center gap-2.5 rounded-xl border border-line bg-white p-3.5">
@@ -78,11 +114,11 @@
             pendingRevokeId() === device.id ? 'border-error/40 bg-error-50/50' : 'border-line bg-white'
           }}"
         >
-          <div class="flex items-center gap-2.5">
-            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-cloud text-slate">
+          <div class="flex min-w-0 items-center gap-2.5">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cloud text-slate">
               <span class="material-symbols-outlined text-[18px]">laptop_windows</span>
             </span>
-            <div>
+            <div class="min-w-0">
               <p class="text-sm font-semibold text-ink">{{ device.name }}</p>
               <p class="text-xs text-slate">{{ device.detail }} · Added {{ device.addedOn }}</p>
             </div>
@@ -115,7 +151,7 @@
           }
         </li>
         } @empty {
-          <li class="rounded-xl border border-dashed border-line p-4 text-center text-xs text-slate">
+          <li class="rounded-xl border border-dashed border-line p-4 text-center text-xs text-slate md:col-span-2 xl:col-span-1">
             No trusted devices
           </li>
         }
