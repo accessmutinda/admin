@@ -1,0 +1,399 @@
+@if (person(); as p) {
+  <div class="person-record" [attr.data-stage]="p.stage">
+    <a
+      [routerLink]="
+        fromOnboarding && p.stage === 'Hired'
+          ? '/manage/onboarding'
+          : p.stage === 'Hired'
+            ? '/manage/staff'
+            : '/manage/recruitment'
+      "
+      class="back-link"
+      ><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span
+      >{{
+        fromOnboarding && p.stage === 'Hired'
+          ? 'Onboarding'
+          : p.stage === 'Hired'
+            ? 'Staff directory'
+            : 'Recruitment pipeline'
+      }}</a
+    >
+    <section class="profile-header panel person-hero">
+      <div class="person-cell">
+        <span class="avatar hero-avatar lilac">{{ store.initials(p.name) }}</span>
+        <div>
+          <p class="eyebrow">{{ p.stage === 'Hired' ? 'TEAM MEMBER' : 'APPLICANT PROFILE' }}</p>
+          <h1>{{ p.name }}</h1>
+          <p class="profile-role-line">
+            <cv-management-role [label]="p.role" /><span class="footer-dot">·</span>{{ p.location }}
+          </p>
+        </div>
+      </div>
+      <div class="profile-actions">
+        <span class="badge" [class.success]="p.stage === 'Hired'">{{
+          p.stage === 'Hired' ? 'Team member' : p.stage
+        }}</span>
+        @if (p.stage !== 'Hired') {
+          <button class="button primary" (click)="advance()">
+            {{ stage() === 'Hired' ? 'Confirm hire' : 'Move to ' + stage().toLowerCase()
+            }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          </button>
+        } @else {
+          <button class="button" (click)="startEdit()">
+            <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit profile
+          </button>
+        }
+      </div>
+    </section>
+    @if (p.stage !== 'Hired') {
+      <ol class="person-journey" aria-label="Recruitment journey">
+        @for (stage of stages; track stage; let i = $index) {
+          <li
+            [class.current]="stageIndex(p) === i"
+            [class.complete]="stageIndex(p) > i"
+            [attr.data-stage]="stage"
+            [attr.aria-current]="stageIndex(p) === i ? 'step' : null"
+          >
+            <span class="journey-icon material-symbols-outlined" aria-hidden="true">{{
+              stageIndex(p) > i ? 'check' : stageIcons[i]
+            }}</span>
+            <div>
+              <strong>{{ stage }}</strong
+              ><small>{{ stageHints[i] }}</small>
+            </div>
+            <span class="journey-status">{{
+              stageIndex(p) === i ? 'Current' : stageIndex(p) > i ? 'Done' : 'Upcoming'
+            }}</span>
+          </li>
+        }
+      </ol>
+    }
+    @if (p.stage === 'Hired') {
+      <div class="person-progress-grid">
+        <button class="person-progress-card" data-tone="teal" (click)="tab.set('Onboarding')">
+          <span class="material-symbols-outlined" aria-hidden="true">waving_hand</span>
+          <div>
+            <small>A PERSONAL WELCOME</small
+            ><strong>{{ completed(p) }} / {{ checklist.length }} steps</strong>
+            <p>Onboarding completed</p>
+          </div>
+          <span class="person-progress-value">{{ progress(p) }}%</span>
+        </button>
+        <button class="person-progress-card" data-tone="blue" (click)="tab.set('Compliance')">
+          <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>
+          <div>
+            <small>EMPLOYMENT CHECKS</small
+            ><strong>{{ verified(p) }} / {{ checks.length }} recorded</strong>
+            <p>{{ checks.length - verified(p) }} checks remaining</p>
+          </div>
+        </button>
+        <button class="person-progress-card" data-tone="purple" (click)="tab.set('Learning')">
+          <span class="material-symbols-outlined" aria-hidden="true">school</span>
+          <div>
+            <small>ROOM TO GROW</small><strong>{{ p.learning.length }} courses</strong>
+            <p>Assigned learning</p>
+          </div>
+        </button>
+      </div>
+    }
+    <nav class="tabs person-tabs" aria-label="Person profile sections">
+      @for (item of visibleTabs(); track item) {
+        <button
+          [class.active]="tab() === item"
+          [attr.aria-pressed]="tab() === item"
+          (click)="tab.set(item)"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">{{
+            tabIcons[tabs.indexOf(item)]
+          }}</span
+          >{{ item }}
+        </button>
+      }
+    </nav>
+    <div class="split-content person-detail-grid">
+      <section class="panel person-detail-surface" [attr.data-tab]="tab()">
+        @if (tab() === 'Profile') {
+          <div class="panel-toolbar">
+            <span class="section-icon material-symbols-outlined" aria-hidden="true">{{
+              tabIcons[tabs.indexOf(tab())]
+            }}</span>
+            <div>
+              <h2>{{ p.stage === 'Hired' ? 'Staff file' : 'Applicant overview' }}</h2>
+              <p>The essentials, together in one place.</p>
+            </div>
+            <button class="text-link" (click)="startEdit()">Edit details</button>
+          </div>
+          <div class="panel-body">
+            <dl class="details-list">
+              <div>
+                <dt>Full name</dt>
+                <dd>{{ p.name }}</dd>
+              </div>
+              <div>
+                <dt>Email address</dt>
+                <dd>
+                  <a [href]="'mailto:' + p.email">{{ p.email }}</a>
+                </dd>
+              </div>
+              <div>
+                <dt>Role</dt>
+                <dd><cv-management-role [label]="p.role" /></dd>
+              </div>
+              <div>
+                <dt>Base location</dt>
+                <dd>{{ p.location }}</dd>
+              </div>
+              <div>
+                <dt>Employee / applicant ID</dt>
+                <dd>{{ p.id }}</dd>
+              </div>
+              <div>
+                <dt>Start date</dt>
+                <dd>{{ p.start || 'Not set' }}</dd>
+              </div>
+              <div>
+                <dt>Organisation</dt>
+                <dd>{{ store.company()?.name }}</dd>
+              </div>
+            </dl>
+          </div>
+        }
+        @if (p.stage === 'Hired' && tab() === 'Onboarding') {
+          <cv-person-onboarding [person]="p" />
+        }
+        @if (tab() === 'Compliance') {
+          <cv-person-compliance [person]="p" />
+        }
+        @if (tab() === 'Documents') {
+          <div class="panel-toolbar">
+            <span class="section-icon material-symbols-outlined" aria-hidden="true">{{
+              tabIcons[tabs.indexOf(tab())]
+            }}</span>
+            <div>
+              <h2>Contract & document hub</h2>
+              <p>Keep supporting records and sample templates together.</p>
+            </div>
+            <span class="badge">Samples</span>
+          </div>
+          <div class="panel-body">
+            <label class="upload-area"
+              ><span class="material-symbols-outlined" aria-hidden="true">upload_file</span
+              ><strong>Add a supporting document</strong
+              ><small>Saved on this device · up to 1 MB</small
+              ><input
+                type="file"
+                (change)="uploadDocument($event)"
+                aria-label="Upload supporting document"
+            /></label>
+            @for (doc of p.documents || []; track doc.id) {
+              <div class="list-row">
+                <span
+                  ><strong>{{ doc.name }}</strong
+                  ><small>Uploaded document</small></span
+                >
+                <div class="row">
+                  <button
+                    class="icon-button"
+                    [attr.aria-label]="'Download ' + doc.name"
+                    (click)="downloadUploaded(doc.content, doc.name)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true"
+                      >download</span
+                    ></button
+                  ><button
+                    class="icon-button"
+                    [attr.aria-label]="'Remove ' + doc.name"
+                    (click)="removeDocument(doc.id)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                  </button>
+                </div>
+              </div>
+            }
+            @for (
+              doc of [
+                'Employment contract',
+                'Job description',
+                'Staff handbook',
+                'Code of conduct',
+              ];
+              track doc
+            ) {
+              <div class="list-row">
+                <div class="person-cell">
+                  <span class="document-icon material-symbols-outlined" aria-hidden="true"
+                    >description</span
+                  ><span
+                    ><strong>{{ doc }}</strong
+                    ><small>Sample text document</small></span
+                  >
+                </div>
+                <button
+                  class="icon-button"
+                  [attr.aria-label]="'Download sample ' + doc"
+                  (click)="downloadDocument(doc)"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">download</span>
+                </button>
+              </div>
+            }
+          </div>
+        }
+        @if (p.stage === 'Hired' && tab() === 'Learning') {
+          <div class="panel-toolbar">
+            <span class="section-icon material-symbols-outlined" aria-hidden="true">{{
+              tabIcons[tabs.indexOf(tab())]
+            }}</span>
+            <div>
+              <h2>Assigned learning</h2>
+              <p>Choose the right development for {{ p.name.split(' ')[0] }}.</p>
+            </div>
+            <a routerLink="/manage/learning" class="text-link">Training academy</a>
+          </div>
+          <div class="panel-body">
+            @for (course of courses; track course.id) {
+              <label class="check-label learning-assignment"
+                ><input
+                  type="checkbox"
+                  [checked]="p.learning.includes(course.id)"
+                  (change)="assign(course.id)"
+                /><span
+                  ><strong>{{ course.title }}</strong
+                  ><small>{{ course.category }} · {{ course.duration }}</small></span
+                ><span
+                  class="badge"
+                  [class.success]="p.learning.includes(course.id) && p.progress[course.id] === 100"
+                  >{{
+                    !p.learning.includes(course.id)
+                      ? 'Not assigned'
+                      : p.progress[course.id] === 100
+                        ? 'Completed'
+                        : (p.progress[course.id] || 0) + '%'
+                  }}</span
+                ></label
+              >
+            }
+          </div>
+        }
+        @if (tab() === 'Notes') {
+          <div class="panel-toolbar">
+            <span class="section-icon material-symbols-outlined" aria-hidden="true">{{
+              tabIcons[tabs.indexOf(tab())]
+            }}</span>
+            <div>
+              <h2>Notes & conversations</h2>
+              <p>Keep useful context close to the person.</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <form #form="ngForm" (ngSubmit)="form.valid && addNote()">
+              <label
+                >Add a note<textarea
+                  name="note"
+                  [ngModel]="note()"
+                  (ngModelChange)="note.set($event)"
+                  placeholder="Record an interview observation or a useful follow-up…"
+                  rows="4"
+                  required
+                ></textarea></label
+              ><button class="button primary" [disabled]="!note().trim()">Save note</button>
+            </form>
+            <div class="notes-list">
+              @for (note of p.notes; track $index) {
+                <article>
+                  <span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>
+                  <p>{{ note }}</p>
+                </article>
+              } @empty {
+                <p class="muted">No notes yet. Start the conversation above.</p>
+              }
+            </div>
+          </div>
+        }
+      </section>
+      <aside class="person-detail-sidebar">
+        <section class="panel person-next-step">
+          <p class="eyebrow">THE NEXT SMALL STEP</p>
+          <span class="material-symbols-outlined next-step-art" aria-hidden="true">{{
+            p.stage === 'Hired' ? 'waving_hand' : 'person_search'
+          }}</span>
+          <h3>{{ nextStepTitle(p) }}</h3>
+          <p>{{ nextStepDescription(p) }}</p>
+          <button class="button" (click)="tab.set(p.stage === 'Hired' ? 'Onboarding' : 'Notes')">
+            {{ p.stage === 'Hired' ? 'View welcome checklist' : 'Review conversations'
+            }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          </button>
+        </section>
+        <section class="panel profile-summary">
+          <p class="eyebrow">PERSON AT A GLANCE</p>
+          <h3>Keep the essentials close.</h3>
+          <div class="summary-row">
+            <span>Start date</span><strong>{{ p.start || 'Not agreed yet' }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>Supporting documents</span><strong>{{ (p.documents || []).length }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>Notes & conversations</span><strong>{{ p.notes.length }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>Organisation</span><strong>{{ store.company()?.name }}</strong>
+          </div>
+        </section>
+        <div class="tip">
+          <span class="material-symbols-outlined" aria-hidden="true">favorite</span>
+          <p>
+            A personal welcome makes a difference. Pair the checklist with time to listen, introduce
+            the team and answer questions.
+          </p>
+        </div>
+      </aside>
+    </div>
+    @if (edit() && draft; as d) {
+      <div class="modal-backdrop" (click)="edit.set(false)">
+        <section
+          class="panel modal"
+          role="dialog"
+          aria-modal="true"
+          cdkTrapFocus
+          [cdkTrapFocusAutoCapture]="true"
+          (keydown.escape)="edit.set(false)"
+          aria-labelledby="edit-profile-title"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="panel-toolbar">
+            <h2 id="edit-profile-title">Edit person details</h2>
+            <button class="icon-button" aria-label="Close profile editor" (click)="edit.set(false)">
+              <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+          </div>
+          <form #form="ngForm" (ngSubmit)="form.valid && save()">
+            <div class="panel-body form-grid">
+              <label class="full-width"
+                >Full name<input [(ngModel)]="d.name" name="name" required /></label
+              ><label class="full-width"
+                >Email address<input
+                  type="email"
+                  [(ngModel)]="d.email"
+                  name="email"
+                  required /></label
+              ><label>Role<input [(ngModel)]="d.role" name="role" required /></label
+              ><label>Location<input [(ngModel)]="d.location" name="location" /></label
+              ><label>Start date<input type="date" [(ngModel)]="d.start" name="start" /></label>
+            </div>
+            <div class="form-footer">
+              <button type="button" class="button" (click)="edit.set(false)">Cancel</button
+              ><button class="button primary">Save details</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    }
+  </div>
+} @else {
+  <div class="empty-state">
+    <h1>Person not found</h1>
+    <p>This record may belong to a different workspace.</p>
+    <a routerLink="/manage/recruitment" class="button">Back to recruitment</a>
+  </div>
+}

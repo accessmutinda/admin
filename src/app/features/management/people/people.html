@@ -1,0 +1,202 @@
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">PEOPLE & DEVELOPMENT</p>
+    <h1>{{ title[section] }}</h1>
+    <p>{{ subtitle[section] }}</p>
+  </div>
+  @if (section === 'leave' || section === 'reviews') {
+    <button class="button primary" (click)="modal.set(true)">
+      <span class="material-symbols-outlined" aria-hidden="true">add</span
+      >{{ section === 'leave' ? 'Record leave' : 'Schedule review' }}
+    </button>
+  } @else {
+    <button class="button" (click)="store.exportPeople()">
+      <span class="material-symbols-outlined" aria-hidden="true">download</span>Export people
+    </button>
+  }
+</div>
+@if (section === 'staff' || section === 'onboarding' || section === 'compliance') {
+  <cv-workforce-directory [mode]="section" />
+}
+@if (section === 'leave') {
+  <section class="panel">
+    <div class="panel-toolbar">
+      <div>
+        <h2>Team availability</h2>
+        <p>Recorded leave and training commitments.</p>
+      </div>
+      <span class="badge">{{ store.data().leaves.length }} records</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Team member</th>
+            <th>Leave type</th>
+            <th>From</th>
+            <th>To</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (leave of store.data().leaves; track leave.id) {
+            <tr>
+              <td>
+                <strong>{{ leave.person }}</strong>
+              </td>
+              <td>
+                <span class="badge lilac">{{ leave.type }}</span>
+              </td>
+              <td>{{ leave.start }}</td>
+              <td>{{ leave.end }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4" class="empty-cell">No leave recorded yet.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
+@if (section === 'reviews') {
+  <section class="panel">
+    <div class="panel-toolbar">
+      <div>
+        <h2>Supervision & appraisals</h2>
+        <p>Make time for feedback and development.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Team member</th>
+            <th>Review</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (review of store.data().reviews; track review.id) {
+            <tr>
+              <td>
+                <strong>{{ review.person }}</strong>
+              </td>
+              <td>{{ review.type }}</td>
+              <td>{{ review.date }}</td>
+              <td>
+                <span class="badge" [class.success]="review.status === 'Completed'">{{
+                  review.status
+                }}</span>
+              </td>
+              <td>
+                @if (review.status !== 'Completed') {
+                  <button class="text-link" (click)="completeReview(review.id)">
+                    Mark complete
+                  </button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="empty-cell">No reviews scheduled yet.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
+@if (modal()) {
+  <div class="modal-backdrop" (click)="modal.set(false)">
+    <section
+      class="panel modal"
+      role="dialog"
+      aria-modal="true"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (keydown.escape)="modal.set(false)"
+      aria-labelledby="people-modal-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="panel-toolbar">
+        <h2 id="people-modal-title">
+          {{ section === 'leave' ? 'Record team leave' : 'Schedule a conversation' }}
+        </h2>
+        <button class="icon-button" aria-label="Close dialog" (click)="modal.set(false)">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <form
+        #form="ngForm"
+        (ngSubmit)="form.valid && (section === 'leave' ? addLeave() : addReview())"
+      >
+        <div class="panel-body form-grid">
+          @if (section === 'leave') {
+            <label class="full-width"
+              >Team member<mat-select
+                cvSelect
+                [(ngModel)]="leave.person"
+                name="person"
+                required
+                aria-label="Team member for leave"
+              >
+                @for (person of store.staff(); track person.id) {
+                  <mat-option [value]="person.name">{{ person.name }}</mat-option>
+                }
+              </mat-select></label
+            ><label class="full-width"
+              >Type<mat-select
+                cvSelect
+                [(ngModel)]="leave.type"
+                name="type"
+                aria-label="Leave type"
+              >
+                <mat-option value="Annual leave">Annual leave</mat-option>
+                <mat-option value="Sick leave">Sick leave</mat-option>
+                <mat-option value="Training">Training</mat-option>
+                <mat-option value="Other">Other</mat-option>
+              </mat-select></label
+            ><label>From<input type="date" [(ngModel)]="leave.start" name="start" required /></label
+            ><label
+              >To<input type="date" [(ngModel)]="leave.end" [min]="leave.start" name="end" required
+            /></label>
+          } @else {
+            <label class="full-width"
+              >Team member<mat-select
+                cvSelect
+                [(ngModel)]="review.person"
+                name="person"
+                required
+                aria-label="Team member for review"
+              >
+                @for (person of store.staff(); track person.id) {
+                  <mat-option [value]="person.name">{{ person.name }}</mat-option>
+                }
+              </mat-select></label
+            ><label
+              >Review type<mat-select
+                cvSelect
+                [(ngModel)]="review.type"
+                name="type"
+                aria-label="Review type"
+              >
+                <mat-option value="Supervision">Supervision</mat-option>
+                <mat-option value="Annual appraisal">Annual appraisal</mat-option>
+                <mat-option value="Development review">Development review</mat-option>
+              </mat-select></label
+            ><label>Date<input type="date" [(ngModel)]="review.date" name="date" required /></label>
+          }
+        </div>
+        <div class="form-footer">
+          <button class="button" type="button" (click)="modal.set(false)">Cancel</button
+          ><button class="button primary" [disabled]="store.staff().length === 0">
+            {{ section === 'leave' ? 'Save leave' : 'Schedule review' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+}

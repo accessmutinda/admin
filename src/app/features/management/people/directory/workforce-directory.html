@@ -1,0 +1,154 @@
+@if (mode() === 'compliance' && expiryAlerts().length) {
+  <section class="expiry-banner">
+    <div class="row">
+      <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
+      <div>
+        <h3>Keep upcoming checks in view</h3>
+        <p>{{ expiryAlerts().length }} checks are overdue or due within 60 days.</p>
+      </div>
+    </div>
+    <div class="expiry-list">
+      @for (alert of expiryAlerts(); track $index) {
+        <a [routerLink]="['/manage/people', alert.person.id]" [queryParams]="{ tab: 'Compliance' }"
+          ><strong>{{ alert.person.name }}</strong
+          ><span>{{ alert.check }} · {{ alert.date }}</span
+          ><span class="badge warning">{{ alert.overdue ? 'Overdue' : 'Due soon' }}</span></a
+        >
+      }
+    </div>
+  </section>
+}
+@if (mode() === 'staff' || mode() === 'onboarding' || mode() === 'compliance') {
+  <section class="panel">
+    <div class="panel-toolbar">
+      <div>
+        <h2>
+          {{
+            mode() === 'staff'
+              ? 'Staff directory'
+              : mode() === 'onboarding'
+                ? 'New starter journeys'
+                : 'Employment checks'
+          }}
+          <span class="count">{{ filtered().length }}</span>
+        </h2>
+        <p>{{ store.company()?.name }}</p>
+      </div>
+      <div class="toolbar-actions">
+        @if (mode() === 'compliance') {
+          <mat-select
+            cvSelect
+            aria-label="Filter compliance"
+            [ngModel]="filter()"
+            (ngModelChange)="filter.set($event)"
+          >
+            <mat-option value="All staff">All staff</mat-option>
+            <mat-option value="Needs attention">Needs attention</mat-option>
+          </mat-select>
+        }
+        <label class="search-box"
+          ><span class="material-symbols-outlined" aria-hidden="true">search</span
+          ><input
+            aria-label="Search staff"
+            placeholder="Search your team…"
+            [ngModel]="search()"
+            (ngModelChange)="search.set($event)"
+        /></label>
+      </div>
+    </div>
+    @if (mode() === 'onboarding') {
+      <div class="onboarding-grid">
+        @for (person of filtered(); track person.id) {
+          <article class="onboarding-card">
+            <div class="person-cell">
+              <span class="avatar lilac">{{ store.initials(person.name) }}</span
+              ><span
+                ><h3>{{ person.name }}</h3>
+                <cv-management-role [label]="person.role"
+              /></span>
+            </div>
+            <div class="row between">
+              <small class="muted">{{ completed(person) }} of 8 steps completed</small
+              ><strong>{{ percent(person) }}%</strong>
+            </div>
+            <div class="progress-track"><span [style.width.%]="percent(person)"></span></div>
+            <p class="muted">
+              Next: {{ checklist[person.onboarding.indexOf(false)] || 'All steps complete' }}
+            </p>
+            <a
+              class="text-link"
+              [routerLink]="['/manage/people', person.id]"
+              [queryParams]="{ tab: 'Onboarding' }"
+              >Continue onboarding<span class="material-symbols-outlined" aria-hidden="true"
+                >arrow_forward</span
+              ></a
+            >
+          </article>
+        } @empty {
+          <div class="empty-state">
+            <h3>No new starters found</h3>
+            <p>Hire an applicant from Recruitment to begin their journey.</p>
+            <a routerLink="/manage/recruitment" class="button">Open recruitment</a>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Team member</th>
+              <th>Role & location</th>
+              <th>{{ mode() === 'compliance' ? 'Employment checks' : 'Status' }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (person of filtered(); track person.id) {
+              <tr>
+                <td>
+                  <div class="person-cell">
+                    <span class="avatar">{{ store.initials(person.name) }}</span
+                    ><span
+                      ><strong>{{ person.name }}</strong
+                      ><small>{{ person.email }}</small></span
+                    >
+                  </div>
+                </td>
+                <td>
+                  <cv-management-role [label]="person.role" /><small>{{ person.location }}</small>
+                </td>
+                <td>
+                  <span
+                    class="badge"
+                    [class.success]="mode() === 'staff' || ready(person) === checks.length"
+                    [class.warning]="mode() === 'compliance' && ready(person) < checks.length"
+                    >{{
+                      mode() === 'staff'
+                        ? 'Active'
+                        : ready(person) + ' / ' + checks.length + ' verified'
+                    }}</span
+                  >
+                </td>
+                <td>
+                  <a
+                    class="text-link"
+                    [routerLink]="['/manage/people', person.id]"
+                    [queryParams]="{ tab: mode() === 'compliance' ? 'Compliance' : 'Profile' }"
+                    >View<span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_forward</span
+                    ></a
+                  >
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="4" class="empty-cell">No team members match this view.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+}

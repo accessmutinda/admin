@@ -1,0 +1,35 @@
+@let p = person();
+<div class="panel-toolbar">
+  <span class="section-icon material-symbols-outlined" aria-hidden="true">{{ 'waving_hand' }}</span>
+  <div>
+    <h2>A confident first day</h2>
+    <p>{{ completed(p) }} of {{ checklist.length }} steps completed</p>
+  </div>
+  <strong class="progress-number">{{ progress(p) }}%</strong>
+</div>
+<div class="panel-body">
+  <div class="welcome-intro">
+    <span class="material-symbols-outlined" aria-hidden="true">waving_hand</span>
+    <div>
+      <h3>A warm welcome for {{ p.name.split(' ')[0] }}</h3>
+      <p>Small steps that help someone feel part of the team.</p>
+    </div>
+  </div>
+  <div class="progress-track"><span [style.width.%]="progress(p)"></span></div>
+  <div class="checklist welcome-checklist">
+    @for (item of checklist; track item; let i = $index) {
+      <label [class.checked]="p.onboarding[i]" [class.next-task]="i === p.onboarding.indexOf(false)"
+        ><input type="checkbox" [checked]="p.onboarding[i]" (change)="toggle(i)" /><span
+          class="welcome-task-icon material-symbols-outlined"
+          aria-hidden="true"
+          >{{ onboardingIcons[i] }}</span
+        ><span class="welcome-task-copy"
+          ><strong>{{ item }}</strong
+          ><small>{{ onboardingHints[i] }}</small></span
+        ><small class="welcome-task-status">{{
+          p.onboarding[i] ? 'Completed' : i === p.onboarding.indexOf(false) ? 'Next up' : 'To do'
+        }}</small></label
+      >
+    }
+  </div>
+</div>

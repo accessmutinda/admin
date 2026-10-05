@@ -1,0 +1,46 @@
+@let p = person();
+<div class="panel-toolbar">
+  <span class="section-icon material-symbols-outlined" aria-hidden="true">{{
+    'verified_user'
+  }}</span>
+  <div>
+    <h2>Employment checks</h2>
+    <p>Record the checks verified by your HR team.</p>
+  </div>
+  <span class="material-symbols-outlined text-teal-600" aria-hidden="true">verified_user</span>
+</div>
+<div class="panel-body checklist person-compliance">
+  @for (item of checks; track item; let i = $index) {
+    <label [class.checked]="p.checks[i]"
+      ><input type="checkbox" [checked]="p.checks[i]" (change)="toggle(i)" /><span>{{ item }}</span
+      ><span class="badge" [class.success]="p.checks[i]">{{
+        p.checks[i] ? 'Verified' : 'Pending'
+      }}</span></label
+    >
+  }
+  <div class="compliance-dates">
+    <h3>Validity & visa details</h3>
+    <div class="form-grid">
+      @for (check of ['Right to work', 'DBS check']; track check) {
+        <label
+          >{{ check }} · review / expiry date<input
+            type="date"
+            [ngModel]="p.checkExpiry?.[check] || ''"
+            (ngModelChange)="setExpiry(check, $event)"
+        /></label>
+      }
+      <label
+        >Visa type, if applicable<input
+          placeholder="e.g. Skilled Worker"
+          [ngModel]="p.visaType || ''"
+          (ngModelChange)="setVisa('visaType', $event)" /></label
+      ><label
+        >Visa valid until<input
+          type="date"
+          [ngModel]="p.visaExpiry || ''"
+          (ngModelChange)="setVisa('visaExpiry', $event)"
+      /></label>
+    </div>
+  </div>
+  <p class="muted">Status markers in this demo do not perform external identity or DBS checks.</p>
+</div>

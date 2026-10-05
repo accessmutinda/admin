@@ -1,0 +1,238 @@
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">PEOPLE & DEVELOPMENT</p>
+    <h1>Great care starts with great people.</h1>
+    <p>Discover talent. Keep hiring moving. Welcome your next team member.</p>
+  </div>
+  <button class="button primary" (click)="modal.set('vacancy')">
+    <span class="material-symbols-outlined" aria-hidden="true">add</span>New vacancy
+  </button>
+</div>
+<div class="metrics four">
+  <div class="metric" data-tone="blue">
+    <span class="metric-icon material-symbols-outlined" aria-hidden="true">work_outline</span
+    ><span>Open vacancies</span><strong>{{ store.data().vacancies.length }}</strong
+    ><small>Opportunities to make a difference</small>
+  </div>
+  <div class="metric" data-tone="teal">
+    <span class="metric-icon material-symbols-outlined" aria-hidden="true">groups</span
+    ><span>Active applicants</span><strong>{{ store.applicants().length }}</strong
+    ><small>Across your recruitment pipeline</small>
+  </div>
+  <div class="metric" data-tone="purple">
+    <span class="metric-icon material-symbols-outlined" aria-hidden="true">forum</span
+    ><span>At interview</span><strong>{{ inStage('Interview').length }}</strong
+    ><small>Getting to know your next hire</small>
+  </div>
+  <div class="metric" data-tone="amber">
+    <span class="metric-icon material-symbols-outlined" aria-hidden="true">handshake</span
+    ><span>Offers made</span><strong>{{ inStage('Offer').length }}</strong
+    ><small>A brighter start within reach</small>
+  </div>
+</div>
+<section class="panel">
+  <div class="panel-toolbar">
+    <nav class="segmented" aria-label="Recruitment views">
+      @for (item of ['Pipeline', 'Vacancies']; track item) {
+        <button
+          [class.active]="view() === item"
+          [attr.aria-pressed]="view() === item"
+          (click)="view.set(item)"
+        >
+          {{ item }}
+        </button>
+      }
+    </nav>
+    <div class="toolbar-actions">
+      <label class="search-box"
+        ><span class="material-symbols-outlined" aria-hidden="true">search</span
+        ><input
+          aria-label="Search applicants"
+          placeholder="Search applicants…"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)" /></label
+      ><button class="button" [disabled]="!store.data().vacancies.length" (click)="openApplicant()">
+        <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add applicant
+      </button>
+    </div>
+  </div>
+  @if (view() === 'Pipeline') {
+    <div class="pipeline-toolbar">
+      <label class="inline-label"
+        >Vacancy<mat-select
+          cvSelect
+          [ngModel]="vacancyFilter()"
+          (ngModelChange)="vacancyFilter.set($event)"
+          aria-label="Filter vacancy"
+        >
+          <mat-option value="All vacancies">All vacancies</mat-option>
+          @for (vacancy of store.data().vacancies; track vacancy.id) {
+            <mat-option [value]="vacancy.title">{{ vacancy.title }}</mat-option>
+          }
+        </mat-select></label
+      ><small class="muted">Open an applicant to view details and move them forward.</small>
+    </div>
+    <div class="pipeline-board">
+      @for (stage of stages; track stage) {
+        <section class="pipeline-column" [attr.data-stage]="stage.toLowerCase()">
+          <div class="pipeline-title">
+            <span class="stage-dot" [class]="'stage-dot stage-' + stage.toLowerCase()"></span>
+            <h2>{{ stage }}</h2>
+            <span class="count">{{ inStage(stage).length }}</span>
+          </div>
+          @for (person of inStage(stage); track person.id) {
+            <a class="applicant-card" [routerLink]="['/manage/people', person.id]"
+              ><div class="row between">
+                <span class="avatar" [attr.data-stage]="stage.toLowerCase()">{{
+                  store.initials(person.name)
+                }}</span
+                ><span class="material-symbols-outlined muted" aria-hidden="true"
+                  >arrow_outward</span
+                >
+              </div>
+              <h3>{{ person.name }}</h3>
+              <cv-management-role [label]="person.role" />
+              <div class="applicant-meta">
+                <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+                >{{ person.location || 'Location not provided' }}
+              </div>
+              <div class="applicant-footer">
+                <span class="badge" [class.success]="stage === 'Hired'">{{
+                  stage === 'Hired' ? 'Team member' : person.vacancy
+                }}</span>
+              </div></a
+            >
+          } @empty {
+            <div class="column-empty">
+              No {{ stage.toLowerCase() === 'applied' ? 'applications' : 'people' }} here yet.
+            </div>
+          }
+        </section>
+      }
+    </div>
+  }
+  @if (view() === 'Vacancies') {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Vacancy</th>
+            <th>Location</th>
+            <th>Salary</th>
+            <th>Applicants</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (vacancy of store.data().vacancies; track vacancy.id) {
+            <tr>
+              <td>
+                <strong>{{ vacancy.title }}</strong
+                ><small>{{ vacancy.type }}</small>
+              </td>
+              <td>{{ vacancy.location }}</td>
+              <td>{{ vacancy.salary || 'Not specified' }}</td>
+              <td>
+                <button
+                  class="text-link"
+                  (click)="vacancyFilter.set(vacancy.title); view.set('Pipeline')"
+                >
+                  {{ applicantCount(vacancy.title)
+                  }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
+@if (modal()) {
+  <div class="modal-backdrop" (click)="modal.set('')">
+    <section
+      class="modal panel"
+      role="dialog"
+      aria-modal="true"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (keydown.escape)="modal.set('')"
+      aria-labelledby="recruitment-modal-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="panel-toolbar">
+        <div>
+          <p class="eyebrow">RECRUITMENT</p>
+          <h2 id="recruitment-modal-title">
+            {{ modal() === 'vacancy' ? 'Create an opportunity' : 'Add an applicant' }}
+          </h2>
+        </div>
+        <button class="icon-button" aria-label="Close dialog" (click)="modal.set('')">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      @if (modal() === 'vacancy') {
+        <form #form="ngForm" (ngSubmit)="form.valid && addVacancy()">
+          <div class="panel-body form-grid">
+            <label class="full-width"
+              >Job title<input [(ngModel)]="vacancy.title" name="title" required /></label
+            ><label>Location<input [(ngModel)]="vacancy.location" name="location" required /></label
+            ><label
+              >Employment type<mat-select
+                cvSelect
+                [(ngModel)]="vacancy.type"
+                name="type"
+                aria-label="Employment type"
+              >
+                <mat-option value="Full time">Full time</mat-option>
+                <mat-option value="Part time">Part time</mat-option>
+                <mat-option value="Bank / flexible">Bank / flexible</mat-option>
+              </mat-select></label
+            ><label class="full-width"
+              >Salary or hourly rate<input
+                [(ngModel)]="vacancy.salary"
+                name="salary"
+                placeholder="e.g. £12.80–£14.20 / hour"
+            /></label>
+          </div>
+          <div class="form-footer">
+            <button class="button" type="button" (click)="modal.set('')">Cancel</button
+            ><button class="button primary">Create vacancy</button>
+          </div>
+        </form>
+      }
+      @if (modal() === 'applicant') {
+        <form #form="ngForm" (ngSubmit)="form.valid && addApplicant()">
+          <div class="panel-body form-grid">
+            <label class="full-width"
+              >Full name<input [(ngModel)]="applicant.name" name="name" required /></label
+            ><label class="full-width"
+              >Email<input
+                type="email"
+                [(ngModel)]="applicant.email"
+                name="email"
+                required /></label
+            ><label
+              >Vacancy<mat-select
+                cvSelect
+                [(ngModel)]="applicant.vacancy"
+                name="vacancy"
+                required
+                aria-label="Applicant vacancy"
+              >
+                @for (vacancy of store.data().vacancies; track vacancy.id) {
+                  <mat-option [value]="vacancy.title">{{ vacancy.title }}</mat-option>
+                }
+              </mat-select></label
+            ><label
+              >Location<input [(ngModel)]="applicant.location" name="location" required
+            /></label>
+          </div>
+          <div class="form-footer">
+            <button class="button" type="button" (click)="modal.set('')">Cancel</button
+            ><button class="button primary">Add applicant</button>
+          </div>
+        </form>
+      }
+    </section>
+  </div>
+}
