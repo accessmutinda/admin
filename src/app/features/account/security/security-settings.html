@@ -1,13 +1,13 @@
 @if (user) {
-  <div class="mb-6 flex items-center gap-3">
+  <div class="mb-6 flex min-w-0 items-center gap-3">
     <span
-      class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-navy to-navy-700 text-sm font-bold text-white shadow-sm"
+      class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-navy to-navy-700 text-sm font-bold text-white shadow-sm"
     >
       {{ user.initials }}
     </span>
-    <div>
-      <p class="font-semibold text-ink">{{ user.name }}</p>
-      <p class="text-sm text-slate">{{ user.email }}</p>
+    <div class="min-w-0">
+      <p class="truncate font-semibold text-ink">{{ user.name }}</p>
+      <p class="truncate text-sm text-slate">{{ user.email }}</p>
     </div>
   </div>
 }
@@ -18,7 +18,7 @@
 <div class="mt-6 divide-y divide-line rounded-2xl border border-line bg-white shadow-card">
   @if (loading()) {
     @for (row of skeletonRows; track $index) {
-      <div class="flex items-center justify-between gap-4 px-5 py-4">
+      <div class="flex items-center justify-between gap-3 px-4 py-4 sm:gap-4 sm:px-5">
         <div class="flex items-center gap-3">
           <cv-skeleton sizeClass="h-9 w-9 shrink-0 rounded-lg" />
           <div class="space-y-1.5">
@@ -31,21 +31,21 @@
     }
   } @else {
     @for (row of rows; track row.label) {
-      <div class="group flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-cloud/60">
-        <div class="flex items-center gap-3">
+      <div class="group flex items-center justify-between gap-3 px-4 py-4 transition-colors sm:gap-4 sm:px-5 hover:bg-cloud/60">
+        <div class="flex min-w-0 items-center gap-3">
           <span
-            class="flex h-9 w-9 items-center justify-center rounded-lg bg-cloud text-slate transition-colors group-hover:bg-teal-50 group-hover:text-teal"
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cloud text-slate transition-colors group-hover:bg-teal-50 group-hover:text-teal"
           >
             <span class="material-symbols-outlined text-[18px]">{{ row.icon }}</span>
           </span>
-          <div>
+          <div class="min-w-0">
             <p class="text-sm font-semibold text-ink">{{ row.label }}</p>
             <p class="text-xs text-slate">{{ row.value }}</p>
           </div>
         </div>
         <button
           type="button"
-          class="shrink-0 rounded-lg border border-line bg-white px-3.5 py-1.5 text-sm font-medium text-ink transition-all duration-150 hover:border-teal/40 hover:text-teal hover:shadow-sm active:scale-[0.97]"
+          class="shrink-0 whitespace-nowrap rounded-lg border border-line bg-white px-3 py-1.5 sm:px-3.5 text-sm font-medium text-ink transition-all duration-150 hover:border-teal/40 hover:text-teal hover:shadow-sm active:scale-[0.97]"
           (click)="row.onAction?.()"
         >
           {{ row.action }}
