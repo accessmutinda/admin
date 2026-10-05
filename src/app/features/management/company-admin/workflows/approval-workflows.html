@@ -1,0 +1,199 @@
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">ORGANISATION</p>
+    <h1>A clear path to approval.</h1>
+    <p>Bring consistency and accountability to important decisions.</p>
+  </div>
+</div>
+<nav class="workflow-type-grid" aria-label="Approval document types">
+  @for (type of workflowTypes; track type.name) {
+    <button
+      class="workflow-type"
+      [attr.data-tone]="type.tone"
+      [class.active]="workflow === type.name"
+      [attr.aria-pressed]="workflow === type.name"
+      (click)="chooseWorkflow(type.name)"
+    >
+      <span class="module-icon material-symbols-outlined" aria-hidden="true">{{ type.icon }}</span>
+      <strong>{{ type.name }}</strong
+      ><small>{{
+        store.data().workflows[type.name].length
+          ? store.data().workflows[type.name].length + ' saved review steps'
+          : 'Routing paused'
+      }}</small>
+    </button>
+  }
+</nav>
+<div class="approval-editor-grid">
+  <section class="panel approval-editor">
+    <div class="panel-toolbar">
+      <div>
+        <p class="eyebrow">REVIEW ROUTE</p>
+        <h2>{{ workflow }}</h2>
+        <p>{{ workflowDescription() }}</p>
+      </div>
+      <span class="badge" [class.success]="workflowEnabled">{{
+        workflowEnabled ? 'Enabled in draft' : 'Paused in draft'
+      }}</span>
+    </div>
+    <div class="panel-body">
+      <label class="workflow-enable"
+        ><span class="material-symbols-outlined" aria-hidden="true">verified_user</span
+        ><span
+          ><strong>Require an approval route</strong
+          ><small>Arrange reviews in the order your team needs.</small></span
+        ><input type="checkbox" [(ngModel)]="workflowEnabled"
+      /></label>
+      @if (workflowEnabled) {
+        <ol class="approval-step-list">
+          @for (step of steps; track $index; let i = $index) {
+            <li>
+              <span class="approval-step-number">{{ i + 1 }}</span>
+              <div class="approval-step-card">
+                <label
+                  ><small>{{
+                    i === steps.length - 1 ? 'FINAL SIGN-OFF' : 'REVIEW STEP ' + (i + 1)
+                  }}</small
+                  ><input
+                    [(ngModel)]="steps[i]"
+                    [attr.aria-label]="'Reviewer for step ' + (i + 1)"
+                    placeholder="Role or review team"
+                /></label>
+                <div class="row">
+                  <button
+                    class="icon-button"
+                    [disabled]="i === 0"
+                    [attr.aria-label]="'Move step ' + (i + 1) + ' up'"
+                    (click)="moveStep(i, -1)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_upward</span
+                    ></button
+                  ><button
+                    class="icon-button"
+                    [disabled]="i === steps.length - 1"
+                    [attr.aria-label]="'Move step ' + (i + 1) + ' down'"
+                    (click)="moveStep(i, 1)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_downward</span
+                    ></button
+                  ><button
+                    class="icon-button remove-step"
+                    [attr.aria-label]="'Remove step ' + (i + 1)"
+                    (click)="steps.splice(i, 1)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                  </button>
+                </div>
+              </div>
+            </li>
+          } @empty {
+            <li class="workflow-empty">
+              <span class="material-symbols-outlined" aria-hidden="true">playlist_add</span
+              ><strong>Your review route starts here</strong>
+              <p>Add the first reviewer below.</p>
+            </li>
+          }
+        </ol>
+        <form class="approval-add-step" (ngSubmit)="addStep()">
+          <label
+            >Next reviewer<input
+              [(ngModel)]="newStep"
+              name="newStep"
+              aria-label="New workflow step"
+              placeholder="e.g. Director sign-off" /></label
+          ><button class="button" [disabled]="!newStep.trim()">
+            <span class="material-symbols-outlined" aria-hidden="true">add</span>Add step
+          </button>
+        </form>
+        @if (workflowSubmitted && (!steps.length || !workflowValid())) {
+          <p class="field-error" role="alert">
+            Add at least one step and give every reviewer a name. Escalation must be 1–30 days.
+          </p>
+        }
+      } @else {
+        <div class="workflow-empty">
+          <span class="material-symbols-outlined" aria-hidden="true">pause_circle</span
+          ><strong>Approval routing is paused</strong>
+          <p>Enable the route to arrange reviewers, then save your changes.</p>
+        </div>
+      }
+    </div>
+    <div class="form-footer settings-save-footer">
+      <span class="settings-save-state" aria-live="polite"
+        ><span class="material-symbols-outlined" aria-hidden="true">{{
+          workflowChanged() ? 'edit_note' : 'check_circle'
+        }}</span
+        >{{
+          workflowChanged() ? 'Unsaved changes for ' + workflow : 'Workflow is up to date'
+        }}</span
+      >
+      <div class="row">
+        <button class="button" [disabled]="!workflowChanged()" (click)="discardWorkflow()">
+          Discard</button
+        ><button class="button primary" [disabled]="!workflowChanged()" (click)="saveWorkflow()">
+          Save workflow
+        </button>
+      </div>
+    </div>
+  </section>
+  <aside class="approval-sidebar">
+    <section class="panel">
+      <div class="panel-toolbar">
+        <div>
+          <h2>At a glance</h2>
+          <p>Your current {{ workflow.toLowerCase() }} draft</p>
+        </div>
+        <span class="material-symbols-outlined approval-preview-icon" aria-hidden="true"
+          >route</span
+        >
+      </div>
+      <div class="panel-body">
+        <div class="approval-route-preview">
+          <span>Workflow starts</span>
+          @if (workflowEnabled) {
+            @for (step of steps; track $index) {
+              <span>{{ step.trim() || 'Name your reviewer' }}</span>
+            }
+            <span class="route-finish">Review complete</span>
+          } @else {
+            <span class="route-finish">Routing paused</span>
+          }
+        </div>
+      </div>
+    </section>
+    <section class="panel approval-handover">
+      <div class="panel-toolbar">
+        <div>
+          <h2>Keep reviews moving</h2>
+          <p>Set your team's handover preferences.</p>
+        </div>
+      </div>
+      <div class="panel-body">
+        <label class="workflow-enable"
+          ><span class="material-symbols-outlined" aria-hidden="true">notifications_active</span
+          ><span
+            ><strong>Email reminders</strong
+            ><small>Notify reviewers when their turn arrives.</small></span
+          ><input type="checkbox" [(ngModel)]="notify" /></label
+        ><label class="escalation-label"
+          >Escalate after<input
+            type="number"
+            min="1"
+            max="30"
+            [(ngModel)]="escalation"
+            aria-label="Escalate after (days)"
+          /><small>Days before an outstanding review needs attention.</small></label
+        >
+        @if (workflowSubmitted && !escalationValid()) {
+          <p class="field-error" role="alert">Choose a whole number from 1 to 30 days.</p>
+        }
+      </div>
+    </section>
+    <p class="approval-demo-note">
+      <span class="material-symbols-outlined" aria-hidden="true">info</span>This demo saves
+      configuration locally. Live routing, reminders and escalation need a connected service.
+    </p>
+  </aside>
+</div>

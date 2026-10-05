@@ -1,0 +1,74 @@
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">ORGANISATION</p>
+    <h1>Connected, protected, in control.</h1>
+    <p>Manage integrations, backup preferences and workspace exports.</p>
+  </div>
+</div>
+<div class="settings-grid">
+  <section class="panel">
+    <div class="panel-toolbar">
+      <div>
+        <h2>API access</h2>
+        <p>Explore integration key management.</p>
+      </div>
+      <span class="badge">Demo</span>
+    </div>
+    <div class="panel-body">
+      <form #form="ngForm" (ngSubmit)="form.valid && createKey()" class="row">
+        <input
+          [(ngModel)]="keyName"
+          name="keyName"
+          placeholder="Integration name"
+          aria-label="Integration name"
+          required
+        /><button class="button primary">Create key</button>
+      </form>
+      @if (revealedKey) {
+        <div class="key-preview">
+          <small>Sample key · no API access</small><code>{{ revealedKey }}</code>
+        </div>
+      }
+      @for (key of keys; track key.id) {
+        <div class="list-row">
+          <span
+            ><strong>{{ key.name }}</strong
+            ><small>Created {{ key.created }}</small></span
+          ><button class="text-link" (click)="revokeKey(key.id)">Revoke</button>
+        </div>
+      }
+      <p class="muted">API keys here are sample values and are not connected to a service.</p>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="panel-toolbar">
+      <div>
+        <h2>Backups & exports</h2>
+        <p>Your workspace data, when you need it.</p>
+      </div>
+      <span class="material-symbols-outlined text-teal-600" aria-hidden="true">cloud_done</span>
+    </div>
+    <div class="panel-body">
+      <label class="check-label"
+        ><input type="checkbox" [(ngModel)]="backup" />Automatic backup preference</label
+      >
+      <p class="muted">
+        Scheduled backups require a connected backend. Download a snapshot of your demo data below.
+      </p>
+      <button class="button" (click)="saveBackup()">Save preference</button>
+      <hr />
+      <div class="list-row">
+        <span><strong>Workspace snapshot</strong><small>All demo records · JSON</small></span
+        ><button class="button" (click)="downloadBackup()">
+          <span class="material-symbols-outlined" aria-hidden="true">download</span>Download
+        </button>
+      </div>
+      <div class="list-row">
+        <span><strong>People export</strong><small>Applicant and staff directory · CSV</small></span
+        ><button class="button" (click)="store.exportPeople()">
+          <span class="material-symbols-outlined" aria-hidden="true">download</span>Export
+        </button>
+      </div>
+    </div>
+  </section>
+</div>

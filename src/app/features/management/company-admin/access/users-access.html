@@ -1,0 +1,284 @@
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">ORGANISATION</p>
+    <h1>The right people. The right access.</h1>
+    <p>Manage your team and shape access around their roles.</p>
+  </div>
+  @if (tab() === 'Users') {
+    <button class="button primary" (click)="modal.set(true)">
+      <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Invite user
+    </button>
+  }
+</div>
+<nav class="tabs" aria-label="Access sections">
+  @for (item of ['Users', 'Permissions']; track item) {
+    <button
+      [class.active]="tab() === item"
+      (click)="tab.set(item)"
+      [attr.aria-pressed]="tab() === item"
+    >
+      {{ item }}
+    </button>
+  }
+</nav>
+@if (tab() === 'Users') {
+  <section class="panel">
+    <div class="panel-toolbar">
+      <div>
+        <h2>
+          Workspace users <span class="count">{{ store.data().members.length }}</span>
+        </h2>
+        <p>{{ store.company()?.name }}</p>
+      </div>
+      <label class="search-box"
+        ><span class="material-symbols-outlined" aria-hidden="true">search</span
+        ><input
+          aria-label="Search users"
+          placeholder="Search people or roles…"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+      /></label>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Role assignment</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (member of filtered(); track member.id) {
+            <tr>
+              <td>
+                <div class="person-cell">
+                  <span class="avatar">{{ store.initials(member.name) }}</span
+                  ><span
+                    ><strong>{{ member.name }}</strong
+                    ><small>{{ member.email }}</small
+                    ><cv-management-role [label]="member.role"
+                  /></span>
+                </div>
+              </td>
+              <td>
+                <mat-select
+                  cvSelect
+                  [aria-label]="'Role for ' + member.name"
+                  [panelWidth]="compact()?.matches ? 'auto' : 360"
+                  [ngModel]="member.role"
+                  (ngModelChange)="updateRole(member.id, $event)"
+                >
+                  <mat-select-trigger
+                    ><cv-management-role [label]="member.role"
+                  /></mat-select-trigger>
+                  @for (role of roles; track role) {
+                    <mat-option [value]="role"
+                      ><span class="role-option"
+                        ><cv-management-role [label]="role" /><small>{{
+                          roleDescriptions[role]
+                        }}</small></span
+                      ></mat-option
+                    >
+                  }
+                </mat-select>
+              </td>
+              <td>
+                <span class="badge" [class.success]="member.status === 'Active'">{{
+                  member.status
+                }}</span>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="3" class="empty-cell">No users match your search.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
+@if (tab() === 'Permissions') {
+  <section class="panel permission-panel">
+    <div class="panel-toolbar permission-toolbar">
+      <div>
+        <h2>Shape access around each role</h2>
+        <p>Fine-tune what your team can do, one module at a time.</p>
+      </div>
+      <label class="permission-role-label"
+        >Configure role
+        <mat-select
+          cvSelect
+          [(ngModel)]="role"
+          (ngModelChange)="changeRole()"
+          aria-label="Permission role"
+          [panelWidth]="compact()?.matches ? 'auto' : 360"
+        >
+          <mat-select-trigger><cv-management-role [label]="role" /></mat-select-trigger>
+          @for (item of roles; track item) {
+            <mat-option [value]="item"
+              ><span class="role-option"
+                ><cv-management-role [label]="item" /><small>{{
+                  roleDescriptions[item]
+                }}</small></span
+              ></mat-option
+            >
+          }
+        </mat-select>
+      </label>
+    </div>
+    <div class="permission-overview">
+      <span class="permission-overview-icon material-symbols-outlined" aria-hidden="true"
+        >admin_panel_settings</span
+      >
+      <div>
+        <h3>{{ role }}</h3>
+        <p>{{ roleDescriptions[role] }}</p>
+      </div>
+      <span class="permission-total"
+        ><strong>{{ permissionCount() }} / {{ modules.length * actions.length }}</strong
+        ><small>permissions enabled</small></span
+      >
+    </div>
+    <div class="permission-presets">
+      <span>Start with a preset</span>
+      <div class="row">
+        <button class="button" (click)="applyPermissionPreset('view')">
+          <span class="material-symbols-outlined" aria-hidden="true">visibility</span>View only
+        </button>
+        <button class="button" (click)="applyPermissionPreset('standard')">
+          <span class="material-symbols-outlined" aria-hidden="true">edit_square</span>Standard
+          access
+        </button>
+        <button class="button" (click)="applyPermissionPreset('none')">
+          <span class="material-symbols-outlined" aria-hidden="true">block</span>No access
+        </button>
+      </div>
+      <small
+        >Presets update the draft for all modules. Standard access includes everything except
+        Delete.</small
+      >
+    </div>
+    <div class="permission-grid">
+      @for (module of modules; track module; let moduleIndex = $index) {
+        <fieldset
+          class="permission-card"
+          [attr.data-tone]="['teal', 'blue', 'purple', 'green', 'amber', 'blue'][moduleIndex]"
+        >
+          <legend>
+            <span class="module-icon material-symbols-outlined" aria-hidden="true">{{
+              moduleIcons[module]
+            }}</span
+            >{{ module }}
+          </legend>
+          @for (action of actions; track action; let i = $index) {
+            <label class="permission-action">
+              <span
+                ><strong>{{ action }}</strong
+                ><small>{{ actionDescriptions[i] }}</small></span
+              >
+              <input
+                type="checkbox"
+                role="switch"
+                [(ngModel)]="permissions[module][i]"
+                [attr.aria-label]="action + ' ' + module"
+              />
+              <span class="permission-switch" aria-hidden="true"></span>
+            </label>
+          }
+        </fieldset>
+      }
+    </div>
+    <div class="panel-note">
+      <span class="material-symbols-outlined" aria-hidden="true">info</span>Permission settings are
+      saved locally. Server-side access enforcement requires a backend.
+    </div>
+    <div class="form-footer settings-save-footer">
+      <span class="settings-save-state" aria-live="polite"
+        ><span class="material-symbols-outlined" aria-hidden="true">{{
+          permissionsChanged() ? 'edit_note' : 'check_circle'
+        }}</span
+        >{{
+          permissionsChanged() ? 'Unsaved changes for ' + role : 'Permissions are up to date'
+        }}</span
+      >
+      <div class="row">
+        <button class="button" [disabled]="!permissionsChanged()" (click)="discardPermissions()">
+          Discard</button
+        ><button
+          class="button primary"
+          [disabled]="!permissionsChanged()"
+          (click)="savePermissions()"
+        >
+          Save permissions
+        </button>
+      </div>
+    </div>
+  </section>
+}
+@if (modal()) {
+  <div class="modal-backdrop" (click)="modal.set(false)">
+    <section
+      class="modal panel"
+      role="dialog"
+      aria-modal="true"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (keydown.escape)="modal.set(false)"
+      aria-labelledby="invite-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="panel-toolbar">
+        <div>
+          <h2 id="invite-title">Invite someone to your team</h2>
+          <p>Set their role from the start.</p>
+        </div>
+        <button class="icon-button" aria-label="Close invitation" (click)="modal.set(false)">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <form #form="ngForm" (ngSubmit)="form.valid && inviteMember()">
+        <div class="panel-body form-grid">
+          <label class="full-width"
+            >Full name<input [(ngModel)]="invite.name" name="name" required /></label
+          ><label class="full-width"
+            >Work email<input
+              [(ngModel)]="invite.email"
+              name="email"
+              type="email"
+              required /></label
+          ><label class="full-width"
+            >Role<mat-select
+              cvSelect
+              [(ngModel)]="invite.role"
+              name="role"
+              aria-label="Invitation role"
+              [panelWidth]="compact()?.matches ? 'auto' : 360"
+            >
+              <mat-select-trigger><cv-management-role [label]="invite.role" /></mat-select-trigger>
+              @for (role of roles; track role) {
+                <mat-option [value]="role"
+                  ><span class="role-option"
+                    ><cv-management-role [label]="role" /><small>{{
+                      roleDescriptions[role]
+                    }}</small></span
+                  ></mat-option
+                >
+              }
+            </mat-select></label
+          >
+          <p class="invitation-role-note full-width">
+            <span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span
+            >{{ roleDescriptions[invite.role] }}. Fine-tune this role in Permissions.
+          </p>
+          <p class="muted full-width">This saves a demo invitation. It does not send an email.</p>
+        </div>
+        <div class="form-footer">
+          <button type="button" class="button" (click)="modal.set(false)">Cancel</button
+          ><button class="button primary">Save invitation</button>
+        </div>
+      </form>
+    </section>
+  </div>
+}
