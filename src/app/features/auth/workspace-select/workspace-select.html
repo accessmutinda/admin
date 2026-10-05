@@ -1,5 +1,5 @@
 <cv-auth-centered-layout width="md">
-  <h1 class="text-3xl font-bold tracking-tight text-ink">Select your workspace</h1>
+  <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Select your workspace</h1>
   <p class="mt-1.5 text-sm text-slate">You have access to multiple care companies.</p>
 
   <div class="relative mt-5">
@@ -42,15 +42,15 @@
           >
             {{ workspace.shortCode }}
           </span>
-          <span class="flex-1">
+          <span class="min-w-0 flex-1">
             <span class="block text-sm font-semibold text-ink">{{ workspace.name }}</span>
             <span class="block text-xs text-slate">{{ workspace.careType }} · {{ workspace.serviceUserCount }} service users</span>
           </span>
           @if (switching() === workspace.id) {
-            <span class="text-xs font-medium text-teal">Switching…</span>
+            <span class="shrink-0 text-xs font-medium text-teal">Switching…</span>
           } @else {
             <span
-              class="material-symbols-outlined text-[20px] text-slate transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-teal"
+              class="material-symbols-outlined shrink-0 text-[20px] text-slate transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-teal"
               >chevron_right</span
             >
           }

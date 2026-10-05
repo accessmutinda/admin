@@ -1,7 +1,7 @@
 <cv-auth-centered-layout>
   @if (!invite || isExpired) {
     <div class="text-center">
-      <h1 class="text-3xl font-bold tracking-tight text-ink">This invitation has expired</h1>
+      <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">This invitation has expired</h1>
       <p class="mt-1.5 text-sm text-slate">
         Ask whoever invited you to send a new invitation, or contact your organisation's admin.
       </p>
@@ -13,7 +13,7 @@
     </div>
   } @else if (declined()) {
     <div class="text-center">
-      <h1 class="text-3xl font-bold tracking-tight text-ink">Invitation declined</h1>
+      <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Invitation declined</h1>
       <p class="mt-1.5 text-sm text-slate">{{ invite.inviterName }} has been notified.</p>
       <a
         routerLink="/auth/sign-in"
@@ -23,7 +23,7 @@
     </div>
   } @else {
     <div class="text-center">
-      <h1 class="text-3xl font-bold tracking-tight text-ink">You're invited to join CareVerity</h1>
+      <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">You're invited to join CareVerity</h1>
       <p class="mt-1.5 text-sm text-slate">
         {{ invite.inviterName }} ({{ invite.inviterRoleLabel }}) has invited you to join
         <span class="font-medium text-ink">{{ invite.workspaceName }}</span>
@@ -31,13 +31,13 @@
     </div>
 
     <div class="mt-6 flex flex-col gap-3 rounded-xl border border-line bg-cloud p-4 text-sm">
-      <div class="flex justify-between">
-        <span class="text-slate">Your role</span>
-        <span class="font-medium text-ink">{{ roleLabel() }}</span>
+      <div class="flex justify-between gap-4">
+        <span class="shrink-0 text-slate">Your role</span>
+        <span class="min-w-0 text-right font-medium text-ink">{{ roleLabel() }}</span>
       </div>
-      <div class="flex justify-between">
-        <span class="text-slate">Workspace</span>
-        <span class="font-medium text-ink">{{ invite.workspaceName }}</span>
+      <div class="flex justify-between gap-4">
+        <span class="shrink-0 text-slate">Workspace</span>
+        <span class="min-w-0 text-right font-medium text-ink">{{ invite.workspaceName }}</span>
       </div>
     </div>
 

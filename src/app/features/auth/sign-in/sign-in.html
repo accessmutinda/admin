@@ -1,6 +1,6 @@
 <cv-auth-split-layout>
   <p class="text-xs font-semibold uppercase tracking-[0.1em] text-teal">Secure sign-in</p>
-  <h1 class="mt-2 text-3xl font-bold tracking-tight text-ink">Welcome back</h1>
+  <h1 class="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Welcome back</h1>
   <p class="mt-1.5 text-sm text-slate">Sign in to your CareVerity account</p>
 
   @if (errorMessage()) {
@@ -44,7 +44,7 @@
       }
     </mat-form-field>
 
-    <div class="mb-2 mt-1 flex items-center justify-between">
+    <div class="mb-2 mt-1 flex flex-wrap items-center justify-between gap-x-4">
       <mat-checkbox formControlName="rememberMe" color="primary">Remember me</mat-checkbox>
       <a
         routerLink="/auth/forgot-password"
@@ -99,16 +99,16 @@
     >
   </p>
 
-  <div class="mt-6 flex items-center justify-center gap-5 border-t border-line pt-6 text-xs text-slate/70">
-    <span class="flex items-center gap-1.5">
+  <div class="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-line pt-6 text-xs text-slate/70">
+    <span class="flex items-center gap-1.5 whitespace-nowrap">
       <span class="material-symbols-outlined text-[15px]">lock</span>
       Encrypted
     </span>
-    <span class="flex items-center gap-1.5">
+    <span class="flex items-center gap-1.5 whitespace-nowrap">
       <span class="material-symbols-outlined text-[15px]">verified_user</span>
       MFA protected
     </span>
-    <span class="flex items-center gap-1.5">
+    <span class="flex items-center gap-1.5 whitespace-nowrap">
       <span class="material-symbols-outlined text-[15px]">gavel</span>
       UK GDPR
     </span>
