@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { AuthCenteredLayout } from '../../../shared/layouts/auth-centered-layout';
+import { Alert } from '../../../shared/ui/alert';
 import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
@@ -16,6 +17,7 @@ import { AuthService } from '../../../core/auth/auth.service';
     MatFormFieldModule,
     MatInputModule,
     AuthCenteredLayout,
+    Alert,
   ],
   templateUrl: './forgot-password.html',
 })
@@ -25,6 +27,7 @@ export class ForgotPassword {
 
   protected readonly loading = signal(false);
   protected readonly sent = signal(false);
+  protected readonly errorMessage = signal('');
 
   protected readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -35,10 +38,17 @@ export class ForgotPassword {
       this.form.markAllAsTouched();
       return;
     }
+    this.errorMessage.set('');
     this.loading.set(true);
-    this.auth.requestPasswordReset(this.form.getRawValue().email).subscribe(() => {
-      this.loading.set(false);
-      this.sent.set(true);
+    this.auth.requestPasswordReset(this.form.getRawValue().email).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.sent.set(true);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.errorMessage.set('We couldn’t request a reset link. Please try again.');
+      },
     });
   }
 }

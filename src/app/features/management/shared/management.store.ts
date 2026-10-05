@@ -374,6 +374,7 @@ export class ManagementStore {
       id: company.id,
       name: company.name,
       shortCode: company.code,
+      logoUrl: company.logo || undefined,
       careType: company.sector,
       serviceUserCount:
         this.workspace.allWorkspaces().find((w) => w.id === company.id)?.serviceUserCount ?? 0,

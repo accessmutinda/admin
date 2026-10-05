@@ -14,11 +14,7 @@ export class SsoMicrosoft {
   private readonly router = inject(Router);
 
   protected readonly loading = signal(false);
-  protected readonly benefits = [
-    'Secure single sign-on (SSO)',
-    'No additional passwords',
-    "Works with your organisation's account",
-  ];
+  protected readonly benefits = ['Secure single sign-on (SSO)', 'No separate CareVerity password'];
 
   protected continueWithMicrosoft(): void {
     this.loading.set(true);

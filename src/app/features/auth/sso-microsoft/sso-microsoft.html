@@ -3,7 +3,7 @@
   <p class="mt-3 text-sm leading-6 text-slate">
     Continue with your organisation's Microsoft account to access your CareVerity workspace.
   </p>
-  <ul class="mt-6 space-y-3 text-sm text-ink">
+  <ul class="mt-5 space-y-2 text-sm text-ink">
     @for (item of benefits; track item) {
       <li class="flex items-start gap-2.5">
         <span
@@ -18,7 +18,7 @@
   <button
     mat-flat-button
     type="button"
-    class="cv-auth-primary !mt-8 !w-full"
+    class="cv-auth-primary !mt-6 !w-full"
     [disabled]="loading()"
     (click)="continueWithMicrosoft()"
   >
@@ -33,6 +33,6 @@
     </span>
   </button>
   <p class="mt-6 text-center text-sm">
-    <a routerLink="/auth/sign-in" class="cv-auth-link">Back to sign in</a>
+    <a routerLink="/auth/sign-in" class="cv-auth-link cv-auth-text-action">Back to sign in</a>
   </p>
 </cv-auth-split-layout>

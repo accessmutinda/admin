@@ -76,3 +76,19 @@ body {
     )
   );
 }
+
+.cv-management .password-change-surface {
+  @include mat.form-field-overrides(
+    (
+      container-height: 48px,
+      container-vertical-padding: 12px,
+      container-text-size: 14px,
+      outlined-container-shape: 9px,
+      outlined-outline-color: #dce2e7,
+      outlined-hover-outline-color: #94a3b8,
+      outlined-focus-outline-color: #087f76,
+      outlined-focus-outline-width: 1px,
+      outlined-caret-color: #087f76,
+    )
+  );
+}

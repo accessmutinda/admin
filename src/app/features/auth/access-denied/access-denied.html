@@ -1,18 +1,16 @@
 <cv-auth-centered-layout width="md">
-  <span
-    aria-hidden="true"
-    class="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-error/20 bg-error-50 text-error"
+  <span class="cv-auth-mark cv-auth-mark-neutral" aria-hidden="true"
+    ><span class="material-symbols-outlined">lock</span></span
   >
-    <span class="material-symbols-outlined text-[24px]">lock</span>
-  </span>
   <h1 class="cv-auth-heading">Access restricted</h1>
   <p class="mt-3 text-sm leading-6 text-slate">
-    Your account doesn't have permission to access this area.
+    Your account doesn't have permission to access this area. Your organisation’s admin can help you
+    check your access.
   </p>
   @if (requiredRoleLabels.length) {
-    <div class="mt-6 rounded-xl border border-error/20 bg-error-50 p-4 text-sm">
+    <div class="mt-6 rounded-xl border border-line bg-cloud p-4 text-sm">
       <p class="flex items-center gap-2 font-medium text-ink">
-        <span aria-hidden="true" class="material-symbols-outlined text-[18px] text-error"
+        <span aria-hidden="true" class="material-symbols-outlined text-[18px] text-slate"
           >warning</span
         >
         Required permission
@@ -22,9 +20,9 @@
       </p>
     </div>
   }
-  <div class="mt-7 flex flex-col gap-3">
+  <div class="mt-5 flex flex-col gap-3">
     <button mat-flat-button type="button" class="cv-auth-primary" (click)="goToDashboard()">
-      {{ isSignedIn ? 'Go to your dashboard' : 'Back to sign in' }}
+      {{ isSignedIn ? 'Go to security settings' : 'Back to sign in' }}
     </button>
     <a
       mat-stroked-button

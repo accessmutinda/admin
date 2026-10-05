@@ -5,27 +5,30 @@ import { Logo } from '../ui/logo';
   selector: 'cv-auth-centered-layout',
   imports: [Logo],
   template: `
-    <div class="cv-auth-shell flex min-h-screen flex-col bg-cloud px-4 py-8 sm:px-6 sm:py-10">
-      <header class="mx-auto w-full max-w-6xl px-2"><cv-logo /></header>
-      <main class="flex flex-1 items-center justify-center py-10 sm:py-14">
-        <div
-          class="cv-enter w-full {{
-            widthClass()
-          }} rounded-2xl border border-line/80 bg-white p-6 shadow-[0_2px_12px_rgba(15,45,74,0.035)] sm:p-9"
-        >
-          <ng-content />
-        </div>
-      </main>
-      <p class="text-center text-xs text-slate">
-        Need help?
-        <a class="cv-auth-link ml-1" href="mailto:support@careverity.com">Contact support</a>
-      </p>
+    <div class="cv-auth-shell cv-auth-flow">
+      <div class="cv-auth-flow-panel cv-enter w-full {{ widthClass() }}">
+        <header class="cv-auth-flow-logo"><cv-logo /></header>
+        <main><ng-content /></main>
+        <p class="cv-auth-flow-support">
+          Need a hand?
+          <a class="cv-auth-link" href="mailto:support@careverity.com"
+            >Contact support <span aria-hidden="true">↗</span></a
+          >
+        </p>
+        <p class="cv-auth-flow-footer">
+          CareVerity <span aria-hidden="true">·</span> People. Purpose. Progress.
+        </p>
+      </div>
     </div>
   `,
 })
 export class AuthCenteredLayout {
-  readonly width = input<'sm' | 'md'>('sm');
+  readonly width = input<'sm' | 'md' | 'lg'>('sm');
   protected widthClass(): string {
-    return this.width() === 'md' ? 'max-w-[30rem]' : 'max-w-[28rem]';
+    return this.width() === 'lg'
+      ? 'cv-auth-flow-panel-wide max-w-[38rem]'
+      : this.width() === 'md'
+        ? 'max-w-[30rem]'
+        : 'max-w-[28rem]';
   }
 }

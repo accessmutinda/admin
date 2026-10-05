@@ -1,6 +1,6 @@
-<cv-auth-centered-layout width="md">
+<cv-auth-centered-layout width="lg">
   <h1 class="cv-auth-heading">Select your workspace</h1>
-  <p class="mt-1.5 text-sm text-slate">You have access to multiple care companies.</p>
+  <p class="mt-1.5 text-sm text-slate">Choose the care company you want to work with.</p>
 
   <div class="relative mt-5">
     <span
@@ -12,13 +12,26 @@
       type="text"
       placeholder="Search companies…"
       aria-label="Search workspaces"
-      class="h-12 w-full rounded-lg border border-line bg-white pl-10 pr-3 text-sm text-ink outline-none transition-colors focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
+      class="h-12 w-full rounded-lg border border-line bg-white pl-10 pr-12 text-sm text-ink outline-none transition-colors focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
       [value]="search()"
       (input)="search.set($any($event.target).value)"
     />
+    @if (search()) {
+      <button
+        type="button"
+        aria-label="Clear workspace search"
+        class="cv-auth-search-clear"
+        (click)="search.set('')"
+      >
+        <span aria-hidden="true" class="material-symbols-outlined">close</span>
+      </button>
+    }
   </div>
-
-  <ul class="mt-4 flex max-h-96 flex-col gap-2.5 overflow-y-auto pr-1">
+  <p class="mt-3 text-xs text-slate" aria-live="polite">
+    {{ filtered().length }} {{ filtered().length === 1 ? 'workspace' : 'workspaces' }}
+    {{ search() ? 'found' : 'available' }}
+  </p>
+  <ul class="cv-auth-workspaces mt-3 flex flex-col gap-2.5">
     @if (loading()) {
       @for (row of skeletonRows; track $index) {
         <li class="flex items-center gap-3 rounded-xl border border-line p-3.5">
@@ -42,7 +55,15 @@
               aria-hidden="true"
               class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line bg-cloud text-xs font-semibold text-navy"
             >
-              {{ workspace.shortCode }}
+              @if (workspace.logoUrl) {
+                <img
+                  [src]="workspace.logoUrl"
+                  alt=""
+                  class="h-full w-full object-contain rounded-lg"
+                />
+              } @else {
+                {{ workspace.shortCode }}
+              }
             </span>
             <span class="min-w-0 flex-1">
               <span class="block text-sm font-semibold text-ink">{{ workspace.name }}</span>
@@ -63,13 +84,22 @@
       } @empty {
         <li class="px-4 py-8 text-center text-sm text-slate">
           No workspaces found. Try a different search.
+          @if (search()) {
+            <button
+              type="button"
+              class="cv-auth-link cv-auth-text-action block mx-auto mt-2"
+              (click)="search.set('')"
+            >
+              Clear search
+            </button>
+          }
         </li>
       }
     }
   </ul>
 
-  <p class="mt-5 text-center text-sm">
-    <a href="mailto:support@careverity.com" class="cv-auth-link"
+  <p class="mt-3 text-center text-sm">
+    <a href="mailto:support@careverity.com" class="cv-auth-link cv-auth-text-action"
       >+ Add or request access to a company</a
     >
   </p>

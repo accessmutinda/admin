@@ -2,12 +2,13 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { AuthCenteredLayout } from '../../../shared/layouts/auth-centered-layout';
+import { Alert } from '../../../shared/ui/alert';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ROLES } from '../../../core/auth/models/role';
 
 @Component({
   selector: 'cv-invite-accept',
-  imports: [RouterLink, MatButtonModule, AuthCenteredLayout],
+  imports: [RouterLink, MatButtonModule, AuthCenteredLayout, Alert],
   templateUrl: './invite-accept.html',
 })
 export class InviteAccept {
@@ -30,29 +31,51 @@ export class InviteAccept {
 
   protected readonly loading = signal(false);
   protected readonly declined = signal(false);
+  protected readonly errorMessage = signal('');
+  protected readonly companyInitials = computed(
+    () =>
+      this.invite?.workspaceName
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join('') ?? '',
+  );
 
   protected accept(): void {
-    if (!this.invite || this.loading()) {
+    if (!this.invite || this.isExpired || this.loading()) {
       return;
     }
+    this.errorMessage.set('');
     this.loading.set(true);
     this.auth.acceptInvite(this.token).subscribe({
       next: () => {
         this.loading.set(false);
         this.router.navigateByUrl('/select-workspace');
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.errorMessage.set(
+          'We couldn’t accept this invitation. Please try again or contact your organisation’s admin.',
+        );
+      },
     });
   }
 
   protected decline(): void {
-    if (!this.invite || this.loading()) {
+    if (!this.invite || this.isExpired || this.loading()) {
       return;
     }
+    this.errorMessage.set('');
     this.loading.set(true);
-    this.auth.declineInvite(this.token).subscribe(() => {
-      this.loading.set(false);
-      this.declined.set(true);
+    this.auth.declineInvite(this.token).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.declined.set(true);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.errorMessage.set('We couldn’t decline this invitation. Please try again.');
+      },
     });
   }
 }

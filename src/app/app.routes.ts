@@ -54,7 +54,14 @@ export const routes: Routes = [
     title: 'Change your password · CareVerity',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./features/auth/reset-password/reset-password').then((m) => m.ResetPassword),
+      import('./features/management/layout/management-layout').then((m) => m.ManagementLayout),
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./features/auth/reset-password/reset-password').then((m) => m.ResetPassword),
+      },
+    ],
   },
   {
     path: 'access-denied',

@@ -7,11 +7,10 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { AuthCenteredLayout } from '../../../shared/layouts/auth-centered-layout';
 import { Alert } from '../../../shared/ui/alert';
 import { AuthService } from '../../../core/auth/auth.service';
 
@@ -30,7 +29,7 @@ function passwordsMatch(): ValidatorFn {
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
-    AuthCenteredLayout,
+    RouterLink,
     Alert,
   ],
   templateUrl: './reset-password.html',

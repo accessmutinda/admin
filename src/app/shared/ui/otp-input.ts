@@ -38,6 +38,7 @@ export class OtpInput {
 
   reset(): void {
     this.digits.set(Array(this.length()).fill(''));
+    for (const box of this.boxRefs()) box.nativeElement.value = '';
     this.boxRefs()[0]?.nativeElement.focus();
   }
 
@@ -87,7 +88,7 @@ export class OtpInput {
   private emit(): void {
     const value = this.digits().join('');
     this.valueChange.emit(value);
-    if (value.length === this.length() && !value.includes('')) {
+    if (value.length === this.length()) {
       this.complete.emit(value);
     }
   }

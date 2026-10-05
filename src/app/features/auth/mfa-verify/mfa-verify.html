@@ -1,50 +1,43 @@
 <cv-auth-centered-layout width="md">
+  <span class="cv-auth-mark" aria-hidden="true"
+    ><span class="material-symbols-outlined">shield_lock</span></span
+  >
   <h1 class="cv-auth-heading">Verify it's you</h1>
-  <p class="mt-3 text-sm leading-6 text-slate">
-    Enter the six-digit code from <span class="font-medium text-ink">{{ maskedTarget }}</span
-    >.
+  <p class="mt-2 text-sm leading-6 text-slate">
+    Open your authenticator app and enter the six-digit code for CareVerity.
   </p>
   @if (errorMessage()) {
-    <div class="mt-5" role="alert">
+    <div class="mt-4" role="alert">
       <cv-alert tone="error">{{ errorMessage() }}</cv-alert>
     </div>
   }
-  <div class="mt-7">
+  <div class="mt-6">
     <cv-otp-input (valueChange)="onCodeChange($event)" (complete)="verify()" />
   </div>
-  <div class="mt-4 text-center text-xs text-slate">
-    @if (secondsLeft() > 0) {
-      Request a new code in {{ secondsLeft() }}s
-    } @else {
-      <button type="button" class="cv-auth-link min-h-10" (click)="resend()">Resend code</button>
-    }
-  </div>
-  <div class="mt-5">
+  <p class="mt-3 text-center text-xs leading-5 text-slate">
+    The code updates in your app. You can type or paste it here.
+  </p>
+  <div class="cv-auth-device mt-5">
     <mat-checkbox
       [checked]="trustDevice()"
       (change)="trustDevice.set($event.checked)"
       aria-describedby="trust-device-hint"
+      >Trust this device</mat-checkbox
     >
-      Trust this device
-    </mat-checkbox>
-    <p id="trust-device-hint" class="pl-11 text-xs leading-5 text-slate">
-      Skip verification on this device for 30 days.
+    <p id="trust-device-hint" class="text-xs leading-5 text-slate">
+      Skip this step for 30 days on a device you use privately.
     </p>
   </div>
   <button
     mat-flat-button
     type="button"
-    class="cv-auth-primary !mt-7 !w-full"
+    class="cv-auth-primary !mt-5 !w-full"
     [disabled]="code().length !== 6 || loading()"
     (click)="verify()"
   >
     {{ loading() ? 'Verifying…' : 'Verify and continue' }}
   </button>
-  <p class="mt-5 text-center text-sm">
-    <a routerLink="/auth/sign-in" class="cv-auth-link">Back to sign in</a>
-  </p>
-  <p class="mt-7 flex items-start gap-2 border-t border-line pt-5 text-xs leading-5 text-slate">
-    <span aria-hidden="true" class="material-symbols-outlined text-[16px]">shield</span>
-    An extra layer of protection for your account and the people you care for.
+  <p class="mt-3 text-center text-sm">
+    <a routerLink="/auth/sign-in" class="cv-auth-link cv-auth-text-action">Back to sign in</a>
   </p>
 </cv-auth-centered-layout>

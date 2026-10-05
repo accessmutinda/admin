@@ -1,6 +1,10 @@
 <cv-auth-split-layout>
+  <div class="cv-entry-form-intro">
+    <span aria-hidden="true" class="material-symbols-outlined">shield_lock</span>
+    <span>Your care workspace</span>
+  </div>
   <h1 class="cv-auth-heading">Welcome back</h1>
-  <p class="mt-1.5 text-sm text-slate">Sign in to your CareVerity account</p>
+  <p class="mt-1.5 text-sm text-slate">Good to see you. Sign in to continue.</p>
 
   @if (errorMessage()) {
     <div class="mt-5">
@@ -8,7 +12,7 @@
     </div>
   }
 
-  <form class="mt-8 flex flex-col" [formGroup]="form" (ngSubmit)="submit()">
+  <form class="cv-sign-in-fields mt-6 flex flex-col" [formGroup]="form" (ngSubmit)="submit()">
     <label class="cv-field-label" for="sign-in-email">Email address</label>
     <mat-form-field subscriptSizing="dynamic">
       <input
@@ -51,7 +55,7 @@
       }
     </mat-form-field>
 
-    <div class="mb-6 mt-1 flex flex-wrap items-center justify-between gap-x-4">
+    <div class="cv-sign-in-options mb-4 flex flex-wrap items-center justify-between gap-x-4">
       <mat-checkbox formControlName="rememberMe" color="primary">Remember me</mat-checkbox>
       <a routerLink="/auth/forgot-password" class="cv-auth-link text-sm">Forgot password?</a>
     </div>
@@ -68,12 +72,17 @@
           ><mat-spinner diameter="18" />Signing in…</span
         >
       } @else {
-        Sign in
+        <span class="flex w-full items-center justify-center gap-2"
+          >Sign in
+          <span aria-hidden="true" class="material-symbols-outlined text-[18px]"
+            >arrow_forward</span
+          ></span
+        >
       }
     </button>
   </form>
 
-  <div class="my-6 flex items-center gap-3">
+  <div class="cv-entry-divider my-5 flex items-center gap-3">
     <span class="h-px flex-1 bg-line"></span>
     <span class="text-xs text-slate">or continue with</span>
     <span class="h-px flex-1 bg-line"></span>
@@ -81,7 +90,7 @@
 
   <a mat-stroked-button routerLink="/auth/sso/microsoft" class="cv-auth-secondary !w-full">
     <span class="flex items-center justify-center gap-2">
-      <svg viewBox="0 0 21 21" class="h-4 w-4">
+      <svg aria-hidden="true" viewBox="0 0 21 21" class="h-4 w-4">
         <rect x="1" y="1" width="9" height="9" fill="#f25022" />
         <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
         <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
@@ -91,7 +100,7 @@
     </span>
   </a>
 
-  <p class="mt-7 flex items-center justify-center gap-2 text-xs text-slate">
+  <p class="cv-entry-security mt-5 flex items-center justify-center gap-2 text-xs text-slate">
     <span aria-hidden="true" class="material-symbols-outlined text-[15px]">lock</span>
     Secure access to your care workspace
   </p>
