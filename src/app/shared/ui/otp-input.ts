@@ -4,7 +4,12 @@ import { Component, ElementRef, input, output, signal, viewChildren } from '@ang
   selector: 'cv-otp-input',
   host: { class: 'block w-full' },
   template: `
-    <div class="mx-auto flex max-w-[22.5rem] justify-center gap-2 sm:gap-3" (paste)="onPaste($event)">
+    <div
+      class="mx-auto flex max-w-[23rem] justify-center gap-2 sm:gap-2.5"
+      role="group"
+      aria-label="Six-digit verification code"
+      (paste)="onPaste($event)"
+    >
       @for (i of indices; track i) {
         <input
           #box
@@ -12,7 +17,8 @@ import { Component, ElementRef, input, output, signal, viewChildren } from '@ang
           inputmode="numeric"
           autocomplete="one-time-code"
           maxlength="1"
-          class="h-14 w-0 min-w-0 max-w-12 flex-1 rounded-lg border border-line text-center text-xl font-semibold text-ink outline-none transition-all duration-150 hover:border-slate focus:scale-105 focus:border-teal focus:shadow-card focus:ring-2 focus:ring-teal/25"
+          class="h-14 w-0 min-w-0 flex-1 rounded-lg border border-line bg-cloud/50 text-center text-xl font-medium text-ink outline-none transition-colors duration-150 hover:border-slate/50 focus:border-teal-600 focus:bg-white focus:ring-2 focus:ring-teal-600/15"
+          [attr.aria-label]="'Digit ' + (i + 1) + ' of ' + length()"
           [value]="digits()[i]"
           (input)="onInput(i, $event)"
           (keydown)="onKeydown(i, $event)"
@@ -62,7 +68,10 @@ export class OtpInput {
 
   protected onPaste(event: ClipboardEvent): void {
     const text = event.clipboardData?.getData('text') ?? '';
-    const pasted = text.replace(/[^0-9]/g, '').slice(0, this.length()).split('');
+    const pasted = text
+      .replace(/[^0-9]/g, '')
+      .slice(0, this.length())
+      .split('');
     if (!pasted.length) {
       return;
     }

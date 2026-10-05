@@ -24,13 +24,13 @@ html {
     // CareVerity hex values, rather than the nearest M3-derived tone, so
     // buttons/focus rings/checked states match the design mockups exactly.
     (
-      primary: #00a896,
-      on-primary: #ffffff,
-      primary-fixed: #00a896,
-      on-primary-fixed: #ffffff,
-      error: #ef4444,
-      on-error: #ffffff,
-    )
+        primary: #00a896,
+        on-primary: #ffffff,
+        primary-fixed: #00a896,
+        on-primary-fixed: #ffffff,
+        error: #ef4444,
+        on-error: #ffffff
+      )
   );
 }
 
@@ -51,4 +51,28 @@ body {
   // MDC's default ~4px, which read as a sharper, less "designed" mismatch
   // next to rounded-lg/rounded-xl surfaces throughout the rest of the app.
   --mdc-outlined-text-field-container-shape: 0.625rem;
+}
+
+.cv-auth-shell {
+  @include mat.form-field-overrides(
+    (
+      container-height: 48px,
+      container-vertical-padding: 12px,
+      container-text-size: 14px,
+      outlined-container-shape: 9px,
+      outlined-outline-color: #dce2e7,
+      outlined-hover-outline-color: #94a3b8,
+      outlined-focus-outline-color: #087f76,
+      outlined-focus-outline-width: 1px,
+      outlined-caret-color: #087f76,
+    )
+  );
+  @include mat.checkbox-overrides(
+    (
+      selected-icon-color: #087f76,
+      selected-hover-icon-color: #087f76,
+      selected-focus-icon-color: #087f76,
+      label-text-size: 13px,
+    )
+  );
 }
