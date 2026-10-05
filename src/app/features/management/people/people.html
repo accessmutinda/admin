@@ -19,93 +19,201 @@
   <cv-workforce-directory [mode]="section" />
 }
 @if (section === 'leave') {
-  <section class="panel">
+  <section class="panel record-directory-panel">
     <div class="panel-toolbar">
       <div>
-        <h2>Team availability</h2>
+        <h2>
+          Team availability <span class="count">{{ filteredLeaves().length }}</span>
+        </h2>
         <p>Recorded leave and training commitments.</p>
       </div>
-      <span class="badge">{{ store.data().leaves.length }} records</span>
+      <form
+        class="record-search"
+        role="search"
+        aria-label="Leave records"
+        (ngSubmit)="searchLeave()"
+      >
+        <label class="search-box"
+          ><span class="material-symbols-outlined" aria-hidden="true">search</span
+          ><input
+            aria-label="Search leave"
+            placeholder="Search people, leave types or dates…"
+            [(ngModel)]="leaveSearch"
+            name="leaveSearch"
+          />
+          @if (leaveSearch || leaveQuery()) {
+            <button
+              class="directory-clear-search"
+              type="button"
+              aria-label="Clear leave search"
+              (click)="clearLeaveSearch()"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+          }
+        </label>
+        <button class="button" type="submit">Search</button>
+      </form>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="record-table leave-table" aria-label="Team availability and leave">
         <thead>
           <tr>
-            <th>Team member</th>
-            <th>Leave type</th>
-            <th>From</th>
-            <th>To</th>
+            <th scope="col">Team member</th>
+            <th scope="col">Leave type</th>
+            <th scope="col">From</th>
+            <th scope="col">To</th>
           </tr>
         </thead>
         <tbody>
-          @for (leave of store.data().leaves; track leave.id) {
+          @for (leave of filteredLeaves(); track leave.id) {
             <tr>
-              <td>
-                <strong>{{ leave.person }}</strong>
+              <td class="record-person">
+                <div class="person-cell">
+                  <span class="avatar">{{ store.initials(leave.person) }}</span
+                  ><strong>{{ leave.person }}</strong>
+                </div>
               </td>
-              <td>
+              <td class="record-type" data-label="Leave type">
                 <span class="badge lilac">{{ leave.type }}</span>
               </td>
-              <td>{{ leave.start }}</td>
-              <td>{{ leave.end }}</td>
+              <td class="leave-start" data-label="From">
+                <time [attr.datetime]="leave.start">{{ leave.start | date: 'd MMM yyyy' }}</time>
+              </td>
+              <td class="leave-end" data-label="To">
+                <time [attr.datetime]="leave.end">{{ leave.end | date: 'd MMM yyyy' }}</time>
+              </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="4" class="empty-cell">No leave recorded yet.</td>
+              <td colspan="4" class="empty-cell">
+                @if (leaveQuery().trim()) {
+                  <strong>No leave matches your search.</strong>
+                  <p>Try a team member, leave type or date.</p>
+                  <button class="button" type="button" (click)="clearLeaveSearch()">
+                    Clear search
+                  </button>
+                } @else {
+                  No leave recorded yet.
+                }
+              </td>
             </tr>
           }
         </tbody>
       </table>
     </div>
+    <div class="directory-footer">
+      <span aria-live="polite"
+        >Showing {{ filteredLeaves().length }} of {{ store.data().leaves.length }} records</span
+      >
+    </div>
   </section>
 }
 @if (section === 'reviews') {
-  <section class="panel">
+  <section class="panel record-directory-panel">
     <div class="panel-toolbar">
       <div>
-        <h2>Supervision & appraisals</h2>
+        <h2>
+          Supervision & appraisals <span class="count">{{ filteredReviews().length }}</span>
+        </h2>
         <p>Make time for feedback and development.</p>
       </div>
+      <form
+        class="record-search"
+        role="search"
+        aria-label="Supervision and appraisal records"
+        (ngSubmit)="searchReviews()"
+      >
+        <label class="search-box"
+          ><span class="material-symbols-outlined" aria-hidden="true">search</span
+          ><input
+            aria-label="Search reviews"
+            placeholder="Search people, reviews or status…"
+            [(ngModel)]="reviewSearch"
+            name="reviewSearch"
+          />
+          @if (reviewSearch || reviewQuery()) {
+            <button
+              class="directory-clear-search"
+              type="button"
+              aria-label="Clear review search"
+              (click)="clearReviewSearch()"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+          }
+        </label>
+        <button class="button" type="submit">Search</button>
+      </form>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="record-table reviews-table" aria-label="Supervision and appraisals">
         <thead>
           <tr>
-            <th>Team member</th>
-            <th>Review</th>
-            <th>Date</th>
-            <th>Status</th>
-            <th></th>
+            <th scope="col">Team member</th>
+            <th scope="col">Review</th>
+            <th scope="col">Date</th>
+            <th scope="col">Status</th>
+            <th scope="col">Actions</th>
           </tr>
         </thead>
         <tbody>
-          @for (review of store.data().reviews; track review.id) {
+          @for (review of filteredReviews(); track review.id) {
             <tr>
-              <td>
-                <strong>{{ review.person }}</strong>
+              <td class="record-person">
+                <div class="person-cell">
+                  <span class="avatar">{{ store.initials(review.person) }}</span
+                  ><strong>{{ review.person }}</strong>
+                </div>
               </td>
-              <td>{{ review.type }}</td>
-              <td>{{ review.date }}</td>
-              <td>
+              <td class="record-type" data-label="Review">
+                <span class="badge lilac">{{ review.type }}</span>
+              </td>
+              <td data-label="Date">
+                <time [attr.datetime]="review.date">{{ review.date | date: 'd MMM yyyy' }}</time>
+              </td>
+              <td data-label="Status">
                 <span class="badge" [class.success]="review.status === 'Completed'">{{
                   review.status
                 }}</span>
               </td>
-              <td>
+              <td class="review-action" [class.no-action]="review.status === 'Completed'">
                 @if (review.status !== 'Completed') {
-                  <button class="text-link" (click)="completeReview(review.id)">
-                    Mark complete
+                  <button
+                    class="directory-action"
+                    [attr.aria-label]="'Mark complete for ' + review.person"
+                    (click)="completeReview(review.id)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">check</span>Mark
+                    complete
                   </button>
+                } @else {
+                  <span class="muted" aria-label="No action required">—</span>
                 }
               </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="5" class="empty-cell">No reviews scheduled yet.</td>
+              <td colspan="5" class="empty-cell">
+                @if (reviewQuery().trim()) {
+                  <strong>No reviews match your search.</strong>
+                  <p>Try a team member, review type or status.</p>
+                  <button class="button" type="button" (click)="clearReviewSearch()">
+                    Clear search
+                  </button>
+                } @else {
+                  No reviews scheduled yet.
+                }
+              </td>
             </tr>
           }
         </tbody>
       </table>
+    </div>
+    <div class="directory-footer">
+      <span aria-live="polite"
+        >Showing {{ filteredReviews().length }} of {{ store.data().reviews.length }} records</span
+      >
     </div>
   </section>
 }

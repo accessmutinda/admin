@@ -15,12 +15,14 @@
       (click)="chooseWorkflow(type.name)"
     >
       <span class="module-icon material-symbols-outlined" aria-hidden="true">{{ type.icon }}</span>
-      <strong>{{ type.name }}</strong
-      ><small>{{
-        store.data().workflows[type.name].length
-          ? store.data().workflows[type.name].length + ' saved review steps'
-          : 'Routing paused'
-      }}</small>
+      <span class="workflow-type-copy"
+        ><strong>{{ type.name }}</strong
+        ><small>{{
+          store.data().workflows[type.name].length
+            ? store.data().workflows[type.name].length + ' saved review steps'
+            : 'Routing paused'
+        }}</small></span
+      >
     </button>
   }
 </nav>
@@ -178,13 +180,15 @@
             ><small>Notify reviewers when their turn arrives.</small></span
           ><input type="checkbox" [(ngModel)]="notify" /></label
         ><label class="escalation-label"
-          >Escalate after<input
-            type="number"
-            min="1"
-            max="30"
-            [(ngModel)]="escalation"
-            aria-label="Escalate after (days)"
-          /><small>Days before an outstanding review needs attention.</small></label
+          ><span class="escalation-control"
+            >Escalate after<input
+              type="number"
+              min="1"
+              max="30"
+              [(ngModel)]="escalation"
+              aria-label="Escalate after (days)"
+            /><span class="escalation-unit">days</span></span
+          ><small>Days before an outstanding review needs attention.</small></label
         >
         @if (workflowSubmitted && !escalationValid()) {
           <p class="field-error" role="alert">Choose a whole number from 1 to 30 days.</p>

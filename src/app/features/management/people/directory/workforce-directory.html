@@ -19,7 +19,7 @@
   </section>
 }
 @if (mode() === 'staff' || mode() === 'onboarding' || mode() === 'compliance') {
-  <section class="panel">
+  <section class="panel workforce-directory-panel">
     <div class="panel-toolbar">
       <div>
         <h2>
@@ -94,19 +94,23 @@
       </div>
     } @else {
       <div class="table-wrap">
-        <table>
+        <table
+          class="workforce-table"
+          [attr.aria-label]="mode() === 'staff' ? 'Staff directory' : 'Employment checks'"
+        >
           <thead>
             <tr>
-              <th>Team member</th>
-              <th>Role & location</th>
-              <th>{{ mode() === 'compliance' ? 'Employment checks' : 'Status' }}</th>
-              <th></th>
+              <th scope="col">Team member</th>
+              <th scope="col">Role</th>
+              <th scope="col">Location</th>
+              <th scope="col">{{ mode() === 'compliance' ? 'Employment checks' : 'Status' }}</th>
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>
             @for (person of filtered(); track person.id) {
               <tr>
-                <td>
+                <td class="workforce-identity">
                   <div class="person-cell">
                     <span class="avatar">{{ store.initials(person.name) }}</span
                     ><span
@@ -115,10 +119,19 @@
                     >
                   </div>
                 </td>
-                <td>
-                  <cv-management-role [label]="person.role" /><small>{{ person.location }}</small>
+                <td class="workforce-role" data-label="Role">
+                  <cv-management-role [label]="person.role" />
                 </td>
-                <td>
+                <td class="workforce-location" data-label="Location">
+                  <span class="directory-location"
+                    ><span class="material-symbols-outlined" aria-hidden="true">location_on</span
+                    >{{ person.location || 'Not provided' }}</span
+                  >
+                </td>
+                <td
+                  class="workforce-status"
+                  [attr.data-label]="mode() === 'compliance' ? 'Checks' : 'Status'"
+                >
                   <span
                     class="badge"
                     [class.success]="mode() === 'staff' || ready(person) === checks.length"
@@ -130,9 +143,10 @@
                     }}</span
                   >
                 </td>
-                <td>
+                <td class="workforce-action">
                   <a
-                    class="text-link"
+                    class="directory-action"
+                    [attr.aria-label]="'View ' + person.name"
                     [routerLink]="['/manage/people', person.id]"
                     [queryParams]="{ tab: mode() === 'compliance' ? 'Compliance' : 'Profile' }"
                     >View<span class="material-symbols-outlined" aria-hidden="true"
@@ -143,7 +157,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="4" class="empty-cell">No team members match this view.</td>
+                <td colspan="5" class="empty-cell">No team members match this view.</td>
               </tr>
             }
           </tbody>

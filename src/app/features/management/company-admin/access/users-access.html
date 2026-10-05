@@ -22,7 +22,7 @@
   }
 </nav>
 @if (tab() === 'Users') {
-  <section class="panel">
+  <section class="panel workspace-users-panel">
     <div class="panel-toolbar">
       <div>
         <h2>
@@ -40,28 +40,27 @@
       /></label>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="workspace-users-table" aria-label="Workspace users">
         <thead>
           <tr>
-            <th>User</th>
-            <th>Role assignment</th>
-            <th>Status</th>
+            <th scope="col">User</th>
+            <th scope="col">Role assignment</th>
+            <th scope="col">Status</th>
           </tr>
         </thead>
         <tbody>
           @for (member of filtered(); track member.id) {
             <tr>
-              <td>
+              <td class="workspace-user-identity">
                 <div class="person-cell">
                   <span class="avatar">{{ store.initials(member.name) }}</span
                   ><span
                     ><strong>{{ member.name }}</strong
-                    ><small>{{ member.email }}</small
-                    ><cv-management-role [label]="member.role"
-                  /></span>
+                    ><small>{{ member.email }}</small></span
+                  >
                 </div>
               </td>
-              <td>
+              <td class="workspace-user-role">
                 <mat-select
                   cvSelect
                   [aria-label]="'Role for ' + member.name"
@@ -83,7 +82,7 @@
                   }
                 </mat-select>
               </td>
-              <td>
+              <td class="workspace-user-status">
                 <span class="badge" [class.success]="member.status === 'Active'">{{
                   member.status
                 }}</span>
@@ -103,8 +102,8 @@
   <section class="panel permission-panel">
     <div class="panel-toolbar permission-toolbar">
       <div>
-        <h2>Shape access around each role</h2>
-        <p>Fine-tune what your team can do, one module at a time.</p>
+        <h2>Role permissions</h2>
+        <p>{{ roleDescriptions[role] }}</p>
       </div>
       <label class="permission-role-label"
         >Configure role
@@ -128,21 +127,11 @@
         </mat-select>
       </label>
     </div>
-    <div class="permission-overview">
-      <span class="permission-overview-icon material-symbols-outlined" aria-hidden="true"
-        >admin_panel_settings</span
-      >
-      <div>
-        <h3>{{ role }}</h3>
-        <p>{{ roleDescriptions[role] }}</p>
-      </div>
-      <span class="permission-total"
-        ><strong>{{ permissionCount() }} / {{ modules.length * actions.length }}</strong
-        ><small>permissions enabled</small></span
-      >
-    </div>
     <div class="permission-presets">
-      <span>Start with a preset</span>
+      <span class="permission-summary" aria-live="polite"
+        ><strong>{{ permissionCount() }} / {{ modules.length * actions.length }}</strong
+        ><span>enabled</span></span
+      >
       <div class="row">
         <button class="button" (click)="applyPermissionPreset('view')">
           <span class="material-symbols-outlined" aria-hidden="true">visibility</span>View only
@@ -155,41 +144,81 @@
           <span class="material-symbols-outlined" aria-hidden="true">block</span>No access
         </button>
       </div>
-      <small
-        >Presets update the draft for all modules. Standard access includes everything except
-        Delete.</small
-      >
+      <small>Presets update all modules in this draft. Standard access excludes Delete.</small>
     </div>
-    <div class="permission-grid">
-      @for (module of modules; track module; let moduleIndex = $index) {
-        <fieldset
-          class="permission-card"
-          [attr.data-tone]="['teal', 'blue', 'purple', 'green', 'amber', 'blue'][moduleIndex]"
-        >
-          <legend>
-            <span class="module-icon material-symbols-outlined" aria-hidden="true">{{
-              moduleIcons[module]
-            }}</span
-            >{{ module }}
-          </legend>
-          @for (action of actions; track action; let i = $index) {
-            <label class="permission-action">
-              <span
-                ><strong>{{ action }}</strong
-                ><small>{{ actionDescriptions[i] }}</small></span
+    @if (compact()?.matches) {
+      <div class="permission-grid">
+        @for (module of modules; track module; let moduleIndex = $index) {
+          <fieldset
+            class="permission-card"
+            [attr.data-tone]="['teal', 'blue', 'purple', 'green', 'amber', 'blue'][moduleIndex]"
+          >
+            <legend>
+              <span class="module-icon material-symbols-outlined" aria-hidden="true">{{
+                moduleIcons[module]
+              }}</span
+              >{{ module }}
+            </legend>
+            @for (action of actions; track action; let i = $index) {
+              <label class="permission-action" [class.is-selected]="permissions[module][i]">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="permissions[module][i]"
+                  [attr.aria-label]="action + ' ' + module"
+                />
+                <span
+                  ><strong>{{ action }}</strong
+                  ><small>{{ actionDescriptions[i] }}</small></span
+                >
+              </label>
+            }
+          </fieldset>
+        }
+      </div>
+    } @else {
+      <div class="permission-matrix-wrap">
+        <table class="permission-matrix" aria-label="Permissions for {{ role }}">
+          <thead>
+            <tr>
+              <th scope="col">Module</th>
+              @for (action of actions; track action; let i = $index) {
+                <th scope="col">
+                  <strong>{{ action }}</strong
+                  ><small>{{ actionDescriptions[i] }}</small>
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (module of modules; track module; let moduleIndex = $index) {
+              <tr
+                [attr.data-tone]="['teal', 'blue', 'purple', 'green', 'amber', 'blue'][moduleIndex]"
               >
-              <input
-                type="checkbox"
-                role="switch"
-                [(ngModel)]="permissions[module][i]"
-                [attr.aria-label]="action + ' ' + module"
-              />
-              <span class="permission-switch" aria-hidden="true"></span>
-            </label>
-          }
-        </fieldset>
-      }
-    </div>
+                <th scope="row">
+                  <span class="permission-module-name"
+                    ><span class="module-icon material-symbols-outlined" aria-hidden="true">{{
+                      moduleIcons[module]
+                    }}</span
+                    >{{ module }}</span
+                  >
+                </th>
+                @for (action of actions; track action; let i = $index) {
+                  <td>
+                    <label class="permission-cell" [class.is-selected]="permissions[module][i]">
+                      <input
+                        type="checkbox"
+                        [(ngModel)]="permissions[module][i]"
+                        [attr.aria-label]="action + ' ' + module"
+                      />
+                    </label>
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
     <div class="panel-note">
       <span class="material-symbols-outlined" aria-hidden="true">info</span>Permission settings are
       saved locally. Server-side access enforcement requires a backend.

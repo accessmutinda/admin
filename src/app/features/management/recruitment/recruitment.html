@@ -82,15 +82,15 @@
           </div>
           @for (person of inStage(stage); track person.id) {
             <a class="applicant-card" [routerLink]="['/manage/people', person.id]"
-              ><div class="row between">
+              ><div class="applicant-heading">
                 <span class="avatar" [attr.data-stage]="stage.toLowerCase()">{{
                   store.initials(person.name)
-                }}</span
-                ><span class="material-symbols-outlined muted" aria-hidden="true"
+                }}</span>
+                <h3>{{ person.name }}</h3>
+                <span class="material-symbols-outlined muted" aria-hidden="true"
                   >arrow_outward</span
                 >
               </div>
-              <h3>{{ person.name }}</h3>
               <cv-management-role [label]="person.role" />
               <div class="applicant-meta">
                 <span class="material-symbols-outlined" aria-hidden="true">location_on</span

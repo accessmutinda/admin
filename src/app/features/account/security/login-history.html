@@ -5,7 +5,7 @@
   <span class="badge">Demo records</span>Sample sign-in events and devices. Device changes apply to
   this view.
 </p>
-<div class="flex flex-col gap-6 xl:flex-row">
+<div class="login-history-content flex flex-col gap-4 xl:flex-row">
   <section class="min-w-0 flex-1">
     <div class="flex items-center justify-between">
       <div>
@@ -20,7 +20,7 @@
     >
       @if (loading()) {
         @for (row of skeletonEventRows; track $index) {
-          <li class="space-y-2 px-4 py-3.5">
+          <li class="space-y-2 px-4 py-2.5">
             <span class="flex items-center justify-between gap-3">
               <cv-skeleton sizeClass="h-3.5 w-32" />
               <cv-skeleton sizeClass="h-5 w-16 rounded-full" />
@@ -30,7 +30,7 @@
         }
       } @else {
         @for (event of events; track event.id) {
-          <li class="px-4 py-3.5">
+          <li class="px-4 py-2.5">
             <div class="flex items-center justify-between gap-3">
               <p class="text-sm font-medium text-ink">{{ event.dateTime }}</p>
               <span
@@ -56,34 +56,34 @@
       class="mt-5 hidden overflow-x-auto rounded-2xl border border-line bg-white shadow-card md:block"
     >
       <table class="w-full min-w-[640px] text-left text-sm">
-        <thead class="bg-cloud text-xs uppercase tracking-wide text-slate">
+        <thead class="bg-cloud text-xs text-slate">
           <tr>
-            <th class="px-4 py-3 font-semibold">Date &amp; time</th>
-            <th class="px-4 py-3 font-semibold">Location</th>
-            <th class="px-4 py-3 font-semibold">Device</th>
-            <th class="px-4 py-3 font-semibold">Method</th>
-            <th class="px-4 py-3 font-semibold">Status</th>
+            <th class="px-4 py-2.5 font-semibold">Date &amp; time</th>
+            <th class="px-4 py-2.5 font-semibold">Location</th>
+            <th class="px-4 py-2.5 font-semibold">Device</th>
+            <th class="px-4 py-2.5 font-semibold">Method</th>
+            <th class="px-4 py-2.5 font-semibold">Status</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-line">
           @if (loading()) {
             @for (row of skeletonEventRows; track $index) {
               <tr>
-                <td class="px-4 py-3"><cv-skeleton sizeClass="h-3.5 w-28" /></td>
-                <td class="px-4 py-3"><cv-skeleton sizeClass="h-3.5 w-20" /></td>
-                <td class="px-4 py-3"><cv-skeleton sizeClass="h-3.5 w-24" /></td>
-                <td class="px-4 py-3"><cv-skeleton sizeClass="h-3.5 w-28" /></td>
-                <td class="px-4 py-3"><cv-skeleton sizeClass="h-5 w-16 rounded-full" /></td>
+                <td class="px-4 py-2.5"><cv-skeleton sizeClass="h-3.5 w-28" /></td>
+                <td class="px-4 py-2.5"><cv-skeleton sizeClass="h-3.5 w-20" /></td>
+                <td class="px-4 py-2.5"><cv-skeleton sizeClass="h-3.5 w-24" /></td>
+                <td class="px-4 py-2.5"><cv-skeleton sizeClass="h-3.5 w-28" /></td>
+                <td class="px-4 py-2.5"><cv-skeleton sizeClass="h-5 w-16 rounded-full" /></td>
               </tr>
             }
           } @else {
             @for (event of events; track event.id) {
               <tr class="transition-colors hover:bg-cloud/60">
-                <td class="whitespace-nowrap px-4 py-3 text-ink">{{ event.dateTime }}</td>
-                <td class="px-4 py-3 text-slate">{{ event.location }}</td>
-                <td class="px-4 py-3 text-slate">{{ event.device }}</td>
-                <td class="px-4 py-3 text-slate">{{ event.method }}</td>
-                <td class="whitespace-nowrap px-4 py-3">
+                <td class="whitespace-nowrap px-4 py-2.5 text-ink">{{ event.dateTime }}</td>
+                <td class="px-4 py-2.5 text-slate">{{ event.location }}</td>
+                <td class="px-4 py-2.5 text-slate">{{ event.device }}</td>
+                <td class="px-4 py-2.5 text-slate">{{ event.method }}</td>
+                <td class="whitespace-nowrap px-4 py-2.5">
                   <span
                     class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
                     [class.bg-success-50]="event.status === 'Success'"
