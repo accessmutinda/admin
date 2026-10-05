@@ -5,7 +5,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { AuthCenteredLayout } from '../../../shared/layouts/auth-centered-layout';
-import { Alert } from '../../../shared/ui/alert';
 import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
@@ -17,7 +16,6 @@ import { AuthService } from '../../../core/auth/auth.service';
     MatFormFieldModule,
     MatInputModule,
     AuthCenteredLayout,
-    Alert,
   ],
   templateUrl: './forgot-password.html',
 })

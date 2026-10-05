@@ -1,63 +1,50 @@
 <cv-auth-centered-layout width="md">
-  <div class="text-center">
-    <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Verify it's you</h1>
-    <p class="mt-1.5 text-sm text-slate">We've sent a verification code to {{ maskedTarget }}.</p>
-  </div>
-
+  <h1 class="cv-auth-heading">Verify it's you</h1>
+  <p class="mt-3 text-sm leading-6 text-slate">
+    Enter the six-digit code from <span class="font-medium text-ink">{{ maskedTarget }}</span
+    >.
+  </p>
   @if (errorMessage()) {
-    <div class="mt-5">
+    <div class="mt-5" role="alert">
       <cv-alert tone="error">{{ errorMessage() }}</cv-alert>
     </div>
   }
-
-  <div class="mt-6 flex justify-center">
+  <div class="mt-7">
     <cv-otp-input (valueChange)="onCodeChange($event)" (complete)="verify()" />
   </div>
-
-  <div class="mt-4 text-center text-sm text-slate">
+  <div class="mt-4 text-center text-xs text-slate">
     @if (secondsLeft() > 0) {
-      Resend code ({{ secondsLeft() }}s)
+      Request a new code in {{ secondsLeft() }}s
     } @else {
-      <button
-        type="button"
-        class="font-medium text-teal transition-colors hover:text-teal-600 hover:underline"
-        (click)="resend()"
-      >
-        Resend code
-      </button>
+      <button type="button" class="cv-auth-link min-h-10" (click)="resend()">Resend code</button>
     }
   </div>
-
-  <div class="mt-5 flex items-center gap-2">
-    <mat-checkbox [checked]="trustDevice()" (change)="trustDevice.set($event.checked)" color="primary">
+  <div class="mt-5">
+    <mat-checkbox
+      [checked]="trustDevice()"
+      (change)="trustDevice.set($event.checked)"
+      aria-describedby="trust-device-hint"
+    >
       Trust this device
     </mat-checkbox>
+    <p id="trust-device-hint" class="pl-11 text-xs leading-5 text-slate">
+      Skip verification on this device for 30 days.
+    </p>
   </div>
-  <p class="-mt-1 pl-8 text-xs text-slate">Don't ask for a code on this device for 30 days.</p>
-
   <button
     mat-flat-button
-    color="primary"
     type="button"
-    class="!mt-6 !h-11 !w-full !rounded-lg !bg-gradient-to-b !from-teal !to-teal-600 !text-base !shadow-card !transition-all !duration-150 hover:!shadow-card-hover active:!scale-[0.98]"
+    class="cv-auth-primary !mt-7 !w-full"
     [disabled]="code().length !== 6 || loading()"
     (click)="verify()"
   >
     {{ loading() ? 'Verifying…' : 'Verify and continue' }}
   </button>
-
-  <p class="mt-4 text-center text-sm">
-    <a
-      routerLink="/auth/sign-in"
-      class="font-medium text-teal transition-colors hover:text-teal-600 hover:underline"
-      >Try a different method</a
-    >
+  <p class="mt-5 text-center text-sm">
+    <a routerLink="/auth/sign-in" class="cv-auth-link">Back to sign in</a>
   </p>
-
-  <div class="mt-6">
-    <cv-alert tone="info">
-      <span class="font-semibold">Keep your account safe.</span>
-      Multi-factor authentication helps protect the people and data you care about.
-    </cv-alert>
-  </div>
+  <p class="mt-7 flex items-start gap-2 border-t border-line pt-5 text-xs leading-5 text-slate">
+    <span aria-hidden="true" class="material-symbols-outlined text-[16px]">shield</span>
+    An extra layer of protection for your account and the people you care for.
+  </p>
 </cv-auth-centered-layout>

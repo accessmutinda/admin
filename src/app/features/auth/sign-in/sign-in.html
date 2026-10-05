@@ -1,6 +1,5 @@
 <cv-auth-split-layout>
-  <p class="text-xs font-semibold uppercase tracking-[0.1em] text-teal">Secure sign-in</p>
-  <h1 class="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Welcome back</h1>
+  <h1 class="cv-auth-heading">Welcome back</h1>
   <p class="mt-1.5 text-sm text-slate">Sign in to your CareVerity account</p>
 
   @if (errorMessage()) {
@@ -9,10 +8,17 @@
     </div>
   }
 
-  <form class="mt-7 flex flex-col gap-1" [formGroup]="form" (ngSubmit)="submit()">
-    <mat-form-field>
-      <mat-label>Email address</mat-label>
-      <input matInput type="email" formControlName="email" autocomplete="email" placeholder="name@company.co.uk" />
+  <form class="mt-8 flex flex-col" [formGroup]="form" (ngSubmit)="submit()">
+    <label class="cv-field-label" for="sign-in-email">Email address</label>
+    <mat-form-field subscriptSizing="dynamic">
+      <input
+        matInput
+        type="email"
+        id="sign-in-email"
+        formControlName="email"
+        autocomplete="email"
+        placeholder="name@company.co.uk"
+      />
       @if (form.controls.email.hasError('required')) {
         <mat-error>Email address is required</mat-error>
       } @else if (form.controls.email.hasError('email')) {
@@ -20,11 +26,12 @@
       }
     </mat-form-field>
 
-    <mat-form-field>
-      <mat-label>Password</mat-label>
+    <label class="cv-field-label" for="sign-in-password">Password</label>
+    <mat-form-field subscriptSizing="dynamic">
       <input
         matInput
         [type]="hidePassword() ? 'password' : 'text'"
+        id="sign-in-password"
         formControlName="password"
         autocomplete="current-password"
       />
@@ -44,24 +51,22 @@
       }
     </mat-form-field>
 
-    <div class="mb-2 mt-1 flex flex-wrap items-center justify-between gap-x-4">
+    <div class="mb-6 mt-1 flex flex-wrap items-center justify-between gap-x-4">
       <mat-checkbox formControlName="rememberMe" color="primary">Remember me</mat-checkbox>
-      <a
-        routerLink="/auth/forgot-password"
-        class="text-sm font-medium text-teal transition-colors hover:text-teal-600 hover:underline"
-        >Forgot password?</a
-      >
+      <a routerLink="/auth/forgot-password" class="cv-auth-link text-sm">Forgot password?</a>
     </div>
 
     <button
       mat-flat-button
       color="primary"
       type="submit"
-      class="!h-11 !rounded-lg !bg-gradient-to-b !from-teal !to-teal-600 !text-base !shadow-card !transition-all !duration-150 hover:!shadow-card-hover active:!scale-[0.98]"
+      class="cv-auth-primary"
       [disabled]="loading()"
     >
       @if (loading()) {
-        <mat-spinner diameter="20" class="!inline-block" />
+        <span class="flex items-center justify-center gap-2"
+          ><mat-spinner diameter="18" />Signing in…</span
+        >
       } @else {
         Sign in
       }
@@ -70,15 +75,11 @@
 
   <div class="my-6 flex items-center gap-3">
     <span class="h-px flex-1 bg-line"></span>
-    <span class="rounded-full bg-cloud px-3 py-1 text-[11px] font-semibold tracking-wide text-slate">OR</span>
+    <span class="text-xs text-slate">or continue with</span>
     <span class="h-px flex-1 bg-line"></span>
   </div>
 
-  <a
-    mat-stroked-button
-    routerLink="/auth/sso/microsoft"
-    class="!flex !h-11 !w-full !items-center !justify-center !rounded-lg !text-base !transition-all !duration-150 hover:!border-slate/50 hover:!shadow-card active:!scale-[0.98]"
-  >
+  <a mat-stroked-button routerLink="/auth/sso/microsoft" class="cv-auth-secondary !w-full">
     <span class="flex items-center justify-center gap-2">
       <svg viewBox="0 0 21 21" class="h-4 w-4">
         <rect x="1" y="1" width="9" height="9" fill="#f25022" />
@@ -90,27 +91,8 @@
     </span>
   </a>
 
-  <p class="mt-8 text-center text-sm text-slate">
-    Need help?
-    <a
-      href="mailto:support@careverity.com"
-      class="font-medium text-teal transition-colors hover:text-teal-600 hover:underline"
-      >Contact support</a
-    >
+  <p class="mt-7 flex items-center justify-center gap-2 text-xs text-slate">
+    <span aria-hidden="true" class="material-symbols-outlined text-[15px]">lock</span>
+    Secure access to your care workspace
   </p>
-
-  <div class="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-line pt-6 text-xs text-slate/70">
-    <span class="flex items-center gap-1.5 whitespace-nowrap">
-      <span class="material-symbols-outlined text-[15px]">lock</span>
-      Encrypted
-    </span>
-    <span class="flex items-center gap-1.5 whitespace-nowrap">
-      <span class="material-symbols-outlined text-[15px]">verified_user</span>
-      MFA protected
-    </span>
-    <span class="flex items-center gap-1.5 whitespace-nowrap">
-      <span class="material-symbols-outlined text-[15px]">gavel</span>
-      UK GDPR
-    </span>
-  </div>
 </cv-auth-split-layout>

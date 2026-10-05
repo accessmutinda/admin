@@ -45,12 +45,19 @@ export class ResetPassword {
   protected readonly errorMessage = signal('');
   protected readonly hideCurrentPassword = signal(true);
   protected readonly hidePassword = signal(true);
-  protected readonly passwordFocused = signal(false);
 
   protected readonly form = this.fb.nonNullable.group(
     {
       currentPassword: ['', [Validators.required]],
-      password: ['', [Validators.required, Validators.minLength(8), Validators.pattern(/[0-9]/), Validators.pattern(/[A-Z]/)]],
+      password: [
+        '',
+        [
+          Validators.required,
+          Validators.minLength(8),
+          Validators.pattern(/[0-9]/),
+          Validators.pattern(/[A-Z]/),
+        ],
+      ],
       confirmPassword: ['', [Validators.required]],
     },
     { validators: passwordsMatch() },

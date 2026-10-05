@@ -2,7 +2,6 @@ import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { AuthCenteredLayout } from '../../../shared/layouts/auth-centered-layout';
-import { Alert } from '../../../shared/ui/alert';
 import { AuthService } from '../../../core/auth/auth.service';
 
 interface AccessDeniedState {
@@ -11,7 +10,7 @@ interface AccessDeniedState {
 
 @Component({
   selector: 'cv-access-denied',
-  imports: [MatButtonModule, AuthCenteredLayout, Alert],
+  imports: [MatButtonModule, AuthCenteredLayout],
   templateUrl: './access-denied.html',
 })
 export class AccessDenied {

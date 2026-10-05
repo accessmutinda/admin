@@ -1,12 +1,12 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { Logo } from '../../../shared/ui/logo';
+import { AuthSplitLayout } from '../../../shared/layouts/auth-split-layout';
 import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'cv-sso-microsoft',
-  imports: [RouterLink, MatButtonModule, Logo],
+  imports: [RouterLink, MatButtonModule, AuthSplitLayout],
   templateUrl: './sso-microsoft.html',
 })
 export class SsoMicrosoft {
