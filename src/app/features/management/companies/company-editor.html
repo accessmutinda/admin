@@ -1,0 +1,410 @@
+<a routerLink="/manage/companies" class="back-link"
+  ><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Company directory</a
+>
+@if (notFound) {
+  <div class="empty-state">
+    <h1>Company not found</h1>
+    <p>Return to the directory to choose a company.</p>
+  </div>
+} @else {
+  @if (isNew) {
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">COMPANY SETUP</p>
+        <h1>Add your company</h1>
+        <p>Bring your company identity, team and tools together.</p>
+      </div>
+    </div>
+    <ol class="setup-step-cards" aria-label="Company setup progress">
+      @for (label of steps; track label; let i = $index) {
+        <li
+          [class.current]="step() === i"
+          [class.done]="step() > i"
+          [attr.aria-current]="step() === i ? 'step' : null"
+        >
+          <button
+            type="button"
+            [disabled]="i >= step() || step() === 4"
+            (click)="step.set(i); submitted.set(false)"
+            [attr.aria-label]="'Step ' + (i + 1) + ': ' + label"
+          >
+            <span class="setup-step-icon material-symbols-outlined" aria-hidden="true">{{
+              step() > i ? 'check' : stepIcons[i]
+            }}</span
+            ><span
+              ><small>0{{ i + 1 }}</small
+              ><strong>{{ label }}</strong
+              ><em>{{ stepDescriptions[i] }}</em></span
+            >
+          </button>
+        </li>
+      }
+    </ol>
+  } @else {
+    <section class="company-settings-hero">
+      <div class="person-cell">
+        <span class="company-symbol large" [style.background]="company.color">
+          @if (company.logo) {
+            <img [src]="company.logo" alt="" />
+          } @else {
+            {{ company.code }}
+          }
+        </span>
+        <div>
+          <p class="eyebrow">COMPANY SETTINGS</p>
+          <h1>{{ company.name }}</h1>
+          <p>
+            {{ company.sector }} <span class="footer-dot">·</span>
+            {{ company.modules.length }} enabled modules
+          </p>
+        </div>
+      </div>
+      <button class="button primary" [disabled]="!hasChanges()" (click)="saveChanges()">
+        <span class="material-symbols-outlined" aria-hidden="true">check</span>Save changes
+      </button>
+    </section>
+    <nav class="tabs company-settings-tabs" aria-label="Company settings sections">
+      @for (label of ['Company details', 'Branding', 'Modules']; track label; let i = $index) {
+        <button
+          [class.active]="step() === i"
+          [attr.aria-pressed]="step() === i"
+          (click)="step.set(i); submitted.set(false)"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">{{ stepIcons[i] }}</span
+          >{{ label }}
+        </button>
+      }
+    </nav>
+  }
+  <div class="editor-grid">
+    <section class="panel editor-panel company-editor-surface">
+      @if (step() === 0) {
+        <div class="section-heading company-section-heading">
+          <span
+            class="section-icon material-symbols-outlined"
+            [attr.data-tone]="step() === 1 ? 'purple' : step() === 2 ? 'blue' : 'teal'"
+            aria-hidden="true"
+            >{{ stepIcons[step()] }}</span
+          >
+          <h2>The essentials</h2>
+          <p>Tell us about the organisation joining CareVerity.</p>
+        </div>
+        <div class="form-grid">
+          <label
+            >Company name <span class="required">*</span
+            ><input
+              [(ngModel)]="company.name"
+              placeholder="e.g. London Quality Care Services"
+              maxlength="100"
+              [attr.aria-invalid]="submitted() && !company.name.trim()"
+              required
+            />
+            @if (submitted() && !company.name.trim()) {
+              <small class="field-error">Enter a company name.</small>
+            }</label
+          ><label
+            >Short code <span class="required">*</span
+            ><input
+              [(ngModel)]="company.code"
+              placeholder="e.g. LQCS"
+              maxlength="6"
+              [attr.aria-invalid]="submitted() && !company.code.trim()"
+              required
+            />
+            @if (submitted() && !company.code.trim()) {
+              <small class="field-error">Enter a short code.</small>
+            }</label
+          ><label
+            >Care sector<mat-select cvSelect [(ngModel)]="company.sector" aria-label="Care sector">
+              <mat-option value="Domiciliary care">Domiciliary care</mat-option>
+              <mat-option value="Residential care">Residential care</mat-option>
+              <mat-option value="Supported living">Supported living</mat-option>
+              <mat-option value="Dementia care">Dementia care</mat-option>
+              <mat-option value="Community care">Community care</mat-option>
+            </mat-select></label
+          ><label
+            >Company size<mat-select cvSelect [(ngModel)]="company.size" aria-label="Company size">
+              <mat-option value="1–10 staff">1–10 staff</mat-option>
+              <mat-option value="11–50 staff">11–50 staff</mat-option>
+              <mat-option value="51–200 staff">51–200 staff</mat-option>
+              <mat-option value="201+ staff">201+ staff</mat-option>
+            </mat-select></label
+          ><label
+            >CQC registration number<input
+              [(ngModel)]="company.registration"
+              placeholder="e.g. 1-234567890" /></label
+          ><label
+            >Postcode<input
+              [(ngModel)]="company.postcode"
+              placeholder="e.g. SW1A 1AA"
+              maxlength="10"
+          /></label>
+        </div>
+      }
+      @if (step() === 1) {
+        <div class="section-heading company-section-heading">
+          <span
+            class="section-icon material-symbols-outlined"
+            [attr.data-tone]="step() === 1 ? 'purple' : step() === 2 ? 'blue' : 'teal'"
+            aria-hidden="true"
+            >{{ stepIcons[step()] }}</span
+          >
+          <h2>Your identity, everywhere</h2>
+          <p>Carry your brand through the workspace and documents.</p>
+        </div>
+        <div class="brand-palette-section">
+          <h3>A starting point for your identity</h3>
+          <p>Choose a palette, then fine-tune it to suit your company.</p>
+          <div class="brand-palette-grid">
+            @for (palette of palettes; track palette.name) {
+              <button
+                class="brand-palette"
+                [class.selected]="
+                  company.color === palette.primary && company.accent === palette.accent
+                "
+                [attr.aria-pressed]="
+                  company.color === palette.primary && company.accent === palette.accent
+                "
+                (click)="usePalette(palette.primary, palette.accent)"
+              >
+                <span class="palette-swatches" aria-hidden="true"
+                  ><i [style.background]="palette.primary"></i
+                  ><i [style.background]="palette.accent"></i><i></i></span
+                ><span>{{ palette.name }}</span>
+              </button>
+            }
+          </div>
+        </div>
+        <label class="upload-area company-logo-upload"
+          ><span class="material-symbols-outlined" aria-hidden="true">cloud_upload</span
+          ><strong>{{
+            company.logo ? 'Replace your company logo' : 'Upload your company logo'
+          }}</strong
+          ><small>PNG, JPG or WebP · up to 1 MB</small
+          ><input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            (change)="upload($event)"
+            aria-label="Upload company logo"
+        /></label>
+        @if (company.logo) {
+          <button class="text-link" (click)="company.logo = ''">Remove logo</button>
+        }
+        <div class="form-grid">
+          <label
+            >Primary colour
+            <div class="color-field">
+              <input type="color" [(ngModel)]="company.color" /><span>{{ company.color }}</span>
+            </div></label
+          ><label
+            >Accent colour
+            <div class="color-field">
+              <input type="color" [(ngModel)]="company.accent" /><span>{{ company.accent }}</span>
+            </div></label
+          ><label class="full-width"
+            >Brand strapline<input [(ngModel)]="company.tagline" maxlength="100"
+          /></label>
+        </div>
+        <button class="button" (click)="preview.set(!preview())">
+          <span class="material-symbols-outlined" aria-hidden="true">description</span
+          >{{ preview() ? 'Hide' : 'Preview' }} document branding
+        </button>
+      }
+      @if (step() === 2) {
+        <div class="section-heading company-section-heading">
+          <span
+            class="section-icon material-symbols-outlined"
+            [attr.data-tone]="step() === 1 ? 'purple' : step() === 2 ? 'blue' : 'teal'"
+            aria-hidden="true"
+            >{{ stepIcons[step()] }}</span
+          >
+          <h2>The right tools for your team</h2>
+          <p>Select the modules this company will use.</p>
+        </div>
+        <div class="module-grid company-module-grid">
+          @for (module of modules; track module) {
+            <label
+              class="module-option company-module-option"
+              [attr.data-tone]="moduleDetails[module].tone"
+              [class.selected]="company.modules.includes(module)"
+              ><input
+                type="checkbox"
+                [checked]="company.modules.includes(module)"
+                (change)="toggleModule(module)"
+              /><span class="module-icon material-symbols-outlined" aria-hidden="true">{{
+                moduleDetails[module].icon
+              }}</span
+              ><span
+                ><strong>{{ module }}</strong
+                ><small>{{ moduleDetails[module].description }}</small></span
+              ></label
+            >
+          }
+        </div>
+        @if (submitted() && !company.modules.length) {
+          <p class="field-error" role="alert">Select at least one module.</p>
+        }
+      }
+      @if (step() === 3) {
+        <div class="section-heading company-section-heading">
+          <span
+            class="section-icon material-symbols-outlined"
+            [attr.data-tone]="step() === 1 ? 'purple' : step() === 2 ? 'blue' : 'teal'"
+            aria-hidden="true"
+            >{{ stepIcons[step()] }}</span
+          >
+          <h2>Ready for a brighter start</h2>
+          <p>
+            Check the details before {{ isNew ? 'creating your company' : 'saving your changes' }}.
+          </p>
+        </div>
+        <dl class="details-list">
+          <div>
+            <dt>Company name</dt>
+            <dd>{{ company.name }}</dd>
+          </div>
+          <div>
+            <dt>Short code</dt>
+            <dd>{{ company.code }}</dd>
+          </div>
+          <div>
+            <dt>Care sector</dt>
+            <dd>{{ company.sector }}</dd>
+          </div>
+          <div>
+            <dt>Company size</dt>
+            <dd>{{ company.size }}</dd>
+          </div>
+          <div>
+            <dt>Registration</dt>
+            <dd>{{ company.registration || 'Not provided' }}</dd>
+          </div>
+          <div>
+            <dt>Postcode</dt>
+            <dd>{{ company.postcode || 'Not provided' }}</dd>
+          </div>
+          <div>
+            <dt>Modules</dt>
+            <dd>{{ company.modules.join(', ') }}</dd>
+          </div>
+        </dl>
+      }
+      @if (step() === 4) {
+        <div class="completion-state">
+          <span class="completion-icon material-symbols-outlined" aria-hidden="true">check</span>
+          <p class="eyebrow">ALL SET</p>
+          <h2>{{ isNew ? 'Welcome to CareVerity.' : 'Looking good.' }}</h2>
+          <p>
+            {{ company.name }} {{ isNew ? 'has been created' : 'has been updated' }}.<br />Your
+            company profile is ready.
+          </p>
+          <a routerLink="/manage/companies" class="button primary"
+            >Back to companies<span class="material-symbols-outlined" aria-hidden="true"
+              >arrow_forward</span
+            ></a
+          >
+        </div>
+      }
+      @if (isNew && step() < 4) {
+        <div class="form-footer">
+          <button
+            class="button"
+            [disabled]="step() === 0"
+            (click)="step.set(step() - 1); submitted.set(false)"
+          >
+            Back</button
+          ><button class="button primary" (click)="next()">
+            {{ step() === 3 ? (isNew ? 'Create company' : 'Save changes') : 'Continue'
+            }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          </button>
+        </div>
+      }
+      @if (!isNew) {
+        <div class="form-footer settings-save-footer">
+          <span class="save-state"
+            ><span class="material-symbols-outlined" aria-hidden="true">{{
+              hasChanges() ? 'edit_note' : 'check_circle'
+            }}</span
+            >{{ hasChanges() ? 'You have unsaved changes' : 'Your settings are up to date' }}</span
+          >
+          <div class="row">
+            <button class="button" [disabled]="!hasChanges()" (click)="discardChanges()">
+              Discard</button
+            ><button class="button primary" [disabled]="!hasChanges()" (click)="saveChanges()">
+              Save changes
+            </button>
+          </div>
+        </div>
+      }
+    </section>
+    <aside class="preview-panel company-live-preview">
+      <p class="eyebrow">LIVE BRAND PREVIEW</p>
+      <div class="brand-preview company-workspace-preview">
+        <div class="workspace-preview-cover">
+          <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span
+          ><span>YOUR WORKSPACE</span>
+        </div>
+        <span class="company-symbol large" [style.background]="company.color">
+          @if (company.logo) {
+            <img [src]="company.logo" alt="Company logo preview" />
+          } @else {
+            {{ company.code || 'CO' }}
+          }
+        </span>
+        <h3>{{ company.name || 'Your company' }}</h3>
+        <p>{{ company.tagline }}</p>
+        <span class="preview-line" [style.background]="company.accent"></span
+        ><small>{{ company.sector }}</small>
+        <div class="workspace-preview-modules">
+          @for (module of company.modules.slice(0, 3); track module) {
+            <span [attr.data-tone]="moduleDetails[module].tone"
+              ><span class="material-symbols-outlined" aria-hidden="true">{{
+                moduleDetails[module].icon
+              }}</span
+              >{{ module }}</span
+            >
+          }
+        </div>
+      </div>
+      <div class="setup-readiness">
+        <h3>{{ isNew ? 'Coming together nicely.' : 'Your company at a glance.' }}</h3>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">{{
+            company.name.trim() ? 'check_circle' : 'radio_button_unchecked'
+          }}</span
+          >Company identity<span>{{ company.name.trim() ? 'Added' : 'Add details' }}</span>
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">{{
+            company.code.trim() || company.logo ? 'check_circle' : 'radio_button_unchecked'
+          }}</span
+          >Logo or short code<span>{{
+            company.code.trim() || company.logo ? 'Ready' : 'Make it yours'
+          }}</span>
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">{{
+            company.modules.length ? 'check_circle' : 'radio_button_unchecked'
+          }}</span
+          >Team tools<span>{{ company.modules.length }} selected</span>
+        </div>
+      </div>
+      <div class="tip">
+        <span class="material-symbols-outlined" aria-hidden="true">lightbulb</span>
+        <p>A familiar identity helps your team feel at home from day one.</p>
+      </div>
+      @if (preview()) {
+        <div class="document-preview">
+          <span class="eyebrow">DOCUMENT PREVIEW</span>
+          <h3 [style.color]="company.color">{{ company.name }}</h3>
+          <small>{{ company.tagline }}</small>
+          <hr [style.border-color]="company.accent" />
+          <h4>Person-centred care plan</h4>
+          <p>A sample of your branded care documents.</p>
+          <div class="document-lines"><i></i><i></i><i></i></div>
+          <button class="button" (click)="downloadPreview()">Download branding summary</button>
+        </div>
+      }
+    </aside>
+  </div>
+}
