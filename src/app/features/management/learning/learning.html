@@ -1,0 +1,195 @@
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">TRAINING ACADEMY</p>
+    <h1>Keep learning. Keep making a difference.</h1>
+    <p>Build a confident, capable team with development that fits their day.</p>
+  </div>
+  @if (tab() !== 'Progress') {
+    <label class="inline-label"
+      >Learning record<mat-select
+        cvSelect
+        aria-label="Choose staff learning record"
+        [ngModel]="selectedPerson()"
+        (ngModelChange)="selectedPerson.set($event)"
+      >
+        @for (p of store.staff(); track p.id) {
+          <mat-option [value]="p.id">{{ p.name }}</mat-option>
+        }
+      </mat-select></label
+    >
+  }
+</div>
+<nav class="tabs" aria-label="Training academy sections">
+  @for (item of tabs; track item) {
+    <button
+      [class.active]="tab() === item"
+      [attr.aria-pressed]="tab() === item"
+      (click)="tab.set(item)"
+    >
+      {{ item }}
+    </button>
+  }
+</nav>
+<cv-academy-courses
+  [hidden]="tab() !== 'Courses'"
+  [person]="person()"
+  (courseOpened)="openCourse($event)"
+/>
+@if (tab() === 'Webinars') {
+  <section class="panel">
+    <div class="panel-toolbar">
+      <div>
+        <h2>On-demand insights</h2>
+        <p>Sample webinar summaries to support your development.</p>
+      </div>
+      <span class="badge">Demo library</span>
+    </div>
+    <div class="panel-body">
+      @for (webinar of webinars; track webinar.title) {
+        <article class="webinar-row">
+          <div class="webinar-art">
+            <span class="material-symbols-outlined" aria-hidden="true">{{ webinar.icon }}</span>
+          </div>
+          <div>
+            <h3>{{ webinar.title }}</h3>
+            <p>{{ webinar.duration }} · On-demand sample</p>
+            <p class="muted">
+              Explore practical ideas with your team and record your reflections in CPD.
+            </p>
+          </div>
+          <button class="button" [disabled]="!person()" (click)="openCpd(webinar.title)">
+            Record reflection
+          </button>
+        </article>
+      }
+    </div>
+  </section>
+}
+@if (tab() === 'Training matrix') {
+  <section class="panel">
+    <div class="panel-toolbar">
+      <div>
+        <h2>Mandatory training matrix</h2>
+        <p>A clear view of assigned learning across the team.</p>
+      </div>
+      <a routerLink="/manage/staff" class="text-link">Manage assignments</a>
+    </div>
+    <div class="table-wrap">
+      <table class="matrix-table">
+        <thead>
+          <tr>
+            <th>Team member</th>
+            @for (course of courses; track course.id) {
+              <th>{{ course.title }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of store.staff(); track p.id) {
+            <tr>
+              <td>
+                <strong>{{ p.name }}</strong>
+              </td>
+              @for (course of courses; track course.id) {
+                <td>
+                  <span
+                    class="badge"
+                    [class.success]="p.progress[course.id] === 100"
+                    [class.warning]="p.learning.includes(course.id) && !p.progress[course.id]"
+                    >{{
+                      !p.learning.includes(course.id)
+                        ? 'Unassigned'
+                        : p.progress[course.id] === 100
+                          ? 'Complete'
+                          : (p.progress[course.id] || 0) + '%'
+                    }}</span
+                  >
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
+@if (tab() === 'Certificates') {
+  <section class="panel">
+    <div class="panel-toolbar">
+      <div>
+        <h2>Learning achievements</h2>
+        <p>Sample certificates for {{ person()?.name || 'your team' }}.</p>
+      </div>
+      <span class="badge">{{ certificates().length }} certificates</span>
+    </div>
+    <div class="panel-body">
+      @for (course of certificates(); track course.id) {
+        <div class="list-row">
+          <div class="person-cell">
+            <span class="certificate-icon material-symbols-outlined" aria-hidden="true"
+              >workspace_premium</span
+            ><span
+              ><strong>{{ course.title }}</strong
+              ><small>Demo course completed · Level 2</small></span
+            >
+          </div>
+          <button class="button" (click)="certificate(course)">
+            <span class="material-symbols-outlined" aria-hidden="true">download</span>Download
+            sample
+          </button>
+        </div>
+      } @empty {
+        <div class="empty-state">
+          <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span>
+          <h3>Your next achievement is ahead.</h3>
+          <p>Complete a sample course to see a demo certificate here.</p>
+          <button class="button" (click)="tab.set('Courses')">Explore courses</button>
+        </div>
+      }
+    </div>
+  </section>
+}
+<cv-academy-cpd [personId]="selectedPerson()" [active]="tab() === 'CPD'" />
+<cv-academy-progress [hidden]="tab() !== 'Progress'" />
+@if (player(); as course) {
+  <div class="modal-backdrop">
+    <section
+      class="panel modal course-player"
+      role="dialog"
+      aria-modal="true"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (keydown.escape)="player.set(null)"
+      aria-labelledby="course-title"
+    >
+      <div class="panel-toolbar">
+        <div>
+          <p class="eyebrow">SAMPLE LESSON {{ lesson() + 1 }} OF 3</p>
+          <h2 id="course-title">{{ course.title }}</h2>
+        </div>
+        <button class="icon-button" aria-label="Close course" (click)="player.set(null)">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <div class="lesson-hero">
+        <span class="material-symbols-outlined" aria-hidden="true">{{ course.icon }}</span
+        ><span>Learn. Reflect. Put people first.</span>
+      </div>
+      <div class="panel-body">
+        <h3>{{ lessons[lesson()] }}</h3>
+        <p class="lesson-copy">{{ lessonCopy(course) }}</p>
+        <div class="panel-note">
+          <span class="material-symbols-outlined" aria-hidden="true">info</span>This is a
+          demonstration lesson, not accredited training.
+        </div>
+      </div>
+      <div class="form-footer">
+        <span class="muted">{{ person()?.name }}</span
+        ><button class="button primary" (click)="nextLesson()">
+          {{ lesson() === 2 ? 'Complete sample course' : 'Next lesson'
+          }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+        </button>
+      </div>
+    </section>
+  </div>
+}

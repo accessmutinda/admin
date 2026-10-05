@@ -1,0 +1,176 @@
+@if (active()) {
+  <section class="academy-development-hero">
+    <div>
+      <p class="eyebrow">CONTINUING PROFESSIONAL DEVELOPMENT</p>
+      <h2>Small learning moments.<br />Lasting impact.</h2>
+      <p>
+        {{ person()?.name || 'Choose a team member' }} · Turn experience into better everyday
+        practice.
+      </p>
+    </div>
+    <span class="material-symbols-outlined" aria-hidden="true">auto_stories</span>
+  </section>
+  <div class="metrics academy-metrics">
+    <div class="metric" data-tone="teal">
+      <span class="metric-icon material-symbols-outlined" aria-hidden="true">schedule</span
+      ><span>Development hours</span><strong>{{ totalHours() }}</strong
+      ><small>Recorded for this team member</small>
+    </div>
+    <div class="metric" data-tone="blue">
+      <span class="metric-icon material-symbols-outlined" aria-hidden="true">event_note</span
+      ><span>Learning moments</span><strong>{{ cpdEntries().length }}</strong
+      ><small>Activities with a personal reflection</small>
+    </div>
+    <div class="metric" data-tone="purple">
+      <span class="metric-icon material-symbols-outlined" aria-hidden="true">calendar_month</span
+      ><span>Latest activity</span
+      ><strong class="metric-name">{{
+        cpdEntries().length ? (cpdEntries()[0].date | date: 'd MMM yyyy') : 'Your story starts here'
+      }}</strong
+      ><small>{{
+        cpdEntries().length ? cpdEntries()[0].activity : 'Capture your next learning moment'
+      }}</small>
+    </div>
+  </div>
+  <div class="cpd-content-grid">
+    <section class="panel">
+      <div class="panel-toolbar">
+        <div>
+          <h2>A record of your growth</h2>
+          <p>Activities and reflections for {{ person()?.name || 'your team' }}.</p>
+        </div>
+        <button class="button primary" [disabled]="!person()" (click)="open()">
+          <span class="material-symbols-outlined" aria-hidden="true">add</span>Add activity
+        </button>
+      </div>
+      <div class="panel-body cpd-timeline">
+        @for (activity of cpdEntries(); track activity.id) {
+          <article class="development-entry">
+            <span class="development-entry-icon material-symbols-outlined" aria-hidden="true"
+              >auto_stories</span
+            >
+            <div>
+              <div class="development-entry-heading">
+                <div>
+                  <small>{{ activity.date | date: 'd MMM yyyy' }}</small>
+                  <h3>{{ activity.activity }}</h3>
+                </div>
+                <span class="badge"
+                  >{{ activity.hours }} {{ activity.hours === 1 ? 'hour' : 'hours' }}</span
+                >
+              </div>
+              <div class="development-reflection">
+                <small>REFLECTION & PRACTICE</small>
+                <p>{{ activity.reflection }}</p>
+              </div>
+            </div>
+          </article>
+        } @empty {
+          <div class="empty-state academy-empty">
+            <span class="material-symbols-outlined" aria-hidden="true">auto_stories</span>
+            <h3>
+              {{
+                person() ? 'Your development story starts here.' : 'Build your learning team first.'
+              }}
+            </h3>
+            <p>
+              {{
+                person()
+                  ? 'Capture a course, a conversation or a lesson from your day. What changed in your understanding?'
+                  : 'Add or hire a team member to create their personal CPD record.'
+              }}
+            </p>
+            @if (person()) {
+              <button class="button" (click)="open()">Record your first activity</button>
+            } @else {
+              <a class="button" routerLink="/manage/staff">View team members</a>
+            }
+          </div>
+        }
+      </div>
+    </section>
+    <aside class="cpd-reflection-guide panel">
+      <span class="material-symbols-outlined" aria-hidden="true">lightbulb</span>
+      <p class="eyebrow">MAKE LEARNING MATTER</p>
+      <h3>From experience to practice.</h3>
+      <ol>
+        <li>
+          <strong>What did you learn?</strong>
+          <p>Capture the idea, skill or insight that stayed with you.</p>
+        </li>
+        <li>
+          <strong>Why does it matter?</strong>
+          <p>Connect it to the people you support and your role.</p>
+        </li>
+        <li>
+          <strong>What will you do next?</strong>
+          <p>Choose one practical change or a conversation with your supervisor.</p>
+        </li>
+      </ol>
+      <p class="cpd-guide-note">Hours are based on activities recorded for this person.</p>
+    </aside>
+  </div>
+}
+@if (cpdModal()) {
+  <div class="modal-backdrop" (click)="cpdModal.set(false)">
+    <section
+      class="panel modal"
+      role="dialog"
+      aria-modal="true"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (keydown.escape)="cpdModal.set(false)"
+      aria-labelledby="cpd-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="panel-toolbar">
+        <div>
+          <p class="eyebrow">YOUR DEVELOPMENT STORY</p>
+          <h2 id="cpd-title">Record a learning moment</h2>
+          <p>{{ entryPerson()?.name }}</p>
+        </div>
+        <button class="icon-button" aria-label="Close CPD dialog" (click)="cpdModal.set(false)">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <form #form="ngForm" (ngSubmit)="form.valid && addCpd()">
+        <div class="panel-body form-grid">
+          <label class="full-width"
+            >Activity<input
+              [(ngModel)]="cpd.activity"
+              name="activity"
+              placeholder="e.g. Reflective supervision session"
+              required /></label
+          ><label
+            >Hours<input
+              type="number"
+              min="0.25"
+              max="100"
+              step="0.25"
+              [(ngModel)]="cpd.hours"
+              name="hours"
+              required /></label
+          ><label>Date<input type="date" [(ngModel)]="cpd.date" name="date" required /></label
+          ><label class="full-width"
+            >Reflection<textarea
+              [(ngModel)]="cpd.reflection"
+              name="reflection"
+              rows="4"
+              placeholder="What did you learn, and how will you use it?"
+              required
+            ></textarea>
+          </label>
+        </div>
+        @if (form.submitted && (form.invalid || cpdError())) {
+          <p class="field-error cpd-form-error" role="alert">
+            {{ cpdError() || 'Complete every field. Hours must be between 0.25 and 100.' }}
+          </p>
+        }
+        <div class="form-footer">
+          <button type="button" class="button" (click)="cpdModal.set(false)">Cancel</button
+          ><button class="button primary">Save activity</button>
+        </div>
+      </form>
+    </section>
+  </div>
+}

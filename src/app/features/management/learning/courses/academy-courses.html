@@ -1,0 +1,56 @@
+<div class="panel-toolbar course-toolbar">
+  <label class="search-box"
+    ><span class="material-symbols-outlined" aria-hidden="true">search</span
+    ><input
+      aria-label="Search courses"
+      placeholder="Find your next course…"
+      [ngModel]="search()"
+      (ngModelChange)="search.set($event)" /></label
+  ><mat-select
+    cvSelect
+    aria-label="Filter course category"
+    [ngModel]="category()"
+    (ngModelChange)="category.set($event)"
+  >
+    <mat-option value="All courses">All courses</mat-option>
+    <mat-option value="Mandatory">Mandatory</mat-option>
+    <mat-option value="Clinical care">Clinical care</mat-option>
+    <mat-option value="Development">Development</mat-option>
+  </mat-select>
+</div>
+<div class="course-grid">
+  @for (course of filtered(); track course.id) {
+    <article class="course-card panel">
+      <div class="course-art" [attr.data-course]="course.id">
+        <span class="material-symbols-outlined" aria-hidden="true">{{ course.icon }}</span
+        ><span class="badge">{{ course.category }}</span>
+      </div>
+      <div class="course-body">
+        <small class="muted">LEVEL 2 <span class="footer-dot">·</span> {{ course.duration }}</small>
+        <h3>{{ course.title }}</h3>
+        <p>{{ course.description }}</p>
+        <div class="card-footer">
+          <span class="muted">{{
+            person()?.progress?.[course.id] === 100
+              ? 'Completed'
+              : (person()?.progress?.[course.id] || 0) + '% complete'
+          }}</span
+          ><button class="text-link" (click)="courseOpened.emit(course)">
+            {{
+              person()?.progress?.[course.id] === 100
+                ? 'Review'
+                : person()?.progress?.[course.id]
+                  ? 'Continue'
+                  : 'Start learning'
+            }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+    </article>
+  } @empty {
+    <div class="empty-state">
+      <h3>No courses found</h3>
+      <p>Try a different search or category.</p>
+    </div>
+  }
+</div>

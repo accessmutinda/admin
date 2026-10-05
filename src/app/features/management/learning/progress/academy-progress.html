@@ -1,0 +1,135 @@
+<section class="academy-progress-hero">
+  <div>
+    <p class="eyebrow">TEAM LEARNING AT A GLANCE</p>
+    <h2>See the progress.<br />Support the next step.</h2>
+    <p>Learning across {{ store.company()?.name }} · based on assigned courses.</p>
+  </div>
+  <div class="academy-progress-ring" [style.--completion]="completion() + '%'">
+    <div>
+      <strong>{{ completion() }}%</strong><small>average progress</small>
+    </div>
+  </div>
+</section>
+<div class="metrics academy-metrics">
+  <div class="metric" data-tone="blue">
+    <span class="metric-icon material-symbols-outlined" aria-hidden="true">groups</span
+    ><span>Team members</span><strong>{{ store.staff().length }}</strong
+    ><small>In this workspace</small>
+  </div>
+  <div class="metric" data-tone="purple">
+    <span class="metric-icon material-symbols-outlined" aria-hidden="true">menu_book</span
+    ><span>Course assignments</span><strong>{{ assignedCount() }}</strong
+    ><small>Across the team's learning plans</small>
+  </div>
+  <div class="metric" data-tone="green">
+    <span class="metric-icon material-symbols-outlined" aria-hidden="true">task_alt</span
+    ><span>Completed assignments</span><strong>{{ completedCount() }}</strong
+    ><small>{{ assignedCount() - completedCount() }} assignments remaining</small>
+  </div>
+</div>
+<section class="panel academy-team-progress">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Every learner, a clearer next step</h2>
+      <p>Find a team member and review their learning plan.</p>
+    </div>
+    <div class="academy-progress-filters">
+      <label class="search-box"
+        ><span class="material-symbols-outlined" aria-hidden="true">search</span
+        ><input
+          aria-label="Search learning progress"
+          placeholder="Find a team member…"
+          [ngModel]="progressSearch()"
+          (ngModelChange)="progressSearch.set($event)" /></label
+      ><mat-select
+        cvSelect
+        aria-label="Filter learning progress"
+        [ngModel]="progressFilter()"
+        (ngModelChange)="progressFilter.set($event)"
+      >
+        @for (
+          filter of ['Everyone', 'Learning remaining', 'Completed', 'No assignments'];
+          track filter
+        ) {
+          <mat-option [value]="filter">{{ filter }}</mat-option>
+        }
+      </mat-select>
+    </div>
+  </div>
+  <div class="learner-progress-grid">
+    @for (p of progressPeople(); track p.id) {
+      <article class="learner-progress-card">
+        <div class="learner-card-heading">
+          <span class="avatar">{{ store.initials(p.name) }}</span>
+          <div>
+            <h3>{{ p.name }}</h3>
+            <p>{{ p.role }}</p>
+          </div>
+        </div>
+        <div class="learner-progress-title">
+          <span>{{ p.learning.length ? 'Assigned learning' : 'Learning plan' }}</span
+          ><strong>{{ p.learning.length ? progressFor(p) + '%' : 'Not assigned' }}</strong>
+        </div>
+        <div class="progress-track"><span [style.width.%]="progressFor(p)"></span></div>
+        <div class="learner-stats">
+          <span
+            ><strong>{{ completedFor(p) }}</strong
+            >Completed</span
+          ><span
+            ><strong>{{ inProgressFor(p) }}</strong
+            >In progress</span
+          ><span
+            ><strong>{{ p.learning.length - completedFor(p) - inProgressFor(p) }}</strong
+            >Not started</span
+          >
+        </div>
+        <div class="learner-card-footer">
+          <span
+            class="badge"
+            [class.success]="p.learning.length > 0 && completedFor(p) === p.learning.length"
+            >{{
+              !p.learning.length
+                ? 'Ready for a learning plan'
+                : completedFor(p) === p.learning.length
+                  ? 'All assigned courses complete'
+                  : progressFor(p) === 0
+                    ? 'Ready to start'
+                    : 'Learning underway'
+            }}</span
+          ><a
+            [routerLink]="['/manage/people', p.id]"
+            [queryParams]="{ tab: 'Learning' }"
+            class="text-link"
+            >{{ p.learning.length ? 'View learning' : 'Assign courses'
+            }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a
+          >
+        </div>
+      </article>
+    } @empty {
+      <div class="empty-state academy-empty">
+        <span class="material-symbols-outlined" aria-hidden="true">school</span>
+        <h3>
+          {{
+            store.staff().length
+              ? 'No learners match this view.'
+              : 'Your learning team starts here.'
+          }}
+        </h3>
+        <p>
+          {{
+            store.staff().length
+              ? 'Try another name or filter to find their learning plan.'
+              : 'Add or hire a team member to start assigning courses.'
+          }}
+        </p>
+        @if (store.staff().length) {
+          <button class="button" (click)="progressSearch.set(''); progressFilter.set('Everyone')">
+            Clear filters
+          </button>
+        } @else {
+          <a class="button" routerLink="/manage/staff">View team members</a>
+        }
+      </div>
+    }
+  </div>
+</section>
