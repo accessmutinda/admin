@@ -1,38 +1,39 @@
 <div class="min-h-screen bg-cloud">
   <header
-    class="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-white/80 px-6 py-3.5 backdrop-blur-md"
+    class="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-line bg-white/80 px-4 py-3 backdrop-blur-md sm:px-6 sm:py-3.5"
   >
-    <div class="flex items-center gap-4">
-      <cv-logo />
+    <div class="flex min-w-0 items-center gap-2 sm:gap-4">
+      <cv-logo class="shrink-0" />
       @if (workspaceSvc.currentWorkspace(); as workspace) {
         <button
           type="button"
-          class="flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-sm text-ink transition-all duration-150 hover:border-slate/40 hover:bg-cloud hover:shadow-sm"
+          class="flex min-w-0 items-center gap-2 rounded-lg border border-line px-2 py-1.5 text-sm text-ink sm:px-3 transition-all duration-150 hover:border-slate/40 hover:bg-cloud hover:shadow-sm"
+          [attr.aria-label]="'Switch workspace (current: ' + workspace.name + ')'"
           (click)="switchWorkspace()"
         >
-          <span class="flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold text-white {{ workspace.colorClass }}">
+          <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white {{ workspace.colorClass }}">
             {{ workspace.shortCode }}
           </span>
-          {{ workspace.name }}
-          <span class="material-symbols-outlined text-[16px] text-slate">unfold_more</span>
+          <span class="hidden truncate md:inline">{{ workspace.name }}</span>
+          <span class="material-symbols-outlined shrink-0 text-[16px] text-slate">unfold_more</span>
         </button>
       }
     </div>
 
     @if (user) {
-      <div class="flex items-center gap-3">
-        <cv-role-badge [code]="user.roleCode" />
+      <div class="flex shrink-0 items-center gap-2 sm:gap-3">
+        <cv-role-badge class="hidden sm:block" [code]="user.roleCode" />
         <span
           class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-navy to-navy-700 text-xs font-bold text-white shadow-sm"
         >
           {{ user.initials }}
         </span>
-        <div class="hidden leading-tight sm:block">
+        <div class="hidden leading-tight lg:block">
           <p class="text-sm font-semibold text-ink">{{ user.name }}</p>
         </div>
         <button
           type="button"
-          class="ml-1 text-sm font-medium text-slate transition-colors hover:text-error"
+          class="ml-1 whitespace-nowrap text-sm font-medium text-slate transition-colors hover:text-error"
           (click)="signOut()"
         >
           Sign out
@@ -41,23 +42,24 @@
     }
   </header>
 
-  <div class="mx-auto flex max-w-[1400px] flex-col gap-8 px-6 py-8 lg:flex-row">
+  <div class="mx-auto flex max-w-[1400px] flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:flex-row lg:gap-8">
     <nav class="w-full shrink-0 lg:w-56">
-      <ul class="flex flex-col gap-1">
+      <!-- Horizontal scroll strip below lg, bleeding to the screen edges. -->
+      <ul class="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
         @for (item of navItems; track item.label) {
-          <li>
+          <li class="shrink-0">
             @if (item.link) {
               <a
                 [routerLink]="item.link"
                 routerLinkActive="bg-teal-50 text-teal"
                 [routerLinkActiveOptions]="{ exact: false }"
-                class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate transition-colors duration-150 hover:bg-cloud hover:text-ink"
+                class="flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-slate transition-colors duration-150 hover:bg-cloud hover:text-ink"
               >
                 <span class="material-symbols-outlined text-[18px]">{{ item.icon }}</span>
                 {{ item.label }}
               </a>
             } @else {
-              <span class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate/50">
+              <span class="flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-slate/50">
                 <span class="material-symbols-outlined text-[18px]">{{ item.icon }}</span>
                 {{ item.label }}
               </span>
