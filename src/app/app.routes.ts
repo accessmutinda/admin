@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
 import { authGuard, guestGuard, workspaceGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
@@ -15,7 +16,8 @@ export const routes: Routes = [
       {
         path: 'mfa',
         title: 'Verify your identity · CareVerity',
-        loadComponent: () => import('./features/auth/mfa-verify/mfa-verify').then((m) => m.MfaVerify),
+        loadComponent: () =>
+          import('./features/auth/mfa-verify/mfa-verify').then((m) => m.MfaVerify),
       },
       {
         path: 'forgot-password',
@@ -57,7 +59,8 @@ export const routes: Routes = [
   {
     path: 'access-denied',
     title: 'Access restricted · CareVerity',
-    loadComponent: () => import('./features/auth/access-denied/access-denied').then((m) => m.AccessDenied),
+    loadComponent: () =>
+      import('./features/auth/access-denied/access-denied').then((m) => m.AccessDenied),
   },
   {
     path: 'account',
@@ -66,13 +69,15 @@ export const routes: Routes = [
       {
         path: 'security',
         loadComponent: () =>
-          import('./features/account/account-security-layout').then((m) => m.AccountSecurityLayout),
+          import('./features/management/layout/management-layout').then((m) => m.ManagementLayout),
         children: [
           {
             path: '',
             title: 'Security settings · CareVerity',
             loadComponent: () =>
-              import('./features/account/security/security-settings').then((m) => m.SecuritySettings),
+              import('./features/account/security/security-settings').then(
+                (m) => m.SecuritySettings,
+              ),
           },
           {
             path: 'login-history',
@@ -83,6 +88,92 @@ export const routes: Routes = [
         ],
       },
       { path: '', redirectTo: 'security', pathMatch: 'full' },
+    ],
+  },
+  {
+    path: 'manage',
+    canActivate: [workspaceGuard],
+    canActivateChild: [
+      (route, state) => {
+        const injector = inject(EnvironmentInjector);
+        return import('./features/management/shared/module.guard').then((m) =>
+          runInInjectionContext(injector, () => m.moduleGuard(route, state)),
+        );
+      },
+    ],
+    loadComponent: () =>
+      import('./features/management/layout/management-layout').then((m) => m.ManagementLayout),
+    children: [
+      {
+        path: 'companies',
+        title: 'Companies · CareVerity',
+        loadComponent: () =>
+          import('./features/management/companies/companies').then((m) => m.Companies),
+      },
+      {
+        path: 'companies/new',
+        title: 'Add company · CareVerity',
+        loadComponent: () =>
+          import('./features/management/companies/company-editor').then((m) => m.CompanyEditor),
+      },
+      {
+        path: 'companies/:id',
+        title: 'Company profile · CareVerity',
+        loadComponent: () =>
+          import('./features/management/companies/company-editor').then((m) => m.CompanyEditor),
+      },
+      {
+        path: 'access',
+        title: 'Users & access · CareVerity',
+        loadComponent: () =>
+          import('./features/management/company-admin/access/users-access').then(
+            (m) => m.UsersAccess,
+          ),
+      },
+      {
+        path: 'workflows',
+        title: 'Approval workflows · CareVerity',
+        loadComponent: () =>
+          import('./features/management/company-admin/workflows/approval-workflows').then(
+            (m) => m.ApprovalWorkflows,
+          ),
+      },
+      {
+        path: 'settings',
+        title: 'Integrations & data · CareVerity',
+        loadComponent: () =>
+          import('./features/management/company-admin/settings/integrations-settings').then(
+            (m) => m.IntegrationsSettings,
+          ),
+      },
+      {
+        path: 'recruitment',
+        data: { module: 'People & HR' },
+        title: 'Recruitment · CareVerity',
+        loadComponent: () =>
+          import('./features/management/recruitment/recruitment').then((m) => m.Recruitment),
+      },
+      ...['onboarding', 'staff', 'compliance', 'leave', 'reviews'].map((section) => ({
+        path: section,
+        data: { section, module: 'People & HR' },
+        title: 'People & development · CareVerity',
+        loadComponent: () => import('./features/management/people/people').then((m) => m.People),
+      })),
+      {
+        path: 'people/:id',
+        data: { module: 'People & HR' },
+        title: 'Person profile · CareVerity',
+        loadComponent: () =>
+          import('./features/management/people/person-detail').then((m) => m.PersonDetail),
+      },
+      {
+        path: 'learning',
+        data: { module: 'Training academy' },
+        title: 'Training academy · CareVerity',
+        loadComponent: () =>
+          import('./features/management/learning/learning').then((m) => m.Learning),
+      },
+      { path: '', pathMatch: 'full', redirectTo: 'companies' },
     ],
   },
   { path: '', pathMatch: 'full', redirectTo: 'auth/sign-in' },

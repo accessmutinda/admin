@@ -1,3 +1,10 @@
+<a class="back-link" routerLink="/account/security"
+  ><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Security overview</a
+>
+<p class="security-history-note">
+  <span class="badge">Demo records</span>Sample sign-in events and devices. Device changes apply to
+  this view.
+</p>
 <div class="flex flex-col gap-6 xl:flex-row">
   <section class="min-w-0 flex-1">
     <div class="flex items-center justify-between">
@@ -8,7 +15,9 @@
     </div>
 
     <!-- Phones get a stacked list; the five-column table needs ~640px. -->
-    <ul class="mt-5 divide-y divide-line rounded-2xl border border-line bg-white shadow-card md:hidden">
+    <ul
+      class="mt-5 divide-y divide-line rounded-2xl border border-line bg-white shadow-card md:hidden"
+    >
       @if (loading()) {
         @for (row of skeletonEventRows; track $index) {
           <li class="space-y-2 px-4 py-3.5">
@@ -43,7 +52,9 @@
       }
     </ul>
 
-    <div class="mt-5 hidden overflow-x-auto rounded-2xl border border-line bg-white shadow-card md:block">
+    <div
+      class="mt-5 hidden overflow-x-auto rounded-2xl border border-line bg-white shadow-card md:block"
+    >
       <table class="w-full min-w-[640px] text-left text-sm">
         <thead class="bg-cloud text-xs uppercase tracking-wide text-slate">
           <tr>
@@ -109,49 +120,55 @@
         }
       } @else {
         @for (device of devices(); track device.id) {
-        <li
-          class="flex items-center justify-between gap-3 rounded-xl border p-3.5 shadow-sm transition-all duration-150 hover:shadow-card {{
-            pendingRevokeId() === device.id ? 'border-error/40 bg-error-50/50' : 'border-line bg-white'
-          }}"
-        >
-          <div class="flex min-w-0 items-center gap-2.5">
-            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cloud text-slate">
-              <span class="material-symbols-outlined text-[18px]">laptop_windows</span>
-            </span>
-            <div class="min-w-0">
-              <p class="text-sm font-semibold text-ink">{{ device.name }}</p>
-              <p class="text-xs text-slate">{{ device.detail }} · Added {{ device.addedOn }}</p>
-            </div>
-          </div>
-          @if (pendingRevokeId() === device.id) {
-            <div class="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                class="text-xs font-medium text-slate transition-colors hover:text-ink"
-                (click)="cancelRevoke()"
+          <li
+            class="flex items-center justify-between gap-3 rounded-xl border p-3.5 shadow-sm transition-all duration-150 hover:shadow-card {{
+              pendingRevokeId() === device.id
+                ? 'border-error/40 bg-error-50/50'
+                : 'border-line bg-white'
+            }}"
+          >
+            <div class="flex min-w-0 items-center gap-2.5">
+              <span
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cloud text-slate"
               >
-                Cancel
-              </button>
+                <span class="material-symbols-outlined text-[18px]">laptop_windows</span>
+              </span>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-ink">{{ device.name }}</p>
+                <p class="text-xs text-slate">{{ device.detail }} · Added {{ device.addedOn }}</p>
+              </div>
+            </div>
+            @if (pendingRevokeId() === device.id) {
+              <div class="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  class="text-xs font-medium text-slate transition-colors hover:text-ink"
+                  (click)="cancelRevoke()"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  class="rounded-lg bg-error px-2.5 py-1 text-xs font-semibold text-white transition-all hover:bg-error/90 active:scale-[0.97]"
+                  (click)="requestRevoke(device.id)"
+                >
+                  Confirm revoke
+                </button>
+              </div>
+            } @else {
               <button
                 type="button"
-                class="rounded-lg bg-error px-2.5 py-1 text-xs font-semibold text-white transition-all hover:bg-error/90 active:scale-[0.97]"
+                class="shrink-0 text-xs font-semibold text-error transition-colors hover:text-error/80 hover:underline"
                 (click)="requestRevoke(device.id)"
               >
-                Confirm revoke
+                Revoke
               </button>
-            </div>
-          } @else {
-            <button
-              type="button"
-              class="shrink-0 text-xs font-semibold text-error transition-colors hover:text-error/80 hover:underline"
-              (click)="requestRevoke(device.id)"
-            >
-              Revoke
-            </button>
-          }
-        </li>
+            }
+          </li>
         } @empty {
-          <li class="rounded-xl border border-dashed border-line p-4 text-center text-xs text-slate md:col-span-2 xl:col-span-1">
+          <li
+            class="rounded-xl border border-dashed border-line p-4 text-center text-xs text-slate md:col-span-2 xl:col-span-1"
+          >
             No trusted devices
           </li>
         }

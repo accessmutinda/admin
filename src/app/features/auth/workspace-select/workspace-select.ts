@@ -35,7 +35,7 @@ export class WorkspaceSelect implements OnInit {
     this.switching.set(workspaceId);
     setTimeout(() => {
       this.workspaceSvc.switchWorkspace(workspaceId);
-      this.router.navigateByUrl('/account/security');
+      this.router.navigateByUrl('/manage/companies');
     }, 500);
   }
 }
