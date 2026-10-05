@@ -24,10 +24,7 @@ export class AuthService {
     () => this._session() !== null && this._session()?.workspaceId === null,
   );
 
-  signIn(
-    email: string,
-    password: string,
-  ): Observable<{ requiresMfa: boolean; user: AppUser }> {
+  signIn(email: string, password: string): Observable<{ requiresMfa: boolean; user: AppUser }> {
     if (email.trim().toLowerCase() !== DEMO_EMAIL || password !== DEMO_PASSWORD) {
       return throwError(() => new Error('Incorrect email or password.')).pipe(delay(LATENCY_MS));
     }
@@ -76,7 +73,9 @@ export class AuthService {
 
   resetPassword(currentPassword: string, _newPassword: string): Observable<void> {
     if (currentPassword !== DEMO_PASSWORD) {
-      return throwError(() => new Error('Your current password is incorrect.')).pipe(delay(LATENCY_MS));
+      return throwError(() => new Error('Your current password is incorrect.')).pipe(
+        delay(LATENCY_MS),
+      );
     }
     return of(void 0).pipe(delay(LATENCY_MS));
   }
@@ -114,6 +113,17 @@ export class AuthService {
     this.persistSession(next);
   }
 
+  grantWorkspaceAccess(workspaceId: string): void {
+    const session = this._session();
+    if (!session || session.user.workspaceIds.includes(workspaceId)) return;
+    const next = {
+      ...session,
+      user: { ...session.user, workspaceIds: [...session.user.workspaceIds, workspaceId] },
+    };
+    this._session.set(next);
+    this.persistSession(next);
+  }
+
   signOut(): void {
     this._session.set(null);
     this._pendingUser.set(null);
@@ -127,7 +137,10 @@ export class AuthService {
 
   private establishSession(user: AppUser, trustDevice: boolean): AuthSession {
     const session: AuthSession = {
-      user,
+      user: {
+        ...user,
+        workspaceIds: [...new Set([...user.workspaceIds, ...this.localWorkspaceIds()])],
+      },
       workspaceId: null,
       mfaVerified: true,
       signedInAt: new Date().toISOString(),
@@ -138,6 +151,16 @@ export class AuthService {
       localStorage.setItem(TRUSTED_DEVICE_PREFIX + user.email, '1');
     }
     return session;
+  }
+
+  private localWorkspaceIds(): string[] {
+    try {
+      return (
+        JSON.parse(localStorage.getItem('cv_custom_workspaces_v1') ?? '[]') as { id: string }[]
+      ).map((w) => w.id);
+    } catch {
+      return [];
+    }
   }
 
   private isDeviceTrusted(email: string): boolean {
