@@ -1,12 +1,12 @@
 # CareVerity Admin
 
-Web admin console for CareVerity, a care management platform. This build covers
-**Authentication & Access** — sign in, MFA, password reset, SSO, invites,
-workspace switching, and account security settings.
+Web admin console for CareVerity, a care management platform. This build covers authentication and account security, company setup and
+administration, recruitment, employee onboarding, compliance and training.
 
 There is no backend yet. Every sign-in, MFA check, invite, and password reset
-runs against fixed in-memory data (`src/app/core/auth/fixtures.ts`) and
-`localStorage`, so the whole flow is click-through testable on its own.
+runs against fixed demo data (`src/app/core/auth/fixtures.ts`) and
+`localStorage`. Company and people records are saved on the current device,
+with records isolated by workspace.
 
 ## Running it
 
@@ -25,10 +25,8 @@ Other scripts: `npm run build` (production build), `npm test` (unit tests).
 
 ## Signing in
 
-| Field | Value |
-|---|---|
-| Email | `jane.doe@lqcs.co.uk` |
-| Password | `CareVerity123!` |
-| MFA code | `123456` |
-
-
+| Field    | Value                 |
+| -------- | --------------------- |
+| Email    | `jane.doe@lqcs.co.uk` |
+| Password | `CareVerity123!`      |
+| MFA code | `123456`              |
