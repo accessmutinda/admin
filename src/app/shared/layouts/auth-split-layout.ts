@@ -7,7 +7,7 @@ import { Logo } from '../ui/logo';
   template: `
     <div class="flex min-h-screen w-full flex-col lg:flex-row">
       <aside
-        class="relative flex w-full flex-col justify-between overflow-hidden bg-navy px-8 py-10 text-white sm:px-12 sm:py-14 lg:w-[44%] lg:px-16"
+        class="relative flex w-full flex-col justify-between gap-5 overflow-hidden bg-navy px-6 py-7 text-white sm:px-12 sm:py-10 lg:w-[44%] lg:gap-0 lg:px-16 lg:py-14"
       >
         <div
           class="pointer-events-none absolute inset-0 opacity-60 [background-image:radial-gradient(1px_1px_at_1px_1px,rgba(255,255,255,0.08)_1px,transparent_0)] [background-size:22px_22px]"
@@ -21,15 +21,17 @@ import { Logo } from '../ui/logo';
 
         <cv-logo tone="light" size="hero" class="relative z-10 block" />
 
-        <div class="relative z-10 max-w-sm">
-          <h1 class="text-[2.75rem] font-bold leading-[1.08] tracking-tight">
-            Secure Care.<br /><span class="text-teal">Brighter Tomorrows.</span>
+        <div class="relative z-10 text-center lg:max-w-sm lg:text-left">
+          <h1 class="text-2xl font-bold leading-[1.08] tracking-tight sm:text-3xl lg:text-[2.75rem]">
+            Secure Care.<span class="text-teal lg:block"> Brighter Tomorrows.</span>
           </h1>
-          <p class="mt-4 text-sm leading-relaxed text-white/60">
+          <p class="mt-4 hidden text-sm leading-relaxed text-white/60 lg:block">
             The complete care management platform for modern care providers.
           </p>
 
-          <ul class="mt-8 flex flex-col gap-4 text-sm">
+          <ul
+            class="mt-5 hidden flex-wrap justify-center gap-x-6 gap-y-3 text-sm sm:flex lg:mt-8 lg:flex-col lg:justify-start lg:gap-4"
+          >
             @for (item of checklist; track item.label) {
               <li class="flex items-center gap-3">
                 <span
@@ -43,7 +45,7 @@ import { Logo } from '../ui/logo';
           </ul>
         </div>
 
-        <div class="relative z-10 mt-10">
+        <div class="relative z-10 mt-10 hidden lg:block">
           <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/35">
             Trusted by care providers across the UK
           </p>
@@ -60,10 +62,14 @@ import { Logo } from '../ui/logo';
         </div>
       </aside>
 
-      <main class="relative flex w-full flex-1 items-center justify-center bg-white px-6 py-12 sm:px-10">
+      <main
+        class="relative flex w-full flex-1 flex-col items-center justify-center bg-white px-6 py-6 sm:px-10 sm:py-10 lg:py-12"
+      >
+        <!-- In flow above the form on small screens; pinned to the corner once
+             the form has a full-height column to itself. -->
         <button
           type="button"
-          class="absolute right-6 top-6 flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-slate transition-colors hover:border-slate/40 hover:text-ink sm:right-10 sm:top-10"
+          class="mb-6 flex items-center gap-1.5 self-end rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-slate transition-colors hover:border-slate/40 hover:text-ink lg:absolute lg:right-10 lg:top-10 lg:mb-0"
         >
           <span class="material-symbols-outlined text-[16px] text-slate">language</span>
           English (UK)

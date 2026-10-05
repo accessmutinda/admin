@@ -2,8 +2,9 @@ import { Component, ElementRef, input, output, signal, viewChildren } from '@ang
 
 @Component({
   selector: 'cv-otp-input',
+  host: { class: 'block w-full' },
   template: `
-    <div class="flex gap-2 sm:gap-3" (paste)="onPaste($event)">
+    <div class="mx-auto flex max-w-[22.5rem] justify-center gap-2 sm:gap-3" (paste)="onPaste($event)">
       @for (i of indices; track i) {
         <input
           #box
@@ -11,7 +12,7 @@ import { Component, ElementRef, input, output, signal, viewChildren } from '@ang
           inputmode="numeric"
           autocomplete="one-time-code"
           maxlength="1"
-          class="h-14 w-11 rounded-lg border border-line text-center text-xl font-semibold text-ink outline-none transition-all duration-150 hover:border-slate focus:scale-105 focus:border-teal focus:shadow-card focus:ring-2 focus:ring-teal/25 sm:w-12"
+          class="h-14 w-0 min-w-0 max-w-12 flex-1 rounded-lg border border-line text-center text-xl font-semibold text-ink outline-none transition-all duration-150 hover:border-slate focus:scale-105 focus:border-teal focus:shadow-card focus:ring-2 focus:ring-teal/25"
           [value]="digits()[i]"
           (input)="onInput(i, $event)"
           (keydown)="onKeydown(i, $event)"

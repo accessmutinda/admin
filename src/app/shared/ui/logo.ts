@@ -16,7 +16,7 @@ export class Logo {
 
   protected readonly sizeClass = computed(() => {
     if (this.size() === 'hero') {
-      return 'block w-[70%] h-auto mx-auto';
+      return 'block w-44 sm:w-56 lg:w-[70%] h-auto mx-auto';
     }
     if (this.size() === 'lg') {
       return this.tone() === 'light' ? 'h-14 w-auto' : 'h-12 w-auto';

@@ -6,14 +6,14 @@ import { Logo } from '../ui/logo';
   imports: [Logo],
   template: `
     <div
-      class="flex min-h-screen w-full flex-col items-center bg-cloud bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,color-mix(in_srgb,var(--color-teal)_7%,transparent),transparent)] px-4 py-12 sm:px-6"
+      class="flex min-h-screen w-full flex-col items-center bg-cloud bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,color-mix(in_srgb,var(--color-teal)_7%,transparent),transparent)] px-4 py-6 sm:px-6 sm:py-12"
     >
       <div
         class="cv-enter w-full {{
           widthClass()
-        }} rounded-2xl border border-line bg-white p-8 shadow-card sm:p-10"
+        }} rounded-2xl border border-line bg-white p-6 shadow-card sm:p-10"
       >
-        <div class="mb-7 flex justify-center">
+        <div class="mb-6 flex justify-center sm:mb-7">
           <cv-logo size="lg" />
         </div>
         <ng-content />
