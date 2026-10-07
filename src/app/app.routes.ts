@@ -162,6 +162,12 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'payroll',
+        data: { module: 'Finance' },
+        title: 'Payroll & payments · CareVerity',
+        loadComponent: () => import('./features/management/payroll/payroll').then((m) => m.Payroll),
+      },
+      {
         path: 'recruitment',
         data: { module: 'People & HR' },
         title: 'Recruitment · CareVerity',

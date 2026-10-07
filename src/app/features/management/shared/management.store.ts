@@ -1,5 +1,6 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { vacancyClosed, vacancyScheduled } from '../recruitment/vacancy-deadline';
+import type { PayrollData, PayrollAction } from '../payroll/payroll.models';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
 
 export interface Company {
@@ -211,6 +212,8 @@ const seedPerson = (
   progress: stage === 'Hired' ? { safeguarding: 100, handling: 40 } : {},
 });
 interface WorkspaceData {
+  payroll?: PayrollData;
+  payrollPermissions?: Record<string, PayrollAction[]>;
   people: Person[];
   vacancies: Vacancy[];
   members: Member[];
@@ -452,6 +455,17 @@ export class ManagementStore {
       return 'Your application could not be saved. Free some browser storage and try again.';
     this.records.set(next);
     return null;
+  }
+  saveWorkspace(change: (data: WorkspaceData) => WorkspaceData): boolean {
+    const all = this.restore<Record<string, WorkspaceData>>('cv_management_v1', this.records());
+    const data = all[this.companyId()] ?? this.data();
+    const next = { ...all, [this.companyId()]: structuredClone(change(data)) };
+    if (!this.persist('cv_management_v1', next)) return false;
+    this.records.set(next);
+    return true;
+  }
+  savePayroll(payroll: PayrollData): boolean {
+    return this.saveWorkspace((data) => ({ ...data, payroll }));
   }
   updatePerson(person: Person): void {
     this.update((d) => ({

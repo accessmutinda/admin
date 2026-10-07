@@ -1,3 +1,4 @@
+import { PAYROLL_ACTIONS, payrollDefaults, PayrollAction } from '../../payroll/payroll.models';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ManagementStore, MODULES } from '../../shared/management.store';
@@ -103,15 +104,43 @@ export class UsersAccess {
       ]),
     );
   }
+  protected readonly payrollActions = PAYROLL_ACTIONS;
+  protected readonly payrollActionDescriptions: Record<PayrollAction, string> = {
+    view: 'Read pay runs, overtime and invoices',
+    manage: 'Maintain staff pay, work records and invoices',
+    approve: 'Review overtime and contractor invoices',
+    finalise: 'Lock approved pay runs for payment',
+    export: 'Download payroll reports and payment files',
+    pay: 'Record pay-run and invoice payments',
+  };
+  protected payrollAccess: PayrollAction[] = this.readPayrollAccess();
+  private readonly payrollDrafts: Record<string, PayrollAction[]> = {};
+  private readPayrollAccess(): PayrollAction[] {
+    return [...(this.store.data().payrollPermissions?.[this.role] ?? payrollDefaults(this.role))];
+  }
+  protected hasPayrollAction(action: PayrollAction): boolean {
+    return this.payrollAccess.includes(action);
+  }
+  protected togglePayrollAction(action: PayrollAction): void {
+    this.payrollAccess = this.payrollAccess.includes(action)
+      ? this.payrollAccess.filter((a) => a !== action)
+      : [...this.payrollAccess, action];
+    this.payrollDrafts[this.role] = this.payrollAccess;
+  }
   protected changeRole(): void {
     this.permissions = this.permissionDrafts[this.role] ?? this.readPermissions();
+    this.payrollAccess = this.payrollDrafts[this.role] ?? this.readPayrollAccess();
     this.permissionDrafts[this.role] = this.permissions;
   }
   protected permissionCount(): number {
     return Object.values(this.permissions).flat().filter(Boolean).length;
   }
   protected permissionsChanged(): boolean {
-    return JSON.stringify(this.permissions) !== JSON.stringify(this.readPermissions());
+    return (
+      JSON.stringify(this.permissions) !== JSON.stringify(this.readPermissions()) ||
+      JSON.stringify([...this.payrollAccess].sort()) !==
+        JSON.stringify(this.readPayrollAccess().sort())
+    );
   }
   protected applyPermissionPreset(preset: 'view' | 'standard' | 'none'): void {
     const values =
@@ -120,21 +149,31 @@ export class UsersAccess {
         : preset === 'standard'
           ? [true, true, true, false, true]
           : [false, false, false, false, false];
+    this.payrollAccess =
+      preset === 'none' ? [] : preset === 'view' ? ['view'] : payrollDefaults(this.role);
+    this.payrollDrafts[this.role] = this.payrollAccess;
     this.permissions = Object.fromEntries(MODULES.map((m) => [m, [...values]]));
     this.permissionDrafts[this.role] = this.permissions;
   }
   protected discardPermissions(): void {
+    this.payrollAccess = this.readPayrollAccess();
+    this.payrollDrafts[this.role] = this.payrollAccess;
     this.permissions = this.readPermissions();
     this.permissionDrafts[this.role] = this.permissions;
   }
   protected savePermissions(): void {
-    this.store.update((d) => ({
+    const saved = this.store.saveWorkspace((d) => ({
       ...d,
+      payrollPermissions: { ...d.payrollPermissions, [this.role]: [...this.payrollAccess] },
       permissions: {
         ...d.permissions,
         ...Object.fromEntries(MODULES.map((m) => [this.role + ':' + m, [...this.permissions[m]]])),
       },
     }));
+    if (!saved) {
+      this.toast.error('Could not save permissions. Free some browser storage and try again.');
+      return;
+    }
     this.toast.success('Permission configuration saved.');
   }
 }

@@ -12,6 +12,8 @@ interface PermissionEditor {
   discardPermissions(): void;
   savePermissions(): void;
   permissionsChanged(): boolean;
+  togglePayrollAction(action: 'view' | 'manage' | 'approve' | 'finalise' | 'export' | 'pay'): void;
+  hasPayrollAction(action: 'view' | 'manage'): boolean;
 }
 
 describe('UsersAccess permission drafts', () => {
@@ -64,5 +66,20 @@ describe('UsersAccess permission drafts', () => {
     editor.discardPermissions();
     expect(editor.permissions['Care delivery']).toEqual([false, false, false, false, false]);
     expect(editor.permissionsChanged()).toBe(false);
+  });
+  it('keeps payroll access drafts by role and persists only the selected role', () => {
+    editor.togglePayrollAction('manage');
+    expect(editor.hasPayrollAction('manage')).toBe(false);
+    editor.role = 'Care Worker';
+    editor.changeRole();
+    editor.togglePayrollAction('view');
+    editor.savePermissions();
+    expect(store.data().payrollPermissions?.['Care Worker']).toEqual(['view']);
+    expect(store.data().payrollPermissions?.['Registered Manager']).toBeUndefined();
+    editor.role = 'Registered Manager';
+    editor.changeRole();
+    expect(editor.hasPayrollAction('manage')).toBe(false);
+    editor.discardPermissions();
+    expect(editor.hasPayrollAction('manage')).toBe(true);
   });
 });

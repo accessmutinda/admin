@@ -1,17 +1,61 @@
+import { MatSelectModule } from '@angular/material/select';
+import { CvSelect } from '../../../../shared/ui/select';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ManagementStore } from '../../shared/management.store';
 import { ToastService } from '../../../../shared/ui/toast.service';
 @Component({
   selector: 'cv-approval-workflows',
-  imports: [FormsModule],
+  imports: [FormsModule, MatSelectModule, CvSelect],
   templateUrl: './approval-workflows.html',
 })
 export class ApprovalWorkflows {
   protected readonly store = inject(ManagementStore);
   private readonly toast = inject(ToastService);
   protected workflow = 'Care plans';
+  protected readonly payrollReviewers = [
+    'Registered Manager',
+    'Finance Officer',
+    'Company Admin',
+    'HR Officer',
+  ];
+  private readonly payrollRoutes: Record<string, string[]> = {
+    Overtime: ['Registered Manager', 'Finance Officer'],
+    Timesheets: ['Registered Manager'],
+    'Contractor invoices': ['Registered Manager', 'Finance Officer'],
+    'Payroll runs': ['Finance Officer'],
+  };
+  protected isPayrollWorkflow(): boolean {
+    return !!this.payrollRoutes[this.workflow];
+  }
+  protected savedSteps(name = this.workflow): string[] {
+    return this.store.data().workflows[name] ?? this.payrollRoutes[name] ?? [];
+  }
   protected readonly workflowTypes = [
+    {
+      name: 'Overtime',
+      icon: 'more_time',
+      tone: 'purple',
+      description: 'Authorise extra work, then approve actual hours',
+    },
+    {
+      name: 'Timesheets',
+      icon: 'schedule',
+      tone: 'teal',
+      description: 'Confirm work before preparing pay',
+    },
+    {
+      name: 'Contractor invoices',
+      icon: 'receipt_long',
+      tone: 'blue',
+      description: 'Confirm services, then approve the invoice',
+    },
+    {
+      name: 'Payroll runs',
+      icon: 'payments',
+      tone: 'green',
+      description: 'Independent sign-off before payroll export',
+    },
     {
       name: 'Care plans',
       icon: 'favorite',
@@ -43,7 +87,7 @@ export class ApprovalWorkflows {
       description: 'Review information before it leaves',
     },
   ];
-  protected steps = [...this.store.data().workflows[this.workflow]];
+  protected steps = [...this.savedSteps()];
   protected newStep = '';
   protected workflowEnabled = this.steps.length > 0;
   protected notify = this.store.data().workflowPreferences?.[this.workflow]?.notify ?? true;
@@ -54,7 +98,7 @@ export class ApprovalWorkflows {
     { steps: string[]; enabled: boolean; notify: boolean; escalation: number }
   > = {};
   protected selectWorkflow(): void {
-    const saved = this.store.data().workflows[this.workflow];
+    const saved = this.savedSteps();
     this.workflowEnabled = saved.length > 0;
     this.steps = [...saved];
     this.notify = this.store.data().workflowPreferences?.[this.workflow]?.notify ?? true;
@@ -86,7 +130,7 @@ export class ApprovalWorkflows {
     };
   }
   protected workflowChanged(): boolean {
-    const saved = this.store.data().workflows[this.workflow];
+    const saved = this.savedSteps();
     const preferences = this.store.data().workflowPreferences?.[this.workflow];
     return (
       JSON.stringify(this.workflowState()) !==
@@ -104,7 +148,12 @@ export class ApprovalWorkflows {
   }
   protected workflowValid(): boolean {
     return (
-      (!this.workflowEnabled || (this.steps.length > 0 && this.steps.every((s) => s.trim()))) &&
+      (!this.workflowEnabled ||
+        (this.steps.length > 0 &&
+          this.steps.every((s) => s.trim()) &&
+          (!this.isPayrollWorkflow() ||
+            (this.steps.length === this.payrollRoutes[this.workflow].length &&
+              this.steps.every((s) => this.payrollReviewers.includes(s)))))) &&
       Number.isInteger(this.escalation) &&
       this.escalation >= 1 &&
       this.escalation <= 30
@@ -117,7 +166,7 @@ export class ApprovalWorkflows {
     this.workflowSubmitted = true;
     if (!this.workflowValid()) return;
     this.steps = this.workflowEnabled ? this.steps.map((s) => s.trim()) : [];
-    this.store.update((d) => ({
+    const saved = this.store.saveWorkspace((d) => ({
       ...d,
       workflows: { ...d.workflows, [this.workflow]: this.workflowEnabled ? [...this.steps] : [] },
       workflowPreferences: {
@@ -125,6 +174,12 @@ export class ApprovalWorkflows {
         [this.workflow]: { notify: this.notify, escalation: this.escalation },
       },
     }));
+    if (!saved) {
+      this.toast.error(
+        'Could not save the approval route. Free some browser storage and try again.',
+      );
+      return;
+    }
     delete this.workflowDrafts[this.workflow];
     this.workflowSubmitted = false;
     this.toast.success('Approval workflow saved.');

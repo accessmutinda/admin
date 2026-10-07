@@ -219,6 +219,45 @@
         </table>
       </div>
     }
+    <section class="payroll-permissions" aria-labelledby="payroll-permissions-heading">
+      <div class="payroll-permissions-heading">
+        <div class="permission-module-name">
+          <span class="module-icon material-symbols-outlined" aria-hidden="true"
+            >account_balance_wallet</span
+          >
+          <div>
+            <h3 id="payroll-permissions-heading">Payroll & payments access</h3>
+            <p id="payroll-permissions-hint">
+              Works alongside Finance permissions. Enable View payroll to use the other actions.
+            </p>
+          </div>
+        </div>
+        <span class="permission-summary" aria-live="polite"
+          ><strong>{{ payrollAccess.length }} / {{ payrollActions.length }}</strong
+          ><span>enabled</span></span
+        >
+      </div>
+      <div
+        class="payroll-permissions-grid"
+        role="group"
+        aria-describedby="payroll-permissions-hint"
+      >
+        @for (action of payrollActions; track action.key) {
+          <label class="permission-action" [class.is-selected]="hasPayrollAction(action.key)">
+            <input
+              type="checkbox"
+              [checked]="hasPayrollAction(action.key)"
+              (change)="togglePayrollAction(action.key)"
+              [attr.aria-label]="action.label"
+            />
+            <span
+              ><strong>{{ action.label }}</strong
+              ><small>{{ payrollActionDescriptions[action.key] }}</small></span
+            >
+          </label>
+        }
+      </div>
+    </section>
     <div class="panel-note">
       <span class="material-symbols-outlined" aria-hidden="true">info</span>Permission settings are
       saved locally. Server-side access enforcement requires a backend.

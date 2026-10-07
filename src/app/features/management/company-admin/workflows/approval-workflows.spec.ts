@@ -57,3 +57,56 @@ describe('Approval workflow configuration', () => {
     expect(store.data()).toEqual(original);
   });
 });
+
+describe('Approval workflow cards', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    TestBed.configureTestingModule({ imports: [ApprovalWorkflows] });
+    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
+  });
+
+  it('renders every card when payroll routes have not been saved', () => {
+    const fixture = TestBed.createComponent(ApprovalWorkflows);
+    fixture.detectChanges();
+    const cards = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.workflow-type'),
+    );
+    expect(cards.map((card) => card.querySelector('strong')?.textContent?.trim())).toEqual([
+      'Overtime',
+      'Timesheets',
+      'Contractor invoices',
+      'Payroll runs',
+      'Care plans',
+      'Policies',
+      'Incidents',
+      'Training',
+      'Exports',
+    ]);
+    expect(cards.map((card) => card.querySelector('small')?.textContent?.trim())).toEqual([
+      '2 review steps',
+      '1 review step',
+      '2 review steps',
+      '1 review step',
+      '3 review steps',
+      '3 review steps',
+      '3 review steps',
+      '3 review steps',
+      '3 review steps',
+    ]);
+  });
+
+  it('preserves a saved paused route instead of showing the default steps', () => {
+    TestBed.inject(ManagementStore).update((data) => ({
+      ...data,
+      workflows: { ...data.workflows, Overtime: [] },
+    }));
+    const fixture = TestBed.createComponent(ApprovalWorkflows);
+    fixture.detectChanges();
+    const card = (fixture.nativeElement as HTMLElement).querySelector('.workflow-type');
+    expect(card?.querySelector('small')?.textContent?.trim()).toBe('Routing paused');
+    (fixture.componentInstance as unknown as WorkflowEditor).chooseWorkflow('Overtime');
+    fixture.detectChanges();
+    expect((fixture.componentInstance as unknown as WorkflowEditor).steps).toEqual([]);
+  });
+});

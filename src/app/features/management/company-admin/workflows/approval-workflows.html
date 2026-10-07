@@ -7,6 +7,7 @@
 </div>
 <nav class="workflow-type-grid" aria-label="Approval document types">
   @for (type of workflowTypes; track type.name) {
+    @let stepCount = savedSteps(type.name).length;
     <button
       class="workflow-type"
       [attr.data-tone]="type.tone"
@@ -18,8 +19,8 @@
       <span class="workflow-type-copy"
         ><strong>{{ type.name }}</strong
         ><small>{{
-          store.data().workflows[type.name].length
-            ? store.data().workflows[type.name].length + ' saved review steps'
+          stepCount
+            ? stepCount + (stepCount === 1 ? ' review step' : ' review steps')
             : 'Routing paused'
         }}</small></span
       >
@@ -55,12 +56,25 @@
                 <label
                   ><small>{{
                     i === steps.length - 1 ? 'FINAL SIGN-OFF' : 'REVIEW STEP ' + (i + 1)
-                  }}</small
-                  ><input
-                    [(ngModel)]="steps[i]"
-                    [attr.aria-label]="'Reviewer for step ' + (i + 1)"
-                    placeholder="Role or review team"
-                /></label>
+                  }}</small>
+                  @if (isPayrollWorkflow()) {
+                    <mat-select
+                      cvSelect
+                      [(ngModel)]="steps[i]"
+                      [attr.aria-label]="'Reviewer for step ' + (i + 1)"
+                    >
+                      @for (role of payrollReviewers; track role) {
+                        <mat-option [value]="role">{{ role }}</mat-option>
+                      }
+                    </mat-select>
+                  } @else {
+                    <input
+                      [(ngModel)]="steps[i]"
+                      [attr.aria-label]="'Reviewer for step ' + (i + 1)"
+                      placeholder="Role or review team"
+                    />
+                  }
+                </label>
                 <div class="row">
                   <button
                     class="icon-button"
@@ -98,6 +112,13 @@
             </li>
           }
         </ol>
+        @if (isPayrollWorkflow()) {
+          <p class="panel-note">
+            Overtime and contractor invoices use two steps. Timesheets and payroll runs use one.
+            Select reviewer roles above. Decisions record the signed-in reviewer; company
+            administrators may review any step. Self-approval restrictions still apply.
+          </p>
+        }
         <form class="approval-add-step" (ngSubmit)="addStep()">
           <label
             >Next reviewer<input
@@ -111,7 +132,12 @@
         </form>
         @if (workflowSubmitted && (!steps.length || !workflowValid())) {
           <p class="field-error" role="alert">
-            Add at least one step and give every reviewer a name. Escalation must be 1–30 days.
+            {{
+              isPayrollWorkflow()
+                ? 'Select a role for every required step: two for overtime and invoices, one for timesheets and pay runs.'
+                : 'Add at least one step and give every reviewer a name.'
+            }}
+            Escalation must be 1–30 days.
           </p>
         }
       } @else {

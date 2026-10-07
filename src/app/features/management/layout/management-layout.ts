@@ -54,6 +54,13 @@ import { ManagementStore } from '../shared/management.store';
           >{{ item.label }}</a
         >
       }
+      @if (store.company()?.modules.includes('Finance')) {
+        <p class="nav-label">FINANCE</p>
+        <a routerLink="/manage/payroll" routerLinkActive="active" (click)="menuOpen.set(false)"
+          ><span class="material-symbols-outlined" aria-hidden="true">payments</span>Payroll &
+          payments</a
+        >
+      }
       <div class="sidebar-bottom">
         <span class="demo-label"><span></span> Demo workspace</span
         ><a
