@@ -1,3 +1,4 @@
+import { qualityDefaults } from '../../quality/quality.models';
 import { PAYROLL_ACTIONS, payrollDefaults, PayrollAction } from '../../payroll/payroll.models';
 import { ROTA_ACTIONS, rotaDefaults, RotaAction } from '../../rota/rota.models';
 import { ActivatedRoute } from '@angular/router';
@@ -29,6 +30,7 @@ export class UsersAccess {
     'Registered Manager',
     'Care Coordinator',
     'Field Supervisor',
+    'Quality Assurance',
     'Care Worker',
     'HR Officer',
     'Training Manager',
@@ -41,6 +43,7 @@ export class UsersAccess {
     'Registered Manager': 'Care operations, service oversight and team leadership',
     'Care Coordinator': 'Day-to-day scheduling and care coordination',
     'Field Supervisor': 'Care visits, staff supervision and field oversight',
+    'Quality Assurance': 'Quality assessments, service reviews and corrective actions',
     'Care Worker': 'Care delivery and assigned person-centred records',
     'HR Officer': 'Recruitment, staff records and employment processes',
     'Training Manager': 'Learning, development and training records',
@@ -97,13 +100,10 @@ export class UsersAccess {
       MODULES.map((m) => [
         m,
         [
-          ...(this.store.data().permissions[this.role + ':' + m] ?? [
-            true,
-            true,
-            true,
-            false,
-            true,
-          ]),
+          ...(this.store.data().permissions[this.role + ':' + m] ??
+            (m === 'Quality & compliance'
+              ? qualityDefaults(this.role)
+              : [true, true, true, false, true])),
         ],
       ]),
     );
