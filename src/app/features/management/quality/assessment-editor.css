@@ -1,0 +1,226 @@
+.assessment-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
+}
+.assessment-side {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.assessment-side h2 {
+  margin-top: 12px;
+}
+.assessment-side .button {
+  display: flex;
+  width: 100%;
+  margin-top: 12px;
+}
+.assessment-side .text-link {
+  margin-top: 8px;
+}
+.assessment-steps {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--color-line);
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+}
+.assessment-steps button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 0;
+  background: var(--color-cloud);
+  border-radius: 7px;
+  padding: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+.assessment-steps button span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  background: #e5e7eb;
+  flex-shrink: 0;
+}
+.assessment-steps button.active {
+  background: var(--color-teal-50);
+  color: #087f76;
+}
+.assessment-steps button.active span {
+  background: #087f76;
+  color: white;
+}
+.assessment-main > h2 {
+  margin-bottom: 12px;
+}
+.assessment-main .quality-hint {
+  margin: 8px 0 16px;
+}
+.assessment-questions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.question-text {
+  grid-column: 1/-1;
+}
+.quality-upload {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px dashed #8ccfc8;
+  padding: 24px 12px;
+  border-radius: 8px;
+  background: var(--color-cloud);
+  font-size: 12px;
+  text-align: center;
+}
+.quality-upload > .material-symbols-outlined {
+  font-size: 36px;
+  color: #087f76;
+}
+.quality-upload input {
+  width: 100%;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.evidence-item {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+.evidence-item > div:first-of-type {
+  flex: 1;
+  min-width: 0;
+}
+.evidence-item strong {
+  display: block;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.evidence-item small {
+  display: block;
+  font-size: 11px;
+  color: var(--color-slate);
+  margin: 4px 0 12px;
+}
+.evidence-actions {
+  display: flex;
+}
+.assessment-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px;
+  background: var(--color-cloud);
+  border-radius: 8px;
+}
+.assessment-summary dt {
+  color: var(--color-slate);
+  font-size: 11px;
+}
+.assessment-summary dd {
+  color: var(--color-navy);
+  font-size: 13px;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+.assessment-review-block {
+  margin-top: 16px;
+}
+.assessment-review-block h3 {
+  margin-bottom: 8px;
+}
+.assessment-review-block p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.assessment-review-block .button {
+  margin-top: 12px;
+}
+.assessment-answer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-line);
+  font-size: 12px;
+}
+.assessment-answer strong {
+  font-weight: 500;
+}
+.assessment-answer span {
+  text-align: right;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 60%;
+}
+.quality-signature {
+  background: var(--color-teal-50);
+  border: 1px solid #c9e8e4;
+  padding: 16px;
+  border-radius: 8px;
+  margin: 16px 0;
+}
+.quality-signature p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 8px 0 16px;
+}
+.quality-checkbox {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  line-height: 1.6;
+  padding: 12px 0;
+  min-height: 44px;
+}
+@media (max-width: 1279px) {
+  .assessment-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .assessment-side {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 767px) {
+  .assessment-side,
+  .assessment-questions {
+    grid-template-columns: 1fr;
+  }
+  .assessment-steps {
+    flex-wrap: wrap;
+  }
+  .assessment-steps button {
+    flex: 1 1 28%;
+    font-size: 11px;
+  }
+  .evidence-actions {
+    flex-direction: column;
+  }
+  .evidence-item {
+    gap: 8px;
+  }
+  .assessment-answer {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .assessment-answer span {
+    max-width: 100%;
+    text-align: left;
+  }
+}

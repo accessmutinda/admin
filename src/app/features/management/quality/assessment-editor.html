@@ -1,0 +1,389 @@
+<a class="text-link" routerLink="/manage/quality" [queryParams]="{ tab: 'Assessments' }"
+  ><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to
+  assessments</a
+>
+@if (!service.can('view')) {
+  <cv-access-required
+    feature="Quality & QA"
+    module="Quality & compliance"
+    viewPermission="View"
+    permissionsTitle="Quality & compliance"
+  />
+} @else if (!found) {
+  <section class="panel empty-state">
+    <h1>Assessment not found</h1>
+    <p>This record is unavailable in the current workspace. Choose a form from the library.</p>
+    <a class="button" routerLink="/manage/quality" [queryParams]="{ tab: 'Assessment library' }"
+      >Assessment library</a
+    >
+  </section>
+} @else {
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">{{ template?.category }}</p>
+      <h1>{{ template?.title }}</h1>
+      <p>{{ template?.description }}</p>
+    </div>
+    <span class="badge" [class.success]="record.status === 'Signed off'">{{ record.status }}</span>
+  </div>
+  @if (current() && current()!.revision !== record.revision) {
+    <div class="quality-notice" role="alert">
+      This record changed in another tab. Reload the saved version before continuing.<button
+        class="button"
+        (click)="reload()"
+      >
+        Reload saved record
+      </button>
+    </div>
+  }
+  <div class="assessment-layout">
+    <section class="panel quality-panel assessment-main">
+      <nav class="assessment-steps" aria-label="Assessment steps">
+        @for (s of steps; track s) {
+          <button
+            [class.active]="step() === $index"
+            [attr.aria-current]="step() === $index ? 'step' : null"
+            (click)="step.set($index); error.set('')"
+          >
+            <span>{{ $index + 1 }}</span
+            >{{ s }}
+          </button>
+        }
+      </nav>
+      <h2>{{ steps[step()] }}</h2>
+      @if (step() === 0) {
+        <p class="quality-hint">
+          Choose an existing record and describe the purpose of this assessment. Fields are required
+          unless labelled optional.
+        </p>
+        <fieldset class="quality-fieldset" [disabled]="!canEdit()">
+          <div class="form-grid">
+            <label
+              >{{ subjectLabel()
+              }}<mat-select
+                cvSelect
+                [(ngModel)]="record.subjectId"
+                [disabled]="!canEdit()"
+                [aria-label]="subjectLabel()"
+              >
+                @for (s of service.subjects(templateId); track s.id) {
+                  <mat-option [value]="s.id">{{ s.name }}</mat-option>
+                }
+              </mat-select></label
+            ><label
+              >Assessor<mat-select
+                cvSelect
+                [(ngModel)]="record.assessorId"
+                [disabled]="!canEdit()"
+                aria-label="Assessor"
+              >
+                @for (m of assessors(); track m.id) {
+                  <mat-option [value]="m.id">{{ m.name }}</mat-option>
+                }
+              </mat-select></label
+            ><label>Assessment date<input type="date" [(ngModel)]="record.date" /></label
+            ><label
+              >Next review date (optional)<input
+                type="date"
+                [(ngModel)]="record.reviewDate"
+                [min]="record.date" /></label
+            ><label class="full-width"
+              >Assessment context<textarea
+                [(ngModel)]="record.context"
+                rows="3"
+                placeholder="Purpose, location and people involved"
+              ></textarea>
+            </label>
+          </div>
+        </fieldset>
+        @if (!service.subjects(templateId).length) {
+          <div class="quality-notice">
+            {{
+              template?.subject === 'client'
+                ? 'Add a service user in Client files before starting this assessment.'
+                : 'Add a hired care worker in the staff directory before starting this assessment.'
+            }}<a
+              class="text-link"
+              [routerLink]="template?.subject === 'client' ? '/manage/clients' : '/manage/staff'"
+              >{{
+                template?.subject === 'client' ? 'Open client files' : 'Open staff directory'
+              }}</a
+            >
+          </div>
+        }
+      }
+      @if (step() === 1) {
+        <p class="quality-hint">
+          Record what you assessed. Conclusions are entered by the assessor and are specific to this
+          record.
+        </p>
+        <fieldset class="quality-fieldset" [disabled]="!canEdit()">
+          <div class="assessment-questions">
+            @for (f of template?.fields; track f.id) {
+              <label [class.question-text]="!f.options"
+                >{{ f.label }}
+                @if (f.options) {
+                  <mat-select
+                    cvSelect
+                    [(ngModel)]="record.answers[f.id]"
+                    [disabled]="!canEdit()"
+                    [aria-label]="f.label"
+                    ><mat-option value="">Choose an answer</mat-option>
+                    @for (o of f.options; track o) {
+                      <mat-option [value]="o">{{ o }}</mat-option>
+                    }
+                  </mat-select>
+                } @else {
+                  <textarea [(ngModel)]="record.answers[f.id]" rows="3"></textarea>
+                }
+              </label>
+            }
+          </div>
+        </fieldset>
+      }
+      @if (step() === 2) {
+        <p class="quality-hint">
+          Explain the outcome and what happens next. Record “No further action” when appropriate.
+        </p>
+        <fieldset class="quality-fieldset" [disabled]="!canEdit()">
+          <div class="form-grid">
+            <label class="full-width"
+              >Assessment outcome<textarea [(ngModel)]="record.outcome" rows="4"></textarea></label
+            ><label class="full-width"
+              >Recommendations and follow-up<textarea
+                [(ngModel)]="record.recommendations"
+                rows="4"
+              ></textarea>
+            </label>
+          </div>
+        </fieldset>
+      }
+      @if (step() === 3) {
+        <p class="quality-hint">
+          Optional supporting photos and documents. Use sample files in this device demo.
+        </p>
+        @if (canEdit()) {
+          <label class="quality-upload"
+            ><span class="material-symbols-outlined" aria-hidden="true">cloud_upload</span
+            ><strong>Attach evidence</strong
+            ><span>JPG, PNG or PDF · Up to 5 files · 500 KB each</span
+            ><input
+              type="file"
+              accept="image/jpeg,image/png,application/pdf"
+              multiple
+              [disabled]="busy()"
+              (change)="attach($event)"
+              aria-label="Attach evidence files"
+          /></label>
+        }
+        @if (busy()) {
+          <p role="status" class="quality-hint">Reading evidence files…</p>
+        }
+        <div class="quality-evidence">
+          @for (e of record.evidence; track e.id) {
+            <article class="evidence-item">
+              <span class="quality-icon" data-tone="blue"
+                ><span class="material-symbols-outlined" aria-hidden="true">{{
+                  e.type === 'application/pdf' ? 'picture_as_pdf' : 'image'
+                }}</span></span
+              >
+              <div>
+                <strong>{{ e.name }}</strong
+                ><small>{{ (e.size / 1000).toFixed(1) }} KB</small
+                ><label
+                  >Evidence description (optional)<input
+                    [(ngModel)]="e.caption"
+                    [disabled]="!canEdit()"
+                /></label>
+              </div>
+              <div class="evidence-actions">
+                @if (service.can('export')) {
+                  <button
+                    class="icon-button"
+                    [attr.aria-label]="'Download ' + e.name"
+                    (click)="downloadEvidence(e)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">download</span>
+                  </button>
+                }
+                @if (canEdit()) {
+                  <button
+                    class="icon-button"
+                    [attr.aria-label]="'Remove ' + e.name"
+                    (click)="removeEvidence(e.id)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                  </button>
+                }
+              </div>
+            </article>
+          }
+        </div>
+        @if (!record.evidence.length) {
+          <p class="quality-hint">
+            No evidence attached. Evidence is optional; your assessment notes remain part of the
+            record.
+          </p>
+        }
+      }
+      @if (step() === 4) {
+        <p class="quality-hint">
+          Check the complete record before submitting. Submitted records are locked until reopened
+          with a reason.
+        </p>
+        <dl class="assessment-summary">
+          <div>
+            <dt>{{ subjectLabel() }}</dt>
+            <dd>{{ subjectName() }}</dd>
+          </div>
+          <div>
+            <dt>Assessor</dt>
+            <dd>{{ assessorName() }}</dd>
+          </div>
+          <div>
+            <dt>Date</dt>
+            <dd>{{ record.date | date: 'd MMM y' }}</dd>
+          </div>
+          <div>
+            <dt>Next review</dt>
+            <dd>{{ record.reviewDate ? (record.reviewDate | date: 'd MMM y') : 'Not set' }}</dd>
+          </div>
+        </dl>
+        <div class="assessment-review-block">
+          <h3>Context</h3>
+          <p>{{ record.context || 'Not recorded' }}</p>
+        </div>
+        <div class="assessment-review-block">
+          <h3>Assessment answers</h3>
+          @for (f of template?.fields; track f.id) {
+            <div class="assessment-answer">
+              <strong>{{ f.label }}</strong
+              ><span>{{ record.answers[f.id] || 'Not answered' }}</span>
+            </div>
+          }
+        </div>
+        <div class="assessment-review-block">
+          <h3>Outcome</h3>
+          <p>{{ record.outcome || 'Not recorded' }}</p>
+          <h3>Recommendations and follow-up</h3>
+          <p>{{ record.recommendations || 'Not recorded' }}</p>
+        </div>
+        <p class="quality-hint">{{ record.evidence.length }} evidence files attached.</p>
+        @if (record.status === 'Submitted' && service.can('edit')) {
+          <section class="quality-signature">
+            <h3>Reviewer sign-off</h3>
+            <p>
+              Type your account name: <strong>{{ service.auth.currentUser()?.name }}</strong
+              >. Your name, role and time will be saved with this declaration.
+            </p>
+            <label>Reviewer name<input [(ngModel)]="signatureName" autocomplete="off" /></label
+            ><label class="quality-checkbox"
+              ><input type="checkbox" [(ngModel)]="declaration" />I have reviewed this assessment
+              and confirm the recorded outcome and follow-up.</label
+            ><button class="button primary" (click)="signOff()">Sign off assessment</button>
+          </section>
+        }
+        @if (record.signature) {
+          <section class="quality-signature">
+            <span class="badge success">Signed off</span>
+            <h3>{{ record.signature.name }}</h3>
+            <p>
+              {{ record.signature.role }} ·
+              {{ timestamp(record.signature.at) }}
+            </p>
+            <p>The reviewer confirmed the recorded outcome and follow-up.</p>
+          </section>
+        }
+        @if (['Submitted', 'Signed off'].includes(record.status) && service.can('edit')) {
+          <div class="assessment-review-block">
+            <label
+              >Reason for reopening<textarea [(ngModel)]="reopenReason" rows="2"></textarea></label
+            ><button class="button" (click)="reopen()">Reopen assessment</button>
+          </div>
+        }
+        @if (current() && service.can('export')) {
+          <button class="button" (click)="exportAssessment()">
+            <span class="material-symbols-outlined" aria-hidden="true">download</span>Download saved
+            assessment
+          </button>
+        }
+      }
+      @if (error()) {
+        <p class="quality-error" role="alert">{{ error() }}</p>
+      }
+      <div class="assessment-navigation">
+        @if (step() > 0) {
+          <button class="button" (click)="step.set(step() - 1)">Back</button>
+        }
+        <span></span>
+        @if (step() < 4) {
+          <button class="button primary" (click)="next()">
+            Next<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          </button>
+        } @else if (canEdit()) {
+          <button class="button primary" [disabled]="busy()" (click)="save('submit')">
+            Submit for review
+          </button>
+        }
+      </div>
+    </section>
+    <aside class="assessment-side">
+      <section class="panel quality-panel">
+        <span class="quality-icon" [attr.data-tone]="template?.tone"
+          ><span class="material-symbols-outlined" aria-hidden="true">{{
+            template?.icon
+          }}</span></span
+        >
+        <h2>Assessment record</h2>
+        <p class="quality-hint">
+          {{ record.revision ? 'Saved version ' + record.revision : 'New record · not saved yet' }}
+        </p>
+        @if (canEdit()) {
+          <button class="button primary" [disabled]="busy()" (click)="save('draft')">
+            Save draft</button
+          ><button class="button" [disabled]="busy()" (click)="save('schedule')">
+            Schedule review</button
+          ><button class="text-link" [disabled]="busy()" (click)="discard()">
+            Discard unsaved changes
+          </button>
+        } @else {
+          <p class="quality-hint">
+            {{
+              record.status === 'Signed off'
+                ? 'This record has been signed off.'
+                : 'Review the saved record and its history.'
+            }}
+          </p>
+        }
+        <a
+          class="text-link"
+          routerLink="/manage/quality"
+          [queryParams]="{ tab: 'Corrective actions' }"
+          >Open corrective actions<span class="material-symbols-outlined" aria-hidden="true"
+            >arrow_forward</span
+          ></a
+        >
+      </section>
+      <section class="panel quality-panel">
+        <h2>Record history</h2>
+        @for (e of record.audit.slice().reverse(); track e.id) {
+          <div class="quality-audit">
+            <strong>{{ e.action }}</strong>
+            @if (e.detail) {
+              <p>{{ e.detail }}</p>
+            }
+            <small>{{ e.actor }} · {{ timestamp(e.at) }}</small>
+          </div>
+        }
+        @if (!record.audit.length) {
+          <p class="quality-hint">History begins when you save this assessment.</p>
+        }
+      </section>
+    </aside>
+  </div>
+  <p class="quality-demo">
+    Device demo · Use sample information. Evidence and typed sign-off are stored in this browser.
+    This is a recorded acknowledgement; verified external signing and shared storage require
+    connected services.
+  </p>
+}

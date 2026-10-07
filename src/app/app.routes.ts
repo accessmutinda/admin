@@ -201,6 +201,30 @@ export const routes: Routes = [
         loadComponent: () => import('./features/management/rota/rota').then((m) => m.Rota),
       },
       {
+        path: 'supervisor',
+        data: { module: 'Quality & compliance', supervisor: true },
+        title: 'Supervisor dashboard · CareVerity',
+        loadComponent: () => import('./features/management/quality/quality').then((m) => m.Quality),
+      },
+      {
+        path: 'quality',
+        data: { module: 'Quality & compliance' },
+        title: 'Quality & QA · CareVerity',
+        loadComponent: () => import('./features/management/quality/quality').then((m) => m.Quality),
+      },
+      ...['new/:type', 'assessments/:id'].map((path) => ({
+        path: 'quality/' + path,
+        data: { module: 'Quality & compliance' },
+        title: 'Quality assessment · CareVerity',
+        loadComponent: () =>
+          import('./features/management/quality/assessment-editor').then((m) => m.AssessmentEditor),
+        canDeactivate: [
+          (component: import('./features/management/quality/assessment-editor').AssessmentEditor) =>
+            !component.isDirty() ||
+            window.confirm('Leave this assessment and discard unsaved changes?'),
+        ],
+      })),
+      {
         path: 'payroll',
         data: { module: 'Finance' },
         title: 'Payroll & payments · CareVerity',

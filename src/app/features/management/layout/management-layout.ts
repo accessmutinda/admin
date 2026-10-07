@@ -72,6 +72,16 @@ import { ManagementStore } from '../shared/management.store';
           board</a
         >
       }
+      @if (store.company()?.modules.includes('Quality & compliance')) {
+        <p class="nav-label">SUPERVISION & QUALITY</p>
+        <a routerLink="/manage/supervisor" routerLinkActive="active" (click)="menuOpen.set(false)"
+          ><span class="material-symbols-outlined" aria-hidden="true">supervisor_account</span
+          >Supervisor dashboard</a
+        >
+        <a routerLink="/manage/quality" routerLinkActive="active" (click)="menuOpen.set(false)"
+          ><span class="material-symbols-outlined" aria-hidden="true">verified</span>Quality & QA</a
+        >
+      }
       @if (store.company()?.modules.includes('Finance')) {
         <p class="nav-label">FINANCE</p>
         <a routerLink="/manage/payroll" routerLinkActive="active" (click)="menuOpen.set(false)"

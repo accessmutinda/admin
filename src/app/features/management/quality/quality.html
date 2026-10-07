@@ -1,0 +1,632 @@
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">SUPERVISION & QUALITY</p>
+    <h1>{{ supervisor ? 'Supervisor dashboard' : 'Quality & QA' }}</h1>
+    <p>Assess care, support your team and follow every improvement through.</p>
+  </div>
+  @if (service.can('create')) {
+    <button class="button primary" (click)="switchTab('Assessment library')">
+      <span class="material-symbols-outlined" aria-hidden="true">add</span>New assessment
+    </button>
+  }
+</div>
+@if (!service.can('view')) {
+  <cv-access-required
+    feature="Quality & QA"
+    module="Quality & compliance"
+    viewPermission="View"
+    permissionsTitle="Quality & compliance"
+  />
+} @else {
+  <div class="metrics four quality-metrics">
+    <button class="metric" data-tone="blue" (click)="switchTab('Assessments')">
+      <div class="metric-label">
+        <span>Assessments to finish</span
+        ><span class="material-symbols-outlined" aria-hidden="true">assignment</span>
+      </div>
+      <strong>{{ openAssessments().length }}</strong
+      ><small>{{ overdueAssessments().length }} overdue</small>
+    </button>
+    <button
+      class="metric"
+      data-tone="purple"
+      (click)="switchTab('Assessment library'); category.set('Quality assurance')"
+    >
+      <div class="metric-label">
+        <span>Spot checks & quality visits</span
+        ><span class="material-symbols-outlined" aria-hidden="true">fact_check</span>
+      </div>
+      <strong>{{ countType('spot') + countType('visit') }}</strong
+      ><small>Recorded in this workspace</small>
+    </button>
+    <button
+      class="metric"
+      data-tone="teal"
+      (click)="switchTab('Assessments'); status.set('Submitted')"
+    >
+      <div class="metric-label">
+        <span>Awaiting sign-off</span
+        ><span class="material-symbols-outlined" aria-hidden="true">draw</span>
+      </div>
+      <strong>{{ pendingSignOff().length }}</strong
+      ><small>Submitted for review</small>
+    </button>
+    <button class="metric" data-tone="amber" (click)="switchTab('Corrective actions')">
+      <div class="metric-label">
+        <span>Open quality actions</span
+        ><span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
+      </div>
+      <strong>{{ openActions().length }}</strong
+      ><small>{{ overdueActions().length }} overdue</small>
+    </button>
+  </div>
+  <nav class="tabs quality-tabs" aria-label="Quality workspace views">
+    @for (t of tabs; track t) {
+      <button
+        [class.active]="tab() === t"
+        [attr.aria-current]="tab() === t ? 'page' : null"
+        (click)="switchTab(t)"
+      >
+        {{ t }}
+      </button>
+    }
+  </nav>
+  @if (tab() === 'Overview') {
+    <div class="quality-overview">
+      <section class="panel quality-panel">
+        <div class="quality-heading">
+          <div>
+            <h2>My assessments</h2>
+            <p>Your next scheduled reviews and unfinished records.</p>
+          </div>
+          <button class="text-link" (click)="switchTab('Assessments')">
+            View all<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          </button>
+        </div>
+        @for (a of myTasks(); track a.id) {
+          <a class="quality-task" [routerLink]="['/manage/quality/assessments', a.id]"
+            ><span class="quality-icon" [attr.data-tone]="template(a.templateId)?.tone"
+              ><span class="material-symbols-outlined" aria-hidden="true">{{
+                template(a.templateId)?.icon
+              }}</span></span
+            ><span
+              ><strong>{{ template(a.templateId)?.title }}</strong
+              ><small
+                >{{ a.subjectName || 'Add assessment context' }} ·
+                {{ a.date | date: 'd MMM y' }}</small
+              ></span
+            ><span class="badge" [class.warning]="isOverdue(a)">{{
+              isOverdue(a) ? 'Overdue' : a.status
+            }}</span></a
+          >
+        }
+        @if (!myTasks().length) {
+          <div class="empty-state">
+            <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
+            <h3>No assessments assigned to you</h3>
+            <p>Start from the library or assign an assessor when scheduling a review.</p>
+            <button class="button" (click)="switchTab('Assessment library')">
+              Browse assessments
+            </button>
+          </div>
+        }
+      </section>
+      <section class="panel quality-panel">
+        <div class="quality-heading">
+          <div>
+            <h2>Recent activity</h2>
+            <p>Saved assessment and action history.</p>
+          </div>
+          <span class="quality-icon" data-tone="teal"
+            ><span class="material-symbols-outlined" aria-hidden="true">history</span></span
+          >
+        </div>
+        @for (event of activity(); track event.auditId) {
+          <button class="quality-task activity-item" (click)="openEvent(event)">
+            <span class="activity-dot" aria-hidden="true"></span
+            ><span
+              ><strong>{{ event.action }}</strong
+              ><small>{{ event.title }} · {{ event.actor }}</small
+              ><small>{{ timestamp(event.at) }}</small></span
+            ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+          </button>
+        }
+        @if (!activity().length) {
+          <div class="empty-state">
+            <span class="material-symbols-outlined" aria-hidden="true">history</span>
+            <h3>Your activity will appear here</h3>
+            <p>Saved drafts, submissions, sign-offs and action updates create an audit record.</p>
+          </div>
+        }
+      </section>
+      <section class="panel quality-panel">
+        <div class="quality-heading">
+          <div>
+            <h2>People & development</h2>
+            <p>Continue the existing staff supervision workflow.</p>
+          </div>
+          <span class="quality-icon" data-tone="purple"
+            ><span class="material-symbols-outlined" aria-hidden="true">groups</span></span
+          >
+        </div>
+        <div class="quality-summary">
+          <strong>{{ store.data().reviews.length }}</strong
+          ><span>supervision and appraisal records</span>
+        </div>
+        <a class="button" routerLink="/manage/reviews"
+          >Supervision & appraisals<span class="material-symbols-outlined" aria-hidden="true"
+            >arrow_forward</span
+          ></a
+        >
+      </section>
+      <section class="panel quality-panel">
+        <div class="quality-heading">
+          <div>
+            <h2>Follow up improvements</h2>
+            <p>Assign an owner, set a due date and record the resolution.</p>
+          </div>
+          <span class="quality-icon" data-tone="amber"
+            ><span class="material-symbols-outlined" aria-hidden="true">rule</span></span
+          >
+        </div>
+        <div class="quality-summary">
+          <strong>{{ overdueActions().length }}</strong
+          ><span>overdue corrective actions</span>
+        </div>
+        <button class="button" (click)="switchTab('Corrective actions')">
+          Open action tracker<span class="material-symbols-outlined" aria-hidden="true"
+            >arrow_forward</span
+          >
+        </button>
+      </section>
+    </div>
+  }
+  @if (tab() === 'Assessment library') {
+    <section class="panel quality-panel">
+      <div class="quality-heading">
+        <div>
+          <h2>Assessment library</h2>
+          <p>Choose a form, then record the person, assessment and follow-up.</p>
+        </div>
+        <span class="badge">{{ filteredTemplates().length }} forms</span>
+      </div>
+      <div class="quality-filters">
+        <label
+          >Search forms<input
+            type="search"
+            [ngModel]="search()"
+            (ngModelChange)="search.set($event)"
+            placeholder="Find an assessment" /></label
+        ><label
+          >Category<mat-select
+            cvSelect
+            [ngModel]="category()"
+            (ngModelChange)="category.set($event)"
+            aria-label="Assessment category"
+          >
+            @for (c of categories; track c) {
+              <mat-option [value]="c">{{ c }}</mat-option>
+            }
+          </mat-select></label
+        >
+        @if (search() || category() !== 'All') {
+          <button class="button" (click)="search.set(''); category.set('All')">
+            Clear filters
+          </button>
+        }
+      </div>
+      <div class="quality-library">
+        @for (t of filteredTemplates(); track t.id) {
+          <article class="assessment-card" [attr.data-tone]="t.tone">
+            <span class="quality-icon" [attr.data-tone]="t.tone"
+              ><span class="material-symbols-outlined" aria-hidden="true">{{ t.icon }}</span></span
+            >
+            <div>
+              <small>{{ t.category }}</small>
+              <h3>{{ t.title }}</h3>
+              <p>{{ t.description }}</p>
+              <span class="muted">{{ countType(t.id) }} saved records</span>
+            </div>
+            @if (service.can('create')) {
+              <a
+                class="button"
+                [routerLink]="['/manage/quality/new', t.id]"
+                [attr.aria-label]="'Start ' + t.title"
+                >Start<span class="material-symbols-outlined" aria-hidden="true"
+                  >arrow_forward</span
+                ></a
+              >
+            }
+          </article>
+        }
+      </div>
+      @if (!filteredTemplates().length) {
+        <div class="empty-state">
+          <h3>No matching forms</h3>
+          <p>Try another search or clear the category filter.</p>
+        </div>
+      }
+    </section>
+  }
+  @if (tab() === 'Assessments' || tab() === 'Corrective actions') {
+    <section class="panel quality-register">
+      <div class="quality-panel">
+        <div class="quality-heading">
+          <div>
+            <h2>{{ tab() }}</h2>
+            <p>
+              {{
+                tab() === 'Assessments'
+                  ? 'Resume drafts, review submissions and read signed records.'
+                  : 'Track improvements from observations, visits and reviews.'
+              }}
+            </p>
+          </div>
+          @if (tab() === 'Corrective actions' && service.can('create')) {
+            <button class="button primary" (click)="editAction()">
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>Add action
+            </button>
+          }
+        </div>
+        <div class="quality-filters">
+          <label
+            >Search records<input
+              type="search"
+              [ngModel]="search()"
+              (ngModelChange)="search.set($event)"
+              placeholder="Search people, records or dates" /></label
+          ><label
+            >Status<mat-select
+              cvSelect
+              [ngModel]="status()"
+              (ngModelChange)="status.set($event)"
+              aria-label="Record status"
+            >
+              @for (
+                s of tab() === 'Assessments'
+                  ? ['All', 'Draft', 'Scheduled', 'Submitted', 'Signed off', 'Overdue']
+                  : ['All', 'Open', 'In progress', 'Completed', 'Overdue'];
+                track s
+              ) {
+                <mat-option [value]="s">{{ s }}</mat-option>
+              }
+            </mat-select></label
+          >
+          @if (search() || status() !== 'All') {
+            <button class="button" (click)="search.set(''); status.set('All')">
+              Clear filters
+            </button>
+          }
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="quality-table">
+          <caption class="quality-sr-only">
+            {{
+              tab()
+            }}
+            register
+          </caption>
+          <thead>
+            <tr>
+              <th>{{ tab() === 'Assessments' ? 'Assessment / person' : 'Action / source' }}</th>
+              <th>{{ tab() === 'Assessments' ? 'Assessor' : 'Owner' }}</th>
+              <th>{{ tab() === 'Assessments' ? 'Assessment date' : 'Due date' }}</th>
+              <th>Status</th>
+              <th>Review</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (tab() === 'Assessments') {
+              @for (a of assessments(); track a.id) {
+                <tr>
+                  <td data-label="Assessment">
+                    <strong>{{ template(a.templateId)?.title }}</strong
+                    ><small>{{ a.subjectName || 'Context needed' }}</small>
+                  </td>
+                  <td data-label="Assessor">{{ a.assessorName || 'Not assigned' }}</td>
+                  <td data-label="Date">{{ a.date | date: 'd MMM y' }}</td>
+                  <td data-label="Status">
+                    <span
+                      class="badge"
+                      [class.success]="a.status === 'Signed off'"
+                      [class.warning]="isOverdue(a)"
+                      >{{ a.status }}</span
+                    >
+                    @if (isOverdue(a)) {
+                      <small class="quality-alert">Overdue</small>
+                    }
+                  </td>
+                  <td data-label="Review">
+                    <a class="button" [routerLink]="['/manage/quality/assessments', a.id]">{{
+                      a.status === 'Draft' || a.status === 'Scheduled' ? 'Continue' : 'Review'
+                    }}</a>
+                  </td>
+                </tr>
+              }
+            } @else {
+              @for (a of actions(); track a.id) {
+                <tr>
+                  <td data-label="Action">
+                    <strong>{{ a.title }}</strong
+                    ><small
+                      >{{ a.assessmentId ? 'Linked assessment' : 'General quality action' }} ·
+                      {{ a.priority }} priority</small
+                    >
+                  </td>
+                  <td data-label="Owner">{{ owner(a.ownerId) }}</td>
+                  <td data-label="Due">{{ a.due | date: 'd MMM y' }}</td>
+                  <td data-label="Status">
+                    <span
+                      class="badge"
+                      [class.success]="a.status === 'Completed'"
+                      [class.warning]="actionLate(a)"
+                      >{{ a.status }}</span
+                    >
+                    @if (actionLate(a)) {
+                      <small class="quality-alert">Overdue</small>
+                    }
+                  </td>
+                  <td data-label="Review">
+                    <button class="button" (click)="editAction(a)">Review</button>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (tab() === 'Assessments' ? !assessments().length : !actions().length) {
+        <div class="empty-state">
+          <span class="material-symbols-outlined" aria-hidden="true">{{
+            tab() === 'Assessments' ? 'assignment' : 'task_alt'
+          }}</span>
+          <h3>{{ search() || status() !== 'All' ? 'No matching records' : 'No records yet' }}</h3>
+          <p>
+            {{
+              search() || status() !== 'All'
+                ? 'Clear the filters to see all saved records.'
+                : 'Start an assessment or add a quality action to begin.'
+            }}
+          </p>
+        </div>
+      }
+      <div class="quality-register-footer" role="status">
+        {{ tab() === 'Assessments' ? assessments().length : actions().length }} matching records
+      </div>
+    </section>
+  }
+  @if (tab() === 'Review schedule') {
+    <section class="panel quality-panel">
+      <div class="quality-heading">
+        <div>
+          <h2>Review schedule</h2>
+          <p>Assessment dates, follow-up reviews, open actions and staff supervision.</p>
+        </div>
+        <div class="quality-month">
+          <button class="icon-button" aria-label="Previous month" (click)="moveMonth(-1)">
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span></button
+          ><label
+            ><span class="quality-sr-only">Schedule month</span
+            ><input
+              type="month"
+              [ngModel]="month()"
+              (ngModelChange)="$event && month.set($event)" /></label
+          ><button class="icon-button" aria-label="Next month" (click)="moveMonth(1)">
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button
+          ><button class="button" (click)="month.set(service.today().slice(0, 7))">Today</button>
+        </div>
+      </div>
+      <div class="quality-calendar" aria-label="Monthly review calendar">
+        @for (d of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; track d) {
+          <strong class="calendar-heading">{{ d }}</strong>
+        }
+        @for (d of days(); track $index) {
+          <div class="calendar-day" [class.today]="d?.date === service.today()">
+            @if (d) {
+              <span class="day-number">{{ d.day }}</span>
+              @for (e of events(d.date); track e.kind + e.id + e.title) {
+                <button
+                  class="calendar-event"
+                  [class.action-event]="e.kind === 'action'"
+                  (click)="openEvent(e)"
+                  [attr.aria-label]="e.title + ', ' + e.person + ', ' + e.date"
+                >
+                  {{ e.title }}<small>{{ e.person }}</small>
+                </button>
+              }
+            }
+          </div>
+        }
+      </div>
+      <div class="quality-agenda">
+        <h3>{{ month() + '-01' | date: 'MMMM y' }} · {{ monthEvents().length }} scheduled items</h3>
+        @for (e of monthEvents(); track e.kind + e.id + e.title) {
+          <button class="quality-task" (click)="openEvent(e)">
+            <span class="agenda-date">{{ e.date | date: 'd MMM' }}</span
+            ><span
+              ><strong>{{ e.title }}</strong
+              ><small>{{ e.person }} · {{ e.status }}</small></span
+            ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+          </button>
+        }
+        @if (!monthEvents().length) {
+          <p class="quality-hint">No items this month. Schedule an assessment from the library.</p>
+        }
+      </div>
+    </section>
+  }
+  @if (tab() === 'Reports') {
+    <section class="panel quality-panel">
+      <div class="quality-heading">
+        <div>
+          <h2>Quality reports</h2>
+          <p>Real saved totals, with assessment outcomes and review history.</p>
+        </div>
+        @if (service.can('export')) {
+          <button class="button" (click)="exportReport()">
+            <span class="material-symbols-outlined" aria-hidden="true">download</span>Export quality
+            report
+          </button>
+        }
+      </div>
+      <div class="table-wrap">
+        <table class="quality-table">
+          <thead>
+            <tr>
+              <th>Assessment type</th>
+              <th>Records</th>
+              <th>Submitted</th>
+              <th>Signed off</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of templates; track t.id) {
+              <tr>
+                <td data-label="Type">{{ t.title }}</td>
+                <td data-label="Records">{{ countType(t.id) }}</td>
+                <td data-label="Submitted">{{ countType(t.id, 'Submitted') }}</td>
+                <td data-label="Signed off">{{ countType(t.id, 'Signed off') }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="quality-hint">
+        Downloads include outcomes, action resolutions, sign-off and audit history. Evidence file
+        metadata is included; file contents stay in the saved assessment.
+      </p>
+    </section>
+  }
+  <p class="quality-demo">
+    Device demo · Use sample information. Dates and audit times use UK time. Records and files are
+    saved in this browser; shared routing and external delivery require connected services.
+  </p>
+}
+@if (actionModal() && service.can('view')) {
+  <div class="modal-backdrop" (click)="actionModal.set(false)">
+    <section
+      class="modal panel quality-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="action-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="actionModal.set(false)"
+    >
+      <div class="quality-heading">
+        <h2 id="action-title">
+          {{ action.revision ? 'Review quality action' : 'New quality action' }}
+        </h2>
+        <button class="icon-button" aria-label="Close action" (click)="actionModal.set(false)">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <form (ngSubmit)="saveAction()">
+        <fieldset
+          [disabled]="!service.can(action.revision ? 'edit' : 'create')"
+          class="quality-fieldset"
+        >
+          <div class="form-grid">
+            <label class="full-width"
+              >Action required<textarea
+                name="title"
+                [(ngModel)]="action.title"
+                required
+                rows="2"
+              ></textarea></label
+            ><label
+              >Owner<mat-select
+                cvSelect
+                name="owner"
+                [(ngModel)]="action.ownerId"
+                required
+                aria-label="Action owner"
+                [disabled]="!service.can(action.revision ? 'edit' : 'create')"
+              >
+                @for (m of service.assessors(); track m.id) {
+                  <mat-option [value]="m.id">{{ m.name }}</mat-option>
+                }
+              </mat-select></label
+            ><label
+              >Due date<input name="due" type="date" [(ngModel)]="action.due" required /></label
+            ><label
+              >Priority<mat-select
+                cvSelect
+                name="priority"
+                [(ngModel)]="action.priority"
+                aria-label="Action priority"
+                [disabled]="!service.can(action.revision ? 'edit' : 'create')"
+              >
+                @for (s of ['Standard', 'High']; track s) {
+                  <mat-option [value]="s">{{ s }}</mat-option>
+                }
+              </mat-select></label
+            ><label
+              >Status<mat-select
+                cvSelect
+                name="status"
+                [(ngModel)]="action.status"
+                aria-label="Action status"
+                [disabled]="!service.can(action.revision ? 'edit' : 'create')"
+              >
+                @for (s of ['Open', 'In progress', 'Completed']; track s) {
+                  <mat-option [value]="s">{{ s }}</mat-option>
+                }
+              </mat-select></label
+            ><label class="full-width"
+              >Source assessment (optional)<mat-select
+                cvSelect
+                name="source"
+                [(ngModel)]="action.assessmentId"
+                aria-label="Source assessment"
+                [disabled]="!service.can(action.revision ? 'edit' : 'create')"
+                ><mat-option value="">General quality action</mat-option>
+                @for (a of service.data().assessments; track a.id) {
+                  <mat-option [value]="a.id"
+                    >{{ template(a.templateId)?.title }} · {{ a.subjectName || 'Draft' }} ·
+                    {{ a.date }}</mat-option
+                  >
+                }
+              </mat-select></label
+            ><label class="full-width"
+              >Resolution / progress note{{
+                action.status === 'Completed' ? ' (required)' : ' (optional)'
+              }}<textarea
+                name="resolution"
+                [(ngModel)]="action.resolution"
+                [required]="action.status === 'Completed'"
+                rows="3"
+              ></textarea>
+            </label>
+          </div>
+        </fieldset>
+        @if (error()) {
+          <p class="quality-error" role="alert">{{ error() }}</p>
+        }
+        <div class="quality-actions">
+          <button type="button" class="button" (click)="actionModal.set(false)">Close</button>
+          @if (service.can(action.revision ? 'edit' : 'create')) {
+            <button type="submit" class="button primary">Save action</button>
+          }
+        </div>
+      </form>
+      @if (action.assessmentId) {
+        <a class="text-link" [routerLink]="['/manage/quality/assessments', action.assessmentId]"
+          >Open source assessment</a
+        >
+      }
+      @if (action.audit.length) {
+        <h3 class="quality-audit-heading">Action history</h3>
+        @for (e of action.audit; track e.id) {
+          <div class="quality-audit">
+            <strong>{{ e.action }}</strong>
+            <p>{{ e.detail }}</p>
+            <small>{{ e.actor }} · {{ timestamp(e.at) }}</small>
+          </div>
+        }
+      }
+    </section>
+  </div>
+}
