@@ -42,7 +42,8 @@ export class Rota {
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   protected readonly today = londonDate();
-  protected readonly clientFiles = !!inject(ActivatedRoute).snapshot.data['clientFiles'];
+  private readonly route = inject(ActivatedRoute);
+  protected readonly clientFiles = !!this.route.snapshot.data['clientFiles'];
   protected readonly riskFlags = RISK_FLAGS;
   protected readonly callTypes = computed(() =>
     Object.keys(this.service.data().ecm?.styles ?? emptyEcm().styles),
@@ -210,6 +211,11 @@ export class Rota {
   );
   constructor() {
     if (this.clientFiles) this.tab.set('Service users');
+    const clientId = this.route.snapshot.queryParamMap.get('client');
+    if (clientId && this.service.data().clients.some((client) => client.id === clientId)) {
+      this.packageClient.set(clientId);
+      this.tab.set('Service users');
+    }
     const timer = setInterval(() => this.clock.set(Date.now()), 60000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }

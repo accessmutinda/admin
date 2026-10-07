@@ -165,13 +165,15 @@ export const routes: Routes = [
         path: 'clients',
         data: { module: 'Care delivery' },
         title: 'Client files · CareVerity',
-        loadComponent: () => import('./features/management/clients/client-files').then((m) => m.ClientFiles),
+        loadComponent: () =>
+          import('./features/management/clients/client-files').then((m) => m.ClientFiles),
       },
       {
         path: 'clients/:id',
         data: { module: 'Care delivery' },
         title: 'Client record · CareVerity',
-        loadComponent: () => import('./features/management/clients/client-files').then((m) => m.ClientFiles),
+        loadComponent: () =>
+          import('./features/management/clients/client-files').then((m) => m.ClientFiles),
       },
       {
         path: 'ecm/workflows',

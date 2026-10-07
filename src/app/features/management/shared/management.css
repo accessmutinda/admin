@@ -1,5 +1,19 @@
 @import '../rota/rota.css';
 
+@media print {
+  .cv-management:has(cv-client-files) .app-sidebar,
+  .cv-management:has(cv-client-files) .app-header,
+  .cv-management:has(cv-client-files) .app-footer {
+    display: none !important;
+  }
+  .cv-management:has(cv-client-files) .app-body {
+    margin-left: 0 !important;
+  }
+  .cv-management:has(cv-client-files) .page-content {
+    padding: 0 !important;
+  }
+}
+
 .cv-management {
   --accent: #087f76;
   --muted: var(--color-slate);
