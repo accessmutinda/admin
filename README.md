@@ -39,6 +39,21 @@ by Git.
 | Password | `CareVerity123!`      |
 | MFA code | `123456`              |
 
+## Client files
+
+Open **Care delivery → Client files** for the searchable service-user directory.
+Open a client record to maintain personal details, contacts, care plans and goals,
+risks, moving and handling, mental capacity, consent, medication, allergies,
+property access, tasks and document references. Changes use explicit Save and
+Discard, persist in the current workspace and retain the existing call packages
+and visits. The overview links to rota allocation and the Live ECM board.
+
+Documents & care summary provides a printable saved care summary for roles with
+export permission; the browser print dialog can save it as PDF. Access codes are
+excluded. Medication is an information register, not a MAR chart. Document entries
+are references, and family sharing is an internal record without a connected portal.
+Use sample information only in this device demo.
+
 ## Live ECM board
 
 Open **Care delivery → Live ECM board**. Published visits appear on their UK
