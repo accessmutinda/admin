@@ -1,0 +1,1067 @@
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">CARE DELIVERY</p>
+    <h1>Rota & shift allocation</h1>
+    <p>Plan client calls, arrange suitable carers and publish your rota.</p>
+  </div>
+  @if (service.can('view')) {
+    <div class="row">
+      <button class="button" (click)="choose('Live board')">
+        <span class="material-symbols-outlined" aria-hidden="true">monitor_heart</span>Live visit
+        board
+      </button>
+      @if (service.can('manage')) {
+        <button class="button primary" (click)="open('allocation')">
+          <span class="material-symbols-outlined" aria-hidden="true">add</span>New allocation
+        </button>
+      }
+    </div>
+  }
+</div>
+@if (!service.can('view')) {
+  <cv-access-required
+    feature="Rota"
+    module="Care delivery"
+    viewPermission="View rota"
+    permissionsTitle="Rota & shifts access"
+  />
+} @else {
+  <div class="metrics four">
+    <button
+      class="metric"
+      data-tone="amber"
+      (click)="choose('Unallocated'); from.set(''); to.set('')"
+    >
+      <span class="metric-icon material-symbols-outlined" aria-hidden="true">person_alert</span
+      ><span>Unallocated visits</span><strong>{{ unallocated().length }}</strong
+      ><small>Visits with missing carer places</small>
+    </button>
+    <button
+      class="metric"
+      data-tone="blue"
+      (click)="choose('Allocations'); stateFilter.set('Draft'); from.set(''); to.set('')"
+    >
+      <span class="metric-icon material-symbols-outlined" aria-hidden="true">edit_calendar</span
+      ><span>Draft visits</span><strong>{{ drafts().length }}</strong
+      ><small>Review before publishing</small>
+    </button>
+    <button class="metric" data-tone="teal" (click)="choose('Service users')">
+      <span class="metric-icon material-symbols-outlined" aria-hidden="true">groups</span
+      ><span>Regular carers</span><strong>{{ regularCarers() }}</strong
+      ><small>Assigned to active call packages</small>
+    </button>
+    <button class="metric" data-tone="green" (click)="choose('Published')">
+      <span class="metric-icon material-symbols-outlined" aria-hidden="true">event_available</span
+      ><span>Published visits</span><strong>{{ published().length }}</strong
+      ><small>Today and future allocations</small>
+    </button>
+  </div>
+  <section class="panel rota-navigation">
+    <nav class="tabs" aria-label="Rota sections">
+      @for (item of tabs; track item) {
+        <button
+          [class.active]="tab() === item"
+          [attr.aria-pressed]="tab() === item"
+          (click)="choose(item)"
+        >
+          {{ item }}
+        </button>
+      }
+    </nav>
+  </section>
+  @if (error() && !modal()) {
+    <p class="rota-error" role="alert">{{ error() }}</p>
+  }
+  @if (tab() === 'Overview') {
+    <section class="panel">
+      <div class="panel-toolbar">
+        <div>
+          <h2>Choose a rota workflow</h2>
+          <p>Start with a service user and their call package.</p>
+        </div>
+        <button class="text-link" (click)="choose('Service users')">Service users & calls</button>
+      </div>
+      <div class="rota-workflows">
+        @for (flow of workflows; track flow.name) {
+          <button
+            class="rota-workflow"
+            [attr.data-tone]="flow.tone"
+            [disabled]="flow.view === 'new' && !service.can('manage')"
+            (click)="choose(flow.view)"
+          >
+            <span class="rota-flow-icon material-symbols-outlined" aria-hidden="true">{{
+              flow.icon
+            }}</span
+            ><span
+              ><strong>{{ flow.name }}</strong
+              ><small>{{ flow.description }}</small></span
+            ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+          </button>
+        }
+      </div>
+    </section>
+    <div class="rota-overview-lower">
+      <section class="panel">
+        <div class="panel-toolbar">
+          <div>
+            <h2>Ready for the next rota</h2>
+            <p>Set up calls, check availability and publish confirmed visits.</p>
+          </div>
+        </div>
+        <div class="panel-body rota-checklist">
+          <button (click)="choose('Service users')">
+            <span class="material-symbols-outlined" aria-hidden="true">person</span
+            ><span
+              ><strong>{{ service.data().clients.length }} service users</strong
+              ><small>{{ service.data().calls.length }} recurring calls configured</small></span
+            ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button
+          ><button (click)="choose('Unallocated')">
+            <span class="material-symbols-outlined" aria-hidden="true">person_alert</span
+            ><span
+              ><strong>{{ unallocated().length }} visits need carers</strong
+              ><small>Fill all places and resolve availability conflicts</small></span
+            ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button
+          ><button (click)="choose('Allocations'); stateFilter.set('Draft')">
+            <span class="material-symbols-outlined" aria-hidden="true">publish</span
+            ><span
+              ><strong>{{ drafts().length }} draft visits</strong
+              ><small>Publish to the rota and expected-visit board</small></span
+            ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+          </button>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-toolbar"><h2>How visits connect</h2></div>
+        <ol class="rota-flow">
+          <li>Service user and recurring calls</li>
+          <li>Draft visits and carer allocation</li>
+          <li>Published rota and expected visits</li>
+          <li>Actual attendance and payroll review</li>
+        </ol>
+      </section>
+    </div>
+  } @else if (tab() === 'Service users') {
+    <div class="rota-package-grid">
+      <section class="panel">
+        <div class="panel-toolbar">
+          <div>
+            <h2>
+              Service users <span class="count">{{ clients().length }}</span>
+            </h2>
+            <p>Care recipients and their recurring call packages.</p>
+          </div>
+          @if (service.can('manage')) {
+            <button class="button primary" (click)="open('client')">
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>Add service user
+            </button>
+          }
+        </div>
+        <div class="panel-body">
+          <label class="search-box"
+            ><span class="material-symbols-outlined" aria-hidden="true">search</span
+            ><input
+              aria-label="Search service users"
+              placeholder="Name, reference or postcode…"
+              [ngModel]="query()"
+              (ngModelChange)="query.set($event)"
+          /></label>
+        </div>
+        <div class="rota-client-list">
+          @for (c of clients(); track c.id) {
+            <div class="rota-client-row" [class.is-selected]="packageClient() === c.id">
+              <button class="rota-client-select" (click)="packageClient.set(c.id)">
+                <span class="avatar">{{ store.initials(c.name) }}</span
+                ><span
+                  ><strong>{{ c.name }}</strong
+                  ><small>{{ c.reference }} · {{ c.postcode }}</small></span
+                ></button
+              ><span class="badge" [class.success]="c.active">{{
+                c.active ? c.priority + ' priority' : 'Inactive'
+              }}</span>
+              @if (service.can('manage')) {
+                <button
+                  class="icon-button"
+                  aria-label="Edit {{ c.name }}"
+                  (click)="open('client', c.id)"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                </button>
+              }
+            </div>
+          } @empty {
+            <div class="rota-empty">
+              <span class="material-symbols-outlined" aria-hidden="true">person_add</span
+              ><strong>Add your first service user</strong>
+              <p>Create their care calls before allocating staff.</p>
+            </div>
+          }
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-toolbar">
+          <div>
+            <h2>{{ packageClient() ? clientName(packageClient()) : 'Call packages' }}</h2>
+            <p>
+              {{
+                packageClient()
+                  ? 'Recurring calls and preferred regular carers.'
+                  : 'Select a service user to manage their calls.'
+              }}
+            </p>
+          </div>
+          @if (packageClient() && service.can('manage')) {
+            <button class="button" (click)="open('call')">
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>Add call
+            </button>
+          }
+        </div>
+        <div class="rota-call-list">
+          @for (c of clientCalls(packageClient()); track c.id) {
+            <article class="rota-call">
+              <div class="rota-call-heading">
+                <strong>{{ c.name }}</strong
+                ><span class="badge">{{ c.active ? c.carers + ' carer(s)' : 'Inactive' }}</span>
+                @if (service.can('manage')) {
+                  <button
+                    class="icon-button"
+                    aria-label="Edit {{ c.name }}"
+                    (click)="open('call', c.id)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                  </button>
+                }
+              </div>
+              <p>{{ c.start }}–{{ c.end }}{{ overnight(c) ? ' (+1 day)' : '' }} · {{ days(c) }}</p>
+              <small
+                >Regular carers: {{ c.regularStaffIds.length ? '' : 'Not yet allocated' }}
+                @for (id of c.regularStaffIds; track id) {
+                  <span>{{ personName(id) }} </span>
+                }
+              </small>
+              @if (c.skills.length) {
+                <small
+                  >Required:
+                  @for (s of c.skills; track s) {
+                    <span>{{ skillName(s) }} </span>
+                  }
+                </small>
+              }
+              <p>{{ c.tasks }}</p>
+            </article>
+          } @empty {
+            <div class="rota-empty">
+              <span class="material-symbols-outlined" aria-hidden="true">schedule</span
+              ><strong>{{ packageClient() ? 'No calls yet' : 'Choose a service user' }}</strong>
+              <p>Set times, weekdays, training requirements and the number of carers.</p>
+            </div>
+          }
+        </div>
+      </section>
+    </div>
+  } @else if (tab() === 'Audit') {
+    <section class="panel">
+      <div class="panel-toolbar">
+        <div>
+          <h2>
+            Rota audit <span class="count">{{ audit().length }}</span>
+          </h2>
+          <p>Saved changes with the responsible administrator and UK time.</p>
+        </div>
+        <label class="search-box"
+          ><span class="material-symbols-outlined" aria-hidden="true">search</span
+          ><input
+            aria-label="Search rota audit"
+            placeholder="Search actions or people…"
+            [ngModel]="query()"
+            (ngModelChange)="query.set($event)"
+        /></label>
+      </div>
+      <ol class="rota-audit">
+        @for (entry of audit(); track entry.id) {
+          <li>
+            <span class="material-symbols-outlined" aria-hidden="true">history</span>
+            <div>
+              <strong>{{ entry.action }}</strong>
+              <p>{{ entry.detail }}</p>
+              <small>{{ entry.user }} · {{ ukStamp(entry.at) }}</small>
+            </div>
+          </li>
+        } @empty {
+          <li><p>No saved rota changes yet.</p></li>
+        }
+      </ol>
+    </section>
+  } @else if (tab() === 'Planning') {
+    <section class="panel">
+      <div class="panel-toolbar">
+        <div>
+          <h2>Monthly planning</h2>
+          <p>Open a day to review visits. Copied visits start as drafts.</p>
+        </div>
+        <div class="row">
+          <label class="rota-month-label"
+            >Month<input
+              type="month"
+              aria-label="Planning month"
+              [ngModel]="month"
+              (ngModelChange)="setMonth($event)"
+          /></label>
+          @if (service.can('manage')) {
+            <button class="button" (click)="open('copy')">
+              <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>Copy
+              week</button
+            ><button class="button primary" (click)="open('allocation')">Plan visits</button>
+          }
+        </div>
+      </div>
+      <div class="rota-calendar">
+        @for (d of weekdays; track d.id) {
+          <span class="rota-calendar-weekday">{{ d.name }}</span>
+        }
+        @for (date of monthDays(); track date; let i = $index) {
+          <button
+            class="rota-calendar-day"
+            [style.grid-column-start]="i === 0 ? calendarOffset() + 1 : null"
+            (click)="showDay(date)"
+          >
+            <strong>{{ date | date: 'd' }}</strong
+            ><span>{{ dayVisits(date).length }} visits</span
+            ><small [class.rota-warning]="dayUnallocated(date) > 0">{{
+              dayUnallocated(date)
+                ? dayUnallocated(date) + ' need carers'
+                : dayVisits(date).length
+                  ? 'Open day'
+                  : 'No visits planned'
+            }}</small>
+          </button>
+        }
+      </div>
+    </section>
+    <section class="panel rota-rules">
+      <div class="panel-toolbar">
+        <div>
+          <h2>Availability & travel</h2>
+          <p>
+            Allocation checks use recorded leave, employment dates, checks and completed required
+            training.
+          </p>
+        </div>
+        <a class="text-link" routerLink="/manage/leave">Availability & leave</a>
+      </div>
+      <div class="panel-body rota-rules-body">
+        <label
+          >Travel buffer (minutes)<input
+            type="number"
+            [(ngModel)]="travel"
+            min="0"
+            max="120"
+            [disabled]="!service.can('manage')"
+        /></label>
+        <p>
+          Minimum time between calls for different service users. This is a planning buffer, not a
+          journey-time estimate.
+        </p>
+        @if (service.can('manage')) {
+          <button class="button" (click)="saveTravel()">Save rules</button>
+        }
+      </div>
+    </section>
+  } @else {
+    <section class="panel rota-register">
+      <div class="panel-toolbar">
+        <div>
+          <h2>
+            {{
+              tab() === 'Live board'
+                ? 'Expected visit board'
+                : tab() === 'Staff view'
+                  ? 'Staff visit schedule'
+                  : tab() + ' visits'
+            }}
+            <span class="count">{{ filtered().length }}</span>
+          </h2>
+          <p>
+            {{
+              tab() === 'Live board'
+                ? 'Published calls and administrator-recorded attendance; times are UK local.'
+                : tab() === 'Staff view'
+                  ? 'Choose a carer to inspect their published assignments.'
+                  : 'Filter visits, review availability and arrange cover.'
+            }}
+          </p>
+        </div>
+        <div class="row">
+          @if (service.can('export')) {
+            <button class="button" (click)="export()">
+              <span class="material-symbols-outlined" aria-hidden="true">download</span>Export view
+            </button>
+          }
+          @if (service.can('publish') && (tab() === 'Allocations' || tab() === 'Unallocated')) {
+            <button class="button primary" [disabled]="!selectedIds().length" (click)="publish()">
+              Publish {{ selectedIds().length ? selectedIds().length + ' selected' : 'selected' }}
+            </button>
+          }
+        </div>
+      </div>
+      <div class="panel-body rota-filters">
+        <label class="search-box"
+          ><span class="material-symbols-outlined" aria-hidden="true">search</span
+          ><input
+            aria-label="Search rota visits"
+            placeholder="Service user, call or carer…"
+            [ngModel]="query()"
+            (ngModelChange)="query.set($event)" /></label
+        ><label
+          >From<input
+            type="date"
+            [ngModel]="from()"
+            (ngModelChange)="from.set($event); selectedIds.set([])" /></label
+        ><label
+          >To<input
+            type="date"
+            [ngModel]="to()"
+            (ngModelChange)="to.set($event); selectedIds.set([])" /></label
+        ><label
+          >Service user<mat-select
+            cvSelect
+            aria-label="Filter service user"
+            [ngModel]="clientFilter()"
+            (ngModelChange)="clientFilter.set($event); selectedIds.set([])"
+            ><mat-option value="">All service users</mat-option>
+            @for (c of service.data().clients; track c.id) {
+              <mat-option [value]="c.id">{{ c.name }}</mat-option>
+            }
+          </mat-select></label
+        ><label
+          >Carer<mat-select
+            cvSelect
+            aria-label="Filter carer"
+            [ngModel]="staffFilter()"
+            (ngModelChange)="staffFilter.set($event); selectedIds.set([])"
+            ><mat-option value="">All carers</mat-option>
+            @for (p of store.staff(); track p.id) {
+              <mat-option [value]="p.id">{{ p.name }}</mat-option>
+            }
+          </mat-select></label
+        >
+        @if (tab() === 'Allocations') {
+          <label
+            >State<mat-select
+              cvSelect
+              aria-label="Filter rota state"
+              [ngModel]="stateFilter()"
+              (ngModelChange)="stateFilter.set($event); selectedIds.set([])"
+            >
+              @for (s of ['All', 'Draft', 'Published', 'Cancelled']; track s) {
+                <mat-option [value]="s">{{ s }}</mat-option>
+              }
+            </mat-select></label
+          >
+        }
+      </div>
+      @if (tab() === 'Staff view' && !staffFilter()) {
+        <div class="rota-empty">
+          <span class="material-symbols-outlined" aria-hidden="true">badge</span
+          ><strong>Select a carer</strong>
+          <p>Use the carer filter above to see their published visit schedule.</p>
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <table class="rota-table" aria-label="Rota visits">
+            <thead>
+              <tr>
+                <th>
+                  @if (
+                    service.can('publish') && (tab() === 'Allocations' || tab() === 'Unallocated')
+                  ) {
+                    <input
+                      type="checkbox"
+                      aria-label="Select all visible draft visits"
+                      [checked]="allSelected()"
+                      (change)="toggleAll()"
+                    />
+                  }
+                </th>
+                <th>Service user / call</th>
+                <th>Date & time</th>
+                <th>Carers</th>
+                <th>Allocation</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (v of filtered(); track v.id) {
+                <tr>
+                  <td data-label="Select">
+                    @if (v.state === 'Draft' && service.can('publish')) {
+                      <label class="rota-check"
+                        ><input
+                          type="checkbox"
+                          aria-label="Select {{ v.clientName }} {{ v.date }} {{ v.start }}"
+                          [checked]="selectedIds().includes(v.id)"
+                          (change)="toggleVisit(v.id)"
+                      /></label>
+                    }
+                  </td>
+                  <td data-label="Service user / call">
+                    <strong>{{ v.clientName }}</strong
+                    ><small
+                      >{{ v.callName }}
+                      @if (v.priority === 'High') {
+                        · High priority
+                      }
+                    </small>
+                  </td>
+                  <td data-label="Date & time">
+                    {{ v.date | date: 'd MMM yyyy'
+                    }}<small
+                      >{{ v.start }}–{{ v.end }}{{ overnight(v) ? ' (+1 day)' : '' }} ·
+                      {{ duration(v) }} min</small
+                    >
+                  </td>
+                  <td data-label="Carers">
+                    @for (id of v.staffIds; track id) {
+                      <small class="rota-carer-name">{{ personName(id) }}</small>
+                    }
+                    @if (v.staffIds.length < v.carers) {
+                      <span class="rota-warning"
+                        >{{ v.carers - v.staffIds.length }} place(s) unallocated</span
+                      >
+                    }
+                  </td>
+                  <td data-label="Allocation">
+                    <span class="badge" [class.lilac]="v.allocation === 'Temporary'">{{
+                      v.allocation
+                    }}</span>
+                  </td>
+                  <td data-label="Status">
+                    <span
+                      class="badge"
+                      [class.success]="status(v) === 'Completed' || v.state === 'Published'"
+                      [class.amber]="
+                        status(v) === 'Unallocated' || status(v) === 'Attendance overdue'
+                      "
+                      >{{ status(v) }}</span
+                    >
+                    @if (service.conflicts(v).length && v.state !== 'Cancelled') {
+                      <small class="rota-warning">Availability conflict</small>
+                    }
+                  </td>
+                  <td data-label="Action">
+                    <button class="button" (click)="view(v)">Review visit</button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="7">
+                    <div class="rota-empty">
+                      <span class="material-symbols-outlined" aria-hidden="true">event_busy</span
+                      ><strong>No visits in this view</strong>
+                      <p>
+                        Adjust the filters or plan new visits from a service user's call package.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      <div class="panel-note">
+        {{ filtered().length }} matching visits · UK time (GMT/BST) ·
+        {{ service.data().travelMinutes }} min travel buffer
+      </div>
+    </section>
+    @if (tab() === 'Live board' && service.can('manage')) {
+      <div class="rota-transfer panel panel-body">
+        <div>
+          <h3>Completed attendance → Payroll</h3>
+          <p>
+            Transfer actual hours for the From date ({{ from() || 'choose a date' }}). Payroll
+            access and effective pay profiles are required; timesheets still need approval.
+          </p>
+        </div>
+        <button class="button" (click)="transfer()">Send completed visits to payroll</button>
+      </div>
+    }
+  }
+  @if (visit(); as v) {
+    <section class="panel rota-detail">
+      <div class="panel-toolbar">
+        <div>
+          <h2 id="rota-visit-title" tabindex="-1">{{ v.clientName }} · {{ v.callName }}</h2>
+          <p>
+            {{ v.date | date: 'd MMM yyyy' }} · {{ v.start }}–{{ v.end
+            }}{{ overnight(v) ? ' (+1 day)' : '' }} · {{ v.carers }} carer(s)
+          </p>
+        </div>
+        <button class="icon-button" aria-label="Close visit" (click)="selected.set(null)">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <div class="panel-body rota-detail-body">
+        <div>
+          <span class="badge">{{ status(v) }}</span>
+          <p>{{ v.address }}</p>
+          <p>{{ v.tasks || 'No additional tasks recorded.' }}</p>
+          @if (v.skills.length) {
+            <p>
+              Required training:
+              @for (s of v.skills; track s) {
+                <span>{{ skillName(s) }} </span>
+              }
+            </p>
+          }
+          @for (id of v.staffIds; track id) {
+            <p>
+              <strong>{{ personName(id) }}</strong> · {{ v.allocation }}
+            </p>
+          }
+          @for (a of v.attendance; track a.personId) {
+            <p>{{ personName(a.personId) }} · {{ ukStamp(a.start) }} to {{ ukStamp(a.end) }}</p>
+          }
+          @if (v.exception) {
+            <p>{{ v.exception }}</p>
+          }
+        </div>
+        <div>
+          @for (issue of service.conflicts(v); track issue) {
+            <p class="rota-warning">{{ issue }}</p>
+          }
+          @if (v.state !== 'Cancelled') {
+            <div class="rota-detail-actions">
+              @if (!v.attendance.length && service.can('manage')) {
+                <button class="button" (click)="open('cover')">Allocate / arrange cover</button
+                ><button class="button" (click)="open('cancel')">Cancel visit</button>
+              }
+              @if (v.state === 'Published' && !completed(v) && service.can('attendance')) {
+                <button class="button primary" (click)="open('attendance')">
+                  Record actual attendance
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+  }
+  <p class="rota-footer">
+    Device demo · rota and attendance stay in this company on this browser. Mobile check-in,
+    external staff notifications, live monitoring and shared publishing require connected services.
+  </p>
+}
+@if (
+  modal() && (service.can('manage') || (modal() === 'attendance' && service.can('attendance')))
+) {
+  <div class="modal-backdrop" (click)="close()">
+    <section
+      class="modal panel rota-modal"
+      [class.rota-allocation-modal]="modal() === 'allocation'"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="rota-modal-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (keydown.escape)="close()"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="panel-toolbar">
+        <div>
+          <h2 id="rota-modal-title">
+            {{
+              modal() === 'allocation'
+                ? 'New allocation'
+                : modal() === 'client'
+                  ? 'Service user details'
+                  : modal() === 'call'
+                    ? 'Call package'
+                    : modal() === 'cover'
+                      ? 'Allocate / arrange cover'
+                      : modal() === 'copy'
+                        ? 'Copy a week'
+                        : modal() === 'attendance'
+                          ? 'Record actual attendance'
+                          : 'Cancel visit'
+            }}
+          </h2>
+          @if (modal() === 'allocation') {
+            <p>
+              Step {{ step() }} of 3 ·
+              {{
+                step() === 1
+                  ? 'Service user & calls'
+                  : step() === 2
+                    ? 'Dates & carers'
+                    : 'Review draft visits'
+              }}
+            </p>
+          }
+        </div>
+        <button class="icon-button" aria-label="Close dialog" (click)="close()">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <form (ngSubmit)="save()" novalidate>
+        <div class="panel-body form-grid">
+          @if (error()) {
+            <p class="rota-error full-width" role="alert">{{ error() }}</p>
+          }
+          @if (modal() === 'client') {
+            <label>Name<input name="name" [(ngModel)]="client.name" required /></label
+            ><label
+              >Client reference<input
+                name="reference"
+                [(ngModel)]="client.reference"
+                required /></label
+            ><label class="full-width"
+              >Address<input name="address" [(ngModel)]="client.address" required /></label
+            ><label>Postcode<input name="postcode" [(ngModel)]="client.postcode" required /></label
+            ><label
+              >Funding<mat-select
+                cvSelect
+                aria-label="Funding source"
+                name="funding"
+                [(ngModel)]="client.funding"
+              >
+                @for (f of ['Local authority', 'Private', 'NHS']; track f) {
+                  <mat-option [value]="f">{{ f }}</mat-option>
+                }
+              </mat-select></label
+            ><label
+              >Priority<mat-select
+                cvSelect
+                aria-label="Care priority"
+                name="priority"
+                [(ngModel)]="client.priority"
+                ><mat-option value="Standard">Standard</mat-option
+                ><mat-option value="High">High</mat-option></mat-select
+              ></label
+            ><label class="check-label"
+              ><input type="checkbox" name="active" [(ngModel)]="client.active" />Active service
+              user</label
+            >
+          } @else if (modal() === 'call') {
+            <label class="full-width"
+              >Call name<input name="name" [(ngModel)]="call.name" required /></label
+            ><label
+              >Start time (UK)<input type="time" name="start" [(ngModel)]="call.start" /></label
+            ><label>End time (UK)<input type="time" name="end" [(ngModel)]="call.end" /></label
+            ><small class="full-width"
+              >An end time before the start means the call ends the next day.</small
+            >
+            <fieldset class="full-width rota-weekdays">
+              <legend>Days of the week</legend>
+              @for (d of weekdays; track d.id) {
+                <label [class.is-selected]="call.weekdays.includes(d.id)"
+                  ><input
+                    type="checkbox"
+                    [checked]="call.weekdays.includes(d.id)"
+                    (change)="toggleDay(d.id)"
+                  />{{ d.name }}</label
+                >
+              }
+            </fieldset>
+            <label
+              >Carers required<mat-select
+                cvSelect
+                aria-label="Carers required"
+                name="carers"
+                [(ngModel)]="call.carers"
+                ><mat-option [value]="1">One carer</mat-option
+                ><mat-option [value]="2">Two carers</mat-option></mat-select
+              ></label
+            ><label
+              >Training requirements<mat-select
+                cvSelect
+                multiple
+                aria-label="Call training requirements"
+                name="skills"
+                [(ngModel)]="call.skills"
+              >
+                @for (c of courses; track c.id) {
+                  <mat-option [value]="c.id">{{ c.title }}</mat-option>
+                }
+              </mat-select></label
+            ><label class="full-width"
+              >Regular carers<mat-select
+                cvSelect
+                multiple
+                aria-label="Regular carers"
+                name="staff"
+                [(ngModel)]="call.regularStaffIds"
+              >
+                @for (p of store.staff(); track p.id) {
+                  <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                }</mat-select
+              ><small
+                >Used when planning regular calls. Leave empty to plan unallocated visits.</small
+              ></label
+            ><label class="full-width"
+              >Care tasks / instructions<textarea
+                name="tasks"
+                rows="2"
+                [(ngModel)]="call.tasks"
+              ></textarea></label
+            ><label class="check-label full-width"
+              ><input type="checkbox" name="active" [(ngModel)]="call.active" />Active call
+              package</label
+            >
+          } @else if (modal() === 'allocation') {
+            @if (step() === 1) {
+              <label class="full-width"
+                >Service user<mat-select
+                  cvSelect
+                  aria-label="Allocation service user"
+                  name="client"
+                  [(ngModel)]="allocation.clientId"
+                  (ngModelChange)="changeAllocationClient()"
+                >
+                  @for (c of service.data().clients; track c.id) {
+                    @if (c.active) {
+                      <mat-option [value]="c.id">{{ c.name }} · {{ c.reference }}</mat-option>
+                    }
+                  }
+                </mat-select></label
+              ><label class="full-width"
+                >Calls<mat-select
+                  cvSelect
+                  multiple
+                  aria-label="Allocation calls"
+                  name="calls"
+                  [(ngModel)]="allocation.callIds"
+                >
+                  @for (c of allocationCalls(); track c.id) {
+                    <mat-option [value]="c.id">{{ c.name }} · {{ c.start }}–{{ c.end }}</mat-option>
+                  }
+                </mat-select></label
+              >
+              @if (!service.data().clients.length) {
+                <p class="full-width">
+                  Add a service user and their calls in Service users before starting an allocation.
+                </p>
+              }
+            } @else if (step() === 2) {
+              <label>From date<input type="date" name="from" [(ngModel)]="allocation.from" /></label
+              ><label>To date<input type="date" name="to" [(ngModel)]="allocation.to" /></label
+              ><label
+                >Allocation type<mat-select
+                  cvSelect
+                  aria-label="Allocation type"
+                  name="type"
+                  [(ngModel)]="allocation.type"
+                  ><mat-option value="Regular">Regular carers</mat-option
+                  ><mat-option value="Temporary">Temporary cover</mat-option></mat-select
+                ></label
+              ><label
+                >Carers<mat-select
+                  cvSelect
+                  multiple
+                  aria-label="Allocation carers"
+                  name="staff"
+                  [(ngModel)]="allocation.staffIds"
+                  [disabled]="allocation.type === 'Regular' && allocation.useRegular"
+                >
+                  @for (p of store.staff(); track p.id) {
+                    <mat-option [value]="p.id">{{ p.name }} · {{ p.role }}</mat-option>
+                  }
+                </mat-select></label
+              >
+              @if (allocation.type === 'Regular') {
+                <label class="check-label full-width"
+                  ><input
+                    type="checkbox"
+                    name="useRegular"
+                    [(ngModel)]="allocation.useRegular"
+                  />Use each call's configured regular carers</label
+                >
+              }
+              <p class="payroll-note full-width">
+                Leave carers empty to create unallocated visits. Regular allocation updates the
+                chosen calls' preferred carers. Temporary cover applies only to the new visits.
+              </p>
+              <p class="full-width">
+                Checks include employment dates, leave, required training, overlapping calls and
+                {{ service.data().travelMinutes }} minutes between different service users.
+              </p>
+            } @else {
+              @let preview = allocationPreview();
+              <div class="full-width rota-allocation-summary">
+                <div>
+                  <small>Service user</small><strong>{{ clientName(allocation.clientId) }}</strong>
+                  <p>
+                    {{ allocation.from | date: 'd MMM yyyy' }} –
+                    {{ allocation.to | date: 'd MMM yyyy' }}
+                  </p>
+                  <span class="badge">Draft · {{ allocation.type }}</span>
+                </div>
+                <div>
+                  <small>Carers</small>
+                  @if (allocation.type === 'Regular' && allocation.useRegular) {
+                    <strong>Configured regular carers</strong>
+                  } @else {
+                    @for (id of allocation.staffIds; track id) {
+                      <strong>{{ personName(id) }}</strong>
+                    } @empty {
+                      <strong>Unallocated</strong>
+                    }
+                  }
+                  <p>Calls keep their required carer count.</p>
+                </div>
+              </div>
+              <div class="full-width rota-preview-note">
+                <strong>{{ preview.count }} new draft visits</strong>
+                <p>
+                  {{ preview.unallocated }} visits will need carers before publishing. Existing
+                  visits are skipped.
+                </p>
+                @for (issue of preview.issues; track issue) {
+                  <p class="rota-warning">{{ issue }}</p>
+                }
+              </div>
+              <div class="full-width">
+                @for (c of allocationCalls(); track c.id) {
+                  @if (allocation.callIds.includes(c.id)) {
+                    <div class="rota-call">
+                      <strong>{{ c.name }}</strong>
+                      <p>{{ c.start }}–{{ c.end }} · {{ days(c) }} · {{ c.carers }} carer(s)</p>
+                      @if (allocation.type === 'Regular' && allocation.useRegular) {
+                        <small
+                          >Regular carers:
+                          @for (id of c.regularStaffIds; track id) {
+                            <span>{{ personName(id) }} </span>
+                          } @empty {
+                            <span>Unallocated</span>
+                          }
+                        </small>
+                      }
+                    </div>
+                  }
+                }
+              </div>
+              <p class="full-width">
+                Visits are saved as drafts. Existing visits are skipped; conflicts prevent the whole
+                allocation from being saved. Publish from the allocation register after review.
+              </p>
+            }
+          } @else if (modal() === 'cover') {
+            <p class="full-width">
+              {{ visit()?.clientName }} · {{ visit()?.date }} · {{ visit()?.start }}–{{
+                visit()?.end
+              }}
+            </p>
+            <label class="full-width"
+              >Carers<mat-select
+                cvSelect
+                multiple
+                aria-label="Cover carers"
+                name="staff"
+                [(ngModel)]="cover.staffIds"
+              >
+                @for (p of store.staff(); track p.id) {
+                  <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                }
+              </mat-select></label
+            ><label
+              >Allocation type<mat-select
+                cvSelect
+                aria-label="Cover allocation type"
+                name="type"
+                [(ngModel)]="cover.type"
+                ><mat-option value="Regular">Regular</mat-option
+                ><mat-option value="Temporary">Temporary cover</mat-option></mat-select
+              ></label
+            ><label class="full-width"
+              >Reason for change<textarea
+                name="reason"
+                [(ngModel)]="cover.reason"
+                rows="2"
+              ></textarea></label
+            ><small class="full-width"
+              >Changes apply to this visit. The recurring call's regular carers stay as
+              configured.</small
+            >
+          } @else if (modal() === 'copy') {
+            <label
+              >Source week starts<input
+                type="date"
+                name="source"
+                [(ngModel)]="copy.source" /></label
+            ><label
+              >Target week starts<input type="date" name="target" [(ngModel)]="copy.target"
+            /></label>
+            <p class="full-width">
+              Copy seven days of non-cancelled visits into a later week. Attendance is not copied.
+              Existing target visits are skipped; conflicts block the copy.
+            </p>
+          } @else if (modal() === 'attendance') {
+            <label class="full-width"
+              >Carer<mat-select
+                cvSelect
+                aria-label="Attendance carer"
+                name="staff"
+                [(ngModel)]="attendance.personId"
+              >
+                @for (id of visit()?.staffIds; track id) {
+                  <mat-option [value]="id">{{ personName(id) }}</mat-option>
+                }
+              </mat-select></label
+            ><label
+              >Actual start (UK)<input
+                type="datetime-local"
+                name="start"
+                [(ngModel)]="attendance.start" /></label
+            ><label
+              >Actual end (UK)<input
+                type="datetime-local"
+                name="end"
+                [(ngModel)]="attendance.end" /></label
+            ><label class="full-width"
+              >Attendance review note<textarea
+                name="note"
+                [(ngModel)]="attendance.note"
+                rows="2"
+              ></textarea></label
+            ><small class="full-width"
+              >Administrator-recorded actual work. Completed attendance is locked and can be
+              transferred to payroll for separate approval.</small
+            >
+          } @else {
+            <label class="full-width"
+              >Cancellation reason<textarea name="reason" [(ngModel)]="reason" rows="2"></textarea>
+            </label>
+            <p class="full-width">
+              Cancel this visit and keep its audit record. Other visits and regular call packages
+              remain available.
+            </p>
+          }
+        </div>
+        <div class="form-footer">
+          <button
+            type="button"
+            class="button"
+            (click)="modal() === 'allocation' && step() > 1 ? step.set(step() - 1) : close()"
+          >
+            {{ modal() === 'allocation' && step() > 1 ? 'Back' : 'Cancel' }}
+          </button>
+          @if (modal() === 'allocation' && step() < 3) {
+            <button type="button" class="button primary" (click)="next()">Continue</button>
+          } @else {
+            <button class="button primary">
+              {{
+                modal() === 'allocation'
+                  ? 'Create draft visits'
+                  : modal() === 'copy'
+                    ? 'Copy to draft'
+                    : modal() === 'cancel'
+                      ? 'Cancel visit'
+                      : 'Save changes'
+              }}
+            </button>
+          }
+        </div>
+      </form>
+    </section>
+  </div>
+}

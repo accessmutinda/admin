@@ -1,6 +1,7 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { vacancyClosed, vacancyScheduled } from '../recruitment/vacancy-deadline';
 import type { PayrollData, PayrollAction } from '../payroll/payroll.models';
+import type { RotaData, RotaAction } from '../rota/rota.models';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
 
 export interface Company {
@@ -212,6 +213,8 @@ const seedPerson = (
   progress: stage === 'Hired' ? { safeguarding: 100, handling: 40 } : {},
 });
 interface WorkspaceData {
+  rota?: RotaData;
+  rotaPermissions?: Record<string, RotaAction[]>;
   payroll?: PayrollData;
   payrollPermissions?: Record<string, PayrollAction[]>;
   people: Person[];

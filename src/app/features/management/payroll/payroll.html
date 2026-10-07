@@ -6,14 +6,12 @@
   </div>
 </div>
 @if (!service.can('view')) {
-  <section class="panel panel-body">
-    <h2>Payroll access required</h2>
-    <p>
-      Your role does not have payroll access in this workspace. A company administrator can
-      configure access in Users & access.
-    </p>
-    <a routerLink="/manage/access" class="button">Users & access</a>
-  </section>
+  <cv-access-required
+    feature="Payroll"
+    module="Finance"
+    viewPermission="View payroll"
+    permissionsTitle="Payroll & payments access"
+  />
 } @else {
   <div class="metrics four">
     <button class="metric" data-tone="teal" (click)="choose('Payroll')">

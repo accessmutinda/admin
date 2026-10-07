@@ -219,8 +219,42 @@
         </table>
       </div>
     }
-    <section class="payroll-permissions" aria-labelledby="payroll-permissions-heading">
-      <div class="payroll-permissions-heading">
+    <section class="module-permissions" aria-labelledby="rota-permissions-heading">
+      <div class="module-permissions-heading">
+        <div class="permission-module-name">
+          <span class="module-icon material-symbols-outlined" aria-hidden="true"
+            >calendar_month</span
+          >
+          <div>
+            <h3 id="rota-permissions-heading">Rota & shifts access</h3>
+            <p id="rota-permissions-hint">
+              Works alongside Care delivery permissions. Enable View rota to use the other actions.
+            </p>
+          </div>
+        </div>
+        <span class="permission-summary" aria-live="polite"
+          ><strong>{{ rotaAccess.length }} / {{ rotaActions.length }}</strong
+          ><span>enabled</span></span
+        >
+      </div>
+      <div class="module-permissions-grid" role="group" aria-describedby="rota-permissions-hint">
+        @for (action of rotaActions; track action.key) {
+          <label class="permission-action" [class.is-selected]="hasRotaAction(action.key)"
+            ><input
+              type="checkbox"
+              [checked]="hasRotaAction(action.key)"
+              (change)="toggleRotaAction(action.key)"
+              [attr.aria-label]="action.label"
+            /><span
+              ><strong>{{ action.label }}</strong
+              ><small>{{ action.description }}</small></span
+            ></label
+          >
+        }
+      </div>
+    </section>
+    <section class="module-permissions" aria-labelledby="payroll-permissions-heading">
+      <div class="module-permissions-heading">
         <div class="permission-module-name">
           <span class="module-icon material-symbols-outlined" aria-hidden="true"
             >account_balance_wallet</span
@@ -237,11 +271,7 @@
           ><span>enabled</span></span
         >
       </div>
-      <div
-        class="payroll-permissions-grid"
-        role="group"
-        aria-describedby="payroll-permissions-hint"
-      >
+      <div class="module-permissions-grid" role="group" aria-describedby="payroll-permissions-hint">
         @for (action of payrollActions; track action.key) {
           <label class="permission-action" [class.is-selected]="hasPayrollAction(action.key)">
             <input

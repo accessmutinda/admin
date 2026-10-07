@@ -54,6 +54,13 @@ import { ManagementStore } from '../shared/management.store';
           >{{ item.label }}</a
         >
       }
+      @if (store.company()?.modules.includes('Care delivery')) {
+        <p class="nav-label">CARE DELIVERY</p>
+        <a routerLink="/manage/rota" routerLinkActive="active" (click)="menuOpen.set(false)"
+          ><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Rota &
+          shifts</a
+        >
+      }
       @if (store.company()?.modules.includes('Finance')) {
         <p class="nav-label">FINANCE</p>
         <a routerLink="/manage/payroll" routerLinkActive="active" (click)="menuOpen.set(false)"

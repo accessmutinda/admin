@@ -20,10 +20,20 @@ import {
   money,
 } from './payroll.models';
 import { PayrollService } from './payroll.service';
+import { AccessRequired } from '../shared/access-required';
 
 @Component({
   selector: 'cv-payroll',
-  imports: [CurrencyPipe, DatePipe, FormsModule, A11yModule, MatSelectModule, CvSelect, RouterLink],
+  imports: [
+    CurrencyPipe,
+    DatePipe,
+    FormsModule,
+    A11yModule,
+    MatSelectModule,
+    CvSelect,
+    RouterLink,
+    AccessRequired,
+  ],
   templateUrl: './payroll.html',
   styleUrl: './payroll.css',
 })

@@ -162,6 +162,12 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'rota',
+        data: { module: 'Care delivery' },
+        title: 'Rota & shift allocation · CareVerity',
+        loadComponent: () => import('./features/management/rota/rota').then((m) => m.Rota),
+      },
+      {
         path: 'payroll',
         data: { module: 'Finance' },
         title: 'Payroll & payments · CareVerity',

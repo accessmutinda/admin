@@ -1,4 +1,6 @@
 import { PAYROLL_ACTIONS, payrollDefaults, PayrollAction } from '../../payroll/payroll.models';
+import { ROTA_ACTIONS, rotaDefaults, RotaAction } from '../../rota/rota.models';
+import { ActivatedRoute } from '@angular/router';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ManagementStore, MODULES } from '../../shared/management.store';
@@ -26,6 +28,7 @@ export class UsersAccess {
     'Company Admin',
     'Registered Manager',
     'Care Coordinator',
+    'Field Supervisor',
     'Care Worker',
     'HR Officer',
     'Training Manager',
@@ -37,6 +40,7 @@ export class UsersAccess {
     'Company Admin': 'Company setup, team access and workspace administration',
     'Registered Manager': 'Care operations, service oversight and team leadership',
     'Care Coordinator': 'Day-to-day scheduling and care coordination',
+    'Field Supervisor': 'Care visits, staff supervision and field oversight',
     'Care Worker': 'Care delivery and assigned person-centred records',
     'HR Officer': 'Recruitment, staff records and employment processes',
     'Training Manager': 'Learning, development and training records',
@@ -114,6 +118,32 @@ export class UsersAccess {
     pay: 'Record pay-run and invoice payments',
   };
   protected payrollAccess: PayrollAction[] = this.readPayrollAccess();
+  protected readonly rotaActions = ROTA_ACTIONS;
+  protected rotaAccess: RotaAction[] = this.readRotaAccess();
+  private readonly rotaDrafts: Record<string, RotaAction[]> = {};
+  private readRotaAccess(): RotaAction[] {
+    return [...(this.store.data().rotaPermissions?.[this.role] ?? rotaDefaults(this.role))];
+  }
+  protected hasRotaAction(action: RotaAction): boolean {
+    return this.rotaAccess.includes(action);
+  }
+  protected toggleRotaAction(action: RotaAction): void {
+    this.rotaAccess = this.rotaAccess.includes(action)
+      ? this.rotaAccess.filter((a) => a !== action)
+      : [...this.rotaAccess, action];
+    this.rotaDrafts[this.role] = this.rotaAccess;
+  }
+  constructor() {
+    const params = inject(ActivatedRoute).snapshot.queryParamMap;
+    if (params.get('tab') === 'permissions') {
+      this.tab.set('Permissions');
+      const role = params.get('role');
+      if (role && this.roles.includes(role)) {
+        this.role = role;
+        this.changeRole();
+      }
+    }
+  }
   private readonly payrollDrafts: Record<string, PayrollAction[]> = {};
   private readPayrollAccess(): PayrollAction[] {
     return [...(this.store.data().payrollPermissions?.[this.role] ?? payrollDefaults(this.role))];
@@ -130,6 +160,7 @@ export class UsersAccess {
   protected changeRole(): void {
     this.permissions = this.permissionDrafts[this.role] ?? this.readPermissions();
     this.payrollAccess = this.payrollDrafts[this.role] ?? this.readPayrollAccess();
+    this.rotaAccess = this.rotaDrafts[this.role] ?? this.readRotaAccess();
     this.permissionDrafts[this.role] = this.permissions;
   }
   protected permissionCount(): number {
@@ -139,7 +170,8 @@ export class UsersAccess {
     return (
       JSON.stringify(this.permissions) !== JSON.stringify(this.readPermissions()) ||
       JSON.stringify([...this.payrollAccess].sort()) !==
-        JSON.stringify(this.readPayrollAccess().sort())
+        JSON.stringify(this.readPayrollAccess().sort()) ||
+      JSON.stringify([...this.rotaAccess].sort()) !== JSON.stringify(this.readRotaAccess().sort())
     );
   }
   protected applyPermissionPreset(preset: 'view' | 'standard' | 'none'): void {
@@ -152,10 +184,15 @@ export class UsersAccess {
     this.payrollAccess =
       preset === 'none' ? [] : preset === 'view' ? ['view'] : payrollDefaults(this.role);
     this.payrollDrafts[this.role] = this.payrollAccess;
+    this.rotaAccess =
+      preset === 'none' ? [] : preset === 'view' ? ['view'] : rotaDefaults(this.role);
+    this.rotaDrafts[this.role] = this.rotaAccess;
     this.permissions = Object.fromEntries(MODULES.map((m) => [m, [...values]]));
     this.permissionDrafts[this.role] = this.permissions;
   }
   protected discardPermissions(): void {
+    this.rotaAccess = this.readRotaAccess();
+    this.rotaDrafts[this.role] = this.rotaAccess;
     this.payrollAccess = this.readPayrollAccess();
     this.payrollDrafts[this.role] = this.payrollAccess;
     this.permissions = this.readPermissions();
@@ -165,6 +202,7 @@ export class UsersAccess {
     const saved = this.store.saveWorkspace((d) => ({
       ...d,
       payrollPermissions: { ...d.payrollPermissions, [this.role]: [...this.payrollAccess] },
+      rotaPermissions: { ...d.rotaPermissions, [this.role]: [...this.rotaAccess] },
       permissions: {
         ...d.permissions,
         ...Object.fromEntries(MODULES.map((m) => [this.role + ':' + m, [...this.permissions[m]]])),

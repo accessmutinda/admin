@@ -1,0 +1,492 @@
+.cv-management cv-rota {
+  display: block;
+}
+.cv-management cv-rota .metric {
+  text-align: left;
+}
+.cv-management cv-rota .rota-navigation,
+.cv-management cv-rota .rota-detail,
+.cv-management cv-rota .rota-rules,
+.cv-management cv-rota .rota-transfer {
+  margin: 16px 0;
+}
+.cv-management cv-rota .rota-navigation .tabs {
+  padding: 0 16px;
+  margin: 0;
+  border: 0;
+}
+.cv-management cv-rota .rota-overview-lower,
+.cv-management cv-rota .rota-package-grid,
+.cv-management cv-rota .rota-detail-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.cv-management cv-rota .rota-overview-lower {
+  margin-top: 16px;
+}
+.cv-management cv-rota .rota-workflows {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+.cv-management cv-rota .rota-workflow,
+.cv-management cv-rota .rota-checklist button,
+.cv-management cv-rota .rota-client-select {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  gap: 12px;
+  background: white;
+  color: #18334a;
+  cursor: pointer;
+}
+.cv-management cv-rota .rota-workflow {
+  border: 1px solid #e0e7ef;
+  border-radius: 10px;
+  padding: 12px;
+}
+.cv-management cv-rota .rota-workflow > span:nth-child(2),
+.cv-management cv-rota .rota-checklist button > span:nth-child(2),
+.cv-management cv-rota .rota-client-select > span:last-child {
+  flex: 1;
+  min-width: 0;
+}
+.cv-management cv-rota .rota-workflow strong,
+.cv-management cv-rota .rota-checklist strong,
+.cv-management cv-rota .rota-client-select strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+.cv-management cv-rota .rota-workflow small,
+.cv-management cv-rota .rota-checklist small,
+.cv-management cv-rota .rota-client-select small {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.cv-management cv-rota .rota-flow-icon {
+  flex-shrink: 0;
+  padding: 8px;
+  border-radius: 8px;
+  color: #087f76;
+  background: #e6f7f5;
+  font-size: 20px;
+}
+.cv-management cv-rota .rota-workflow[data-tone='blue'] .rota-flow-icon {
+  color: #2563eb;
+  background: #eff6ff;
+}
+.cv-management cv-rota .rota-workflow[data-tone='purple'] .rota-flow-icon {
+  color: #7c3aed;
+  background: #f5f3ff;
+}
+.cv-management cv-rota .rota-workflow[data-tone='amber'] .rota-flow-icon {
+  color: #b45309;
+  background: #fffbeb;
+}
+.cv-management cv-rota .rota-workflow[data-tone='green'] .rota-flow-icon {
+  color: #047857;
+  background: #ecfdf5;
+}
+.cv-management cv-rota .rota-workflow > .material-symbols-outlined:last-child {
+  color: #8292a2;
+  font-size: 18px;
+}
+.cv-management cv-rota .rota-checklist button {
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid #edf1f5;
+}
+.cv-management cv-rota .rota-checklist button:last-child {
+  border: 0;
+}
+.cv-management cv-rota .rota-checklist button > .material-symbols-outlined {
+  color: #087f76;
+  font-size: 20px;
+}
+.cv-management cv-rota .rota-flow {
+  list-style: decimal;
+  padding: 16px 16px 16px 36px;
+  margin: 0;
+}
+.cv-management cv-rota .rota-flow li {
+  font-size: 12px;
+  color: #52687c;
+  padding: 8px 0;
+}
+.cv-management cv-rota .rota-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.5fr) repeat(2, minmax(135px, 0.7fr)) repeat(
+      3,
+      minmax(130px, 1fr)
+    );
+  gap: 12px;
+  align-items: end;
+  border-bottom: 1px solid #edf1f5;
+}
+.cv-management cv-rota .rota-filters .search-box {
+  align-self: end;
+}
+.cv-management cv-rota .rota-footer {
+  margin-top: 16px;
+  font-size: 12px;
+}
+.cv-management cv-rota .rota-transfer,
+.cv-management cv-rota .rota-rules-body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between;
+}
+.cv-management cv-rota .rota-transfer > div {
+  flex: 1;
+}
+.cv-management cv-rota .rota-transfer p,
+.cv-management cv-rota .rota-rules-body p {
+  font-size: 12px;
+}
+.cv-management cv-rota .rota-rules-body label {
+  min-width: 170px;
+}
+.cv-management cv-rota .rota-detail-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.cv-management cv-rota .rota-detail p {
+  font-size: 12px;
+  margin-top: 8px;
+}
+.cv-management cv-rota .rota-modal {
+  max-width: 680px;
+}
+.cv-management cv-rota .rota-allocation-modal {
+  max-width: 760px;
+}
+.cv-management cv-rota .rota-weekdays {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cv-management cv-rota .rota-weekdays legend {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.cv-management cv-rota .rota-weekdays label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px;
+  border: 1px solid #e0e7ef;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.cv-management cv-rota .rota-weekdays .is-selected {
+  background: #edf7f5;
+  border-color: #c8dfd7;
+}
+.cv-management cv-rota .rota-weekdays input,
+.cv-management cv-rota .rota-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: #087f76;
+}
+.cv-management cv-rota .rota-allocation-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  background: #f7fafb;
+  border: 1px solid #e0e7ef;
+  border-radius: 8px;
+}
+.cv-management cv-rota .rota-allocation-summary strong {
+  display: block;
+  color: #18334a;
+}
+.cv-management cv-rota .rota-allocation-summary small {
+  display: block;
+  color: #64748b;
+}
+.cv-management cv-rota .rota-warning {
+  color: #92400e;
+  font-size: 11px;
+}
+.cv-management cv-rota .rota-error {
+  padding: 12px 16px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 12px;
+}
+.cv-management cv-rota .rota-client-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid #edf1f5;
+}
+.cv-management cv-rota .rota-client-select {
+  border: 0;
+  padding: 0;
+  min-height: 44px;
+  flex: 1;
+  min-width: 0;
+}
+.cv-management cv-rota .rota-client-row.is-selected {
+  background: #edf7f5;
+}
+.cv-management cv-rota .rota-client-row.is-selected .rota-client-select {
+  background: transparent;
+}
+.cv-management cv-rota .rota-call {
+  padding: 12px 16px;
+  border-bottom: 1px solid #edf1f5;
+}
+.cv-management cv-rota .rota-call:last-child {
+  border: 0;
+}
+.cv-management cv-rota .rota-call-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cv-management cv-rota .rota-call-heading strong {
+  flex: 1;
+  font-size: 13px;
+}
+.cv-management cv-rota .rota-call p,
+.cv-management cv-rota .rota-call small {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+}
+.cv-management cv-rota .rota-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 24px 16px;
+  text-align: center;
+}
+.cv-management cv-rota .rota-empty > .material-symbols-outlined {
+  padding: 10px;
+  border-radius: 10px;
+  background: #edf7f5;
+  color: #087f76;
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+.cv-management cv-rota .rota-empty strong {
+  font-size: 13px;
+  color: #18334a;
+}
+.cv-management cv-rota .rota-empty p {
+  font-size: 12px;
+  max-width: 420px;
+}
+.cv-management cv-rota .rota-audit {
+  list-style: none;
+  padding: 0 16px;
+  margin: 0;
+}
+.cv-management cv-rota .rota-audit li {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #edf1f5;
+}
+.cv-management cv-rota .rota-audit li > .material-symbols-outlined {
+  color: #087f76;
+  font-size: 20px;
+}
+.cv-management cv-rota .rota-audit strong {
+  font-size: 12px;
+}
+.cv-management cv-rota .rota-audit p,
+.cv-management cv-rota .rota-audit small {
+  font-size: 11px;
+}
+.cv-management cv-rota .rota-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  padding: 16px;
+  gap: 8px;
+}
+.cv-management cv-rota .rota-calendar-weekday {
+  font-size: 11px;
+  text-align: center;
+  color: #64748b;
+}
+.cv-management cv-rota .rota-calendar-day {
+  border: 1px solid #e0e7ef;
+  border-radius: 8px;
+  padding: 10px;
+  background: white;
+  text-align: left;
+  min-height: 92px;
+  cursor: pointer;
+  color: #18334a;
+}
+.cv-management cv-rota .rota-calendar-day strong,
+.cv-management cv-rota .rota-calendar-day span,
+.cv-management cv-rota .rota-calendar-day small {
+  display: block;
+}
+.cv-management cv-rota .rota-calendar-day span {
+  font-size: 12px;
+  margin-top: 8px;
+}
+.cv-management cv-rota .rota-calendar-day small {
+  font-size: 10px;
+  color: #64748b;
+}
+.cv-management cv-rota .rota-month-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cv-management cv-rota .rota-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  cursor: pointer;
+}
+.cv-management cv-rota .rota-table .rota-carer-name {
+  font-size: 12px;
+  color: #18334a;
+}
+@media (max-width: 1279px) {
+  .cv-management cv-rota .rota-workflows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cv-management cv-rota .rota-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .cv-management cv-rota .rota-package-grid,
+  .cv-management cv-rota .rota-overview-lower,
+  .cv-management cv-rota .rota-detail-body {
+    grid-template-columns: 1fr;
+  }
+  .cv-management cv-rota .rota-transfer,
+  .cv-management cv-rota .rota-rules-body {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 767px) {
+  .cv-management cv-rota .panel-toolbar > .row {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .cv-management cv-rota .rota-workflows {
+    grid-template-columns: 1fr;
+  }
+  .cv-management cv-rota .rota-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cv-management cv-rota .rota-filters .search-box {
+    grid-column: 1/-1;
+  }
+  .cv-management cv-rota .rota-client-row {
+    flex-wrap: wrap;
+  }
+  .cv-management cv-rota .rota-client-select {
+    flex-basis: 60%;
+  }
+  .cv-management cv-rota .rota-calendar {
+    gap: 4px;
+    padding: 12px;
+  }
+  .cv-management cv-rota .rota-calendar-day {
+    padding: 6px;
+    min-height: 72px;
+  }
+  .cv-management cv-rota .rota-calendar-day span {
+    font-size: 10px;
+  }
+  .cv-management cv-rota .rota-calendar-day small {
+    display: none;
+  }
+  .cv-management cv-rota .rota-month-label {
+    width: 100%;
+  }
+  .cv-management cv-rota .rota-month-label input {
+    flex: 1;
+    min-width: 0;
+  }
+  .cv-management cv-rota .rota-allocation-summary {
+    grid-template-columns: 1fr;
+  }
+  .cv-management cv-rota .rota-register .table-wrap .rota-table {
+    min-width: 0;
+  }
+  .cv-management cv-rota .rota-table,
+  .cv-management cv-rota .rota-table tbody {
+    display: block;
+    width: 100%;
+  }
+  .cv-management cv-rota .rota-table thead {
+    display: none;
+  }
+  .cv-management cv-rota .rota-table tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 1px solid #edf1f5;
+  }
+  .cv-management cv-rota .rota-table td {
+    display: block;
+    border: 0;
+    padding: 10px 16px;
+    overflow-wrap: anywhere;
+  }
+  .cv-management cv-rota .rota-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    color: #64748b;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .cv-management cv-rota .rota-table td:nth-child(2),
+  .cv-management cv-rota .rota-table td:last-child,
+  .cv-management cv-rota .rota-table td[colspan] {
+    grid-column: 1/-1;
+  }
+  .cv-management cv-rota .rota-table td[colspan]::before {
+    display: none;
+  }
+  .cv-management cv-rota .rota-table td:first-child:empty {
+    display: none;
+  }
+  .cv-management cv-rota .rota-table td:first-child:not(:empty) {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    z-index: 1;
+  }
+  .cv-management cv-rota .rota-table td:nth-child(2) {
+    grid-row: 1;
+  }
+  .cv-management cv-rota .rota-table tr:has(input) td:nth-child(2) {
+    padding-right: 76px;
+  }
+}

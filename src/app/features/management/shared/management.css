@@ -1,3 +1,5 @@
+@import '../rota/rota.css';
+
 .cv-management {
   --accent: #087f76;
   --muted: var(--color-slate);
@@ -482,6 +484,71 @@
   border-radius: 10px;
   box-shadow: 0 2px 3px #102d4602;
   min-width: 0;
+}
+.cv-management .access-required-panel {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+}
+.cv-management .access-required-icon {
+  display: inline-flex;
+  padding: 12px;
+  border-radius: 10px;
+  color: #087f76;
+  background: #e6f7f5;
+  font-size: 24px;
+}
+.cv-management .access-required-content {
+  flex: 1;
+  min-width: 0;
+}
+.cv-management .access-required-content > p {
+  margin-top: 4px;
+  font-size: 13px;
+}
+.cv-management .access-required-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: #64748b;
+  font-size: 12px;
+}
+.cv-management .access-required-help {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  margin-top: 12px;
+  border: 1px solid #e0e7ef;
+  border-radius: 8px;
+  background: #f7fafb;
+}
+.cv-management .access-required-help > .material-symbols-outlined {
+  color: #52687c;
+}
+.cv-management .access-required-help p {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.cv-management .access-required-help strong {
+  color: #18334a;
+  font-weight: 500;
+}
+.cv-management .access-required-actions {
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+@media (max-width: 767px) {
+  .cv-management .access-required-panel {
+    padding: 16px;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .cv-management .access-required-actions > .button {
+    width: 100%;
+  }
 }
 .cv-management .panel-toolbar {
   padding: 14px 16px;
@@ -3880,61 +3947,61 @@
   font-size: 12px;
   max-width: 440px;
 }
-.cv-management .payroll-permissions {
+.cv-management .module-permissions {
   margin: 4px 16px 16px;
   padding-top: 16px;
   border-top: 1px solid #e0e7ef;
 }
-.cv-management .payroll-permissions-heading {
+.cv-management .module-permissions-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
 }
-.cv-management .payroll-permissions-heading .permission-module-name {
+.cv-management .module-permissions-heading .permission-module-name {
   align-items: flex-start;
   min-width: 0;
 }
-.cv-management .payroll-permissions h3 {
+.cv-management .module-permissions h3 {
   margin: 0;
   color: #18334a;
   font-size: 15px;
   font-weight: 600;
   line-height: 1.4;
 }
-.cv-management .payroll-permissions p {
+.cv-management .module-permissions p {
   margin: 4px 0 0;
   color: #64748b;
   font-size: 12px;
   font-weight: 400;
   line-height: 1.5;
 }
-.cv-management .payroll-permissions-heading .permission-summary {
+.cv-management .module-permissions-heading .permission-summary {
   flex-shrink: 0;
 }
-.cv-management .payroll-permissions-grid {
+.cv-management .module-permissions-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
-.cv-management .payroll-permissions label.permission-action {
+.cv-management .module-permissions label.permission-action {
   margin: 0;
   border-color: #e0e7ef;
 }
-.cv-management .payroll-permissions .permission-action.is-selected {
+.cv-management .module-permissions .permission-action.is-selected {
   border-color: #c8dfd7;
 }
 @media (max-width: 1279px) {
-  .cv-management .payroll-permissions-grid {
+  .cv-management .module-permissions-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 767px) {
-  .cv-management .payroll-permissions-heading {
+  .cv-management .module-permissions-heading {
     flex-wrap: wrap;
   }
-  .cv-management .payroll-permissions-grid {
+  .cv-management .module-permissions-grid {
     grid-template-columns: 1fr;
   }
 }

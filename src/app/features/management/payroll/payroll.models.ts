@@ -25,6 +25,7 @@ export interface PayProfile {
   frequency: Frequency;
 }
 export interface WorkRecord {
+  rotaVisitIds?: string[];
   id: string;
   personId: string;
   date: string;
