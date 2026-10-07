@@ -1,0 +1,195 @@
+<section class="panel finance-dashboard">
+  <div class="panel-toolbar">
+    <div class="finance-title">
+      <span class="finance-icon material-symbols-outlined" aria-hidden="true">monitoring</span>
+      <div>
+        <h2>Finance dashboard</h2>
+        <p>Client billing and recorded company costs.</p>
+      </div>
+    </div>
+    <mat-select
+      cvSelect
+      aria-label="Finance reporting period"
+      [ngModel]="period()"
+      (ngModelChange)="period.set($event)"
+    >
+      <mat-option [value]="1">This month</mat-option
+      ><mat-option [value]="6">Last 6 months</mat-option
+      ><mat-option [value]="12">Last 12 months</mat-option>
+    </mat-select>
+  </div>
+  <div class="panel-body">
+    <div class="metrics finance-totals">
+      <button class="metric" data-tone="blue" (click)="navigate.emit('Clients')">
+        <span>Approved client billing</span><strong>{{ totals().revenue | currency: 'GBP' }}</strong
+        ><small>Approved and exported invoices</small>
+      </button>
+      <button class="metric" data-tone="amber" (click)="navigate.emit('Payroll')">
+        <span>Recorded costs</span><strong>{{ totals().costs | currency: 'GBP' }}</strong
+        ><small>Gross payroll and supplier invoices</small>
+      </button>
+      <div class="metric" data-tone="teal">
+        <span>Balance estimate</span
+        ><strong>{{ totals().revenue - totals().costs | currency: 'GBP' }}</strong
+        ><small>Billing less recorded costs</small>
+      </div>
+    </div>
+    <div class="finance-chart-heading">
+      <h3>Billing & costs</h3>
+      <div class="finance-legend">
+        <span><i class="billing-dot"></i>Client billing</span
+        ><span><i class="cost-dot"></i>Costs</span>
+      </div>
+    </div>
+    @if (hasActivity()) {
+      <div
+        class="finance-chart"
+        role="img"
+        aria-label="Monthly approved client billing and recorded costs. Exact amounts are listed below."
+      >
+        @for (month of months(); track month.key) {
+          <div class="finance-chart-column">
+            <div class="finance-bars">
+              <span
+                class="finance-bar billing-bar"
+                [style.height.%]="(month.revenue / chartMax()) * 100"
+              ></span
+              ><span
+                class="finance-bar cost-bar"
+                [style.height.%]="(month.costs / chartMax()) * 100"
+              ></span>
+            </div>
+            <span>{{ month.label }}</span>
+          </div>
+        }
+      </div>
+      <details class="finance-chart-values">
+        <summary>View monthly amounts</summary>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Client billing</th>
+                <th>Costs</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (month of months(); track month.key) {
+                <tr>
+                  <th scope="row">{{ month.key }}</th>
+                  <td>{{ month.revenue | currency: 'GBP' }}</td>
+                  <td>{{ month.costs | currency: 'GBP' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </details>
+    } @else {
+      <div class="finance-empty">
+        <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span
+        ><strong>No financial activity in this period</strong>
+        <p>Approve client invoices or prepare payroll to see your monthly totals.</p>
+      </div>
+    }
+    <div class="finance-cost-links">
+      <button (click)="navigate.emit('Payroll')">
+        <span>Gross payroll</span><strong>{{ totals().pay | currency: 'GBP' }}</strong></button
+      ><button (click)="navigate.emit('Suppliers')">
+        <span>Supplier invoices</span><strong>{{ totals().suppliers | currency: 'GBP' }}</strong>
+      </button>
+    </div>
+    <p class="finance-note">
+      Billing uses invoice dates; payroll uses payday; supplier costs use invoice dates. Includes
+      draft pay runs and recorded supplier costs. This estimate excludes tax, pensions and
+      unrecorded costs; it is not a profit or cash-flow statement.
+    </p>
+  </div>
+</section>
+<div class="finance-side-grid">
+  <section class="panel finance-next-run">
+    <div class="panel-toolbar">
+      <div class="finance-title">
+        <span class="finance-icon material-symbols-outlined" aria-hidden="true"
+          >event_available</span
+        >
+        <div>
+          <h2>Next payroll run</h2>
+          <p>Review the earliest unpaid run.</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel-body">
+      @if (nextRun(); as run) {
+        <div class="finance-run-name">
+          <h3>{{ run.name }}</h3>
+          <span class="badge">{{ run.status }}</span>
+        </div>
+        <p class="finance-note">
+          {{ run.start | date: 'd MMM yyyy' }} – {{ run.end | date: 'd MMM yyyy' }}
+        </p>
+        <dl>
+          <div>
+            <dt>Payday</dt>
+            <dd>{{ run.payday | date: 'd MMM yyyy' }}</dd>
+          </div>
+          <div>
+            <dt>Employees</dt>
+            <dd>{{ run.lines.length }}</dd>
+          </div>
+          <div>
+            <dt>Estimated gross</dt>
+            <dd>{{ runTotal(run) | currency: 'GBP' }}</dd>
+          </div>
+        </dl>
+        <button class="button primary" (click)="reviewRun.emit(run)">
+          Review pay run<span class="material-symbols-outlined" aria-hidden="true"
+            >arrow_forward</span
+          >
+        </button>
+      } @else {
+        <div class="finance-empty">
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+          ><strong>No upcoming pay run</strong>
+          <p>Bring approved staff work together for review.</p>
+          <button class="button" (click)="navigate.emit('Payroll')">View pay runs</button>
+        </div>
+      }
+    </div>
+  </section>
+  <section class="panel">
+    <div class="panel-toolbar">
+      <div class="finance-title">
+        <span class="finance-icon material-symbols-outlined" aria-hidden="true"
+          >account_balance</span
+        >
+        <div>
+          <h2>Client billing</h2>
+          <p>Funding sources for the selected period.</p>
+        </div>
+      </div>
+    </div>
+    <div class="finance-funding-list">
+      @for (item of billing(); track item.funding) {
+        <button (click)="navigate.emit('Clients')">
+          <span
+            class="finance-funding-icon material-symbols-outlined"
+            [class.private]="item.funding === 'Private'"
+            aria-hidden="true"
+            >{{
+              item.funding === 'Local authority'
+                ? 'account_balance'
+                : item.funding === 'Private'
+                  ? 'person'
+                  : 'health_and_safety'
+            }}</span
+          ><span
+            ><strong>{{ item.funding }}</strong
+            ><small>{{ item.count }} invoices · approved billing</small></span
+          ><strong>{{ item.amount | currency: 'GBP' }}</strong>
+        </button>
+      }
+    </div>
+  </section>
+</div>

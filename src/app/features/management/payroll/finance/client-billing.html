@@ -1,0 +1,196 @@
+<section class="panel payroll-register">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Client invoices</h2>
+      <p>Local authority, private and NHS billing from completed care visits.</p>
+    </div>
+    @if (ops.rota.can('view')) {
+      <a class="text-link" routerLink="/manage/clients">Client files & billing rates</a>
+    }
+  </div>
+  @if (ops.payroll.can('manage')) {
+    <form class="panel-body client-billing-prepare" (ngSubmit)="prepare()">
+      <label>Visit date<input type="date" name="date" [(ngModel)]="date" /></label
+      ><button class="button primary">Prepare client invoices</button>
+      <p>Uses saved actual attendance and client rates. Visits already invoiced are skipped.</p>
+    </form>
+  }
+  @if (error() && !selected()) {
+    <p class="payroll-error" role="alert">{{ error() }}</p>
+  }
+  <div class="panel-body payroll-filters">
+    <label class="search-box"
+      ><span class="material-symbols-outlined" aria-hidden="true">search</span
+      ><input
+        aria-label="Search client invoices"
+        placeholder="Search clients, dates or references…"
+        [ngModel]="query()"
+        (ngModelChange)="query.set($event)"
+    /></label>
+    <label class="client-billing-filter"
+      >Funding<mat-select
+        cvSelect
+        aria-label="Filter client funding"
+        [ngModel]="funding()"
+        (ngModelChange)="funding.set($event)"
+      >
+        @for (item of ['All', 'Local authority', 'Private', 'NHS']; track item) {
+          <mat-option [value]="item">{{ item }}</mat-option>
+        }
+      </mat-select></label
+    >
+    <label class="client-billing-filter"
+      >Status<mat-select
+        cvSelect
+        aria-label="Filter client invoice status"
+        [ngModel]="status()"
+        (ngModelChange)="status.set($event)"
+      >
+        @for (item of ['All', 'Draft', 'Approved', 'Exported']; track item) {
+          <mat-option [value]="item">{{ item }}</mat-option>
+        }
+      </mat-select></label
+    >
+    <button class="button" (click)="clear()">Clear</button>
+  </div>
+  <div class="table-wrap">
+    <table class="payroll-table">
+      <thead>
+        <tr>
+          <th>Invoice</th>
+          <th>Client</th>
+          <th>Funding</th>
+          <th>Date</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (invoice of filtered(); track invoice.id) {
+          <tr>
+            <td data-label="Invoice">
+              <strong>{{ invoice.number }}</strong
+              ><small>{{ invoice.lines.length }} visits</small>
+            </td>
+            <td data-label="Client">{{ clientName(invoice.clientId) }}</td>
+            <td data-label="Funding">
+              <span class="badge">{{ clientFunding(invoice.clientId) }}</span>
+            </td>
+            <td data-label="Date">{{ invoice.date | date: 'd MMM yyyy' }}</td>
+            <td data-label="Total">{{ total(invoice) | currency: 'GBP' }}</td>
+            <td data-label="Status">
+              <span class="badge" [class.success]="invoice.state !== 'Draft'">{{
+                invoice.state
+              }}</span>
+            </td>
+            <td data-label="Action">
+              <button class="button" (click)="review(invoice.id)">Review client invoice</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7" class="payroll-empty-cell">
+              <div class="payroll-empty-state">
+                <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span
+                ><strong>No matching client invoices</strong>
+                <p>Prepare invoices from completed visits, or adjust your filters.</p>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <p class="panel-note">
+    {{ filtered().length }} matching invoices · UK time · GBP. Export records a file download; it
+    does not send an invoice or record a payment.
+  </p>
+</section>
+@if (selected(); as invoice) {
+  <div class="modal-backdrop" (click)="close()">
+    <section
+      class="modal panel payroll-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="client-invoice-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (keydown.escape)="close()"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="panel-toolbar">
+        <div>
+          <h2 id="client-invoice-title" tabindex="-1" cdkFocusInitial>{{ invoice.number }}</h2>
+          <p>{{ clientName(invoice.clientId) }} · {{ clientFunding(invoice.clientId) }}</p>
+        </div>
+        <button class="icon-button" aria-label="Close client invoice" (click)="close()">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <div class="panel-body requirement-list">
+        <div class="payroll-detail-heading">
+          <strong>{{ total(invoice) | currency: 'GBP' }}</strong
+          ><span class="badge">{{ invoice.state }}</span
+          ><span>{{ invoice.date | date: 'd MMM yyyy' }}</span>
+        </div>
+        <p class="payroll-note">
+          Amounts preserve the attendance and billing rates saved when this invoice was prepared.
+        </p>
+        <div class="table-wrap">
+          <table class="payroll-table">
+            <thead>
+              <tr>
+                <th>Visit</th>
+                <th>Date</th>
+                <th>Hours</th>
+                <th>Saved rate</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (line of invoice.lines; track line.visitId) {
+                <tr>
+                  <td data-label="Visit">
+                    {{ line.call }}<small>{{ line.basis }}</small>
+                  </td>
+                  <td data-label="Date">{{ line.date | date: 'd MMM yyyy' }}</td>
+                  <td data-label="Hours">{{ line.hours | number: '1.2-4' }}</td>
+                  <td data-label="Saved rate">{{ line.rate | currency: 'GBP' }}</td>
+                  <td data-label="Amount">{{ line.amount | currency: 'GBP' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (error()) {
+          <p class="payroll-error" role="alert">{{ error() }}</p>
+        }
+        <div class="payroll-actions">
+          @if (invoice.state === 'Draft' && ops.payroll.can('approve')) {
+            <button class="button primary" (click)="update(invoice, 'Approved')">
+              Approve client invoice
+            </button>
+          }
+          @if (invoice.state === 'Approved' && ops.payroll.can('export')) {
+            <button class="button primary" (click)="update(invoice, 'Exported')">
+              Export client invoice
+            </button>
+          }
+          @if (invoice.state === 'Exported') {
+            <p class="payroll-note">
+              Exported invoice · amounts are locked. Payment collection is handled externally.
+            </p>
+          }
+        </div>
+        <h3>Review history</h3>
+        @for (entry of invoice.audit; track $index) {
+          <div class="payroll-history">
+            <strong>{{ entry.note }}</strong
+            ><small>{{ entry.user }} · {{ auditDate(entry.at) }}</small>
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+}
