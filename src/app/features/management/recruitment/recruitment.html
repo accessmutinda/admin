@@ -1,238 +1,490 @@
-<div class="page-heading">
-  <div>
-    <p class="eyebrow">PEOPLE & DEVELOPMENT</p>
-    <h1>Great care starts with great people.</h1>
-    <p>Discover talent. Keep hiring moving. Welcome your next team member.</p>
-  </div>
-  <button class="button primary" (click)="modal.set('vacancy')">
-    <span class="material-symbols-outlined" aria-hidden="true">add</span>New vacancy
-  </button>
-</div>
-<div class="metrics four">
-  <div class="metric" data-tone="blue">
-    <span class="metric-icon material-symbols-outlined" aria-hidden="true">work_outline</span
-    ><span>Open vacancies</span><strong>{{ store.data().vacancies.length }}</strong
-    ><small>Opportunities to make a difference</small>
-  </div>
-  <div class="metric" data-tone="teal">
-    <span class="metric-icon material-symbols-outlined" aria-hidden="true">groups</span
-    ><span>Active applicants</span><strong>{{ store.applicants().length }}</strong
-    ><small>Across your recruitment pipeline</small>
-  </div>
-  <div class="metric" data-tone="purple">
-    <span class="metric-icon material-symbols-outlined" aria-hidden="true">forum</span
-    ><span>At interview</span><strong>{{ inStage('Interview').length }}</strong
-    ><small>Getting to know your next hire</small>
-  </div>
-  <div class="metric" data-tone="amber">
-    <span class="metric-icon material-symbols-outlined" aria-hidden="true">handshake</span
-    ><span>Offers made</span><strong>{{ inStage('Offer').length }}</strong
-    ><small>A brighter start within reach</small>
-  </div>
-</div>
-<section class="panel">
-  <div class="panel-toolbar">
-    <nav class="segmented" aria-label="Recruitment views">
-      @for (item of ['Pipeline', 'Vacancies']; track item) {
-        <button
-          [class.active]="view() === item"
-          [attr.aria-pressed]="view() === item"
-          (click)="view.set(item)"
-        >
-          {{ item }}
-        </button>
-      }
-    </nav>
-    <div class="toolbar-actions">
-      <label class="search-box"
-        ><span class="material-symbols-outlined" aria-hidden="true">search</span
-        ><input
-          aria-label="Search applicants"
-          placeholder="Search applicants…"
-          [ngModel]="search()"
-          (ngModelChange)="search.set($event)" /></label
-      ><button class="button" [disabled]="!store.data().vacancies.length" (click)="openApplicant()">
-        <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add applicant
-      </button>
+@if (vacancy; as draft) {
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">RECRUITMENT</p>
+      <h1>Vacancy & application form</h1>
+      <p>Choose what applicants need to share before they apply.</p>
     </div>
+    <button class="button" (click)="vacancy = null">Back to recruitment</button>
   </div>
-  @if (view() === 'Pipeline') {
-    <div class="pipeline-toolbar">
-      <label class="inline-label"
-        >Vacancy<mat-select
-          cvSelect
-          [ngModel]="vacancyFilter()"
-          (ngModelChange)="vacancyFilter.set($event)"
-          aria-label="Filter vacancy"
-        >
-          <mat-option value="All vacancies">All vacancies</mat-option>
-          @for (vacancy of store.data().vacancies; track vacancy.id) {
-            <mat-option [value]="vacancy.title">{{ vacancy.title }}</mat-option>
-          }
-        </mat-select></label
-      ><small class="muted">Open an applicant to view details and move them forward.</small>
-    </div>
-    <div class="pipeline-board">
-      @for (stage of stages; track stage) {
-        <section class="pipeline-column" [attr.data-stage]="stage.toLowerCase()">
-          <div class="pipeline-title">
-            <span class="stage-dot" [class]="'stage-dot stage-' + stage.toLowerCase()"></span>
-            <h2>{{ stage }}</h2>
-            <span class="count">{{ inStage(stage).length }}</span>
-          </div>
-          @for (person of inStage(stage); track person.id) {
-            <a class="applicant-card" [routerLink]="['/manage/people', person.id]"
-              ><div class="applicant-heading">
-                <span class="avatar" [attr.data-stage]="stage.toLowerCase()">{{
-                  store.initials(person.name)
-                }}</span>
-                <h3>{{ person.name }}</h3>
-                <span class="material-symbols-outlined muted" aria-hidden="true"
-                  >arrow_outward</span
-                >
-              </div>
-              <cv-management-role [label]="person.role" />
-              <div class="applicant-meta">
-                <span class="material-symbols-outlined" aria-hidden="true">location_on</span
-                >{{ person.location || 'Location not provided' }}
-              </div>
-              <div class="applicant-footer">
-                <span class="badge" [class.success]="stage === 'Hired'">{{
-                  stage === 'Hired' ? 'Team member' : person.vacancy
-                }}</span>
-              </div></a
+  <div class="vacancy-layout">
+    <form #vacancyForm="ngForm" (ngSubmit)="addVacancy()" class="vacancy-editor">
+      <section class="panel">
+        <div class="panel-toolbar"><h2>Opportunity details</h2></div>
+        <div class="panel-body form-grid">
+          <label class="full-width"
+            >Job title *<input [(ngModel)]="draft.title" name="title" required maxlength="160"
+          /></label>
+          <label
+            >Location *<input [(ngModel)]="draft.location" name="location" required maxlength="160"
+          /></label>
+          <label
+            >Employment type<mat-select
+              cvSelect
+              [(ngModel)]="draft.type"
+              name="employmentType"
+              aria-label="Employment type"
             >
-          } @empty {
-            <div class="column-empty">
-              No {{ stage.toLowerCase() === 'applied' ? 'applications' : 'people' }} here yet.
-            </div>
-          }
-        </section>
-      }
-    </div>
-  }
-  @if (view() === 'Vacancies') {
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Vacancy</th>
-            <th>Location</th>
-            <th>Salary</th>
-            <th>Applicants</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (vacancy of store.data().vacancies; track vacancy.id) {
-            <tr>
-              <td>
-                <strong>{{ vacancy.title }}</strong
-                ><small>{{ vacancy.type }}</small>
-              </td>
-              <td>{{ vacancy.location }}</td>
-              <td>{{ vacancy.salary || 'Not specified' }}</td>
-              <td>
-                <button
-                  class="text-link"
-                  (click)="vacancyFilter.set(vacancy.title); view.set('Pipeline')"
-                >
-                  {{ applicantCount(vacancy.title)
-                  }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
-                </button>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  }
-</section>
-@if (modal()) {
-  <div class="modal-backdrop" (click)="modal.set('')">
-    <section
-      class="modal panel"
-      role="dialog"
-      aria-modal="true"
-      cdkTrapFocus
-      [cdkTrapFocusAutoCapture]="true"
-      (keydown.escape)="modal.set('')"
-      aria-labelledby="recruitment-modal-title"
-      (click)="$event.stopPropagation()"
-    >
-      <div class="panel-toolbar">
-        <div>
-          <p class="eyebrow">RECRUITMENT</p>
-          <h2 id="recruitment-modal-title">
-            {{ modal() === 'vacancy' ? 'Create an opportunity' : 'Add an applicant' }}
-          </h2>
+              <mat-option value="Full time">Full time</mat-option
+              ><mat-option value="Part time">Part time</mat-option
+              ><mat-option value="Bank / flexible">Bank / flexible</mat-option>
+            </mat-select></label
+          >
+          <label class="full-width"
+            >Salary or hourly rate<input
+              [(ngModel)]="draft.salary"
+              name="salary"
+              placeholder="e.g. £12.80–£14.20 / hour"
+              maxlength="160"
+          /></label>
+          <label
+            >Go-live date <span class="muted">Optional</span>
+            <input
+              type="date"
+              [(ngModel)]="draft.goLiveDate"
+              name="goLiveDate"
+              aria-describedby="go-live-date-hint"
+            />
+            <small id="go-live-date-hint"
+              >Open at 00:00 UK time (GMT/BST) on this date. Leave blank to open immediately.</small
+            >
+          </label>
+          <label
+            >Closing date <span class="muted">Optional</span>
+            <input
+              type="date"
+              [(ngModel)]="draft.closingDate"
+              name="closingDate"
+              aria-describedby="closing-date-hint"
+            />
+            <small id="closing-date-hint"
+              >Accept applications until 23:59 UK time (GMT/BST) on this date. Leave blank for no
+              deadline.</small
+            >
+          </label>
+          <label class="full-width"
+            >About the role<textarea
+              [(ngModel)]="draft.description"
+              name="description"
+              rows="5"
+              maxlength="10000"
+              placeholder="Describe the role, responsibilities and what your team offers."
+            ></textarea>
+          </label>
         </div>
-        <button class="icon-button" aria-label="Close dialog" (click)="modal.set('')">
-          <span class="material-symbols-outlined" aria-hidden="true">close</span>
-        </button>
+      </section>
+      <section class="panel">
+        <div class="panel-toolbar">
+          <div>
+            <h2>Application questions</h2>
+            <p>Name, email and location are required. Phone is optional.</p>
+          </div>
+        </div>
+        <div class="panel-body requirement-list">
+          @for (field of draft.fields || []; track field.id; let i = $index) {
+            <div class="question-row">
+              <label
+                >Question {{ i + 1 }} *<input
+                  [(ngModel)]="field.label"
+                  [name]="'label-' + field.id"
+                  required
+                  maxlength="200"
+                  placeholder="e.g. What care experience do you have?"
+              /></label>
+              <div class="requirement-options">
+                <label
+                  >Answer type<mat-select
+                    cvSelect
+                    [(ngModel)]="field.type"
+                    [name]="'type-' + field.id"
+                    [attr.aria-label]="'Answer type for question ' + (i + 1)"
+                  >
+                    @for (type of fieldTypes; track type.value) {
+                      <mat-option [value]="type.value">{{ type.label }}</mat-option>
+                    }
+                  </mat-select></label
+                >
+                <label class="required-toggle"
+                  ><input
+                    type="checkbox"
+                    [(ngModel)]="field.required"
+                    [name]="'required-' + field.id"
+                  />Required</label
+                >
+                <button
+                  type="button"
+                  class="icon-button"
+                  [attr.aria-label]="'Remove question ' + (i + 1)"
+                  (click)="removeField(field.id)"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                </button>
+              </div>
+            </div>
+          } @empty {
+            <p>
+              No additional questions. Add one to ask about experience, availability or
+              qualifications.
+            </p>
+          }
+          <button class="button" type="button" (click)="addField()">
+            <span class="material-symbols-outlined" aria-hidden="true">add</span>Add question
+          </button>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-toolbar">
+          <div>
+            <h2>Document uploads</h2>
+            <p>Choose the documents to request. PDF, Word or images, up to 1 MB each.</p>
+          </div>
+        </div>
+        <div class="panel-body requirement-list">
+          @for (doc of draft.documents || []; track doc.id; let i = $index) {
+            <div class="document-row">
+              <label
+                >Document {{ i + 1 }} *<input
+                  [(ngModel)]="doc.label"
+                  [name]="'document-' + doc.id"
+                  required
+                  maxlength="200"
+                  placeholder="e.g. Training certificate"
+              /></label>
+              <label class="required-toggle"
+                ><input
+                  type="checkbox"
+                  [(ngModel)]="doc.required"
+                  [name]="'document-required-' + doc.id"
+                />Required</label
+              >
+              <button
+                type="button"
+                class="icon-button"
+                [attr.aria-label]="'Remove document ' + (i + 1)"
+                (click)="removeDocument(doc.id)"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+              </button>
+            </div>
+          } @empty {
+            <p>Applicants do not need to upload any documents.</p>
+          }
+          <button class="button" type="button" (click)="addDocument()">
+            <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>Add
+            document
+          </button>
+        </div>
+      </section>
+      <section class="panel panel-body requirement-list">
+        <label class="required-toggle"
+          ><input type="checkbox" [(ngModel)]="draft.published" name="published" />Accept
+          applications through the public link</label
+        >
+        <p class="device-notice">
+          When enabled, applications open automatically on the go-live date, or immediately if no
+          date is set.
+        </p>
+        <p class="device-notice">
+          Device demo: links and applications use this browser's saved data. Receiving applications
+          from other devices requires a connected recruitment service.
+        </p>
+        @if (editorError()) {
+          <p class="editor-error" role="alert">{{ editorError() }}</p>
+        }
+        <div class="editor-actions">
+          <button class="button" type="button" (click)="vacancy = null">Discard</button
+          ><button class="button primary">Save vacancy</button>
+        </div>
+      </section>
+    </form>
+    <aside class="vacancy-preview">
+      <div class="preview-heading">
+        <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
+        <div>
+          <h2>Applicant preview</h2>
+          <p>Updates as you edit · preview only</p>
+        </div>
       </div>
-      @if (modal() === 'vacancy') {
-        <form #form="ngForm" (ngSubmit)="form.valid && addVacancy()">
-          <div class="panel-body form-grid">
-            <label class="full-width"
-              >Job title<input [(ngModel)]="vacancy.title" name="title" required /></label
-            ><label>Location<input [(ngModel)]="vacancy.location" name="location" required /></label
-            ><label
-              >Employment type<mat-select
-                cvSelect
-                [(ngModel)]="vacancy.type"
-                name="type"
-                aria-label="Employment type"
-              >
-                <mat-option value="Full time">Full time</mat-option>
-                <mat-option value="Part time">Part time</mat-option>
-                <mat-option value="Bank / flexible">Bank / flexible</mat-option>
-              </mat-select></label
-            ><label class="full-width"
-              >Salary or hourly rate<input
-                [(ngModel)]="vacancy.salary"
-                name="salary"
-                placeholder="e.g. £12.80–£14.20 / hour"
-            /></label>
-          </div>
-          <div class="form-footer">
-            <button class="button" type="button" (click)="modal.set('')">Cancel</button
-            ><button class="button primary">Create vacancy</button>
-          </div>
-        </form>
-      }
-      @if (modal() === 'applicant') {
-        <form #form="ngForm" (ngSubmit)="form.valid && addApplicant()">
-          <div class="panel-body form-grid">
-            <label class="full-width"
-              >Full name<input [(ngModel)]="applicant.name" name="name" required /></label
-            ><label class="full-width"
-              >Email<input
-                type="email"
-                [(ngModel)]="applicant.email"
-                name="email"
-                required /></label
-            ><label
-              >Vacancy<mat-select
-                cvSelect
-                [(ngModel)]="applicant.vacancy"
-                name="vacancy"
-                required
-                aria-label="Applicant vacancy"
-              >
-                @for (vacancy of store.data().vacancies; track vacancy.id) {
-                  <mat-option [value]="vacancy.title">{{ vacancy.title }}</mat-option>
-                }
-              </mat-select></label
-            ><label
-              >Location<input [(ngModel)]="applicant.location" name="location" required
-            /></label>
-          </div>
-          <div class="form-footer">
-            <button class="button" type="button" (click)="modal.set('')">Cancel</button
-            ><button class="button primary">Add applicant</button>
-          </div>
-        </form>
+      <cv-application-form [vacancy]="draft" [company]="store.company()" [preview]="true" />
+    </aside>
+  </div>
+} @else {
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">PEOPLE & DEVELOPMENT</p>
+      <h1>Great care starts with great people.</h1>
+      <p>Discover talent. Keep hiring moving. Welcome your next team member.</p>
+    </div>
+    <button class="button primary" (click)="openVacancy()">
+      <span class="material-symbols-outlined" aria-hidden="true">add</span>New vacancy
+    </button>
+  </div>
+  <div class="metrics four">
+    <div class="metric" data-tone="blue">
+      <span class="metric-icon material-symbols-outlined" aria-hidden="true">work_outline</span
+      ><span>Open vacancies</span><strong>{{ store.openVacancies().length }}</strong
+      ><small>Opportunities to make a difference</small>
+    </div>
+    <div class="metric" data-tone="teal">
+      <span class="metric-icon material-symbols-outlined" aria-hidden="true">groups</span
+      ><span>Active applicants</span><strong>{{ store.applicants().length }}</strong
+      ><small>Across your recruitment pipeline</small>
+    </div>
+    <div class="metric" data-tone="purple">
+      <span class="metric-icon material-symbols-outlined" aria-hidden="true">forum</span
+      ><span>At interview</span><strong>{{ inStage('Interview').length }}</strong
+      ><small>Getting to know your next hire</small>
+    </div>
+    <div class="metric" data-tone="amber">
+      <span class="metric-icon material-symbols-outlined" aria-hidden="true">handshake</span
+      ><span>Offers made</span><strong>{{ inStage('Offer').length }}</strong
+      ><small>A brighter start within reach</small>
+    </div>
+  </div>
+  @if (savedVacancy(); as saved) {
+    <section class="panel panel-body share-panel">
+      <div>
+        <h2>
+          {{
+            store.vacancyClosed(saved)
+              ? 'Application deadline passed'
+              : saved.published
+                ? store.vacancyScheduled(saved)
+                  ? 'Application scheduled'
+                  : 'Application link ready'
+                : 'Applications paused'
+          }}
+        </h2>
+        <p>{{ saved.title }} · Device demo</p>
+      </div>
+      <label
+        >Share link<input readonly [value]="link(saved)" (focus)="$any($event.target).select()"
+      /></label>
+      @if (saved.published) {
+        <div class="share-actions">
+          <button class="button" (click)="copyLink(saved)">Copy link</button
+          ><a class="button" [href]="link(saved)" target="_blank" rel="noopener"
+            >Open page<span class="material-symbols-outlined" aria-hidden="true"
+              >open_in_new</span
+            ></a
+          >
+        </div>
       }
     </section>
-  </div>
+  }
+  <section class="panel">
+    <div class="panel-toolbar">
+      <nav class="segmented" aria-label="Recruitment views">
+        @for (item of ['Pipeline', 'Vacancies']; track item) {
+          <button
+            [class.active]="view() === item"
+            [attr.aria-pressed]="view() === item"
+            (click)="view.set(item)"
+          >
+            {{ item }}
+          </button>
+        }
+      </nav>
+      <div class="toolbar-actions">
+        <label class="search-box"
+          ><span class="material-symbols-outlined" aria-hidden="true">search</span
+          ><input
+            aria-label="Search applicants"
+            placeholder="Search applicants…"
+            [ngModel]="search()"
+            (ngModelChange)="search.set($event)" /></label
+        ><button
+          class="button"
+          [disabled]="!store.data().vacancies.length"
+          (click)="openApplicant()"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add applicant
+        </button>
+      </div>
+    </div>
+    @if (view() === 'Pipeline') {
+      <div class="pipeline-toolbar">
+        <label class="inline-label"
+          >Vacancy<mat-select
+            cvSelect
+            [ngModel]="vacancyFilter()"
+            (ngModelChange)="vacancyFilter.set($event)"
+            aria-label="Filter vacancy"
+          >
+            <mat-option value="All vacancies">All vacancies</mat-option>
+            @for (vacancy of store.data().vacancies; track vacancy.id) {
+              <mat-option [value]="vacancy.id">{{ vacancy.title }}</mat-option>
+            }
+          </mat-select></label
+        ><small class="muted">Open an applicant to view details and move them forward.</small>
+      </div>
+      <div class="pipeline-board">
+        @for (stage of stages; track stage) {
+          <section class="pipeline-column" [attr.data-stage]="stage.toLowerCase()">
+            <div class="pipeline-title">
+              <span class="stage-dot" [class]="'stage-dot stage-' + stage.toLowerCase()"></span>
+              <h2>{{ stage }}</h2>
+              <span class="count">{{ inStage(stage).length }}</span>
+            </div>
+            @for (person of inStage(stage); track person.id) {
+              <a class="applicant-card" [routerLink]="['/manage/people', person.id]"
+                ><div class="applicant-heading">
+                  <span class="avatar" [attr.data-stage]="stage.toLowerCase()">{{
+                    store.initials(person.name)
+                  }}</span>
+                  <h3>{{ person.name }}</h3>
+                  <span class="material-symbols-outlined muted" aria-hidden="true"
+                    >arrow_outward</span
+                  >
+                </div>
+                <cv-management-role [label]="person.role" />
+                <div class="applicant-meta">
+                  <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+                  >{{ person.location || 'Location not provided' }}
+                </div>
+                <div class="applicant-footer">
+                  <span class="badge" [class.success]="stage === 'Hired'">{{
+                    stage === 'Hired' ? 'Team member' : person.vacancy
+                  }}</span>
+                </div></a
+              >
+            } @empty {
+              <div class="column-empty">
+                No {{ stage.toLowerCase() === 'applied' ? 'applications' : 'people' }} here yet.
+              </div>
+            }
+          </section>
+        }
+      </div>
+    }
+    @if (view() === 'Vacancies') {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Vacancy</th>
+              <th>Location</th>
+              <th>Salary</th>
+              <th>Go-live date</th>
+              <th>Closing date</th>
+              <th>Applicants</th>
+              <th>Application page</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (vacancy of store.data().vacancies; track vacancy.id) {
+              <tr>
+                <td>
+                  <strong>{{ vacancy.title }}</strong
+                  ><small>{{ vacancy.type }}</small>
+                </td>
+                <td>{{ vacancy.location }}</td>
+                <td>{{ vacancy.salary || 'Not specified' }}</td>
+                <td>
+                  {{
+                    vacancy.goLiveDate ? (vacancy.goLiveDate | date: 'd MMM yyyy') : 'Immediately'
+                  }}
+                </td>
+                <td>
+                  {{
+                    vacancy.closingDate ? (vacancy.closingDate | date: 'd MMM yyyy') : 'No deadline'
+                  }}
+                </td>
+                <td>
+                  <button
+                    class="text-link"
+                    (click)="vacancyFilter.set(vacancy.id); view.set('Pipeline')"
+                  >
+                    {{ applicantCount(vacancy)
+                    }}<span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_forward</span
+                    >
+                  </button>
+                </td>
+                <td>
+                  <div class="vacancy-actions">
+                    <span
+                      class="badge"
+                      [class.success]="store.vacancyStatus(vacancy) === 'Accepting applications'"
+                      >{{ store.vacancyStatus(vacancy) }}</span
+                    ><button class="button" (click)="openVacancy(vacancy)">Edit form</button>
+                    @if (vacancy.published) {
+                      <button class="button" (click)="savedVacancy.set(vacancy); copyLink(vacancy)">
+                        Copy link</button
+                      ><a class="text-link" [href]="link(vacancy)" target="_blank" rel="noopener"
+                        >Open page</a
+                      >
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7">
+                  No vacancies yet. Create a vacancy to build your application page.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+  @if (modal()) {
+    <div class="modal-backdrop" (click)="modal.set('')">
+      <section
+        class="modal panel"
+        role="dialog"
+        aria-modal="true"
+        cdkTrapFocus
+        [cdkTrapFocusAutoCapture]="true"
+        (keydown.escape)="modal.set('')"
+        aria-labelledby="recruitment-modal-title"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="panel-toolbar">
+          <div>
+            <p class="eyebrow">RECRUITMENT</p>
+            <h2 id="recruitment-modal-title">Add an applicant</h2>
+          </div>
+          <button class="icon-button" aria-label="Close dialog" (click)="modal.set('')">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
+        </div>
+        @if (modal() === 'applicant') {
+          <form #form="ngForm" (ngSubmit)="form.valid && addApplicant()">
+            <div class="panel-body form-grid">
+              <label class="full-width"
+                >Full name<input [(ngModel)]="applicant.name" name="name" required /></label
+              ><label class="full-width"
+                >Email<input
+                  type="email"
+                  [(ngModel)]="applicant.email"
+                  name="email"
+                  required /></label
+              ><label
+                >Vacancy<mat-select
+                  cvSelect
+                  [(ngModel)]="applicant.vacancy"
+                  name="vacancy"
+                  required
+                  aria-label="Applicant vacancy"
+                >
+                  @for (vacancy of store.data().vacancies; track vacancy.id) {
+                    <mat-option [value]="vacancy.id">{{ vacancy.title }}</mat-option>
+                  }
+                </mat-select></label
+              ><label
+                >Location<input [(ngModel)]="applicant.location" name="location" required
+              /></label>
+            </div>
+            <div class="form-footer">
+              <button class="button" type="button" (click)="modal.set('')">Cancel</button
+              ><button class="button primary">Add applicant</button>
+            </div>
+          </form>
+        }
+      </section>
+    </div>
+  }
 }

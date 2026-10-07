@@ -156,6 +156,27 @@
                 <dd>{{ store.company()?.name }}</dd>
               </div>
             </dl>
+            @if (p.application; as application) {
+              <h3 style="margin-top: 16px">Application responses</h3>
+              <dl class="details-list">
+                <div>
+                  <dt>Received through vacancy page</dt>
+                  <dd>{{ application.submitted | date: 'medium' }}</dd>
+                </div>
+                <div>
+                  <dt>Phone number</dt>
+                  <dd>{{ application.phone || 'Not provided' }}</dd>
+                </div>
+                @for (answer of application.answers; track $index) {
+                  <div>
+                    <dt>{{ answer.label }}</dt>
+                    <dd style="white-space: pre-wrap; overflow-wrap: anywhere">
+                      {{ answer.value || 'Not provided' }}
+                    </dd>
+                  </div>
+                }
+              </dl>
+            }
           </div>
         }
         @if (p.stage === 'Hired' && tab() === 'Onboarding') {
@@ -189,7 +210,7 @@
               <div class="list-row">
                 <span
                   ><strong>{{ doc.name }}</strong
-                  ><small>Uploaded document</small></span
+                  ><small>{{ doc.requirement || 'Uploaded document' }}</small></span
                 >
                 <div class="row">
                   <button

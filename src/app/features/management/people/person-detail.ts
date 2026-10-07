@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { ManagementRole } from '../shared/role-pill';
 import { A11yModule } from '@angular/cdk/a11y';
 import { Component, computed, inject, signal } from '@angular/core';
@@ -17,6 +18,7 @@ import { PersonCompliance } from './compliance/person-compliance';
 @Component({
   selector: 'cv-person-detail',
   imports: [
+    DatePipe,
     ManagementRole,
     A11yModule,
     FormsModule,

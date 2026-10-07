@@ -4,6 +4,14 @@ import { authGuard, guestGuard, workspaceGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
+    path: 'apply/:companyId/:vacancyId',
+    title: 'Apply for a vacancy · CareVerity',
+    loadComponent: () =>
+      import('./features/management/recruitment/public-application').then(
+        (m) => m.PublicApplication,
+      ),
+  },
+  {
     path: 'auth',
     canActivate: [guestGuard],
     children: [

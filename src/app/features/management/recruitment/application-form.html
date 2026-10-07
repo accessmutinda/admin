@@ -1,0 +1,165 @@
+<article class="application-card">
+  <header class="application-heading" [style.border-top-color]="company()?.color || '#087f76'">
+    <div class="employer">
+      @if (company()?.logo) {
+        <img [src]="company()!.logo" [alt]="company()!.name" />
+      } @else {
+        <span class="employer-mark">{{ company()?.code || 'CV' }}</span>
+      }
+      <span>{{ company()?.name || 'Your organisation' }}</span>
+    </div>
+    <p class="application-kicker">JOIN OUR TEAM</p>
+    <h2>{{ vacancy().title || 'Your job title' }}</h2>
+    <div class="job-meta">
+      <span>{{ vacancy().location || 'Location' }}</span
+      ><span>{{ vacancy().type }}</span>
+    </div>
+    @if (vacancy().salary) {
+      <p class="salary">{{ vacancy().salary }}</p>
+    }
+    @if (vacancy().goLiveDate) {
+      <p class="salary">
+        Applications open {{ vacancy().goLiveDate | date: 'd MMM yyyy' }} · 00:00 UK time (GMT/BST)
+      </p>
+    }
+    @if (vacancy().closingDate) {
+      <p class="salary">
+        Apply by {{ vacancy().closingDate | date: 'd MMM yyyy' }} · 23:59 UK time (GMT/BST)
+      </p>
+    }
+    @if (vacancy().description) {
+      <p class="job-description">{{ vacancy().description }}</p>
+    }
+  </header>
+  @if (sent()) {
+    <div class="application-body" role="status">
+      <span class="badge success">Application received</span>
+      <h3>Thank you, {{ details.name }}.</h3>
+      <p>
+        Your application for {{ vacancy().title }} is now in the recruitment pipeline. You can close
+        this page.
+      </p>
+    </div>
+  } @else if (!preview() && store.vacancyClosed(vacancy())) {
+    <div class="application-body" role="status">
+      <span class="badge">Applications closed</span>
+      <h3>The application deadline has passed.</h3>
+      <p>Thank you for your interest. Contact the employer about other opportunities.</p>
+    </div>
+  } @else if (!preview() && store.vacancyScheduled(vacancy())) {
+    <div class="application-body" role="status">
+      <span class="badge">Applications opening soon</span>
+      <h3>This vacancy is scheduled to go live.</h3>
+      <p>
+        Please return on {{ vacancy().goLiveDate | date: 'd MMM yyyy' }} from 00:00 UK time
+        (GMT/BST) to apply.
+      </p>
+    </div>
+  } @else {
+    <form #form="ngForm" (ngSubmit)="submit(form)" novalidate>
+      <div class="application-body" [attr.inert]="preview() ? '' : null">
+        <h3>Your application</h3>
+        <p>Fields marked * are required.</p>
+        <label
+          >Full name *<input
+            name="fullName"
+            [(ngModel)]="details.name"
+            required
+            maxlength="160"
+            autocomplete="name"
+        /></label>
+        <label
+          >Email address *<input
+            name="email"
+            type="email"
+            email
+            [(ngModel)]="details.email"
+            required
+            maxlength="254"
+            autocomplete="email"
+        /></label>
+        <label
+          >Phone number <span class="optional">Optional</span
+          ><input
+            name="phone"
+            type="tel"
+            [(ngModel)]="details.phone"
+            maxlength="40"
+            autocomplete="tel"
+        /></label>
+        <label
+          >Location *<input
+            name="location"
+            [(ngModel)]="details.location"
+            required
+            maxlength="160"
+            autocomplete="address-level2"
+        /></label>
+        @for (field of vacancy().fields || []; track field.id) {
+          <label
+            >{{ field.label || 'New question' }} {{ field.required ? '*' : '' }}
+            @if (!field.required) {
+              <span class="optional">Optional</span>
+            }
+            @if (field.type === 'textarea') {
+              <textarea
+                [name]="field.id"
+                [(ngModel)]="answers[field.id]"
+                [required]="field.required"
+                maxlength="4000"
+                rows="3"
+              ></textarea>
+            } @else {
+              <input
+                [type]="field.type"
+                [name]="field.id"
+                [(ngModel)]="answers[field.id]"
+                [required]="field.required"
+                [email]="field.type === 'email'"
+                maxlength="500"
+              />
+            }
+          </label>
+        }
+        @if (vacancy().documents?.length) {
+          <h3>Supporting documents</h3>
+          <p>PDF, Word or JPG / PNG · up to 1 MB per document.</p>
+          @for (doc of vacancy().documents || []; track doc.id) {
+            <label class="document-upload"
+              >{{ doc.label || 'Document name' }} {{ doc.required ? '*' : '' }}
+              @if (!doc.required) {
+                <span class="optional">Optional</span>
+              }
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                (change)="upload($event, doc.id, doc.label)"
+                [attr.aria-required]="doc.required"
+              />
+              @if (files()[doc.id]; as file) {
+                <small>{{ file.name }} · Ready to submit</small>
+              }
+              @if (fileErrors()[doc.id]) {
+                <small class="application-error" role="alert">{{ fileErrors()[doc.id] }}</small>
+              }
+            </label>
+          }
+        }
+        @if (error()) {
+          <p class="application-error" role="alert">{{ error() }}</p>
+        }
+        @if (preview()) {
+          <span class="button primary preview-submit">Submit application</span>
+        } @else {
+          <button class="button primary" [disabled]="busy()">
+            {{ busy() ? 'Reading document…' : 'Submit application' }}
+          </button>
+        }
+        <small
+          >Your details and documents will be available to the recruitment team for this
+          vacancy.</small
+        >
+      </div>
+    </form>
+  }
+</article>

@@ -1,4 +1,5 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { vacancyClosed, vacancyScheduled } from '../recruitment/vacancy-deadline';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
 
 export interface Company {
@@ -20,6 +21,8 @@ export interface StaffDocument {
   name: string;
   type: string;
   content: string;
+  requirement?: string;
+  requirementId?: string;
 }
 export interface Person {
   id: string;
@@ -29,6 +32,12 @@ export interface Person {
   location: string;
   stage: string;
   vacancy: string;
+  vacancyId?: string;
+  application?: {
+    submitted: string;
+    phone: string;
+    answers: { fieldId?: string; label: string; value: string }[];
+  };
   visaType?: string;
   visaExpiry?: string;
   checkExpiry?: Record<string, string>;
@@ -40,12 +49,29 @@ export interface Person {
   learning: string[];
   progress: Record<string, number>;
 }
+export interface ApplicationField {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'email' | 'number' | 'date';
+  required: boolean;
+}
+export interface DocumentRequirement {
+  id: string;
+  label: string;
+  required: boolean;
+}
 export interface Vacancy {
   id: string;
   title: string;
   location: string;
   type: string;
   salary: string;
+  description?: string;
+  published?: boolean;
+  closingDate?: string;
+  goLiveDate?: string;
+  fields?: ApplicationField[];
+  documents?: DocumentRequirement[];
 }
 export interface Member {
   id: string;
@@ -343,9 +369,89 @@ export class ManagementStore {
   readonly staff = computed(() => this.data().people.filter((p) => p.stage === 'Hired'));
   readonly applicants = computed(() => this.data().people.filter((p) => p.stage !== 'Hired'));
   readonly storageAvailable = signal(true);
+  private readonly deadlineClock = signal(new Date());
+  readonly openVacancies = computed(() =>
+    this.data().vacancies.filter(
+      (v) => v.published && !this.vacancyClosed(v) && !this.vacancyScheduled(v),
+    ),
+  );
   update(change: (data: WorkspaceData) => WorkspaceData): void {
     this.records.update((all) => ({ ...all, [this.companyId()]: change(this.data()) }));
     this.persist('cv_management_v1', this.records());
+  }
+  constructor() {
+    const refresh = (event: StorageEvent) => {
+      if (event.key === 'cv_management_v1') this.records.set(this.restore('cv_management_v1', {}));
+    };
+    window.addEventListener('storage', refresh);
+    const timer = window.setInterval(() => this.deadlineClock.set(new Date()), 60_000);
+    inject(DestroyRef).onDestroy(() => {
+      window.removeEventListener('storage', refresh);
+      window.clearInterval(timer);
+    });
+  }
+  vacancyClosed(vacancy: Vacancy): boolean {
+    return vacancyClosed(vacancy, this.deadlineClock());
+  }
+  vacancyScheduled(vacancy: Vacancy): boolean {
+    return vacancyScheduled(vacancy, this.deadlineClock());
+  }
+  vacancyStatus(vacancy: Vacancy): string {
+    if (this.vacancyClosed(vacancy)) return 'Deadline passed';
+    if (!vacancy.published) return 'Not accepting applications';
+    return this.vacancyScheduled(vacancy) ? 'Scheduled' : 'Accepting applications';
+  }
+  publicVacancy(companyId: string, vacancyId: string): Vacancy | undefined {
+    return this.records()[companyId]?.vacancies.find((v) => v.id === vacancyId && v.published);
+  }
+  saveVacancy(vacancy: Vacancy): boolean {
+    const all = this.restore<Record<string, WorkspaceData>>('cv_management_v1', this.records());
+    const data = all[this.companyId()] ?? this.data();
+    const next = {
+      ...all,
+      [this.companyId()]: {
+        ...data,
+        vacancies: data.vacancies.some((v) => v.id === vacancy.id)
+          ? data.vacancies.map((v) => (v.id === vacancy.id ? structuredClone(vacancy) : v))
+          : [...data.vacancies, structuredClone(vacancy)],
+      },
+    };
+    if (!this.persist('cv_companies_v1', this.companies())) return false;
+    if (!this.persist('cv_management_v1', next)) return false;
+    this.records.set(next);
+    return true;
+  }
+  submitApplication(companyId: string, vacancyId: string, person: Person): string | null {
+    const all = this.restore<Record<string, WorkspaceData>>('cv_management_v1', this.records());
+    const data = all[companyId];
+    const vacancy = data?.vacancies.find((v) => v.id === vacancyId && v.published);
+    if (!data || !vacancy) return 'This vacancy is no longer accepting applications.';
+    if (vacancyScheduled(vacancy, new Date()))
+      return 'Applications have not opened yet. Please return on the go-live date.';
+    if (vacancyClosed(vacancy, new Date()))
+      return 'The application deadline has passed. This vacancy is closed.';
+    if (
+      (vacancy.fields ?? []).some(
+        (f) =>
+          f.required &&
+          !person.application?.answers.some((a) => a.fieldId === f.id && a.value.trim()),
+      ) ||
+      (vacancy.documents ?? []).some(
+        (d) => d.required && !person.documents?.some((doc) => doc.requirementId === d.id),
+      )
+    )
+      return 'The application requirements have changed. Reload this page and complete the required questions and documents.';
+    if (
+      data.people.some(
+        (p) => p.vacancyId === vacancyId && p.email.toLowerCase() === person.email.toLowerCase(),
+      )
+    )
+      return 'An application with this email has already been received for this vacancy.';
+    const next = { ...all, [companyId]: { ...data, people: [...data.people, person] } };
+    if (!this.persist('cv_management_v1', next))
+      return 'Your application could not be saved. Free some browser storage and try again.';
+    this.records.set(next);
+    return null;
   }
   updatePerson(person: Person): void {
     this.update((d) => ({
@@ -418,11 +524,14 @@ export class ManagementStore {
       return fallback;
     }
   }
-  private persist(key: string, value: unknown): void {
+  private persist(key: string, value: unknown): boolean {
     try {
       localStorage.setItem(key, JSON.stringify(value));
+      this.storageAvailable.set(true);
+      return true;
     } catch {
       this.storageAvailable.set(false);
+      return false;
     }
   }
 }
