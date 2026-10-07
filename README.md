@@ -37,3 +37,32 @@ by Git.
 | Email    | `jane.doe@lqcs.co.uk` |
 | Password | `CareVerity123!`      |
 | MFA code | `123456`              |
+
+## Vacancy application flow
+
+In Recruitment, use **New vacancy** or **Vacancies → Edit form** to configure
+opportunity details, additional questions and required or optional document
+uploads. The side preview shows the applicant page as you edit. Save the vacancy
+with **Accept applications through the public link** enabled, then copy or open
+its `/apply/:companyId/:vacancyId` link. Existing demo vacancies need to be saved
+through the editor before an application page is available.
+
+The application route does not require sign-in. Successful submissions appear in
+the linked workspace's Applied column, including custom responses in Profile and
+uploads in Documents. Uploads accept PDF, Word, JPG and PNG files up to 1 MB each.
+An optional go-live date opens applications at 00:00 UK time (GMT/BST) on the selected
+day when public applications are enabled. Before then, the link shows the vacancy
+and its opening date without an application form. Leave it blank to open
+immediately. The closing date must be on or after the go-live date. Scheduling uses
+`Europe/London` and adjusts automatically for GMT and BST regardless of the
+applicant's device timezone.
+
+An optional closing date accepts applications through 23:59 UK time (GMT/BST) on that
+day, then shows a closed page and blocks new submissions. Leave it blank for
+no deadline. Recruitment refreshes when an application is saved from another tab. Pausing a
+vacancy disables its public form while preserving received applications.
+
+Links and applications currently work only in the browser profile and site origin
+where the vacancy was saved. Shared links cannot receive applications from other
+devices until a backend and shared document storage are connected. The interface
+labels this limitation as a device demo.
