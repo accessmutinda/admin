@@ -2,7 +2,7 @@
 
 Web admin console for CareVerity, a care management platform. This build covers authentication and account security, company setup and
 administration, recruitment, employee onboarding, compliance, training, rota,
-payroll and the Live ECM board.
+payroll, the Live ECM board, supervisor assessments and quality assurance.
 
 There is no backend yet. Every sign-in, MFA check, invite, and password reset
 runs against fixed demo data (`src/app/core/auth/fixtures.ts`) and
