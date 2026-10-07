@@ -1,0 +1,884 @@
+<div id="ecm-surface" [class.ecm-wallboard]="wallboard">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">CARE DELIVERY</p>
+      <h1>{{ wallboard ? 'Live ECM wallboard' : 'Live ECM board' }}</h1>
+      <p>Monitor expected visits, spot delays and coordinate care.</p>
+    </div>
+    @if (service.rota.can('view')) {
+      <div class="row ecm-heading-actions">
+        @if (wallboard) {
+          <a class="button" routerLink="/manage/ecm">Return to board</a
+          ><button class="button primary" (click)="fullscreen()">
+            <span class="material-symbols-outlined" aria-hidden="true">fullscreen</span>Full screen
+          </button>
+        } @else {
+          <a class="button" routerLink="/manage/rota">Open rota</a
+          ><a class="button" routerLink="/manage/ecm/wallboard"
+            ><span class="material-symbols-outlined" aria-hidden="true">connected_tv</span
+            >Wallboard</a
+          >
+          @if (service.rota.can('manage')) {
+            <button class="button" (click)="open('Board settings')">
+              <span class="material-symbols-outlined" aria-hidden="true">tune</span>Settings
+            </button>
+          }
+        }
+      </div>
+    }
+  </div>
+  @if (!service.rota.can('view')) {
+    <cv-access-required
+      feature="Live ECM board"
+      module="Care delivery"
+      viewPermission="View rota"
+      permissionsTitle="Rota & shifts access"
+    />
+  } @else {
+    <div class="row ecm-heading-actions" style="margin-bottom: 16px; flex-wrap: wrap">
+      <a class="button" routerLink="/manage/clients">Client files</a
+      ><a class="button" routerLink="/manage/ecm/workflows">Demo, mobile & follow-up workflows</a>
+    </div>
+    <div class="ecm-live-strip">
+      <div class="ecm-clock-group">
+        <div class="ecm-clock-face">
+          <span class="ecm-clock-label"
+            ><span class="ecm-live-dot" aria-hidden="true"></span>Live clock</span
+          >
+          <strong aria-label="Live clock">{{ time(now().toString(), true) }}</strong>
+        </div>
+        <span class="ecm-strip-date">{{ dateLabel(date()) }}</span>
+      </div>
+      <div>
+        <small
+          >Last updated at {{ time(refreshed().toString(), true) }} · Auto-refresh every 3
+          min</small
+        ><button class="button" (click)="refresh()">
+          <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Refresh
+        </button>
+      </div>
+    </div>
+    <div class="metrics four ecm-metrics">
+      <button class="metric" data-tone="blue" (click)="metricView('All visits')">
+        <span class="metric-icon material-symbols-outlined" aria-hidden="true">event_note</span
+        ><span>Expected visits</span><strong>{{ totals().total }}</strong
+        ><small>{{ totals().high }} high-risk calls</small>
+      </button>
+      <button class="metric" data-tone="amber" (click)="metricView('Needs attention')">
+        <span class="metric-icon material-symbols-outlined" aria-hidden="true"
+          >notification_important</span
+        ><span>Needs attention</span><strong>{{ totals().urgent }}</strong
+        ><small>{{ totals().red }} red · {{ totals().amber }} amber alerts</small>
+      </button>
+      <button class="metric" data-tone="teal" (click)="metricView('Care in progress')">
+        <span class="metric-icon material-symbols-outlined" aria-hidden="true">monitor_heart</span
+        ><span>Care in progress</span><strong>{{ totals().progress }}</strong
+        ><small>All required carers arrived</small>
+      </button>
+      <button class="metric" data-tone="green" (click)="metricView('Completed')">
+        <span class="metric-icon material-symbols-outlined" aria-hidden="true">task_alt</span
+        ><span>Completed</span><strong>{{ totals().completed }}</strong
+        ><small>All carers checked out</small>
+      </button>
+    </div>
+    <section class="panel ecm-register" aria-labelledby="ecm-list-title">
+      <div class="panel-toolbar">
+        <div>
+          <h2 id="ecm-list-title">{{ quick() }}</h2>
+          <p>Urgent visits first · {{ rows().length }} matching visits</p>
+        </div>
+        @if (!wallboard && service.rota.can('export')) {
+          <button class="button" (click)="exportReport()">
+            <span class="material-symbols-outlined" aria-hidden="true">download</span>Late / missed
+            report
+          </button>
+        }
+      </div>
+      <div class="ecm-filter-body">
+        <div class="ecm-views" aria-label="Visit views">
+          @for (view of views; track view) {
+            <button
+              [class.active]="quick() === view"
+              [attr.aria-pressed]="quick() === view"
+              (click)="quick.set(view); status.set('')"
+            >
+              {{ view }}
+            </button>
+          }
+        </div>
+        <div class="ecm-filters">
+          <label
+            >Date (UK)<input type="date" [ngModel]="date()" (ngModelChange)="date.set($event)"
+          /></label>
+          <label
+            >Search<input
+              type="search"
+              placeholder="Service user, carer or address"
+              [ngModel]="search()"
+              (ngModelChange)="search.set($event)"
+          /></label>
+          @if (!wallboard) {
+            <div class="ecm-advanced" [class.ecm-expanded]="advanced()">
+              <label
+                >Service user<mat-select
+                  cvSelect
+                  aria-label="Filter by service user"
+                  [ngModel]="client()"
+                  (ngModelChange)="client.set($event)"
+                  ><mat-option value="">All service users</mat-option>
+                  @for (c of service.rota.data().clients; track c.id) {
+                    <mat-option [value]="c.id">{{ c.name }}</mat-option>
+                  }
+                </mat-select></label
+              >
+              <label
+                >Care worker<mat-select
+                  cvSelect
+                  aria-label="Filter by care worker"
+                  [ngModel]="staff()"
+                  (ngModelChange)="staff.set($event)"
+                  ><mat-option value="">All care workers</mat-option>
+                  @for (p of store.data().people; track p.id) {
+                    @if (p.stage === 'Hired') {
+                      <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                    }
+                  }
+                </mat-select></label
+              >
+              <label
+                >Call type<mat-select
+                  cvSelect
+                  aria-label="Filter by call type"
+                  [ngModel]="call()"
+                  (ngModelChange)="call.set($event)"
+                  ><mat-option value="">All call types</mat-option>
+                  @for (name of calls(); track name) {
+                    <mat-option [value]="name">{{ name }}</mat-option>
+                  }
+                </mat-select></label
+              >
+              <label
+                >Status<mat-select
+                  cvSelect
+                  aria-label="Filter by visit status"
+                  [ngModel]="status()"
+                  (ngModelChange)="status.set($event)"
+                  ><mat-option value="">All statuses</mat-option>
+                  @for (s of statuses; track s) {
+                    <mat-option [value]="s">{{ s }}</mat-option>
+                  }
+                </mat-select></label
+              >
+            </div>
+          }
+        </div>
+        @if (!wallboard) {
+          <button
+            class="button ecm-filter-toggle"
+            [attr.aria-expanded]="advanced()"
+            (click)="advanced.set(!advanced())"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">filter_list</span
+            >{{ advanced() ? 'Fewer filters' : 'More filters'
+            }}{{ client() || staff() || call() || status() ? ' · Active' : '' }}
+          </button>
+        }
+        <div class="ecm-filter-flags">
+          <label
+            >Risk flag<mat-select
+              cvSelect
+              aria-label="Risk flag"
+              [ngModel]="risk()"
+              (ngModelChange)="risk.set($event)"
+              ><mat-option value="">All risks</mat-option>
+              @for (f of riskFlags; track f) {
+                <mat-option [value]="f">{{ f }}</mat-option>
+              }
+            </mat-select></label
+          ><label
+            ><input
+              type="checkbox"
+              [ngModel]="high()"
+              (ngModelChange)="high.set($event)"
+            />High-risk only</label
+          ><label
+            ><input
+              type="checkbox"
+              [ngModel]="double()"
+              (ngModelChange)="double.set($event)"
+            />Double-up visits</label
+          ><button class="ecm-clear" (click)="clear()">Clear filters</button
+          ><small
+            >Late {{ service.data().lateMinutes }}m · Risk {{ service.data().riskMinutes }}m ·
+            Missed {{ service.data().missedMinutes }}m</small
+          >
+        </div>
+      </div>
+      @if (wallboard) {
+        <div class="ecm-wall-grid">
+          @for (r of rows(); track r.v.id) {
+            <article class="ecm-wall-card" [attr.data-status]="r.live.tone">
+              <div class="row">
+                <strong>{{ r.v.start }}–{{ r.v.end }}</strong
+                ><span class="ecm-status" [attr.data-status]="r.live.tone">{{
+                  r.live.status
+                }}</span>
+              </div>
+              <h2>{{ r.v.clientName }}</h2>
+              <p>
+                {{ r.v.callName }} · {{ r.v.staffIds.length }} / {{ r.v.carers }} carers allocated
+              </p>
+              <p>
+                {{ r.v.staffIds.length ? '' : 'Unallocated' }}
+                @for (id of r.v.staffIds; track id) {
+                  <span>{{ name(id) }}{{ $last ? '' : ', ' }}</span>
+                }
+              </p>
+              <strong>{{
+                r.live.duration !== null
+                  ? r.live.duration + ' min duration'
+                  : r.live.delay
+                    ? '+' + r.live.delay + ' min since start'
+                    : 'Awaiting scheduled start'
+              }}</strong>
+              @if (r.v.priority === 'High') {
+                <span class="ecm-priority">High priority</span>
+              }
+            </article>
+          } @empty {
+            <div class="ecm-empty">
+              <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
+              <h3>No matching visits</h3>
+              <p>Change the date or filters to see published visits.</p>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <table class="ecm-table">
+            <thead>
+              <tr>
+                <th>Scheduled</th>
+                <th>Service user / call</th>
+                <th>Care workers</th>
+                <th>Attendance</th>
+                <th>Live status</th>
+                <th>Timing</th>
+                <th>Review</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of rows(); track r.v.id) {
+                <tr [attr.data-status]="r.live.tone">
+                  <td data-label="Scheduled">
+                    <strong>{{ r.v.start }}–{{ r.v.end }}</strong>
+                    @if (r.v.date !== date()) {
+                      <small>Started {{ dateLabel(r.v.date) }}</small>
+                    }
+                    @if (r.v.end <= r.v.start) {
+                      <small>Ends next day</small>
+                    }
+                    <small>{{ r.v.allocation }} cover</small>
+                  </td>
+                  <td data-label="Service user / call">
+                    <strong>{{ r.v.clientName }}</strong
+                    ><span
+                      class="ecm-call"
+                      [style.background]="style(r.v.callName).background"
+                      [style.color]="style(r.v.callName).color"
+                      >{{ style(r.v.callName).label }}</span
+                    >
+                    @for (f of flags(r.v); track f) {
+                      <small>{{ f }}</small>
+                    }
+                    @if (r.v.priority === 'High') {
+                      <span class="ecm-priority">High priority</span>
+                    }
+                  </td>
+                  <td data-label="Care workers">
+                    @for (id of r.v.staffIds; track id) {
+                      <span class="ecm-carer">{{ name(id) }}</span>
+                    } @empty {
+                      <span class="ecm-priority">Unallocated</span>
+                    }
+                    @if (r.v.carers === 2) {
+                      <small>Double-up · {{ r.v.staffIds.length }}/2 allocated</small>
+                    }
+                  </td>
+                  <td data-label="Attendance">
+                    <span>{{ r.live.arrived }} / {{ r.v.carers }} checked in</span>
+                    @for (a of r.v.attendance; track a.personId) {
+                      <small>{{ time(a.start) }} → {{ a.end ? time(a.end) : 'Open' }}</small>
+                    }
+                  </td>
+                  <td data-label="Live status">
+                    <span class="ecm-status" [attr.data-status]="r.live.tone">{{
+                      r.live.status
+                    }}</span>
+                    @if (r.live.arrived && r.live.arrived < r.v.carers) {
+                      <small>Waiting for second carer</small>
+                    }
+                  </td>
+                  <td data-label="Timing">
+                    @if (r.live.duration !== null) {
+                      <strong>{{ r.live.duration }} min</strong
+                      ><small>{{
+                        r.live.status === 'Completed'
+                          ? 'Completed duration'
+                          : 'Since first check-in'
+                      }}</small>
+                    } @else if (r.live.delay) {
+                      <strong>+{{ r.live.delay }} min</strong><small>Since scheduled start</small>
+                    } @else {
+                      <span>—</span>
+                    }
+                    @if (r.live.overrun) {
+                      <small class="ecm-priority">{{ r.live.overrun }} min overrun</small>
+                    }
+                  </td>
+                  <td data-label="Review">
+                    <button class="button ecm-review" (click)="openVisit(r.v)">
+                      View visit<span class="material-symbols-outlined" aria-hidden="true"
+                        >arrow_forward</span
+                      >
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="7">
+                    <div class="ecm-empty">
+                      <span class="material-symbols-outlined" aria-hidden="true"
+                        >event_available</span
+                      >
+                      <h3>
+                        {{
+                          all().length
+                            ? 'No visits match your filters'
+                            : 'No published visits for this date'
+                        }}
+                      </h3>
+                      <p>
+                        {{
+                          all().length
+                            ? 'Clear filters or choose another view.'
+                            : 'Publish allocated visits from the rota to monitor them here.'
+                        }}
+                      </p>
+                      <a class="button" routerLink="/manage/rota">Open rota</a>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      <div class="ecm-register-footer">
+        <small>Published visits · Includes overnight carryover · UK time (GMT/BST)</small
+        ><small
+          >“Missed” means no complete check-in after the threshold; review before confirming
+          non-delivery.</small
+        >
+      </div>
+    </section>
+    <p class="ecm-demo">
+      Frontend demo · Mobile attendance updates other open tabs in this browser. Messages,
+      escalations, billing and evidence use dummy records. Use sample photos and voice notes only.
+    </p>
+  }
+  @if (modal() && service.rota.can('view')) {
+    <div class="modal-backdrop" (click)="close()">
+      <section
+        class="modal panel ecm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ecm-dialog-title"
+        cdkTrapFocus
+        [cdkTrapFocusAutoCapture]="true"
+        (keydown.escape)="close()"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="panel-toolbar">
+          <div>
+            <h2 id="ecm-dialog-title" tabindex="-1">{{ modal() }}</h2>
+            @if (visit(); as v) {
+              @if (modal() !== 'Board settings') {
+                <p>{{ v.clientName }} · {{ v.callName }} · {{ dateLabel(v.date) }}</p>
+              }
+            }
+          </div>
+          <button class="icon-button" aria-label="Close dialog" (click)="close()">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
+        </div>
+        @if (error()) {
+          <p class="ecm-error" role="alert">{{ error() }}</p>
+        }
+        @if (modal() === 'Visit details') {
+          @if (visit(); as v) {
+            <div class="panel-body ecm-details">
+              <div class="row">
+                <span class="ecm-status" [attr.data-status]="live(v).tone">{{
+                  live(v).status
+                }}</span
+                ><strong>{{ v.start }}–{{ v.end }} · {{ v.allocation }} cover</strong>
+                @if (v.priority === 'High') {
+                  <span class="ecm-priority">High priority</span>
+                }
+              </div>
+              <p>{{ v.address }}</p>
+              <p>{{ v.tasks || 'No additional care tasks recorded.' }}</p>
+              <div class="row" style="flex-wrap: wrap">
+                @for (f of flags(v); track f) {
+                  <span class="ecm-priority">{{ f }}</span>
+                }
+              </div>
+              @if (v.manualOverride) {
+                <p>Manual override · {{ v.manualOverride.by }} · {{ v.manualOverride.reason }}</p>
+              }
+              <h3>Care workers & attendance</h3>
+              @for (id of v.staffIds; track id) {
+                <div class="ecm-attendance-line">
+                  <strong>{{ name(id) }}</strong>
+                  @for (a of v.attendance; track a.personId) {
+                    @if (a.personId === id) {
+                      <span>In {{ time(a.start) }} · Out {{ a.end ? time(a.end) : 'Open' }}</span>
+                    }
+                  }
+                </div>
+              }
+              <div class="row">
+                @if (service.rota.can('manage')) {
+                  <button class="button primary" (click)="open('Record follow-up')">
+                    Record follow-up
+                  </button>
+                  @if (!v.attendance.length) {
+                    <button class="button" (click)="open('Reschedule visit')">
+                      Reschedule visit
+                    </button>
+                    @if (ops.manager()) {
+                      <button class="button" (click)="open('Manual override')">
+                        Manual override
+                      </button>
+                    }
+                    <button class="button" (click)="open('Reallocate visit')">
+                      Reallocate visit
+                    </button>
+                  }
+                  <button class="button" (click)="open('Add evidence')">Add care evidence</button>
+                }
+                @if (service.rota.can('attendance') && live(v).status !== 'Completed') {
+                  <button class="button" (click)="open('Record attendance')">
+                    Record attendance
+                  </button>
+                }
+              </div>
+              <a routerLink="/manage/ecm/workflows"
+                >Notification outbox, escalation cases & downstream records</a
+              >
+              <h3>Follow-up history</h3>
+              @for (r of records(); track r.id) {
+                <article class="ecm-history">
+                  <strong
+                    >{{ r.action }}
+                    @if (r.concern) {
+                      <span class="ecm-priority">Welfare concern</span>
+                    }</strong
+                  ><small>{{ stamp(r.at) }} · {{ r.user }}</small>
+                  <p>{{ r.note }}</p>
+                  @if (r.contact) {
+                    <p>{{ r.contact }} · {{ r.outcome }}</p>
+                    @if (r.contactAt) {
+                      <small>Contacted {{ stamp(r.contactAt) }} (UK)</small>
+                    }
+                  }
+                  @if (r.eta) {
+                    <p>
+                      Revised arrival {{ r.eta }} ·
+                      {{ r.accepted ? 'Change accepted' : 'Acceptance not recorded' }}
+                    </p>
+                  }
+                  @if (r.followUp) {
+                    <p>Follow-up: {{ r.followUp }}</p>
+                  }
+                </article>
+              } @empty {
+                <p>No follow-up actions recorded.</p>
+              }
+              <h3>Care evidence</h3>
+              @for (e of evidenceRows(); track e.id) {
+                <article class="ecm-history">
+                  <strong>{{ e.type }}</strong
+                  ><small>{{ stamp(e.at) }} · {{ e.user }}</small>
+                  <p>{{ e.note }}</p>
+                  <div class="row">
+                    @if (e.photo && service.rota.can('manage')) {
+                      <button class="button" (click)="viewPhoto(e)">View photo</button>
+                    }
+                    @if (e.audio && service.rota.can('manage')) {
+                      <button class="button" (click)="viewAudio(e)">Play voice note</button>
+                    }
+                    @if (e.reviewedAt) {
+                      <small>Reviewed by {{ e.reviewedBy }} · {{ stamp(e.reviewedAt) }}</small>
+                    } @else if (service.rota.can('manage')) {
+                      <button class="button" (click)="review(e.id)">Manager review</button>
+                    }
+                  </div>
+                </article>
+              } @empty {
+                <p>No care evidence saved for this visit.</p>
+              }
+              @if (audio()) {
+                <audio controls [src]="audio()" aria-label="Saved visit voice note"></audio
+                ><button class="button" (click)="audio.set('')">Hide recording</button>
+              }
+              @if (photo()) {
+                <img class="ecm-photo" [src]="photo()" alt="Saved care visit evidence" /><button
+                  class="button"
+                  (click)="photo.set('')"
+                >
+                  Hide photo
+                </button>
+              }
+            </div>
+          } @else {
+            <div class="panel-body"><p>This visit is no longer available.</p></div>
+          }
+        } @else if (modal() === 'Add evidence') {
+          <cv-visit-evidence
+            [visitId]="selected()"
+            (saved)="savedEvidence()"
+            (cancelled)="close()"
+          />
+        } @else {
+          <form (ngSubmit)="save()" novalidate>
+            <div class="panel-body form-grid">
+              @if (modal() === 'Record follow-up') {
+                <p class="full-width">
+                  For a changed-time request, enter the revised arrival time and tick acceptance to
+                  update an unstarted visit. Pending requests remain in follow-up history.
+                </p>
+                <label class="full-width"
+                  >Action<mat-select
+                    cvSelect
+                    name="action"
+                    aria-label="Follow-up action"
+                    [(ngModel)]="action.action"
+                  >
+                    @for (a of actions; track a) {
+                      <mat-option [value]="a">{{ a }}</mat-option>
+                    }
+                  </mat-select></label
+                >
+                <p class="full-width">
+                  Save a follow-up record. Queue a dummy notification or assign an escalation below.
+                </p>
+                <label class="check-label full-width"
+                  ><input
+                    type="checkbox"
+                    name="queueMessage"
+                    [(ngModel)]="action.queueMessage"
+                    (ngModelChange)="recipient()"
+                  />Queue demo notification</label
+                >
+                @if (action.queueMessage) {
+                  <label
+                    >Channel<mat-select
+                      cvSelect
+                      aria-label="Demo notification channel"
+                      name="channel"
+                      [(ngModel)]="action.channel"
+                      (ngModelChange)="recipient()"
+                    >
+                      @for (c of ['In-app', 'SMS', 'Email']; track c) {
+                        <mat-option [value]="c">{{ c }}</mat-option>
+                      }
+                    </mat-select></label
+                  ><label
+                    >Recipient<input name="recipient" [(ngModel)]="action.recipient" required
+                  /></label>
+                }
+                @if (action.action === 'Escalate missed visit risk') {
+                  <label class="full-width"
+                    >Escalation owner<mat-select
+                      cvSelect
+                      aria-label="Escalation owner"
+                      name="owner"
+                      [(ngModel)]="action.ownerId"
+                    >
+                      @for (m of store.data().members; track m.id) {
+                        @if (m.status === 'Active') {
+                          <mat-option [value]="m.id">{{ m.name }} · {{ m.role }}</mat-option>
+                        }
+                      }
+                    </mat-select></label
+                  >
+                }
+                <label>Who was contacted<input name="contact" [(ngModel)]="action.contact" /></label
+                ><label>Contact outcome<input name="outcome" [(ngModel)]="action.outcome" /></label
+                ><label class="full-width"
+                  >Contact date & time (UK)<input
+                    type="datetime-local"
+                    name="contactAt"
+                    [(ngModel)]="action.contactAt" /></label
+                ><label
+                  >Revised arrival (UK)<input
+                    type="time"
+                    name="eta"
+                    [(ngModel)]="action.eta" /></label
+                ><label class="ecm-check"
+                  ><input type="checkbox" name="accepted" [(ngModel)]="action.accepted" />Family /
+                  representative accepted the change</label
+                ><label class="ecm-check full-width"
+                  ><input type="checkbox" name="concern" [(ngModel)]="action.concern" />Safeguarding
+                  / welfare concern identified</label
+                ><label class="full-width"
+                  >Action note (required)<textarea
+                    name="note"
+                    rows="3"
+                    [(ngModel)]="action.note"
+                    required
+                  ></textarea></label
+                ><label class="full-width"
+                  >Follow-up action<textarea
+                    name="followUp"
+                    rows="2"
+                    [(ngModel)]="action.followUp"
+                  ></textarea>
+                </label>
+              }
+              @if (modal() === 'Reschedule visit') {
+                <label>New date<input type="date" name="newDate" [(ngModel)]="change.date" /></label
+                ><label
+                  >New start time<input
+                    type="time"
+                    name="newStart"
+                    [(ngModel)]="change.start" /></label
+                ><label class="full-width"
+                  >Reason<textarea
+                    name="changeReason"
+                    [(ngModel)]="change.reason"
+                  ></textarea></label
+                ><label class="check-label full-width"
+                  ><input
+                    type="checkbox"
+                    name="changeAccepted"
+                    [(ngModel)]="change.accepted"
+                  />Service user / representative agreed to this change</label
+                >
+                <p class="full-width">
+                  Preserves call duration, checks carer availability and updates the published
+                  visit.
+                </p>
+              }
+              @if (modal() === 'Manual override') {
+                <label class="full-width"
+                  >Care workers<mat-select
+                    cvSelect
+                    multiple
+                    name="overrideStaff"
+                    aria-label="Override care workers"
+                    [(ngModel)]="override.staffIds"
+                  >
+                    @for (p of store.staff(); track p.id) {
+                      <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                    }
+                  </mat-select></label
+                ><label class="full-width"
+                  >Manager reason<textarea
+                    name="overrideReason"
+                    [(ngModel)]="override.reason"
+                  ></textarea></label
+                ><label class="check-label full-width"
+                  ><input type="checkbox" name="acknowledge" [(ngModel)]="override.accepted" />I
+                  reviewed the conflicts and accept responsibility for this cover</label
+                >
+                @for (issue of overrideConflicts(); track issue) {
+                  <p class="ecm-error full-width">{{ issue }}</p>
+                }
+                <p class="full-width">
+                  Availability and skills conflicts are retained in the audit. Required carer count,
+                  hired status and attendance rules remain enforced.
+                </p>
+              }
+              @if (modal() === 'Record attendance') {
+                <p class="full-width">
+                  Record verified actual attendance in UK time. Completed attendance is locked and
+                  feeds the existing payroll workflow.
+                </p>
+                <label
+                  >Care worker<mat-select
+                    cvSelect
+                    name="personId"
+                    aria-label="Attendance care worker"
+                    [(ngModel)]="attendance.personId"
+                  >
+                    @for (id of visit()?.staffIds; track id) {
+                      <mat-option [value]="id">{{ name(id) }}</mat-option>
+                    }
+                  </mat-select></label
+                ><label
+                  >Event<mat-select
+                    cvSelect
+                    name="kind"
+                    aria-label="Attendance event"
+                    [(ngModel)]="attendance.kind"
+                    ><mat-option value="Check in">Check in</mat-option
+                    ><mat-option value="Check out">Check out</mat-option></mat-select
+                  ></label
+                ><label class="full-width"
+                  >Actual date & time (UK)<input
+                    type="datetime-local"
+                    name="at"
+                    [(ngModel)]="attendance.at" /></label
+                ><label class="full-width"
+                  >Verification note (required)<textarea
+                    name="note"
+                    rows="3"
+                    [(ngModel)]="attendance.note"
+                  ></textarea>
+                </label>
+              }
+              @if (modal() === 'Reallocate visit') {
+                <p class="full-width">
+                  Temporary cover applies to this visit. Availability, training and travel conflicts
+                  are checked before saving.
+                </p>
+                <label class="full-width"
+                  >Care workers<mat-select
+                    cvSelect
+                    multiple
+                    name="staffIds"
+                    aria-label="Replacement care workers"
+                    [(ngModel)]="cover.staffIds"
+                  >
+                    @for (p of store.staff(); track p.id) {
+                      <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                    }
+                  </mat-select></label
+                ><label class="full-width"
+                  >Reason (required)<textarea
+                    rows="3"
+                    name="reason"
+                    [(ngModel)]="cover.reason"
+                  ></textarea>
+                </label>
+              }
+              @if (modal() === 'Board settings') {
+                <h3 class="full-width">Alert thresholds</h3>
+                <p class="full-width">
+                  Minutes after scheduled start without all required carers checked in.
+                </p>
+                <label
+                  >Running late (minutes)<input
+                    type="number"
+                    min="1"
+                    max="180"
+                    name="late"
+                    [(ngModel)]="settings.lateMinutes" /></label
+                ><label
+                  >Missed visit risk (minutes)<input
+                    type="number"
+                    min="1"
+                    max="180"
+                    name="risk"
+                    [(ngModel)]="settings.riskMinutes" /></label
+                ><label
+                  >Missed visit (minutes)<input
+                    type="number"
+                    min="1"
+                    max="180"
+                    name="missed"
+                    [(ngModel)]="settings.missedMinutes"
+                /></label>
+                <h3 class="full-width">Call types & defaults</h3>
+                <label>New call type<input name="newCallType" [(ngModel)]="newCall" /></label>
+                <div>
+                  <button class="button" type="button" (click)="addCall()">Add call type</button>
+                </div>
+                <label class="full-width"
+                  >Call type<mat-select
+                    cvSelect
+                    name="callStyle"
+                    aria-label="Call type to customise"
+                    [(ngModel)]="styleCall"
+                    (ngModelChange)="selectStyle()"
+                  >
+                    @for (c of styleNames(); track c) {
+                      <mat-option [value]="c">{{ c }}</mat-option>
+                    }
+                  </mat-select></label
+                >
+                @if (settings.styles[styleCall]; as s) {
+                  <label
+                    >Default duration (minutes)<input
+                      type="number"
+                      min="5"
+                      max="240"
+                      name="defaultDuration"
+                      [(ngModel)]="s.duration" /></label
+                  ><label
+                    >Default priority<mat-select
+                      cvSelect
+                      aria-label="Default call priority"
+                      name="defaultPriority"
+                      [(ngModel)]="s.priority"
+                      ><mat-option value="Standard">Standard</mat-option
+                      ><mat-option value="High">High</mat-option></mat-select
+                    ></label
+                  ><label class="full-width"
+                    >Required skills<mat-select
+                      cvSelect
+                      multiple
+                      aria-label="Default required skills"
+                      name="defaultSkills"
+                      [(ngModel)]="s.skills"
+                    >
+                      @for (c of courses; track c.id) {
+                        <mat-option [value]="c.id">{{ c.title }}</mat-option>
+                      }
+                    </mat-select></label
+                  ><label class="check-label full-width"
+                    ><input type="checkbox" name="callActive" [(ngModel)]="s.active" />Active call
+                    type</label
+                  ><label
+                    >Background<input
+                      type="color"
+                      name="background"
+                      [(ngModel)]="s.background" /></label
+                  ><label
+                    >Text colour<input type="color" name="color" [(ngModel)]="s.color" /></label
+                  ><label class="full-width"
+                    >Label<input name="label" [(ngModel)]="s.label"
+                  /></label>
+                  <div class="full-width row">
+                    <span
+                      class="ecm-call"
+                      [style.background]="s.background"
+                      [style.color]="s.color"
+                      >{{ s.label }}</span
+                    ><button class="button" type="button" (click)="resetColours()">
+                      Reset colours
+                    </button>
+                  </div>
+                } @else {
+                  <p class="full-width">Publish visits to customise their call labels.</p>
+                }
+                <p class="full-width">
+                  Defaults apply when chosen for a new client call package. Existing published
+                  timings remain as scheduled. Changes are saved for this company and logged in the
+                  rota audit. Alert colours retain their status meaning.
+                </p>
+              }
+            </div>
+            <div class="ecm-dialog-footer">
+              <button type="button" class="button" (click)="close()">Cancel</button
+              ><button type="submit" class="button primary">Save record</button>
+            </div>
+          </form>
+        }
+      </section>
+    </div>
+  }
+</div>

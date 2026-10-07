@@ -162,6 +162,37 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'clients',
+        data: { module: 'Care delivery' },
+        title: 'Client files · CareVerity',
+        loadComponent: () => import('./features/management/clients/client-files').then((m) => m.ClientFiles),
+      },
+      {
+        path: 'clients/:id',
+        data: { module: 'Care delivery' },
+        title: 'Client record · CareVerity',
+        loadComponent: () => import('./features/management/clients/client-files').then((m) => m.ClientFiles),
+      },
+      {
+        path: 'ecm/workflows',
+        data: { module: 'Care delivery' },
+        title: 'ECM workflows · CareVerity',
+        loadComponent: () =>
+          import('./features/management/ecm/ecm-workflows').then((m) => m.EcmWorkflows),
+      },
+      {
+        path: 'ecm/wallboard',
+        data: { module: 'Care delivery', wallboard: true },
+        title: 'Live ECM wallboard · CareVerity',
+        loadComponent: () => import('./features/management/ecm/ecm').then((m) => m.Ecm),
+      },
+      {
+        path: 'ecm',
+        data: { module: 'Care delivery' },
+        title: 'Live ECM board · CareVerity',
+        loadComponent: () => import('./features/management/ecm/ecm').then((m) => m.Ecm),
+      },
+      {
         path: 'rota',
         data: { module: 'Care delivery' },
         title: 'Rota & shift allocation · CareVerity',

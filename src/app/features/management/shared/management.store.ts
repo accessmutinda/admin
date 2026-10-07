@@ -212,7 +212,7 @@ const seedPerson = (
   learning: ['safeguarding', 'handling', 'infection'],
   progress: stage === 'Hired' ? { safeguarding: 100, handling: 40 } : {},
 });
-interface WorkspaceData {
+export interface WorkspaceData {
   rota?: RotaData;
   rotaPermissions?: Record<string, RotaAction[]>;
   payroll?: PayrollData;

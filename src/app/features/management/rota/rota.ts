@@ -3,11 +3,12 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
 import { A11yModule } from '@angular/cdk/a11y';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CvSelect } from '../../../shared/ui/select';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { ManagementStore, COURSES } from '../shared/management.store';
 import { RotaService } from './rota.service';
+import { emptyEcm } from '../ecm/ecm.models';
 import { AccessRequired } from '../shared/access-required';
 import { validVacancyDate } from '../recruitment/vacancy-deadline';
 import {
@@ -19,6 +20,7 @@ import {
   londonDate,
   londonInstant,
   minutes,
+  RISK_FLAGS,
 } from './rota.models';
 
 @Component({
@@ -38,7 +40,13 @@ export class Rota {
   protected readonly store = inject(ManagementStore);
   protected readonly service = inject(RotaService);
   private readonly toast = inject(ToastService);
+  private readonly router = inject(Router);
   protected readonly today = londonDate();
+  protected readonly clientFiles = !!inject(ActivatedRoute).snapshot.data['clientFiles'];
+  protected readonly riskFlags = RISK_FLAGS;
+  protected readonly callTypes = computed(() =>
+    Object.keys(this.service.data().ecm?.styles ?? emptyEcm().styles),
+  );
   protected readonly tab = signal('Overview');
   protected readonly tabs = [
     'Overview',
@@ -201,6 +209,7 @@ export class Rota {
       ),
   );
   constructor() {
+    if (this.clientFiles) this.tab.set('Service users');
     const timer = setInterval(() => this.clock.set(Date.now()), 60000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }
@@ -214,6 +223,12 @@ export class Rota {
       funding: 'Local authority',
       priority: 'Standard',
       active: true,
+      riskFlags: [],
+      phone: '',
+      email: '',
+      representative: { name: '', relationship: '', phone: '', email: '' },
+      billingRate: 0,
+      billingBasis: 'Visit hour',
     };
   }
   private blankCall(): RotaCall {
@@ -229,9 +244,33 @@ export class Rota {
       regularStaffIds: [],
       tasks: '',
       active: true,
+      priority: 'Standard',
     };
   }
+  protected clientRecord() {
+    return this.service.data().clients.find((c) => c.id === this.packageClient());
+  }
+  protected callDefaults(): void {
+    const defaults = (this.service.data().ecm?.styles ?? emptyEcm().styles)[this.call.name];
+    if (!defaults) return;
+    const end = (minutes(this.call.start) + (defaults.duration ?? 45)) % 1440;
+    this.call.end = `${Math.floor(end / 60)
+      .toString()
+      .padStart(2, '0')}:${(end % 60).toString().padStart(2, '0')}`;
+    this.call.priority = defaults.priority ?? 'Standard';
+    this.call.skills = [...(defaults.skills ?? [])];
+    this.call.active = defaults.active !== false;
+  }
+  protected toggleRisk(flag: (typeof RISK_FLAGS)[number]): void {
+    this.client.riskFlags = this.client.riskFlags?.includes(flag)
+      ? this.client.riskFlags.filter((f) => f !== flag)
+      : [...(this.client.riskFlags ?? []), flag];
+  }
   protected choose(view: string): void {
+    if (view === 'Live board') {
+      void this.router.navigate(['/manage/ecm']);
+      return;
+    }
     if (view === 'new') {
       this.open('allocation');
       return;
@@ -300,7 +339,8 @@ export class Rota {
           staffIds: a.type === 'Regular' && a.useRegular ? call.regularStaffIds : a.staffIds,
           allocation: a.type,
           state: 'Draft',
-          priority: client.priority,
+          priority: call.priority === 'High' || client.priority === 'High' ? 'High' : 'Standard',
+          riskFlags: [...(client.riskFlags ?? [])],
           attendance: [],
           exception: '',
         });
@@ -358,7 +398,14 @@ export class Rota {
     this.step.set(1);
     if (kind === 'client')
       this.client = id
-        ? structuredClone(this.service.data().clients.find((c) => c.id === id)!)
+        ? {
+            ...this.blankClient(),
+            ...structuredClone(this.service.data().clients.find((c) => c.id === id)!),
+            representative: {
+              ...this.blankClient().representative!,
+              ...this.service.data().clients.find((c) => c.id === id)!.representative,
+            },
+          }
         : this.blankClient();
     if (kind === 'call')
       this.call = id

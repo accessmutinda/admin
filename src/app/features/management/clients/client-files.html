@@ -1,0 +1,123 @@
+@if (!service.can('view')) {
+  <cv-access-required feature="Client files" module="Care delivery" viewPermission="View rota" permissionsTitle="Rota & shifts access" />
+} @else {
+  <div class="client-files">
+    @if (editing() === 'profile') {
+      <div class="page-heading"><div><h1>{{ sourceId ? 'Edit client details' : 'Add client' }}</h1><p>Build a person-centred record with clear contacts and care priorities.</p></div></div>
+      <form class="panel client-editor" (ngSubmit)="save()">
+        <h2>Personal details</h2><p class="client-form-hint">Name, reference, address and postcode are required.</p>
+        <div class="form-grid">
+          <label>Full name *<input name="name" [(ngModel)]="draft.name" required /></label>
+          <label>Client reference *<input name="reference" [(ngModel)]="draft.reference" required /></label>
+          @for (field of personalFields; track field.key) {
+            <label [class.client-wide]="field.type === 'textarea'">{{ field.label }}
+              @if (field.type === 'textarea') { <textarea [name]="field.key" [(ngModel)]="draft.file!.details[field.key]" rows="3"></textarea> }
+              @else { <input [type]="field.type || 'text'" [name]="field.key" [(ngModel)]="draft.file!.details[field.key]" [max]="field.key === 'dob' ? today : null" /> }
+            </label>
+          }
+          <label class="client-wide">Address *<input name="address" [(ngModel)]="draft.address" required /></label>
+          <label>Postcode *<input name="postcode" [(ngModel)]="draft.postcode" required /></label>
+          <label>Phone<input name="phone" [(ngModel)]="draft.phone" type="tel" /></label>
+          <label>Email<input name="email" [(ngModel)]="draft.email" type="email" /></label>
+          <label>Funding<mat-select cvSelect name="funding" aria-label="Funding" [(ngModel)]="draft.funding">@for (value of ['Local authority', 'Private', 'NHS']; track value) { <mat-option [value]="value">{{ value }}</mat-option> }</mat-select></label>
+          <label>Care priority<mat-select cvSelect name="priority" aria-label="Care priority" [(ngModel)]="draft.priority"><mat-option value="Standard">Standard</mat-option><mat-option value="High">High</mat-option></mat-select></label>
+          <label>Record status<mat-select cvSelect name="active" aria-label="Record status" [(ngModel)]="draft.active"><mat-option [value]="true">Active</mat-option><mat-option [value]="false">Inactive</mat-option></mat-select></label>
+        </div>
+        <h2 class="client-form-title">Care alerts</h2>
+        <div class="client-checks">@for (flag of riskFlags; track flag) { <label class="check-label"><input type="checkbox" [checked]="draft.riskFlags?.includes(flag)" (change)="toggleRisk(flag)" />{{ flag }}</label> }</div>
+        <h2 class="client-form-title">Family / representative</h2>
+        <div class="form-grid">
+          <label>Contact name<input name="representativeName" [(ngModel)]="draft.representative!.name" /></label>
+          <label>Relationship<input name="relationship" [(ngModel)]="draft.representative!.relationship" /></label>
+          <label>Contact phone<input name="representativePhone" [(ngModel)]="draft.representative!.phone" type="tel" /></label>
+          <label>Contact email<input name="representativeEmail" [(ngModel)]="draft.representative!.email" type="email" /></label>
+        </div>
+        @if (error()) { <p class="client-error" role="alert">{{ error() }}</p> }
+        <div class="client-save"><button class="button primary" type="submit">Save client</button><button class="button" type="button" (click)="discard()">Discard</button></div>
+      </form>
+    } @else if (!id()) {
+      <div class="page-heading"><div><h1>Client files</h1><p>Connected information for personalised care, from first contact to daily delivery.</p></div>
+        @if (service.can('manage')) { <button class="button primary" (click)="startProfile(true)"><span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add client</button> }
+      </div>
+      <div class="metrics four">
+        <article class="metric" data-tone="teal"><span class="metric-icon material-symbols-outlined" aria-hidden="true">folder_shared</span><span>Client records</span><strong>{{ service.data().clients.length }}</strong><small>All service users</small></article>
+        <article class="metric" data-tone="green"><span class="metric-icon material-symbols-outlined" aria-hidden="true">person_check</span><span>Active clients</span><strong>{{ active() }}</strong><small>Current care records</small></article>
+        <article class="metric" data-tone="amber"><span class="metric-icon material-symbols-outlined" aria-hidden="true">event_repeat</span><span>Care plan reviews due</span><strong>{{ reviews() }}</strong><small>Due today or overdue</small></article>
+        <article class="metric" data-tone="red"><span class="metric-icon material-symbols-outlined" aria-hidden="true">health_and_safety</span><span>High priority / risk</span><strong>{{ highRisk() }}</strong><small>Active clients needing attention</small></article>
+      </div>
+      <section class="panel client-directory">
+        <div class="panel-toolbar"><div class="client-panel-title"><span class="client-icon material-symbols-outlined" data-tone="teal" aria-hidden="true">contact_page</span><div><h2>Service-user directory</h2><p>Personal details, care plans and the people supporting them.</p></div></div><a class="text-link" routerLink="/manage/ecm">Live ECM board <span aria-hidden="true">→</span></a></div>
+        <div class="client-filters"><label class="search-box"><span class="material-symbols-outlined" aria-hidden="true">search</span><input aria-label="Search client files" placeholder="Search name, reference or postcode…" [ngModel]="query()" (ngModelChange)="query.set($event)" /></label>
+          <mat-select cvSelect aria-label="Filter client status" [ngModel]="status()" (ngModelChange)="status.set($event)">@for (value of ['All', 'Active', 'Inactive']; track value) { <mat-option [value]="value">{{ value === 'All' ? 'All statuses' : value }}</mat-option> }</mat-select>
+          @if (query() || status() !== 'All') { <button class="button" (click)="query.set(''); status.set('All')">Clear</button> }
+        </div>
+        @if (clients().length) {
+          <div class="table-wrap"><table class="client-table"><thead><tr><th scope="col">Client</th><th scope="col">Care priority</th><th scope="col">Call packages</th><th scope="col">Plan review</th><th scope="col">Status</th><th scope="col">Record</th></tr></thead><tbody>
+            @for (c of clients(); track c.id) {
+              <tr><td data-label="Client"><div class="person-cell"><span class="client-avatar">{{ initials(c.name) }}</span><div><a class="text-link" [routerLink]="['/manage/clients', c.id]">{{ c.name }}</a><small>{{ c.reference }} · {{ c.postcode }}</small></div></div></td>
+                <td data-label="Care priority"><span class="badge" [class.warning]="c.priority === 'High'">{{ c.priority }}</span></td><td data-label="Call packages">{{ count(c) }} active</td>
+                <td data-label="Plan review"><span [class.client-overdue]="reviewDue(c)">{{ review(c) ? (review(c) | date: 'dd MMM yyyy') : 'Not recorded' }}</span>@if (reviewDue(c)) { <small>Review due</small> }</td>
+                <td data-label="Status"><span class="badge" [class.success]="c.active">{{ c.active ? 'Active' : 'Inactive' }}</span></td>
+                <td data-label="Record"><a class="button client-open" [routerLink]="['/manage/clients', c.id]" [attr.aria-label]="'Open record for ' + c.name">Open file<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></td>
+              </tr>
+            }
+          </tbody></table></div>
+        } @else {
+          <div class="empty-state"><span class="material-symbols-outlined" aria-hidden="true">folder_shared</span><h3>{{ service.data().clients.length ? 'No matching clients' : 'Start with the person' }}</h3><p>{{ service.data().clients.length ? 'Try another name, reference or postcode, or clear your filters.' : 'Add a client to bring their preferences, care plans and daily support together.' }}</p>
+            @if (!service.data().clients.length && service.can('manage')) { <button class="button primary" (click)="startProfile(true)">Add your first client</button> }
+          </div>
+        }
+        <div class="client-directory-footer">{{ clients().length }} of {{ service.data().clients.length }} client records</div>
+      </section>
+    } @else if (client(); as c) {
+      <a class="text-link client-back" routerLink="/manage/clients">← Client files</a>
+      <div class="page-heading"><div><h1>Client record</h1><p>Personalised information for safe, consistent care.</p></div><div class="row"><a class="button" routerLink="/manage/rota">Calls & allocations</a>@if (service.can('manage')) { <button class="button primary" [disabled]="!!editing()" (click)="startProfile()">Edit details</button> }</div></div>
+      <section class="panel client-profile"><span class="client-avatar client-avatar-large">{{ initials(c.name) }}</span><div class="client-profile-info"><div class="row"><h2>{{ c.name }}</h2><span class="badge" [class.success]="c.active">{{ c.active ? 'Active' : 'Inactive' }}</span></div><p>{{ c.reference }} @if (file().details['dob']) { · Born {{ file().details['dob'] | date: 'dd MMM yyyy' }} } @if (file().details['gender']) { · {{ file().details['gender'] }} }</p><p><span class="material-symbols-outlined" aria-hidden="true">location_on</span>{{ c.address }}, {{ c.postcode }}</p><div class="client-alerts">@for (flag of c.riskFlags ?? []; track flag) { <span class="badge warning">{{ flag }}</span> }</div></div><div class="client-profile-meta"><span>Care priority</span><strong>{{ c.priority }}</strong><small>{{ c.funding }}</small></div></section>
+      <div class="client-record-layout">
+        <nav class="panel client-section-nav" aria-label="Client record sections">@for (s of sections; track s.key) { <button [class.active]="sectionKey() === s.key" [attr.aria-current]="sectionKey() === s.key ? 'page' : null" [disabled]="!!editing()" (click)="setSection(s.key)"><span class="material-symbols-outlined" aria-hidden="true">{{ s.icon }}</span>{{ s.label }}</button> }</nav>
+        <label class="client-mobile-nav">Record section<mat-select cvSelect aria-label="Client record section" [ngModel]="sectionKey()" (ngModelChange)="setSection($event)" [disabled]="!!editing()">@for (s of sections; track s.key) { <mat-option [value]="s.key">{{ s.label }}</mat-option> }</mat-select></label>
+        <div class="client-content">
+          @if (sectionKey() === 'overview') {
+            <section class="panel client-personal"><div class="client-panel-title"><span class="client-icon material-symbols-outlined" data-tone="teal" aria-hidden="true">favorite</span><div><h2>What matters to me</h2><p>Keep the person at the heart of every visit.</p></div></div><blockquote>{{ file().details['about'] || 'Ask about the person’s routines, interests and what makes a good day. Record their words in personal details.' }}</blockquote></section>
+            <div class="client-overview-grid">
+              <section class="panel client-summary"><div class="client-panel-title"><span class="client-icon material-symbols-outlined" data-tone="teal" aria-hidden="true">assignment</span><h2>Care plan</h2></div><h3>{{ file().sections['plan']?.['name'] || 'No care plan recorded' }}</h3><p>{{ file().sections['plan']?.['needs'] || 'Capture needs, goals and practical support instructions.' }}</p><div class="row"><span class="badge">{{ file().sections['plan']?.['status'] || 'Not recorded' }}</span>@if (review(c)) { <small [class.client-overdue]="reviewDue(c)">Review {{ review(c) | date: 'dd MMM yyyy' }}</small> }</div><button class="text-link" (click)="setSection('plan')">Open care plan →</button></section>
+              <section class="panel client-summary"><div class="client-panel-title"><span class="client-icon material-symbols-outlined" data-tone="amber" aria-hidden="true">health_and_safety</span><h2>Risks & allergies</h2></div><div class="client-summary-counts"><div><strong>{{ activeRisks().length }}</strong><small>Active assessments</small></div><div><strong>{{ (file().entries['allergies'] || []).length }}</strong><small>Allergy records</small></div></div><p>Review recorded risks and response guidance before providing care.</p><button class="text-link" (click)="setSection('risks')">Review assessments →</button></section>
+              <section class="panel client-summary"><div class="client-panel-title"><span class="client-icon material-symbols-outlined" data-tone="pink" aria-hidden="true">diversity_1</span><h2>Key contact</h2></div><h3>{{ c.representative?.name || 'No representative recorded' }}</h3><p>{{ c.representative?.relationship || 'Add family or representative details.' }}</p><p>{{ c.representative?.phone }}</p><button class="text-link" (click)="setSection('family')">Contacts & sharing →</button></section>
+              <section class="panel client-summary"><div class="client-panel-title"><span class="client-icon material-symbols-outlined" data-tone="blue" aria-hidden="true">task_alt</span><h2>Tasks & outcomes</h2></div><div class="client-summary-counts"><div><strong>{{ completedTasks() }} / {{ (file().entries['tasks'] || []).length }}</strong><small>Tasks completed</small></div></div><p>{{ visits().length }} planned visits · {{ calls().length }} call packages</p><button class="text-link" (click)="setSection('tasks')">Open care tasks →</button></section>
+            </div>
+            <section class="panel client-summary"><div class="client-panel-title"><span class="client-icon material-symbols-outlined" data-tone="blue" aria-hidden="true">schedule</span><h2>Call packages</h2></div>@for (call of calls(); track call.id) { <div class="client-list-row"><div><strong>{{ call.name }}</strong><p>{{ call.start }}–{{ call.end }} · {{ call.carers }} {{ call.carers === 1 ? 'carer' : 'carers' }} · {{ call.active ? 'Active' : 'Inactive' }}</p><p>{{ call.tasks }}</p></div></div> } @empty { <p>No call packages yet. Set up regular support in Calls & allocations.</p> }<a class="text-link" routerLink="/manage/rota">Manage call packages →</a></section>
+          } @else {
+            <section class="panel client-section-panel"><div class="panel-toolbar"><div class="client-panel-title"><span class="client-icon material-symbols-outlined" [attr.data-tone]="section().tone" aria-hidden="true">{{ section().icon }}</span><div><h2>{{ section().label }}</h2><p>{{ section().description }}</p></div></div>
+              @if (service.can('manage') && !editing()) { @if (section().fields) { <button class="button" (click)="editSection()">Edit</button> } @if (sectionKey() === 'details' || sectionKey() === 'family') { <button class="button" (click)="startProfile()">Edit contacts</button> } }
+            </div>
+            @if (editing() === 'section') {
+              <form class="client-editor" (ngSubmit)="save()"><div class="form-grid">@for (field of section().fields; track field.key) { <label [class.client-wide]="field.type === 'textarea'">{{ field.label }}
+                @if (field.options) { <mat-select cvSelect [name]="field.key" [attr.aria-label]="field.label" [(ngModel)]="values[field.key]">@for (option of field.options; track option) { <mat-option [value]="option">{{ option }}</mat-option> }</mat-select> }
+                @else if (field.type === 'textarea') { <textarea [name]="field.key" [(ngModel)]="values[field.key]" rows="3"></textarea> }
+                @else { <input [type]="field.type || 'text'" [name]="field.key" [(ngModel)]="values[field.key]" /> }
+              </label> }</div>@if (error()) { <p class="client-error" role="alert">{{ error() }}</p> }<div class="client-save"><button class="button primary" type="submit">Save changes</button><button class="button" type="button" (click)="discard()">Discard</button></div></form>
+            } @else {
+              @if (section().fields) { <dl class="client-facts">@for (field of section().fields; track field.key) { <div [class.client-wide]="field.type === 'textarea'"><dt>{{ field.label }}</dt><dd>@if (field.key === 'code' && value(field.key)) { {{ showCode() ? value(field.key) : '••••••' }}<button class="text-link client-code" (click)="showCode.set(!showCode())">{{ showCode() ? 'Hide code' : 'Show code' }}</button> } @else { {{ value(field.key) ? (field.type === 'date' ? (value(field.key) | date: 'dd MMM yyyy') : value(field.key)) : 'Not recorded' }} }</dd></div> }</dl> }
+              @if (sectionKey() === 'details') { <dl class="client-facts">@for (field of personalFields; track field.key) { <div [class.client-wide]="field.type === 'textarea'"><dt>{{ field.label }}</dt><dd>{{ file().details[field.key] ? (field.type === 'date' ? (file().details[field.key] | date: 'dd MMM yyyy') : file().details[field.key]) : 'Not recorded' }}</dd></div> }<div><dt>Phone</dt><dd>{{ c.phone || 'Not recorded' }}</dd></div><div><dt>Email</dt><dd>{{ c.email || 'Not recorded' }}</dd></div><div class="client-wide"><dt>Address</dt><dd>{{ c.address }}, {{ c.postcode }}</dd></div></dl> }
+              @if (sectionKey() === 'family') { <dl class="client-facts"><div><dt>Representative</dt><dd>{{ c.representative?.name || 'Not recorded' }}</dd></div><div><dt>Relationship</dt><dd>{{ c.representative?.relationship || 'Not recorded' }}</dd></div><div><dt>Phone</dt><dd>{{ c.representative?.phone || 'Not recorded' }}</dd></div><div><dt>Email</dt><dd>{{ c.representative?.email || 'Not recorded' }}</dd></div><div class="client-wide"><dt>Sharing consent</dt><dd>{{ file().sections['consent']?.['family'] || 'Not recorded' }}</dd></div></dl><p class="client-info">This is an internal contact record. Family portal access and message delivery are not connected.</p> }
+            }
+            </section>
+            @if (section().entryLabel) {
+              <section class="panel client-entry-panel"><div class="panel-toolbar"><h2>{{ sectionKey() === 'plan' ? 'Goals & outcomes' : section().label + ' register' }} <span class="count">{{ entries().length }}</span></h2>@if (service.can('manage') && !editing()) { <button class="button primary" (click)="editEntry()"><span class="material-symbols-outlined" aria-hidden="true">add</span>Add {{ section().entryLabel }}</button> }</div>
+                @if (editing() === 'entry') {
+                  <form class="client-editor" (ngSubmit)="save()"><div class="form-grid"><label class="client-wide">{{ section().nameLabel }} *<input name="entryName" [(ngModel)]="entry.name" required /></label><label class="client-wide">{{ section().detailLabel }}<textarea name="entryDetail" [(ngModel)]="entry.detail" rows="3"></textarea></label><label>{{ sectionKey() === 'tasks' ? 'Due / completion date' : 'Record / review date' }}<input name="entryDate" type="date" [(ngModel)]="entry.date" /></label><label>{{ section().risk ? 'Risk level' : 'Priority' }}<mat-select cvSelect name="entryLevel" aria-label="Record priority or risk level" [(ngModel)]="entry.level">@for (value of ['Low', 'Medium', 'High']; track value) { <mat-option [value]="value">{{ value }}</mat-option> }</mat-select></label><label>Status<mat-select cvSelect name="entryStatus" aria-label="Record status" [(ngModel)]="entry.status">@for (value of ['Active', 'Completed', 'Inactive']; track value) { <mat-option [value]="value">{{ value }}</mat-option> }</mat-select></label></div>@if (error()) { <p class="client-error" role="alert">{{ error() }}</p> }<div class="client-save"><button class="button primary" type="submit">Save record</button><button class="button" type="button" (click)="discard()">Discard</button></div></form>
+                } @else {
+                  <div class="client-entry-list">@for (e of entries(); track e.id) { <article class="client-list-row"><span class="client-entry-icon material-symbols-outlined" [attr.data-tone]="section().tone" aria-hidden="true">{{ section().icon }}</span><div class="client-entry-text"><h3>{{ e.name }}</h3><p>{{ e.detail || 'No additional instructions recorded.' }}</p><small>{{ e.date ? (e.date | date: 'dd MMM yyyy') : 'Date not recorded' }}</small></div><div class="client-entry-actions"><span class="badge" [class.warning]="e.level === 'High'" [class.success]="e.level === 'Low'">{{ e.level }}</span><span class="badge" [class.success]="e.status === 'Completed'">{{ e.status }}</span>@if (service.can('manage')) { <button class="button" [disabled]="!!editing()" (click)="editEntry(e)" [attr.aria-label]="'Edit ' + e.name">Edit</button> }</div></article> } @empty { <div class="empty-state"><span class="material-symbols-outlined" aria-hidden="true">{{ section().icon }}</span><h3>No {{ section().entryLabel }} records yet</h3><p>Add a record to keep care guidance clear and up to date.</p></div> }</div>
+                }
+              </section>
+            }
+            @if (sectionKey() === 'tasks') { <section class="panel client-summary"><h2>Visit history</h2><p>Saved schedules and attendance from care delivery.</p>@for (v of visits().slice(0, 10); track v.id) { <div class="client-list-row"><div><h3>{{ v.callName }}</h3><p>{{ v.date | date: 'dd MMM yyyy' }} · {{ v.start }}–{{ v.end }}</p></div><span class="badge" [class.success]="completedVisit(v)">{{ completedVisit(v) ? 'Completed' : v.state }}</span></div> } @empty { <p>No visits recorded for this client.</p> }<a class="text-link" routerLink="/manage/ecm">Open live visit board →</a></section> }
+            @if (sectionKey() === 'documents') { <section class="panel client-summary"><div class="client-panel-title"><span class="client-icon material-symbols-outlined" data-tone="teal" aria-hidden="true">print</span><div><h2>Care-plan summary</h2><p>Print this client’s saved plan, contacts and care guidance, or save as PDF from your print dialog.</p></div></div>@if (service.can('export')) { <button class="button" (click)="print()"><span class="material-symbols-outlined" aria-hidden="true">print</span>Print care summary</button> } @else { <p>Export permission is required to print a care summary.</p> }</section> }
+          }
+          <p class="client-record-footer">@if (file().updatedAt) { Last updated {{ file().updatedAt | date: 'dd MMM yyyy, HH:mm': 'Europe/London' }} · }Changes are saved in this workspace on this device. Use sample information only.</p>
+        </div>
+      </div>
+      <article class="client-print"><h1>Personalised care summary</h1><h2>{{ c.name }} · {{ c.reference }}</h2><p>{{ c.address }}, {{ c.postcode }}</p><h3>Key contact</h3><p>{{ c.representative?.name }} · {{ c.representative?.relationship }} · {{ c.representative?.phone }}</p><h3>Care alerts</h3><p>{{ (c.riskFlags || []).join(', ') || 'Not recorded' }}</p><h3>What matters to me</h3><p>{{ file().details['about'] || 'Not recorded' }}</p>@for (s of sections; track s.key) { @if (s.key !== 'access' && (s.fields || s.entryLabel)) { <h3>{{ s.label }}</h3>@for (field of s.fields || []; track field.key) { <p><strong>{{ field.label }}:</strong> {{ file().sections[s.key]?.[field.key] || 'Not recorded' }}</p> }@for (e of file().entries[s.key] || []; track e.id) { <p><strong>{{ e.name }}</strong> — {{ e.detail }} ({{ e.level }}, {{ e.status }})</p> } } }<p>Device demo · Generated {{ today | date: 'dd MMM yyyy' }}</p></article>
+    } @else { <section class="panel empty-state"><h1>Client record unavailable</h1><p>This client is not in the current workspace.</p><a class="button" routerLink="/manage/clients">Back to client files</a></section> }
+  </div>
+}

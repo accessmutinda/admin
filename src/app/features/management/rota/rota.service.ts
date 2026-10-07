@@ -5,6 +5,7 @@ import { ManagementStore, COURSES } from '../shared/management.store';
 import { validVacancyDate } from '../recruitment/vacancy-deadline';
 import { PayrollService } from '../payroll/payroll.service';
 import { WorkRecord, money } from '../payroll/payroll.models';
+import { clientFileError } from '../clients/client-file.models';
 import {
   RotaCall,
   RotaClient,
@@ -18,6 +19,7 @@ import {
   londonInstant,
   validTime,
   visitWindow,
+  RISK_FLAGS,
 } from './rota.models';
 
 @Injectable({ providedIn: 'root' })
@@ -65,6 +67,18 @@ export class RotaService {
   }
   saveClient(client: RotaClient): string | null {
     if (this.denied('manage')) return this.denied('manage');
+    if (client.file) {
+      const error = clientFileError(client.file);
+      if (error) return error;
+    }
+    if (
+      client.riskFlags?.some((flag) => !RISK_FLAGS.includes(flag)) ||
+      (client.billingRate !== undefined &&
+        (!Number.isFinite(client.billingRate) ||
+          client.billingRate < 0 ||
+          client.billingRate > 1000))
+    )
+      return 'Choose recognised risk flags and a billing rate from £0 to £1,000.';
     if (
       !client.name.trim() ||
       !client.reference.trim() ||
@@ -99,6 +113,8 @@ export class RotaService {
   }
   saveCall(call: RotaCall): string | null {
     if (this.denied('manage')) return this.denied('manage');
+    if (call.priority && !['Standard', 'High'].includes(call.priority))
+      return 'Choose a valid call priority.';
     if (
       !this.data().clients.some((c) => c.id === call.clientId) ||
       !call.name.trim() ||
@@ -158,7 +174,8 @@ export class RotaService {
       staffIds: [...staffIds],
       allocation,
       state: 'Draft',
-      priority: client.priority,
+      priority: client.priority === 'High' || call.priority === 'High' ? 'High' : 'Standard',
+      riskFlags: [...(client.riskFlags ?? [])],
       attendance: [],
       exception: '',
     };
@@ -174,6 +191,8 @@ export class RotaService {
     const client = this.data().clients.find((c) => c.id === visit.clientId);
     const call = this.data().calls.find((c) => c.id === visit.callId);
     if (!client?.active || !call?.active) return ['Service user or call package is inactive.'];
+    if (this.data().ecm?.styles[call.name]?.active === false)
+      return ['This call type is inactive. Activate it in ECM settings before planning visits.'];
     const problems: string[] = [];
     const [start, end] = visitWindow(visit);
     if (

@@ -56,9 +56,20 @@ import { ManagementStore } from '../shared/management.store';
       }
       @if (store.company()?.modules.includes('Care delivery')) {
         <p class="nav-label">CARE DELIVERY</p>
+        <a routerLink="/manage/clients" routerLinkActive="active" (click)="menuOpen.set(false)"
+          ><span class="material-symbols-outlined" aria-hidden="true">folder_shared</span>Client
+          files</a
+        >
+
         <a routerLink="/manage/rota" routerLinkActive="active" (click)="menuOpen.set(false)"
           ><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Rota &
           shifts</a
+        >
+      }
+      @if (store.company()?.modules.includes('Care delivery')) {
+        <a routerLink="/manage/ecm" routerLinkActive="active" (click)="menuOpen.set(false)"
+          ><span class="material-symbols-outlined" aria-hidden="true">monitor_heart</span>Live ECM
+          board</a
         >
       }
       @if (store.company()?.modules.includes('Finance')) {

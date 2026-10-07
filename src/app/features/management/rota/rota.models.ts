@@ -34,6 +34,13 @@ export function rotaDefaults(role: string): RotaAction[] {
     : [];
 }
 export interface RotaClient {
+  file?: import('../clients/client-file.models').ClientFile;
+  riskFlags?: RiskFlag[];
+  representative?: { name: string; relationship: string; phone: string; email: string };
+  phone?: string;
+  email?: string;
+  billingRate?: number;
+  billingBasis?: 'Visit hour' | 'Carer hour';
   id: string;
   name: string;
   reference: string;
@@ -44,6 +51,7 @@ export interface RotaClient {
   active: boolean;
 }
 export interface RotaCall {
+  priority?: 'Standard' | 'High';
   id: string;
   clientId: string;
   name: string;
@@ -62,6 +70,9 @@ export interface VisitAttendance {
   end: string;
 }
 export interface RotaVisit {
+  riskFlags?: RiskFlag[];
+  demo?: boolean;
+  manualOverride?: { at: string; by: string; reason: string; conflicts: string[] };
   id: string;
   callId: string;
   clientId: string;
@@ -81,6 +92,13 @@ export interface RotaVisit {
   attendance: VisitAttendance[];
   exception: string;
 }
+export const RISK_FLAGS = [
+  'Medication support',
+  'Living alone',
+  'Dementia',
+  'Critical / welfare-sensitive',
+] as const;
+export type RiskFlag = (typeof RISK_FLAGS)[number];
 export interface RotaAudit {
   id: string;
   userId: string;
@@ -90,6 +108,7 @@ export interface RotaAudit {
   detail: string;
 }
 export interface RotaData {
+  ecm?: import('../ecm/ecm.models').EcmData;
   clients: RotaClient[];
   calls: RotaCall[];
   visits: RotaVisit[];

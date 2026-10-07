@@ -1,0 +1,398 @@
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">CARE DELIVERY</p>
+    <h1>ECM workflows</h1>
+    <p>Coordinate visits and follow their records through the demo.</p>
+  </div>
+  <a class="button" routerLink="/manage/ecm">Live board</a>
+</div>
+@if (!service.rota.can('view')) {
+  <cv-access-required
+    feature="ECM workflows"
+    module="Care delivery"
+    viewPermission="View rota"
+    permissionsTitle="Rota & shifts access"
+  />
+} @else {
+  <p class="workflow-context">
+    Frontend demo · dummy records are saved in this browser. Open tabs in the same browser share
+    updates. Notification delivery and routed cases are simulated.
+  </p>
+  <nav class="workflow-nav" aria-label="ECM workflows">
+    @for (t of tabs; track t) {
+      <button
+        class="button"
+        [class.active]="tab() === t"
+        [attr.aria-current]="tab() === t ? 'page' : null"
+        (click)="tab.set(t); error.set(''); evidence.set('')"
+      >
+        {{ t }}
+      </button>
+    }
+    <a class="button" routerLink="/manage/clients">Client files</a>
+  </nav>
+  @if (error()) {
+    <p class="workflow-error" role="alert">{{ error() }}</p>
+  }
+  @if (tab() === 'Demo setup') {
+    <div class="workflow-grid">
+      <section class="panel">
+        <div class="panel-toolbar"><h2>Today's test visits</h2></div>
+        <div class="panel-body workflow-stack">
+          <p>
+            Create linked client files, call packages, trained carers, pay profiles and six
+            published visits. Includes missed, late, in-progress, completed, upcoming and double-up
+            scenarios.
+          </p>
+          <button
+            class="button primary"
+            [disabled]="!service.rota.can('manage') || !service.rota.can('publish')"
+            (click)="setup()"
+          >
+            Create today's demo workflow</button
+          ><a routerLink="/manage/clients">Review client files and call packages</a>
+          @for (v of demo.visits(); track v.id) {
+            @if (v.date === date()) {
+              <article class="workflow-record">
+                <h3>{{ v.clientName }}</h3>
+                <p>{{ v.callName }} · {{ v.start }}–{{ v.end }} · {{ state(v) }}</p>
+                <p>{{ v.riskFlags?.join(' · ') || 'Standard risk' }}</p>
+                <small
+                  >{{ v.staffIds.length }} allocated · {{ v.attendance.length }} checked in</small
+                >
+              </article>
+            }
+          }
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-toolbar"><h2>Simulated mobile feed</h2></div>
+        <div class="panel-body workflow-stack">
+          <p>
+            Apply queued dummy check-ins and check-outs to the same attendance records used by the
+            live board. Automatic playback runs every 10 seconds.
+          </p>
+          <div class="workflow-actions">
+            <button
+              class="button primary"
+              [disabled]="!demo.waiting().length || !service.rota.can('attendance')"
+              (click)="next()"
+            >
+              Apply next mobile update</button
+            ><button
+              class="button"
+              [disabled]="!running() && !demo.waiting().length"
+              (click)="running() ? stop() : start()"
+            >
+              {{ running() ? 'Pause feed' : 'Start feed' }}
+            </button>
+          </div>
+          <p role="status">
+            {{ demo.waiting().length }} updates waiting · {{ running() ? 'Playing' : 'Paused' }}
+          </p>
+          @for (f of service.data().feed; track f.id) {
+            <article class="workflow-record">
+              <strong>{{ f.kind }} · {{ name(f.personId) }}</strong>
+              <p>{{ title(f.visitId) }}</p>
+              <small>{{ f.state }} {{ stamp(f.at) }}</small>
+            </article>
+          } @empty {
+            <p>Create today's demo to queue mobile updates.</p>
+          }
+        </div>
+      </section>
+    </div>
+  }
+  @if (tab() === 'Staff visit preview') {
+    <div class="mobile-preview">
+      <section class="panel">
+        <div class="panel-toolbar"><h2>Staff visit preview</h2></div>
+        <div class="panel-body">
+          <p>
+            Choose a dummy care worker to preview their mobile visit workflow. This manager preview
+            uses your attendance permissions.
+          </p>
+          <div class="workflow-header">
+            <label
+              >Date<input
+                type="date"
+                [ngModel]="date()"
+                (ngModelChange)="date.set($event)" /></label
+            ><label
+              >Care worker<mat-select
+                cvSelect
+                aria-label="Preview care worker"
+                [ngModel]="person()"
+                (ngModelChange)="person.set($event)"
+              >
+                @for (p of ops.store.staff(); track p.id) {
+                  <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                }
+              </mat-select></label
+            >
+          </div>
+          <div class="workflow-stack">
+            @for (v of mobile(); track v.id) {
+              <article class="workflow-record">
+                <h3>{{ v.clientName }}</h3>
+                <p>{{ v.callName }} · {{ v.start }}–{{ v.end }}</p>
+                <strong>{{ state(v) }}</strong>
+                <p>{{ v.address }}</p>
+                <p>{{ v.riskFlags?.join(' · ') || 'Standard risk' }}</p>
+                <p>{{ v.tasks }}</p>
+                <small>{{
+                  v.carers === 2
+                    ? 'Double-up: both carers must check in and out.'
+                    : 'Single-carer visit'
+                }}</small>
+                <div class="workflow-actions">
+                  <button
+                    class="button primary"
+                    [disabled]="checked(v.id) || !service.rota.can('attendance')"
+                    (click)="attendance(v.id, 'Check in')"
+                  >
+                    Check in now</button
+                  ><button
+                    class="button"
+                    [disabled]="!checked(v.id) || finished(v.id) || !service.rota.can('attendance')"
+                    (click)="attendance(v.id, 'Check out')"
+                  >
+                    Check out now</button
+                  ><button
+                    class="button"
+                    [disabled]="!service.rota.can('manage')"
+                    (click)="evidence.set(v.id)"
+                  >
+                    Care note & evidence
+                  </button>
+                </div>
+                @if (evidence() === v.id) {
+                  <cv-visit-evidence
+                    [visitId]="v.id"
+                    (saved)="evidence.set(''); result(null, 'Care evidence saved.')"
+                    (cancelled)="evidence.set('')"
+                  />
+                }
+              </article>
+            } @empty {
+              <p>Choose a care worker with published visits on this date.</p>
+            }
+          </div>
+        </div>
+      </section>
+    </div>
+  }
+  @if (tab() === 'Notifications') {
+    <section class="panel">
+      <div class="panel-toolbar"><h2>Demo notification outbox</h2></div>
+      <div class="panel-body workflow-grid">
+        @for (n of ops.data().notifications; track n.id) {
+          <article class="workflow-record">
+            <h3>{{ n.subject }}</h3>
+            <p>{{ title(n.visitId) }}</p>
+            <p>{{ n.channel }} · {{ n.recipient }}</p>
+            <p>{{ n.body }}</p>
+            <strong>{{ n.state }} · {{ n.attempts }} delivery attempts</strong
+            ><small>{{ stamp(n.updatedAt) }}</small>
+            @if (n.error) {
+              <p>{{ n.error }}</p>
+            }
+            @if (service.rota.can('manage')) {
+              <div class="workflow-actions">
+                @if (n.state === 'Queued') {
+                  <button class="button primary" (click)="deliver(n.id, 'Delivered')">
+                    Simulate delivery</button
+                  ><button class="button" (click)="deliver(n.id, 'Failed')">
+                    Simulate failure
+                  </button>
+                }
+                @if (n.state === 'Failed') {
+                  <button class="button" (click)="deliver(n.id, 'Queued')">Retry delivery</button>
+                }
+              </div>
+            }
+          </article>
+        } @empty {
+          <p>Open a visit on the live board and queue a demo notification in Record follow-up.</p>
+        }
+      </div>
+    </section>
+  }
+  @if (tab() === 'Escalations') {
+    <section class="panel">
+      <div class="panel-toolbar"><h2>Assigned escalation cases</h2></div>
+      <div class="panel-body workflow-grid">
+        @for (c of ops.data().escalations; track c.id) {
+          <article class="workflow-record">
+            <h3>{{ c.severity }} · {{ c.state }}</h3>
+            <p>{{ title(c.visitId) }}</p>
+            <p>{{ c.note }}</p>
+            <small>Owner: {{ name(c.ownerId) }} · Due {{ stamp(c.dueAt) }}</small>
+            @if (service.rota.can('manage')) {
+              <label
+                >Assigned owner<mat-select
+                  cvSelect
+                  [attr.aria-label]="'Owner for ' + title(c.visitId)"
+                  [(ngModel)]="caseForm(c).owner"
+                >
+                  @for (m of ops.store.data().members; track m.id) {
+                    @if (m.status === 'Active') {
+                      <mat-option [value]="m.id">{{ m.name }} · {{ m.role }}</mat-option>
+                    }
+                  }
+                </mat-select></label
+              ><label
+                >Case status<mat-select
+                  cvSelect
+                  aria-label="Case status"
+                  [(ngModel)]="caseForm(c).state"
+                >
+                  @for (s of ['Open', 'In review', 'Resolved']; track s) {
+                    <mat-option [value]="s">{{ s }}</mat-option>
+                  }
+                </mat-select></label
+              ><label
+                >Review / resolution note<textarea
+                  rows="2"
+                  [(ngModel)]="caseForm(c).note"
+                ></textarea></label
+              ><button class="button primary" (click)="updateCase(c)">Save case update</button>
+            }
+            @for (h of c.history; track $index) {
+              <small>{{ stamp(h.at) }} · {{ h.user }} · {{ h.note }}</small>
+            }
+          </article>
+        } @empty {
+          <p>Escalate a visit from Record follow-up, or submit a concern in Care evidence.</p>
+        }
+      </div>
+    </section>
+  }
+  @if (tab() === 'Billing & outcomes') {
+    <div class="workflow-header">
+      <label
+        >Delivery date<input
+          type="date"
+          [ngModel]="date()"
+          (ngModelChange)="date.set($event)" /></label
+      ><a class="button" routerLink="/manage/payroll">Open payroll</a>
+    </div>
+    <div class="workflow-kpis">
+      <div>
+        <span>Expected visits</span><strong>{{ kpis().expected }}</strong>
+      </div>
+      <div>
+        <span>Completed</span><strong>{{ kpis().completion }}%</strong>
+      </div>
+      <div>
+        <span>Allocation coverage</span><strong>{{ kpis().coverage }}%</strong>
+      </div>
+      <div>
+        <span>Late arrivals</span><strong>{{ kpis().late }}</strong>
+      </div>
+      <div>
+        <span>Missed visits</span><strong>{{ kpis().missed }}</strong>
+      </div>
+      <div>
+        <span>Actual carer hours</span><strong>{{ kpis().hours }}</strong>
+      </div>
+    </div>
+    <div class="workflow-grid">
+      <section class="panel">
+        <div class="panel-toolbar"><h2>Payroll & client billing</h2></div>
+        <div class="panel-body workflow-stack">
+          <p>
+            Use completed attendance for payroll and client invoices. Repeat transfers skip records
+            already included. Client billing rates come from Client files.
+          </p>
+          <div class="workflow-actions">
+            <button
+              class="button"
+              [disabled]="!ops.payroll.can('manage') || !service.rota.can('manage')"
+              (click)="payroll()"
+            >
+              Transfer attendance to payroll</button
+            ><button
+              class="button primary"
+              [disabled]="!ops.payroll.can('manage') || !service.rota.can('manage')"
+              (click)="bill()"
+            >
+              Prepare client invoices
+            </button>
+          </div>
+          @for (i of ops.data().invoices; track i.id) {
+            @if (i.date === date()) {
+              <article class="workflow-record">
+                <h3>{{ i.number }} · {{ i.state }}</h3>
+                <p>{{ clientName(i.clientId) }}</p>
+                @for (l of i.lines; track l.visitId) {
+                  <p>
+                    {{ l.call }} · {{ l.hours | number: '1.2-2' }} {{ l.basis }} × £{{
+                      l.rate | number: '1.2-2'
+                    }}
+                    = £{{ l.amount | number: '1.2-2' }}
+                  </p>
+                }
+                <strong>Total £{{ total(i) | number: '1.2-2' }}</strong>
+                <div class="workflow-actions">
+                  @if (i.state === 'Draft') {
+                    <button
+                      class="button"
+                      [disabled]="!ops.payroll.can('approve')"
+                      (click)="approve(i)"
+                    >
+                      Approve invoice
+                    </button>
+                  }
+                  @if (i.state === 'Approved') {
+                    <button
+                      class="button"
+                      [disabled]="!ops.payroll.can('export')"
+                      (click)="exportInvoice(i)"
+                    >
+                      Export invoice
+                    </button>
+                  }
+                </div>
+                @for (a of i.audit; track $index) {
+                  <small>{{ a.note }} · {{ a.user }} · {{ stamp(a.at) }}</small>
+                }
+              </article>
+            }
+          }
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-toolbar"><h2>CQC delivery evidence</h2></div>
+        <div class="panel-body workflow-stack">
+          <p>
+            Save a dated snapshot of attendance, KPI totals, follow-up, delivery states, escalations
+            and evidence metadata. Photo and voice bytes are excluded from exports.
+          </p>
+          <button
+            class="button primary"
+            [disabled]="!service.rota.can('export') || !service.rota.can('manage')"
+            (click)="pack()"
+          >
+            Prepare evidence pack
+          </button>
+          @for (p of ops.data().packs; track p.id) {
+            @if (p.date === date()) {
+              <article class="workflow-record">
+                <strong>{{ p.date }} · {{ p.visitIds.length }} visits</strong
+                ><small>{{ stamp(p.at) }} · {{ p.user }}</small
+                ><button
+                  class="button"
+                  [disabled]="!service.rota.can('export')"
+                  (click)="downloadPack(p.id)"
+                >
+                  Download evidence pack
+                </button>
+              </article>
+            }
+          }
+        </div>
+      </section>
+    </div>
+  }
+}

@@ -1,15 +1,21 @@
 <div class="page-heading">
   <div>
     <p class="eyebrow">CARE DELIVERY</p>
-    <h1>Rota & shift allocation</h1>
-    <p>Plan client calls, arrange suitable carers and publish your rota.</p>
+    <h1>{{ clientFiles ? 'Service users & client files' : 'Rota & shift allocation' }}</h1>
+    <p>
+      {{
+        clientFiles
+          ? 'Maintain care risks, family contacts, billing and call packages.'
+          : 'Plan client calls, arrange suitable carers and publish your rota.'
+      }}
+    </p>
   </div>
   @if (service.can('view')) {
     <div class="row">
-      <button class="button" (click)="choose('Live board')">
+      <a class="button" routerLink="/manage/ecm">
         <span class="material-symbols-outlined" aria-hidden="true">monitor_heart</span>Live visit
         board
-      </button>
+      </a>
       @if (service.can('manage')) {
         <button class="button primary" (click)="open('allocation')">
           <span class="material-symbols-outlined" aria-hidden="true">add</span>New allocation
@@ -26,51 +32,53 @@
     permissionsTitle="Rota & shifts access"
   />
 } @else {
-  <div class="metrics four">
-    <button
-      class="metric"
-      data-tone="amber"
-      (click)="choose('Unallocated'); from.set(''); to.set('')"
-    >
-      <span class="metric-icon material-symbols-outlined" aria-hidden="true">person_alert</span
-      ><span>Unallocated visits</span><strong>{{ unallocated().length }}</strong
-      ><small>Visits with missing carer places</small>
-    </button>
-    <button
-      class="metric"
-      data-tone="blue"
-      (click)="choose('Allocations'); stateFilter.set('Draft'); from.set(''); to.set('')"
-    >
-      <span class="metric-icon material-symbols-outlined" aria-hidden="true">edit_calendar</span
-      ><span>Draft visits</span><strong>{{ drafts().length }}</strong
-      ><small>Review before publishing</small>
-    </button>
-    <button class="metric" data-tone="teal" (click)="choose('Service users')">
-      <span class="metric-icon material-symbols-outlined" aria-hidden="true">groups</span
-      ><span>Regular carers</span><strong>{{ regularCarers() }}</strong
-      ><small>Assigned to active call packages</small>
-    </button>
-    <button class="metric" data-tone="green" (click)="choose('Published')">
-      <span class="metric-icon material-symbols-outlined" aria-hidden="true">event_available</span
-      ><span>Published visits</span><strong>{{ published().length }}</strong
-      ><small>Today and future allocations</small>
-    </button>
-  </div>
-  <section class="panel rota-navigation">
-    <nav class="tabs" aria-label="Rota sections">
-      @for (item of tabs; track item) {
-        <button
-          [class.active]="tab() === item"
-          [attr.aria-pressed]="tab() === item"
-          (click)="choose(item)"
-        >
-          {{ item }}
-        </button>
-      }
-    </nav>
-  </section>
-  @if (error() && !modal()) {
-    <p class="rota-error" role="alert">{{ error() }}</p>
+  @if (!clientFiles) {
+    <div class="metrics four">
+      <button
+        class="metric"
+        data-tone="amber"
+        (click)="choose('Unallocated'); from.set(''); to.set('')"
+      >
+        <span class="metric-icon material-symbols-outlined" aria-hidden="true">person_alert</span
+        ><span>Unallocated visits</span><strong>{{ unallocated().length }}</strong
+        ><small>Visits with missing carer places</small>
+      </button>
+      <button
+        class="metric"
+        data-tone="blue"
+        (click)="choose('Allocations'); stateFilter.set('Draft'); from.set(''); to.set('')"
+      >
+        <span class="metric-icon material-symbols-outlined" aria-hidden="true">edit_calendar</span
+        ><span>Draft visits</span><strong>{{ drafts().length }}</strong
+        ><small>Review before publishing</small>
+      </button>
+      <button class="metric" data-tone="teal" (click)="choose('Service users')">
+        <span class="metric-icon material-symbols-outlined" aria-hidden="true">groups</span
+        ><span>Regular carers</span><strong>{{ regularCarers() }}</strong
+        ><small>Assigned to active call packages</small>
+      </button>
+      <button class="metric" data-tone="green" (click)="choose('Published')">
+        <span class="metric-icon material-symbols-outlined" aria-hidden="true">event_available</span
+        ><span>Published visits</span><strong>{{ published().length }}</strong
+        ><small>Today and future allocations</small>
+      </button>
+    </div>
+    <section class="panel rota-navigation">
+      <nav class="tabs" aria-label="Rota sections">
+        @for (item of tabs; track item) {
+          <button
+            [class.active]="tab() === item"
+            [attr.aria-pressed]="tab() === item"
+            (click)="choose(item)"
+          >
+            {{ item }}
+          </button>
+        }
+      </nav>
+    </section>
+    @if (error() && !modal()) {
+      <p class="rota-error" role="alert">{{ error() }}</p>
+    }
   }
   @if (tab() === 'Overview') {
     <section class="panel">
@@ -215,6 +223,26 @@
             </button>
           }
         </div>
+        @if (clientRecord(); as c) {
+          <div class="panel-body">
+            <div class="row" style="flex-wrap: wrap">
+              @for (f of c.riskFlags; track f) {
+                <span class="badge">{{ f }}</span>
+              }
+            </div>
+            <p>{{ c.address }} · {{ c.postcode }}</p>
+            @if (c.representative?.name) {
+              <p>
+                Representative: {{ c.representative?.name }} · {{ c.representative?.phone }} ·
+                {{ c.representative?.email }}
+              </p>
+            }
+            <small
+              >Client billing: £{{ c.billingRate || 0 }} /
+              {{ c.billingBasis || 'Visit hour' }}</small
+            >
+          </div>
+        }
         <div class="rota-call-list">
           @for (c of clientCalls(packageClient()); track c.id) {
             <article class="rota-call">
@@ -742,9 +770,80 @@
               ><input type="checkbox" name="active" [(ngModel)]="client.active" />Active service
               user</label
             >
+            <fieldset class="full-width rota-weekdays">
+              <legend>Care risk flags</legend>
+              @for (flag of riskFlags; track flag) {
+                <label
+                  ><input
+                    type="checkbox"
+                    [checked]="client.riskFlags?.includes(flag)"
+                    (change)="toggleRisk(flag)"
+                  />{{ flag }}</label
+                >
+              }
+            </fieldset>
+            <label>Client phone<input name="phone" [(ngModel)]="client.phone" /></label
+            ><label
+              >Client email<input type="email" name="email" [(ngModel)]="client.email"
+            /></label>
+            @if (client.representative; as contact) {
+              <h3 class="full-width">Family / representative</h3>
+              <label>Contact name<input name="contactName" [(ngModel)]="contact.name" /></label
+              ><label
+                >Relationship<input name="relationship" [(ngModel)]="contact.relationship" /></label
+              ><label
+                >Representative phone<input
+                  name="contactPhone"
+                  [(ngModel)]="contact.phone" /></label
+              ><label
+                >Representative email<input
+                  type="email"
+                  name="contactEmail"
+                  [(ngModel)]="contact.email"
+              /></label>
+            }
+            <h3 class="full-width">Client billing</h3>
+            <label
+              >Billing rate (£ per hour)<input
+                type="number"
+                min="0"
+                max="1000"
+                name="billingRate"
+                [(ngModel)]="client.billingRate" /></label
+            ><label
+              >Billing basis<mat-select
+                cvSelect
+                name="billingBasis"
+                aria-label="Client billing basis"
+                [(ngModel)]="client.billingBasis"
+                ><mat-option value="Visit hour">Visit hour</mat-option
+                ><mat-option value="Carer hour">Carer hour</mat-option></mat-select
+              ></label
+            >
           } @else if (modal() === 'call') {
             <label class="full-width"
               >Call name<input name="name" [(ngModel)]="call.name" required /></label
+            ><label
+              >Apply call-type defaults<mat-select
+                cvSelect
+                name="callType"
+                aria-label="Call type defaults"
+                [ngModel]="call.name"
+                (ngModelChange)="call.name = $event; callDefaults()"
+              >
+                @for (name of callTypes(); track name) {
+                  <mat-option [value]="name">{{ name }}</mat-option>
+                }
+              </mat-select></label
+            ><label
+              >Call priority<mat-select
+                cvSelect
+                name="callPriority"
+                aria-label="Call priority"
+                [(ngModel)]="call.priority"
+                ><mat-option value="Standard">Standard</mat-option
+                ><mat-option value="High">High</mat-option></mat-select
+              ></label
             ><label
               >Start time (UK)<input type="time" name="start" [(ngModel)]="call.start" /></label
             ><label>End time (UK)<input type="time" name="end" [(ngModel)]="call.end" /></label
