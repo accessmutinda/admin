@@ -226,8 +226,18 @@ export const routes: Routes = [
       })),
       {
         path: 'payroll',
+        pathMatch: 'full',
+        redirectTo: 'finance/payroll',
+      },
+      {
+        path: 'finance',
+        pathMatch: 'full',
+        redirectTo: 'finance/overview',
+      },
+      {
+        path: 'finance/:area',
         data: { module: 'Finance' },
-        title: 'Payroll & payments · CareVerity',
+        title: (route) => `${route.paramMap.get('area') === 'payroll' ? 'Payroll' : route.paramMap.get('area') === 'billing' ? 'Billing & payments' : 'Finance overview'} · CareVerity`,
         loadComponent: () => import('./features/management/payroll/payroll').then((m) => m.Payroll),
       },
       {

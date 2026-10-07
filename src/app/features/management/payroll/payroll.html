@@ -1,61 +1,84 @@
 <div class="page-heading">
   <div>
     <p class="eyebrow">FINANCE</p>
-    <h1>Payroll & payments</h1>
-    <p>Review work, approve costs and prepare your next pay run.</p>
+    <h1>{{ heading() }}</h1>
+    <p>{{ description() }}</p>
   </div>
 </div>
 @if (!service.can('view')) {
   <cv-access-required
-    feature="Payroll"
+    [feature]="
+      area() === 'payroll' ? 'Payroll' : area() === 'billing' ? 'Billing & payments' : 'Finance'
+    "
     module="Finance"
     viewPermission="View payroll"
     permissionsTitle="Payroll & payments access"
   />
 } @else {
-  <div class="metrics four">
-    <button class="metric" data-tone="teal" (click)="choose('Payroll')">
-      <span class="metric-icon material-symbols-outlined" aria-hidden="true">payments</span
-      ><span>Prepared gross pay</span><strong>{{ gross() | currency: 'GBP' }}</strong
-      ><small>Draft, locked and exported runs</small>
-    </button>
-    <button class="metric" data-tone="purple" (click)="choose('Overtime')">
-      <span class="metric-icon material-symbols-outlined" aria-hidden="true">more_time</span
-      ><span>Overtime to review</span><strong>{{ pendingOvertime().length }}</strong
-      ><small>Extra work awaiting completion</small>
-    </button>
-    <button class="metric" data-tone="amber" (click)="choose('Invoices')">
-      <span class="metric-icon material-symbols-outlined" aria-hidden="true">receipt_long</span
-      ><span>Unpaid invoices</span><strong>{{ invoiceDue() | currency: 'GBP' }}</strong
-      ><small>{{ outstandingInvoices().length }} invoices with a balance</small>
-    </button>
-    <button
-      class="metric"
-      data-tone="blue"
-      (click)="choose('Payroll'); payrollTab.set('Staff pay')"
-    >
-      <span class="metric-icon material-symbols-outlined" aria-hidden="true">badge</span
-      ><span>Pay setup needed</span><strong>{{ missingProfiles() }}</strong
-      ><small>Hired staff without an effective profile</small>
-    </button>
+  <div class="metrics" [class.four]="area() === 'overview'">
+    @if (area() !== 'billing') {
+      <button class="metric" data-tone="teal" (click)="choose('Payroll')">
+        <span class="metric-icon material-symbols-outlined" aria-hidden="true">payments</span
+        ><span>Prepared gross pay</span><strong>{{ gross() | currency: 'GBP' }}</strong
+        ><small>Draft, locked and exported runs</small>
+      </button>
+      <button class="metric" data-tone="purple" (click)="choose('Overtime')">
+        <span class="metric-icon material-symbols-outlined" aria-hidden="true">more_time</span
+        ><span>Overtime to review</span><strong>{{ pendingOvertime().length }}</strong
+        ><small>Extra work awaiting completion</small>
+      </button>
+    }
+    @if (area() !== 'payroll') {
+      <button class="metric" data-tone="amber" (click)="choose('Invoices')">
+        <span class="metric-icon material-symbols-outlined" aria-hidden="true">receipt_long</span
+        ><span>Unpaid invoices</span><strong>{{ invoiceDue() | currency: 'GBP' }}</strong
+        ><small>{{ outstandingInvoices().length }} invoices with a balance</small>
+      </button>
+    }
+    @if (area() !== 'billing') {
+      <button class="metric" data-tone="blue" (click)="choosePayroll('Staff pay')">
+        <span class="metric-icon material-symbols-outlined" aria-hidden="true">badge</span
+        ><span>Pay setup needed</span><strong>{{ missingProfiles() }}</strong
+        ><small>Hired staff without an effective profile</small>
+      </button>
+    }
+    @if (area() === 'billing') {
+      <button class="metric" data-tone="purple" (click)="choose('Contractors')">
+        <span class="metric-icon material-symbols-outlined" aria-hidden="true">handshake</span
+        ><span>Contractors & agencies</span><strong>{{ service.data().contractors.length }}</strong
+        ><small>Saved supplier agreements</small>
+      </button>
+      <button class="metric" data-tone="blue" (click)="chooseInvoices('Clients')">
+        <span class="metric-icon material-symbols-outlined" aria-hidden="true">request_quote</span
+        ><span>Client invoices to approve</span><strong>{{ pendingClientInvoices() }}</strong
+        ><small>Prepared drafts awaiting review</small>
+      </button>
+    }
   </div>
-  <section class="panel payroll-navigation">
-    <nav class="tabs" aria-label="Payroll sections">
-      @for (item of tabs; track item) {
-        <button
-          [class.active]="tab() === item"
-          [attr.aria-pressed]="tab() === item"
-          (click)="choose(item)"
-        >
-          {{ item }}
-        </button>
-      }
-    </nav>
-  </section>
+  @if (area() !== 'overview') {
+    <section class="panel payroll-navigation">
+      <nav class="tabs" [attr.aria-label]="heading() + ' sections'">
+        @for (item of tabs(); track item) {
+          <button
+            [class.active]="tab() === item"
+            [attr.aria-pressed]="tab() === item"
+            (click)="choose(item)"
+          >
+            {{ item === 'Settings' ? 'Pay settings' : item === 'Payroll' ? 'Staff payroll' : item }}
+          </button>
+        }
+      </nav>
+    </section>
+  }
   @if (error() && !modal() && !selected()) {
     <p class="payroll-error" role="alert">{{ error() }}</p>
   }
   @if (tab() === 'Overview') {
+    <cv-finance-overview
+      [today]="today"
+      (navigate)="financeNavigate($event)"
+      (reviewRun)="reviewFinanceRun($event)"
+    />
     <div class="payroll-overview">
       <section class="panel payroll-review-panel">
         <div class="panel-toolbar">
@@ -70,14 +93,7 @@
         </div>
         <div class="payroll-queue-list">
           @for (w of pendingWork().slice(0, 5); track w.id) {
-            <button
-              class="payroll-queue"
-              (click)="
-                choose(w.kind === 'Overtime' ? 'Overtime' : 'Payroll');
-                payrollTab.set('Timesheets');
-                view('work', w.id)
-              "
-            >
+            <button class="payroll-queue" (click)="reviewWork(w)">
               <span
                 ><strong>{{ personName(w.personId) }}</strong
                 ><small>{{ w.kind }} · {{ w.date | date: 'd MMM yyyy' }}</small></span
@@ -85,7 +101,7 @@
             </button>
           }
           @for (i of outstandingInvoices().slice(0, 5); track i.id) {
-            <button class="payroll-queue" (click)="choose('Invoices'); view('invoice', i.id)">
+            <button class="payroll-queue" (click)="reviewInvoice(i)">
               <span
                 ><strong>{{ contractorName(i.contractorId) }}</strong
                 ><small>{{ i.number }} · due {{ i.due | date: 'd MMM yyyy' }}</small></span
@@ -115,10 +131,7 @@
           </div>
         </div>
         <div class="payroll-setup-list">
-          <button
-            class="payroll-setup-action"
-            (click)="choose('Payroll'); payrollTab.set('Staff pay')"
-          >
+          <button class="payroll-setup-action" (click)="choosePayroll('Staff pay')">
             <span class="payroll-step-icon material-symbols-outlined" aria-hidden="true"
               >badge</span
             >
@@ -128,10 +141,7 @@
             >
             <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
           </button>
-          <button
-            class="payroll-setup-action"
-            (click)="choose('Payroll'); payrollTab.set('Timesheets')"
-          >
+          <button class="payroll-setup-action" (click)="choosePayroll('Timesheets')">
             <span class="payroll-step-icon material-symbols-outlined" aria-hidden="true"
               >schedule</span
             >
@@ -141,10 +151,7 @@
             >
             <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
           </button>
-          <button
-            class="payroll-setup-action"
-            (click)="choose('Payroll'); payrollTab.set('Pay runs')"
-          >
+          <button class="payroll-setup-action" (click)="choosePayroll('Pay runs')">
             <span class="payroll-step-icon material-symbols-outlined" aria-hidden="true"
               >payments</span
             >
@@ -161,7 +168,25 @@
         </p>
       </section>
     </div>
-  } @else if (tab() === 'Settings') {
+  } @else if (tab() === 'Invoices') {
+    <section class="panel payroll-navigation">
+      <nav class="tabs" aria-label="Invoice views">
+        @for (item of ['Suppliers', 'Clients']; track item) {
+          <button
+            [class.active]="invoiceTab() === item"
+            [attr.aria-pressed]="invoiceTab() === item"
+            (click)="chooseInvoices(item)"
+          >
+            {{ item === 'Suppliers' ? 'Supplier invoices' : 'Client invoices' }}
+          </button>
+        }
+      </nav>
+    </section>
+    @if (invoiceTab() === 'Clients') {
+      <cv-client-billing />
+    }
+  }
+  @if (tab() === 'Settings') {
     <section class="panel">
       <div class="panel-toolbar">
         <div>
@@ -236,21 +261,21 @@
         </div>
       </form>
     </section>
-  } @else {
+  } @else if (tab() !== 'Overview' && !(tab() === 'Invoices' && invoiceTab() === 'Clients')) {
     <section class="panel payroll-register">
       <div
         class="panel-toolbar payroll-register-toolbar"
         [class.has-payroll-views]="tab() === 'Payroll'"
       >
         <div class="payroll-register-heading">
-          <h2>{{ tab() }}</h2>
+          <h2>{{ tab() === 'Invoices' ? 'Supplier invoices' : tab() }}</h2>
           @if (tab() === 'Payroll') {
             <nav class="segmented payroll-view-tabs" aria-label="Payroll views">
               @for (p of ['Pay runs', 'Staff pay', 'Timesheets']; track p) {
                 <button
                   [class.active]="payrollTab() === p"
                   [attr.aria-pressed]="payrollTab() === p"
-                  (click)="payrollTab.set(p); query.set(''); status.set('All'); selected.set(null)"
+                  (click)="choosePayroll(p)"
                 >
                   {{ p }}
                 </button>
@@ -957,7 +982,7 @@
             @if (service.can('manage')) {
               <button class="button" (click)="editContractor(c)">Edit contractor</button>
             }
-            <button class="button" (click)="choose('Invoices'); query.set(c.name)">
+            <button class="button" (click)="chooseInvoices('Suppliers', c.name)">
               View invoices
             </button>
           </div>

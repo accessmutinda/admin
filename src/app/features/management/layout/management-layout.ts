@@ -9,6 +9,7 @@ import { ManagementRole } from '../shared/role-pill';
 import { AuthService } from '../../../core/auth/auth.service';
 import { Logo } from '../../../shared/ui/logo';
 import { ManagementStore } from '../shared/management.store';
+import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
 @Component({
   selector: 'cv-management-layout',
   providers: [{ provide: MAT_SELECT_CONFIG, useValue: { overlayPanelClass: 'cv-select-overlay' } }],
@@ -84,10 +85,17 @@ import { ManagementStore } from '../shared/management.store';
       }
       @if (store.company()?.modules.includes('Finance')) {
         <p class="nav-label">FINANCE</p>
-        <a routerLink="/manage/payroll" routerLinkActive="active" (click)="menuOpen.set(false)"
-          ><span class="material-symbols-outlined" aria-hidden="true">payments</span>Payroll &
-          payments</a
-        >
+        @for (item of finance; track item.key) {
+          <a
+            [routerLink]="['/manage/finance', item.key]"
+            [attr.data-finance-area]="item.key"
+            routerLinkActive="active"
+            ariaCurrentWhenActive="page"
+            (click)="menuOpen.set(false)"
+            ><span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span
+            >{{ item.label }}</a
+          >
+        }
       }
       <div class="sidebar-bottom">
         <span class="demo-label"><span></span> Demo workspace</span
@@ -144,6 +152,7 @@ export class ManagementLayout {
   private readonly router = inject(Router);
   protected readonly mobile = toSignal(inject(BreakpointObserver).observe('(max-width: 1023px)'));
   protected readonly menuOpen = signal(false);
+  protected readonly finance = FINANCE_AREAS;
   protected readonly organisation = [
     { path: '/manage/companies', label: 'Companies', icon: 'domain' },
     { path: '/manage/access', label: 'Users & access', icon: 'admin_panel_settings' },

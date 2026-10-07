@@ -1,9 +1,11 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, startWith } from 'rxjs';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatSelectModule } from '@angular/material/select';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterLink } from '@angular/router';
 import { CvSelect } from '../../../shared/ui/select';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { ManagementStore } from '../shared/management.store';
@@ -21,6 +23,10 @@ import {
 } from './payroll.models';
 import { PayrollService } from './payroll.service';
 import { AccessRequired } from '../shared/access-required';
+import { FinanceOverview } from './finance/finance-overview';
+import { ClientBilling } from './finance/client-billing';
+import { EcmOperations } from '../ecm/ecm.operations';
+import { AREA_VIEWS, financeArea, financeView, viewArea } from './finance/finance-navigation';
 
 @Component({
   selector: 'cv-payroll',
@@ -33,6 +39,8 @@ import { AccessRequired } from '../shared/access-required';
     CvSelect,
     RouterLink,
     AccessRequired,
+    FinanceOverview,
+    ClientBilling,
   ],
   templateUrl: './payroll.html',
   styleUrl: './payroll.css',
@@ -40,17 +48,35 @@ import { AccessRequired } from '../shared/access-required';
 export class Payroll {
   protected readonly service = inject(PayrollService);
   protected readonly store = inject(ManagementStore);
+  protected readonly ops = inject(EcmOperations);
   private readonly toast = inject(ToastService);
-  protected readonly tabs = [
-    'Overview',
-    'Payroll',
-    'Overtime',
-    'Contractors',
-    'Invoices',
-    'Settings',
-  ];
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly navigation = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      startWith(null),
+    ),
+  );
+  protected readonly area = signal(financeArea(this.route.snapshot.paramMap.get('area')));
+  protected readonly tabs = computed(() => AREA_VIEWS[this.area()]);
+  protected readonly heading = computed(() =>
+    this.area() === 'payroll'
+      ? 'Payroll'
+      : this.area() === 'billing'
+        ? 'Billing & payments'
+        : 'Finance overview',
+  );
+  protected readonly description = computed(() =>
+    this.area() === 'payroll'
+      ? 'Manage staff pay, approve hours and prepare pay runs.'
+      : this.area() === 'billing'
+        ? 'Manage client billing, supplier invoices and recorded payments.'
+        : 'Review company income, payroll estimates and supplier costs.',
+  );
   protected readonly tab = signal('Overview');
   protected readonly payrollTab = signal('Pay runs');
+  protected readonly invoiceTab = signal('Suppliers');
   protected readonly query = signal('');
   protected readonly status = signal('All');
   protected readonly modal = signal('');
@@ -135,6 +161,9 @@ export class Payroll {
   protected readonly invoiceDue = computed(() =>
     this.outstandingInvoices().reduce((sum, i) => sum + invoiceBalance(i), 0),
   );
+  protected readonly pendingClientInvoices = computed(
+    () => this.ops.data().invoices.filter((invoice) => invoice.state === 'Draft').length,
+  );
   protected readonly gross = computed(() =>
     this.service
       .data()
@@ -160,6 +189,42 @@ export class Payroll {
   protected adjustment = { personId: '', amount: 0, reason: '' };
   protected invoiceTotal = invoiceTotal;
   protected invoiceBalance = invoiceBalance;
+  constructor() {
+    effect(() => {
+      this.navigation();
+      untracked(() => this.applyRoute());
+    });
+  }
+  private applyRoute(): void {
+    const area = financeArea(this.route.snapshot.paramMap.get('area'));
+    const params = this.route.snapshot.queryParamMap;
+    this.area.set(area);
+    this.tab.set(financeView(area, params.get('view')));
+    this.payrollTab.set(
+      ['Pay runs', 'Staff pay', 'Timesheets'].find((view) => view === params.get('payrollView')) ??
+        'Pay runs',
+    );
+    this.invoiceTab.set(params.get('invoiceView') === 'Clients' ? 'Clients' : 'Suppliers');
+    this.query.set(params.get('search') ?? '');
+    this.status.set('All');
+    this.selected.set(null);
+    this.modal.set('');
+    this.error.set('');
+    if (this.tab() === 'Settings') this.settings = structuredClone(this.service.data().settings);
+    const kind = params.get('kind'),
+      id = params.get('record');
+    if (
+      id &&
+      ((area === 'payroll' && (kind === 'work' || kind === 'run')) ||
+        (area === 'billing' && (kind === 'invoice' || kind === 'contractor')))
+    )
+      this.view(kind, id);
+  }
+  private navigateTo(view: string, options: Record<string, string> = {}): void {
+    void this.router.navigate(['/manage/finance', viewArea(view)], {
+      queryParams: { view, ...options },
+    });
+  }
   protected personName(id: string): string {
     return this.store.data().people.find((p) => p.id === id)?.name ?? 'Former employee';
   }
@@ -173,12 +238,30 @@ export class Payroll {
     return text.toLowerCase().includes(this.query().trim().toLowerCase());
   }
   protected choose(tab: string): void {
-    this.tab.set(tab);
-    this.query.set('');
-    this.status.set('All');
-    this.selected.set(null);
-    this.error.set('');
-    if (tab === 'Settings') this.settings = structuredClone(this.service.data().settings);
+    this.navigateTo(tab);
+  }
+  protected choosePayroll(view: string): void {
+    this.navigateTo('Payroll', { payrollView: view });
+  }
+  protected chooseInvoices(view: string, search = ''): void {
+    this.navigateTo('Invoices', { invoiceView: view, search });
+  }
+  protected reviewWork(work: WorkRecord): void {
+    this.navigateTo(work.kind === 'Overtime' ? 'Overtime' : 'Payroll', {
+      payrollView: 'Timesheets',
+      kind: 'work',
+      record: work.id,
+    });
+  }
+  protected reviewInvoice(invoice: Invoice): void {
+    this.navigateTo('Invoices', { kind: 'invoice', record: invoice.id });
+  }
+  protected financeNavigate(destination: 'Clients' | 'Suppliers' | 'Payroll'): void {
+    if (destination === 'Payroll') this.choosePayroll('Pay runs');
+    else this.chooseInvoices(destination);
+  }
+  protected reviewFinanceRun(run: PayRun): void {
+    this.navigateTo('Payroll', { kind: 'run', record: run.id });
   }
   protected invoiceStatus(i: Invoice): string {
     return i.status === 'Approved'
