@@ -5,6 +5,7 @@ import { RouterLink, ActivatedRoute } from '@angular/router';
 import { A11yModule } from '@angular/cdk/a11y';
 import { CvSelect } from '../../../shared/ui/select';
 import { ToastService } from '../../../shared/ui/toast.service';
+import { WallboardLauncher } from './wallboard-launcher';
 import { EcmOperations } from './ecm.operations';
 import { VisitEvidence } from './visit-evidence';
 import { RISK_FLAGS, RiskFlag } from '../rota/rota.models';
@@ -37,6 +38,7 @@ import {
   styleUrl: './ecm.css',
 })
 export class Ecm {
+  protected readonly tv = inject(WallboardLauncher);
   protected readonly ops = inject(EcmOperations);
   protected readonly courses = COURSES;
   protected readonly riskFlags = RISK_FLAGS;

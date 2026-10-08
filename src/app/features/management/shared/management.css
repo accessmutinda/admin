@@ -5579,3 +5579,48 @@
   min-height: 40px;
   padding-inline: 8px;
 }
+
+.cv-management .sidebar-tv {
+  position: sticky;
+  z-index: 2;
+  bottom: 0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 62px;
+  padding: 12px;
+  margin-top: 20px;
+  border: 1px solid #32c5b27a;
+  border-radius: 10px;
+  background: #12534f;
+  color: #e0fff6;
+  box-shadow: 0 -12px 25px #0f2d4a;
+  text-align: left;
+}
+.cv-management .sidebar-tv > span:nth-child(2) {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+}
+.cv-management .sidebar-tv small {
+  display: block;
+  font-size: 10px;
+  color: #9bd8cb;
+  font-weight: 400;
+}
+.cv-management .sidebar-tv:hover {
+  background: #17665f;
+}
+.cv-management:has(cv-ecm-wallboard) .app-sidebar,
+.cv-management:has(cv-ecm-wallboard) .app-header,
+.cv-management:has(cv-ecm-wallboard) .app-footer,
+.cv-management:has(cv-ecm-wallboard) > .skip-link {
+  display: none;
+}
+.cv-management:has(cv-ecm-wallboard) .app-body {
+  margin-left: 0;
+}
+.cv-management:has(cv-ecm-wallboard) .page-content {
+  padding: 0;
+}

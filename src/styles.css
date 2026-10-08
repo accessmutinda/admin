@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import './app/features/management/shared/management.css';
+@import './app/features/management/ecm/ecm-wallboard.css';
 @import './app/shared/ui/select.css';
 
 /* CareVerity design tokens — single source of truth for Tailwind utilities

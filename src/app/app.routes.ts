@@ -186,7 +186,8 @@ export const routes: Routes = [
         path: 'ecm/wallboard',
         data: { module: 'Care delivery', wallboard: true },
         title: 'Live ECM wallboard · CareVerity',
-        loadComponent: () => import('./features/management/ecm/ecm').then((m) => m.Ecm),
+        loadComponent: () =>
+          import('./features/management/ecm/ecm-wallboard').then((m) => m.EcmWallboard),
       },
       {
         path: 'ecm',

@@ -14,10 +14,9 @@
           </button>
         } @else {
           <a class="button" routerLink="/manage/rota">Open rota</a
-          ><a class="button" routerLink="/manage/ecm/wallboard"
-            ><span class="material-symbols-outlined" aria-hidden="true">connected_tv</span
-            >Wallboard</a
-          >
+          ><button class="button" (click)="tv.open()">
+            <span class="material-symbols-outlined" aria-hidden="true">connected_tv</span>Wallboard
+          </button>
           @if (service.rota.can('manage')) {
             <button class="button" (click)="open('Board settings')">
               <span class="material-symbols-outlined" aria-hidden="true">tune</span>Settings

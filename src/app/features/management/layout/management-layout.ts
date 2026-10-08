@@ -9,6 +9,7 @@ import { ManagementRole } from '../shared/role-pill';
 import { AuthService } from '../../../core/auth/auth.service';
 import { Logo } from '../../../shared/ui/logo';
 import { ManagementStore } from '../shared/management.store';
+import { WallboardLauncher } from '../ecm/wallboard-launcher';
 import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
 @Component({
   selector: 'cv-management-layout',
@@ -97,6 +98,13 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           >
         }
       }
+      @if (store.company()?.modules.includes('Care delivery')) {
+        <button class="sidebar-tv" (click)="menuOpen.set(false); tv.open()">
+          <span class="material-symbols-outlined" aria-hidden="true">connected_tv</span>
+          <span>ECM TV wallboard<small>Open full screen</small></span>
+          <span class="material-symbols-outlined" aria-hidden="true">north_east</span>
+        </button>
+      }
       <div class="sidebar-bottom">
         <span class="demo-label"><span></span> Demo workspace</span
         ><a
@@ -144,6 +152,7 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
   </div>`,
 })
 export class ManagementLayout {
+  protected readonly tv = inject(WallboardLauncher);
   protected readonly auth = inject(AuthService);
   protected readonly userRole = computed(
     () => ROLES[this.auth.currentUser()?.roleCode ?? 'CW'].label,

@@ -1,0 +1,327 @@
+<section class="tv" aria-label="Live ECM TV wallboard">
+  <header class="tv-header">
+    <div class="tv-brand">
+      <cv-logo tone="light" /><span></span>
+      <div>
+        <p>CARE DELIVERY · OPERATIONS LIVE</p>
+        <h1 id="tv-wallboard-title" tabindex="-1">ECM TV wallboard</h1>
+      </div>
+    </div>
+    <div class="tv-time">
+      <span class="tv-live-label"><i></i> LIVE · {{ store.company()?.code }} · UK TIME</span
+      ><strong
+        >{{ time(now()) }}<small>{{ time(now(), true).slice(-2) }}</small></strong
+      ><span>{{ dateLabel() }}</span>
+    </div>
+    <div class="tv-controls">
+      @if (!fullscreenActive()) {
+        <button (click)="fullscreen()" aria-label="Enter browser full screen">
+          <span class="material-symbols-outlined">fullscreen</span>
+        </button>
+      }
+      <button (click)="exit()">
+        <span class="material-symbols-outlined" aria-hidden="true">close_fullscreen</span>Exit TV
+        mode
+      </button>
+    </div>
+  </header>
+  @if (!service.rota.can('view')) {
+    <cv-access-required
+      feature="ECM TV wallboard"
+      module="Care delivery"
+      viewPermission="View rota"
+      permissionsTitle="Rota & shifts access"
+    />
+  } @else {
+    <div class="tv-metrics">
+      @for (metric of totals(); track metric.label) {
+        <button
+          class="tv-metric"
+          [attr.data-tone]="metric.tone"
+          [class.tv-has-alert]="metric.value > 0 && metric.tone === 'red'"
+          [class.selected]="view() === metric.view"
+          [attr.aria-pressed]="view() === metric.view"
+          (click)="selectView(metric.view)"
+        >
+          <span
+            >{{ metric.label
+            }}<span class="material-symbols-outlined" aria-hidden="true">{{
+              metric.icon
+            }}</span></span
+          ><strong>{{ metric.value.toString().padStart(2, '0') }}</strong
+          ><small>{{
+            metric.view === 'Missed visits' && metric.value
+              ? 'Immediate attention required'
+              : metric.view === 'All visits'
+                ? 'Published visits · today'
+                : 'Select to view visits'
+          }}</small>
+        </button>
+      }
+    </div>
+    <nav class="tv-toolbar" aria-label="Wallboard views">
+      <div>
+        <button
+          [class.active]="view() === 'All visits' && !highOnly()"
+          (click)="highOnly.set(false); selectView('All visits')"
+        >
+          All visits</button
+        ><button
+          [class.active]="view() === 'Manager action'"
+          (click)="selectView('Manager action')"
+        >
+          Needs attention</button
+        ><button
+          [class.active]="highOnly()"
+          [attr.aria-pressed]="highOnly()"
+          (click)="highOnly.set(!highOnly()); page.set(0)"
+        >
+          High risk <span>{{ highCount() }}</span>
+        </button>
+      </div>
+      <div class="tv-toolbar-right">
+        <span>{{ rows().length }} of {{ all().length }} visits</span
+        ><button (click)="filtersOpen.set(true)" [attr.aria-expanded]="filtersOpen()">
+          <span class="material-symbols-outlined" aria-hidden="true">tune</span>Filters
+          {{ filterCount() ? '· ' + filterCount() : '' }}
+        </button>
+      </div>
+    </nav>
+    <div class="tv-board">
+      <section class="tv-priority">
+        <div class="tv-lane-heading">
+          <div>
+            <p>ACT FIRST</p>
+            <h2>
+              Attention queue <span>{{ attention().length }}</span>
+            </h2>
+          </div>
+          <span class="material-symbols-outlined" aria-hidden="true">notification_important</span>
+        </div>
+        <div class="tv-priority-cards">
+          @for (r of visibleAttention(); track r.v.id) {
+            <article
+              class="tv-priority-card"
+              [attr.data-tone]="r.live.tone === 'red' ? 'red' : 'amber'"
+            >
+              <div class="tv-card-top">
+                <span class="tv-status-label"
+                  ><span class="material-symbols-outlined" aria-hidden="true">{{
+                    r.live.tone === 'red' ? 'warning' : 'schedule'
+                  }}</span
+                  >{{ displayStatus(r) }}</span
+                ><strong
+                  >{{ r.live.overrun || r.live.delay
+                  }}<small>MIN {{ r.live.overrun ? 'OVER' : 'LATE' }}</small></strong
+                >
+              </div>
+              <h3>{{ r.v.clientName }}</h3>
+              <p class="tv-visit-time">
+                {{ r.v.start }}–{{ r.v.end }} <span>· {{ r.v.callName }}</span>
+              </p>
+              <p class="tv-carers">{{ names(r.v) }}</p>
+              <div class="tv-card-tags">
+                @if (isHigh(r.v)) {
+                  <span>High risk</span>
+                }
+                @if (r.v.carers === 2) {
+                  <span>Double-up · {{ r.live.arrived }}/2 arrived</span>
+                }
+                @for (flag of flags(r.v); track flag) {
+                  <span>{{ flag }}</span>
+                }
+              </div>
+            </article>
+          } @empty {
+            <div class="tv-empty">
+              <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
+              <h3>Nothing needs attention</h3>
+              <p>No alerts in the selected visits.</p>
+            </div>
+          }
+        </div>
+      </section>
+      <section class="tv-visits">
+        <div class="tv-lane-heading">
+          <div>
+            <p>CARE AT A GLANCE</p>
+            <h2>
+              {{ highOnly() ? 'High-risk visits' : view() }} <span>{{ rows().length }}</span>
+            </h2>
+          </div>
+          <span class="tv-lane-note">Priority order</span>
+        </div>
+        <div class="tv-visit-cards">
+          @for (r of visible(); track r.v.id) {
+            <article class="tv-visit-card" [attr.data-tone]="r.live.tone">
+              <div class="tv-visit-card-top">
+                <strong>{{ r.v.start }}–{{ r.v.end }}</strong
+                ><span
+                  class="tv-call-badge"
+                  [style.background]="service.data().styles[r.v.callName]?.background"
+                  [style.color]="service.data().styles[r.v.callName]?.color"
+                  >{{ r.v.callName }}</span
+                >
+              </div>
+              <h3>{{ r.v.clientName }}</h3>
+              <p class="tv-carers">{{ names(r.v) }}</p>
+              <div class="tv-visit-status">
+                <span><i></i>{{ displayStatus(r) }}</span
+                ><strong>{{
+                  r.live.status === 'Completed'
+                    ? 'Closed'
+                    : r.live.duration !== null
+                      ? r.live.duration + 'm in care'
+                      : r.live.delay > 0
+                        ? '+' + r.live.delay + 'm'
+                        : 'Due ' + r.v.start
+                }}</strong>
+              </div>
+              <div class="tv-card-tags">
+                @if (isHigh(r.v)) {
+                  <span class="tv-risk-tag">High risk</span>
+                }
+                @if (r.v.carers === 2) {
+                  <span>Double-up · {{ r.live.arrived }}/2 arrived</span>
+                }
+                @for (flag of flags(r.v); track flag) {
+                  <span>{{ flag }}</span>
+                }
+              </div>
+            </article>
+          } @empty {
+            <div class="tv-empty">
+              <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
+              <h3>{{ all().length ? 'No matching visits' : 'No published visits today' }}</h3>
+              <p>
+                {{
+                  all().length
+                    ? 'Adjust your filters to see more visits.'
+                    : 'Published rota visits will appear here automatically.'
+                }}
+              </p>
+              @if (all().length) {
+                <button (click)="reset()">Reset filters</button>
+              }
+            </div>
+          }
+        </div>
+      </section>
+    </div>
+    <footer class="tv-footer">
+      <span
+        ><i></i>Updated {{ time(refreshed(), true) }} · Refresh every 3 min
+        <button (click)="refreshed.set(now())" aria-label="Refresh wallboard">
+          <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+        </button></span
+      >
+      <div>
+        <button (click)="next(-1)" [disabled]="pages() === 1" aria-label="Previous visit page">
+          <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span></button
+        ><span
+          >PAGE <strong>{{ currentPage() + 1 }} / {{ pages() }}</strong></span
+        ><button (click)="next()" [disabled]="pages() === 1" aria-label="Next visit page">
+          <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button
+        ><button
+          (click)="paused.set(!paused())"
+          [attr.aria-pressed]="paused()"
+          [attr.aria-label]="paused() ? 'Resume page rotation' : 'Pause page rotation'"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">{{
+            paused() ? 'play_arrow' : 'pause'
+          }}</span></button
+        ><span>{{ paused() ? 'Paused' : 'Rotates every 15s' }}</span>
+      </div>
+      <span class="tv-privacy-note">Authorised office display · {{ store.company()?.name }}</span>
+    </footer>
+  }
+  @if (fullscreenError()) {
+    <p class="tv-fullscreen-message" role="status">{{ fullscreenError() }}</p>
+  }
+  @if (filtersOpen()) {
+    <div class="tv-filter-scrim" (click)="filtersOpen.set(false)"></div>
+    <section
+      class="tv-filter-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tv-filter-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (keydown.escape)="filtersOpen.set(false)"
+    >
+      <div class="tv-filter-heading">
+        <div>
+          <p>TAILOR YOUR DISPLAY</p>
+          <h2 id="tv-filter-title">Wallboard filters</h2>
+        </div>
+        <button (click)="filtersOpen.set(false)" aria-label="Close filters">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <p>
+        Showing {{ rows().length }} of {{ all().length }} visits. Sensitive care details stay in the
+        service user record.
+      </p>
+      <label
+        >Call type<select
+          [ngModel]="call()"
+          (ngModelChange)="call.set($event); page.set(0)"
+        >
+          <option value="">All call types</option>
+          @for (name of calls(); track name) {
+            <option [value]="name">{{ name }}</option>
+          }
+        </select></label
+      >
+      <label
+        >Status<select
+          [ngModel]="status()"
+          (ngModelChange)="status.set($event); page.set(0)"
+        >
+          <option value="">All statuses</option>
+          @for (s of statuses; track s) {
+            <option [value]="s">{{ s }}</option>
+          }
+        </select></label
+      >
+      <label
+        >Quick view<select
+          [ngModel]="view()"
+          (ngModelChange)="selectView($event)"
+        >
+          @for (v of views; track v) {
+            <option [value]="v">{{ v }}</option>
+          }
+        </select></label
+      >
+      <label
+        >Client risk category<select
+          [ngModel]="risk()"
+          (ngModelChange)="risk.set($event); page.set(0)"
+        >
+          <option value="">All risk categories</option>
+          @for (flag of riskFlags; track flag) {
+            <option [value]="flag">{{ flag }}</option>
+          }
+        </select></label
+      >
+      <label class="check"
+        ><input
+          type="checkbox"
+          [ngModel]="highOnly()"
+          (ngModelChange)="highOnly.set($event); page.set(0)"
+        />High-risk visits only</label
+      ><label class="check"
+        ><input
+          type="checkbox"
+          [ngModel]="double()"
+          (ngModelChange)="double.set($event); page.set(0)"
+        />Double-up visits only</label
+      >
+      <div class="tv-filter-actions">
+        <button (click)="reset()">Reset filters</button
+        ><button (click)="filtersOpen.set(false)">Show wallboard</button>
+      </div>
+    </section>
+  }
+</section>
