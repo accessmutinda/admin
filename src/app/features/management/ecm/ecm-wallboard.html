@@ -263,47 +263,59 @@
         service user record.
       </p>
       <label
-        >Call type<select
+        >Call type<mat-select
+          cvSelect
+          panelClass="cv-select-panel tv-select-panel"
+          aria-label="Call type"
           [ngModel]="call()"
           (ngModelChange)="call.set($event); page.set(0)"
         >
-          <option value="">All call types</option>
+          <mat-option value="">All call types</mat-option>
           @for (name of calls(); track name) {
-            <option [value]="name">{{ name }}</option>
+            <mat-option [value]="name">{{ name }}</mat-option>
           }
-        </select></label
+        </mat-select></label
       >
       <label
-        >Status<select
+        >Status<mat-select
+          cvSelect
+          panelClass="cv-select-panel tv-select-panel"
+          aria-label="Visit status"
           [ngModel]="status()"
           (ngModelChange)="status.set($event); page.set(0)"
         >
-          <option value="">All statuses</option>
+          <mat-option value="">All statuses</mat-option>
           @for (s of statuses; track s) {
-            <option [value]="s">{{ s }}</option>
+            <mat-option [value]="s">{{ s }}</mat-option>
           }
-        </select></label
+        </mat-select></label
       >
       <label
-        >Quick view<select
+        >Quick view<mat-select
+          cvSelect
+          panelClass="cv-select-panel tv-select-panel"
+          aria-label="Quick view"
           [ngModel]="view()"
           (ngModelChange)="selectView($event)"
         >
           @for (v of views; track v) {
-            <option [value]="v">{{ v }}</option>
+            <mat-option [value]="v">{{ v }}</mat-option>
           }
-        </select></label
+        </mat-select></label
       >
       <label
-        >Client risk category<select
+        >Client risk category<mat-select
+          cvSelect
+          panelClass="cv-select-panel tv-select-panel"
+          aria-label="Client risk category"
           [ngModel]="risk()"
           (ngModelChange)="risk.set($event); page.set(0)"
         >
-          <option value="">All risk categories</option>
+          <mat-option value="">All risk categories</mat-option>
           @for (flag of riskFlags; track flag) {
-            <option [value]="flag">{{ flag }}</option>
+            <mat-option [value]="flag">{{ flag }}</mat-option>
           }
-        </select></label
+        </mat-select></label
       >
       <label class="check"
         ><input

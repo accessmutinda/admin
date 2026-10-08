@@ -531,13 +531,48 @@ i,
   font-size: 12px;
   margin: 18px 0;
 }
-.tv-filter-panel select {
-  color: #ecf5fa;
+.tv-filter-panel .cv-select.mat-mdc-select {
+  min-height: 50px;
+  padding: 14px 16px;
+  border: 1px solid #36586e;
+  border-radius: 10px;
   background: #0c263c;
-  border: 1px solid #4b6a80;
-  padding: 12px;
-  border-radius: 7px;
-  width: 100%;
+  color: #ecf5fa;
+  font-size: 13px;
+  box-shadow: inset 0 1px 2px #00000014;
+  --mat-select-enabled-trigger-text-color: #ecf5fa;
+  --mat-select-enabled-arrow-color: #89b7c5;
+  --mat-select-focused-arrow-color: #5ae3cf;
+}
+.tv-filter-panel .cv-select.mat-mdc-select:hover {
+  border-color: #6696a8;
+  background: #103048;
+}
+.tv-filter-panel .cv-select.mat-mdc-select:focus-visible,
+.tv-filter-panel .cv-select.mat-mdc-select[aria-expanded='true'] {
+  border-color: #36c7b4;
+  box-shadow: 0 0 0 3px #36c7b41f;
+}
+.tv-select-panel.cv-select-panel.mat-mdc-select-panel {
+  margin-top: 8px;
+  padding: 6px;
+  border: 1px solid #426879;
+  border-radius: 12px;
+  background: #12324c;
+  box-shadow: 0 16px 45px #020f22a6;
+  --mat-option-label-text-size: 13px;
+  --mat-option-label-text-color: #d4e4ee;
+  --mat-option-selected-state-label-text-color: #86f2db;
+  --mat-option-selected-state-layer-color: #1b4b53;
+  --mat-option-hover-state-layer-color: #20445d;
+  --mat-option-focus-state-layer-color: #204f60;
+  --mat-pseudo-checkbox-minimal-selected-checkmark-color: #61dfc7;
+  scrollbar-width: thin;
+  scrollbar-color: #48798b #12324c;
+}
+.tv-select-panel.cv-select-panel .mat-mdc-option {
+  min-height: 46px;
+  padding: 11px 14px;
 }
 .tv-filter-panel .check {
   flex-direction: row;

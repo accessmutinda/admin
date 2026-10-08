@@ -10,6 +10,8 @@ import {
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { MatSelectModule } from '@angular/material/select';
+import { CvSelect } from '../../../shared/ui/select';
 import { Router } from '@angular/router';
 import { A11yModule } from '@angular/cdk/a11y';
 import { EcmService } from './ecm.service';
@@ -21,7 +23,7 @@ import { Logo } from '../../../shared/ui/logo';
 
 @Component({
   selector: 'cv-ecm-wallboard',
-  imports: [FormsModule, A11yModule, AccessRequired, Logo],
+  imports: [FormsModule, MatSelectModule, CvSelect, A11yModule, AccessRequired, Logo],
   templateUrl: './ecm-wallboard.html',
 })
 export class EcmWallboard {
