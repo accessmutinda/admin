@@ -14,7 +14,7 @@
           <p>Build a person-centred record with clear contacts and care priorities.</p>
         </div>
       </div>
-      <form class="panel client-editor" (ngSubmit)="save()">
+      <form class="panel client-editor client-profile-editor" (ngSubmit)="save()">
         <h2>Personal details</h2>
         <p class="client-form-hint">Name, reference, address and postcode are required.</p>
         <div class="form-grid">
@@ -40,11 +40,11 @@
                 />
               }
             </label>
+            @if (field.key === 'gp') {
+              <label>Address *<input name="address" [(ngModel)]="draft.address" required /></label>
+              <label>Postcode *<input name="postcode" [(ngModel)]="draft.postcode" required /></label>
+            }
           }
-          <label class="client-wide"
-            >Address *<input name="address" [(ngModel)]="draft.address" required
-          /></label>
-          <label>Postcode *<input name="postcode" [(ngModel)]="draft.postcode" required /></label>
           <label>Phone<input name="phone" [(ngModel)]="draft.phone" type="tel" /></label>
           <label>Email<input name="email" [(ngModel)]="draft.email" type="email" /></label>
           <label
@@ -108,7 +108,7 @@
               [(ngModel)]="draft.representative!.phone"
               type="tel"
           /></label>
-          <label
+          <label class="client-contact-email"
             >Contact email<input
               name="representativeEmail"
               [(ngModel)]="draft.representative!.email"
