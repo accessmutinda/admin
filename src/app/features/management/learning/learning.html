@@ -1,7 +1,7 @@
 <div class="page-heading">
   <div>
     <p class="eyebrow">TRAINING ACADEMY</p>
-    <h1>Keep learning. Keep making a difference.</h1>
+    <h1>Training academy</h1>
     <p>Build a confident, capable team with development that fits their day.</p>
   </div>
   @if (tab() !== 'Progress') {
@@ -19,7 +19,20 @@
     >
   }
 </div>
-<nav class="tabs" aria-label="Training academy sections">
+<label class="mobile-section-selector"
+  >Academy section
+  <mat-select
+    cvSelect
+    aria-label="Training academy section"
+    [ngModel]="tab()"
+    (ngModelChange)="tab.set($event)"
+  >
+    @for (item of tabs; track item) {
+      <mat-option [value]="item">{{ item }}</mat-option>
+    }
+  </mat-select></label
+>
+<nav class="tabs academy-desktop-tabs" aria-label="Training academy sections">
   @for (item of tabs; track item) {
     <button
       [class.active]="tab() === item"
@@ -74,13 +87,21 @@
       </div>
       <a routerLink="/manage/staff" class="text-link">Manage assignments</a>
     </div>
-    <div class="table-wrap">
+    <p class="table-overflow-note">
+      Scroll sideways to see every course. Team members stay visible.
+    </p>
+    <div
+      class="table-wrap matrix-scroll"
+      tabindex="0"
+      role="region"
+      aria-label="Scrollable training matrix"
+    >
       <table class="matrix-table">
         <thead>
           <tr>
-            <th>Team member</th>
+            <th class="table-primary" scope="col">Team member</th>
             @for (course of courses; track course.id) {
-              <th>{{ course.title }}</th>
+              <th scope="col">{{ course.title }}</th>
             }
           </tr>
         </thead>

@@ -4,6 +4,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../../shared/ui/select';
 import { ManagementStore, Person } from '../../shared/management.store';
 import { RouterLink } from '@angular/router';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { toSignal } from '@angular/core/rxjs-interop';
 @Component({
   selector: 'cv-academy-progress',
   imports: [FormsModule, MatSelectModule, CvSelect, RouterLink],
@@ -11,6 +13,9 @@ import { RouterLink } from '@angular/router';
 })
 export class AcademyProgress {
   protected readonly store = inject(ManagementStore);
+  protected readonly tablet = toSignal(
+    inject(BreakpointObserver).observe('(min-width: 768px) and (max-width: 1023px)'),
+  );
   protected readonly completion = computed(() => {
     const assignments = this.store
       .staff()

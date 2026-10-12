@@ -21,13 +21,19 @@
 <div class="course-grid">
   @for (course of filtered(); track course.id) {
     <article class="course-card panel">
-      <div class="course-art" [attr.data-course]="course.id">
-        <span class="material-symbols-outlined" aria-hidden="true">{{ course.icon }}</span
-        ><span class="badge">{{ course.category }}</span>
-      </div>
       <div class="course-body">
         <small class="muted">LEVEL 2 <span class="footer-dot">·</span> {{ course.duration }}</small>
-        <h3>{{ course.title }}</h3>
+        <div class="course-heading">
+          <span class="course-art course-icon" [attr.data-course]="course.id"
+            ><span class="material-symbols-outlined" aria-hidden="true">{{
+              course.icon
+            }}</span></span
+          >
+          <div>
+            <h3>{{ course.title }}</h3>
+            <span class="badge">{{ course.category }}</span>
+          </div>
+        </div>
         <p>{{ course.description }}</p>
         <div class="card-footer">
           <span class="muted">{{
