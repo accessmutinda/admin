@@ -33,18 +33,18 @@ import { liveVisit, EcmEscalation, ClientInvoice } from './ecm.models';
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
       }
       .workflow-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-        gap: 16px;
+        gap: 12px;
         align-items: start;
       }
       .workflow-record {
         border: 1px solid #dce5ee;
         border-radius: 10px;
-        padding: 16px;
+        padding: 12px;
         display: grid;
         gap: 8px;
         min-width: 0;
@@ -61,19 +61,19 @@ import { liveVisit, EcmEscalation, ClientInvoice } from './ecm.models';
       }
       .workflow-stack {
         display: grid;
-        gap: 12px;
+        gap: 8px;
       }
       .workflow-error {
         background: #fff1f0;
         color: #b42318;
-        padding: 12px;
+        padding: 10px;
         border-radius: 8px;
       }
       .workflow-context {
         background: #e6f7f5;
         border-radius: 10px;
-        padding: 12px 16px;
-        margin-bottom: 16px;
+        padding: 10px 12px;
+        margin-bottom: 12px;
       }
       .workflow-nav .active {
         background: #0f2d4a;
@@ -85,10 +85,10 @@ import { liveVisit, EcmEscalation, ClientInvoice } from './ecm.models';
       }
       .workflow-header {
         display: flex;
-        gap: 12px;
+        gap: 8px;
         flex-wrap: wrap;
         align-items: end;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
       }
       .workflow-header label {
         min-width: 180px;
@@ -105,12 +105,12 @@ import { liveVisit, EcmEscalation, ClientInvoice } from './ecm.models';
       .workflow-kpis {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-        gap: 12px;
-        margin-bottom: 16px;
+        gap: 8px;
+        margin-bottom: 12px;
       }
       .workflow-kpis > div {
         background: white;
-        padding: 16px;
+        padding: 12px;
         border: 1px solid #dce5ee;
         border-radius: 10px;
         display: grid;

@@ -42,7 +42,9 @@
             </label>
             @if (field.key === 'gp') {
               <label>Address *<input name="address" [(ngModel)]="draft.address" required /></label>
-              <label>Postcode *<input name="postcode" [(ngModel)]="draft.postcode" required /></label>
+              <label
+                >Postcode *<input name="postcode" [(ngModel)]="draft.postcode" required
+              /></label>
             }
           }
           <label>Phone<input name="phone" [(ngModel)]="draft.phone" type="tel" /></label>
@@ -203,12 +205,12 @@
             <table class="client-table">
               <thead>
                 <tr>
-                  <th scope="col">Client</th>
+                  <th scope="col" class="table-primary">Client</th>
                   <th scope="col">Care priority</th>
                   <th scope="col">Call packages</th>
                   <th scope="col">Plan review</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Record</th>
+                  <th scope="col" class="table-status">Status</th>
+                  <th scope="col" class="table-actions">Record</th>
                 </tr>
               </thead>
               <tbody>
@@ -239,12 +241,12 @@
                         <small>Review due</small>
                       }
                     </td>
-                    <td data-label="Status">
+                    <td data-label="Status" class="table-status">
                       <span class="badge" [class.success]="c.active">{{
                         c.active ? 'Active' : 'Inactive'
                       }}</span>
                     </td>
-                    <td data-label="Record">
+                    <td data-label="Record" class="table-actions">
                       <a
                         class="button client-open"
                         [routerLink]="['/manage/clients', c.id]"

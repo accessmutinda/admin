@@ -163,7 +163,7 @@ interface Recognition {
       .ecm-error {
         color: #b42318;
         background: #fff1f0;
-        padding: 12px;
+        padding: 10px;
         border-radius: 8px;
       }
       audio {

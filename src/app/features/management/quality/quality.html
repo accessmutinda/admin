@@ -72,7 +72,7 @@
     }
   </nav>
   @if (tab() === 'Overview') {
-    <div class="quality-overview">
+    <div class="quality-overview" [class.supervisor-overview]="supervisor">
       <section class="panel quality-panel">
         <div class="quality-heading">
           <div>
@@ -101,7 +101,7 @@
           >
         }
         @if (!myTasks().length) {
-          <div class="empty-state">
+          <div class="empty-state compact-empty">
             <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
             <h3>No assessments assigned to you</h3>
             <p>Start from the library or assign an assessor when scheduling a review.</p>
@@ -132,17 +132,17 @@
           </button>
         }
         @if (!activity().length) {
-          <div class="empty-state">
+          <div class="empty-state compact-empty">
             <span class="material-symbols-outlined" aria-hidden="true">history</span>
             <h3>Your activity will appear here</h3>
             <p>Saved drafts, submissions, sign-offs and action updates create an audit record.</p>
           </div>
         }
       </section>
-      <section class="panel quality-panel">
+      <section class="panel quality-panel quality-supervision-panel">
         <div class="quality-heading">
           <div>
-            <h2>People & development</h2>
+            <h2>{{ supervisor ? 'Staff supervision' : 'People & development' }}</h2>
             <p>Continue the existing staff supervision workflow.</p>
           </div>
           <span class="quality-icon" data-tone="purple"
@@ -309,11 +309,13 @@
           </caption>
           <thead>
             <tr>
-              <th>{{ tab() === 'Assessments' ? 'Assessment / person' : 'Action / source' }}</th>
-              <th>{{ tab() === 'Assessments' ? 'Assessor' : 'Owner' }}</th>
-              <th>{{ tab() === 'Assessments' ? 'Assessment date' : 'Due date' }}</th>
-              <th>Status</th>
-              <th>Review</th>
+              <th scope="col">
+                {{ tab() === 'Assessments' ? 'Assessment / person' : 'Action / source' }}
+              </th>
+              <th scope="col">{{ tab() === 'Assessments' ? 'Assessor' : 'Owner' }}</th>
+              <th scope="col">{{ tab() === 'Assessments' ? 'Assessment date' : 'Due date' }}</th>
+              <th class="table-status" scope="col">Status</th>
+              <th class="table-actions" scope="col">Review</th>
             </tr>
           </thead>
           <tbody>
@@ -325,8 +327,8 @@
                     ><small>{{ a.subjectName || 'Context needed' }}</small>
                   </td>
                   <td data-label="Assessor">{{ a.assessorName || 'Not assigned' }}</td>
-                  <td data-label="Date">{{ a.date | date: 'd MMM y' }}</td>
-                  <td data-label="Status">
+                  <td data-label="Date" class="table-date">{{ a.date | date: 'd MMM y' }}</td>
+                  <td data-label="Status" class="table-status">
                     <span
                       class="badge"
                       [class.success]="a.status === 'Signed off'"
@@ -337,7 +339,7 @@
                       <small class="quality-alert">Overdue</small>
                     }
                   </td>
-                  <td data-label="Review">
+                  <td data-label="Review" class="table-actions">
                     <a class="button" [routerLink]="['/manage/quality/assessments', a.id]">{{
                       a.status === 'Draft' || a.status === 'Scheduled' ? 'Continue' : 'Review'
                     }}</a>
@@ -355,8 +357,8 @@
                     >
                   </td>
                   <td data-label="Owner">{{ owner(a.ownerId) }}</td>
-                  <td data-label="Due">{{ a.due | date: 'd MMM y' }}</td>
-                  <td data-label="Status">
+                  <td data-label="Due" class="table-date">{{ a.due | date: 'd MMM y' }}</td>
+                  <td data-label="Status" class="table-status">
                     <span
                       class="badge"
                       [class.success]="a.status === 'Completed'"
@@ -367,7 +369,7 @@
                       <small class="quality-alert">Overdue</small>
                     }
                   </td>
-                  <td data-label="Review">
+                  <td data-label="Review" class="table-actions">
                     <button class="button" (click)="editAction(a)">Review</button>
                   </td>
                 </tr>
@@ -471,22 +473,26 @@
         }
       </div>
       <div class="table-wrap">
-        <table class="quality-table">
+        <table class="quality-table quality-report-table">
           <thead>
             <tr>
-              <th>Assessment type</th>
-              <th>Records</th>
-              <th>Submitted</th>
-              <th>Signed off</th>
+              <th scope="col">Assessment type</th>
+              <th class="table-number" scope="col">Records</th>
+              <th class="table-number" scope="col">Submitted</th>
+              <th class="table-number" scope="col">Signed off</th>
             </tr>
           </thead>
           <tbody>
             @for (t of templates; track t.id) {
               <tr>
                 <td data-label="Type">{{ t.title }}</td>
-                <td data-label="Records">{{ countType(t.id) }}</td>
-                <td data-label="Submitted">{{ countType(t.id, 'Submitted') }}</td>
-                <td data-label="Signed off">{{ countType(t.id, 'Signed off') }}</td>
+                <td data-label="Records" class="table-number">{{ countType(t.id) }}</td>
+                <td data-label="Submitted" class="table-number">
+                  {{ countType(t.id, 'Submitted') }}
+                </td>
+                <td data-label="Signed off" class="table-number">
+                  {{ countType(t.id, 'Signed off') }}
+                </td>
               </tr>
             }
           </tbody>

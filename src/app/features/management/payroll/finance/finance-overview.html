@@ -19,16 +19,16 @@
     </mat-select>
   </div>
   <div class="panel-body">
-    <div class="metrics finance-totals">
-      <button class="metric" data-tone="blue" (click)="navigate.emit('Clients')">
+    <div class="finance-summary">
+      <button class="finance-total" data-tone="blue" (click)="navigate.emit('Clients')">
         <span>Approved client billing</span><strong>{{ totals().revenue | currency: 'GBP' }}</strong
         ><small>Approved and exported invoices</small>
       </button>
-      <button class="metric" data-tone="amber" (click)="navigate.emit('Payroll')">
+      <button class="finance-total" data-tone="amber" (click)="navigate.emit('Payroll')">
         <span>Recorded costs</span><strong>{{ totals().costs | currency: 'GBP' }}</strong
         ><small>Gross payroll and supplier invoices</small>
       </button>
-      <div class="metric" data-tone="teal">
+      <div class="finance-total" data-tone="teal">
         <span>Balance estimate</span
         ><strong>{{ totals().revenue - totals().costs | currency: 'GBP' }}</strong
         ><small>Billing less recorded costs</small>
@@ -69,17 +69,17 @@
           <table>
             <thead>
               <tr>
-                <th>Month</th>
-                <th>Client billing</th>
-                <th>Costs</th>
+                <th scope="col">Month</th>
+                <th scope="col" class="table-number table-money">Client billing</th>
+                <th scope="col" class="table-number table-money">Costs</th>
               </tr>
             </thead>
             <tbody>
               @for (month of months(); track month.key) {
                 <tr>
                   <th scope="row">{{ month.key }}</th>
-                  <td>{{ month.revenue | currency: 'GBP' }}</td>
-                  <td>{{ month.costs | currency: 'GBP' }}</td>
+                  <td class="table-number table-money">{{ month.revenue | currency: 'GBP' }}</td>
+                  <td class="table-number table-money">{{ month.costs | currency: 'GBP' }}</td>
                 </tr>
               }
             </tbody>
@@ -87,7 +87,7 @@
         </div>
       </details>
     } @else {
-      <div class="finance-empty">
+      <div class="finance-empty compact-empty">
         <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span
         ><strong>No financial activity in this period</strong>
         <p>Approve client invoices or prepare payroll to see your monthly totals.</p>
@@ -149,7 +149,7 @@
           >
         </button>
       } @else {
-        <div class="finance-empty">
+        <div class="finance-empty compact-empty">
           <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
           ><strong>No upcoming pay run</strong>
           <p>Bring approved staff work together for review.</p>

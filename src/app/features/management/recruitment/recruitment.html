@@ -337,17 +337,24 @@
                     >arrow_outward</span
                   >
                 </div>
-                <cv-management-role [label]="person.role" />
+                <cv-management-role
+                  [label]="person.role"
+                  [attr.title]="
+                    person.vacancy === person.role ? 'Role and vacancy: ' + person.role : null
+                  "
+                />
                 <div class="applicant-meta">
                   <span class="material-symbols-outlined" aria-hidden="true">location_on</span
                   >{{ person.location || 'Location not provided' }}
                 </div>
-                <div class="applicant-footer">
-                  <span class="badge" [class.success]="stage === 'Hired'">{{
-                    stage === 'Hired' ? 'Team member' : person.vacancy
-                  }}</span>
-                </div></a
-              >
+                @if (stage === 'Hired' || (person.vacancy && person.vacancy !== person.role)) {
+                  <div class="applicant-footer">
+                    <span class="badge" [class.success]="stage === 'Hired'">{{
+                      stage === 'Hired' ? 'Team member' : person.vacancy
+                    }}</span>
+                  </div>
+                }
+              </a>
             } @empty {
               <div class="column-empty">
                 No {{ stage.toLowerCase() === 'applied' ? 'applications' : 'people' }} here yet.
@@ -362,13 +369,13 @@
         <table>
           <thead>
             <tr>
-              <th>Vacancy</th>
-              <th>Location</th>
-              <th>Salary</th>
-              <th>Go-live date</th>
-              <th>Closing date</th>
-              <th>Applicants</th>
-              <th>Application page</th>
+              <th scope="col">Vacancy</th>
+              <th scope="col">Location</th>
+              <th scope="col">Salary</th>
+              <th class="table-date" scope="col">Go-live date</th>
+              <th class="table-date" scope="col">Closing date</th>
+              <th scope="col" class="table-number">Applicants</th>
+              <th scope="col">Application page</th>
             </tr>
           </thead>
           <tbody>
@@ -390,7 +397,7 @@
                     vacancy.closingDate ? (vacancy.closingDate | date: 'd MMM yyyy') : 'No deadline'
                   }}
                 </td>
-                <td>
+                <td class="table-number">
                   <button
                     class="text-link"
                     (click)="vacancyFilter.set(vacancy.id); view.set('Pipeline')"

@@ -57,13 +57,13 @@
     <table class="payroll-table">
       <thead>
         <tr>
-          <th>Invoice</th>
-          <th>Client</th>
-          <th>Funding</th>
-          <th>Date</th>
-          <th>Total</th>
-          <th>Status</th>
-          <th>Action</th>
+          <th class="table-primary" scope="col">Invoice</th>
+          <th class="table-primary" scope="col">Client</th>
+          <th scope="col">Funding</th>
+          <th class="table-date" scope="col">Date</th>
+          <th class="table-number table-money" scope="col">Total</th>
+          <th class="table-status" scope="col">Status</th>
+          <th class="table-actions" scope="col">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -77,14 +77,16 @@
             <td data-label="Funding">
               <span class="badge">{{ clientFunding(invoice.clientId) }}</span>
             </td>
-            <td data-label="Date">{{ invoice.date | date: 'd MMM yyyy' }}</td>
-            <td data-label="Total">{{ total(invoice) | currency: 'GBP' }}</td>
-            <td data-label="Status">
+            <td data-label="Date" class="table-date">{{ invoice.date | date: 'd MMM yyyy' }}</td>
+            <td data-label="Total" class="table-number table-money">
+              {{ total(invoice) | currency: 'GBP' }}
+            </td>
+            <td data-label="Status" class="table-status">
               <span class="badge" [class.success]="invoice.state !== 'Draft'">{{
                 invoice.state
               }}</span>
             </td>
-            <td data-label="Action">
+            <td data-label="Action" class="table-actions">
               <button class="button" (click)="review(invoice.id)">Review client invoice</button>
             </td>
           </tr>
@@ -141,11 +143,11 @@
           <table class="payroll-table">
             <thead>
               <tr>
-                <th>Visit</th>
-                <th>Date</th>
-                <th>Hours</th>
-                <th>Saved rate</th>
-                <th>Amount</th>
+                <th class="table-primary" scope="col">Visit</th>
+                <th class="table-date" scope="col">Date</th>
+                <th class="table-number" scope="col">Hours</th>
+                <th class="table-number table-money" scope="col">Saved rate</th>
+                <th class="table-number table-money" scope="col">Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -154,10 +156,16 @@
                   <td data-label="Visit">
                     {{ line.call }}<small>{{ line.basis }}</small>
                   </td>
-                  <td data-label="Date">{{ line.date | date: 'd MMM yyyy' }}</td>
-                  <td data-label="Hours">{{ line.hours | number: '1.2-4' }}</td>
-                  <td data-label="Saved rate">{{ line.rate | currency: 'GBP' }}</td>
-                  <td data-label="Amount">{{ line.amount | currency: 'GBP' }}</td>
+                  <td data-label="Date" class="table-date">{{ line.date | date: 'd MMM yyyy' }}</td>
+                  <td data-label="Hours" class="table-number">
+                    {{ line.hours | number: '1.2-4' }}
+                  </td>
+                  <td data-label="Saved rate" class="table-number table-money">
+                    {{ line.rate | currency: 'GBP' }}
+                  </td>
+                  <td data-label="Amount" class="table-number table-money">
+                    {{ line.amount | currency: 'GBP' }}
+                  </td>
                 </tr>
               }
             </tbody>

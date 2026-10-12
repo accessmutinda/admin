@@ -74,55 +74,7 @@
     <p class="payroll-error" role="alert">{{ error() }}</p>
   }
   @if (tab() === 'Overview') {
-    <cv-finance-overview
-      [today]="today"
-      (navigate)="financeNavigate($event)"
-      (reviewRun)="reviewFinanceRun($event)"
-    />
     <div class="payroll-overview">
-      <section class="panel payroll-review-panel">
-        <div class="panel-toolbar">
-          <div>
-            <h2>
-              Review queue
-              <span class="count">{{ pendingWork().length + outstandingInvoices().length }}</span>
-            </h2>
-            <p>Work awaiting review and invoices with a balance.</p>
-          </div>
-          <a class="text-link" routerLink="/manage/workflows">Approval routes</a>
-        </div>
-        <div class="payroll-queue-list">
-          @for (w of pendingWork().slice(0, 5); track w.id) {
-            <button class="payroll-queue" (click)="reviewWork(w)">
-              <span
-                ><strong>{{ personName(w.personId) }}</strong
-                ><small>{{ w.kind }} · {{ w.date | date: 'd MMM yyyy' }}</small></span
-              ><span class="badge">{{ w.status }}</span>
-            </button>
-          }
-          @for (i of outstandingInvoices().slice(0, 5); track i.id) {
-            <button class="payroll-queue" (click)="reviewInvoice(i)">
-              <span
-                ><strong>{{ contractorName(i.contractorId) }}</strong
-                ><small>{{ i.number }} · due {{ i.due | date: 'd MMM yyyy' }}</small></span
-              ><span>{{ invoiceBalance(i) | currency: 'GBP' }}</span>
-            </button>
-          }
-          @if (!pendingWork().length && !outstandingInvoices().length) {
-            <div class="payroll-empty-state">
-              <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
-              <strong>You're up to date</strong>
-              <p>No work awaiting review or unpaid invoices.</p>
-            </div>
-          }
-          @if (pendingWork().length > 5 || outstandingInvoices().length > 5) {
-            <p class="payroll-queue-note">
-              Showing the first five records in each queue. Open the relevant section to see all
-              records.
-            </p>
-          }
-        </div>
-      </section>
       <section class="panel payroll-prepare-panel">
         <div class="panel-toolbar">
           <div>
@@ -167,7 +119,56 @@
           submissions and bank transfers require connected services.
         </p>
       </section>
+      <section class="panel payroll-review-panel">
+        <div class="panel-toolbar">
+          <div>
+            <h2>
+              Review queue
+              <span class="count">{{ pendingWork().length + outstandingInvoices().length }}</span>
+            </h2>
+            <p>Work awaiting review and invoices with a balance.</p>
+          </div>
+          <a class="text-link" routerLink="/manage/workflows">Approval routes</a>
+        </div>
+        <div class="payroll-queue-list">
+          @for (w of pendingWork().slice(0, 5); track w.id) {
+            <button class="payroll-queue" (click)="reviewWork(w)">
+              <span
+                ><strong>{{ personName(w.personId) }}</strong
+                ><small>{{ w.kind }} · {{ w.date | date: 'd MMM yyyy' }}</small></span
+              ><span class="badge">{{ w.status }}</span>
+            </button>
+          }
+          @for (i of outstandingInvoices().slice(0, 5); track i.id) {
+            <button class="payroll-queue" (click)="reviewInvoice(i)">
+              <span
+                ><strong>{{ contractorName(i.contractorId) }}</strong
+                ><small>{{ i.number }} · due {{ i.due | date: 'd MMM yyyy' }}</small></span
+              ><span>{{ invoiceBalance(i) | currency: 'GBP' }}</span>
+            </button>
+          }
+          @if (!pendingWork().length && !outstandingInvoices().length) {
+            <div class="payroll-empty-state compact-empty">
+              <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
+              <strong>You're up to date</strong>
+              <p>No work awaiting review or unpaid invoices.</p>
+            </div>
+          }
+          @if (pendingWork().length > 5 || outstandingInvoices().length > 5) {
+            <p class="payroll-queue-note">
+              Showing the first five records in each queue. Open the relevant section to see all
+              records.
+            </p>
+          }
+        </div>
+      </section>
     </div>
+
+    <cv-finance-overview
+      [today]="today"
+      (navigate)="financeNavigate($event)"
+      (reviewRun)="reviewFinanceRun($event)"
+    />
   } @else if (tab() === 'Invoices') {
     <section class="panel payroll-navigation">
       <nav class="tabs" aria-label="Invoice views">
@@ -380,17 +381,20 @@
         }
       </div>
       <div class="table-wrap">
-        <table class="payroll-table">
+        <table
+          class="payroll-table payroll-register-table"
+          [attr.data-register]="tab() === 'Payroll' ? payrollTab() : tab()"
+        >
           @if (tab() === 'Overtime' || (tab() === 'Payroll' && payrollTab() === 'Timesheets')) {
             <thead>
               <tr>
-                <th>Employee</th>
-                <th>Work date</th>
-                <th>Work</th>
-                <th>Hours / units</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Action</th>
+                <th class="table-primary" scope="col">Employee</th>
+                <th class="table-date" scope="col">Work date</th>
+                <th scope="col">Work</th>
+                <th class="table-number" scope="col">Hours / units</th>
+                <th class="table-number table-money" scope="col">Amount</th>
+                <th class="table-status" scope="col">Status</th>
+                <th class="table-actions" scope="col">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -399,30 +403,32 @@
                   <td data-label="Employee">
                     <strong>{{ personName(w.personId) }}</strong>
                   </td>
-                  <td data-label="Work date">{{ w.date | date: 'd MMM yyyy' }}</td>
+                  <td data-label="Work date" class="table-date">
+                    {{ w.date | date: 'd MMM yyyy' }}
+                  </td>
                   <td data-label="Work">
                     {{ w.kind }}<small>{{ w.reason }}</small>
                   </td>
-                  <td data-label="Hours / units">
+                  <td data-label="Hours / units" class="table-number">
                     {{
                       w.status === 'Requested' || w.status === 'Authorised'
                         ? w.hours
                         : w.actualHours
                     }}
                   </td>
-                  <td data-label="Amount">
+                  <td data-label="Amount" class="table-number table-money">
                     {{
                       (w.status === 'Requested' || w.status === 'Authorised'
                         ? w.hours
                         : w.actualHours) * w.rate | currency: 'GBP'
                     }}
                   </td>
-                  <td data-label="Status">
+                  <td data-label="Status" class="table-status">
                     <span class="badge" [class.success]="w.status === 'Approved'">{{
                       w.runId ? 'In pay run' : w.status
                     }}</span>
                   </td>
-                  <td data-label="Action">
+                  <td data-label="Action" class="table-actions">
                     <button class="button" (click)="view('work', w.id)">Review</button>
                   </td>
                 </tr>
@@ -441,12 +447,12 @@
           } @else if (tab() === 'Contractors') {
             <thead>
               <tr>
-                <th>Supplier</th>
-                <th>Type</th>
-                <th>Agreed rate</th>
-                <th>Contract</th>
-                <th>Terms</th>
-                <th>Action</th>
+                <th class="table-primary" scope="col">Supplier</th>
+                <th scope="col">Type</th>
+                <th class="table-number table-money" scope="col">Agreed rate</th>
+                <th scope="col">Contract</th>
+                <th scope="col">Terms</th>
+                <th class="table-actions" scope="col">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -457,7 +463,7 @@
                     ><small>{{ c.email }}</small>
                   </td>
                   <td data-label="Type">{{ c.type }}</td>
-                  <td data-label="Agreed rate">
+                  <td data-label="Agreed rate" class="table-number table-money">
                     {{ c.rate | currency: 'GBP' }} / {{ c.unit.toLowerCase() }}
                   </td>
                   <td data-label="Contract">
@@ -465,7 +471,7 @@
                     }}<small>{{ c.end ? (c.end | date: 'd MMM yyyy') : 'Ongoing' }}</small>
                   </td>
                   <td data-label="Terms">{{ c.terms }} days</td>
-                  <td data-label="Action">
+                  <td data-label="Action" class="table-actions">
                     <button class="button" (click)="view('contractor', c.id)">Manage</button>
                   </td>
                 </tr>
@@ -486,13 +492,13 @@
           } @else if (tab() === 'Invoices') {
             <thead>
               <tr>
-                <th>Invoice</th>
-                <th>Supplier</th>
-                <th>Due</th>
-                <th>Total</th>
-                <th>Balance</th>
-                <th>Status</th>
-                <th>Action</th>
+                <th class="table-primary" scope="col">Invoice</th>
+                <th class="table-primary" scope="col">Supplier</th>
+                <th class="table-date" scope="col">Due</th>
+                <th class="table-number table-money" scope="col">Total</th>
+                <th class="table-number table-money" scope="col">Balance</th>
+                <th class="table-status" scope="col">Status</th>
+                <th class="table-actions" scope="col">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -505,15 +511,19 @@
                     }
                   </td>
                   <td data-label="Supplier">{{ contractorName(i.contractorId) }}</td>
-                  <td data-label="Due">{{ i.due | date: 'd MMM yyyy' }}</td>
-                  <td data-label="Total">{{ invoiceTotal(i) | currency: 'GBP' }}</td>
-                  <td data-label="Balance">{{ invoiceBalance(i) | currency: 'GBP' }}</td>
-                  <td data-label="Status">
+                  <td data-label="Due" class="table-date">{{ i.due | date: 'd MMM yyyy' }}</td>
+                  <td data-label="Total" class="table-number table-money">
+                    {{ invoiceTotal(i) | currency: 'GBP' }}
+                  </td>
+                  <td data-label="Balance" class="table-number table-money">
+                    {{ invoiceBalance(i) | currency: 'GBP' }}
+                  </td>
+                  <td data-label="Status" class="table-status">
                     <span class="badge" [class.success]="invoiceStatus(i) === 'Paid'">{{
                       invoiceStatus(i)
                     }}</span>
                   </td>
-                  <td data-label="Action">
+                  <td data-label="Action" class="table-actions">
                     <button class="button" (click)="view('invoice', i.id)">Review</button>
                   </td>
                 </tr>
@@ -532,13 +542,13 @@
           } @else if (payrollTab() === 'Staff pay') {
             <thead>
               <tr>
-                <th>Employee</th>
-                <th>Basis</th>
-                <th>Rate</th>
-                <th>Weekly hours</th>
-                <th>Frequency</th>
-                <th>Effective from</th>
-                <th>Action</th>
+                <th class="table-primary" scope="col">Employee</th>
+                <th scope="col">Basis</th>
+                <th class="table-number table-money" scope="col">Rate</th>
+                <th class="table-number" scope="col">Weekly hours</th>
+                <th scope="col">Frequency</th>
+                <th class="table-date" scope="col">Effective from</th>
+                <th class="table-actions" scope="col">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -550,14 +560,16 @@
                     }}</a>
                   </td>
                   <td data-label="Basis">{{ p.basis }}</td>
-                  <td data-label="Rate">
+                  <td data-label="Rate" class="table-number table-money">
                     {{ p.rate | currency: 'GBP'
                     }}<small>{{ p.basis === 'Salary' ? 'Annual salary' : 'Per hour' }}</small>
                   </td>
-                  <td data-label="Weekly hours">{{ p.weeklyHours }}</td>
+                  <td data-label="Weekly hours" class="table-number">{{ p.weeklyHours }}</td>
                   <td data-label="Frequency">{{ p.frequency }}</td>
-                  <td data-label="Effective from">{{ p.effective | date: 'd MMM yyyy' }}</td>
-                  <td data-label="Action">
+                  <td data-label="Effective from" class="table-date">
+                    {{ p.effective | date: 'd MMM yyyy' }}
+                  </td>
+                  <td data-label="Action" class="table-actions">
                     @if (service.can('manage')) {
                       <button
                         class="button"
@@ -592,13 +604,13 @@
           } @else {
             <thead>
               <tr>
-                <th>Pay run</th>
-                <th>Period</th>
-                <th>Payday</th>
-                <th>Employees</th>
-                <th>Estimated gross</th>
-                <th>Status</th>
-                <th>Action</th>
+                <th class="table-primary" scope="col">Pay run</th>
+                <th class="table-date" scope="col">Period</th>
+                <th class="table-date" scope="col">Payday</th>
+                <th class="table-number" scope="col">Employees</th>
+                <th class="table-number table-money" scope="col">Estimated gross</th>
+                <th class="table-status" scope="col">Status</th>
+                <th class="table-actions" scope="col">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -608,17 +620,21 @@
                     <strong>{{ r.name }}</strong
                     ><small>{{ r.frequency }}</small>
                   </td>
-                  <td data-label="Period">
+                  <td data-label="Period" class="table-date">
                     {{ r.start | date: 'd MMM yyyy'
                     }}<small>to {{ r.end | date: 'd MMM yyyy' }}</small>
                   </td>
-                  <td data-label="Payday">{{ r.payday | date: 'd MMM yyyy' }}</td>
-                  <td data-label="Employees">{{ r.lines.length }}</td>
-                  <td data-label="Estimated gross">{{ runTotal(r) | currency: 'GBP' }}</td>
-                  <td data-label="Status">
+                  <td data-label="Payday" class="table-date">
+                    {{ r.payday | date: 'd MMM yyyy' }}
+                  </td>
+                  <td data-label="Employees" class="table-number">{{ r.lines.length }}</td>
+                  <td data-label="Estimated gross" class="table-number table-money">
+                    {{ runTotal(r) | currency: 'GBP' }}
+                  </td>
+                  <td data-label="Status" class="table-status">
                     <span class="badge" [class.success]="r.status === 'Paid'">{{ r.status }}</span>
                   </td>
-                  <td data-label="Action">
+                  <td data-label="Action" class="table-actions">
                     <button class="button" (click)="view('run', r.id)">Open run</button>
                   </td>
                 </tr>
@@ -769,19 +785,19 @@
             <table>
               <thead>
                 <tr>
-                  <th>Work</th>
-                  <th>Quantity</th>
-                  <th>Rate</th>
-                  <th>VAT</th>
+                  <th scope="col">Work</th>
+                  <th class="table-number" scope="col">Quantity</th>
+                  <th class="table-number table-money" scope="col">Rate</th>
+                  <th class="table-number" scope="col">VAT</th>
                 </tr>
               </thead>
               <tbody>
                 @for (l of i.lines; track $index) {
                   <tr>
                     <td>{{ l.description }}</td>
-                    <td>{{ l.quantity }}</td>
-                    <td>{{ l.rate | currency: 'GBP' }}</td>
-                    <td>{{ l.vat }}%</td>
+                    <td class="table-number">{{ l.quantity }}</td>
+                    <td class="table-number table-money">{{ l.rate | currency: 'GBP' }}</td>
+                    <td class="table-number">{{ l.vat }}%</td>
                   </tr>
                 }
               </tbody>
@@ -880,13 +896,13 @@
             <table>
               <thead>
                 <tr>
-                  <th>Employee</th>
-                  <th>Hours</th>
-                  <th>Basic</th>
-                  <th>Overtime</th>
-                  <th>Allowances</th>
-                  <th>Adjustment</th>
-                  <th>Gross</th>
+                  <th class="table-primary" scope="col">Employee</th>
+                  <th class="table-number" scope="col">Hours</th>
+                  <th class="table-number table-money" scope="col">Basic</th>
+                  <th class="table-number table-money" scope="col">Overtime</th>
+                  <th class="table-number table-money" scope="col">Allowances</th>
+                  <th class="table-number table-money" scope="col">Adjustment</th>
+                  <th class="table-number table-money" scope="col">Gross</th>
                 </tr>
               </thead>
               <tbody>
@@ -898,12 +914,12 @@
                       }}</a
                       ><small>{{ l.adjustmentReason }}</small>
                     </td>
-                    <td>{{ l.hours }}</td>
-                    <td>{{ l.basic | currency: 'GBP' }}</td>
-                    <td>{{ l.overtime | currency: 'GBP' }}</td>
-                    <td>{{ l.allowances | currency: 'GBP' }}</td>
-                    <td>{{ l.adjustment | currency: 'GBP' }}</td>
-                    <td>{{ l.total | currency: 'GBP' }}</td>
+                    <td class="table-number">{{ l.hours }}</td>
+                    <td class="table-number table-money">{{ l.basic | currency: 'GBP' }}</td>
+                    <td class="table-number table-money">{{ l.overtime | currency: 'GBP' }}</td>
+                    <td class="table-number table-money">{{ l.allowances | currency: 'GBP' }}</td>
+                    <td class="table-number table-money">{{ l.adjustment | currency: 'GBP' }}</td>
+                    <td class="table-number table-money">{{ l.total | currency: 'GBP' }}</td>
                   </tr>
                 }
               </tbody>

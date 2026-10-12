@@ -34,7 +34,7 @@
       permissionsTitle="Rota & shifts access"
     />
   } @else {
-    <div class="row ecm-heading-actions" style="margin-bottom: 16px; flex-wrap: wrap">
+    <div class="row ecm-heading-actions" style="margin-bottom: 12px; flex-wrap: wrap">
       <a class="button" routerLink="/manage/clients">Client files</a
       ><a class="button" routerLink="/manage/ecm/workflows">Demo, mobile & follow-up workflows</a>
     </div>
@@ -94,6 +94,19 @@
         }
       </div>
       <div class="ecm-filter-body">
+        <label class="mobile-section-selector"
+          >Visit view
+          <mat-select
+            cvSelect
+            aria-label="Visit view"
+            [ngModel]="quick()"
+            (ngModelChange)="quick.set($event); status.set('')"
+          >
+            @for (view of views; track view) {
+              <mat-option [value]="view">{{ view }}</mat-option>
+            }
+          </mat-select></label
+        >
         <div class="ecm-views" aria-label="Visit views">
           @for (view of views; track view) {
             <button
@@ -179,10 +192,14 @@
           >
             <span class="material-symbols-outlined" aria-hidden="true">filter_list</span
             >{{ advanced() ? 'Fewer filters' : 'More filters'
-            }}{{ client() || staff() || call() || status() ? ' · Active' : '' }}
+            }}{{
+              client() || staff() || call() || status() || risk() || high() || double()
+                ? ' · Active'
+                : ''
+            }}
           </button>
         }
-        <div class="ecm-filter-flags">
+        <div class="ecm-filter-flags" [class.ecm-expanded]="advanced() || wallboard">
           <label
             >Risk flag<mat-select
               cvSelect
@@ -254,63 +271,82 @@
         </div>
       } @else {
         <div class="table-wrap">
-          <table class="ecm-table">
+          <table class="ecm-table" aria-label="Live visit register">
+            <colgroup>
+              <col class="column-schedule" />
+              <col class="column-client" />
+              <col class="column-carers" />
+              <col class="column-attendance" />
+              <col class="column-status" />
+              <col class="column-timing" />
+              <col class="column-actions" />
+            </colgroup>
             <thead>
               <tr>
-                <th>Scheduled</th>
-                <th>Service user / call</th>
-                <th>Care workers</th>
-                <th>Attendance</th>
-                <th>Live status</th>
-                <th>Timing</th>
-                <th>Review</th>
+                <th class="table-date" scope="col">Scheduled</th>
+                <th scope="col">Service user / call</th>
+                <th scope="col">Care workers</th>
+                <th scope="col">Attendance</th>
+                <th class="table-status" scope="col">Live status</th>
+                <th scope="col" class="table-number">Timing</th>
+                <th class="table-actions" scope="col">Review</th>
               </tr>
             </thead>
             <tbody>
               @for (r of rows(); track r.v.id) {
                 <tr [attr.data-status]="r.live.tone">
-                  <td data-label="Scheduled">
+                  <td data-label="Scheduled" class="table-date">
                     <strong>{{ r.v.start }}–{{ r.v.end }}</strong>
-                    @if (r.v.date !== date()) {
-                      <small>Started {{ dateLabel(r.v.date) }}</small>
-                    }
-                    @if (r.v.end <= r.v.start) {
-                      <small>Ends next day</small>
-                    }
-                    <small>{{ r.v.allocation }} cover</small>
+                    <div class="table-detail-line">
+                      @if (r.v.date !== date()) {
+                        <small>Started {{ dateLabel(r.v.date) }}</small>
+                      }
+                      @if (r.v.end <= r.v.start) {
+                        <small>Ends next day</small>
+                      }
+                      <small>{{ r.v.allocation }} cover</small>
+                    </div>
                   </td>
                   <td data-label="Service user / call">
-                    <strong>{{ r.v.clientName }}</strong
-                    ><span
-                      class="ecm-call"
-                      [style.background]="style(r.v.callName).background"
-                      [style.color]="style(r.v.callName).color"
-                      >{{ style(r.v.callName).label }}</span
-                    >
-                    @for (f of flags(r.v); track f) {
-                      <small>{{ f }}</small>
-                    }
-                    @if (r.v.priority === 'High') {
-                      <span class="ecm-priority">High priority</span>
-                    }
+                    <div class="table-identity-line">
+                      <strong>{{ r.v.clientName }}</strong
+                      ><span
+                        class="ecm-call"
+                        [style.background]="style(r.v.callName).background"
+                        [style.color]="style(r.v.callName).color"
+                        >{{ style(r.v.callName).label }}</span
+                      >
+                    </div>
+                    <div class="table-detail-line">
+                      @for (f of flags(r.v); track f) {
+                        <small>{{ f }}</small>
+                      }
+                      @if (r.v.priority === 'High') {
+                        <span class="ecm-priority">High priority</span>
+                      }
+                    </div>
                   </td>
                   <td data-label="Care workers">
-                    @for (id of r.v.staffIds; track id) {
-                      <span class="ecm-carer">{{ name(id) }}</span>
-                    } @empty {
-                      <span class="ecm-priority">Unallocated</span>
-                    }
+                    <div class="table-detail-line table-names">
+                      @for (id of r.v.staffIds; track id) {
+                        <span class="ecm-carer">{{ name(id) }}</span>
+                      } @empty {
+                        <span class="ecm-priority">Unallocated</span>
+                      }
+                    </div>
                     @if (r.v.carers === 2) {
                       <small>Double-up · {{ r.v.staffIds.length }}/2 allocated</small>
                     }
                   </td>
                   <td data-label="Attendance">
                     <span>{{ r.live.arrived }} / {{ r.v.carers }} checked in</span>
-                    @for (a of r.v.attendance; track a.personId) {
-                      <small>{{ time(a.start) }} → {{ a.end ? time(a.end) : 'Open' }}</small>
-                    }
+                    <div class="table-detail-line">
+                      @for (a of r.v.attendance; track a.personId) {
+                        <small>{{ time(a.start) }} → {{ a.end ? time(a.end) : 'Open' }}</small>
+                      }
+                    </div>
                   </td>
-                  <td data-label="Live status">
+                  <td data-label="Live status" class="table-status">
                     <span class="ecm-status" [attr.data-status]="r.live.tone">{{
                       r.live.status
                     }}</span>
@@ -318,7 +354,7 @@
                       <small>Waiting for second carer</small>
                     }
                   </td>
-                  <td data-label="Timing">
+                  <td data-label="Timing" class="table-number">
                     @if (r.live.duration !== null) {
                       <strong>{{ r.live.duration }} min</strong
                       ><small>{{
@@ -335,7 +371,7 @@
                       <small class="ecm-priority">{{ r.live.overrun }} min overrun</small>
                     }
                   </td>
-                  <td data-label="Review">
+                  <td data-label="Review" class="table-actions">
                     <button class="button ecm-review" (click)="openVisit(r.v)">
                       View visit<span class="material-symbols-outlined" aria-hidden="true"
                         >arrow_forward</span

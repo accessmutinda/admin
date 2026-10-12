@@ -496,9 +496,18 @@
       } @else {
         <div class="table-wrap">
           <table class="rota-table" aria-label="Rota visits">
+            <colgroup>
+              <col class="column-select" />
+              <col class="column-client" />
+              <col class="column-schedule" />
+              <col class="column-carers" />
+              <col class="column-allocation" />
+              <col class="column-status" />
+              <col class="column-actions" />
+            </colgroup>
             <thead>
               <tr>
-                <th>
+                <th scope="col">
                   @if (
                     service.can('publish') && (tab() === 'Allocations' || tab() === 'Unallocated')
                   ) {
@@ -510,12 +519,12 @@
                     />
                   }
                 </th>
-                <th>Service user / call</th>
-                <th>Date & time</th>
-                <th>Carers</th>
-                <th>Allocation</th>
-                <th>Status</th>
-                <th>Action</th>
+                <th scope="col">Service user / call</th>
+                <th class="table-date" scope="col">Date & time</th>
+                <th scope="col">Carers</th>
+                <th class="table-status" scope="col">Allocation</th>
+                <th class="table-status" scope="col">Status</th>
+                <th class="table-actions" scope="col">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -541,7 +550,7 @@
                       }
                     </small>
                   </td>
-                  <td data-label="Date & time">
+                  <td data-label="Date & time" class="table-date">
                     {{ v.date | date: 'd MMM yyyy'
                     }}<small
                       >{{ v.start }}–{{ v.end }}{{ overnight(v) ? ' (+1 day)' : '' }} ·
@@ -549,21 +558,23 @@
                     >
                   </td>
                   <td data-label="Carers">
-                    @for (id of v.staffIds; track id) {
-                      <small class="rota-carer-name">{{ personName(id) }}</small>
-                    }
+                    <div class="table-detail-line table-names">
+                      @for (id of v.staffIds; track id) {
+                        <small class="rota-carer-name">{{ personName(id) }}</small>
+                      }
+                    </div>
                     @if (v.staffIds.length < v.carers) {
                       <span class="rota-warning"
                         >{{ v.carers - v.staffIds.length }} place(s) unallocated</span
                       >
                     }
                   </td>
-                  <td data-label="Allocation">
+                  <td data-label="Allocation" class="table-status">
                     <span class="badge" [class.lilac]="v.allocation === 'Temporary'">{{
                       v.allocation
                     }}</span>
                   </td>
-                  <td data-label="Status">
+                  <td data-label="Status" class="table-status">
                     <span
                       class="badge"
                       [class.success]="status(v) === 'Completed' || v.state === 'Published'"
@@ -576,7 +587,7 @@
                       <small class="rota-warning">Availability conflict</small>
                     }
                   </td>
-                  <td data-label="Action">
+                  <td data-label="Action" class="table-actions">
                     <button class="button" (click)="view(v)">Review visit</button>
                   </td>
                 </tr>
