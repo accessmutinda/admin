@@ -1,12 +1,12 @@
 .vacancy-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 16px;
+  gap: 12px;
   align-items: start;
 }
 .vacancy-editor {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
 }
 .vacancy-preview {
@@ -17,8 +17,8 @@
 .preview-heading {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 10px;
   color: #087f76;
 }
 .preview-heading p {
@@ -26,28 +26,28 @@
 }
 .requirement-list {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 .requirement-list > .button {
   justify-self: start;
 }
 .question-row {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px;
   border: 1px solid var(--color-line);
   border-radius: 8px;
 }
 .requirement-options {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 12px;
+  gap: 8px;
   align-items: end;
 }
 .document-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 12px;
+  gap: 8px;
   align-items: end;
 }
 label.required-toggle {
@@ -84,9 +84,9 @@ label.required-toggle {
 .share-panel {
   display: grid;
   grid-template-columns: minmax(160px, 1fr) minmax(0, 2fr) auto;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .vacancy-actions {
   max-width: 340px;

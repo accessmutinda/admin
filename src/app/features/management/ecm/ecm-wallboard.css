@@ -9,10 +9,10 @@ cv-ecm-wallboard {
   z-index: 100;
   background: radial-gradient(ellipse at 75% 0%, #174561 0%, #0b233b 65%);
   color: #f6fafc;
-  padding: 24px 32px 12px;
+  padding: 16px 20px 10px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
   height: 100dvh;
   overflow: auto;
 }
@@ -26,7 +26,7 @@ cv-ecm-wallboard {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 9px 14px;
+  padding: 9px 10px;
   cursor: pointer;
 }
 .tv button:hover {
@@ -46,13 +46,13 @@ cv-ecm-wallboard {
 .tv-header {
   display: flex;
   align-items: center;
-  gap: 30px;
+  gap: 20px;
   flex-shrink: 0;
 }
 .tv-brand {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   flex: 1;
 }
 .tv-brand > span {
@@ -76,7 +76,7 @@ cv-ecm-wallboard {
 .tv-time {
   display: grid;
   grid-template-columns: auto auto;
-  column-gap: 14px;
+  column-gap: 10px;
   align-items: center;
 }
 .tv-live-label {
@@ -118,7 +118,7 @@ i,
 .tv-metrics {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
   flex-shrink: 0;
 }
 .tv .tv-metric {
@@ -126,7 +126,7 @@ i,
   flex-direction: column;
   align-items: stretch;
   text-align: left;
-  padding: 16px 20px 12px;
+  padding: 12px 14px 10px;
   border-radius: 12px;
   background: #183c56;
   position: relative;
@@ -201,7 +201,7 @@ i,
   border-color: transparent;
   color: #b5cbd8;
   font-size: 12px;
-  padding: 8px 12px;
+  padding: 8px 10px;
 }
 .tv-toolbar button.active {
   background: #3ed6bc1c;
@@ -220,7 +220,7 @@ i,
 .tv-board {
   display: grid;
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.5fr);
-  gap: 24px;
+  gap: 16px;
   flex: 1;
   min-height: 0;
 }
@@ -229,7 +229,7 @@ i,
   display: flex;
   flex-direction: column;
   min-height: 0;
-  gap: 14px;
+  gap: 10px;
 }
 .tv-lane-heading {
   display: flex;
@@ -260,7 +260,7 @@ i,
 .tv-priority-cards {
   display: grid;
   grid-template-rows: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
   flex: 1;
   min-height: 0;
 }
@@ -269,7 +269,7 @@ i,
   border: 1px solid #df954855;
   border-left: 5px solid #efa943;
   background: linear-gradient(120deg, #654324, #3b3433);
-  padding: 16px 20px;
+  padding: 12px 14px;
   overflow: auto;
 }
 .tv-priority-card[data-tone='red'] {
@@ -344,7 +344,7 @@ i,
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 .tv-card-tags span {
   font-size: 9px;
@@ -363,12 +363,12 @@ i,
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
   flex: 1;
   min-height: 0;
 }
 .tv-visit-card {
-  padding: 16px 18px;
+  padding: 12px 12px;
   background: #173951;
   border: 1px solid #31546b;
   border-left: 3px solid #6b8ba0;
@@ -417,7 +417,7 @@ i,
   justify-content: space-between;
   gap: 8px;
   border-top: 1px solid #ffffff12;
-  margin-top: 12px;
+  margin-top: 10px;
   padding-top: 9px;
   font-size: 11px;
 }
@@ -458,7 +458,7 @@ i,
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 30px;
+  padding: 20px;
   text-align: center;
 }
 .tv-empty > .material-symbols-outlined {
@@ -474,7 +474,7 @@ i,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 15px;
+  gap: 10px;
   font-size: 10px;
   color: #89a8bc;
   flex-shrink: 0;
@@ -507,7 +507,7 @@ i,
   inset: 0 0 0 auto;
   width: min(460px, 100%);
   background: #12324c;
-  padding: 28px;
+  padding: 20px;
   z-index: 3;
   overflow: auto;
   box-shadow: -20px 0 80px #0005;
@@ -516,12 +516,12 @@ i,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 .tv-filter-panel > p {
   color: #b5cbd7;
   font-size: 13px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 .tv-filter-panel label {
   display: flex;
@@ -529,7 +529,7 @@ i,
   gap: 8px;
   color: #d4e4ee;
   font-size: 12px;
-  margin: 18px 0;
+  margin: 12px 0;
 }
 .tv-filter-panel .cv-select.mat-mdc-select {
   min-height: 50px;
@@ -586,8 +586,8 @@ i,
 }
 .tv-filter-actions {
   display: flex;
-  gap: 12px;
-  margin-top: 30px;
+  gap: 8px;
+  margin-top: 20px;
 }
 .tv-filter-actions button:last-child {
   background: #087f76;
@@ -599,18 +599,18 @@ i,
   right: 25px;
   background: #16445c;
   color: white;
-  padding: 12px;
+  padding: 10px;
   border-radius: 8px;
   font-size: 12px;
 }
 @media (min-width: 2200px) {
   .tv {
-    padding: 36px 48px 20px;
-    gap: 28px;
+    padding: 24px 48px 14px;
+    gap: 20px;
   }
   .tv-priority-card,
   .tv-visit-card {
-    padding: 24px 28px;
+    padding: 16px 20px;
   }
   .tv .tv-carers,
   .tv-visit-status,
@@ -630,18 +630,18 @@ i,
 }
 @media (max-height: 850px) and (min-width: 1101px) {
   .tv {
-    padding: 16px 24px 8px;
-    gap: 12px;
+    padding: 12px 16px 8px;
+    gap: 8px;
   }
   .tv-metric > strong {
     font-size: 42px;
   }
   .tv .tv-metric {
-    padding: 12px 16px 8px;
+    padding: 10px 12px 8px;
   }
   .tv-priority-card,
   .tv-visit-card {
-    padding: 10px 14px;
+    padding: 10px 10px;
   }
   .tv-card-tags {
     margin-top: 7px;
@@ -664,11 +664,11 @@ i,
     position: relative;
     min-height: 100dvh;
     height: auto;
-    padding: 20px;
+    padding: 14px;
   }
   .tv-header {
     flex-wrap: wrap;
-    gap: 15px;
+    gap: 10px;
   }
   .tv-brand {
     min-width: 60%;
@@ -710,7 +710,7 @@ i,
 }
 @media (max-width: 600px) {
   .tv {
-    padding: 16px 12px;
+    padding: 12px 10px;
   }
   .tv-brand {
     min-width: 100%;
@@ -719,7 +719,7 @@ i,
     margin-left: 0;
   }
   .tv .tv-metric {
-    padding: 12px;
+    padding: 10px;
   }
   .tv-metric > span {
     font-size: 9px;
@@ -742,6 +742,6 @@ i,
     grid-template-columns: 1fr;
   }
   .tv-header {
-    gap: 15px;
+    gap: 10px;
   }
 }

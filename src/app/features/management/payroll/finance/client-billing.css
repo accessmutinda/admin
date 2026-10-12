@@ -3,7 +3,7 @@
 }
 .client-billing-prepare {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: end;
   flex-wrap: wrap;
   background: linear-gradient(120deg, var(--color-teal-50), white);

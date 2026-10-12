@@ -1,0 +1,334 @@
+/* Column roles keep registers consistent without truncating their data. */
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) th.table-number {
+  white-space: normal;
+}
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-date {
+  font-variant-numeric: tabular-nums;
+}
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-actions {
+  text-align: right;
+}
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-detail-line,
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-identity-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  white-space: normal;
+}
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-detail-line {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-detail-line:empty {
+  display: none;
+}
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-detail-line > small,
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-detail-line .ecm-carer {
+  display: inline;
+  margin-top: 0;
+}
+.cv-management
+  .app-body
+  .page-content:not(:has(cv-ecm-wallboard))
+  .table-names
+  > :not(:first-child)::before {
+  content: '·';
+  margin-right: 6px;
+  color: #94a3b8;
+}
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-identity-line .ecm-call,
+.cv-management
+  .app-body
+  .page-content:not(:has(cv-ecm-wallboard))
+  .table-detail-line
+  .ecm-priority {
+  margin: 0;
+  padding: 2px 6px;
+  line-height: 1.4;
+}
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .matrix-scroll {
+  max-height: min(65vh, 480px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .matrix-scroll table {
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: visible;
+}
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .matrix-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f7f9fb;
+  vertical-align: middle;
+}
+.cv-management
+  .app-body
+  .page-content:not(:has(cv-ecm-wallboard))
+  .matrix-scroll
+  tr
+  > :first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: white;
+  box-shadow: 1px 0 0 var(--border);
+}
+.cv-management
+  .app-body
+  .page-content:not(:has(cv-ecm-wallboard))
+  .matrix-scroll
+  thead
+  tr
+  > :first-child {
+  z-index: 3;
+  background: #f7f9fb;
+}
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .matrix-table th {
+  min-width: 110px;
+}
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .matrix-table tr > :first-child {
+  min-width: 160px;
+}
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-date > small,
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-number > small {
+  white-space: normal;
+}
+
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-names,
+.cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-names > small {
+  color: var(--color-ink);
+  font-size: 12px;
+}
+
+@media (min-width: 768px) {
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-number,
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-date,
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-status,
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-actions {
+    width: auto;
+  }
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-date,
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-actions {
+    white-space: nowrap;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    .workspace-users-table
+    .table-status {
+    width: 16%;
+  }
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .table-status .badge {
+    white-space: nowrap;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    .table-actions
+    :is(.button:not(.primary), .directory-action, .company-manage, .text-link),
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .learner-action .text-link {
+    min-height: 28px;
+    padding: 3px 8px;
+    gap: 5px;
+    border-radius: 5px;
+    border: 1px solid #dbe8e3;
+    background: #edf7f4;
+    color: var(--accent);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    .table-actions
+    .material-symbols-outlined {
+    font-size: 16px;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    .table-actions
+    :is(.button:not(.primary), .directory-action, .company-manage, .text-link):hover {
+    background: #e0f1e9;
+    border-color: #bfdbcf;
+  }
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .company-table .table-primary {
+    width: 30%;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    .workforce-table
+    .table-primary {
+    width: 32%;
+  }
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .leave-table .table-primary {
+    width: 40%;
+  }
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .reviews-table .table-primary {
+    width: 32%;
+  }
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .ecm-table,
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .rota-table {
+    table-layout: fixed;
+    min-width: 1000px;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    :is(.ecm-table, .rota-table)
+    :is(td, th) {
+    width: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    :is(.ecm-table, .rota-table)
+    .table-actions {
+    vertical-align: middle;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    :is(.ecm-table, .rota-table)
+    .column-schedule {
+    width: 136px;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    :is(.ecm-table, .rota-table)
+    .column-client {
+    width: 25%;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    :is(.ecm-table, .rota-table)
+    .column-carers {
+    width: 17%;
+  }
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .column-attendance {
+    width: 132px;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    :is(.ecm-table, .rota-table)
+    .column-status {
+    width: 128px;
+  }
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .column-timing {
+    width: 104px;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    :is(.ecm-table, .rota-table)
+    .column-actions {
+    width: 104px;
+  }
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .column-select {
+    width: 44px;
+  }
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .column-allocation {
+    width: 100px;
+  }
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .rota-table .table-date {
+    white-space: nowrap;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    .learner-progress-table
+    .column-person {
+    width: 25%;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    .learner-progress-table
+    .column-progress {
+    width: 15%;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    .learner-progress-table
+    .column-number {
+    width: 9%;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    .learner-progress-table
+    .column-status {
+    width: 18%;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    .learner-progress-table
+    .column-actions {
+    width: 15%;
+  }
+}
+@media (max-width: 767px) {
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    :is(.table-number, .table-date, .table-status, .table-actions) {
+    width: auto;
+    white-space: normal;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    :is(
+      .record-table,
+      .workforce-table,
+      .company-table,
+      .client-table,
+      .ecm-table,
+      .rota-table,
+      .payroll-table,
+      .quality-table,
+      .learner-progress-table
+    )
+    :is(.table-number, .table-actions) {
+    text-align: left;
+  }
+  .cv-management
+    .app-body
+    .page-content:not(:has(cv-ecm-wallboard))
+    :is(.ecm-table, .rota-table, .learner-progress-table)
+    colgroup {
+    display: none;
+  }
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .matrix-scroll {
+    max-height: 60vh;
+  }
+}
+@media print {
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .matrix-scroll {
+    max-height: none;
+    overflow: visible;
+  }
+  .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .matrix-scroll :is(th, td) {
+    position: static;
+    box-shadow: none;
+  }
+}

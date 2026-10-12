@@ -10,18 +10,18 @@
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 10px 16px;
+  gap: 8px;
+  padding: 10px 12px;
   border: 1px solid var(--color-line);
   border-radius: 10px;
   background: white;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   font-size: 13px;
 }
 .ecm-live-strip > div {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .ecm-clock-face {
@@ -63,7 +63,7 @@
   overflow: hidden;
 }
 .ecm-filter-body {
-  padding: 0 16px 12px;
+  padding: 0 12px 10px;
 }
 .ecm-views {
   display: flex;
@@ -72,13 +72,13 @@
   padding: 4px;
   background: var(--color-cloud);
   border-radius: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   width: fit-content;
 }
 .ecm-views button {
   border: 0;
   background: transparent;
-  padding: 8px 12px;
+  padding: 8px 10px;
   min-height: 40px;
   color: #475569;
   font-size: 12px;
@@ -92,7 +92,7 @@
 .ecm-filters {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 .ecm-filters label {
   display: flex;
@@ -121,7 +121,7 @@
 .ecm-filter-flags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: 8px 12px;
   align-items: center;
   margin-top: 8px;
 }
@@ -163,11 +163,11 @@
   font-size: 11px;
   font-weight: 600;
   color: #64748b;
-  padding: 10px 16px;
+  padding: 6px 12px;
 }
 .ecm-table td {
   font-size: 12px;
-  padding: 10px 16px;
+  padding: 6px 12px;
   border-top: 1px solid var(--color-line);
   vertical-align: middle;
 }
@@ -237,16 +237,16 @@
   border-color: #b5e5df !important;
 }
 .ecm-register-footer {
-  padding: 12px 16px;
+  padding: 10px 12px;
   border-top: 1px solid var(--color-line);
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
   color: var(--color-slate);
 }
 .ecm-empty {
-  padding: 28px 16px;
+  padding: 20px 12px;
   text-align: center;
   display: grid;
   justify-items: center;
@@ -257,7 +257,7 @@
   color: #087f76;
 }
 .ecm-demo {
-  margin-top: 12px !important;
+  margin-top: 10px !important;
   font-size: 12px;
 }
 .ecm-dialog {
@@ -266,7 +266,7 @@
 .ecm-details {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 .ecm-details > *,
 .ecm-dialog .panel-toolbar > div {
@@ -286,8 +286,8 @@
 .ecm-attendance-line {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 8px 10px;
   border-radius: 7px;
   background: var(--color-cloud);
   font-size: 12px;
@@ -295,7 +295,7 @@
 .ecm-history {
   border: 1px solid var(--color-line);
   border-radius: 8px;
-  padding: 12px;
+  padding: 10px;
   display: grid;
   gap: 4px;
 }
@@ -307,11 +307,11 @@
   justify-content: flex-end;
   gap: 8px;
   border-top: 1px solid var(--color-line);
-  padding: 16px;
+  padding: 12px;
 }
 .ecm-error {
-  margin: 12px 16px !important;
-  padding: 12px;
+  margin: 10px 12px !important;
+  padding: 10px;
   background: #fef2f2;
   color: #b91c1c !important;
   border-radius: 7px;
@@ -325,13 +325,13 @@
 .ecm-wall-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  padding: 16px;
+  gap: 12px;
+  padding: 12px;
 }
 .ecm-wall-card {
   border: 1px solid var(--color-line);
   border-radius: 10px;
-  padding: 16px;
+  padding: 12px;
   display: grid;
   align-content: start;
   gap: 8px;
@@ -349,7 +349,7 @@
 }
 .ecm-wallboard:fullscreen {
   background: var(--color-cloud);
-  padding: 24px;
+  padding: 16px;
   overflow-y: auto;
 }
 .ecm-wallboard .ecm-wall-card h2 {
@@ -371,7 +371,7 @@ input:focus-visible {
   }
   .ecm-table th,
   .ecm-table td {
-    padding: 10px;
+    padding: 6px 10px;
   }
 }
 @media (max-width: 767px) {
@@ -383,7 +383,7 @@ input:focus-visible {
   }
   .ecm-filter-toggle {
     display: inline-flex !important;
-    margin-top: 12px;
+    margin-top: 10px;
   }
   .ecm-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -407,8 +407,8 @@ input:focus-visible {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     border-top: 1px solid var(--color-line);
-    padding: 12px 16px;
-    gap: 12px;
+    padding: 10px 12px;
+    gap: 8px;
   }
   .ecm-table td {
     display: block;

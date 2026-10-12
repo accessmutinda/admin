@@ -1,21 +1,21 @@
 .payroll-navigation,
 .payroll-detail {
-  margin-top: 16px;
-  margin-bottom: 16px;
+  margin-top: 12px;
+  margin-bottom: 12px;
 }
 .payroll-overview {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-  gap: 16px;
+  gap: 12px;
   align-items: start;
 }
 .payroll-navigation .tabs {
   margin: 0;
-  padding: 0 16px;
+  padding: 0 12px;
   border-bottom: 0;
 }
 .payroll-queue-list {
-  padding: 0 16px;
+  padding: 0 12px;
 }
 .payroll-queue {
   width: 100%;
@@ -23,8 +23,8 @@
   align-items: center;
   justify-content: space-between;
   text-align: left;
-  gap: 12px;
-  padding: 12px 0;
+  gap: 8px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--color-line);
   min-height: 44px;
   border-top: 0;
@@ -58,7 +58,7 @@
 .payroll-register-heading {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
 }
 .payroll-queue small,
@@ -69,14 +69,14 @@
 }
 .requirement-list {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 .requirement-list > .button {
   justify-self: start;
 }
 .payroll-filters {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: end;
   flex-wrap: wrap;
   border-bottom: 1px solid #edf1f5;
@@ -107,7 +107,7 @@
 }
 .payroll-allowances > p {
   margin-top: 4px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 .payroll-rules-grid label > small {
   color: #64748b;
@@ -125,15 +125,15 @@
 }
 .payroll-history {
   border-left: 3px solid #d5eeea;
-  padding: 8px 12px;
+  padding: 8px 10px;
 }
 .payroll-error {
   color: #b91c1c;
-  padding: 12px 16px;
+  padding: 10px 12px;
   background: #fef2f2;
   border: 1px solid #fecaca;
   border-radius: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .payroll-warning {
   color: #92400e !important;
@@ -144,17 +144,17 @@
   color: var(--color-slate);
 }
 .payroll-footer {
-  margin-top: 16px !important;
+  margin-top: 12px !important;
 }
 .payroll-modal {
   max-width: 720px;
 }
 .invoice-line {
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--color-line);
   border-radius: 8px;
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 fieldset {
   border: 0;
@@ -206,7 +206,7 @@ fieldset {
     min-width: 0;
   }
   .payroll-navigation .tabs {
-    padding: 0 12px;
+    padding: 0 10px;
   }
   .payroll-register .panel-toolbar {
     align-items: stretch;
@@ -227,7 +227,7 @@ fieldset {
   .payroll-table td {
     display: block;
     max-width: none;
-    padding: 10px 16px;
+    padding: 6px 12px;
     border: 0;
   }
   .payroll-table td::before {

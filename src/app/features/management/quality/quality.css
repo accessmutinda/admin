@@ -3,14 +3,14 @@
   min-width: 0;
 }
 .quality-panel {
-  padding: 16px;
+  padding: 12px;
 }
 .quality-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 .quality-heading p,
 .quality-hint {
@@ -22,8 +22,8 @@
 .quality-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 .quality-metrics .metric {
   text-align: left;
@@ -47,7 +47,7 @@
 .quality-overview {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 .quality-icon {
   display: inline-flex;
@@ -63,9 +63,9 @@
 .quality-task {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  padding: 12px 0;
+  padding: 10px 0;
   border: 0;
   border-top: 1px solid var(--color-line);
   background: transparent;
@@ -104,8 +104,8 @@
 .quality-summary {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 16px 0;
+  gap: 8px;
+  margin: 12px 0;
   font-size: 12px;
   color: var(--color-slate);
 }
@@ -116,9 +116,9 @@
 }
 .quality-filters {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: end;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .quality-filters label:first-child {
   flex: 1;
@@ -132,15 +132,15 @@
 .quality-library {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 .assessment-card {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 8px;
   border: 1px solid var(--color-line);
   border-radius: 10px;
-  padding: 16px;
+  padding: 12px;
   background: linear-gradient(120deg, color-mix(in srgb, var(--tone) 4%, white), white 75%);
 }
 .assessment-card > div {
@@ -169,7 +169,7 @@
 }
 .quality-register-footer {
   border-top: 1px solid var(--color-line);
-  padding: 12px 16px;
+  padding: 10px 12px;
   color: var(--color-slate);
   font-size: 12px;
 }
@@ -180,7 +180,7 @@
   font-size: 11px;
   color: var(--color-slate);
   line-height: 1.6;
-  margin: 16px 0 0;
+  margin: 12px 0 0;
 }
 .quality-month {
   display: flex;
@@ -241,7 +241,7 @@
   color: #92400e;
 }
 .quality-agenda {
-  margin-top: 16px;
+  margin-top: 12px;
 }
 .agenda-date {
   flex-shrink: 0;
@@ -257,8 +257,8 @@
   min-width: 0;
 }
 .quality-error {
-  padding: 12px;
-  margin-top: 16px;
+  padding: 10px;
+  margin-top: 12px;
   border-radius: 7px;
   background: #fef2f2;
   color: #b91c1c;
@@ -267,9 +267,9 @@
 .quality-notice {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  margin: 16px 0;
+  gap: 8px;
+  padding: 12px;
+  margin: 12px 0;
   background: #fffbeb;
   border: 1px solid #fde68a;
   color: #92400e;
@@ -280,20 +280,20 @@
 .assessment-navigation {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 8px;
+  margin-top: 12px;
 }
 .assessment-navigation {
   border-top: 1px solid var(--color-line);
-  padding-top: 16px;
+  padding-top: 12px;
 }
 .assessment-navigation > span {
   flex: 1;
 }
 .quality-audit {
   border-left: 2px solid #c9e8e4;
-  margin-top: 16px;
-  padding-left: 12px;
+  margin-top: 12px;
+  padding-left: 10px;
 }
 .quality-audit strong {
   font-size: 12px;
@@ -309,7 +309,7 @@
   overflow-wrap: anywhere;
 }
 .quality-audit-heading {
-  margin-top: 16px;
+  margin-top: 12px;
 }
 .quality-sr-only {
   position: absolute;
@@ -341,7 +341,7 @@
   }
   .quality-tabs {
     flex-wrap: wrap;
-    gap: 4px 16px;
+    gap: 4px 12px;
   }
   .assessment-card {
     flex-wrap: wrap;

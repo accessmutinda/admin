@@ -260,7 +260,7 @@
   width: 100%;
   max-width: none;
   margin: 0 auto;
-  padding: 16px 16px 16px 25px;
+  padding: 12px 12px 12px 16px;
   flex: 1;
   scroll-margin-top: 68px;
 }
@@ -280,8 +280,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 .cv-management .page-heading p:not(.eyebrow) {
   margin-top: 4px;
@@ -369,7 +369,7 @@
 .cv-management .row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 .cv-management .between {
   justify-content: space-between;
@@ -382,11 +382,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 30px 34px;
+  padding: 20px 24px;
   background: linear-gradient(115deg, var(--brand-navy) 0%, #163d61 60%, #075b65 100%);
   border: 1px solid var(--brand-navy);
   border-radius: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   overflow: hidden;
   box-shadow: 0 8px 24px #0f2d4a14;
 }
@@ -395,7 +395,7 @@
   font-size: 10px;
   letter-spacing: 1.5px;
   color: #63dac9;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   font-weight: 600;
 }
 .cv-management .welcome-banner h2 {
@@ -446,8 +446,8 @@
 .cv-management .metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0 0 16px;
+  gap: 8px;
+  margin: 0 0 12px;
 }
 .cv-management .metrics.four {
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -456,7 +456,7 @@
   border: 1px solid var(--border);
   background: #fff;
   border-radius: 10px;
-  padding: 14px 16px;
+  padding: 10px 12px;
   min-width: 0;
 }
 .cv-management .metric > span {
@@ -471,7 +471,7 @@
   line-height: 1.2;
   letter-spacing: -0.8px;
   color: #18334a;
-  margin: 6px 0 2px;
+  margin: 4px 0 2px;
 }
 .cv-management .metric strong em {
   font-size: 16px;
@@ -490,7 +490,7 @@
   font-size: 11px;
 }
 .cv-management .metric h3 {
-  margin: 6px 0 2px;
+  margin: 4px 0 2px;
 }
 .cv-management .panel {
   background: white;
@@ -502,8 +502,8 @@
 .cv-management .access-required-panel {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
-  padding: 20px;
+  gap: 12px;
+  padding: 14px;
 }
 .cv-management .access-required-icon {
   display: inline-flex;
@@ -525,7 +525,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 10px;
   color: #64748b;
   font-size: 12px;
 }
@@ -533,8 +533,8 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px;
-  margin-top: 12px;
+  padding: 10px;
+  margin-top: 10px;
   border: 1px solid #e0e7ef;
   border-radius: 8px;
   background: #f7fafb;
@@ -551,25 +551,25 @@
   font-weight: 500;
 }
 .cv-management .access-required-actions {
-  margin-top: 16px;
+  margin-top: 12px;
   flex-wrap: wrap;
 }
 @media (max-width: 767px) {
   .cv-management .access-required-panel {
-    padding: 16px;
+    padding: 12px;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
   }
   .cv-management .access-required-actions > .button {
     width: 100%;
   }
 }
 .cv-management .panel-toolbar {
-  padding: 14px 16px;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   border-bottom: 1px solid #edf1f5;
 }
 .cv-management .panel-toolbar p {
@@ -577,7 +577,7 @@
   margin-top: 2px;
 }
 .cv-management .panel-body {
-  padding: 16px;
+  padding: 12px;
 }
 .cv-management .count {
   display: inline-flex;
@@ -622,13 +622,13 @@
   outline: none;
 }
 .cv-management .company-grid {
-  padding: 24px;
+  padding: 16px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  gap: 12px;
 }
 .cv-management .company-card {
-  padding: 20px;
+  padding: 14px;
   border: 1px solid #e4eaf0;
   border-radius: 9px;
   transition:
@@ -665,10 +665,10 @@
   height: 60px;
   border-radius: 13px;
   font-size: 17px;
-  margin: 0 auto 18px;
+  margin: 0 auto 12px;
 }
 .cv-management .company-card h3 {
-  margin-top: 20px;
+  margin-top: 14px;
   letter-spacing: -0.3px;
 }
 .cv-management .company-card > p {
@@ -678,10 +678,10 @@
 .cv-management .company-card-details {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 10px;
   font-size: 10px;
   color: #7d8b97;
-  padding: 18px 0;
+  padding: 12px 0;
   margin-top: auto;
 }
 .cv-management .company-card-details span {
@@ -736,11 +736,11 @@
   min-height: 40px;
   color: #748797;
   font-size: 11px;
-  margin: -12px 0 16px;
+  margin: -10px 0 12px;
 }
 .cv-management .stepper {
   padding: 0;
-  margin: 0 0 28px;
+  margin: 0 0 20px;
   list-style: none;
   display: flex;
 }
@@ -758,7 +758,7 @@
   height: 1px;
   flex: 1;
   background: #dbe4ea;
-  margin: 0 15px;
+  margin: 0 10px;
 }
 .cv-management .stepper li:last-child:after {
   display: none;
@@ -793,13 +793,13 @@
   display: grid;
   align-items: start;
   grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
-  gap: 16px;
+  gap: 12px;
 }
 .cv-management .editor-panel {
-  padding: 16px;
+  padding: 12px;
 }
 .cv-management .section-heading {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .cv-management .section-heading p {
   font-size: 12px;
@@ -808,7 +808,7 @@
 .cv-management .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 .cv-management label:not(.search-box, .module-option, .upload-area, .check-label) {
   font-size: 11px;
@@ -870,21 +870,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   border-top: 1px solid #edf1f5;
-  padding: 12px 16px;
+  padding: 10px 12px;
 }
 .cv-management .editor-panel > .form-footer {
-  margin: 16px -16px -16px;
+  margin: 12px -12px -12px;
 }
 .cv-management .preview-panel {
-  padding-top: 16px;
+  padding-top: 12px;
 }
 .cv-management .brand-preview {
   text-align: center;
   border: 1px solid #dce6e8;
   border-radius: 10px;
-  padding: 24px 16px;
+  padding: 16px 12px;
   background: #fff;
 }
 .cv-management .brand-preview h3 {
@@ -903,13 +903,13 @@
   height: 3px;
   width: 40px;
   border-radius: 3px;
-  margin: 20px auto;
+  margin: 14px auto;
 }
 .cv-management .tip {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 16px 4px;
+  padding: 12px 4px;
   color: #72978b;
 }
 .cv-management .tip p {
@@ -920,11 +920,11 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 16px;
+  padding: 12px;
   border: 1px dashed #bdd2ce;
   border-radius: 9px;
   background: #f8fcfa;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .cv-management .upload-area .material-symbols-outlined {
   color: var(--accent);
@@ -941,7 +941,7 @@
 .cv-management .color-field {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   border: 1px solid #e1e8ed;
   border-radius: 7px;
   margin-top: 8px;
@@ -949,17 +949,17 @@
   font-size: 11px;
 }
 .cv-management .editor-panel .form-grid + .button {
-  margin-top: 22px;
+  margin-top: 16px;
 }
 .cv-management .module-grid {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 .cv-management .module-option {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 17px;
+  gap: 10px;
+  padding: 12px;
   border: 1px solid #e3e9ee;
   border-radius: 8px;
   cursor: pointer;
@@ -985,8 +985,8 @@
 .cv-management .details-list > div {
   display: grid;
   grid-template-columns: 150px minmax(0, 1fr);
-  gap: 16px;
-  padding: 16px 0;
+  gap: 12px;
+  padding: 12px 0;
   border-bottom: 1px solid #edf1f5;
   font-size: 12px;
 }
@@ -1006,7 +1006,7 @@
 }
 .cv-management .completion-state {
   text-align: center;
-  padding: 40px 0;
+  padding: 24px 0;
 }
 .cv-management .completion-icon {
   display: grid;
@@ -1016,7 +1016,7 @@
   background: #e5f4ed;
   color: var(--accent);
   border-radius: 50%;
-  margin: 0 auto 24px;
+  margin: 0 auto 16px;
   font-size: 34px;
 }
 .cv-management .completion-state h2 {
@@ -1024,28 +1024,28 @@
   letter-spacing: -0.7px;
 }
 .cv-management .completion-state p {
-  margin: 15px 0 24px;
+  margin: 10px 0 16px;
   font-size: 12px;
 }
 .cv-management .document-preview {
   background: white;
   border: 1px solid #e2e8ed;
-  padding: 16px;
+  padding: 12px;
   border-radius: 4px;
 }
 .cv-management .document-preview h3 {
-  margin: 15px 0 5px;
+  margin: 10px 0 5px;
 }
 .cv-management .document-preview h4 {
   font-size: 13px;
-  margin: 24px 0 8px;
+  margin: 16px 0 8px;
 }
 .cv-management .document-preview p,
 .cv-management .document-preview small {
   font-size: 10px;
 }
 .cv-management .document-lines {
-  padding: 20px 0;
+  padding: 14px 0;
 }
 .cv-management .document-lines i {
   display: block;
@@ -1058,13 +1058,13 @@
 }
 .cv-management .tabs {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   border-bottom: 1px solid #dfe6ed;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   overflow-x: auto;
 }
 .cv-management .tabs button {
-  padding: 12px 0;
+  padding: 10px 0;
   border: none;
   background: transparent;
   color: #8392a0;
@@ -1081,7 +1081,7 @@
 .cv-management .toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 .cv-management .table-wrap {
   overflow-x: auto;
@@ -1097,12 +1097,12 @@
   color: #64748b;
   font-size: 11px;
   font-weight: 600;
-  padding: 10px 16px;
+  padding: 6px 12px;
   white-space: nowrap;
 }
 .cv-management td {
   font-size: 12px;
-  padding: 10px 16px;
+  padding: 6px 12px;
   border-top: 1px solid #edf1f5;
   vertical-align: middle;
 }
@@ -1118,7 +1118,7 @@
 .cv-management .person-cell {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
 }
 .cv-management .person-cell strong {
@@ -1175,50 +1175,50 @@
   gap: 9px;
   color: #8093a2;
   background: #f7fafb;
-  padding: 16px 24px;
+  padding: 12px 16px;
   font-size: 10px;
   line-height: 1.7;
 }
 .cv-management .split-content {
   display: grid;
   grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
-  gap: 16px;
+  gap: 12px;
 }
 .cv-management .side-note {
-  padding: 16px 8px;
+  padding: 12px 8px;
 }
 .cv-management .note-icon {
   color: #73988b;
   background: #e9f2ec;
   border-radius: 10px;
   padding: 13px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 .cv-management .side-note p {
   font-size: 11px;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 .cv-management .check-label {
   display: flex;
   gap: 11px;
   align-items: center;
   min-height: 44px;
-  margin: 18px 0;
+  margin: 12px 0;
   font-size: 12px;
   cursor: pointer;
 }
 .cv-management .workflow-list {
   list-style: none;
   padding: 0;
-  margin: 18px 0;
+  margin: 12px 0;
 }
 .cv-management .workflow-list li {
   border: 1px solid #e2e9ee;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px;
-  margin-bottom: 12px;
+  gap: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
   border-radius: 8px;
 }
 .cv-management .workflow-list strong {
@@ -1243,19 +1243,19 @@
 .cv-management .settings-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 .cv-management hr {
   border: none;
   border-top: 1px solid #e7edf2;
-  margin: 24px 0;
+  margin: 16px 0;
 }
 .cv-management .list-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  padding: 18px 0;
+  gap: 12px;
+  padding: 12px 0;
   border-bottom: 1px solid #edf1f5;
 }
 .cv-management .list-row:last-child {
@@ -1273,10 +1273,10 @@
   margin-top: 5px;
 }
 .cv-management .key-preview {
-  padding: 15px;
+  padding: 10px;
   background: #f3f7f5;
   border-radius: 8px;
-  margin-top: 18px;
+  margin-top: 12px;
   overflow-wrap: anywhere;
 }
 .cv-management .key-preview code {
@@ -1295,7 +1295,7 @@
 }
 .cv-management .segmented button {
   border: none;
-  padding: 8px 17px;
+  padding: 8px 12px;
   background: transparent;
   border-radius: 5px;
   font-size: 11px;
@@ -1308,20 +1308,20 @@
   box-shadow: 0 1px 4px #102d4610;
 }
 .cv-management .pipeline-toolbar {
-  padding: 12px 16px;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
 }
 .cv-management .pipeline-toolbar small {
   font-size: 10px;
 }
 .cv-management .pipeline-board {
-  padding: 0 16px 16px;
+  padding: 0 12px 12px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
   align-items: start;
 }
 .cv-management .pipeline-column {
@@ -1363,7 +1363,7 @@
 .cv-management .applicant-card {
   display: block;
   border: 1px solid #e4eaf0;
-  padding: 12px;
+  padding: 10px;
   background: white;
   border-radius: 8px;
   margin-bottom: 8px;
@@ -1425,24 +1425,24 @@
 .cv-management .column-empty {
   border: 1px dashed #e0e6ec;
   border-radius: 7px;
-  padding: 16px 10px;
+  padding: 12px 10px;
   text-align: center;
   font-size: 10px;
   color: #93a1ad;
 }
 .cv-management .onboarding-grid {
-  padding: 24px;
+  padding: 16px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  gap: 12px;
 }
 .cv-management .onboarding-card {
-  padding: 20px;
+  padding: 14px;
   border: 1px solid #e3eaf0;
   border-radius: 8px;
 }
 .cv-management .onboarding-card .person-cell {
-  margin-bottom: 25px;
+  margin-bottom: 16px;
 }
 .cv-management .onboarding-card h3 {
   font-size: 13px;
@@ -1456,13 +1456,13 @@
   color: var(--accent);
 }
 .cv-management .onboarding-card > p {
-  margin: 15px 0 8px;
+  margin: 10px 0 8px;
 }
 .cv-management .progress-track {
   height: 5px;
   border-radius: 5px;
   background: #eaf0f1;
-  margin: 12px 0;
+  margin: 10px 0;
   overflow: hidden;
 }
 .cv-management .progress-track > span {
@@ -1476,9 +1476,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
 }
 .cv-management .hero-avatar {
   width: 68px;
@@ -1500,19 +1500,19 @@
 .cv-management .profile-actions {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
 }
 .cv-management .profile-summary {
-  padding: 16px;
+  padding: 12px;
 }
 .cv-management .profile-summary h3 {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 .cv-management .summary-row {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  padding: 15px 0;
+  padding: 10px 0;
   border-top: 1px solid #edf1f5;
   font-size: 11px;
   color: #83919f;
@@ -1529,8 +1529,8 @@
 .cv-management .checklist > label {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 17px 0;
+  gap: 10px;
+  padding: 12px 0;
   border-bottom: 1px solid #edf1f5;
   font-size: 12px;
   cursor: pointer;
@@ -1554,7 +1554,7 @@
 }
 .cv-management .learning-assignment {
   border-bottom: 1px solid #edf1f5;
-  padding-bottom: 16px;
+  padding-bottom: 12px;
 }
 .cv-management .learning-assignment > span:first-of-type {
   flex: 1;
@@ -1570,16 +1570,16 @@
   margin-top: 4px;
 }
 .cv-management .notes-list {
-  margin-top: 16px;
+  margin-top: 12px;
 }
 .cv-management .notes-list article {
-  padding: 18px;
+  padding: 12px;
   background: #f8fafb;
   border-radius: 8px;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  margin: 12px 0;
+  gap: 8px;
+  margin: 10px 0;
 }
 .cv-management .notes-list p {
   font-size: 12px;
@@ -1587,7 +1587,7 @@
   overflow-wrap: anywhere;
 }
 .cv-management form > label + .button {
-  margin-top: 15px;
+  margin-top: 10px;
 }
 .cv-management .learning-banner {
   background: linear-gradient(110deg, #eff6ff, #e6f7f5);
@@ -1596,8 +1596,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 30px 36px;
-  margin-bottom: 22px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
 }
 .cv-management .learning-banner .eyebrow {
   color: #2563eb;
@@ -1607,7 +1607,7 @@
   letter-spacing: -0.7px;
   line-height: 1.3;
   color: var(--brand-navy);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 .cv-management .learning-banner p {
   color: #44677a;
@@ -1619,7 +1619,7 @@
   padding-right: 35px;
 }
 .cv-management .course-toolbar {
-  padding: 0 0 16px;
+  padding: 0 0 12px;
   border: none;
 }
 .cv-management .course-toolbar .search-box {
@@ -1628,7 +1628,7 @@
 .cv-management .course-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 .cv-management .course-card {
   overflow: hidden;
@@ -1659,7 +1659,7 @@
   font-size: 8px;
 }
 .cv-management .course-body {
-  padding: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -1675,13 +1675,13 @@
 .cv-management .course-body p {
   font-size: 11px;
   flex: 1;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 .cv-management .webinar-row {
   display: flex;
   align-items: center;
-  gap: 22px;
-  padding: 22px 0;
+  gap: 16px;
+  padding: 16px 0;
   border-bottom: 1px solid #eaf0f4;
 }
 .cv-management .webinar-row:last-child {
@@ -1720,7 +1720,7 @@
   border-radius: 8px;
 }
 .cv-management .cpd-entry {
-  padding: 20px 0;
+  padding: 14px 0;
   border-bottom: 1px solid #ecf1f5;
 }
 .cv-management .cpd-entry > small {
@@ -1730,45 +1730,45 @@
 }
 .cv-management .cpd-entry > p {
   font-size: 12px;
-  margin-top: 12px;
+  margin-top: 10px;
   white-space: pre-wrap;
 }
 .cv-management .lesson-hero {
   background: #e9f0ec;
-  padding: 32px;
+  padding: 20px;
   text-align: center;
   color: #6f9584;
 }
 .cv-management .lesson-hero .material-symbols-outlined {
   display: block;
   font-size: 52px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .cv-management .lesson-hero > span:last-child {
   font-size: 11px;
 }
 .cv-management .lesson-copy {
   font-size: 13px;
-  margin: 16px 0 24px;
+  margin: 12px 0 16px;
   line-height: 1.9;
 }
 .cv-management .empty-state {
   text-align: center;
-  padding: 55px 24px;
+  padding: 32px 16px;
   grid-column: 1/-1;
 }
 .cv-management .empty-state > .material-symbols-outlined {
   font-size: 35px;
   color: #acbdbf;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 .cv-management .empty-state p {
   font-size: 12px;
-  margin: 10px 0 20px;
+  margin: 10px 0 14px;
 }
 .cv-management .empty-cell {
   text-align: center;
-  padding: 40px;
+  padding: 24px;
   color: #8c9ba8;
 }
 .cv-management .modal-backdrop {
@@ -1780,7 +1780,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 16px;
 }
 .cv-management .modal {
   width: 540px;
@@ -1886,8 +1886,8 @@
   overflow-wrap: anywhere;
 }
 .cv-management .companies-page .panel-toolbar {
-  padding: 14px 16px;
-  gap: 12px;
+  padding: 10px 12px;
+  gap: 8px;
 }
 .cv-management .companies-page .panel-toolbar p {
   margin-top: 2px;
@@ -1898,14 +1898,14 @@
   box-shadow: 0 4px 20px #0f2d4a06;
 }
 .cv-management .company-directory-panel .panel-toolbar {
-  padding: 18px 20px;
+  padding: 12px 14px;
   background: linear-gradient(110deg, #f7fbfa, white 65%);
   border-radius: 14px 14px 0 0;
 }
 .cv-management .directory-heading {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
 }
 .cv-management .directory-heading-icon {
@@ -1952,13 +1952,13 @@
 }
 .cv-management .company-directory {
   overflow-x: auto;
-  padding: 0 12px;
+  padding: 0 10px;
 }
 .cv-management .company-table {
   min-width: 720px;
 }
 .cv-management .company-table thead th {
-  padding: 12px;
+  padding: 8px 12px;
   font-size: 11px;
   color: #64748b;
   background: white;
@@ -1966,7 +1966,7 @@
 }
 .cv-management .company-table tbody th,
 .cv-management .company-table tbody td {
-  padding: 12px;
+  padding: 8px 12px;
   border-top: 1px solid #edf1f5;
   background: transparent;
   font-size: 12px;
@@ -1992,7 +1992,7 @@
 .cv-management .company-identity {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 .cv-management .company-identity > div {
   min-width: 0;
@@ -2151,7 +2151,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 12px 20px;
+  padding: 10px 14px;
   border-top: 1px solid #edf1f5;
   color: #64748b;
   font-size: 11px;
@@ -2178,7 +2178,7 @@
     display: block;
   }
   .cv-management .company-directory-panel .panel-toolbar {
-    padding: 16px;
+    padding: 12px;
   }
   .cv-management .company-directory {
     padding: 0;
@@ -2200,8 +2200,8 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 6px 12px;
-    padding: 12px 16px;
+    gap: 6px 8px;
+    padding: 10px 12px;
     border-top: 1px solid #edf1f5;
   }
   .cv-management .company-table tbody tr:first-child {
@@ -2405,11 +2405,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 24px;
-  padding: 30px 34px;
+  gap: 16px;
+  padding: 20px 24px;
   border-radius: 12px;
   background: linear-gradient(110deg, #0f2d4a, #163d61 65%, #075b65);
-  margin-bottom: 22px;
+  margin-bottom: 16px;
   overflow: hidden;
 }
 .cv-management .company-setup-hero h1 {
@@ -2428,8 +2428,8 @@
 .cv-management .setup-hero-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 22px;
+  gap: 12px;
+  margin-top: 16px;
   color: #c4dddf;
   font-size: 10px;
 }
@@ -2485,8 +2485,8 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
   list-style: none;
   padding: 0;
-  gap: 12px;
-  margin: 0 0 16px;
+  gap: 8px;
+  margin: 0 0 12px;
 }
 .cv-management .setup-step-cards li {
   border: 1px solid var(--border);
@@ -2510,7 +2510,7 @@
   width: 100%;
   min-height: 72px;
   border: none;
-  padding: 12px;
+  padding: 10px;
   background: none;
   border-radius: 8px;
   color: #758491;
@@ -2564,12 +2564,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: linear-gradient(110deg, white 40%, #eff6ff);
-  padding: 16px;
-  margin-bottom: 16px;
+  padding: 12px;
+  margin-bottom: 12px;
 }
 .cv-management .company-settings-hero .company-symbol.large {
   margin: 0 6px 0 0;
@@ -2599,7 +2599,7 @@
 .cv-management .company-section-heading {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
-  column-gap: 14px;
+  column-gap: 10px;
   row-gap: 5px;
   align-items: center;
 }
@@ -2618,7 +2618,7 @@
   grid-column: 2;
 }
 .cv-management .brand-palette-section {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .cv-management .brand-palette-section h3 {
   font-size: 12px;
@@ -2630,15 +2630,15 @@
 .cv-management .brand-palette-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 16px;
+  gap: 8px;
+  margin-top: 12px;
 }
 .cv-management .brand-palette {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   text-align: left;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: white;
@@ -2667,12 +2667,12 @@
 }
 .cv-management .company-module-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 .cv-management .company-module-option {
   position: relative;
   gap: 10px;
-  padding: 15px 12px;
+  padding: 10px 10px;
   align-items: flex-start;
 }
 .cv-management .company-module-option > input {
@@ -2706,7 +2706,7 @@
 .cv-management .workspace-preview-cover {
   background: linear-gradient(110deg, #0f2d4a, #163d61);
   color: #bcd9e5;
-  margin: 0 -16px 16px;
+  margin: 0 -12px 12px;
   height: 72px;
   display: flex;
   flex-direction: column;
@@ -2725,7 +2725,7 @@
   flex-wrap: wrap;
   gap: 7px;
   justify-content: center;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 .cv-management .workspace-preview-modules > span {
   display: flex;
@@ -2741,15 +2741,15 @@
   font-size: 13px;
 }
 .cv-management .setup-readiness {
-  margin-top: 16px;
-  padding: 16px;
+  margin-top: 12px;
+  padding: 12px;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: white;
 }
 .cv-management .setup-readiness h3 {
   font-size: 13px;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 .cv-management .setup-readiness > div {
   display: flex;
@@ -2819,7 +2819,7 @@
   }
   .cv-management .split-content {
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-    gap: 16px;
+    gap: 12px;
   }
 }
 @media (max-width: 1023px) {
@@ -2868,17 +2868,17 @@
     display: none;
   }
   .cv-management .page-content {
-    padding: 16px;
+    padding: 12px;
     scroll-margin-top: 68px;
   }
   .cv-management .page-heading {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 8px;
+    margin-bottom: 12px;
   }
   .cv-management .welcome-banner {
-    padding: 24px;
+    padding: 16px;
   }
   .cv-management .welcome-banner h2 {
     font-size: 23px;
@@ -2888,13 +2888,13 @@
   }
   .cv-management .metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 8px;
   }
   .cv-management .metrics:not(.four) .metric:last-child {
     grid-column: 1/-1;
   }
   .cv-management .metric {
-    padding: 14px 16px;
+    padding: 10px 12px;
   }
   .cv-management .metric small {
     font-size: 11px;
@@ -2905,8 +2905,8 @@
   .cv-management .panel-toolbar {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
-    padding: 14px 16px;
+    gap: 8px;
+    padding: 10px 12px;
   }
   .cv-management .panel-toolbar > .icon-button {
     position: absolute;
@@ -2927,14 +2927,14 @@
   .cv-management .onboarding-grid,
   .cv-management .course-grid {
     grid-template-columns: 1fr;
-    padding: 18px;
-    gap: 16px;
+    padding: 12px;
+    gap: 12px;
   }
   .cv-management .course-grid {
     padding: 0;
   }
   .cv-management .company-card {
-    padding: 22px;
+    padding: 16px;
   }
   .cv-management .editor-grid,
   .cv-management .split-content {
@@ -2944,10 +2944,10 @@
     padding: 0;
   }
   .cv-management .editor-panel {
-    padding: 16px;
+    padding: 12px;
   }
   .cv-management .editor-panel > .form-footer {
-    margin: 16px -16px -16px;
+    margin: 12px -12px -12px;
   }
   .cv-management .stepper li {
     font-size: 8px;
@@ -2960,14 +2960,14 @@
     height: 26px;
   }
   .cv-management .form-grid {
-    gap: 16px;
+    gap: 12px;
   }
   .cv-management .panel-body {
-    padding: 16px;
+    padding: 12px;
   }
   .cv-management th,
   .cv-management td {
-    padding: 10px 16px;
+    padding: 6px 12px;
   }
   .cv-management .table-wrap table:not(.matrix-table) {
     min-width: 570px;
@@ -2977,19 +2977,19 @@
   }
   .cv-management .pipeline-board {
     grid-template-columns: 1fr;
-    padding: 0 16px 16px;
-    gap: 12px;
+    padding: 0 12px 12px;
+    gap: 8px;
   }
   .cv-management .pipeline-toolbar {
     flex-direction: column;
     align-items: flex-start;
-    padding: 12px 16px;
+    padding: 10px 12px;
   }
   .cv-management .pipeline-toolbar > small {
     display: none;
   }
   .cv-management .applicant-card {
-    padding: 12px;
+    padding: 10px;
   }
   .cv-management .pipeline-column {
     padding: 8px;
@@ -2997,7 +2997,7 @@
   .cv-management .profile-header {
     flex-direction: column;
     align-items: flex-start;
-    padding: 16px;
+    padding: 12px;
   }
   .cv-management .profile-header h1 {
     font-size: 24px;
@@ -3011,15 +3011,15 @@
     font-size: 16px;
   }
   .cv-management .tabs {
-    gap: 16px;
+    gap: 12px;
   }
   .cv-management .details-list > div {
     grid-template-columns: 115px minmax(0, 1fr);
-    gap: 12px;
+    gap: 8px;
     font-size: 11px;
   }
   .cv-management .learning-banner {
-    padding: 24px;
+    padding: 16px;
   }
   .cv-management .learning-banner h2 {
     font-size: 25px;
@@ -3030,8 +3030,8 @@
   }
   .cv-management .course-toolbar {
     flex-direction: row;
-    padding: 0 0 16px;
-    gap: 12px;
+    padding: 0 0 12px;
+    gap: 8px;
   }
   .cv-management .course-toolbar > .search-box {
     width: auto;
@@ -3043,7 +3043,7 @@
   }
   .cv-management .webinar-row {
     flex-wrap: wrap;
-    gap: 16px;
+    gap: 12px;
   }
   .cv-management .webinar-art {
     width: 75px;
@@ -3065,13 +3065,13 @@
     gap: 6px;
   }
   .cv-management .modal-backdrop {
-    padding: 16px;
+    padding: 12px;
   }
   .cv-management .modal {
     max-height: calc(100dvh - 32px);
   }
   .cv-management .side-note {
-    padding: 16px 8px;
+    padding: 12px 8px;
   }
 }
 @media (max-width: 399px) {
@@ -3110,17 +3110,17 @@
   }
 }
 .cv-management .compliance-dates {
-  padding: 24px 0;
+  padding: 16px 0;
 }
 .cv-management .compliance-dates h3 {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 .cv-management .expiry-banner {
-  padding: 22px 24px;
+  padding: 16px 16px;
   border: 1px solid #eadfc9;
   background: #fffbf4;
   border-radius: 10px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 .cv-management .expiry-banner > .row {
   color: #ad905d;
@@ -3137,7 +3137,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 18px;
+  margin-top: 12px;
 }
 .cv-management .expiry-list a {
   display: flex;
@@ -3147,7 +3147,7 @@
   background: #ffffffa3;
   border: 1px solid #eee5d8;
   border-radius: 6px;
-  padding: 12px;
+  padding: 10px;
   color: #8b795d;
   font-size: 10px;
 }
@@ -3162,7 +3162,7 @@
     grid-template-columns: 1fr;
   }
   .cv-management .expiry-banner {
-    padding: 20px;
+    padding: 14px;
   }
 }
 .cv-management .search-box input:not([type='checkbox'], [type='color'], [type='file']) {
@@ -3189,7 +3189,7 @@
 }
 @media (max-width: 767px) {
   .cv-management .company-setup-hero {
-    padding: 24px;
+    padding: 16px;
   }
   .cv-management .company-setup-hero h1 {
     font-size: 25px;
@@ -3198,7 +3198,7 @@
     display: none;
   }
   .cv-management .setup-hero-tags {
-    gap: 12px;
+    gap: 8px;
     font-size: 9px;
   }
   .cv-management .setup-step-cards {
@@ -3207,7 +3207,7 @@
   .cv-management .setup-step-cards button {
     align-items: center;
     text-align: center;
-    padding: 12px;
+    padding: 10px;
     min-height: 72px;
   }
   .cv-management .setup-step-cards .setup-step-icon {
@@ -3223,7 +3223,7 @@
   .cv-management .company-settings-hero {
     flex-direction: column;
     align-items: flex-start;
-    padding: 16px;
+    padding: 12px;
   }
   .cv-management .company-settings-hero h1 {
     font-size: 23px;
@@ -3258,8 +3258,8 @@
   background: #f8fbfa;
 }
 .cv-management .record-directory-panel .panel-toolbar {
-  padding: 12px 16px;
-  gap: 12px;
+  padding: 10px 12px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .cv-management .record-search {
@@ -3283,14 +3283,14 @@
   font-weight: 600;
 }
 .cv-management .record-table td {
-  padding: 10px 16px;
+  padding: 6px 12px;
 }
 .cv-management .record-table time {
   color: #526477;
   white-space: nowrap;
 }
 .cv-management .record-table .empty-cell p {
-  margin: 4px 0 12px;
+  margin: 4px 0 10px;
   font-size: 12px;
 }
 @media (max-width: 767px) {
@@ -3319,8 +3319,8 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: center;
-    gap: 10px 12px;
-    padding: 12px 16px;
+    gap: 10px 8px;
+    padding: 10px 12px;
     border-top: 1px solid #edf1f5;
   }
   .cv-management .record-table td {
@@ -3360,8 +3360,8 @@
 }
 
 .cv-management .workforce-directory-panel .panel-toolbar {
-  padding: 12px 16px;
-  gap: 12px;
+  padding: 10px 12px;
+  gap: 8px;
 }
 .cv-management .workforce-table {
   min-width: 680px;
@@ -3444,9 +3444,9 @@
   .cv-management .workforce-table tbody tr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px 12px;
+    gap: 10px 8px;
     align-items: center;
-    padding: 12px 16px;
+    padding: 10px 12px;
     border-top: 1px solid #edf1f5;
   }
   .cv-management .workforce-table td {
@@ -3484,14 +3484,14 @@
 }
 
 .cv-management .workspace-users-panel .panel-toolbar {
-  padding: 12px 16px;
-  gap: 12px;
+  padding: 10px 12px;
+  gap: 8px;
 }
 .cv-management .workspace-users-table {
   table-layout: fixed;
 }
 .cv-management .workspace-users-table th {
-  padding: 10px 16px;
+  padding: 6px 12px;
   color: #64748b;
   font-size: 11px;
 }
@@ -3502,7 +3502,7 @@
   width: 36%;
 }
 .cv-management .workspace-users-table td {
-  padding: 8px 16px;
+  padding: 6px 12px;
 }
 .cv-management .workspace-users-table .person-cell {
   gap: 10px;
@@ -3522,7 +3522,7 @@
 .cv-management .workspace-users-table td > .cv-select {
   min-width: 0;
   min-height: 44px;
-  padding: 10px 12px;
+  padding: 6px 12px;
 }
 .cv-management .workspace-users-table tbody tr:hover,
 .cv-management .workspace-users-table tbody tr:focus-within {
@@ -3553,8 +3553,8 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 8px 12px;
-    padding: 12px 16px;
+    gap: 8px 8px;
+    padding: 10px 12px;
     border-top: 1px solid #edf1f5;
   }
   .cv-management .workspace-users-table td {
@@ -3570,8 +3570,8 @@
 
 .cv-management .permission-toolbar {
   align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
+  gap: 12px;
+  padding: 10px 12px;
 }
 .cv-management .permission-toolbar > div {
   min-width: 0;
@@ -3618,8 +3618,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
-  padding: 12px 16px 0;
+  gap: 8px 8px;
+  padding: 10px 12px 0;
 }
 .cv-management .permission-presets > span {
   font-size: 11px;
@@ -3635,11 +3635,11 @@
 .cv-management .permission-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  padding: 16px;
+  gap: 8px;
+  padding: 12px;
 }
 .cv-management .permission-matrix-wrap {
-  padding: 12px 16px;
+  padding: 10px 12px;
   overflow-x: auto;
 }
 .cv-management .permission-matrix {
@@ -3661,7 +3661,7 @@
 }
 .cv-management .permission-matrix th:first-child {
   width: 32%;
-  padding-left: 16px;
+  padding-left: 12px;
   text-align: left;
 }
 .cv-management .permission-matrix thead th {
@@ -3740,7 +3740,7 @@
   --module-color: #087f76;
   --module-surface: #e6f7f5;
   min-width: 0;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid #e0e7ef;
   border-radius: 10px;
   margin: 0;
@@ -3780,7 +3780,7 @@
 .cv-management label.permission-action {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   min-height: 52px;
   padding: 8px 10px;
   margin-top: 6px;
@@ -3832,7 +3832,7 @@
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  padding: 14px;
+  padding: 10px;
   border-radius: 9px;
   background: #f0f8f7;
   color: #35665e;
@@ -3843,7 +3843,7 @@
   text-align: left;
 }
 .cv-management cv-payroll .payroll-register-toolbar.has-payroll-views {
-  padding: 14px 16px;
+  padding: 10px 12px;
 }
 .cv-management cv-payroll .has-payroll-views .payroll-register-heading {
   flex-direction: column;
@@ -3857,7 +3857,7 @@
 }
 .cv-management cv-payroll .payroll-view-tabs button {
   min-height: 40px;
-  padding: 8px 14px;
+  padding: 8px 10px;
   font-size: 12px;
   font-weight: 500;
 }
@@ -3868,7 +3868,7 @@
 }
 @media (max-width: 767px) {
   .cv-management cv-payroll .payroll-register-toolbar.has-payroll-views {
-    gap: 12px;
+    gap: 8px;
   }
   .cv-management cv-payroll .payroll-view-tabs {
     width: 100%;
@@ -3879,14 +3879,14 @@
   }
 }
 .cv-management cv-payroll .payroll-setup-list {
-  padding: 0 16px;
+  padding: 0 12px;
 }
 .cv-management cv-payroll .payroll-setup-action {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  padding: 12px 0;
+  padding: 10px 0;
   border: 0;
   border-bottom: 1px solid #edf1f5;
   background: white;
@@ -3926,7 +3926,7 @@
 }
 .cv-management cv-payroll .payroll-prepare-note,
 .cv-management cv-payroll .payroll-queue-note {
-  padding: 12px 16px;
+  padding: 10px 12px;
   font-size: 11px;
   line-height: 1.6;
   border-top: 1px solid #edf1f5;
@@ -3941,7 +3941,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 24px 16px;
+  padding: 16px 12px;
   text-align: center;
 }
 .cv-management cv-payroll .payroll-empty-state > .material-symbols-outlined {
@@ -3962,16 +3962,16 @@
   max-width: 440px;
 }
 .cv-management .module-permissions {
-  margin: 4px 16px 16px;
-  padding-top: 16px;
+  margin: 4px 12px 12px;
+  padding-top: 12px;
   border-top: 1px solid #e0e7ef;
 }
 .cv-management .module-permissions-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 .cv-management .module-permissions-heading .permission-module-name {
   align-items: flex-start;
@@ -4037,14 +4037,14 @@
     width: 100%;
   }
   .cv-management .permission-presets {
-    padding: 12px 16px 0;
+    padding: 10px 12px 0;
   }
   .cv-management .permission-presets > .row {
     flex-wrap: wrap;
   }
   .cv-management .permission-grid {
     grid-template-columns: 1fr;
-    padding: 16px;
+    padding: 12px;
   }
 }
 
@@ -4052,9 +4052,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: 30px 34px;
-  margin-bottom: 24px;
+  gap: 16px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
   border-radius: 12px;
   background: linear-gradient(115deg, var(--brand-navy), #163d61 60%, #075b63);
   color: white;
@@ -4095,8 +4095,8 @@
 .cv-management .workflow-type-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 .cv-management .workflow-type {
   --route-color: #087f76;
@@ -4104,7 +4104,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px;
+  padding: 10px;
   min-height: 72px;
   min-width: 0;
   text-align: left;
@@ -4160,7 +4160,7 @@
 .cv-management .approval-editor-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 16px;
+  gap: 12px;
   align-items: start;
 }
 .cv-management .approval-editor {
@@ -4173,7 +4173,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 10px 10px;
   min-height: 60px;
   border: 1px solid #dcebe8;
   border-radius: 10px;
@@ -4209,7 +4209,7 @@
 .cv-management .approval-step-list {
   list-style: none;
   padding: 0;
-  margin: 12px 0;
+  margin: 10px 0;
 }
 .cv-management .approval-step-list > li:not(.workflow-empty) {
   display: flex;
@@ -4245,12 +4245,12 @@
 }
 .cv-management .approval-step-card {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   flex: 1;
   min-width: 0;
   border: 1px solid #e1e8ef;
-  padding: 10px 12px;
+  padding: 10px 10px;
   border-radius: 10px;
   background: white;
 }
@@ -4283,8 +4283,8 @@
 .cv-management .approval-add-step {
   display: flex;
   align-items: flex-end;
-  gap: 12px;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px;
   border: 1px dashed #cad9df;
   border-radius: 10px;
   background: #f8fafc;
@@ -4297,11 +4297,11 @@
   display: grid;
   justify-items: center;
   text-align: center;
-  padding: 16px;
+  padding: 12px;
   gap: 10px;
   border: 1px dashed #d9e4ea;
   border-radius: 10px;
-  margin: 12px 0;
+  margin: 10px 0;
 }
 .cv-management .workflow-empty .material-symbols-outlined {
   color: #087f76;
@@ -4315,7 +4315,7 @@
 }
 .cv-management .approval-sidebar {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 .cv-management .approval-preview-icon {
   color: #087f76;
@@ -4329,7 +4329,7 @@
 }
 .cv-management .approval-route-preview > span {
   position: relative;
-  padding: 0 0 12px 24px;
+  padding: 0 0 10px 16px;
   font-size: 12px;
   color: #34495e;
   overflow-wrap: anywhere;
@@ -4367,7 +4367,7 @@
 }
 .cv-management .approval-handover .panel-body {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 .cv-management .escalation-control {
   display: flex;
@@ -4413,7 +4413,7 @@
 }
 @media (max-width: 767px) {
   .cv-management .approval-banner {
-    padding: 24px;
+    padding: 16px;
   }
   .cv-management .approval-banner h2 {
     font-size: 24px;
@@ -4491,7 +4491,7 @@
 .cv-management .person-hero {
   background: linear-gradient(115deg, var(--brand-navy), #163d61 65%, #075b63);
   border: 0;
-  padding: 16px;
+  padding: 12px;
 }
 .cv-management .person-hero h1 {
   color: white;
@@ -4527,8 +4527,8 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   list-style: none;
   padding: 0;
-  gap: 12px;
-  margin: 0 0 24px;
+  gap: 8px;
+  margin: 0 0 16px;
 }
 .cv-management .person-journey > li {
   --journey-color: #2563eb;
@@ -4536,7 +4536,7 @@
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
-  padding: 16px;
+  padding: 12px;
   background: white;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -4591,16 +4591,16 @@
 .cv-management .person-progress-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 .cv-management .person-progress-card {
   --progress-color: #087f76;
   --progress-surface: #e6f7f5;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 8px;
+  padding: 10px 12px;
   text-align: left;
   border: 1px solid var(--border);
   border-top: 1px solid var(--border);
@@ -4690,14 +4690,14 @@
 .cv-management .person-detail-surface .details-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 .cv-management .person-detail-surface .details-list > div {
   display: block;
   background: #f8fafc;
   border: 1px solid #e7edf3;
   border-radius: 9px;
-  padding: 16px;
+  padding: 12px;
   min-width: 0;
 }
 .cv-management .person-detail-surface .details-list dt {
@@ -4713,12 +4713,12 @@
 .cv-management .welcome-intro {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px;
+  gap: 10px;
+  padding: 12px;
   background: linear-gradient(110deg, #edf9f4, #f2f7ff);
   border: 1px solid #dcebe8;
   border-radius: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .cv-management .welcome-intro > .material-symbols-outlined {
   font-size: 28px;
@@ -4734,10 +4734,10 @@
 .cv-management .welcome-checklist {
   display: grid;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: 14px;
 }
 .cv-management .welcome-checklist > label {
-  padding: 16px;
+  padding: 12px;
   border: 1px solid #e1e8ef;
   border-radius: 10px;
   background: white;
@@ -4785,7 +4785,7 @@
   white-space: nowrap;
 }
 .cv-management .person-compliance > label {
-  padding: 16px;
+  padding: 12px;
   background: #f8fafc;
   border: 1px solid #e1e8ef;
   border-radius: 9px;
@@ -4796,12 +4796,12 @@
   border-color: #cde8df;
 }
 .cv-management .person-detail-surface .learning-assignment {
-  padding: 16px;
+  padding: 12px;
   border: 1px solid #e1e8ef;
   background: #faf9ff;
   border-radius: 9px;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 .cv-management .person-detail-surface .learning-assignment small {
   margin-top: 5px;
@@ -4810,27 +4810,27 @@
   background: #f6f9fc;
   border: 1px solid #e4ebf2;
   border-radius: 9px;
-  padding: 18px;
+  padding: 12px;
 }
 .cv-management .person-detail-surface .notes-list p {
   overflow-wrap: anywhere;
 }
 .cv-management .person-detail-sidebar {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 .cv-management .person-next-step {
-  padding: 16px;
+  padding: 12px;
   background: linear-gradient(140deg, #edf9f5, #f5f8ff);
   border-color: #dcebe8;
 }
 .cv-management .person-next-step .next-step-art {
-  padding: 12px;
+  padding: 10px;
   border-radius: 12px;
   color: #087f76;
   background: white;
   font-size: 27px;
-  margin: 18px 0;
+  margin: 12px 0;
 }
 .cv-management .person-next-step h3 {
   font-size: 16px;
@@ -4840,7 +4840,7 @@
   font-size: 11px;
 }
 .cv-management .person-next-step .button {
-  margin-top: 20px;
+  margin-top: 14px;
   font-size: 11px;
 }
 .cv-management .person-detail-sidebar .summary-row strong {
@@ -4862,24 +4862,24 @@
     gap: 10px;
   }
   .cv-management .person-journey > li {
-    padding: 14px;
+    padding: 10px;
   }
   .cv-management .journey-status {
     padding-left: 0;
   }
   .cv-management .person-progress-grid {
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 8px;
   }
   .cv-management .person-progress-card {
-    padding: 14px 16px;
+    padding: 10px 12px;
     flex-wrap: nowrap;
   }
   .cv-management .person-detail-surface .details-list {
     grid-template-columns: 1fr;
   }
   .cv-management .person-hero {
-    padding: 16px;
+    padding: 12px;
   }
   .cv-management .person-hero .hero-avatar {
     display: grid;
@@ -4898,7 +4898,7 @@
   .cv-management .welcome-checklist > label {
     flex-wrap: wrap;
     gap: 10px;
-    padding: 14px;
+    padding: 10px;
   }
   .cv-management .welcome-task-copy {
     flex-basis: calc(100% - 88px);
@@ -4920,10 +4920,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
+  padding: 12px;
+  margin-bottom: 12px;
 }
 .cv-management .academy-development-hero {
   background: linear-gradient(110deg, #e7f8f2, #edf4ff);
@@ -4993,7 +4993,7 @@
 .cv-management .cpd-content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
-  gap: 16px;
+  gap: 12px;
   align-items: start;
 }
 .cv-management .cpd-content-grid > .panel:first-child {
@@ -5001,12 +5001,12 @@
 }
 .cv-management .cpd-timeline {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 .cv-management .development-entry {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
 }
 .cv-management .development-entry > div {
@@ -5014,7 +5014,7 @@
   flex: 1;
   border: 1px solid #e3eaf1;
   border-radius: 10px;
-  padding: 16px;
+  padding: 12px;
 }
 .cv-management .development-entry-icon {
   background: #e6f7f5;
@@ -5026,7 +5026,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
 }
 .cv-management .development-entry-heading > div {
   min-width: 0;
@@ -5047,8 +5047,8 @@
   border-color: #cde8e3;
 }
 .cv-management .development-reflection {
-  margin-top: 18px;
-  padding: 16px;
+  margin-top: 12px;
+  padding: 12px;
   background: #f8fafc;
   border-radius: 8px;
 }
@@ -5064,7 +5064,7 @@
   overflow-wrap: anywhere;
 }
 .cv-management .cpd-reflection-guide {
-  padding: 16px;
+  padding: 12px;
   background: linear-gradient(140deg, #f5f3ff, #f7faff);
   border-color: #e5def5;
 }
@@ -5074,22 +5074,22 @@
   padding: 12px;
   border-radius: 12px;
   font-size: 26px;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 .cv-management .cpd-reflection-guide .eyebrow {
   color: #6d28d9;
 }
 .cv-management .cpd-reflection-guide h3 {
   font-size: 17px;
-  margin: 10px 0 20px;
+  margin: 10px 0 14px;
 }
 .cv-management .cpd-reflection-guide ol {
   list-style: decimal;
-  padding-left: 20px;
+  padding-left: 14px;
   margin: 0;
 }
 .cv-management .cpd-reflection-guide li {
-  padding: 0 0 18px 6px;
+  padding: 0 0 12px 6px;
   font-size: 12px;
   color: #5b4485;
 }
@@ -5103,14 +5103,14 @@
 .cv-management .cpd-guide-note {
   font-size: 10px;
   border-top: 1px solid #e5def5;
-  padding-top: 18px;
+  padding-top: 12px;
 }
 .cv-management .academy-empty {
   grid-column: 1 / -1;
   width: 100%;
 }
 .cv-management .cpd-content-grid .academy-empty {
-  padding: 24px 16px;
+  padding: 16px 12px;
 }
 .cv-management .academy-empty > .material-symbols-outlined {
   background: #e6f7f5;
@@ -5118,15 +5118,15 @@
   padding: 16px;
   border-radius: 14px;
   font-size: 32px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .cv-management .academy-empty .button {
-  margin-top: 18px;
+  margin-top: 12px;
 }
 .cv-management .academy-progress-filters {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   max-width: 100%;
 }
 .cv-management .academy-progress-filters .search-box {
@@ -5137,22 +5137,22 @@
   width: 185px;
 }
 .cv-management .learner-progress-grid {
-  padding: 24px;
+  padding: 16px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  gap: 12px;
 }
 .cv-management .learner-progress-card {
   border: 1px solid #e2e9f1;
   border-radius: 10px;
-  padding: 20px;
+  padding: 14px;
   min-width: 0;
 }
 .cv-management .learner-card-heading {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 .cv-management .learner-card-heading > div {
   min-width: 0;
@@ -5187,7 +5187,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  padding: 20px 0;
+  padding: 14px 0;
 }
 .cv-management .learner-stats span {
   font-size: 9px;
@@ -5202,9 +5202,9 @@
 }
 .cv-management .learner-card-footer {
   border-top: 1px solid #edf1f5;
-  padding-top: 16px;
+  padding-top: 12px;
   display: grid;
-  gap: 12px;
+  gap: 8px;
   justify-items: start;
 }
 .cv-management .learner-card-footer .badge {
@@ -5214,7 +5214,7 @@
   font-size: 11px;
 }
 .cv-management .cpd-form-error {
-  padding: 0 24px 18px;
+  padding: 0 16px 12px;
 }
 @media (max-width: 1279px) {
   .cv-management .learner-progress-grid {
@@ -5233,7 +5233,7 @@
 @media (max-width: 767px) {
   .cv-management .academy-development-hero,
   .cv-management .academy-progress-hero {
-    padding: 24px;
+    padding: 16px;
   }
   .cv-management .academy-development-hero h2,
   .cv-management .academy-progress-hero h2 {
@@ -5257,7 +5257,7 @@
   }
   .cv-management .learner-progress-grid {
     grid-template-columns: 1fr;
-    padding: 18px;
+    padding: 12px;
   }
   .cv-management .academy-progress-filters {
     flex-wrap: wrap;
@@ -5282,7 +5282,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 14px 0;
+  padding: 10px 0;
   color: #64748b;
   font-size: 12px;
   border-bottom: 2px solid transparent;
@@ -5297,9 +5297,9 @@
 .cv-management .security-identity {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
   border-top: 3px solid #087f76;
 }
 .cv-management .security-account-avatar {
@@ -5339,13 +5339,13 @@
 .cv-management .security-content-grid {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 16px;
+  gap: 12px;
   align-items: start;
 }
 .cv-management .security-controls-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 .cv-management .security-control {
   --security-color: #2563eb;
@@ -5354,7 +5354,7 @@
   flex-direction: column;
   align-items: flex-start;
   min-width: 0;
-  padding: 16px;
+  padding: 12px;
   border-top: 3px solid var(--security-color);
 }
 .cv-management .security-control[data-tone='teal'] {
@@ -5378,11 +5378,11 @@
 }
 .cv-management .security-control h2 {
   font-size: 16px;
-  margin: 12px 0 8px;
+  margin: 10px 0 8px;
 }
 .cv-management .security-control > p {
   font-size: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 .cv-management .security-method {
   display: flex;
@@ -5390,12 +5390,12 @@
   gap: 9px;
   font-size: 11px;
   color: #34495e;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid #e4eaf1;
   background: #f8fafc;
   border-radius: 8px;
   width: 100%;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 .cv-management .security-method .material-symbols-outlined {
   font-size: 18px;
@@ -5408,11 +5408,11 @@
 .cv-management .security-control-footer {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   justify-content: space-between;
   border-top: 1px solid #edf1f5;
-  padding-top: 12px;
+  padding-top: 10px;
   margin-top: auto;
   width: 100%;
 }
@@ -5425,25 +5425,25 @@
 }
 .cv-management .security-sidebar {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 .cv-management .security-session {
-  padding: 16px;
+  padding: 12px;
   background: linear-gradient(140deg, #f0faf6, #f5f8ff);
   border-color: #dcebe8;
 }
 .cv-management .security-session .eyebrow {
-  margin-top: 20px;
+  margin-top: 14px;
 }
 .cv-management .security-session h3 {
-  margin: 8px 0 12px;
+  margin: 8px 0 10px;
   font-size: 18px;
 }
 .cv-management .security-session dl {
-  margin: 16px 0;
+  margin: 12px 0;
 }
 .cv-management .security-session dl > div {
-  padding: 14px 0;
+  padding: 10px 0;
   border-top: 1px solid #dce8e9;
 }
 .cv-management .security-session dt {
@@ -5475,8 +5475,8 @@
 .cv-management .security-detail-highlight {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px;
+  gap: 10px;
+  padding: 12px;
   background: #eef8f5;
   border-radius: 10px;
 }
@@ -5495,7 +5495,7 @@
 }
 .cv-management .security-detail-copy {
   font-size: 12px;
-  margin-top: 20px;
+  margin-top: 14px;
 }
 .cv-management .security-history-note {
   display: flex;
@@ -5503,7 +5503,7 @@
   flex-wrap: wrap;
   gap: 9px;
   font-size: 11px;
-  margin-bottom: 22px;
+  margin-bottom: 16px;
 }
 @media (max-width: 1279px) {
   .cv-management .security-content-grid {
@@ -5517,8 +5517,8 @@
 @media (max-width: 767px) {
   .cv-management .security-identity {
     flex-wrap: wrap;
-    padding: 16px;
-    gap: 12px;
+    padding: 12px;
+    gap: 8px;
   }
   .cv-management .security-identity > div {
     flex: 1 1 calc(100% - 78px);
@@ -5535,14 +5535,14 @@
     gap: 6px;
   }
   .cv-management .security-control {
-    padding: 16px;
+    padding: 12px;
   }
 }
 
 .cv-management .password-change-surface {
   width: 100%;
   max-width: 560px;
-  padding: 16px;
+  padding: 12px;
 }
 .cv-management .password-change-surface h1 {
   font-size: 25px;
@@ -5553,7 +5553,7 @@
 }
 .cv-management .password-change-surface .mat-mdc-form-field {
   width: 100%;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .cv-management .password-change-surface input.mat-mdc-input-element {
   width: 100%;
@@ -5623,4 +5623,50 @@
 }
 .cv-management:has(cv-ecm-wallboard) .page-content {
   padding: 0;
+}
+
+@media (min-width: 768px) {
+  .cv-management .button {
+    min-height: 36px;
+    padding: 7px 12px;
+  }
+  .cv-management .search-box {
+    height: 36px;
+  }
+  .cv-management .tabs button {
+    min-height: 36px;
+    padding-block: 8px;
+  }
+  .cv-management .company-manage,
+  .cv-management .directory-action,
+  .cv-management td .text-link {
+    min-height: 32px;
+  }
+  .cv-management td .icon-button {
+    height: 32px;
+    width: 32px;
+  }
+  .cv-management input:not([type='checkbox'], [type='color'], [type='file']),
+  .cv-management .cv-select.mat-mdc-select {
+    min-height: 36px;
+    padding: 7px 12px;
+  }
+  .cv-management .workspace-users-table td > .cv-select {
+    min-height: 36px;
+    padding: 7px 12px;
+  }
+  .cv-management .checklist > label,
+  .cv-management cv-rota .rota-checklist button,
+  .cv-management label.workflow-enable,
+  .cv-management label.permission-action {
+    min-height: 44px;
+  }
+  .cv-management .setup-step-cards button,
+  .cv-management .workflow-type {
+    min-height: 56px;
+  }
+  .cv-management .password-change-surface input.mat-mdc-input-element {
+    min-height: 0;
+    padding: 0;
+  }
 }

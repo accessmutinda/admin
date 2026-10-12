@@ -116,3 +116,17 @@
     padding: 16px;
   }
 }
+
+:host-context(.cv-management) .application-heading,
+:host-context(.cv-management) .application-body {
+  padding: 16px;
+}
+:host-context(.cv-management) .application-body {
+  gap: 12px;
+}
+:host-context(.cv-management) .application-kicker {
+  margin-top: 16px !important;
+}
+:host-context(.cv-management) .job-description {
+  margin-top: 12px !important;
+}

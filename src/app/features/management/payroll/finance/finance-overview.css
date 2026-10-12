@@ -1,13 +1,13 @@
 :host {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-  gap: 16px;
+  gap: 12px;
   align-items: start;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .finance-title {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   min-width: 0;
 }
@@ -32,7 +32,7 @@
 }
 .finance-side-grid {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
 }
 .finance-totals .metric {
@@ -53,12 +53,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .finance-legend {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   font-size: 11px;
   color: var(--color-slate);
 }
@@ -83,7 +83,7 @@
 .finance-chart {
   display: flex;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 12px;
   padding-top: 8px;
   background: repeating-linear-gradient(to top, transparent 0, transparent 39px, #edf1f5 40px);
 }
@@ -109,7 +109,7 @@
   border-radius: 3px 3px 0 0;
 }
 .finance-chart-values {
-  margin: 12px 0;
+  margin: 10px 0;
   font-size: 12px;
 }
 summary {
@@ -120,14 +120,14 @@ summary {
 .finance-cost-links {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 8px;
+  margin-top: 12px;
 }
 .finance-cost-links button {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--color-line);
   border-radius: 8px;
   background: var(--color-cloud);
@@ -140,14 +140,14 @@ summary {
   font-size: 12px;
   color: var(--color-slate);
   line-height: 1.6;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 .finance-empty {
   display: grid;
   justify-items: center;
   text-align: center;
   gap: 8px;
-  padding: 24px 12px;
+  padding: 16px 10px;
   color: var(--color-slate);
   font-size: 12px;
 }
@@ -163,14 +163,14 @@ summary {
   max-width: 320px;
 }
 dl {
-  margin: 16px 0;
+  margin: 12px 0;
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 dl div {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   font-size: 13px;
 }
 dt {
@@ -182,14 +182,14 @@ dd {
   color: var(--color-navy);
 }
 .finance-funding-list {
-  padding: 0 16px;
+  padding: 0 12px;
 }
 .finance-funding-list button {
   width: 100%;
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
-  padding: 14px 0;
+  padding: 10px 0;
   border: 0;
   border-bottom: 1px solid var(--color-line);
   background: white;

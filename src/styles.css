@@ -2,6 +2,9 @@
 @import './app/features/management/shared/management.css';
 @import './app/features/management/ecm/ecm-wallboard.css';
 @import './app/shared/ui/select.css';
+@import './app/features/management/shared/admin-panel.css';
+@import './app/features/management/shared/admin-tables.css';
+@import './app/features/management/shared/admin-refinements.css';
 
 /* CareVerity design tokens — single source of truth for Tailwind utilities
    (bg-navy, text-teal-600, ...) and for the Material theme overrides in
