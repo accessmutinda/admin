@@ -338,34 +338,39 @@
       }
     </section>
     <aside class="preview-panel company-live-preview">
-      <p class="eyebrow">LIVE BRAND PREVIEW</p>
-      <div class="brand-preview company-workspace-preview">
-        <div class="workspace-preview-cover">
-          <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span
-          ><span>YOUR WORKSPACE</span>
+      <p class="company-preview-identity">
+        {{ company.name || 'Your company' }} · {{ company.code || 'CO' }}
+      </p>
+      <details class="company-brand-disclosure" [open]="step() === 1">
+        <summary>Preview branding</summary>
+        <div class="brand-preview company-workspace-preview">
+          <div class="workspace-preview-cover">
+            <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span
+            ><span>YOUR WORKSPACE</span>
+          </div>
+          <span class="company-symbol large" [style.background]="company.color">
+            @if (company.logo) {
+              <img [src]="company.logo" alt="Company logo preview" />
+            } @else {
+              {{ company.code || 'CO' }}
+            }
+          </span>
+          <h3>{{ company.name || 'Your company' }}</h3>
+          <p>{{ company.tagline }}</p>
+          <span class="preview-line" [style.background]="company.accent"></span
+          ><small>{{ company.sector }}</small>
+          <div class="workspace-preview-modules">
+            @for (module of company.modules.slice(0, 3); track module) {
+              <span [attr.data-tone]="moduleDetails[module].tone"
+                ><span class="material-symbols-outlined" aria-hidden="true">{{
+                  moduleDetails[module].icon
+                }}</span
+                >{{ module }}</span
+              >
+            }
+          </div>
         </div>
-        <span class="company-symbol large" [style.background]="company.color">
-          @if (company.logo) {
-            <img [src]="company.logo" alt="Company logo preview" />
-          } @else {
-            {{ company.code || 'CO' }}
-          }
-        </span>
-        <h3>{{ company.name || 'Your company' }}</h3>
-        <p>{{ company.tagline }}</p>
-        <span class="preview-line" [style.background]="company.accent"></span
-        ><small>{{ company.sector }}</small>
-        <div class="workspace-preview-modules">
-          @for (module of company.modules.slice(0, 3); track module) {
-            <span [attr.data-tone]="moduleDetails[module].tone"
-              ><span class="material-symbols-outlined" aria-hidden="true">{{
-                moduleDetails[module].icon
-              }}</span
-              >{{ module }}</span
-            >
-          }
-        </div>
-      </div>
+      </details>
       <div class="setup-readiness">
         <h3>{{ isNew ? 'Coming together nicely.' : 'Your company at a glance.' }}</h3>
         <div>

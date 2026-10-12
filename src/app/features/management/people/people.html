@@ -59,10 +59,10 @@
       <table class="record-table leave-table" aria-label="Team availability and leave">
         <thead>
           <tr>
-            <th scope="col">Team member</th>
+            <th scope="col" class="table-primary">Team member</th>
             <th scope="col">Leave type</th>
-            <th scope="col">From</th>
-            <th scope="col">To</th>
+            <th scope="col" class="table-date">From</th>
+            <th scope="col" class="table-date">To</th>
           </tr>
         </thead>
         <tbody>
@@ -77,10 +77,10 @@
               <td class="record-type" data-label="Leave type">
                 <span class="badge lilac">{{ leave.type }}</span>
               </td>
-              <td class="leave-start" data-label="From">
+              <td class="leave-start table-date" data-label="From">
                 <time [attr.datetime]="leave.start">{{ leave.start | date: 'd MMM yyyy' }}</time>
               </td>
-              <td class="leave-end" data-label="To">
+              <td class="leave-end table-date" data-label="To">
                 <time [attr.datetime]="leave.end">{{ leave.end | date: 'd MMM yyyy' }}</time>
               </td>
             </tr>
@@ -150,11 +150,11 @@
       <table class="record-table reviews-table" aria-label="Supervision and appraisals">
         <thead>
           <tr>
-            <th scope="col">Team member</th>
+            <th scope="col" class="table-primary">Team member</th>
             <th scope="col">Review</th>
-            <th scope="col">Date</th>
-            <th scope="col">Status</th>
-            <th scope="col">Actions</th>
+            <th scope="col" class="table-date">Date</th>
+            <th scope="col" class="table-status">Status</th>
+            <th scope="col" class="table-actions">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -169,15 +169,18 @@
               <td class="record-type" data-label="Review">
                 <span class="badge lilac">{{ review.type }}</span>
               </td>
-              <td data-label="Date">
+              <td data-label="Date" class="table-date">
                 <time [attr.datetime]="review.date">{{ review.date | date: 'd MMM yyyy' }}</time>
               </td>
-              <td data-label="Status">
+              <td data-label="Status" class="table-status">
                 <span class="badge" [class.success]="review.status === 'Completed'">{{
                   review.status
                 }}</span>
               </td>
-              <td class="review-action" [class.no-action]="review.status === 'Completed'">
+              <td
+                class="review-action table-actions"
+                [class.no-action]="review.status === 'Completed'"
+              >
                 @if (review.status !== 'Completed') {
                   <button
                     class="directory-action"

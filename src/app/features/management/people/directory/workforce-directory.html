@@ -8,12 +8,20 @@
       </div>
     </div>
     <div class="expiry-list">
-      @for (alert of expiryAlerts(); track $index) {
-        <a [routerLink]="['/manage/people', alert.person.id]" [queryParams]="{ tab: 'Compliance' }"
-          ><strong>{{ alert.person.name }}</strong
-          ><span>{{ alert.check }} · {{ alert.date }}</span
-          ><span class="badge warning">{{ alert.overdue ? 'Overdue' : 'Due soon' }}</span></a
-        >
+      @for (group of expiryGroups(); track group.person.id) {
+        <article class="expiry-person">
+          <h3>{{ group.person.name }}</h3>
+          @for (alert of group.alerts; track $index) {
+            <a
+              [routerLink]="['/manage/people', group.person.id]"
+              [queryParams]="{ tab: 'Compliance' }"
+              [attr.aria-label]="group.person.name + ' ' + alert.check + ' ' + alert.date"
+            >
+              <span>{{ alert.check }} · {{ alert.date }}</span>
+              <span class="badge warning">{{ alert.overdue ? 'Overdue' : 'Due soon' }}</span>
+            </a>
+          }
+        </article>
       }
     </div>
   </section>
@@ -100,11 +108,11 @@
         >
           <thead>
             <tr>
-              <th scope="col">Team member</th>
+              <th scope="col" class="table-primary">Team member</th>
               <th scope="col">Role</th>
               <th scope="col">Location</th>
               <th scope="col">{{ mode() === 'compliance' ? 'Employment checks' : 'Status' }}</th>
-              <th scope="col">Actions</th>
+              <th scope="col" class="table-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -143,7 +151,7 @@
                     }}</span
                   >
                 </td>
-                <td class="workforce-action">
+                <td class="workforce-action table-actions">
                   <a
                     class="directory-action"
                     [attr.aria-label]="'View ' + person.name"

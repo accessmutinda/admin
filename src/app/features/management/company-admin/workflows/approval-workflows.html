@@ -1,11 +1,32 @@
 <div class="page-heading">
   <div>
     <p class="eyebrow">ORGANISATION</p>
-    <h1>A clear path to approval.</h1>
+    <h1>Approval workflows</h1>
     <p>Bring consistency and accountability to important decisions.</p>
   </div>
 </div>
-<nav class="workflow-type-grid" aria-label="Approval document types">
+<label class="mobile-section-selector"
+  >Document type
+  <mat-select
+    cvSelect
+    aria-label="Approval document type"
+    [ngModel]="workflow"
+    (ngModelChange)="chooseWorkflow($event)"
+  >
+    @for (type of workflowTypes; track type.name) {
+      <mat-option [value]="type.name"
+        >{{ type.name }} ·
+        {{
+          savedSteps(type.name).length
+            ? savedSteps(type.name).length +
+              (savedSteps(type.name).length === 1 ? ' review step' : ' review steps')
+            : 'Routing paused'
+        }}</mat-option
+      >
+    }
+  </mat-select></label
+>
+<nav class="workflow-type-grid desktop-workflow-types" aria-label="Approval document types">
   @for (type of workflowTypes; track type.name) {
     @let stepCount = savedSteps(type.name).length;
     <button

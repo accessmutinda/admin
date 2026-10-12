@@ -166,6 +166,9 @@ export class UsersAccess {
   protected permissionCount(): number {
     return Object.values(this.permissions).flat().filter(Boolean).length;
   }
+  protected enabledActions(module: string): number {
+    return this.permissions[module].filter(Boolean).length;
+  }
   protected permissionsChanged(): boolean {
     return (
       JSON.stringify(this.permissions) !== JSON.stringify(this.readPermissions()) ||

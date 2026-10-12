@@ -9,7 +9,7 @@ import { ManagementStore } from '../shared/management.store';
   template: ` <div class="page-heading">
       <div>
         <p class="eyebrow">ORGANISATION</p>
-        <h1>Your care companies</h1>
+        <h1>Companies</h1>
         <p>A considered space for every organisation you support.</p>
       </div>
       <a class="button primary" routerLink="/manage/companies/new"
@@ -72,12 +72,17 @@ import { ManagementStore } from '../shared/management.store';
           <table class="company-table" aria-label="Company directory">
             <thead>
               <tr>
-                <th scope="col">Company</th>
+                <th scope="col" class="table-primary">Company</th>
                 <th scope="col">Care sector</th>
-                <th scope="col">Staff size</th>
-                <th scope="col">Modules</th>
-                <th scope="col">Workspace</th>
-                <th scope="col"><span class="company-action-label">Actions</span></th>
+                <th scope="col" class="company-staff-heading">
+                  <span class="desktop-label">Staff size</span
+                  ><span class="tablet-label">Staff / modules</span>
+                </th>
+                <th scope="col" class="table-number company-modules-heading">Modules</th>
+                <th scope="col" class="table-status">Workspace</th>
+                <th scope="col" class="table-actions">
+                  <span class="company-action-label">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -126,15 +131,17 @@ import { ManagementStore } from '../shared/management.store';
                     <span class="company-staff-size"
                       ><span class="material-symbols-outlined" aria-hidden="true">groups</span
                       >{{ company.size }}</span
+                    ><small class="company-tablet-modules"
+                      >{{ company.modules.length }} modules</small
                     >
                   </td>
-                  <td class="company-modules-cell">
+                  <td class="company-modules-cell table-number">
                     <span class="module-count"
                       ><span class="material-symbols-outlined" aria-hidden="true">grid_view</span
                       >{{ company.modules.length }}</span
                     ><span class="mobile-module-label"> modules</span>
                   </td>
-                  <td class="company-status-cell">
+                  <td class="company-status-cell table-status">
                     <span
                       class="workspace-status"
                       [class.is-current]="company.id === store.companyId()"
@@ -143,7 +150,7 @@ import { ManagementStore } from '../shared/management.store';
                       {{ company.id === store.companyId() ? 'Current workspace' : 'Configured' }}
                     </span>
                   </td>
-                  <td class="company-action-cell">
+                  <td class="company-action-cell table-actions">
                     <a
                       [routerLink]="['/manage/companies', company.id]"
                       class="company-manage"

@@ -48,6 +48,24 @@ export class WorkforceDirectory {
         }));
     }),
   );
+  protected readonly expiryGroups = computed(() => {
+    const groups = new Map<
+      string,
+      {
+        person: Person;
+        alerts: { check: string; date: string; overdue: boolean }[];
+      }
+    >();
+    for (const alert of this.expiryAlerts()) {
+      let group = groups.get(alert.person.id);
+      if (!group) {
+        group = { person: alert.person, alerts: [] };
+        groups.set(alert.person.id, group);
+      }
+      group.alerts.push({ check: alert.check, date: alert.date, overdue: alert.overdue });
+    }
+    return [...groups.values()];
+  });
   protected ready(p: Person): number {
     return p.checks.filter(Boolean).length;
   }

@@ -73,7 +73,7 @@
         <button class="person-progress-card" data-tone="teal" (click)="tab.set('Onboarding')">
           <span class="material-symbols-outlined" aria-hidden="true">waving_hand</span>
           <div>
-            <small>A PERSONAL WELCOME</small
+            <small>Onboarding</small
             ><strong>{{ completed(p) }} / {{ checklist.length }} steps</strong>
             <p>Onboarding completed</p>
           </div>
@@ -82,7 +82,7 @@
         <button class="person-progress-card" data-tone="blue" (click)="tab.set('Compliance')">
           <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>
           <div>
-            <small>EMPLOYMENT CHECKS</small
+            <small>Compliance</small
             ><strong>{{ verified(p) }} / {{ checks.length }} recorded</strong>
             <p>{{ checks.length - verified(p) }} checks remaining</p>
           </div>
@@ -90,12 +90,25 @@
         <button class="person-progress-card" data-tone="purple" (click)="tab.set('Learning')">
           <span class="material-symbols-outlined" aria-hidden="true">school</span>
           <div>
-            <small>ROOM TO GROW</small><strong>{{ p.learning.length }} courses</strong>
+            <small>Learning</small><strong>{{ p.learning.length }} courses</strong>
             <p>Assigned learning</p>
           </div>
         </button>
       </div>
     }
+    <label class="mobile-section-selector"
+      >Profile section
+      <mat-select
+        cvSelect
+        aria-label="Person profile section"
+        [ngModel]="tab()"
+        (ngModelChange)="tab.set($event)"
+      >
+        @for (item of visibleTabs(); track item) {
+          <mat-option [value]="item">{{ item }}</mat-option>
+        }
+      </mat-select></label
+    >
     <nav class="tabs person-tabs" aria-label="Person profile sections">
       @for (item of visibleTabs(); track item) {
         <button
@@ -157,7 +170,7 @@
               </div>
             </dl>
             @if (p.application; as application) {
-              <h3 style="margin-top: 16px">Application responses</h3>
+              <h3 style="margin-top: 12px">Application responses</h3>
               <dl class="details-list">
                 <div>
                   <dt>Received through vacancy page</dt>

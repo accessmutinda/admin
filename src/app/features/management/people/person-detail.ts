@@ -3,6 +3,8 @@ import { ManagementRole } from '../shared/role-pill';
 import { A11yModule } from '@angular/cdk/a11y';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MatSelectModule } from '@angular/material/select';
+import { CvSelect } from '../../../shared/ui/select';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   CHECKS,
@@ -22,6 +24,8 @@ import { PersonCompliance } from './compliance/person-compliance';
     ManagementRole,
     A11yModule,
     FormsModule,
+    MatSelectModule,
+    CvSelect,
     RouterLink,
     PersonOnboarding,
     PersonCompliance,
