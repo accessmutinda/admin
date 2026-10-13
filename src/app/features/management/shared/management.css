@@ -108,8 +108,8 @@
 .cv-management .app-header .workspace-control {
   padding: 5px 8px;
   border-radius: 7px;
-  background: var(--color-cloud);
-  border: 1px solid var(--border);
+  background: #edf8f5;
+  border: 1px solid #c5e4dc;
   color: var(--brand-navy);
   display: flex;
   align-items: center;
