@@ -9,7 +9,7 @@ import { WorkspaceService } from '../../../core/auth/workspace.service';
 import { UsersAccess } from '../company-admin/access/users-access';
 import { ApprovalWorkflows } from '../company-admin/workflows/approval-workflows';
 import { PersonDetail } from '../people/person-detail';
-import { CHECKS, ManagementStore } from './management.store';
+import { CHECKS, ONBOARDING, ManagementStore } from './management.store';
 import { WorkforceDirectory } from '../people/directory/workforce-directory';
 
 describe('Compact admin navigation and disclosure controls', () => {
@@ -152,6 +152,47 @@ describe('Compact admin navigation and disclosure controls', () => {
     expect(groups[0].textContent).not.toContain('2099-01-01');
     for (const link of groups[0].querySelectorAll('a')) {
       expect(link.getAttribute('href')).toBe('/manage/people/james?tab=Compliance');
+    }
+    expect(JSON.stringify(store.data())).toBe(before);
+  });
+
+  it('keeps starter progress, next steps and profile links in the redesigned journeys', async () => {
+    const store = TestBed.inject(ManagementStore);
+    const person = store.staff()[0];
+    store.update((data) => ({
+      ...data,
+      people: [
+        { ...person, id: 'new-starter', onboarding: ONBOARDING.map(() => false) },
+        { ...person, id: 'complete-starter', onboarding: ONBOARDING.map(() => true) },
+        { ...person, id: 'partial-starter', onboarding: ONBOARDING.map((_, i) => i < 4) },
+      ],
+    }));
+    const before = JSON.stringify(store.data());
+    const fixture = TestBed.createComponent(WorkforceDirectory);
+    fixture.componentRef.setInput('mode', 'onboarding');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const cards: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.starter-journey'),
+    );
+    expect(cards).toHaveLength(3);
+    expect(
+      cards.map((card) =>
+        card.querySelector('[role="progressbar"]')!.getAttribute('aria-valuenow'),
+      ),
+    ).toEqual(['0', '100', '50']);
+    expect(cards[0].querySelector('.starter-next')!.textContent).toContain(ONBOARDING[0]);
+    expect(cards[1].querySelector('.starter-next')!.textContent).toContain('All steps complete');
+    expect(cards[1].classList.contains('is-complete')).toBe(true);
+    expect(cards[2].querySelector('.starter-next')!.textContent).toContain(ONBOARDING[4]);
+    for (const [index, card] of cards.entries()) {
+      expect(card.querySelectorAll('td')).toHaveLength(7);
+      expect(card.textContent).toContain(person.name);
+      expect(card.querySelector('.starter-action')!.getAttribute('href')).toBe(
+        '/manage/people/' +
+          ['new-starter', 'complete-starter', 'partial-starter'][index] +
+          '?tab=Onboarding',
+      );
     }
     expect(JSON.stringify(store.data())).toBe(before);
   });
