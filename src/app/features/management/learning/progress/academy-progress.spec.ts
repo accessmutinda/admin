@@ -69,7 +69,7 @@ describe('Team learning register', () => {
     fixture.componentRef.setInput('active', true);
     fixture.detectChanges();
     await fixture.whenStable();
-    const banner: HTMLElement = fixture.nativeElement.querySelector('.academy-progress-ring');
+    const banner: HTMLElement = fixture.nativeElement.querySelector('.academy-average-gauge');
     const progress: HTMLElement = fixture.nativeElement.querySelector('.learner-completion strong');
     expect(progress.textContent!.trim()).toBe('0%');
     advance(450);
@@ -82,6 +82,12 @@ describe('Team learning register', () => {
     expect(progress.textContent!.trim()).toBe('50%');
     expect(banner.style.getPropertyValue('--completion')).toBe('63%');
     expect(banner.getAttribute('aria-valuenow')).toBe('63');
+    expect(fixture.nativeElement.querySelector('.academy-average-copy').textContent).toContain(
+      '2 of 4 assignments completed',
+    );
+    expect(fixture.nativeElement.querySelector('.academy-average-track > span').style.width).toBe(
+      '63%',
+    );
     expect(
       fixture.nativeElement.querySelector('.learner-completion .progress-track span').style.width,
     ).toBe('50%');
