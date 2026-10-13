@@ -1,9 +1,21 @@
 :host {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: 8px;
   align-items: start;
   margin-bottom: 8px;
+}
+.finance-main-grid {
+  display: grid;
+  gap: 8px;
+  align-items: start;
+  min-width: 0;
+}
+.finance-review-stack {
+  display: grid;
+  gap: 6px;
+  align-items: start;
+  min-width: 0;
 }
 .finance-title {
   display: flex;
@@ -32,6 +44,7 @@
 }
 .finance-side-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   min-width: 0;
 }
@@ -219,12 +232,9 @@ summary:focus-visible {
   outline: 2px solid #087f76;
   outline-offset: 2px;
 }
-@media (max-width: 1279px) {
+@media (max-width: 1023px) {
   :host {
     grid-template-columns: 1fr;
-  }
-  .finance-side-grid {
-    grid-template-columns: 1fr 1fr;
   }
 }
 @media (max-width: 767px) {

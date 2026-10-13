@@ -74,7 +74,11 @@
     <p class="payroll-error" role="alert">{{ error() }}</p>
   }
   @if (tab() === 'Overview') {
-    <div class="payroll-overview">
+    <cv-finance-overview
+      [today]="today"
+      (navigate)="financeNavigate($event)"
+      (reviewRun)="reviewFinanceRun($event)"
+    >
       <section class="panel payroll-prepare-panel">
         <div class="panel-toolbar">
           <div>
@@ -162,13 +166,7 @@
           }
         </div>
       </section>
-    </div>
-
-    <cv-finance-overview
-      [today]="today"
-      (navigate)="financeNavigate($event)"
-      (reviewRun)="reviewFinanceRun($event)"
-    />
+    </cv-finance-overview>
   } @else if (tab() === 'Invoices') {
     <section class="panel payroll-navigation">
       <nav class="tabs" aria-label="Invoice views">
