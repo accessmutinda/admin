@@ -35,13 +35,6 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
       <a routerLink="/manage/companies" class="sidebar-logo" aria-label="CareVerity home"
         ><cv-logo tone="light"
       /></a>
-      <button class="workspace-control" (click)="switchWorkspace()">
-        <span class="workspace-mark">{{ store.company()?.code }}</span
-        ><span class="workspace-text"
-          ><strong>{{ store.company()?.name }}</strong
-          ><small>Switch workspace</small></span
-        ><span class="material-symbols-outlined" aria-hidden="true">unfold_more</span>
-      </button>
       <p class="nav-label">ORGANISATION</p>
       @for (item of organisation; track item.path) {
         <a [routerLink]="item.path" routerLinkActive="active" (click)="menuOpen.set(false)"
@@ -126,10 +119,23 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
             aria-label="Open navigation"
             (click)="menuOpen.set(true)"
           >
-            <span class="material-symbols-outlined" aria-hidden="true">menu</span></button
-          ><span class="header-breadcrumb"
-            >Workspace <span>/</span> <strong>{{ store.company()?.name }}</strong></span
+            <span class="material-symbols-outlined" aria-hidden="true">menu</span>
+          </button>
+          <button
+            type="button"
+            class="workspace-control"
+            [attr.aria-label]="
+              'Switch workspace. Current workspace: ' + (store.company()?.name ?? '')
+            "
+            [title]="store.company()?.name ?? 'Switch workspace'"
+            (click)="switchWorkspace()"
           >
+            <span class="workspace-mark">{{ store.company()?.code }}</span
+            ><span class="workspace-text"
+              ><strong>{{ store.company()?.name }}</strong
+              ><small>Switch workspace</small></span
+            ><span class="material-symbols-outlined" aria-hidden="true">unfold_more</span>
+          </button>
         </div>
         <a routerLink="/account/security" class="user-control" aria-label="Account settings"
           ><span class="avatar small">{{ auth.currentUser()?.initials }}</span
