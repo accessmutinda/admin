@@ -84,32 +84,18 @@
       </mat-select>
     </div>
   </div>
-  <div class="table-wrap">
-    <table class="learner-progress-table" aria-label="Team learning progress">
-      <colgroup>
-        <col class="column-person" />
-        <col class="column-progress" />
-        @if (tablet()?.matches) {
-          <col class="column-counts" />
-        } @else {
-          <col class="column-number" />
-          <col class="column-number" />
-          <col class="column-number" />
-        }
-        <col class="column-status" />
-        <col class="column-actions" />
-      </colgroup>
+  <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+    <table class="learner-progress-table data-columns" aria-label="Team learning progress">
       <thead>
         <tr>
           <th scope="col" class="table-primary">Team member</th>
+          <th scope="col">Role</th>
           <th scope="col">Assigned learning</th>
-          @if (tablet()?.matches) {
-            <th scope="col" class="learner-counts">Counts</th>
-          } @else {
-            <th scope="col" class="table-number learner-count-individual">Completed</th>
-            <th scope="col" class="table-number learner-count-individual">In progress</th>
-            <th scope="col" class="table-number learner-count-individual">Not started</th>
-          }
+
+          <th scope="col" class="table-number">Completed</th>
+          <th scope="col" class="table-number">In progress</th>
+          <th scope="col" class="table-number">Not started</th>
+
           <th scope="col" class="table-status">Status</th>
           <th scope="col" class="table-actions">Actions</th>
         </tr>
@@ -121,37 +107,20 @@
               <div class="person-cell">
                 <span class="avatar">{{ store.initials(p.name) }}</span>
                 <span
-                  ><strong>{{ p.name }}</strong
-                  ><small>{{ p.role }}</small></span
+                  ><strong>{{ p.name }}</strong></span
                 >
               </div>
             </td>
+            <td data-label="Role">{{ p.role }}</td>
             <td data-label="Assigned learning" class="learner-completion">
               <strong>{{ p.learning.length ? progressFor(p) + '%' : 'Not assigned' }}</strong>
               <div class="progress-track"><span [style.width.%]="progressFor(p)"></span></div>
             </td>
-            @if (tablet()?.matches) {
-              <td class="learner-counts" data-label="Counts">
-                <dl>
-                  <dt>Completed</dt>
-                  <dd>{{ completedFor(p) }}</dd>
-                  <dt>In progress</dt>
-                  <dd>{{ inProgressFor(p) }}</dd>
-                  <dt>Not started</dt>
-                  <dd>{{ p.learning.length - completedFor(p) - inProgressFor(p) }}</dd>
-                </dl>
-              </td>
-            } @else {
-              <td data-label="Completed" class="table-number learner-count-individual">
-                {{ completedFor(p) }}
-              </td>
-              <td data-label="In progress" class="table-number learner-count-individual">
-                {{ inProgressFor(p) }}
-              </td>
-              <td data-label="Not started" class="table-number learner-count-individual">
-                {{ p.learning.length - completedFor(p) - inProgressFor(p) }}
-              </td>
-            }
+            <td data-label="Completed" class="table-number">{{ completedFor(p) }}</td>
+            <td data-label="In progress" class="table-number">{{ inProgressFor(p) }}</td>
+            <td data-label="Not started" class="table-number">
+              {{ p.learning.length - completedFor(p) - inProgressFor(p) }}
+            </td>
             <td data-label="Status" class="table-status">
               <span
                 class="badge"
@@ -179,7 +148,7 @@
           </tr>
         } @empty {
           <tr>
-            <td [attr.colspan]="tablet()?.matches ? 5 : 7" class="empty-cell">
+            <td colspan="8" class="empty-cell">
               <div class="empty-state academy-empty">
                 <span class="material-symbols-outlined" aria-hidden="true">school</span>
                 <h3>

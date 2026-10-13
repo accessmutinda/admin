@@ -46,10 +46,11 @@ describe('Team learning register', () => {
     expect(rows).toHaveLength(3);
     const cells = rows[0].querySelectorAll('td');
     expect(cells[0].textContent).toContain('Learning Review');
-    expect(cells[1].textContent.trim()).toBe('50%');
-    expect(cells[2].textContent.trim()).toBe('1');
+    expect(cells[1].textContent.trim()).toBe(TestBed.inject(ManagementStore).staff()[0].role);
+    expect(cells[2].textContent.trim()).toBe('50%');
     expect(cells[3].textContent.trim()).toBe('1');
     expect(cells[4].textContent.trim()).toBe('1');
+    expect(cells[5].textContent.trim()).toBe('1');
     expect(rows[0].querySelector('td[data-label="Status"]').textContent).toContain(
       'Learning underway',
     );
@@ -63,22 +64,27 @@ describe('Team learning register', () => {
     );
   });
 
-  it('keeps all three labelled counts and the profile action in the tablet register', async () => {
+  it('keeps role and learning counts in separate columns', async () => {
     const fixture = TestBed.createComponent(AcademyProgress);
-    const view = fixture.componentInstance as unknown as { tablet(): { matches: boolean } };
-    vi.spyOn(view, 'tablet').mockReturnValue({ matches: true });
     fixture.detectChanges();
     await fixture.whenStable();
-    const row = fixture.nativeElement.querySelector('.learner-progress-table tbody tr');
-    expect(row.querySelectorAll('td')).toHaveLength(5);
-    const counts: HTMLElement = row.querySelector('.learner-counts');
-    expect(
-      Array.from(counts.querySelectorAll('dt')).map((label) => label.textContent!.trim()),
-    ).toEqual(['Completed', 'In progress', 'Not started']);
-    expect(
-      Array.from(counts.querySelectorAll('dd')).map((value) => value.textContent!.trim()),
-    ).toEqual(['1', '1', '1']);
-    expect(row.querySelector('.learner-action a').getAttribute('href')).toBe(
+    const table: HTMLTableElement = fixture.nativeElement.querySelector('.learner-progress-table');
+    expect(Array.from(table.tHead!.rows[0].cells).map((cell) => cell.textContent!.trim())).toEqual([
+      'Team member',
+      'Role',
+      'Assigned learning',
+      'Completed',
+      'In progress',
+      'Not started',
+      'Status',
+      'Actions',
+    ]);
+    for (const row of Array.from(table.tBodies[0].rows)) {
+      expect(row.cells).toHaveLength(8);
+      expect(row.querySelector('td:first-child small')).toBeNull();
+    }
+    const row = table.tBodies[0].rows[0];
+    expect(row.querySelector('.learner-action a')!.getAttribute('href')).toBe(
       '/manage/people/learning-review?tab=Learning',
     );
   });
