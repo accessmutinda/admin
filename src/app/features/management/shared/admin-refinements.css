@@ -1861,6 +1861,23 @@
   padding: 6px 8px;
   margin-block: 4px;
 }
+@media (min-width: 576px) {
+  .cv-management
+    .app-body
+    main.page-content
+    .person-record:not([data-stage='Hired'])
+    .person-journey {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-journey
+  > .col-sm-3 {
+  grid-column: span 1;
+}
 @media (max-width: 1100px) {
   .cv-management
     .app-body

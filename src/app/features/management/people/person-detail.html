@@ -49,6 +49,7 @@
       <ol class="person-journey" aria-label="Recruitment journey">
         @for (stage of stages; track stage; let i = $index) {
           <li
+            class="col-sm-3"
             [class.current]="stageIndex(p) === i"
             [class.complete]="stageIndex(p) > i"
             [attr.data-stage]="stage"
