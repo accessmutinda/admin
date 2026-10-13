@@ -11,7 +11,7 @@
    material-theme.scss, which reads these same hex values. */
 @theme {
   --font-sans:
-    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
   /* Primary */
   --color-navy: #0f2d4a;
