@@ -34,6 +34,25 @@ describe('Finance area navigation', () => {
   });
   afterEach(() => TestBed.resetTestingModule());
 
+  it('keeps setup actions and review content available in the aligned overview columns', async () => {
+    const store = TestBed.inject(ManagementStore);
+    const before = structuredClone(store.data().payroll);
+    const harness = await RouterTestingHarness.create('/manage/finance/overview');
+    const page = harness.routeNativeElement!;
+    expect(page.querySelector('.finance-main-grid > .payroll-prepare-panel')).not.toBeNull();
+    expect(page.querySelector('.finance-main-grid > .finance-dashboard')).not.toBeNull();
+    expect(page.querySelector('.finance-review-stack > .payroll-review-panel')).not.toBeNull();
+    expect(page.querySelector('.finance-review-stack > .finance-next-run')).not.toBeNull();
+    page.querySelector<HTMLButtonElement>('.payroll-prepare-panel .payroll-setup-action')!.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(TestBed.inject(Router).url).toContain('/manage/finance/payroll');
+    expect(page.querySelector('.payroll-view-tabs button.active')?.textContent?.trim()).toBe(
+      'Staff pay',
+    );
+    expect(store.data().payroll).toEqual(before);
+  });
+
   it('separates the area views, follows real links and retains legacy payroll links', async () => {
     const harness = await RouterTestingHarness.create('/manage/finance');
     expect(harness.routeNativeElement?.querySelector('h1')?.textContent).toBe('Finance overview');
