@@ -170,8 +170,8 @@
               </div>
             </dl>
             @if (p.application; as application) {
-              <h3 style="margin-top: 12px">Application responses</h3>
-              <dl class="details-list">
+              <h3 class="application-response-heading">Application responses</h3>
+              <dl class="details-list application-responses">
                 <div>
                   <dt>Received through vacancy page</dt>
                   <dd>{{ application.submitted | date: 'medium' }}</dd>

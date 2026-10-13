@@ -1583,3 +1583,299 @@
 .cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .webinar-row p {
   margin-top: 2px;
 }
+
+/* Applicant records use compact rows and aligned recruitment steps. */
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .profile-role-line
+  cv-management-role {
+  margin-top: 0;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-hero
+  h1 {
+  margin-bottom: 0;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-hero
+  .profile-role-line {
+  margin-top: 2px;
+}
+.cv-management .application-response-heading {
+  margin-top: 12px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-journey {
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-journey
+  > li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  padding: 6px 8px;
+  gap: 6px;
+  border-radius: 6px;
+  align-items: center;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-journey
+  .journey-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 16px;
+  border-radius: 5px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-journey
+  > li
+  > div {
+  min-width: 0;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-journey
+  small {
+  margin-top: 1px;
+  line-height: 1.3;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-journey
+  .journey-status {
+  width: auto;
+  padding-left: 0;
+  white-space: nowrap;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-detail-grid {
+  gap: 8px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-detail-sidebar {
+  gap: 8px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-detail-surface
+  .panel-toolbar {
+  padding: 6px 10px;
+  gap: 6px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-detail-surface
+  .panel-toolbar
+  .section-icon {
+  padding: 4px;
+  font-size: 16px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-detail-surface
+  .panel-body {
+  padding: 6px 10px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-detail-surface
+  .details-list {
+  gap: 0 10px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-detail-surface
+  .details-list
+  > div {
+  padding: 4px 0;
+  gap: 6px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-detail-surface
+  .application-response-heading {
+  margin: 8px 0 2px;
+  font-size: 12px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-detail-surface
+  .application-responses {
+  grid-template-columns: minmax(0, 1fr);
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-detail-sidebar
+  .person-next-step {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 4px 6px;
+  padding: 8px 10px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-next-step
+  > .eyebrow {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-next-step
+  .next-step-art {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+  padding: 0;
+  margin: 0;
+  border-radius: 5px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-next-step
+  h3 {
+  align-self: center;
+  margin: 0;
+  font-size: 13px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-next-step
+  > p:not(.eyebrow) {
+  grid-column: 1 / -1;
+  margin: 0;
+  line-height: 1.4;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-next-step
+  .button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 2px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-detail-sidebar
+  .profile-summary {
+  padding: 8px 10px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .profile-summary
+  h3 {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .profile-summary
+  .summary-row {
+  padding: 4px 0;
+  gap: 6px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-detail-sidebar
+  .tip {
+  padding: 6px 8px;
+  gap: 6px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .person-record:not([data-stage='Hired'])
+  .person-detail-surface
+  .notes-list
+  article {
+  padding: 6px 8px;
+  margin-block: 4px;
+}
+@media (max-width: 1100px) {
+  .cv-management
+    .app-body
+    main.page-content
+    .person-record:not([data-stage='Hired'])
+    .person-journey
+    > li {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+  .cv-management
+    .app-body
+    main.page-content
+    .person-record:not([data-stage='Hired'])
+    .person-journey
+    .journey-status {
+    grid-column: 2;
+  }
+}
