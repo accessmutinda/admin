@@ -60,7 +60,7 @@ jobs:
           fi
           test -f dist/admin/browser/index.html
           port="${DEPLOY_PORT:-22}"
-          rsync -az --delete --chmod=D755,F644 \
+          rsync -rlz --delete --omit-dir-times --chmod=D755,F644 \
             -e "ssh -i $HOME/.ssh/deploy_key -p ${port} -o IdentitiesOnly=yes" \
             dist/admin/browser/ \
             "${DEPLOY_USER}@${DEPLOY_HOST}:/var/www/admin/"
