@@ -299,8 +299,8 @@
           }
         </div>
       </div>
-      <div class="table-wrap">
-        <table class="quality-table">
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+        <table class="quality-table data-columns">
           <caption class="quality-sr-only">
             {{
               tab()
@@ -310,11 +310,16 @@
           <thead>
             <tr>
               <th scope="col">
-                {{ tab() === 'Assessments' ? 'Assessment / person' : 'Action / source' }}
+                {{ tab() === 'Assessments' ? 'Assessment' : 'Action' }}
               </th>
+              <th scope="col">{{ tab() === 'Assessments' ? 'Person / context' : 'Source' }}</th>
+              @if (tab() !== 'Assessments') {
+                <th scope="col">Priority</th>
+              }
               <th scope="col">{{ tab() === 'Assessments' ? 'Assessor' : 'Owner' }}</th>
               <th scope="col">{{ tab() === 'Assessments' ? 'Assessment date' : 'Due date' }}</th>
               <th class="table-status" scope="col">Status</th>
+              <th scope="col">Alert</th>
               <th class="table-actions" scope="col">Review</th>
             </tr>
           </thead>
@@ -323,9 +328,9 @@
               @for (a of assessments(); track a.id) {
                 <tr>
                   <td data-label="Assessment">
-                    <strong>{{ template(a.templateId)?.title }}</strong
-                    ><small>{{ a.subjectName || 'Context needed' }}</small>
+                    <strong>{{ template(a.templateId)?.title }}</strong>
                   </td>
+                  <td data-label="Person / context">{{ a.subjectName || 'Context needed' }}</td>
                   <td data-label="Assessor">{{ a.assessorName || 'Not assigned' }}</td>
                   <td data-label="Date" class="table-date">{{ a.date | date: 'd MMM y' }}</td>
                   <td data-label="Status" class="table-status">
@@ -335,9 +340,9 @@
                       [class.warning]="isOverdue(a)"
                       >{{ a.status }}</span
                     >
-                    @if (isOverdue(a)) {
-                      <small class="quality-alert">Overdue</small>
-                    }
+                  </td>
+                  <td data-label="Alert" class="quality-alert">
+                    {{ isOverdue(a) ? 'Overdue' : '—' }}
                   </td>
                   <td data-label="Review" class="table-actions">
                     <a class="button" [routerLink]="['/manage/quality/assessments', a.id]">{{
@@ -350,12 +355,12 @@
               @for (a of actions(); track a.id) {
                 <tr>
                   <td data-label="Action">
-                    <strong>{{ a.title }}</strong
-                    ><small
-                      >{{ a.assessmentId ? 'Linked assessment' : 'General quality action' }} ·
-                      {{ a.priority }} priority</small
-                    >
+                    <strong>{{ a.title }}</strong>
                   </td>
+                  <td data-label="Source">
+                    {{ a.assessmentId ? 'Linked assessment' : 'General quality action' }}
+                  </td>
+                  <td data-label="Priority">{{ a.priority }}</td>
                   <td data-label="Owner">{{ owner(a.ownerId) }}</td>
                   <td data-label="Due" class="table-date">{{ a.due | date: 'd MMM y' }}</td>
                   <td data-label="Status" class="table-status">
@@ -365,9 +370,9 @@
                       [class.warning]="actionLate(a)"
                       >{{ a.status }}</span
                     >
-                    @if (actionLate(a)) {
-                      <small class="quality-alert">Overdue</small>
-                    }
+                  </td>
+                  <td data-label="Alert" class="quality-alert">
+                    {{ actionLate(a) ? 'Overdue' : '—' }}
                   </td>
                   <td data-label="Review" class="table-actions">
                     <button class="button" (click)="editAction(a)">Review</button>
@@ -472,8 +477,8 @@
           </button>
         }
       </div>
-      <div class="table-wrap">
-        <table class="quality-table quality-report-table">
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+        <table class="quality-table quality-report-table data-columns">
           <thead>
             <tr>
               <th scope="col">Assessment type</th>

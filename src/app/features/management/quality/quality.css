@@ -355,22 +355,22 @@
   .quality-calendar {
     display: none;
   }
-  .quality-table {
+  .quality-table:not(.data-columns) {
     min-width: 0 !important;
   }
-  .quality-table thead {
+  .quality-table:not(.data-columns) thead {
     display: none;
   }
-  .quality-table tbody {
+  .quality-table:not(.data-columns) tbody {
     display: block;
   }
-  .quality-table tr {
+  .quality-table:not(.data-columns) tr {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     border-top: 1px solid var(--color-line);
     padding: 8px;
   }
-  .quality-table td {
+  .quality-table:not(.data-columns) td {
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -378,16 +378,16 @@
     padding: 8px !important;
     overflow-wrap: anywhere;
   }
-  .quality-table td:first-child {
+  .quality-table:not(.data-columns) td:first-child {
     grid-column: 1/-1;
   }
-  .quality-table td[data-label]::before {
+  .quality-table:not(.data-columns) td[data-label]::before {
     content: attr(data-label);
     color: var(--color-slate);
     font-size: 11px;
     font-weight: 500;
   }
-  .quality-table td:last-child .button {
+  .quality-table:not(.data-columns) td:last-child .button {
     align-self: start;
   }
   .quality-task .badge {

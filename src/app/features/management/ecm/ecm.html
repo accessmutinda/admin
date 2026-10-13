@@ -270,106 +270,115 @@
           }
         </div>
       } @else {
-        <div class="table-wrap">
-          <table class="ecm-table" aria-label="Live visit register">
-            <colgroup>
-              <col class="column-schedule" />
-              <col class="column-client" />
-              <col class="column-carers" />
-              <col class="column-attendance" />
-              <col class="column-status" />
-              <col class="column-timing" />
-              <col class="column-actions" />
-            </colgroup>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+          <table class="ecm-table data-columns" aria-label="Live visit register">
             <thead>
               <tr>
-                <th class="table-date" scope="col">Scheduled</th>
-                <th scope="col">Service user / call</th>
+                <th scope="col">Scheduled</th>
+                <th scope="col">Visit date</th>
+                <th scope="col">End day</th>
+                <th scope="col">Cover</th>
+                <th scope="col">Service user</th>
+                <th scope="col">Call</th>
+                <th scope="col">Risk flags</th>
+                <th scope="col">Priority</th>
                 <th scope="col">Care workers</th>
-                <th scope="col">Attendance</th>
-                <th class="table-status" scope="col">Live status</th>
-                <th scope="col" class="table-number">Timing</th>
-                <th class="table-actions" scope="col">Review</th>
+                <th scope="col">Allocation</th>
+                <th scope="col">Checked in</th>
+                <th scope="col">Attendance times</th>
+                <th scope="col">Live status</th>
+                <th scope="col">Attendance alert</th>
+                <th scope="col">Duration</th>
+                <th scope="col">Delay</th>
+                <th scope="col">Timing basis</th>
+                <th scope="col">Overrun</th>
+                <th scope="col">Review</th>
               </tr>
             </thead>
             <tbody>
               @for (r of rows(); track r.v.id) {
                 <tr [attr.data-status]="r.live.tone">
-                  <td data-label="Scheduled" class="table-date">
-                    <strong>{{ r.v.start }}–{{ r.v.end }}</strong>
-                    <div class="table-detail-line">
-                      @if (r.v.date !== date()) {
-                        <small>Started {{ dateLabel(r.v.date) }}</small>
-                      }
-                      @if (r.v.end <= r.v.start) {
-                        <small>Ends next day</small>
-                      }
-                      <small>{{ r.v.allocation }} cover</small>
-                    </div>
+                  <td data-label="Scheduled" class="table-date">{{ r.v.start }}–{{ r.v.end }}</td>
+                  <td data-label="Visit date" class="table-date">{{ dateLabel(r.v.date) }}</td>
+                  <td data-label="End day">{{ r.v.end <= r.v.start ? 'Next day' : 'Same day' }}</td>
+                  <td data-label="Cover">{{ r.v.allocation }} cover</td>
+                  <td data-label="Service user">
+                    <strong>{{ r.v.clientName }}</strong>
                   </td>
-                  <td data-label="Service user / call">
-                    <div class="table-identity-line">
-                      <strong>{{ r.v.clientName }}</strong
-                      ><span
-                        class="ecm-call"
-                        [style.background]="style(r.v.callName).background"
-                        [style.color]="style(r.v.callName).color"
-                        >{{ style(r.v.callName).label }}</span
-                      >
-                    </div>
-                    <div class="table-detail-line">
-                      @for (f of flags(r.v); track f) {
-                        <small>{{ f }}</small>
-                      }
-                      @if (r.v.priority === 'High') {
-                        <span class="ecm-priority">High priority</span>
-                      }
-                    </div>
+                  <td data-label="Call">
+                    <span
+                      class="ecm-call"
+                      [style.background]="style(r.v.callName).background"
+                      [style.color]="style(r.v.callName).color"
+                      >{{ style(r.v.callName).label }}</span
+                    >
                   </td>
-                  <td data-label="Care workers">
-                    <div class="table-detail-line table-names">
-                      @for (id of r.v.staffIds; track id) {
-                        <span class="ecm-carer">{{ name(id) }}</span>
-                      } @empty {
-                        <span class="ecm-priority">Unallocated</span>
-                      }
-                    </div>
-                    @if (r.v.carers === 2) {
-                      <small>Double-up · {{ r.v.staffIds.length }}/2 allocated</small>
+                  <td data-label="Risk flags">
+                    @for (f of flags(r.v); track f; let last = $last) {
+                      {{ f }}{{ last ? '' : ', ' }}
+                    } @empty {
+                      —
                     }
                   </td>
-                  <td data-label="Attendance">
-                    <span>{{ r.live.arrived }} / {{ r.v.carers }} checked in</span>
-                    <div class="table-detail-line">
-                      @for (a of r.v.attendance; track a.personId) {
-                        <small>{{ time(a.start) }} → {{ a.end ? time(a.end) : 'Open' }}</small>
-                      }
-                    </div>
+                  <td data-label="Priority">
+                    {{ r.v.priority === 'High' ? 'High priority' : '—' }}
                   </td>
-                  <td data-label="Live status" class="table-status">
+                  <td data-label="Care workers">
+                    @for (id of r.v.staffIds; track id; let last = $last) {
+                      {{ name(id) }}{{ last ? '' : ', ' }}
+                    } @empty {
+                      <span class="ecm-priority">Unallocated</span>
+                    }
+                  </td>
+                  <td data-label="Allocation">
+                    {{ r.v.staffIds.length }} / {{ r.v.carers }} allocated{{
+                      r.v.carers === 2 ? ' · Double-up' : ''
+                    }}
+                  </td>
+                  <td data-label="Checked in" class="table-number">
+                    {{ r.live.arrived }} / {{ r.v.carers }}
+                  </td>
+                  <td data-label="Attendance times">
+                    @for (a of r.v.attendance; track a.personId; let last = $last) {
+                      {{ name(a.personId) }}: {{ time(a.start) }} → {{ a.end ? time(a.end) : 'Open'
+                      }}{{ last ? '' : '; ' }}
+                    } @empty {
+                      —
+                    }
+                  </td>
+                  <td data-label="Live status">
                     <span class="ecm-status" [attr.data-status]="r.live.tone">{{
                       r.live.status
                     }}</span>
-                    @if (r.live.arrived && r.live.arrived < r.v.carers) {
-                      <small>Waiting for second carer</small>
-                    }
                   </td>
-                  <td data-label="Timing" class="table-number">
-                    @if (r.live.duration !== null) {
-                      <strong>{{ r.live.duration }} min</strong
-                      ><small>{{
-                        r.live.status === 'Completed'
+                  <td data-label="Attendance alert">
+                    {{
+                      r.live.arrived && r.live.arrived < r.v.carers
+                        ? 'Waiting for second carer'
+                        : '—'
+                    }}
+                  </td>
+                  <td data-label="Duration" class="table-number">
+                    {{ r.live.duration !== null ? r.live.duration + ' min' : '—' }}
+                  </td>
+                  <td data-label="Delay" class="table-number">
+                    {{
+                      r.live.duration === null && r.live.delay ? '+' + r.live.delay + ' min' : '—'
+                    }}
+                  </td>
+                  <td data-label="Timing basis">
+                    {{
+                      r.live.duration !== null
+                        ? r.live.status === 'Completed'
                           ? 'Completed duration'
                           : 'Since first check-in'
-                      }}</small>
-                    } @else if (r.live.delay) {
-                      <strong>+{{ r.live.delay }} min</strong><small>Since scheduled start</small>
-                    } @else {
-                      <span>—</span>
-                    }
-                    @if (r.live.overrun) {
-                      <small class="ecm-priority">{{ r.live.overrun }} min overrun</small>
-                    }
+                        : r.live.delay
+                          ? 'Since scheduled start'
+                          : '—'
+                    }}
+                  </td>
+                  <td data-label="Overrun" class="table-number ecm-priority">
+                    {{ r.live.overrun ? r.live.overrun + ' min overrun' : '—' }}
                   </td>
                   <td data-label="Review" class="table-actions">
                     <button class="button ecm-review" (click)="openVisit(r.v)">
@@ -381,7 +390,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="7">
+                  <td colspan="19">
                     <div class="ecm-empty">
                       <span class="material-symbols-outlined" aria-hidden="true"
                         >event_available</span

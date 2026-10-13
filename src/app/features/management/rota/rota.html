@@ -494,17 +494,8 @@
           <p>Use the carer filter above to see their published visit schedule.</p>
         </div>
       } @else {
-        <div class="table-wrap">
-          <table class="rota-table" aria-label="Rota visits">
-            <colgroup>
-              <col class="column-select" />
-              <col class="column-client" />
-              <col class="column-schedule" />
-              <col class="column-carers" />
-              <col class="column-allocation" />
-              <col class="column-status" />
-              <col class="column-actions" />
-            </colgroup>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+          <table class="rota-table data-columns" aria-label="Rota visits">
             <thead>
               <tr>
                 <th scope="col">
@@ -519,11 +510,18 @@
                     />
                   }
                 </th>
-                <th scope="col">Service user / call</th>
-                <th class="table-date" scope="col">Date & time</th>
+                <th scope="col">Service user</th>
+                <th scope="col">Call</th>
+                <th scope="col">Priority</th>
+                <th class="table-date" scope="col">Date</th>
+                <th scope="col">Time</th>
+                <th scope="col">End day</th>
+                <th scope="col" class="table-number">Duration</th>
                 <th scope="col">Carers</th>
+                <th scope="col" class="table-number">Unallocated places</th>
                 <th class="table-status" scope="col">Allocation</th>
                 <th class="table-status" scope="col">Status</th>
+                <th class="table-actions" scope="col">Conflict</th>
                 <th class="table-actions" scope="col">Action</th>
               </tr>
             </thead>
@@ -541,33 +539,25 @@
                       /></label>
                     }
                   </td>
-                  <td data-label="Service user / call">
-                    <strong>{{ v.clientName }}</strong
-                    ><small
-                      >{{ v.callName }}
-                      @if (v.priority === 'High') {
-                        · High priority
-                      }
-                    </small>
+
+                  <td data-label="Service user">
+                    <strong>{{ v.clientName }}</strong>
                   </td>
-                  <td data-label="Date & time" class="table-date">
-                    {{ v.date | date: 'd MMM yyyy'
-                    }}<small
-                      >{{ v.start }}–{{ v.end }}{{ overnight(v) ? ' (+1 day)' : '' }} ·
-                      {{ duration(v) }} min</small
-                    >
-                  </td>
+                  <td data-label="Call">{{ v.callName }}</td>
+                  <td data-label="Priority">{{ v.priority === 'High' ? 'High priority' : '—' }}</td>
+                  <td data-label="Date" class="table-date">{{ v.date | date: 'd MMM yyyy' }}</td>
+                  <td data-label="Time">{{ v.start }}–{{ v.end }}</td>
+                  <td data-label="End day">{{ overnight(v) ? 'Next day' : 'Same day' }}</td>
+                  <td data-label="Duration" class="table-number">{{ duration(v) }} min</td>
                   <td data-label="Carers">
-                    <div class="table-detail-line table-names">
-                      @for (id of v.staffIds; track id) {
-                        <small class="rota-carer-name">{{ personName(id) }}</small>
-                      }
-                    </div>
-                    @if (v.staffIds.length < v.carers) {
-                      <span class="rota-warning"
-                        >{{ v.carers - v.staffIds.length }} place(s) unallocated</span
-                      >
+                    @for (id of v.staffIds; track id; let last = $last) {
+                      {{ personName(id) }}{{ last ? '' : ', ' }}
+                    } @empty {
+                      —
                     }
+                  </td>
+                  <td data-label="Unallocated places" class="table-number rota-warning">
+                    {{ v.staffIds.length < v.carers ? v.carers - v.staffIds.length : 0 }}
                   </td>
                   <td data-label="Allocation" class="table-status">
                     <span class="badge" [class.lilac]="v.allocation === 'Temporary'">{{
@@ -583,9 +573,13 @@
                       "
                       >{{ status(v) }}</span
                     >
-                    @if (service.conflicts(v).length && v.state !== 'Cancelled') {
-                      <small class="rota-warning">Availability conflict</small>
-                    }
+                  </td>
+                  <td data-label="Conflict" class="rota-warning">
+                    {{
+                      service.conflicts(v).length && v.state !== 'Cancelled'
+                        ? 'Availability conflict'
+                        : '—'
+                    }}
                   </td>
                   <td data-label="Action" class="table-actions">
                     <button class="button" (click)="view(v)">Review visit</button>
@@ -593,7 +587,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="7">
+                  <td colspan="14">
                     <div class="rota-empty">
                       <span class="material-symbols-outlined" aria-hidden="true">event_busy</span
                       ><strong>No visits in this view</strong>
