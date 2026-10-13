@@ -8,7 +8,7 @@ import { RouterLink } from '@angular/router';
   selector: 'cv-academy-progress',
   imports: [FormsModule, MatSelectModule, CvSelect, RouterLink],
   templateUrl: './academy-progress.html',
-  styles: '.learner-completion .progress-track > span { transition: none; }',
+  styleUrl: './academy-progress.css',
 })
 export class AcademyProgress {
   readonly active = input(true);

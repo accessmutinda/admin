@@ -1,7 +1,13 @@
 <section class="academy-summary-strip">
   <div class="academy-summary-heading">
     <h2>Team learning</h2>
-    <strong>{{ animatedCompletion() }}% average progress</strong>
+    <div class="academy-average-inline">
+      <strong>{{ animatedCompletion() }}%</strong>
+      <span>Average progress</span>
+    </div>
+  </div>
+  <div class="academy-average-track" aria-hidden="true">
+    <span [style.width.%]="animatedCompletion()"></span>
   </div>
   <div class="academy-summary-values">
     <span class="summary-tile" data-tone="blue"
@@ -29,20 +35,28 @@
 <section class="academy-progress-hero">
   <div>
     <p class="eyebrow">TEAM LEARNING AT A GLANCE</p>
-    <h2>See the progress. Support the next step.</h2>
+    <h2>Team learning progress</h2>
     <p>Learning across {{ store.company()?.name }} · based on assigned courses.</p>
   </div>
-  <div
-    class="academy-progress-ring"
-    [style.--completion]="animatedCompletion() + '%'"
-    role="progressbar"
-    aria-label="Average learning progress"
-    aria-valuemin="0"
-    aria-valuemax="100"
-    [attr.aria-valuenow]="completion()"
-  >
-    <div>
-      <strong>{{ animatedCompletion() }}%</strong><small>average progress</small>
+  <div class="academy-average-overview">
+    <div
+      class="academy-average-gauge"
+      [style.--completion]="animatedCompletion() + '%'"
+      role="progressbar"
+      aria-label="Average learning progress"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      [attr.aria-valuenow]="completion()"
+    >
+      <strong>{{ animatedCompletion() }}<span>%</span></strong>
+    </div>
+    <div class="academy-average-copy">
+      <span class="academy-average-label">Average progress</span>
+      <span class="academy-average-detail">{{
+        assignedCount()
+          ? completedCount() + ' of ' + assignedCount() + ' assignments completed'
+          : 'No courses assigned yet'
+      }}</span>
     </div>
   </div>
 </section>
