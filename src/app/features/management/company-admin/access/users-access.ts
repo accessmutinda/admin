@@ -17,6 +17,7 @@ import { A11yModule } from '@angular/cdk/a11y';
   imports: [MatSelectModule, CvSelect, ManagementRole, A11yModule, FormsModule],
   host: { '(document:keydown.escape)': 'modal.set(false)' },
   templateUrl: './users-access.html',
+  styleUrl: './users-access.css',
 })
 export class UsersAccess {
   protected readonly store = inject(ManagementStore);
