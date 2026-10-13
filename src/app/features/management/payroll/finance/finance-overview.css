@@ -1,9 +1,9 @@
 :host {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-  gap: 12px;
+  gap: 8px;
   align-items: start;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 .finance-title {
   display: flex;
@@ -32,7 +32,7 @@
 }
 .finance-side-grid {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
 }
 .finance-totals .metric {

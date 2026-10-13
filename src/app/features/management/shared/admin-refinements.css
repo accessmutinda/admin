@@ -867,3 +867,594 @@
     margin-top: 2px;
   }
 }
+
+/* Compact card content across the administration modules. */
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .editor-panel
+  > .form-footer {
+  margin: 8px -10px -8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .metrics .metric,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .quality-metrics .metric {
+  padding: 6px 10px;
+  min-height: 0;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .metrics .metric > strong,
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .quality-metrics
+  .metric
+  > strong {
+  margin: 2px 0 1px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .metrics
+  .metric
+  > .metric-icon {
+  width: 24px;
+  height: 24px;
+  top: 7px;
+  right: 8px;
+  font-size: 16px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .metrics .metric-label {
+  padding-right: 28px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .metrics
+  .metric-label
+  .material-symbols-outlined {
+  top: 7px;
+  right: 8px;
+  padding: 3px;
+  font-size: 16px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .person-progress-card,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .summary-tile,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .finance-total,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .workflow-kpis > div {
+  padding: 6px 8px;
+  gap: 2px;
+  min-height: 0;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .panel-note,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .form-footer,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .settings-save-footer,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .directory-footer,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .client-directory-footer,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .ecm-register-footer {
+  padding: 6px 10px;
+  gap: 6px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .section-heading {
+  margin-bottom: 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .panel-toolbar h2,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .panel-toolbar h3 {
+  margin-top: 0;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .form-grid {
+  gap: 8px 10px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .panel-body
+  label
+  > input:not([type='checkbox'], [type='color']),
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .panel-body
+  label
+  > mat-select,
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .panel-body
+  label
+  > textarea {
+  margin-top: 3px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .company-settings-hero,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .client-profile,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .person-hero,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .academy-progress-hero,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .academy-development-hero {
+  padding: 8px 10px;
+  gap: 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .share-panel,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .client-facts,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .client-personal,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .client-summary,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .person-next-step,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .security-session,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .security-identity,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .security-control,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .cpd-reflection-guide,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .onboarding-card,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .brand-preview,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .upload-area,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .course-body,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .assessment-main,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .assessment-summary,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .quality-signature,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .rota-allocation-summary,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .invoice-line {
+  padding: 8px 10px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .person-detail-surface
+  .details-list {
+  gap: 0 12px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .person-detail-surface
+  .details-list
+  > div {
+  display: grid;
+  grid-template-columns: minmax(88px, 0.7fr) minmax(0, 1.3fr);
+  align-items: start;
+  padding: 6px 0;
+  gap: 8px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .person-detail-surface
+  .details-list
+  dt {
+  margin-bottom: 0;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .details-list > div,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .summary-row,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .list-row,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .quality-task,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .payroll-setup-action,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .payroll-queue,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .finance-funding-list button,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .finance-cost-links button,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .evidence-item,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .assessment-answer {
+  padding-block: 6px;
+  gap: 6px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .welcome-checklist > label,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .person-compliance > label,
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .person-detail-surface
+  .learning-assignment {
+  padding: 6px 8px;
+  gap: 6px;
+  min-height: 40px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .welcome-intro {
+  padding: 6px 8px;
+  gap: 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .compliance-dates,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .notes-list,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .assessment-review-block {
+  margin-top: 8px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .person-detail-surface
+  .notes-list
+  article {
+  padding: 8px;
+  margin-block: 6px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .permission-panel
+  label.permission-action {
+  min-height: 40px;
+  padding: 4px 6px;
+  gap: 6px;
+  margin-top: 4px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .permission-panel
+  .permission-action
+  strong,
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .permission-panel
+  .permission-action
+  small {
+  line-height: 1.4;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .permission-panel
+  .permission-action
+  small {
+  margin-top: 1px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .permission-panel
+  .permission-grid {
+  padding: 8px 10px;
+  gap: 6px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .module-permissions {
+  margin: 0 10px 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .settings-grid hr {
+  margin-block: 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .settings-grid .check-label {
+  margin-block: 4px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .pipeline-board {
+  padding: 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .applicant-card {
+  padding: 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .development-entry > div {
+  padding: 8px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .development-entry-heading
+  h3 {
+  margin-top: 3px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .development-reflection {
+  padding: 6px 8px;
+  margin-top: 6px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .development-reflection p {
+  margin-top: 3px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .cpd-timeline,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .development-entry,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .client-summary-counts,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .assessment-questions,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .assessment-layout,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .assessment-side,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .finance-side-grid {
+  gap: 8px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .cpd-reflection-guide
+  > .material-symbols-outlined {
+  padding: 6px;
+  margin-bottom: 6px;
+  font-size: 22px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .cpd-reflection-guide h3 {
+  margin: 4px 0 6px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .cpd-reflection-guide li {
+  padding-bottom: 6px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .cpd-reflection-guide li p {
+  margin-top: 3px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .cpd-guide-note {
+  padding-top: 6px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .lesson-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 10px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .lesson-hero
+  .material-symbols-outlined {
+  font-size: 28px;
+  margin: 0;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .lesson-copy {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .webinar-row {
+  padding-block: 8px;
+  gap: 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .quality-upload {
+  padding: 8px 10px;
+  gap: 6px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .quality-upload
+  > .material-symbols-outlined {
+  font-size: 24px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .quality-upload input {
+  margin-top: 4px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .evidence-item small {
+  margin: 2px 0 4px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .assessment-summary dd {
+  margin-top: 2px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .quality-signature {
+  margin-block: 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .quality-signature p,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .assessment-review-block p {
+  margin: 4px 0 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .empty-state,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .payroll-empty-state,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .finance-empty,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .rota-empty,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .ecm-empty {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  justify-content: start;
+  justify-items: start;
+  align-items: start;
+  gap: 3px 8px;
+  padding: 8px 10px;
+  min-height: 0;
+  text-align: left;
+  white-space: normal;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .empty-state
+  > .material-symbols-outlined,
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .payroll-empty-state
+  > .material-symbols-outlined,
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .finance-empty
+  > .material-symbols-outlined,
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .rota-empty
+  > .material-symbols-outlined,
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .ecm-empty
+  > .material-symbols-outlined {
+  grid-column: 1;
+  grid-row: 1 / 5;
+  font-size: 22px;
+  padding: 0;
+  margin: 0;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .empty-state
+  > :not(.material-symbols-outlined),
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .payroll-empty-state
+  > :not(.material-symbols-outlined),
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .finance-empty
+  > :not(.material-symbols-outlined),
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .rota-empty
+  > :not(.material-symbols-outlined),
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .ecm-empty
+  > :not(.material-symbols-outlined) {
+  grid-column: 2;
+  margin: 0;
+  max-width: none;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .completion-state {
+  padding: 8px 0;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .completion-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
+  font-size: 24px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .completion-state h2 {
+  font-size: 20px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .completion-state p {
+  margin: 6px 0 8px;
+}
+@media (min-width: 768px) {
+  .cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .welcome-task-copy,
+  .cv-management
+    .app-body
+    main.page-content:not(:has(cv-ecm-wallboard))
+    .learning-assignment
+    > span:first-of-type {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 8px;
+  }
+  .cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .welcome-task-copy small,
+  .cv-management
+    .app-body
+    main.page-content:not(:has(cv-ecm-wallboard))
+    .learning-assignment
+    > span:first-of-type
+    small {
+    margin-top: 0;
+  }
+}
+@media (max-width: 767px) {
+  .cv-management
+    .app-body
+    main.page-content:not(:has(cv-ecm-wallboard))
+    .permission-panel
+    label.permission-action,
+  .cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .welcome-checklist > label,
+  .cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .person-compliance > label,
+  .cv-management
+    .app-body
+    main.page-content:not(:has(cv-ecm-wallboard))
+    .person-detail-surface
+    .learning-assignment {
+    min-height: 44px;
+  }
+  .cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .development-entry {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .development-entry > div {
+    flex-basis: auto;
+  }
+  .cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .development-entry-icon {
+    padding: 6px;
+    font-size: 20px;
+  }
+}
+
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .workflow-record,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .assessment-card,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .academy-summary-strip {
+  padding: 8px 10px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .workflow-context {
+  padding: 6px 10px;
+  margin-bottom: 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .workflow-grid,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .workflow-stack,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .workflow-header,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .workflow-kpis,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .requirement-list,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .payroll-filters {
+  gap: 6px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .workflow-kpis > div {
+  padding: 6px 10px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .ecm-filter-body {
+  padding: 6px 10px 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .ecm-live-strip {
+  padding: 6px 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-workflows {
+  padding: 8px;
+  gap: 6px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-workflow {
+  padding: 6px 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-call {
+  padding: 6px 10px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-flow {
+  padding: 6px 10px 6px 26px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .client-list-row {
+  padding: 6px 10px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .client-summary
+  .client-list-row {
+  padding: 6px 0;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .company-section-heading {
+  margin-bottom: 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .setup-step-cards button,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .workflow-type {
+  min-height: 44px;
+  padding: 6px 8px;
+  gap: 6px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .client-billing-prepare p {
+  padding-bottom: 4px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .login-history-content {
+  gap: 8px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .login-history-content
+  > aside
+  > ul {
+  margin-top: 8px;
+  gap: 6px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .login-history-content
+  > aside
+  > ul
+  > li {
+  padding: 8px 10px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .login-history-content
+  > section
+  > ul,
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .login-history-content
+  > section
+  > div:last-child {
+  margin-top: 8px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .login-history-content
+  > section
+  > ul
+  > li {
+  padding: 6px 10px;
+}

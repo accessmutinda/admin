@@ -1,7 +1,7 @@
 /* Compact presentation shared by authenticated administration screens. */
 .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) {
-  --panel-gap: 10px;
-  --panel-padding: 12px;
+  --panel-gap: 8px;
+  --panel-padding: 10px;
   background: #f4f7f9;
 }
 .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) h1 {
@@ -64,7 +64,7 @@
   .page-content:not(:has(cv-ecm-wallboard))
   cv-payroll
   .payroll-register-toolbar.has-payroll-views {
-  padding: 9px var(--panel-padding);
+  padding: 7px var(--panel-padding);
   gap: 8px;
   background: white;
   border-radius: 8px 8px 0 0;
@@ -80,7 +80,7 @@
 }
 .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .panel-body,
 .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .editor-panel {
-  padding: var(--panel-padding);
+  padding: 8px var(--panel-padding);
 }
 .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .count {
   height: 18px;
@@ -226,7 +226,7 @@
   padding: 10px 12px;
 }
 .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .form-grid {
-  gap: 10px 12px;
+  gap: 8px 10px;
 }
 .cv-management
   .app-body
@@ -249,7 +249,7 @@
 .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .quality-task,
 .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .payroll-setup-action,
 .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .finance-funding-list button {
-  padding-block: 9px;
+  padding-block: 6px;
   gap: 8px;
 }
 .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .list-row small {

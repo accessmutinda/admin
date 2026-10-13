@@ -126,7 +126,7 @@ i,
   flex-direction: column;
   align-items: stretch;
   text-align: left;
-  padding: 12px 14px 10px;
+  padding: 8px 12px 6px;
   border-radius: 12px;
   background: #183c56;
   position: relative;
@@ -269,7 +269,7 @@ i,
   border: 1px solid #df954855;
   border-left: 5px solid #efa943;
   background: linear-gradient(120deg, #654324, #3b3433);
-  padding: 12px 14px;
+  padding: 10px 12px;
   overflow: auto;
 }
 .tv-priority-card[data-tone='red'] {
@@ -368,7 +368,7 @@ i,
   min-height: 0;
 }
 .tv-visit-card {
-  padding: 12px 12px;
+  padding: 8px 10px;
   background: #173951;
   border: 1px solid #31546b;
   border-left: 3px solid #6b8ba0;
