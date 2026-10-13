@@ -1,7 +1,7 @@
 <section class="academy-summary-strip">
   <div class="academy-summary-heading">
     <h2>Team learning</h2>
-    <strong>{{ completion() }}% average progress</strong>
+    <strong>{{ animatedCompletion() }}% average progress</strong>
   </div>
   <div class="academy-summary-values">
     <span class="summary-tile" data-tone="blue"
@@ -32,9 +32,17 @@
     <h2>See the progress. Support the next step.</h2>
     <p>Learning across {{ store.company()?.name }} · based on assigned courses.</p>
   </div>
-  <div class="academy-progress-ring" [style.--completion]="completion() + '%'">
+  <div
+    class="academy-progress-ring"
+    [style.--completion]="animatedCompletion() + '%'"
+    role="progressbar"
+    aria-label="Average learning progress"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    [attr.aria-valuenow]="completion()"
+  >
     <div>
-      <strong>{{ completion() }}%</strong><small>average progress</small>
+      <strong>{{ animatedCompletion() }}%</strong><small>average progress</small>
     </div>
   </div>
 </section>
@@ -113,8 +121,19 @@
             </td>
             <td data-label="Role">{{ p.role }}</td>
             <td data-label="Assigned learning" class="learner-completion">
-              <strong>{{ p.learning.length ? progressFor(p) + '%' : 'Not assigned' }}</strong>
-              <div class="progress-track"><span [style.width.%]="progressFor(p)"></span></div>
+              <strong>{{
+                p.learning.length ? (animatedProgress()[p.id] ?? 0) + '%' : 'Not assigned'
+              }}</strong>
+              <div
+                class="progress-track"
+                role="progressbar"
+                [attr.aria-label]="'Assigned learning for ' + p.name"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                [attr.aria-valuenow]="progressFor(p)"
+              >
+                <span [style.width.%]="animatedProgress()[p.id] ?? 0"></span>
+              </div>
             </td>
             <td data-label="Completed" class="table-number">{{ completedFor(p) }}</td>
             <td data-label="In progress" class="table-number">{{ inProgressFor(p) }}</td>

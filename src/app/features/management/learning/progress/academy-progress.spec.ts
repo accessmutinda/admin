@@ -7,6 +7,7 @@ import { AcademyProgress } from './academy-progress';
 
 describe('Team learning register', () => {
   beforeEach(() => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
     localStorage.clear();
     TestBed.configureTestingModule({
       imports: [AcademyProgress],
@@ -36,6 +37,64 @@ describe('Team learning register', () => {
         },
       ],
     }));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('animates the banner and learner progress on tab entry without changing records', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    const frames = new Map<number, FrameRequestCallback>();
+    let nextFrame = 0;
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frames.set(++nextFrame, callback);
+      return nextFrame;
+    });
+    const cancelFrame = vi.fn((id: number) => frames.delete(id));
+    vi.stubGlobal('cancelAnimationFrame', cancelFrame);
+    vi.spyOn(performance, 'now').mockReturnValue(0);
+    const advance = (time: number) => {
+      const callbacks = [...frames.values()];
+      frames.clear();
+      callbacks.forEach((callback) => callback(time));
+    };
+    const store = TestBed.inject(ManagementStore);
+    const before = JSON.stringify(store.data());
+    const fixture = TestBed.createComponent(AcademyProgress);
+    fixture.componentRef.setInput('active', false);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.componentRef.setInput('active', true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const banner: HTMLElement = fixture.nativeElement.querySelector('.academy-progress-ring');
+    const progress: HTMLElement = fixture.nativeElement.querySelector('.learner-completion strong');
+    expect(progress.textContent!.trim()).toBe('0%');
+    advance(450);
+    fixture.detectChanges();
+    expect(parseInt(progress.textContent!)).toBeGreaterThan(0);
+    expect(parseInt(progress.textContent!)).toBeLessThan(50);
+    expect(parseInt(banner.style.getPropertyValue('--completion'))).toBeGreaterThan(0);
+    advance(900);
+    fixture.detectChanges();
+    expect(progress.textContent!.trim()).toBe('50%');
+    expect(banner.style.getPropertyValue('--completion')).toBe('63%');
+    expect(banner.getAttribute('aria-valuenow')).toBe('63');
+    expect(
+      fixture.nativeElement.querySelector('.learner-completion .progress-track span').style.width,
+    ).toBe('50%');
+    fixture.componentRef.setInput('active', false);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('active', true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(progress.textContent!.trim()).toBe('0%');
+    cancelFrame.mockClear();
+    fixture.destroy();
+    expect(cancelFrame).toHaveBeenCalled();
+    expect(JSON.stringify(store.data())).toBe(before);
   });
 
   it('preserves learning counts, status and profile actions in the register', async () => {

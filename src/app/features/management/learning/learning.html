@@ -171,7 +171,7 @@
   </section>
 }
 <cv-academy-cpd [personId]="selectedPerson()" [active]="tab() === 'CPD'" />
-<cv-academy-progress [hidden]="tab() !== 'Progress'" />
+<cv-academy-progress [hidden]="tab() !== 'Progress'" [active]="tab() === 'Progress'" />
 @if (player(); as course) {
   <div class="modal-backdrop">
     <section
