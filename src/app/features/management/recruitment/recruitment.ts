@@ -33,6 +33,7 @@ export class Recruitment {
   protected readonly view = signal('Pipeline');
   protected readonly search = signal('');
   protected readonly vacancyFilter = signal('All vacancies');
+  protected readonly stageFilter = signal('All stages');
   protected readonly modal = signal('');
   protected readonly people = computed(() =>
     this.store
@@ -61,6 +62,13 @@ export class Recruitment {
   protected inStage(stage: string) {
     return this.people().filter((p) => p.stage === stage);
   }
+  protected readonly applicantRows = computed(() =>
+    this.stages
+      .flatMap((stage) => this.inStage(stage))
+      .filter(
+        (person) => this.stageFilter() === 'All stages' || person.stage === this.stageFilter(),
+      ),
+  );
   protected applicantCount(vacancy: Vacancy): number {
     return this.store
       .applicants()
@@ -161,7 +169,12 @@ export class Recruitment {
     this.toast.success('Vacancy and application form saved.');
   }
   protected openApplicant(): void {
-    this.applicant.vacancy = this.store.data().vacancies[0]?.id ?? '';
+    const vacancies = this.store.data().vacancies;
+    this.applicant.vacancy =
+      (this.view() === 'Pipeline' &&
+        vacancies.find((vacancy) => vacancy.id === this.vacancyFilter())?.id) ||
+      vacancies[0]?.id ||
+      '';
     this.modal.set('applicant');
   }
   protected addApplicant(): void {

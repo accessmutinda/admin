@@ -1,3 +1,15 @@
+.recruitment-identity,
+.recruitment-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.recruitment-identity .avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+
 .vacancy-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
@@ -89,7 +101,13 @@ label.required-toggle {
   margin-bottom: 12px;
 }
 .vacancy-actions {
-  max-width: 340px;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+.vacancy-actions > *,
+.recruitment-add-applicant {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 @media (max-width: 1279px) {
   .vacancy-layout {

@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { FormsModule, NgForm } from '@angular/forms';
+import { By } from '@angular/platform-browser';
+import { provideRouter } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
 import { ManagementStore, Vacancy } from '../shared/management.store';
@@ -24,7 +26,10 @@ describe('Vacancy applications', () => {
   let store: ManagementStore;
   beforeEach(() => {
     localStorage.clear();
-    TestBed.configureTestingModule({ imports: [Recruitment, ApplicationForm, FormsModule] });
+    TestBed.configureTestingModule({
+      imports: [Recruitment, ApplicationForm, FormsModule],
+      providers: [provideRouter([])],
+    });
     TestBed.inject(AuthService).signInWithMicrosoft();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
@@ -38,6 +43,155 @@ describe('Vacancy applications', () => {
     published: true,
     fields: [{ id: 'experience', label: 'Experience', type: 'textarea', required: true }],
     documents: [],
+  });
+
+  it('preserves applicant details and profile links while combining table filters', async () => {
+    const person = store.data().people[0];
+    store.update((data) => ({
+      ...data,
+      vacancies: [
+        { ...vacancy(), id: 'job-one' },
+        { ...vacancy(), id: 'job-two', title: 'Senior Carer' },
+      ],
+      people: [
+        {
+          ...person,
+          id: 'candidate-one',
+          name: 'Candidate One',
+          stage: 'Applied',
+          vacancyId: 'job-one',
+        },
+        {
+          ...person,
+          id: 'candidate-two',
+          name: 'Candidate Two',
+          stage: 'Interview',
+          vacancyId: 'job-one',
+        },
+        {
+          ...person,
+          id: 'hired-person',
+          name: 'Hired Person',
+          stage: 'Hired',
+          vacancyId: 'job-two',
+        },
+      ],
+    }));
+    const before = JSON.stringify(store.data());
+    const fixture = TestBed.createComponent(Recruitment);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const rows = () => fixture.nativeElement.querySelectorAll('.recruitment-table tbody tr');
+    expect(rows()).toHaveLength(3);
+    expect(rows()[0].querySelectorAll('td')).toHaveLength(7);
+    expect(rows()[0].textContent).toContain(person.email);
+    expect(rows()[0].textContent).toContain(person.role);
+    expect(rows()[0].querySelector('.table-actions a').getAttribute('href')).toBe(
+      '/manage/people/candidate-one',
+    );
+    const stage = fixture.debugElement.query(
+      By.css('mat-select[aria-label="Filter recruitment stage"]'),
+    );
+    const job = fixture.debugElement.query(By.css('mat-select[aria-label="Filter vacancy"]'));
+    stage.triggerEventHandler('ngModelChange', 'Applied');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0].textContent).toContain('Candidate One');
+    job.triggerEventHandler('ngModelChange', 'job-two');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(rows()[0].textContent).toContain('No applicants match this view');
+    stage.triggerEventHandler('ngModelChange', 'All stages');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0].textContent).toContain('Hired Person');
+    expect(rows()[0].textContent).toContain('View staff');
+    const search: HTMLInputElement = fixture.nativeElement.querySelector(
+      'input[aria-label="Search applicants"]',
+    );
+    search.value = 'No matching applicant';
+    search.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(rows()[0].textContent).toContain('No applicants match this view');
+    expect(JSON.stringify(store.data())).toBe(before);
+  });
+
+  it('opens the selected vacancy when adding an applicant and validates before saving', async () => {
+    store.update((data) => ({
+      ...data,
+      vacancies: [vacancy(), { ...vacancy(), id: 'second-job', title: 'Senior Carer' }],
+    }));
+    const fixture = TestBed.createComponent(Recruitment);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.debugElement
+      .query(By.css('mat-select[aria-label="Filter vacancy"]'))
+      .triggerEventHandler('ngModelChange', 'second-job');
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('.recruitment-add-applicant').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const dialog = fixture.nativeElement.querySelector('[role="dialog"]');
+    const submit: HTMLButtonElement = dialog.querySelector('button[type="submit"]');
+    expect(submit.disabled).toBe(true);
+    expect(
+      fixture.debugElement.query(By.css('mat-select[aria-label="Applicant vacancy"]'))
+        .componentInstance.value,
+    ).toBe('second-job');
+    const fill = async (name: string, value: string) => {
+      const input = dialog.querySelector(`input[name="${name}"]`);
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    };
+    await fill('name', 'New Applicant');
+    await fill('location', 'London');
+    await fill('email', 'invalid');
+    expect(submit.disabled).toBe(true);
+    await fill('email', 'applicant@example.com');
+    expect(submit.disabled).toBe(false);
+    submit.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+    expect(
+      store.data().people.find((person) => person.email === 'applicant@example.com'),
+    ).toMatchObject({ name: 'New Applicant', vacancyId: 'second-job', stage: 'Applied' });
+  });
+
+  it('opens Edit form from vacancy actions without changing the saved vacancy on discard', async () => {
+    store.update((data) => ({ ...data, vacancies: [vacancy()] }));
+    const before = JSON.stringify(store.data().vacancies);
+    const fixture = TestBed.createComponent(Recruitment);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const tab = Array.from<HTMLButtonElement>(
+      fixture.nativeElement.querySelectorAll('.segmented button'),
+    ).find((button) => button.textContent?.trim() === 'Vacancies')!;
+    tab.click();
+    fixture.detectChanges();
+    const row = fixture.nativeElement.querySelector('.vacancies-table tbody tr');
+    expect(row.querySelectorAll('td')).toHaveLength(9);
+    expect(row.querySelector('.table-status').textContent).toContain('Accepting applications');
+    row.querySelector('button[aria-label="Edit form for Care Worker"]').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.vacancy-editor')).not.toBeNull();
+    const editor = fixture.componentInstance as unknown as Editor;
+    editor.vacancy.title = 'Unsaved title';
+    const discard = Array.from<HTMLButtonElement>(
+      fixture.nativeElement.querySelectorAll('.editor-actions button'),
+    ).find((button) => button.textContent?.trim() === 'Discard')!;
+    discard.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.vacancies-table')).not.toBeNull();
+    expect(JSON.stringify(store.data().vacancies)).toBe(before);
   });
 
   it('publishes configured fields and isolates unsaved editor changes', () => {

@@ -294,7 +294,8 @@
             [ngModel]="search()"
             (ngModelChange)="search.set($event)" /></label
         ><button
-          class="button"
+          class="button recruitment-add-applicant"
+          type="button"
           [disabled]="!store.data().vacancies.length"
           (click)="openApplicant()"
         >
@@ -316,57 +317,98 @@
               <mat-option [value]="vacancy.id">{{ vacancy.title }}</mat-option>
             }
           </mat-select></label
-        ><small class="muted">Open an applicant to view details and move them forward.</small>
-      </div>
-      <div class="pipeline-board">
-        @for (stage of stages; track stage) {
-          <section class="pipeline-column" [attr.data-stage]="stage.toLowerCase()">
-            <div class="pipeline-title">
-              <span class="stage-dot" [class]="'stage-dot stage-' + stage.toLowerCase()"></span>
-              <h2>{{ stage }}</h2>
-              <span class="count">{{ inStage(stage).length }}</span>
-            </div>
-            @for (person of inStage(stage); track person.id) {
-              <a class="applicant-card" [routerLink]="['/manage/people', person.id]"
-                ><div class="applicant-heading">
-                  <span class="avatar" [attr.data-stage]="stage.toLowerCase()">{{
-                    store.initials(person.name)
-                  }}</span>
-                  <h3>{{ person.name }}</h3>
-                  <span class="material-symbols-outlined muted" aria-hidden="true"
-                    >arrow_outward</span
-                  >
-                </div>
-                <cv-management-role
-                  [label]="person.role"
-                  [attr.title]="
-                    person.vacancy === person.role ? 'Role and vacancy: ' + person.role : null
-                  "
-                />
-                <div class="applicant-meta">
-                  <span class="material-symbols-outlined" aria-hidden="true">location_on</span
-                  >{{ person.location || 'Location not provided' }}
-                </div>
-                @if (stage === 'Hired' || (person.vacancy && person.vacancy !== person.role)) {
-                  <div class="applicant-footer">
-                    <span class="badge" [class.success]="stage === 'Hired'">{{
-                      stage === 'Hired' ? 'Team member' : person.vacancy
-                    }}</span>
-                  </div>
-                }
-              </a>
-            } @empty {
-              <div class="column-empty">
-                No {{ stage.toLowerCase() === 'applied' ? 'applications' : 'people' }} here yet.
-              </div>
+        >
+        <label class="inline-label"
+          >Stage<mat-select
+            cvSelect
+            [ngModel]="stageFilter()"
+            (ngModelChange)="stageFilter.set($event)"
+            aria-label="Filter recruitment stage"
+          >
+            <mat-option value="All stages">All stages · {{ people().length }}</mat-option>
+            @for (stage of stages; track stage) {
+              <mat-option [value]="stage">{{ stage }} · {{ inStage(stage).length }}</mat-option>
             }
-          </section>
-        }
+          </mat-select></label
+        >
+        <small class="muted">Open an applicant to view details and move them forward.</small>
+      </div>
+      <div
+        class="table-wrap"
+        tabindex="0"
+        role="region"
+        aria-label="Scrollable recruitment applicants"
+      >
+        <table class="recruitment-table data-columns" aria-label="Recruitment applicants">
+          <thead>
+            <tr>
+              <th scope="col">Applicant</th>
+              <th scope="col">Email</th>
+              <th scope="col">Role</th>
+              <th scope="col">Vacancy</th>
+              <th scope="col">Location</th>
+              <th scope="col">Stage</th>
+              <th scope="col" class="table-actions">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (person of applicantRows(); track person.id) {
+              <tr>
+                <td>
+                  <div class="recruitment-identity">
+                    <span
+                      class="avatar"
+                      [attr.data-stage]="person.stage.toLowerCase()"
+                      aria-hidden="true"
+                      >{{ store.initials(person.name) }}</span
+                    >
+                    <a class="text-link" [routerLink]="['/manage/people', person.id]">{{
+                      person.name
+                    }}</a>
+                  </div>
+                </td>
+                <td>{{ person.email || 'Not provided' }}</td>
+                <td><cv-management-role [label]="person.role" /></td>
+                <td>{{ person.vacancy || 'Not provided' }}</td>
+                <td>{{ person.location || 'Location not provided' }}</td>
+                <td>
+                  <span class="recruitment-stage">
+                    <span
+                      [class]="'stage-dot stage-' + person.stage.toLowerCase()"
+                      aria-hidden="true"
+                    ></span>
+                    {{ person.stage }}{{ person.stage === 'Hired' ? ' · Team member' : '' }}
+                  </span>
+                </td>
+                <td class="table-actions">
+                  <a
+                    class="button"
+                    [routerLink]="['/manage/people', person.id]"
+                    [attr.aria-label]="'View ' + person.name"
+                    >{{ person.stage === 'Hired' ? 'View staff' : 'View applicant'
+                    }}<span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_forward</span
+                    ></a
+                  >
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="empty-cell">
+                  <div class="empty-state">
+                    <h3>No applicants match this view</h3>
+                    <p>Adjust the search, vacancy or stage filter, or add an applicant.</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
     }
     @if (view() === 'Vacancies') {
       <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
-        <table class="data-columns">
+        <table class="vacancies-table data-columns" aria-label="Recruitment vacancies">
           <thead>
             <tr>
               <th scope="col">Vacancy</th>
@@ -377,6 +419,7 @@
               <th class="table-date" scope="col">Closing date</th>
               <th scope="col" class="table-number">Applicants</th>
               <th scope="col">Application page</th>
+              <th scope="col" class="table-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -401,7 +444,11 @@
                 <td class="table-number">
                   <button
                     class="text-link"
-                    (click)="vacancyFilter.set(vacancy.id); view.set('Pipeline')"
+                    (click)="
+                      vacancyFilter.set(vacancy.id);
+                      stageFilter.set('All stages');
+                      view.set('Pipeline')
+                    "
                   >
                     {{ applicantCount(vacancy)
                     }}<span class="material-symbols-outlined" aria-hidden="true"
@@ -409,13 +456,24 @@
                     >
                   </button>
                 </td>
-                <td>
+                <td class="table-status">
+                  <span
+                    class="badge"
+                    [class.success]="store.vacancyStatus(vacancy) === 'Accepting applications'"
+                    >{{ store.vacancyStatus(vacancy) }}</span
+                  >
+                </td>
+                <td class="table-actions">
                   <div class="vacancy-actions">
-                    <span
-                      class="badge"
-                      [class.success]="store.vacancyStatus(vacancy) === 'Accepting applications'"
-                      >{{ store.vacancyStatus(vacancy) }}</span
-                    ><button class="button" (click)="openVacancy(vacancy)">Edit form</button>
+                    <button
+                      class="button"
+                      type="button"
+                      [attr.aria-label]="'Edit form for ' + vacancy.title"
+                      (click)="openVacancy(vacancy)"
+                    >
+                      <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
+                      form
+                    </button>
                     @if (vacancy.published) {
                       <button class="button" (click)="savedVacancy.set(vacancy); copyLink(vacancy)">
                         Copy link</button
@@ -428,7 +486,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="8">
+                <td colspan="9">
                   No vacancies yet. Create a vacancy to build your application page.
                 </td>
               </tr>
@@ -467,6 +525,7 @@
               ><label class="full-width"
                 >Email<input
                   type="email"
+                  email
                   [(ngModel)]="applicant.email"
                   name="email"
                   required /></label
@@ -488,7 +547,9 @@
             </div>
             <div class="form-footer">
               <button class="button" type="button" (click)="modal.set('')">Cancel</button
-              ><button class="button primary">Add applicant</button>
+              ><button class="button primary" type="submit" [disabled]="form.invalid">
+                Add applicant
+              </button>
             </div>
           </form>
         }
