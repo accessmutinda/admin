@@ -1,13 +1,14 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { SecurityPageHeader } from './security-page-header';
 import { LOGIN_HISTORY, TRUSTED_DEVICES } from '../../../core/auth/fixtures';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { Skeleton } from '../../../shared/ui/skeleton';
 
 @Component({
   selector: 'cv-login-history',
-  imports: [Skeleton, RouterLink],
+  imports: [Skeleton, SecurityPageHeader],
   templateUrl: './login-history.html',
+  styleUrl: './login-history.css',
 })
 export class LoginHistory implements OnInit {
   private readonly toast = inject(ToastService);
