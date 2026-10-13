@@ -7,7 +7,7 @@
         <p>{{ expiryAlerts().length }} checks are overdue or due within 60 days.</p>
       </div>
     </div>
-    <div class="expiry-list">
+    <div class="expiry-list compliance-card-grid">
       @for (group of expiryGroups(); track group.person.id) {
         <article class="expiry-person">
           <h3>{{ group.person.name }}</h3>

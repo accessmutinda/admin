@@ -1458,3 +1458,57 @@
   > li {
   padding: 6px 10px;
 }
+
+/* Employment checks stay compact while date fields retain their full width. */
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .person-compliance {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 10px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .checklist.person-compliance
+  > label {
+  min-height: 32px;
+  padding: 4px 6px;
+  gap: 6px;
+  margin: 0;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .person-compliance
+  > :is(.compliance-dates, p) {
+  grid-column: 1 / -1;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .compliance-dates {
+  padding: 6px 0;
+  margin-top: 6px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .compliance-dates h3 {
+  margin-bottom: 6px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .expiry-person {
+  padding: 6px 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .expiry-person h3 {
+  margin-bottom: 2px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .expiry-person a {
+  padding: 3px 0;
+  gap: 4px;
+}
+@media (max-width: 767px) {
+  .cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .person-compliance {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cv-management
+    .app-body
+    main.page-content:not(:has(cv-ecm-wallboard))
+    .checklist.person-compliance
+    > label,
+  .cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) .expiry-person a {
+    min-height: 44px;
+  }
+}
