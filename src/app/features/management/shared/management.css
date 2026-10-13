@@ -152,7 +152,7 @@
   margin-top: 0;
 }
 .cv-management .nav-label {
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 1.6px;
   font-weight: 600;
   margin: 22px 12px 10px;
@@ -168,7 +168,7 @@
   color: #b9c9d6;
   min-height: 36px;
   padding: 7px 12px;
-  font-size: 12px;
+  font-size: 13px;
   margin: 1px 0;
 }
 .cv-management .app-sidebar a:hover,
@@ -200,7 +200,7 @@
   display: flex;
   gap: 7px;
   align-items: center;
-  font-size: 10px;
+  font-size: 11px;
   padding: 0 12px 8px;
   color: #99b6c7;
 }
@@ -5609,12 +5609,12 @@
 }
 .cv-management .sidebar-tv > span:nth-child(2) {
   flex: 1;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 .cv-management .sidebar-tv small {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   color: #9bd8cb;
   font-weight: 400;
 }
