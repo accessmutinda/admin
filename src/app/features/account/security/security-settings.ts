@@ -6,12 +6,14 @@ import { TRUSTED_DEVICES } from '../../../core/auth/fixtures';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ROLES } from '../../../core/auth/models/role';
 import { ManagementRole } from '../../management/shared/role-pill';
+import { SecurityPageHeader } from './security-page-header';
 
 @Component({
   selector: 'cv-security-settings',
-  imports: [A11yModule, DatePipe, RouterLink, ManagementRole],
+  imports: [A11yModule, DatePipe, RouterLink, ManagementRole, SecurityPageHeader],
   host: { '(document:keydown.escape)': 'details.set(null)' },
   templateUrl: './security-settings.html',
+  styleUrl: './security-settings.css',
 })
 export class SecuritySettings {
   protected readonly auth = inject(AuthService);

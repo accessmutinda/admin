@@ -1,132 +1,122 @@
-<div class="page-heading">
-  <div>
-    <p class="eyebrow">YOUR ACCOUNT</p>
-    <h1>Security settings</h1>
-    <p>Keep your sign-in details, authentication and devices in view.</p>
-  </div>
-  <a class="button" routerLink="/manage/companies"
-    ><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to
-    workspace</a
-  >
-</div>
-<nav class="tabs" aria-label="Account security sections">
-  <a class="security-tab active" routerLink="/account/security" aria-current="page"
-    ><span class="material-symbols-outlined" aria-hidden="true">shield</span>Security overview</a
-  ><a class="security-tab" routerLink="/account/security/login-history"
-    ><span class="material-symbols-outlined" aria-hidden="true">devices</span>Login activity &
-    devices</a
-  >
-</nav>
+<cv-security-page-header active="overview" />
 @if (user) {
-  <section class="panel security-identity">
-    <span class="security-account-avatar">{{ user.initials }}</span>
-    <div>
-      <p class="eyebrow">PERSONAL SECURITY</p>
+  <section class="panel account-sec-identity" aria-label="Account details">
+    <span class="account-sec-avatar">{{ user.initials }}</span>
+    <div class="account-sec-person">
       <h2>{{ user.name }}</h2>
-      <p>{{ user.email }}</p>
-      <cv-management-role [label]="role" />
+      <a [href]="'mailto:' + user.email">{{ user.email }}</a>
     </div>
-    <span class="badge security-identity-state" [class.success]="user.mfaEnabled"
-      ><span class="material-symbols-outlined" aria-hidden="true">{{
-        user.mfaEnabled ? 'verified_user' : 'shield'
-      }}</span
-      >{{ user.mfaEnabled ? 'MFA enabled' : 'MFA not enabled' }}</span
-    >
+    <div class="account-sec-identity-meta">
+      <cv-management-role [label]="role" />
+      <span
+        class="account-sec-status"
+        [class.enabled]="user.mfaEnabled"
+        [class.attention]="!user.mfaEnabled"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">{{
+          user.mfaEnabled ? 'verified_user' : 'shield'
+        }}</span>
+        {{ user.mfaEnabled ? 'MFA enabled' : 'MFA not enabled' }}
+      </span>
+    </div>
   </section>
-  <div class="security-content-grid">
-    <div class="security-controls-grid">
-      <section class="panel security-control" data-tone="blue">
-        <span class="security-control-icon material-symbols-outlined" aria-hidden="true">key</span>
-        <h2>Password</h2>
-        <p>Update the password you use to sign in to your account.</p>
-        <div class="security-control-footer">
-          <span class="security-control-meta">Account sign-in</span
-          ><a class="button" routerLink="/account/change-password"
-            >Change password<span class="material-symbols-outlined" aria-hidden="true"
-              >arrow_forward</span
-            ></a
-          >
+  <div class="account-sec-grid">
+    <section class="panel account-sec-settings" aria-labelledby="sign-in-access-title">
+      <div class="panel-toolbar">
+        <div>
+          <h2 id="sign-in-access-title">Sign-in & access</h2>
+          <p>Manage your password, verification and device records.</p>
         </div>
-      </section>
-      <section class="panel security-control" data-tone="teal">
-        <span class="security-control-icon material-symbols-outlined" aria-hidden="true"
+      </div>
+      <div class="account-sec-row" data-tone="blue">
+        <span class="account-sec-icon material-symbols-outlined" aria-hidden="true">key</span>
+        <div class="account-sec-copy">
+          <h3>Password</h3>
+          <p>Update the password you use to sign in to your account.</p>
+        </div>
+        <div class="account-sec-method">
+          <span class="account-sec-status neutral">Account sign-in</span>
+        </div>
+        <a class="account-sec-action" routerLink="/account/change-password"
+          >Change password<span class="material-symbols-outlined" aria-hidden="true"
+            >arrow_forward</span
+          ></a
+        >
+      </div>
+      <div class="account-sec-row" data-tone="teal">
+        <span class="account-sec-icon material-symbols-outlined" aria-hidden="true"
           >verified_user</span
         >
-        <h2>Multi-factor authentication</h2>
-        <p>
-          {{
-            user.mfaEnabled
-              ? 'Your sign-in uses an additional verification step.'
-              : 'No additional verification method is enabled for this account.'
-          }}
-        </p>
-        <div class="security-method">
-          <span class="material-symbols-outlined" aria-hidden="true">{{
-            user.mfaMethod === 'authenticator' ? 'phonelink_lock' : 'sms'
-          }}</span
-          >{{
+        <div class="account-sec-copy">
+          <h3>Multi-factor authentication</h3>
+          <p>
+            {{
+              user.mfaEnabled
+                ? 'Your sign-in uses an additional verification step.'
+                : 'No additional verification method is enabled for this account.'
+            }}
+          </p>
+        </div>
+        <div class="account-sec-method">
+          <span
+            class="account-sec-status"
+            [class.enabled]="user.mfaEnabled"
+            [class.attention]="!user.mfaEnabled"
+            >{{ user.mfaEnabled ? 'Enabled' : 'Not enabled' }}</span
+          >
+          <span>{{
             user.mfaEnabled
               ? user.mfaMethod === 'authenticator'
                 ? 'Authenticator app'
                 : 'SMS verification'
               : 'No method configured'
-          }}
+          }}</span>
         </div>
-        <div class="security-control-footer">
-          <span class="badge" [class.success]="user.mfaEnabled">{{
-            user.mfaEnabled ? 'Enabled' : 'Not enabled'
-          }}</span
-          ><button class="button" (click)="details.set('mfa')">
-            View method<span class="material-symbols-outlined" aria-hidden="true"
-              >arrow_forward</span
-            >
-          </button>
+        <button class="account-sec-action" type="button" (click)="details.set('mfa')">
+          View method<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+        </button>
+      </div>
+      <div class="account-sec-row" data-tone="purple">
+        <span class="account-sec-icon material-symbols-outlined" aria-hidden="true">devices</span>
+        <div class="account-sec-copy">
+          <h3>Devices & login activity</h3>
+          <p>Review the device records and sign-in events available for your account.</p>
         </div>
-      </section>
-      <section class="panel security-control" data-tone="purple">
-        <span class="security-control-icon material-symbols-outlined" aria-hidden="true"
-          >devices</span
+        <div class="account-sec-method">
+          <span class="account-sec-status demo">Demo records</span
+          ><span>{{ trustedDeviceCount }} sample trusted-device records</span>
+        </div>
+        <a class="account-sec-action" routerLink="/account/security/login-history"
+          >Review devices<span class="material-symbols-outlined" aria-hidden="true"
+            >arrow_forward</span
+          ></a
         >
-        <h2>Devices & login activity</h2>
-        <p>Review the device records and sign-in events available for your account.</p>
-        <div class="security-method">
-          <strong>{{ trustedDeviceCount }}</strong
-          >sample trusted-device records
+      </div>
+      <div class="account-sec-row" data-tone="amber">
+        <span class="account-sec-icon material-symbols-outlined" aria-hidden="true">link</span>
+        <div class="account-sec-copy">
+          <h3>Work account sign-in</h3>
+          <p>See the work-account sign-in option available in this workspace.</p>
         </div>
-        <div class="security-control-footer">
-          <span class="badge">Demo records</span
-          ><a class="button" routerLink="/account/security/login-history"
-            >Review devices<span class="material-symbols-outlined" aria-hidden="true"
-              >arrow_forward</span
-            ></a
+        <div class="account-sec-method">
+          <span class="account-sec-status demo">Demo integration</span><span>Microsoft</span>
+        </div>
+        <button class="account-sec-action" type="button" (click)="details.set('connections')">
+          View details<span class="material-symbols-outlined" aria-hidden="true"
+            >arrow_forward</span
           >
+        </button>
+      </div>
+    </section>
+    <aside class="account-sec-sidebar">
+      <section class="panel account-sec-session" aria-labelledby="current-session-title">
+        <div class="account-sec-session-heading">
+          <span class="account-sec-icon material-symbols-outlined" aria-hidden="true"
+            >devices_other</span
+          >
+          <h2 id="current-session-title">Current sign-in</h2>
+          <span class="account-sec-status enabled">Signed in</span>
         </div>
-      </section>
-      <section class="panel security-control" data-tone="amber">
-        <span class="security-control-icon material-symbols-outlined" aria-hidden="true">link</span>
-        <h2>Work account sign-in</h2>
-        <p>See the work-account sign-in option available in this workspace.</p>
-        <div class="security-method">
-          <span class="material-symbols-outlined" aria-hidden="true">business</span>Microsoft
-        </div>
-        <div class="security-control-footer">
-          <span class="badge">Demo integration</span
-          ><button class="button" (click)="details.set('connections')">
-            View details<span class="material-symbols-outlined" aria-hidden="true"
-              >arrow_forward</span
-            >
-          </button>
-        </div>
-      </section>
-    </div>
-    <aside class="security-sidebar">
-      <section class="panel security-session">
-        <span class="security-control-icon material-symbols-outlined" aria-hidden="true"
-          >devices_other</span
-        >
-        <p class="eyebrow">CURRENT SIGN-IN</p>
-        <h3>This session</h3>
-        <span class="badge success">Signed in</span>
         <dl>
           <div>
             <dt>Account</dt>
@@ -141,13 +131,13 @@
             <dd>{{ auth.session()?.mfaVerified ? 'Session verified' : 'Not verified' }}</dd>
           </div>
         </dl>
-        <a class="text-link" routerLink="/account/security/login-history"
+        <a class="account-sec-action" routerLink="/account/security/login-history"
           >View login activity<span class="material-symbols-outlined" aria-hidden="true"
             >arrow_forward</span
           ></a
         >
       </section>
-      <div class="security-review-note">
+      <div class="account-sec-note">
         <span class="material-symbols-outlined" aria-hidden="true">info</span>
         <p>
           Device and login history are sample records. Authentication methods and work-account

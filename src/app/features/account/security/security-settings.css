@@ -1,0 +1,255 @@
+.account-sec-identity {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+.account-sec-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #edf8f5;
+  color: #087f76;
+  font-size: 12px;
+  font-weight: 700;
+}
+.account-sec-person {
+  min-width: 0;
+}
+.account-sec-person h2 {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.account-sec-person a {
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.account-sec-identity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.account-sec-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 8px;
+  align-items: start;
+}
+.account-sec-settings {
+  overflow: hidden;
+}
+.account-sec-row {
+  --security-tone: #285eaa;
+  --security-tint: #eaf2ff;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 140px 130px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #edf1f5;
+}
+.account-sec-row:last-child {
+  border-bottom: 0;
+}
+.account-sec-row[data-tone='teal'] {
+  --security-tone: #087f76;
+  --security-tint: #e7f6ef;
+}
+.account-sec-row[data-tone='purple'] {
+  --security-tone: #7444a6;
+  --security-tint: #f2ecff;
+}
+.account-sec-row[data-tone='amber'] {
+  --security-tone: #8a5300;
+  --security-tint: #fff3d6;
+}
+.account-sec-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 6px;
+  font-size: 18px;
+  color: var(--security-tone, #087f76);
+  background: var(--security-tint, #edf8f5);
+}
+.account-sec-copy {
+  min-width: 0;
+}
+.account-sec-copy h3 {
+  margin: 0;
+  color: var(--brand-navy);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.account-sec-copy p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.account-sec-method {
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.account-sec-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  background: #f1f5f9;
+  color: #526477;
+}
+.account-sec-status.enabled {
+  background: #e7f6ed;
+  color: #187044;
+}
+.account-sec-status.attention {
+  background: #fff3d6;
+  color: #8a5300;
+}
+.account-sec-status.demo {
+  background: #eaf2ff;
+  color: #285eaa;
+}
+.account-sec-status .material-symbols-outlined {
+  font-size: 13px;
+}
+.account-sec-action {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  justify-self: end;
+  gap: 5px;
+  min-height: 28px;
+  padding: 3px 8px;
+  border: 1px solid #c5e4dc;
+  border-radius: 5px;
+  background: #edf8f5;
+  color: #087f76;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.account-sec-action .material-symbols-outlined {
+  font-size: 16px;
+}
+.account-sec-action:hover {
+  background: #dff2eb;
+  border-color: #9ccfc0;
+}
+.account-sec-action:focus-visible {
+  outline: 2px solid #087f76;
+  outline-offset: 2px;
+}
+.account-sec-sidebar {
+  display: grid;
+  gap: 8px;
+}
+.account-sec-session {
+  padding: 8px 10px;
+}
+.account-sec-session-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.account-sec-session-heading h2 {
+  margin: 0;
+  font-size: 12px;
+  flex: 1;
+}
+.account-sec-session dl {
+  margin: 6px 0;
+}
+.account-sec-session dl > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 6px;
+  padding: 5px 0;
+  border-top: 1px solid #edf1f5;
+  font-size: 11px;
+}
+.account-sec-session dt {
+  color: var(--muted);
+}
+.account-sec-session dd {
+  margin: 0;
+  color: var(--brand-navy);
+  overflow-wrap: anywhere;
+}
+.account-sec-note {
+  display: flex;
+  align-items: start;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #526477;
+}
+.account-sec-note .material-symbols-outlined {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.account-sec-note p {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.4;
+}
+@media (max-width: 1199px) {
+  .account-sec-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 767px) {
+  .account-sec-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+    align-items: start;
+    gap: 6px 8px;
+  }
+  .account-sec-method {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+  }
+  .account-sec-row > .account-sec-action {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .account-sec-action {
+    min-height: 44px;
+  }
+  .account-sec-identity {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 4px 8px;
+  }
+  .account-sec-avatar {
+    grid-row: 1 / 3;
+  }
+  .account-sec-identity-meta {
+    grid-column: 2;
+    margin-left: 0;
+  }
+}
