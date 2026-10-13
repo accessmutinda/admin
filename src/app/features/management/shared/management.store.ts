@@ -4,6 +4,9 @@ import type { PayrollData, PayrollAction } from '../payroll/payroll.models';
 import type { RotaData, RotaAction } from '../rota/rota.models';
 import type { QualityData } from '../quality/quality.models';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
+import { ROLES } from '../../../core/auth/models/role';
+import { PAYROLL_ACTIONS } from '../payroll/payroll.models';
+import { ROTA_ACTIONS } from '../rota/rota.models';
 
 export interface Company {
   id: string;
@@ -214,6 +217,7 @@ const seedPerson = (
   progress: stage === 'Hired' ? { safeguarding: 100, handling: 40 } : {},
 });
 export interface WorkspaceData {
+  permissionDefaultsVersion?: number;
   quality?: QualityData;
   rota?: RotaData;
   rotaPermissions?: Record<string, RotaAction[]>;
@@ -240,6 +244,7 @@ export interface WorkspaceData {
 }
 function seed(): WorkspaceData {
   return {
+    permissionDefaultsVersion: 1,
     people: [
       seedPerson('sophie', 'Sophie Williams', 'Care Worker', 'Interview', 'Manchester'),
       seedPerson('oliver', 'Oliver Bennett', 'Senior Carer', 'Applied', 'London'),
@@ -335,6 +340,7 @@ function seed(): WorkspaceData {
 @Injectable({ providedIn: 'root' })
 export class ManagementStore {
   private readonly workspace = inject(WorkspaceService);
+  private accessMigrationPending = false;
   readonly companies = signal<Company[]>(
     this.restore('cv_companies_v1', [
       {
@@ -388,8 +394,18 @@ export class ManagementStore {
     this.persist('cv_management_v1', this.records());
   }
   constructor() {
+    if (this.accessMigrationPending) {
+      this.persist('cv_management_v1', this.records());
+      this.accessMigrationPending = false;
+    }
     const refresh = (event: StorageEvent) => {
-      if (event.key === 'cv_management_v1') this.records.set(this.restore('cv_management_v1', {}));
+      if (event.key === 'cv_management_v1') {
+        this.records.set(this.restore('cv_management_v1', {}));
+        if (this.accessMigrationPending) {
+          this.persist('cv_management_v1', this.records());
+          this.accessMigrationPending = false;
+        }
+      }
     };
     window.addEventListener('storage', refresh);
     const timer = window.setInterval(() => this.deadlineClock.set(new Date()), 60_000);
@@ -538,7 +554,48 @@ export class ManagementStore {
   }
   private restore<T>(key: string, fallback: T): T {
     try {
-      return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback;
+      const restored = JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback;
+      if (key !== 'cv_management_v1') return restored;
+      return Object.fromEntries(
+        Object.entries(restored as Record<string, WorkspaceData>).map(([id, data]) => {
+          if (data.permissionDefaultsVersion === 1) return [id, data];
+          this.accessMigrationPending = true;
+          const roles = new Set([
+            ...Object.values(ROLES).map((role) => role.label),
+            ...data.members.map((member) => member.role),
+            ...Object.keys(data.permissions).map((permission) => permission.split(':')[0]),
+            ...Object.keys(data.rotaPermissions ?? {}),
+            ...Object.keys(data.payrollPermissions ?? {}),
+          ]);
+          const fullPermissions = () => [true, true, true, true, true];
+          return [
+            id,
+            {
+              ...data,
+              permissionDefaultsVersion: 1,
+              permissions: {
+                ...Object.fromEntries(
+                  Object.keys(data.permissions).map((permission) => [
+                    permission,
+                    fullPermissions(),
+                  ]),
+                ),
+                ...Object.fromEntries(
+                  [...roles].flatMap((role) =>
+                    MODULES.map((module) => [role + ':' + module, fullPermissions()]),
+                  ),
+                ),
+              },
+              rotaPermissions: Object.fromEntries(
+                [...roles].map((role) => [role, ROTA_ACTIONS.map((action) => action.key)]),
+              ),
+              payrollPermissions: Object.fromEntries(
+                [...roles].map((role) => [role, PAYROLL_ACTIONS.map((action) => action.key)]),
+              ),
+            },
+          ];
+        }),
+      ) as T;
     } catch {
       return fallback;
     }
