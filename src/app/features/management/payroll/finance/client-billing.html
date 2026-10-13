@@ -53,11 +53,12 @@
     >
     <button class="button" (click)="clear()">Clear</button>
   </div>
-  <div class="table-wrap">
-    <table class="payroll-table">
+  <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+    <table class="payroll-table data-columns">
       <thead>
         <tr>
           <th class="table-primary" scope="col">Invoice</th>
+          <th scope="col" class="table-number">Visits</th>
           <th class="table-primary" scope="col">Client</th>
           <th scope="col">Funding</th>
           <th class="table-date" scope="col">Date</th>
@@ -70,9 +71,9 @@
         @for (invoice of filtered(); track invoice.id) {
           <tr>
             <td data-label="Invoice">
-              <strong>{{ invoice.number }}</strong
-              ><small>{{ invoice.lines.length }} visits</small>
+              <strong>{{ invoice.number }}</strong>
             </td>
+            <td data-label="Visits" class="table-number">{{ invoice.lines.length }}</td>
             <td data-label="Client">{{ clientName(invoice.clientId) }}</td>
             <td data-label="Funding">
               <span class="badge">{{ clientFunding(invoice.clientId) }}</span>
@@ -92,7 +93,7 @@
           </tr>
         } @empty {
           <tr>
-            <td colspan="7" class="payroll-empty-cell">
+            <td colspan="8" class="payroll-empty-cell">
               <div class="payroll-empty-state">
                 <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span
                 ><strong>No matching client invoices</strong>
@@ -139,11 +140,12 @@
         <p class="payroll-note">
           Amounts preserve the attendance and billing rates saved when this invoice was prepared.
         </p>
-        <div class="table-wrap">
-          <table class="payroll-table">
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+          <table class="payroll-table data-columns">
             <thead>
               <tr>
                 <th class="table-primary" scope="col">Visit</th>
+                <th scope="col">Billing basis</th>
                 <th class="table-date" scope="col">Date</th>
                 <th class="table-number" scope="col">Hours</th>
                 <th class="table-number table-money" scope="col">Saved rate</th>
@@ -154,8 +156,9 @@
               @for (line of invoice.lines; track line.visitId) {
                 <tr>
                   <td data-label="Visit">
-                    {{ line.call }}<small>{{ line.basis }}</small>
+                    {{ line.call }}
                   </td>
+                  <td data-label="Billing basis">{{ line.basis }}</td>
                   <td data-label="Date" class="table-date">{{ line.date | date: 'd MMM yyyy' }}</td>
                   <td data-label="Hours" class="table-number">
                     {{ line.hours | number: '1.2-4' }}

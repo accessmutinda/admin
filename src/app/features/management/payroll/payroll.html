@@ -380,9 +380,9 @@
           >
         }
       </div>
-      <div class="table-wrap">
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
         <table
-          class="payroll-table payroll-register-table"
+          class="payroll-table payroll-register-table data-columns"
           [attr.data-register]="tab() === 'Payroll' ? payrollTab() : tab()"
         >
           @if (tab() === 'Overtime' || (tab() === 'Payroll' && payrollTab() === 'Timesheets')) {
@@ -391,6 +391,7 @@
                 <th class="table-primary" scope="col">Employee</th>
                 <th class="table-date" scope="col">Work date</th>
                 <th scope="col">Work</th>
+                <th scope="col">Reason</th>
                 <th class="table-number" scope="col">Hours / units</th>
                 <th class="table-number table-money" scope="col">Amount</th>
                 <th class="table-status" scope="col">Status</th>
@@ -407,8 +408,9 @@
                     {{ w.date | date: 'd MMM yyyy' }}
                   </td>
                   <td data-label="Work">
-                    {{ w.kind }}<small>{{ w.reason }}</small>
+                    {{ w.kind }}
                   </td>
+                  <td data-label="Reason">{{ w.reason || '—' }}</td>
                   <td data-label="Hours / units" class="table-number">
                     {{
                       w.status === 'Requested' || w.status === 'Authorised'
@@ -434,7 +436,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="7" class="payroll-empty-cell">
+                  <td colspan="8" class="payroll-empty-cell">
                     <div class="payroll-empty-state">
                       <span class="material-symbols-outlined" aria-hidden="true">schedule</span
                       ><strong>No matching work records</strong>
@@ -448,9 +450,11 @@
             <thead>
               <tr>
                 <th class="table-primary" scope="col">Supplier</th>
+                <th scope="col">Email</th>
                 <th scope="col">Type</th>
                 <th class="table-number table-money" scope="col">Agreed rate</th>
-                <th scope="col">Contract</th>
+                <th scope="col">Contract start</th>
+                <th scope="col">Contract end</th>
                 <th scope="col">Terms</th>
                 <th class="table-actions" scope="col">Action</th>
               </tr>
@@ -459,16 +463,18 @@
               @for (c of filteredContractors(); track c.id) {
                 <tr>
                   <td data-label="Supplier">
-                    <strong>{{ c.name }}</strong
-                    ><small>{{ c.email }}</small>
+                    <strong>{{ c.name }}</strong>
                   </td>
+                  <td data-label="Email">{{ c.email }}</td>
                   <td data-label="Type">{{ c.type }}</td>
                   <td data-label="Agreed rate" class="table-number table-money">
                     {{ c.rate | currency: 'GBP' }} / {{ c.unit.toLowerCase() }}
                   </td>
-                  <td data-label="Contract">
-                    {{ c.start | date: 'd MMM yyyy'
-                    }}<small>{{ c.end ? (c.end | date: 'd MMM yyyy') : 'Ongoing' }}</small>
+                  <td data-label="Contract start" class="table-date">
+                    {{ c.start | date: 'd MMM yyyy' }}
+                  </td>
+                  <td data-label="Contract end" class="table-date">
+                    {{ c.end ? (c.end | date: 'd MMM yyyy') : 'Ongoing' }}
                   </td>
                   <td data-label="Terms">{{ c.terms }} days</td>
                   <td data-label="Action" class="table-actions">
@@ -477,7 +483,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="6" class="payroll-empty-cell">
+                  <td colspan="8" class="payroll-empty-cell">
                     <div class="payroll-empty-state">
                       <span class="material-symbols-outlined" aria-hidden="true">handshake</span
                       ><strong>No matching contractors</strong>
@@ -493,6 +499,7 @@
             <thead>
               <tr>
                 <th class="table-primary" scope="col">Invoice</th>
+                <th scope="col">Rate alert</th>
                 <th class="table-primary" scope="col">Supplier</th>
                 <th class="table-date" scope="col">Due</th>
                 <th class="table-number table-money" scope="col">Total</th>
@@ -506,9 +513,9 @@
                 <tr>
                   <td data-label="Invoice">
                     <strong>{{ i.number }}</strong>
-                    @if (rateWarning(i)) {
-                      <small class="payroll-warning">Rate above agreement</small>
-                    }
+                  </td>
+                  <td data-label="Rate alert" class="payroll-warning">
+                    {{ rateWarning(i) ? 'Rate above agreement' : '—' }}
                   </td>
                   <td data-label="Supplier">{{ contractorName(i.contractorId) }}</td>
                   <td data-label="Due" class="table-date">{{ i.due | date: 'd MMM yyyy' }}</td>
@@ -529,7 +536,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="7" class="payroll-empty-cell">
+                  <td colspan="8" class="payroll-empty-cell">
                     <div class="payroll-empty-state">
                       <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span
                       ><strong>No matching invoices</strong>
@@ -545,6 +552,7 @@
                 <th class="table-primary" scope="col">Employee</th>
                 <th scope="col">Basis</th>
                 <th class="table-number table-money" scope="col">Rate</th>
+                <th scope="col">Rate unit</th>
                 <th class="table-number" scope="col">Weekly hours</th>
                 <th scope="col">Frequency</th>
                 <th class="table-date" scope="col">Effective from</th>
@@ -561,8 +569,10 @@
                   </td>
                   <td data-label="Basis">{{ p.basis }}</td>
                   <td data-label="Rate" class="table-number table-money">
-                    {{ p.rate | currency: 'GBP'
-                    }}<small>{{ p.basis === 'Salary' ? 'Annual salary' : 'Per hour' }}</small>
+                    {{ p.rate | currency: 'GBP' }}
+                  </td>
+                  <td data-label="Rate unit">
+                    {{ p.basis === 'Salary' ? 'Annual salary' : 'Per hour' }}
                   </td>
                   <td data-label="Weekly hours" class="table-number">{{ p.weeklyHours }}</td>
                   <td data-label="Frequency">{{ p.frequency }}</td>
@@ -588,7 +598,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="7" class="payroll-empty-cell">
+                  <td colspan="8" class="payroll-empty-cell">
                     <div class="payroll-empty-state">
                       <span class="material-symbols-outlined" aria-hidden="true">badge</span
                       ><strong>No matching pay profiles</strong>
@@ -605,7 +615,9 @@
             <thead>
               <tr>
                 <th class="table-primary" scope="col">Pay run</th>
-                <th class="table-date" scope="col">Period</th>
+                <th scope="col">Frequency</th>
+                <th class="table-date" scope="col">Period start</th>
+                <th scope="col" class="table-date">Period end</th>
                 <th class="table-date" scope="col">Payday</th>
                 <th class="table-number" scope="col">Employees</th>
                 <th class="table-number table-money" scope="col">Estimated gross</th>
@@ -617,12 +629,14 @@
               @for (r of filteredRuns(); track r.id) {
                 <tr>
                   <td data-label="Pay run">
-                    <strong>{{ r.name }}</strong
-                    ><small>{{ r.frequency }}</small>
+                    <strong>{{ r.name }}</strong>
                   </td>
-                  <td data-label="Period" class="table-date">
-                    {{ r.start | date: 'd MMM yyyy'
-                    }}<small>to {{ r.end | date: 'd MMM yyyy' }}</small>
+                  <td data-label="Frequency">{{ r.frequency }}</td>
+                  <td data-label="Period start" class="table-date">
+                    {{ r.start | date: 'd MMM yyyy' }}
+                  </td>
+                  <td data-label="Period end" class="table-date">
+                    {{ r.end | date: 'd MMM yyyy' }}
                   </td>
                   <td data-label="Payday" class="table-date">
                     {{ r.payday | date: 'd MMM yyyy' }}
@@ -640,7 +654,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="7" class="payroll-empty-cell">
+                  <td colspan="9" class="payroll-empty-cell">
                     <div class="payroll-empty-state">
                       <span class="material-symbols-outlined" aria-hidden="true">payments</span
                       ><strong>No matching pay runs</strong>
@@ -781,8 +795,8 @@
               approval.
             </p>
           }
-          <div class="table-wrap">
-            <table>
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+            <table class="data-columns">
               <thead>
                 <tr>
                   <th scope="col">Work</th>
@@ -892,8 +906,8 @@
               {{ runTotal(r) - runTotal(previous) | currency: 'GBP' }}
             </p>
           }
-          <div class="table-wrap">
-            <table>
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+            <table class="data-columns">
               <thead>
                 <tr>
                   <th class="table-primary" scope="col">Employee</th>
@@ -902,6 +916,7 @@
                   <th class="table-number table-money" scope="col">Overtime</th>
                   <th class="table-number table-money" scope="col">Allowances</th>
                   <th class="table-number table-money" scope="col">Adjustment</th>
+                  <th scope="col">Adjustment reason</th>
                   <th class="table-number table-money" scope="col">Gross</th>
                 </tr>
               </thead>
@@ -911,14 +926,14 @@
                     <td>
                       <a class="text-link" [routerLink]="['/manage/people', l.personId]">{{
                         l.name
-                      }}</a
-                      ><small>{{ l.adjustmentReason }}</small>
+                      }}</a>
                     </td>
                     <td class="table-number">{{ l.hours }}</td>
                     <td class="table-number table-money">{{ l.basic | currency: 'GBP' }}</td>
                     <td class="table-number table-money">{{ l.overtime | currency: 'GBP' }}</td>
                     <td class="table-number table-money">{{ l.allowances | currency: 'GBP' }}</td>
                     <td class="table-number table-money">{{ l.adjustment | currency: 'GBP' }}</td>
+                    <td data-label="Adjustment reason">{{ l.adjustmentReason || '—' }}</td>
                     <td class="table-number table-money">{{ l.total | currency: 'GBP' }}</td>
                   </tr>
                 }
