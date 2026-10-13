@@ -7,6 +7,7 @@ import { COURSES, Course, Person } from '../../shared/management.store';
   selector: 'cv-academy-courses',
   imports: [FormsModule, MatSelectModule, CvSelect],
   templateUrl: './academy-courses.html',
+  styleUrl: './academy-courses.css',
 })
 export class AcademyCourses {
   protected readonly search = signal('');

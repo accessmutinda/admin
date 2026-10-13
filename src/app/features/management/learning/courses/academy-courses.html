@@ -18,39 +18,76 @@
     <mat-option value="Development">Development</mat-option>
   </mat-select>
 </div>
-<div class="course-grid">
+<div class="academy-course-list">
   @for (course of filtered(); track course.id) {
-    <article class="course-card panel">
-      <div class="course-body">
-        <small class="muted">LEVEL 2 <span class="footer-dot">·</span> {{ course.duration }}</small>
-        <div class="course-heading">
-          <span class="course-art course-icon" [attr.data-course]="course.id"
-            ><span class="material-symbols-outlined" aria-hidden="true">{{
-              course.icon
-            }}</span></span
+    @let progress = person()?.progress?.[course.id] || 0;
+    <article
+      class="academy-course-entry panel"
+      [class.course-completed]="progress === 100"
+      [class.course-in-progress]="progress > 0 && progress < 100"
+    >
+      <span class="academy-course-symbol" [attr.data-course]="course.id" aria-hidden="true"
+        ><span class="material-symbols-outlined">{{ course.icon }}</span></span
+      >
+      <div class="academy-course-copy">
+        <h3>{{ course.title }}</h3>
+        <div class="academy-course-meta">
+          <span class="academy-category" [attr.data-category]="course.category">{{
+            course.category
+          }}</span>
+          <span class="academy-course-level">Level 2</span>
+          <span class="academy-course-duration"
+            ><span class="material-symbols-outlined" aria-hidden="true">schedule</span
+            >{{ course.duration }}</span
           >
-          <div>
-            <h3>{{ course.title }}</h3>
-            <span class="badge">{{ course.category }}</span>
-          </div>
         </div>
         <p>{{ course.description }}</p>
-        <div class="card-footer">
-          <span class="muted">{{
-            person()?.progress?.[course.id] === 100
-              ? 'Completed'
-              : (person()?.progress?.[course.id] || 0) + '% complete'
+      </div>
+      <div class="academy-course-actions">
+        <span
+          class="academy-course-status"
+          [class.completed]="progress === 100"
+          [class.in-progress]="progress > 0 && progress < 100"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">{{
+            progress === 100
+              ? 'check_circle'
+              : progress > 0
+                ? 'timelapse'
+                : 'radio_button_unchecked'
           }}</span
-          ><button class="text-link" (click)="courseOpened.emit(course)">
-            {{
-              person()?.progress?.[course.id] === 100
-                ? 'Review'
-                : person()?.progress?.[course.id]
-                  ? 'Continue'
-                  : 'Start learning'
-            }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
-          </button>
-        </div>
+          >{{ progress === 100 ? 'Completed' : progress + '% complete' }}</span
+        >
+        @if (progress > 0 && progress < 100) {
+          <span
+            class="academy-course-progress"
+            role="progressbar"
+            [attr.aria-label]="course.title + ' progress'"
+            [attr.aria-valuenow]="progress"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            ><span [style.width.%]="progress"></span
+          ></span>
+        }
+        <button
+          class="academy-course-open"
+          [attr.aria-label]="
+            (person()?.progress?.[course.id] === 100
+              ? 'Review '
+              : person()?.progress?.[course.id]
+                ? 'Continue '
+                : 'Start learning: ') + course.title
+          "
+          (click)="courseOpened.emit(course)"
+        >
+          {{
+            person()?.progress?.[course.id] === 100
+              ? 'Review'
+              : person()?.progress?.[course.id]
+                ? 'Continue'
+                : 'Start learning'
+          }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+        </button>
       </div>
     </article>
   } @empty {
