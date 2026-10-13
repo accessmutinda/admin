@@ -65,40 +65,100 @@
       </div>
     </div>
     @if (mode() === 'onboarding') {
-      <div class="onboarding-grid">
-        @for (person of filtered(); track person.id) {
-          <article class="onboarding-card">
-            <div class="person-cell">
-              <span class="avatar lilac">{{ store.initials(person.name) }}</span
-              ><span
-                ><h3>{{ person.name }}</h3>
-                <cv-management-role [label]="person.role"
-              /></span>
-            </div>
-            <div class="row between">
-              <small class="muted">{{ completed(person) }} of 8 steps completed</small
-              ><strong>{{ percent(person) }}%</strong>
-            </div>
-            <div class="progress-track"><span [style.width.%]="percent(person)"></span></div>
-            <p class="muted">
-              Next: {{ checklist[person.onboarding.indexOf(false)] || 'All steps complete' }}
-            </p>
-            <a
-              class="text-link"
-              [routerLink]="['/manage/people', person.id]"
-              [queryParams]="{ tab: 'Onboarding' }"
-              >Continue onboarding<span class="material-symbols-outlined" aria-hidden="true"
-                >arrow_forward</span
-              ></a
-            >
-          </article>
-        } @empty {
-          <div class="empty-state">
-            <h3>No new starters found</h3>
-            <p>Hire an applicant from Recruitment to begin their journey.</p>
-            <a routerLink="/manage/recruitment" class="button">Open recruitment</a>
-          </div>
-        }
+      <div
+        class="table-wrap"
+        tabindex="0"
+        role="region"
+        aria-label="Scrollable new starter journeys"
+      >
+        <table class="starter-table data-columns" aria-label="New starter journeys">
+          <thead>
+            <tr>
+              <th scope="col">Team member</th>
+              <th scope="col">Role</th>
+              <th scope="col">Progress</th>
+              <th scope="col" class="table-number">Steps completed</th>
+              <th scope="col">Next step</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="table-actions">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (person of filtered(); track person.id) {
+              <tr class="starter-journey" [class.is-complete]="percent(person) === 100">
+                <td>
+                  <div class="starter-identity">
+                    <span class="starter-avatar" aria-hidden="true">{{
+                      store.initials(person.name)
+                    }}</span>
+                    <strong>{{ person.name }}</strong>
+                  </div>
+                </td>
+                <td><cv-management-role [label]="person.role" /></td>
+                <td>
+                  <div class="starter-progress">
+                    <strong>{{ percent(person) }}%</strong>
+                    <div
+                      class="starter-progress-track"
+                      role="progressbar"
+                      [attr.aria-label]="'Onboarding progress for ' + person.name"
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                      [attr.aria-valuenow]="percent(person)"
+                    >
+                      <span [style.width.%]="percent(person)"></span>
+                    </div>
+                  </div>
+                </td>
+                <td class="table-number">{{ completed(person) }} / {{ checklist.length }}</td>
+                <td class="starter-next">
+                  {{ checklist[person.onboarding.indexOf(false)] || 'All steps complete' }}
+                </td>
+                <td>
+                  <span class="starter-status">
+                    <span class="material-symbols-outlined" aria-hidden="true">{{
+                      percent(person) === 100 ? 'check_circle' : 'schedule'
+                    }}</span>
+                    {{
+                      percent(person) === 100
+                        ? 'Complete'
+                        : completed(person)
+                          ? 'In progress'
+                          : 'Not started'
+                    }}
+                  </span>
+                </td>
+                <td class="table-actions">
+                  <a
+                    class="starter-action"
+                    [routerLink]="['/manage/people', person.id]"
+                    [queryParams]="{ tab: 'Onboarding' }"
+                    [attr.aria-label]="
+                      (percent(person) === 100
+                        ? 'Review onboarding for '
+                        : 'Continue onboarding for ') + person.name
+                    "
+                  >
+                    {{ percent(person) === 100 ? 'Review' : 'Continue'
+                    }}<span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_forward</span
+                    >
+                  </a>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="empty-cell">
+                  <div class="empty-state">
+                    <h3>No new starters found</h3>
+                    <p>Hire an applicant from Recruitment to begin their journey.</p>
+                    <a routerLink="/manage/recruitment" class="button">Open recruitment</a>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
     } @else {
       <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">

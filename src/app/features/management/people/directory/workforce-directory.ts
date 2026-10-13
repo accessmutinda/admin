@@ -9,6 +9,7 @@ import { CHECKS, ONBOARDING, ManagementStore, Person } from '../../shared/manage
   selector: 'cv-workforce-directory',
   imports: [FormsModule, RouterLink, MatSelectModule, CvSelect, ManagementRole],
   templateUrl: './workforce-directory.html',
+  styleUrl: './workforce-directory.css',
 })
 export class WorkforceDirectory {
   readonly mode = input.required<string>();

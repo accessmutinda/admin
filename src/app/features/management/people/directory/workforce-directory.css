@@ -1,0 +1,98 @@
+.starter-journey {
+  --journey-accent: #087f76;
+}
+.starter-journey.is-complete {
+  --journey-accent: #047857;
+}
+.starter-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.starter-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #edf8f5;
+  color: var(--journey-accent);
+  font-size: 10px;
+  font-weight: 600;
+}
+.starter-status {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: #f2f6f8;
+  color: #526477;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.starter-status .material-symbols-outlined {
+  font-size: 14px;
+}
+.is-complete .starter-status {
+  background: #edf8f1;
+  color: var(--journey-accent);
+}
+.starter-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.starter-progress > strong {
+  min-width: 32px;
+  color: var(--journey-accent);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.starter-progress-track {
+  height: 4px;
+  width: 64px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: #e9eff3;
+}
+.starter-progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--journey-accent);
+}
+.starter-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 3px 8px;
+  border: 1px solid #c5e4dc;
+  border-radius: 6px;
+  background: #edf8f5;
+  color: var(--journey-accent);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.starter-action .material-symbols-outlined {
+  font-size: 16px;
+}
+.starter-action:hover {
+  background: #dff2eb;
+  border-color: #9ccfc0;
+}
+.starter-action:focus-visible {
+  outline: 2px solid var(--journey-accent);
+  outline-offset: 2px;
+}
+@media (max-width: 767px) {
+  .starter-action {
+    min-height: 44px;
+  }
+}
