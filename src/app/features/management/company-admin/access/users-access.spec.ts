@@ -76,6 +76,7 @@ describe('UsersAccess permission drafts', () => {
     expect(editor.hasPayrollAction('manage')).toBe(false);
     editor.role = 'Care Worker';
     editor.changeRole();
+    editor.applyPermissionPreset('none');
     editor.togglePayrollAction('view');
     editor.savePermissions();
     expect(store.data().payrollPermissions?.['Care Worker']).toEqual(['view']);
@@ -91,6 +92,7 @@ describe('UsersAccess permission drafts', () => {
     expect(editor.hasRotaAction('publish')).toBe(false);
     editor.role = 'Care Worker';
     editor.changeRole();
+    editor.applyPermissionPreset('none');
     editor.toggleRotaAction('view');
     editor.toggleRotaAction('attendance');
     editor.savePermissions();

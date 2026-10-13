@@ -93,6 +93,7 @@ describe('ECM records', () => {
     expect(service.record('visit', action())).toContain('Could not save');
     expect(service.data().records).toHaveLength(0);
     actor.set({ ...actor(), roleCode: 'CW' });
+    store.update((data) => ({ ...data, rotaPermissions: { 'Care Worker': ['view'] } }));
     expect(service.record('visit', action())).toContain('cannot manage');
   });
   it('records check-in then verified check-out, locking completed attendance', () => {

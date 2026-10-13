@@ -41,6 +41,7 @@ describe('ECM frontend workflows', () => {
       expect(demo.next()).toBeNull();
     }
     actor.set({ ...actor(), roleCode: 'FN' });
+    store.update((data) => ({ ...data, rotaPermissions: { 'Finance Officer': ['view'] } }));
     expect(ops.rota.can('manage')).toBe(false);
     expect(ops.createInvoices(londonDate())).toBeNull();
     const invoice = ops.data().invoices[0];
@@ -50,6 +51,7 @@ describe('ECM frontend workflows', () => {
     expect(ops.data().invoices[0].audit.at(-1)?.note).toBe('Exported');
     expect(ops.createInvoices(londonDate())).toContain('No new');
     actor.set({ ...actor(), roleCode: 'CW' });
+    store.update((data) => ({ ...data, payrollPermissions: { 'Care Worker': ['view'] } }));
     expect(ops.createInvoices(londonDate())).toContain('access');
     expect(ops.invoiceState(invoice.id, 'Approved')).toContain('cannot');
   });
@@ -266,6 +268,7 @@ describe('ECM frontend workflows', () => {
     expect(ops.reschedule(v.id, v.date, '15:00', 'Agreed', true)).toContain('Could not save');
     expect(ops.rota.data().visits.find((r) => r.id === v.id)?.start).toBe(v.start);
     actor.set({ ...actor(), roleCode: 'CW' });
+    store.update((data) => ({ ...data, rotaPermissions: { 'Care Worker': ['view'] } }));
     expect(ops.createPack(v.date)).toContain('permission');
     expect(demo.next()).toContain('permission');
   });

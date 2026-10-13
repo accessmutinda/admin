@@ -68,7 +68,7 @@ describe('Rota allocation and publishing', () => {
     expect(service.saveClient(client())).toBeNull();
     expect(service.saveCall(call())).toBeNull();
   });
-  it('keeps rota records isolated by company and denies unauthorised roles', () => {
+  it('keeps rota records isolated by company and honours saved restrictions', () => {
     expect(service.generate('client', ['call'], '2026-10-06', '2026-10-06', ['james'])).toBeNull();
     TestBed.inject(WorkspaceService).switchWorkspace('riverside');
     expect(service.data().clients).toHaveLength(0);
@@ -76,7 +76,9 @@ describe('Rota allocation and publishing', () => {
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     expect(service.data().visits).toHaveLength(1);
     actor.set({ ...actor(), roleCode: 'CW' });
-    expect(service.can('view')).toBe(false);
+    expect(service.can('view')).toBe(true);
+    expect(service.can('manage')).toBe(true);
+    store.update((d) => ({ ...d, rotaPermissions: { 'Care Worker': ['view'] } }));
     expect(service.generate('client', ['call'], '2026-10-07', '2026-10-07')).toContain(
       'permission',
     );

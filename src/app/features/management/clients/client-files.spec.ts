@@ -166,6 +166,10 @@ describe('Client files and care records', () => {
     expect(service.data().clients).toHaveLength(0);
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     actor.set({ ...DEMO_USER, roleCode: 'CW' });
+    TestBed.inject(ManagementStore).update((data) => ({
+      ...data,
+      rotaPermissions: { 'Care Worker': ['view'] },
+    }));
     editor.save();
     expect(editor.error()).toContain('permission');
     expect(service.data().clients[0].name).toBe('Mary Smith');

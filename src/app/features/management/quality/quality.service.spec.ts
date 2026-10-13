@@ -45,7 +45,12 @@ describe('Supervisor and quality workflows', () => {
   }
   it('enforces role and module permissions for reading, creating, editing and exporting', () => {
     actor.set({ ...DEMO_USER, roleCode: 'CW' });
-    expect(service.can('view')).toBe(false);
+    expect(service.can('view')).toBe(true);
+    expect(service.can('create')).toBe(true);
+    store.update((d) => ({
+      ...d,
+      permissions: { 'Care Worker:Quality & compliance': [true, false, false, false, false] },
+    }));
     expect(service.saveAssessment(service.newAssessment('spot'), 'draft')).toContain('permission');
     actor.set({ ...DEMO_USER, roleCode: 'QA' });
     expect(service.can('create')).toBe(true);

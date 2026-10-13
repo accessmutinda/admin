@@ -5,6 +5,7 @@ import { WorkspaceService } from '../../../core/auth/workspace.service';
 import { DEMO_USER } from '../../../core/auth/fixtures';
 import { Rota } from './rota';
 import { RotaService } from './rota.service';
+import { ManagementStore } from '../shared/management.store';
 
 describe('Rota screens', () => {
   beforeEach(() => {
@@ -64,6 +65,10 @@ describe('Rota screens', () => {
     expect(element.querySelector('.rota-call-list')?.textContent).toContain('Prepare breakfast');
   });
   it('shows a clear permission panel and links to the current role instead of displaying rota data', async () => {
+    TestBed.inject(ManagementStore).update((data) => ({
+      ...data,
+      rotaPermissions: { 'Care Worker': [] },
+    }));
     vi.mocked(TestBed.inject(AuthService).currentUser).mockReturnValue({
       ...DEMO_USER,
       roleCode: 'CW',

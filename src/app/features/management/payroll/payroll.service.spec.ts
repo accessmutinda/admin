@@ -107,7 +107,9 @@ describe('Payroll administration', () => {
   });
   it('enforces role actions and Finance module permissions before writing records', () => {
     switchActor('worker', 'CW');
-    expect(service.can('view')).toBe(false);
+    expect(service.can('view')).toBe(true);
+    expect(service.can('manage')).toBe(true);
+    store.update((d) => ({ ...d, payrollPermissions: { 'Care Worker': ['view'] } }));
     expect(service.saveProfile(profile())).toContain('permission');
     expect(service.data().profiles).toHaveLength(0);
     store.update((d) => ({ ...d, payrollPermissions: { 'Care Worker': ['view'] } }));
