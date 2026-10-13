@@ -8,6 +8,7 @@
 .cv-management .app-body main.page-content .table-overflow-note {
   display: none;
 }
+
 .cv-management .app-body main.page-content .settings-grid .check-label {
   margin-block: 6px;
 }
@@ -638,4 +639,109 @@
     align-items: center;
     margin-top: 5px;
   }
+}
+
+/* Registers keep separate fields in columns at every screen size. */
+.cv-management .app-body main.page-content :is(.table-wrap, .company-directory):has(.data-columns) {
+  overflow-x: auto;
+}
+.cv-management .app-body main.page-content :is(.table-wrap, .company-directory) table.data-columns {
+  display: table;
+  table-layout: auto;
+  width: 100%;
+  min-width: max-content;
+}
+.cv-management
+  .app-body
+  main.page-content
+  :is(.table-wrap, .company-directory)
+  .data-columns
+  thead {
+  display: table-header-group;
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+}
+.cv-management
+  .app-body
+  main.page-content
+  :is(.table-wrap, .company-directory)
+  .data-columns
+  tbody {
+  display: table-row-group;
+}
+.cv-management .app-body main.page-content :is(.table-wrap, .company-directory) .data-columns tr {
+  display: table-row;
+  margin: 0;
+  padding: 0;
+}
+.cv-management
+  .app-body
+  main.page-content
+  :is(.table-wrap, .company-directory)
+  .data-columns
+  :is(th, td) {
+  display: table-cell;
+  width: auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  vertical-align: middle;
+}
+.cv-management
+  .app-body
+  main.page-content
+  :is(.table-wrap, .company-directory)
+  .data-columns
+  tbody
+  th,
+.cv-management
+  .app-body
+  main.page-content
+  :is(.table-wrap, .company-directory)
+  .data-columns
+  tbody
+  td {
+  padding: 6px 12px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  :is(.table-wrap, .company-directory)
+  .data-columns
+  td::before {
+  content: none;
+  display: none;
+}
+.cv-management
+  .app-body
+  main.page-content
+  :is(.table-wrap, .company-directory)
+  .data-columns
+  :is(.badge, .workspace-status) {
+  white-space: nowrap;
+}
+.cv-management
+  .app-body
+  main.page-content
+  :is(.table-wrap, .company-directory)
+  .data-columns
+  .learner-completion
+  > strong {
+  display: inline-block;
+}
+.cv-management
+  .app-body
+  main.page-content
+  :is(.table-wrap, .company-directory)
+  .data-columns
+  .learner-completion
+  .progress-track {
+  display: inline-block;
+  width: 64px;
+  margin: 0 0 0 8px;
+  vertical-align: middle;
 }
