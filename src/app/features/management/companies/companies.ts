@@ -68,16 +68,20 @@ import { ManagementStore } from '../shared/management.store';
         </label>
       </div>
       @if (filtered().length) {
-        <div class="company-directory">
-          <table class="company-table" aria-label="Company directory">
+        <div
+          class="company-directory"
+          tabindex="0"
+          role="region"
+          aria-label="Scrollable data table"
+        >
+          <table class="company-table data-columns" aria-label="Company directory">
             <thead>
               <tr>
                 <th scope="col" class="table-primary">Company</th>
+                <th scope="col">Code</th>
+                <th scope="col">Postcode</th>
                 <th scope="col">Care sector</th>
-                <th scope="col" class="company-staff-heading">
-                  <span class="desktop-label">Staff size</span
-                  ><span class="tablet-label">Staff / modules</span>
-                </th>
+                <th scope="col" class="company-staff-heading">Staff size</th>
                 <th scope="col" class="table-number company-modules-heading">Modules</th>
                 <th scope="col" class="table-status">Workspace</th>
                 <th scope="col" class="table-actions">
@@ -106,19 +110,11 @@ import { ManagementStore } from '../shared/management.store';
                           [routerLink]="['/manage/companies', company.id]"
                           >{{ company.name }}</a
                         >
-                        <div class="company-identity-meta">
-                          <span class="company-code-label">{{ company.code }}</span>
-                          @if (company.postcode) {
-                            <span class="company-location"
-                              ><span class="material-symbols-outlined" aria-hidden="true"
-                                >location_on</span
-                              >{{ company.postcode }}</span
-                            >
-                          }
-                        </div>
                       </div>
                     </div>
                   </th>
+                  <td data-label="Code">{{ company.code }}</td>
+                  <td data-label="Postcode">{{ company.postcode || '—' }}</td>
                   <td class="company-sector-cell">
                     <span class="sector-label">
                       <span class="material-symbols-outlined" aria-hidden="true">{{
@@ -131,8 +127,6 @@ import { ManagementStore } from '../shared/management.store';
                     <span class="company-staff-size"
                       ><span class="material-symbols-outlined" aria-hidden="true">groups</span
                       >{{ company.size }}</span
-                    ><small class="company-tablet-modules"
-                      >{{ company.modules.length }} modules</small
                     >
                   </td>
                   <td class="company-modules-cell table-number">

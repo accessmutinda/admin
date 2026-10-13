@@ -55,8 +55,8 @@
         <button class="button" type="submit">Search</button>
       </form>
     </div>
-    <div class="table-wrap">
-      <table class="record-table leave-table" aria-label="Team availability and leave">
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+      <table class="record-table leave-table data-columns" aria-label="Team availability and leave">
         <thead>
           <tr>
             <th scope="col" class="table-primary">Team member</th>
@@ -146,8 +146,11 @@
         <button class="button" type="submit">Search</button>
       </form>
     </div>
-    <div class="table-wrap">
-      <table class="record-table reviews-table" aria-label="Supervision and appraisals">
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+      <table
+        class="record-table reviews-table data-columns"
+        aria-label="Supervision and appraisals"
+      >
         <thead>
           <tr>
             <th scope="col" class="table-primary">Team member</th>

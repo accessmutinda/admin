@@ -365,11 +365,12 @@
       </div>
     }
     @if (view() === 'Vacancies') {
-      <div class="table-wrap">
-        <table>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+        <table class="data-columns">
           <thead>
             <tr>
               <th scope="col">Vacancy</th>
+              <th scope="col">Type</th>
               <th scope="col">Location</th>
               <th scope="col">Salary</th>
               <th class="table-date" scope="col">Go-live date</th>
@@ -382,9 +383,9 @@
             @for (vacancy of store.data().vacancies; track vacancy.id) {
               <tr>
                 <td>
-                  <strong>{{ vacancy.title }}</strong
-                  ><small>{{ vacancy.type }}</small>
+                  <strong>{{ vacancy.title }}</strong>
                 </td>
+                <td>{{ vacancy.type }}</td>
                 <td>{{ vacancy.location }}</td>
                 <td>{{ vacancy.salary || 'Not specified' }}</td>
                 <td>
@@ -427,7 +428,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="7">
+                <td colspan="8">
                   No vacancies yet. Create a vacancy to build your application page.
                 </td>
               </tr>

@@ -101,14 +101,15 @@
         }
       </div>
     } @else {
-      <div class="table-wrap">
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
         <table
-          class="workforce-table"
+          class="workforce-table data-columns"
           [attr.aria-label]="mode() === 'staff' ? 'Staff directory' : 'Employment checks'"
         >
           <thead>
             <tr>
               <th scope="col" class="table-primary">Team member</th>
+              <th scope="col">Email</th>
               <th scope="col">Role</th>
               <th scope="col">Location</th>
               <th scope="col">{{ mode() === 'compliance' ? 'Employment checks' : 'Status' }}</th>
@@ -122,11 +123,11 @@
                   <div class="person-cell">
                     <span class="avatar">{{ store.initials(person.name) }}</span
                     ><span
-                      ><strong>{{ person.name }}</strong
-                      ><small>{{ person.email }}</small></span
+                      ><strong>{{ person.name }}</strong></span
                     >
                   </div>
                 </td>
+                <td data-label="Email">{{ person.email }}</td>
                 <td class="workforce-role" data-label="Role">
                   <cv-management-role [label]="person.role" />
                 </td>
@@ -165,7 +166,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="5" class="empty-cell">No team members match this view.</td>
+                <td colspan="6" class="empty-cell">No team members match this view.</td>
               </tr>
             }
           </tbody>

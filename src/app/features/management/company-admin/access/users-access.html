@@ -39,11 +39,12 @@
           (ngModelChange)="search.set($event)"
       /></label>
     </div>
-    <div class="table-wrap">
-      <table class="workspace-users-table" aria-label="Workspace users">
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+      <table class="workspace-users-table data-columns" aria-label="Workspace users">
         <thead>
           <tr>
             <th scope="col" class="table-primary">User</th>
+            <th scope="col">Email</th>
             <th scope="col">Role assignment</th>
             <th scope="col" class="table-status">Status</th>
           </tr>
@@ -55,11 +56,11 @@
                 <div class="person-cell">
                   <span class="avatar">{{ store.initials(member.name) }}</span
                   ><span
-                    ><strong>{{ member.name }}</strong
-                    ><small>{{ member.email }}</small></span
+                    ><strong>{{ member.name }}</strong></span
                   >
                 </div>
               </td>
+              <td data-label="Email">{{ member.email }}</td>
               <td class="workspace-user-role">
                 <mat-select
                   cvSelect
@@ -90,7 +91,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="3" class="empty-cell">No users match your search.</td>
+              <td colspan="4" class="empty-cell">No users match your search.</td>
             </tr>
           }
         </tbody>

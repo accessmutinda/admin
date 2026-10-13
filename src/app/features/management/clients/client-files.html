@@ -201,14 +201,17 @@
           }
         </div>
         @if (clients().length) {
-          <div class="table-wrap">
-            <table class="client-table">
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+            <table class="client-table data-columns">
               <thead>
                 <tr>
                   <th scope="col" class="table-primary">Client</th>
+                  <th scope="col">Reference</th>
+                  <th scope="col">Postcode</th>
                   <th scope="col">Care priority</th>
                   <th scope="col">Call packages</th>
                   <th scope="col">Plan review</th>
+                  <th scope="col">Review alert</th>
                   <th scope="col" class="table-status">Status</th>
                   <th scope="col" class="table-actions">Record</th>
                 </tr>
@@ -222,11 +225,12 @@
                         <div>
                           <a class="text-link" [routerLink]="['/manage/clients', c.id]">{{
                             c.name
-                          }}</a
-                          ><small>{{ c.reference }} · {{ c.postcode }}</small>
+                          }}</a>
                         </div>
                       </div>
                     </td>
+                    <td data-label="Reference">{{ c.reference }}</td>
+                    <td data-label="Postcode">{{ c.postcode || '—' }}</td>
                     <td data-label="Care priority">
                       <span class="badge" [class.warning]="c.priority === 'High'">{{
                         c.priority
@@ -237,9 +241,9 @@
                       <span [class.client-overdue]="reviewDue(c)">{{
                         review(c) ? (review(c) | date: 'dd MMM yyyy') : 'Not recorded'
                       }}</span>
-                      @if (reviewDue(c)) {
-                        <small>Review due</small>
-                      }
+                    </td>
+                    <td data-label="Review alert" [class.client-overdue]="reviewDue(c)">
+                      {{ reviewDue(c) ? 'Review due' : '—' }}
                     </td>
                     <td data-label="Status" class="table-status">
                       <span class="badge" [class.success]="c.active">{{
