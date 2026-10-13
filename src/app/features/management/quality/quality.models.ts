@@ -262,18 +262,8 @@ export const assessmentOverdue = (a: Assessment, today: string) =>
 export const actionOverdue = (a: CorrectiveAction, today: string) =>
   a.status !== 'Completed' && a.due < today;
 
-export function qualityDefaults(role: string): boolean[] {
-  return [
-    'Platform Owner',
-    'Company Admin',
-    'Registered Manager',
-    'Field Supervisor',
-    'Quality Assurance',
-    'Compliance Officer',
-    'Care Coordinator',
-  ].includes(role)
-    ? [true, true, true, false, true]
-    : [false, false, false, false, false];
+export function qualityDefaults(_role: string): boolean[] {
+  return [true, true, true, true, true];
 }
 
 export function ukTimestamp(value: string): string {

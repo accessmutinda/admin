@@ -104,7 +104,7 @@ export class UsersAccess {
           ...(this.store.data().permissions[this.role + ':' + m] ??
             (m === 'Quality & compliance'
               ? qualityDefaults(this.role)
-              : [true, true, true, false, true])),
+              : [true, true, true, true, true])),
         ],
       ]),
     );

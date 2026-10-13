@@ -22,16 +22,8 @@ export const ROTA_ACTIONS = [
   { key: 'export', label: 'Export rota data', description: 'Download filtered visit schedules' },
 ] as const;
 export type RotaAction = (typeof ROTA_ACTIONS)[number]['key'];
-export function rotaDefaults(role: string): RotaAction[] {
-  return [
-    'Company Admin',
-    'Platform Owner',
-    'Registered Manager',
-    'Care Coordinator',
-    'Field Supervisor',
-  ].includes(role)
-    ? ROTA_ACTIONS.map((a) => a.key)
-    : [];
+export function rotaDefaults(_role: string): RotaAction[] {
+  return ROTA_ACTIONS.map((action) => action.key);
 }
 export interface RotaClient {
   file?: import('../clients/client-file.models').ClientFile;

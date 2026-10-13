@@ -165,9 +165,6 @@ export function invoiceBalance(invoice: Invoice): number {
     invoiceTotal(invoice) - invoice.payments.reduce((sum, payment) => sum + payment.amount, 0),
   );
 }
-export function payrollDefaults(role: string): PayrollAction[] {
-  if (['Company Admin', 'Platform Owner', 'Finance Officer'].includes(role))
-    return PAYROLL_ACTIONS.map((a) => a.key);
-  if (['Registered Manager', 'HR Officer'].includes(role)) return ['view', 'manage', 'approve'];
-  return [];
+export function payrollDefaults(_role: string): PayrollAction[] {
+  return PAYROLL_ACTIONS.map((action) => action.key);
 }
