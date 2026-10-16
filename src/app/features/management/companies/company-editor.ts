@@ -15,6 +15,7 @@ export class CompanyEditor {
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
   protected readonly isNew = this.route.snapshot.paramMap.get('id') === null;
+  private readonly duplicateId = this.route.snapshot.queryParamMap.get('duplicate');
   protected readonly existing = this.store
     .companies()
     .find((c) => c.id === this.route.snapshot.paramMap.get('id'));
@@ -69,7 +70,16 @@ export class CompanyEditor {
       description: 'Understand performance and make informed decisions',
     },
   };
-  protected readonly step = signal(0);
+  protected readonly step = signal(
+    this.isNew
+      ? 0
+      : Math.max(
+          0,
+          ['Company details', 'Branding', 'Modules'].indexOf(
+            this.route.snapshot.queryParamMap.get('section') ?? 'Company details',
+          ),
+        ),
+  );
   protected readonly submitted = signal(false);
   protected readonly preview = signal(false);
   protected company: Company = this.existing
@@ -88,6 +98,18 @@ export class CompanyEditor {
         logo: '',
         modules: ['Care delivery', 'People & HR', 'Training academy'],
       };
+  constructor() {
+    if (this.isNew && this.duplicateId) {
+      const source = this.store.companies().find((c) => c.id === this.duplicateId);
+      if (source)
+        this.company = {
+          ...structuredClone(source),
+          id: crypto.randomUUID(),
+          name: source.name + ' (Copy)',
+          code: source.code + '-COPY',
+        };
+    }
+  }
   protected next(): void {
     this.submitted.set(true);
     if (this.step() === 0 && (!this.company.name.trim() || !this.company.code.trim())) return;
