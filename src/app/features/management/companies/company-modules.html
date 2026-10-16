@@ -518,7 +518,14 @@
                 <p>Accounts recorded for this company.</p>
               </div>
               @if (sameWorkspace()) {
-                <a class="cm-button cm-outline" routerLink="/manage/access">Manage Users</a>
+                <button
+                  type="button"
+                  class="cm-button cm-outline"
+                  (click)="openUserDialog('invite')"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Invite
+                  User
+                </button>
               }
             </div>
             <label class="cm-search"
@@ -537,6 +544,7 @@
                     <th scope="col">Email</th>
                     <th scope="col">Role</th>
                     <th scope="col">Status</th>
+                    <th scope="col">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -545,13 +553,13 @@
                       <th scope="row">
                         <span class="cm-person"
                           ><span class="cm-person-avatar" aria-hidden="true">{{
-                            store.initials(member.name)
+                            store.initials(member.name || member.email)
                           }}</span
-                          ><span>{{ member.name }}</span></span
+                          ><span>{{ member.name || 'Invited user' }}</span></span
                         >
                       </th>
                       <td>{{ member.email }}</td>
-                      <td>{{ member.role }}</td>
+                      <td><cv-management-role [label]="member.role" /></td>
                       <td>
                         <span
                           class="cm-member-status"
@@ -560,10 +568,40 @@
                           >{{ member.status }}</span
                         >
                       </td>
+                      <td>
+                        @if (sameWorkspace()) {
+                          <button
+                            type="button"
+                            class="cm-user-actions"
+                            [matMenuTriggerFor]="userActions"
+                            [attr.aria-label]="'Actions for ' + member.email"
+                          >
+                            <span class="material-symbols-outlined" aria-hidden="true"
+                              >more_horiz</span
+                            >
+                          </button>
+                          <mat-menu #userActions="matMenu"
+                            ><button mat-menu-item (click)="openUserDialog('edit', member)">
+                              <span class="material-symbols-outlined" aria-hidden="true">edit</span
+                              >Edit Role &amp; Status</button
+                            ><button
+                              mat-menu-item
+                              class="cm-delete-user-action"
+                              (click)="openUserDialog('delete', member)"
+                            >
+                              <span class="material-symbols-outlined" aria-hidden="true"
+                                >delete</span
+                              >Delete User
+                            </button></mat-menu
+                          >
+                        } @else {
+                          <span>—</span>
+                        }
+                      </td>
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="4" class="cm-empty">
+                      <td colspan="5" class="cm-empty">
                         {{
                           memberSearch()
                             ? 'No users match your search.'

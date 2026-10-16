@@ -13,7 +13,11 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe, NgTemplateOutlet } from '@angular/common';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
-import { ManagementStore } from '../shared/management.store';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatMenuModule } from '@angular/material/menu';
+import { CompanyUserDialog } from './company-user-dialog';
+import { ManagementRole } from '../shared/role-pill';
+import { ManagementStore, Member } from '../shared/management.store';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { companyModifiedAt } from './company-profile.models';
@@ -43,6 +47,9 @@ import {
     NgTemplateOutlet,
     MatSelectModule,
     CvSelect,
+    MatDialogModule,
+    MatMenuModule,
+    ManagementRole,
   ],
   templateUrl: './company-modules.html',
 })
@@ -50,6 +57,7 @@ export class CompanyModulesPage {
   protected readonly store = inject(ManagementStore);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
@@ -159,6 +167,18 @@ export class CompanyModulesPage {
     return this.draft.userLimit
       ? Math.round((this.assignedUsers() / this.draft.userLimit) * 100)
       : null;
+  }
+  protected openUserDialog(mode: 'invite' | 'edit' | 'delete', member?: Member): void {
+    if (!this.sameWorkspace()) {
+      this.toast.info('Select this company’s workspace to manage its users.');
+      return;
+    }
+    this.dialog.open(CompanyUserDialog, {
+      width: '440px',
+      maxWidth: 'calc(100vw - 24px)',
+      autoFocus: mode === 'invite' ? '#cm-user-email' : 'first-tabbable',
+      data: { companyId: this.id, mode, member: member ? structuredClone(member) : undefined },
+    });
   }
   protected filteredMembers() {
     const q = this.memberSearch().trim().toLowerCase();

@@ -1,3 +1,5 @@
+import { MatDialog } from '@angular/material/dialog';
+import { CompanyUserDialog } from './company-user-dialog';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
@@ -274,6 +276,48 @@ describe('Company modules and subscription', () => {
     expect(csv).toContain('""quoted""');
     for (const notes of [' =FORMULA()', '\n=FORMULA()', '+FORMULA()', '@FORMULA()']) {
       expect(subscriptionCsv([{ ...editor.draft.invoices[0], notes }])).toContain('"\'' + notes);
+    }
+  });
+  it('opens invite, edit and delete popups from the users table', async () => {
+    await open('limits');
+    const dialog = harness.routeDebugElement!.injector.get(MatDialog);
+    const popup = vi.spyOn(dialog, 'open').mockReturnValue({} as ReturnType<MatDialog['open']>);
+    const invite = Array.from(harness.routeNativeElement!.querySelectorAll('button')).find(
+      (button) => button.textContent?.replace(/\s+/g, ' ').includes('Invite User'),
+    ) as HTMLButtonElement;
+    expect(invite).toBeTruthy();
+    invite.click();
+    expect(popup).toHaveBeenCalledWith(
+      CompanyUserDialog,
+      expect.objectContaining({
+        data: expect.objectContaining({ companyId: 'lqcs', mode: 'invite' }),
+      }),
+    );
+    const actions = harness.routeNativeElement!.querySelector(
+      '.cm-user-actions',
+    ) as HTMLButtonElement;
+    for (const [label, mode] of [
+      ['Edit Role & Status', 'edit'],
+      ['Delete User', 'delete'],
+    ]) {
+      actions.click();
+      await harness.fixture.whenStable();
+      const action = Array.from(document.querySelectorAll('.mat-mdc-menu-item')).find((button) =>
+        button.textContent?.includes(label),
+      ) as HTMLButtonElement;
+      expect(action).toBeTruthy();
+      action.click();
+      await harness.fixture.whenStable();
+      expect(popup).toHaveBeenCalledWith(
+        CompanyUserDialog,
+        expect.objectContaining({
+          data: expect.objectContaining({
+            companyId: 'lqcs',
+            mode,
+            member: expect.objectContaining({ email: store.data().members[0].email }),
+          }),
+        }),
+      );
     }
   });
   it('protects unsaved changes when leaving the module pages', async () => {
