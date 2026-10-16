@@ -551,6 +551,19 @@ export class ManagementStore {
     });
     return true;
   }
+  setCompaniesActive(ids: string[], active: boolean, actor: string): boolean {
+    const selected = new Set(ids);
+    const current = this.restore<Company[]>('cv_companies_v1', this.companies());
+    if (!selected.size || [...selected].some((id) => !current.some((company) => company.id === id)))
+      return false;
+    const modifiedAt = new Date().toISOString();
+    const next = current.map((company) =>
+      selected.has(company.id) ? { ...company, active, modifiedAt, modifiedBy: actor } : company,
+    );
+    if (!this.persist('cv_companies_v1', next)) return false;
+    this.companies.set(next);
+    return true;
+  }
   initials(name: string): string {
     return name
       .split(' ')
