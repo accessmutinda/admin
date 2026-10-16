@@ -121,6 +121,12 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           >
             <span class="material-symbols-outlined" aria-hidden="true">menu</span>
           </button>
+          @if (isCompaniesOverview()) {
+            <div class="co-console-heading">
+              <strong>Admin Console</strong
+              ><span>Manage companies, users, and system configuration</span>
+            </div>
+          }
           <button
             type="button"
             class="workspace-control"
@@ -183,6 +189,9 @@ export class ManagementLayout {
     { path: '/manage/reviews', label: 'Supervision & appraisals', icon: 'forum' },
     { path: '/manage/learning', label: 'Training academy', icon: 'school' },
   ];
+  protected isCompaniesOverview(): boolean {
+    return this.router.url.split(/[?#]/)[0] === '/manage/companies';
+  }
   protected switchWorkspace(): void {
     this.router.navigateByUrl('/select-workspace');
   }

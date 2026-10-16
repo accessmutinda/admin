@@ -1,0 +1,281 @@
+<div class="co-heading">
+  <h1>Company Setup Overview</h1>
+  <p>Manage and configure care provider companies across the CareVerity platform</p>
+</div>
+@if (company(); as current) {
+  <section class="co-summary co-surface" aria-label="Current company overview">
+    <div class="co-company-image" [style.background]="current.logo ? '#eef7fa' : null">
+      @if (current.logo) {
+        <img [src]="current.logo" [alt]="current.name + ' logo'" />
+      } @else {
+        <div class="co-reference-photo" role="img" aria-label="Residential care home"></div>
+      }
+    </div>
+    <div class="co-summary-content">
+      <div class="co-summary-header">
+        <div class="co-company-title">
+          <h2>{{ current.name }}</h2>
+          <span class="co-active">{{ current.modules.length ? 'Active' : 'Pending setup' }}</span>
+        </div>
+        <a class="co-profile-button" [routerLink]="profileLink()"
+          >View Company Profile
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a
+        >
+      </div>
+      <div class="co-facts">
+        <div>
+          <span>Company code</span><strong>{{ current.code }}</strong>
+        </div>
+        <div>
+          <span>Registration number</span
+          ><strong>{{ current.registration || 'Not provided' }}</strong>
+        </div>
+        <div class="co-service-type">
+          <span>Service type</span><strong>{{ current.sector }}</strong>
+        </div>
+      </div>
+      <div class="co-details">
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+          ><span><small>Head Office</small>{{ current.postcode || 'Location not added' }}</span>
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+          ><span><small>Last updated</small>Not recorded</span>
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">person</span
+          ><span><small>Assigned plan</small>{{ current.modules.length }} modules enabled</span>
+        </div>
+      </div>
+    </div>
+  </section>
+}
+<div class="co-metrics">
+  <section class="co-stat co-surface">
+    <span class="co-stat-icon blue material-symbols-outlined" aria-hidden="true">domain</span>
+    <div>
+      <h2>Total Companies</h2>
+      <strong>{{ store.companies().length }}</strong>
+      <p>Across all regions</p>
+    </div>
+  </section>
+  <section class="co-stat co-surface">
+    <span class="co-stat-icon green material-symbols-outlined" aria-hidden="true">domain</span>
+    <div>
+      <h2>Active Companies</h2>
+      <strong>{{ active() }}</strong>
+      <p>
+        {{
+          store.companies().length ? ((active() / store.companies().length) * 100).toFixed(0) : 0
+        }}% of total
+      </p>
+      <progress
+        [value]="active()"
+        [max]="store.companies().length || 1"
+        aria-label="Active companies"
+      ></progress>
+    </div>
+  </section>
+  <section class="co-stat co-surface">
+    <span class="co-stat-icon amber material-symbols-outlined" aria-hidden="true">schedule</span>
+    <div>
+      <h2>Pending Setups</h2>
+      <strong>{{ pending() }}</strong>
+      <p>Profiles to complete</p>
+      <progress
+        class="amber"
+        [value]="pending()"
+        [max]="store.companies().length || 1"
+        aria-label="Pending company setups"
+      ></progress>
+    </div>
+  </section>
+  <section class="co-stat co-surface">
+    <span class="co-stat-icon cyan material-symbols-outlined" aria-hidden="true"
+      >format_list_bulleted</span
+    >
+    <div>
+      <h2>Profile Completion</h2>
+      <strong>{{ average() }}%</strong>
+      <p>Average across all companies</p>
+      <progress [value]="average()" max="100" aria-label="Average profile completion"></progress>
+    </div>
+  </section>
+  <section class="co-stat co-surface">
+    <span class="co-stat-icon red material-symbols-outlined" aria-hidden="true">edit_calendar</span>
+    <div>
+      <h2>Open Admin Tasks</h2>
+      <strong>{{ tasks() }}</strong>
+      <p>Requires attention</p>
+    </div>
+  </section>
+</div>
+<div class="co-main-grid">
+  <section class="co-checklist co-surface" aria-labelledby="co-checklist-title">
+    <div class="co-section-header">
+      <h2 id="co-checklist-title">
+        <span class="material-symbols-outlined" aria-hidden="true">description</span>Company Setup
+        Checklist
+        <span
+          class="co-info material-symbols-outlined"
+          title="Status is based on the current company configuration"
+          aria-label="Status is based on the current company configuration"
+          >info</span
+        >
+      </h2>
+      <div class="co-overall">
+        <span
+          >Overall Completion <strong>{{ company() ? completion(company()!) : 0 }}%</strong></span
+        ><progress
+          [value]="company() ? completion(company()!) : 0"
+          max="100"
+          aria-label="Current company profile completion"
+        ></progress>
+      </div>
+    </div>
+    <div class="co-check-grid">
+      @for (item of checklist(); track item.title) {
+        <a
+          class="co-check-card"
+          [routerLink]="item.link"
+          [queryParams]="item.section ? { section: item.section } : {}"
+        >
+          <span
+            class="co-check-icon material-symbols-outlined"
+            [attr.data-tone]="item.tone"
+            aria-hidden="true"
+            >{{ item.icon }}</span
+          >
+          <div>
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.description }}</p>
+            <span
+              class="co-check-status"
+              [class.complete]="item.state === 'Complete'"
+              [class.in-progress]="item.state === 'In Progress'"
+              ><span class="co-status-icon" aria-hidden="true"></span>{{ item.state }}</span
+            >
+          </div>
+        </a>
+      }
+    </div>
+  </section>
+  <aside class="co-right-column">
+    <section class="co-actions co-surface" aria-labelledby="co-actions-title">
+      <div class="co-section-header">
+        <h2 id="co-actions-title">
+          <span class="material-symbols-outlined" aria-hidden="true">bolt</span>Quick Actions
+        </h2>
+      </div>
+      <div class="co-action-list">
+        @for (action of actions(); track action.title) {
+          <a
+            [routerLink]="action.link"
+            [queryParams]="{ section: action.section, duplicate: action.duplicate }"
+            [class.co-primary]="$first"
+            ><span class="material-symbols-outlined" aria-hidden="true">{{ action.icon }}</span
+            >{{ action.title
+            }}<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></a
+          >
+        }
+      </div>
+    </section>
+  </aside>
+  <section class="co-updates co-surface" aria-labelledby="co-updates-title">
+    <div class="co-section-header co-updates-heading">
+      <h2 id="co-updates-title">
+        <span class="material-symbols-outlined" aria-hidden="true">description</span>Recent Company
+        Updates
+      </h2>
+      <label class="co-search"
+        ><span class="material-symbols-outlined" aria-hidden="true">search</span
+        ><input
+          #companySearch
+          id="co-company-search"
+          aria-label="Search companies"
+          placeholder="Search companies, codes or service types…"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+        />
+        @if (search()) {
+          <button type="button" (click)="search.set('')" aria-label="Clear company search">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
+        }
+      </label>
+      <a href="#co-company-search" (click)="companySearch.focus()"
+        >View all companies
+        <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a
+      >
+    </div>
+    <div class="co-table-scroll" tabindex="0" role="region" aria-label="Company updates table">
+      <table>
+        <thead>
+          <tr>
+            <th>Company Name</th>
+            <th>Company Code</th>
+            <th>Service Type</th>
+            <th>Setup Status</th>
+            <th>Profile Completion</th>
+            <th>Modules</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of filtered(); track row.id) {
+            <tr>
+              <td>
+                <a class="co-table-company" [routerLink]="['/manage/companies', row.id]"
+                  ><span class="co-table-logo" [style.background]="row.color">
+                    @if (row.logo) {
+                      <img [src]="row.logo" alt="" />
+                    } @else {
+                      <span class="material-symbols-outlined" aria-hidden="true">apartment</span>
+                    }</span
+                  >{{ row.name }}</a
+                >
+              </td>
+              <td>{{ row.code }}</td>
+              <td>{{ row.sector }}</td>
+              <td>
+                <span class="co-table-status" [class.pending]="!row.modules.length"
+                  ><i></i>{{ row.modules.length ? 'Active' : 'Pending setup' }}</span
+                >
+              </td>
+              <td>
+                <div class="co-completion">
+                  <strong>{{ completion(row) }}%</strong
+                  ><progress
+                    [value]="completion(row)"
+                    max="100"
+                    [class.amber]="completion(row) < 75"
+                    [attr.aria-label]="row.name + ' profile completion'"
+                  ></progress>
+                </div>
+              </td>
+              <td>{{ row.modules.length }} enabled</td>
+              <td>
+                <a
+                  class="co-row-action"
+                  [routerLink]="['/manage/companies', row.id]"
+                  [attr.aria-label]="'Manage ' + row.name"
+                  ><span class="material-symbols-outlined" aria-hidden="true">more_horiz</span></a
+                >
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7" class="co-empty">
+                No companies found. Try another company name or service type.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="co-table-footer">
+      Showing {{ filtered().length }} of {{ store.companies().length }} companies
+    </div>
+  </section>
+</div>

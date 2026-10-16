@@ -1,0 +1,834 @@
+.cv-management:has(.companies-page) {
+  --accent: #008bd9;
+  --brand-navy: #093252;
+  --muted: #657184;
+  background: #f1f7fa;
+  color: #123352;
+}
+.cv-management:has(.companies-page) .app-sidebar {
+  background: #0b3050;
+}
+.cv-management:has(.companies-page) .app-sidebar > a.active {
+  background: #007caa;
+  box-shadow: inset 3px 0 #17c5de;
+  color: white;
+}
+.cv-management:has(.companies-page) .app-header {
+  background: #fff;
+  height: 48px;
+  border-bottom: 1px solid #e5edf1;
+}
+.cv-management:has(.companies-page) .app-footer {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.cv-management:has(.companies-page) .workspace-control {
+  background: #fafdff;
+  border-color: #dfe8ed;
+}
+.cv-management:has(.companies-page) .workspace-mark,
+.cv-management:has(.companies-page) .avatar {
+  background: #004579;
+  color: #fff;
+}
+.cv-management .app-body main.page-content:has(.companies-page) {
+  padding: 10px 14px;
+  background: #f1f7fa;
+}
+.cv-management .companies-page {
+  display: block;
+  --co-navy: #002b60;
+  --co-green: #24b86b;
+  font-size: 12px;
+}
+.cv-management .companies-page .co-heading {
+  margin-bottom: 24px;
+}
+.cv-management .app-body main.page-content .companies-page h1 {
+  color: #081535;
+  font-size: 21px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.7px;
+}
+.cv-management .companies-page .co-heading p {
+  font-size: 12px;
+  margin-top: 4px;
+  color: #677488;
+}
+.cv-management .companies-page .co-surface {
+  background: linear-gradient(120deg, #fff, #fcfefe);
+  border: 1px solid #e9eff3;
+  border-radius: 9px;
+  box-shadow: 0 2px 7px #123c541f;
+}
+.cv-management .companies-page .co-summary {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+.cv-management .companies-page .co-company-image {
+  width: 88px;
+  height: 72px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  overflow: hidden;
+  background: linear-gradient(150deg, #d9f2ff 0%, #eefbff 44%, #a6cfb8 45%, #618d6c 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #075475;
+  gap: 8px;
+}
+.cv-management .companies-page .co-company-image > .material-symbols-outlined {
+  font-size: 66px;
+  font-variation-settings: 'FILL' 1;
+}
+.cv-management .companies-page .co-company-image > span:last-child {
+  font-size: 10px;
+  font-weight: 700;
+}
+.cv-management .companies-page .co-company-image img {
+  width: 100%;
+  height: 72px;
+  object-fit: contain;
+  padding: 5px;
+}
+.cv-management .companies-page .co-summary-content {
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+}
+.cv-management .companies-page .co-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-bottom: 6px;
+}
+.cv-management .companies-page .co-company-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cv-management .app-body main.page-content .companies-page .co-company-title h2 {
+  color: #071536;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+.cv-management .companies-page .co-active {
+  background: #c9f4df;
+  color: #087337;
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.cv-management .companies-page .co-profile-button {
+  display: flex;
+  flex-shrink: 0;
+  white-space: nowrap;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #e0e8ee;
+  padding: 5px 8px;
+  border-radius: 5px;
+  color: #0066ac;
+  font-size: 11px;
+}
+.cv-management .companies-page .co-profile-button .material-symbols-outlined {
+  font-size: 17px;
+}
+.cv-management .companies-page .co-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 6px;
+  font-size: 11px;
+}
+.cv-management .companies-page .co-facts div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 3px 6px;
+}
+.cv-management .companies-page .co-facts strong {
+  font-weight: 700;
+  color: #10355e;
+}
+.cv-management .companies-page .co-facts div > span {
+  color: #68768a;
+}
+.cv-management .companies-page .co-details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px solid #edf2f5;
+}
+.cv-management .companies-page .co-details > div {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.cv-management .companies-page .co-details > div:first-child {
+  padding-left: 0;
+  border: 0;
+}
+.cv-management .companies-page .co-details .material-symbols-outlined {
+  color: #0089e3;
+  font-size: 20px;
+  font-variation-settings: 'FILL' 1;
+}
+.cv-management .companies-page .co-details small {
+  display: inline;
+  margin-right: 6px;
+  font-size: 11px;
+  color: #536781;
+}
+.cv-management .companies-page .co-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px 8px;
+  margin-bottom: 12px;
+}
+.cv-management .companies-page .co-stat {
+  padding: 8px 9px 7px;
+  display: flex;
+  gap: 9px;
+  min-width: 0;
+}
+.cv-management .companies-page .co-stat > div {
+  flex: 1;
+  min-width: 0;
+}
+.cv-management .companies-page .co-stat-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: white;
+  border-radius: 7px;
+  font-size: 23px;
+  box-shadow: inset 0 0 9px #ffffff29;
+}
+.cv-management .companies-page .blue {
+  background: #008afa;
+}
+.cv-management .companies-page .green {
+  background: #00a34e;
+}
+.cv-management .companies-page .amber.co-stat-icon {
+  background: #ffb000;
+}
+.cv-management .companies-page .cyan {
+  background: #03a6c1;
+}
+.cv-management .companies-page .red {
+  background: #ff3047;
+}
+.cv-management .app-body main.page-content .companies-page .co-stat h2 {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.15px;
+  color: var(--co-navy);
+  white-space: nowrap;
+}
+.cv-management .companies-page .co-stat strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.15;
+  color: #081334;
+  margin: 2px 0;
+}
+.cv-management .companies-page .co-stat p {
+  font-size: 11px;
+  color: #6c7587;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.cv-management .companies-page .co-stat progress {
+  height: 6px;
+  margin-top: 4px;
+}
+.cv-management .companies-page progress {
+  appearance: none;
+  border: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  width: 100%;
+  height: 5px;
+  display: block;
+  margin-top: 3px;
+  background: #e8eef1;
+  accent-color: var(--co-green);
+}
+.cv-management .companies-page progress::-webkit-progress-bar {
+  background: #e8eef1;
+  border-radius: 20px;
+}
+.cv-management .companies-page progress::-webkit-progress-value {
+  background: linear-gradient(90deg, #35c07d, #27b969);
+  border-radius: 20px;
+}
+.cv-management .companies-page progress::-moz-progress-bar {
+  background: #27b969;
+  border-radius: 20px;
+}
+.cv-management .companies-page progress.amber::-webkit-progress-value {
+  background: #ffbc00;
+}
+.cv-management .companies-page progress.amber::-moz-progress-bar {
+  background: #ffbc00;
+}
+.cv-management .companies-page .co-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2.15fr) minmax(295px, 1fr);
+  gap: 12px 8px;
+  align-items: stretch;
+}
+.cv-management .companies-page .co-checklist {
+  padding: 8px;
+}
+.cv-management .companies-page .co-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.cv-management .app-body main.page-content .companies-page .co-section-header h2 {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  color: var(--co-navy);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.35px;
+  line-height: 1.4;
+}
+.cv-management .companies-page .co-section-header h2 > .material-symbols-outlined {
+  color: #00528c;
+  font-size: 20px;
+  font-variation-settings: 'FILL' 1;
+}
+.cv-management .companies-page .co-section-header h2 > .co-info {
+  font-size: 16px;
+  color: #6e91bc;
+}
+.cv-management .companies-page .co-overall {
+  width: 33%;
+  min-width: 150px;
+  font-size: 11px;
+  color: #57687b;
+}
+.cv-management .companies-page .co-overall > span {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cv-management .companies-page .co-overall strong {
+  font-size: 14px;
+  color: #06365c;
+}
+.cv-management .companies-page .co-check-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 6px;
+}
+.cv-management .companies-page .co-check-card {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #e8eef0;
+  border-radius: 7px;
+  color: var(--co-navy);
+  min-height: 76px;
+  background: #ffffff80;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.cv-management .companies-page .co-check-card:hover {
+  background: #f3fbff;
+  border-color: #8ccde8;
+}
+.cv-management .companies-page .co-check-card > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cv-management .companies-page .co-check-icon {
+  font-size: 25px;
+  color: #008d9f;
+  font-variation-settings: 'FILL' 1;
+}
+.cv-management .companies-page .co-check-icon[data-tone='blue'] {
+  color: #008eff;
+}
+.cv-management .companies-page .co-check-icon[data-tone='cyan'] {
+  color: #00aac4;
+}
+.cv-management .companies-page .co-check-icon[data-tone='orange'] {
+  color: #ff8a00;
+}
+.cv-management .app-body main.page-content .companies-page .co-check-card h3 {
+  font-size: 12px;
+  font-weight: 700;
+  color: #06376b;
+  line-height: 1.35;
+}
+.cv-management .companies-page .co-check-card p {
+  color: #6b7688;
+  font-size: 11px;
+  line-height: 1.35;
+  margin: 2px 0 4px;
+}
+.cv-management .companies-page .co-check-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #7d8798;
+  margin-top: auto;
+  font-size: 11px;
+}
+.cv-management .companies-page .co-status-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  position: relative;
+}
+.cv-management .companies-page .co-status-icon::before,
+.cv-management .companies-page .co-status-icon::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #677386;
+}
+.cv-management .companies-page .co-status-icon::after {
+  background: #d7dce2;
+}
+.cv-management .companies-page .co-check-status.complete {
+  color: #008b49;
+}
+.cv-management .companies-page .complete .co-status-icon {
+  background: #009c53;
+  border-radius: 50%;
+}
+.cv-management .companies-page .complete .co-status-icon::before {
+  position: absolute;
+  width: 5px;
+  height: 9px;
+  left: 6px;
+  top: 3px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  border-radius: 0;
+  background: transparent;
+  transform: rotate(45deg);
+}
+.cv-management .companies-page .complete .co-status-icon::after,
+.cv-management .companies-page .in-progress .co-status-icon::before,
+.cv-management .companies-page .in-progress .co-status-icon::after {
+  display: none;
+}
+.cv-management .companies-page .co-check-status.in-progress {
+  color: #d97706;
+}
+.cv-management .companies-page .in-progress .co-status-icon {
+  border: 3px solid #f59e0b;
+  border-top-color: #fde6b8;
+  border-radius: 50%;
+}
+.cv-management .companies-page .co-right-column {
+  display: grid;
+  grid-template-rows: 1fr;
+  align-self: stretch;
+  gap: 8px;
+  grid-column: 2;
+  grid-row: 1;
+}
+.cv-management .companies-page .co-actions {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+}
+.cv-management .companies-page :is(.co-checklist, .co-actions) > .co-section-header {
+  min-height: 30px;
+}
+.cv-management .companies-page .co-action-list {
+  display: grid;
+  grid-template-rows: repeat(5, minmax(27px, 1fr));
+  flex: 1;
+  gap: 6px;
+}
+.cv-management .companies-page .co-action-list a {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: #16375b;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  padding: 3px 8px;
+  min-height: 27px;
+  background: linear-gradient(#fff, #f9fcfd);
+  font-size: 12px;
+}
+.cv-management .companies-page .co-action-list a > .material-symbols-outlined:last-child {
+  margin-left: auto;
+  font-size: 18px;
+}
+.cv-management .companies-page .co-action-list a.co-primary {
+  color: white;
+  background: linear-gradient(#07577b, #00375e);
+  border-color: #00456b;
+}
+.cv-management .companies-page .co-action-list a:hover {
+  box-shadow: 0 0 0 2px #00a4ce30;
+}
+.cv-management .companies-page .co-updates {
+  grid-column: 1 / -1;
+  padding: 6px 10px 0;
+}
+.cv-management .companies-page .co-updates .co-section-header > a {
+  color: #007bcc;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.cv-management .companies-page .co-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #e2eaf0;
+  border-radius: 5px;
+  padding: 3px 8px;
+  margin: 0;
+  width: 280px;
+  max-width: 100%;
+  color: #7d8c9b;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .companies-page
+  .co-search
+  input:not([type='checkbox'], [type='color'], [type='file']) {
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  height: 20px;
+  line-height: 20px;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  min-width: 0;
+  flex: 1;
+  outline: none;
+  font-size: 11px;
+  color: #123352;
+}
+.cv-management .companies-page .co-search:focus-within {
+  outline: 2px solid #008bd9;
+  outline-offset: 2px;
+}
+.cv-management .companies-page .co-search button {
+  border: 0;
+  background: transparent;
+  display: flex;
+  padding: 0;
+}
+.cv-management .companies-page .co-search .material-symbols-outlined {
+  font-size: 17px;
+}
+.cv-management .companies-page .co-table-scroll {
+  overflow-x: auto;
+}
+.cv-management .companies-page table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  text-align: left;
+  white-space: nowrap;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .companies-page
+  table
+  thead
+  th {
+  font-size: 10px;
+  background: #eff5f8;
+  color: #53677f;
+  font-weight: 500;
+  line-height: 1.3;
+  padding: 4px 8px;
+}
+.cv-management .companies-page table td {
+  padding: 2px 8px;
+  border-bottom: 1px solid #edf2f5;
+  color: #617087;
+}
+.cv-management .companies-page .co-table-company {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #0b315c;
+}
+.cv-management .companies-page .co-table-logo {
+  width: 26px;
+  height: 21px;
+  border-radius: 3px;
+  display: grid;
+  place-items: center;
+  color: white;
+  overflow: hidden;
+}
+.cv-management .companies-page .co-table-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.cv-management .companies-page .co-table-logo .material-symbols-outlined {
+  font-size: 20px;
+}
+.cv-management .companies-page .co-table-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cv-management .companies-page .co-table-status i {
+  width: 8px;
+  height: 5px;
+  background: #13b76b;
+  border-radius: 50%;
+}
+.cv-management .companies-page .co-table-status.pending i {
+  background: #a3aeb8;
+}
+.cv-management .companies-page .co-completion {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.cv-management .companies-page .co-completion strong {
+  font-size: 11px;
+  color: #16375d;
+  min-width: 28px;
+}
+.cv-management .companies-page .co-completion progress {
+  min-width: 90px;
+  max-width: 130px;
+  height: 7px;
+  margin: 0;
+}
+.cv-management .companies-page .co-row-action {
+  color: #365878;
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.cv-management .companies-page .co-row-action:hover {
+  background: #e4f3fa;
+}
+.cv-management .companies-page .co-table-footer {
+  padding: 5px 8px;
+  color: #7a8795;
+  font-size: 10px;
+}
+.cv-management .companies-page .co-empty {
+  text-align: center;
+  height: 60px;
+}
+@media (max-width: 1250px) {
+  .cv-management .companies-page .co-stat {
+    gap: 7px;
+    padding: 7px;
+  }
+  .cv-management .companies-page .co-stat-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 21px;
+  }
+  .cv-management .app-body main.page-content .companies-page .co-stat h2,
+  .cv-management .companies-page .co-stat p {
+    white-space: normal;
+  }
+}
+@media (max-width: 1100px) {
+  .cv-management .companies-page .co-main-grid {
+    grid-template-columns: minmax(0, 1fr) 270px;
+  }
+  .cv-management .companies-page .co-check-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cv-management .companies-page .co-checklist .co-section-header {
+    flex-wrap: wrap;
+  }
+  .cv-management .companies-page .co-overall {
+    width: 100%;
+  }
+}
+@media (max-width: 760px) {
+  .cv-management .app-body main.page-content:has(.companies-page) {
+    padding: 12px;
+  }
+  .cv-management .companies-page .co-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cv-management .companies-page .co-metrics > :last-child {
+    grid-column: 1 / -1;
+  }
+  .cv-management .companies-page .co-main-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cv-management .companies-page .co-right-column {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .cv-management .companies-page .co-summary {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .cv-management .companies-page .co-company-image {
+    width: 72px;
+    align-self: start;
+    height: 78px;
+  }
+  .cv-management .companies-page .co-company-image > .material-symbols-outlined {
+    font-size: 48px;
+  }
+  .cv-management .companies-page .co-company-image > span:last-child {
+    display: none;
+  }
+  .cv-management .app-body main.page-content .companies-page .co-company-title h2 {
+    font-size: 19px;
+  }
+  .cv-management .companies-page .co-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    font-size: 11px;
+  }
+  .cv-management .companies-page .co-facts > div:last-child {
+    grid-column: 1 / -1;
+  }
+  .cv-management .companies-page .co-details {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+  .cv-management .companies-page .co-details > div {
+    border: 0;
+    padding: 0;
+  }
+  .cv-management .companies-page .co-section-header {
+    flex-wrap: wrap;
+  }
+  .cv-management .companies-page .co-check-card {
+    gap: 7px;
+    padding: 11px 8px;
+  }
+  .cv-management .companies-page .co-check-icon {
+    font-size: 25px;
+  }
+  .cv-management .app-body main.page-content .companies-page h1 {
+    font-size: 21px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cv-management .companies-page .co-check-card {
+    transition: none;
+  }
+}
+.cv-management:has(.companies-page) .co-console-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: 28px;
+}
+.cv-management:has(.companies-page) .co-console-heading strong {
+  font-size: 18px;
+  line-height: 1.2;
+  color: #002b60;
+  font-weight: 800;
+}
+.cv-management:has(.companies-page) .co-console-heading span {
+  color: #63758b;
+  font-size: 12px;
+}
+@media (max-width: 1250px) {
+  .cv-management:has(.companies-page) .co-console-heading span {
+    display: none;
+  }
+  .cv-management:has(.companies-page) .co-console-heading {
+    margin-right: 8px;
+  }
+}
+@media (max-width: 760px) {
+  .cv-management:has(.companies-page) .co-console-heading {
+    display: none;
+  }
+}
+.cv-management .companies-page .co-company-image {
+  position: relative;
+}
+.cv-management .companies-page .co-reference-photo {
+  position: absolute;
+  inset: 0;
+  background-image: url('/brand/company-overview-reference.jpg');
+  background-size: 762.1% 775.7%;
+  background-position: 20.99% 18.08%;
+}
+
+.cv-management .companies-page .co-facts .co-service-type {
+  align-items: baseline;
+}
+.cv-management .companies-page .co-service-type strong {
+  padding: 1px 6px;
+  background: #eaf5fc;
+  border-radius: 4px;
+  color: #0066ac;
+}
+.cv-management .companies-page .co-updates-heading {
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 4px;
+}
+.cv-management .companies-page .co-updates-heading .co-search {
+  margin-left: auto;
+}
+@media (max-width: 760px) {
+  .cv-management .companies-page .co-company-title {
+    padding-right: 0;
+  }
+  .cv-management .companies-page .co-summary {
+    min-height: 0;
+  }
+  .cv-management .companies-page .co-company-image {
+    min-height: 78px;
+  }
+  .cv-management .companies-page .co-profile-button {
+    margin: 0;
+  }
+  .cv-management .companies-page .co-updates-heading .co-search {
+    width: 100%;
+    margin-left: 0;
+    max-width: none;
+  }
+}
