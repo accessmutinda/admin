@@ -227,11 +227,11 @@
             <tr>
               <td>
                 <a class="co-table-company" [routerLink]="['/manage/companies', row.id]"
-                  ><span class="co-table-logo" [style.background]="row.color">
+                  ><span class="co-table-logo">
                     @if (row.logo) {
                       <img [src]="row.logo" alt="" />
                     } @else {
-                      <span class="material-symbols-outlined" aria-hidden="true">apartment</span>
+                      <span class="co-reference-photo" aria-hidden="true"></span>
                     }</span
                   >{{ row.name }}</a
                 >
