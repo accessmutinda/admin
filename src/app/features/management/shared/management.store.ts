@@ -21,6 +21,16 @@ export interface Company {
   tagline: string;
   logo: string;
   modules: string[];
+  tradingName?: string;
+  description?: string;
+  establishedDate?: string;
+  headOfficeName?: string;
+  headOfficeAddress?: string;
+  registeredPlaces?: number | null;
+  primaryLanguage?: string;
+  active?: boolean;
+  modifiedAt?: string;
+  modifiedBy?: string;
 }
 export interface StaffDocument {
   id: string;
@@ -497,20 +507,28 @@ export class ManagementStore {
   addPerson(person: Person): void {
     this.update((d) => ({ ...d, people: [...d.people, person] }));
   }
-  saveCompany(company: Company): void {
+  saveCompany(company: Company): boolean {
     const isNew = !this.companies().some((c) => c.id === company.id);
-    if (isNew)
-      this.records.update((all) => ({
-        ...all,
-        [company.id]: {
-          ...seed(),
-          people: [],
-          vacancies: [],
-          members: [],
-          leaves: [],
-          reviews: [],
-        },
-      }));
+    const nextCompanies = isNew
+      ? [...this.companies(), structuredClone(company)]
+      : this.companies().map((c) => (c.id === company.id ? structuredClone(company) : c));
+    const nextRecords = isNew
+      ? {
+          ...this.records(),
+          [company.id]: {
+            ...seed(),
+            people: [],
+            vacancies: [],
+            members: [],
+            leaves: [],
+            reviews: [],
+          },
+        }
+      : this.records();
+    if (isNew && !this.persist('cv_management_v1', nextRecords)) return false;
+    if (!this.persist('cv_companies_v1', nextCompanies)) return false;
+    this.companies.set(nextCompanies);
+    if (isNew) this.records.set(nextRecords);
     this.workspace.registerWorkspace({
       id: company.id,
       name: company.name,
@@ -521,13 +539,7 @@ export class ManagementStore {
         this.workspace.allWorkspaces().find((w) => w.id === company.id)?.serviceUserCount ?? 0,
       colorClass: 'bg-teal-600',
     });
-    this.companies.update((all) =>
-      all.some((c) => c.id === company.id)
-        ? all.map((c) => (c.id === company.id ? structuredClone(company) : c))
-        : [...all, structuredClone(company)],
-    );
-    this.persist('cv_companies_v1', this.companies());
-    this.persist('cv_management_v1', this.records());
+    return true;
   }
   initials(name: string): string {
     return name

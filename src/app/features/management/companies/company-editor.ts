@@ -116,7 +116,12 @@ export class CompanyEditor {
     if (this.step() === 2 && !this.company.modules.length) return;
     this.submitted.set(false);
     if (this.step() === 3) {
-      this.store.saveCompany(this.company);
+      if (!this.store.saveCompany(this.company)) {
+        this.toast.error(
+          'Company settings could not be saved. Free some browser storage and try again.',
+        );
+        return;
+      }
       this.toast.success(this.isNew ? 'Company created.' : 'Company profile saved.');
     }
     this.step.update((v) => v + 1);
@@ -137,7 +142,12 @@ export class CompanyEditor {
       this.step.set(2);
       return;
     }
-    this.store.saveCompany(this.company);
+    if (!this.store.saveCompany(this.company)) {
+      this.toast.error(
+        'Company settings could not be saved. Free some browser storage and try again.',
+      );
+      return;
+    }
     this.submitted.set(false);
     this.toast.success('Company settings saved.');
   }
