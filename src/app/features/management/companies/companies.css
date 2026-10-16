@@ -13,6 +13,9 @@
   box-shadow: inset 3px 0 #17c5de;
   color: white;
 }
+.cv-management .app-sidebar > a.active[href='/manage/companies'] .material-symbols-outlined {
+  color: #fff;
+}
 .cv-management:has(.companies-page) .app-header {
   background: #fff;
   height: 48px;
