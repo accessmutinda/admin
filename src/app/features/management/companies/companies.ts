@@ -32,6 +32,7 @@ export class Companies {
           .includes(this.search().trim().toLowerCase()),
       ),
   );
+  protected readonly preview = computed(() => this.filtered().slice(0, 5));
   protected readonly completion = companyCompletion;
   protected readonly modifiedAt = companyModifiedAt;
   protected readonly average = computed(() => {

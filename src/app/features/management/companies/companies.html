@@ -213,7 +213,9 @@
           </button>
         }
       </label>
-      <a href="#co-company-search" (click)="companySearch.focus()"
+      <a
+        routerLink="/manage/companies/directory"
+        [queryParams]="search() ? { search: search() } : {}"
         >View all companies
         <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a
       >
@@ -232,7 +234,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (row of filtered(); track row.id) {
+          @for (row of preview(); track row.id) {
             <tr>
               <td>
                 <a class="co-table-company" [routerLink]="['/manage/companies', row.id]"
@@ -286,7 +288,8 @@
       </table>
     </div>
     <div class="co-table-footer">
-      Showing {{ filtered().length }} of {{ store.companies().length }} companies
+      Showing {{ preview().length }} of {{ filtered().length }}
+      {{ search() ? 'matching companies' : 'companies' }}
     </div>
   </section>
 </div>

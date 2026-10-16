@@ -1,0 +1,412 @@
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/companies">Companies</a
+  ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span
+  ><span aria-current="page">Company Directory</span>
+</nav>
+<div class="cd-heading">
+  <div class="co-heading">
+    <h1>Company Directory</h1>
+    <p>Search, filter and manage all provider companies.</p>
+  </div>
+  <div class="cd-actions">
+    <a class="cd-button cd-primary" routerLink="/manage/companies/new"
+      ><span class="material-symbols-outlined" aria-hidden="true">add</span>Create Company</a
+    >
+    <button
+      type="button"
+      class="cd-button cd-outline"
+      [disabled]="!filtered().length"
+      (click)="exportList()"
+    >
+      <span class="material-symbols-outlined" aria-hidden="true">file_download</span>Export List
+    </button>
+    <button
+      type="button"
+      class="cd-button"
+      [disabled]="!selectedIds().length"
+      [matMenuTriggerFor]="bulkActions"
+    >
+      Bulk Actions
+      @if (selectedIds().length) {
+        <span>({{ selectedIds().length }})</span>
+      }
+      <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>
+    </button>
+    <mat-menu #bulkActions="matMenu"
+      ><button mat-menu-item (click)="exportList(true)">
+        <span class="material-symbols-outlined" aria-hidden="true">download</span>Export Selected</button
+      ><button mat-menu-item (click)="changeStatus(true)">
+        <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>Mark Active</button
+      ><button mat-menu-item (click)="changeStatus(false)">
+        <span class="material-symbols-outlined" aria-hidden="true">pause_circle</span>Mark Inactive
+      </button></mat-menu
+    >
+  </div>
+</div>
+@if (error()) {
+  <p class="cd-error" role="alert">{{ error() }}</p>
+}
+<div class="cd-overview-grid" role="region" aria-label="Company overview">
+  @for (stat of stats(); track stat.label) {
+    <section class="co-stat co-surface">
+      <span
+        class="co-stat-icon material-symbols-outlined"
+        [style.background]="stat.color"
+        aria-hidden="true"
+        >{{ stat.icon }}</span
+      >
+      <div>
+        <h2 class="cd-stat-title">
+          <span>{{ stat.label }}</span>
+          @if (stat.tooltip) {
+            <button
+              type="button"
+              class="cd-stat-info"
+              [matTooltip]="stat.tooltip"
+              [attr.aria-label]="'About ' + stat.label"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">info</span>
+            </button>
+          }
+        </h2>
+        <strong>{{ stat.value }}</strong>
+        @if (stat.progress) {
+          <div class="cd-progress-meta">
+            <span>{{ stat.value }}/{{ store.companies().length }} {{ stat.shortLabel }}</span>
+          </div>
+          <progress
+            [value]="stat.value"
+            [max]="store.companies().length || 1"
+            [class.cd-inactive-progress]="stat.label === 'Inactive Companies'"
+            [class.amber]="stat.label === 'Pending Setup'"
+            [attr.aria-label]="stat.label + ' as a share of all companies'"
+          ></progress>
+        } @else {
+          <p>{{ stat.hint }}</p>
+        }
+      </div>
+    </section>
+  }
+</div>
+<section class="co-surface cd-filters" aria-label="Search and filter companies">
+  <label class="co-search cd-search"
+    ><span class="material-symbols-outlined" aria-hidden="true">search</span
+    ><input
+      aria-label="Search all companies"
+      placeholder="Search company name, code, admin or location…"
+      [ngModel]="search()"
+      (ngModelChange)="setSearch($event)"
+    />
+    @if (search()) {
+      <button type="button" (click)="setSearch('')" aria-label="Clear company search">
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    }
+  </label>
+  <div class="cd-filter-grid">
+    <div>
+      <label for="cd-status">Status</label
+      ><mat-select
+        cvSelect
+        id="cd-status"
+        aria-label="Company status"
+        [ngModel]="filters().status"
+        (ngModelChange)="setFilter('status', $event)"
+        ><mat-option value="all">All statuses</mat-option
+        ><mat-option value="active">Active</mat-option
+        ><mat-option value="inactive">Inactive</mat-option></mat-select
+      >
+    </div>
+    <div>
+      <label for="cd-region">Region / County</label
+      ><mat-select
+        cvSelect
+        id="cd-region"
+        aria-label="Region or county"
+        [ngModel]="filters().region"
+        (ngModelChange)="setFilter('region', $event)"
+        ><mat-option value="all">All regions / counties</mat-option>
+        @for (region of regions(); track region) {
+          <mat-option [value]="region">{{ region }}</mat-option>
+        }
+        <mat-option value="missing">Not recorded</mat-option></mat-select
+      >
+    </div>
+    <div>
+      <label for="cd-service">Service Type</label
+      ><mat-select
+        cvSelect
+        id="cd-service"
+        aria-label="Service type"
+        [ngModel]="filters().service"
+        (ngModelChange)="setFilter('service', $event)"
+        ><mat-option value="all">All service types</mat-option>
+        @for (service of services(); track service) {
+          <mat-option [value]="service">{{ service }}</mat-option>
+        }
+        <mat-option value="missing">Not recorded</mat-option></mat-select
+      >
+    </div>
+    <div>
+      <label for="cd-plan">Subscription Plan</label
+      ><mat-select
+        cvSelect
+        id="cd-plan"
+        aria-label="Subscription plan"
+        [ngModel]="filters().plan"
+        (ngModelChange)="setFilter('plan', $event)"
+        ><mat-option value="all">All plans</mat-option>
+        @for (plan of plans(); track plan) {
+          <mat-option [value]="plan">{{ plan }}</mat-option>
+        }
+        <mat-option value="missing">Not recorded</mat-option></mat-select
+      >
+    </div>
+    <div>
+      <label for="cd-completion">Profile Completion</label
+      ><mat-select
+        cvSelect
+        id="cd-completion"
+        aria-label="Profile completion"
+        [ngModel]="filters().completion"
+        (ngModelChange)="setFilter('completion', $event)"
+        ><mat-option value="all">All completion levels</mat-option
+        ><mat-option value="complete">Complete · 100%</mat-option
+        ><mat-option value="progress">In progress · 75–99%</mat-option
+        ><mat-option value="pending">Pending · below 75%</mat-option></mat-select
+      >
+    </div>
+    <div>
+      <label for="cd-updated">Last Updated</label
+      ><mat-select
+        cvSelect
+        id="cd-updated"
+        aria-label="Last updated"
+        [ngModel]="filters().updated"
+        (ngModelChange)="setFilter('updated', $event)"
+        ><mat-option value="all">Any time</mat-option><mat-option value="7">Last 7 days</mat-option
+        ><mat-option value="30">Last 30 days</mat-option
+        ><mat-option value="90">Last 90 days</mat-option
+        ><mat-option value="missing">Not recorded</mat-option></mat-select
+      >
+    </div>
+  </div>
+  <div class="cd-filter-footer">
+    <span
+      >{{ filtered().length }}
+      {{ filtered().length === 1 ? 'company matches' : 'companies match' }}
+      @if (hasFilters()) {
+        <span> · filters applied</span>
+      }</span
+    ><button type="button" class="cd-clear" [disabled]="!hasFilters()" (click)="clearFilters()">
+      <span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>Clear Filters
+    </button>
+  </div>
+</section>
+
+<section class="co-surface cd-register" aria-labelledby="cd-register-title">
+  <div class="co-section-header cd-register-heading">
+    <h2 id="cd-register-title">
+      <span class="material-symbols-outlined" aria-hidden="true">domain</span>Companies ({{
+        filtered().length
+      }})
+    </h2>
+    <div class="cd-selection" role="status">
+      @if (selectedIds().length) {
+        <span>{{ selectedIds().length }} selected across pages</span
+        ><button type="button" class="cd-clear" (click)="clearSelection()">Clear Selection</button>
+      } @else {
+        <span>{{ store.companies().length }} companies in directory</span>
+      }
+    </div>
+  </div>
+  <div
+    class="co-table-scroll cd-table-scroll"
+    tabindex="0"
+    role="region"
+    aria-label="All companies directory"
+  >
+    <table>
+      <thead>
+        <tr>
+          <th scope="col" class="cd-checkbox-cell">
+            <input
+              type="checkbox"
+              aria-label="Select companies on this page"
+              [checked]="allPageSelected()"
+              [indeterminate]="somePageSelected()"
+              [disabled]="!rows().length"
+              (change)="togglePage()"
+            />
+          </th>
+          @for (column of columns; track column.key) {
+            <th
+              scope="col"
+              [attr.aria-sort]="
+                sortColumn() === column.key
+                  ? sortDirection() === 'asc'
+                    ? 'ascending'
+                    : 'descending'
+                  : 'none'
+              "
+            >
+              <button type="button" class="cd-sort" (click)="sort(column.key)">
+                {{ column.label
+                }}<span class="material-symbols-outlined" aria-hidden="true">{{
+                  sortColumn() === column.key
+                    ? sortDirection() === 'asc'
+                      ? 'arrow_upward'
+                      : 'arrow_downward'
+                    : 'unfold_more'
+                }}</span>
+              </button>
+            </th>
+          }
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (company of rows(); track company.id) {
+          <tr [class.cd-selected]="selected().has(company.id)">
+            <td class="cd-checkbox-cell">
+              <input
+                type="checkbox"
+                [attr.aria-label]="'Select ' + company.name"
+                [checked]="selected().has(company.id)"
+                (change)="toggle(company.id)"
+              />
+            </td>
+            <td>
+              <a class="co-table-company" [routerLink]="['/manage/companies', company.id]"
+                ><span class="co-table-logo">
+                  @if (company.logo) {
+                    <img [src]="company.logo" alt="" />
+                  } @else {
+                    <span class="co-reference-photo" aria-hidden="true"></span>
+                  }</span
+                ><span>{{ company.name }}</span></a
+              >
+            </td>
+            <td>{{ company.code }}</td>
+            <td>{{ company.sector || 'Not recorded' }}</td>
+            <td>{{ region(company) || 'Not recorded' }}</td>
+            <td>
+              <span class="cd-status" [class.cd-inactive]="!isActive(company)"
+                ><i aria-hidden="true"></i>{{ isActive(company) ? 'Active' : 'Inactive' }}</span
+              >
+            </td>
+            <td>
+              <div class="co-completion">
+                <strong>{{ completion(company) }}%</strong
+                ><progress
+                  [value]="completion(company)"
+                  max="100"
+                  [class.amber]="completion(company) < 75"
+                  [attr.aria-label]="company.name + ' profile completion'"
+                ></progress>
+              </div>
+            </td>
+            <td>{{ admin(company) || 'Not recorded' }}</td>
+            <td>{{ plan(company) || 'Not recorded' }}</td>
+            <td>{{ modifiedAt(company.modifiedAt) }}</td>
+            <td>
+              <button
+                type="button"
+                class="cd-row-action"
+                [matMenuTriggerFor]="rowActions"
+                [attr.aria-label]="'Actions for ' + company.name"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span></button
+              ><mat-menu #rowActions="matMenu"
+                ><a mat-menu-item [routerLink]="['/manage/companies', company.id]"
+                  >View Company Profile</a
+                ><a
+                  mat-menu-item
+                  [routerLink]="['/manage/companies', company.id]"
+                  [queryParams]="{ edit: true }"
+                  >Edit General Information</a
+                ><a mat-menu-item [routerLink]="['/manage/companies', company.id, 'contacts']"
+                  >Contact Information</a
+                ><a mat-menu-item [routerLink]="['/manage/companies', company.id, 'branding']"
+                  >Branding</a
+                ><a mat-menu-item [routerLink]="['/manage/companies', company.id, 'modules']"
+                  >Modules &amp; Subscription</a
+                ><a
+                  mat-menu-item
+                  routerLink="/manage/companies/new"
+                  [queryParams]="{ duplicate: company.id }"
+                  >Duplicate Company</a
+                ><button mat-menu-item (click)="changeStatus(!isActive(company), [company.id])">
+                  {{ isActive(company) ? 'Mark Inactive' : 'Mark Active' }}
+                </button></mat-menu
+              >
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="11" class="cd-empty">
+              <span class="material-symbols-outlined" aria-hidden="true">search_off</span>
+              <h3>{{ store.companies().length ? 'No matching companies' : 'No companies yet' }}</h3>
+              <p>
+                {{
+                  store.companies().length
+                    ? 'Try another search or clear the filters.'
+                    : 'Create a company to start building your directory.'
+                }}
+              </p>
+              @if (hasFilters()) {
+                <button type="button" class="cd-button cd-outline" (click)="clearFilters()">
+                  Clear Filters
+                </button>
+              } @else {
+                <a class="cd-button cd-primary" routerLink="/manage/companies/new"
+                  >Create Company</a
+                >
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="cd-table-footer">
+    <span role="status"
+      >Showing {{ start() }} to {{ end() }} of {{ filtered().length }} companies
+      @if (hasFilters()) {
+        <span> · {{ store.companies().length }} total</span>
+      }
+    </span>
+    <div class="cd-page-controls">
+      <nav class="cd-pagination" aria-label="Company directory pages">
+        <button
+          type="button"
+          [disabled]="currentPage() === 1"
+          (click)="page.set(currentPage() - 1)"
+          aria-label="Previous page"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+        </button>
+        @for (number of pageNumbers(); track number) {
+          <button
+            type="button"
+            [class.active]="currentPage() === number"
+            [attr.aria-current]="currentPage() === number ? 'page' : null"
+            [attr.aria-label]="'Page ' + number"
+            (click)="page.set(number)"
+          >
+            {{ number }}
+          </button>
+        }
+        <button
+          type="button"
+          [disabled]="currentPage() === pageCount()"
+          (click)="page.set(currentPage() + 1)"
+          aria-label="Next page"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+        </button>
+      </nav>
+      <small>Page {{ currentPage() }} of {{ pageCount() }}</small>
+    </div>
+  </div>
+</section>

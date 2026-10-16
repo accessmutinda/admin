@@ -1,0 +1,398 @@
+.cv-management .company-directory-page .cd-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cv-management .company-directory-page .cd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: end;
+  gap: 8px;
+}
+.cv-management .company-directory-page .cd-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  background: linear-gradient(#fff, #f9fcfd);
+  color: #16375b;
+  font: 700 11px/1.4 var(--font-sans);
+  text-decoration: none;
+  cursor: pointer;
+}
+.cv-management .company-directory-page .cd-button > .material-symbols-outlined {
+  font-size: 18px;
+}
+.cv-management .company-directory-page .cd-primary {
+  background: #008afa;
+  border-color: #008afa;
+  color: white;
+}
+.cv-management .company-directory-page .cd-primary:hover {
+  background: #0079dc;
+}
+.cv-management .company-directory-page .cd-outline {
+  color: #008afa;
+  border-color: #008afa;
+  background: transparent;
+}
+.cv-management .company-directory-page .cd-outline:hover {
+  background: #eaf5fc;
+}
+.cv-management .company-directory-page button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.cv-management .company-directory-page .cd-filters {
+  padding: 8px;
+  min-width: 0;
+  margin-bottom: 12px;
+}
+.cv-management .company-directory-page .cd-search {
+  width: 100%;
+  padding: 5px 8px;
+  margin-bottom: 10px;
+}
+.cv-management .company-directory-page .cd-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+.cv-management .company-directory-page .cd-filter-grid > div {
+  min-width: 0;
+}
+.cv-management .company-directory-page .cd-filter-grid label {
+  display: block;
+  color: #10355e;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0 0 3px;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .company-directory-page
+  .cd-filter-grid
+  mat-select.cv-select {
+  width: 100%;
+  min-height: 32px;
+  padding: 5px 8px;
+  margin: 0;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  font-size: 12px;
+  background: #fff;
+  color: #123352;
+}
+.cv-management .company-directory-page .cd-filter-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: #6b7688;
+}
+.cv-management .company-directory-page .cd-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 0;
+  padding: 3px 0;
+  color: #007bcc;
+  font-size: 11px;
+  cursor: pointer;
+}
+.cv-management .company-directory-page .cd-clear > .material-symbols-outlined {
+  font-size: 17px;
+}
+.cv-management .company-directory-page .cd-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 8px;
+  margin-bottom: 12px;
+}
+.cv-management .company-directory-page .cd-overview-grid .co-stat {
+  min-width: 0;
+}
+.cv-management .app-body main.page-content .company-directory-page .co-stat h2,
+.cv-management .company-directory-page .co-stat p {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.cv-management .company-directory-page .cd-stat-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cv-management .company-directory-page .cd-stat-info {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #6e91bc;
+  flex-shrink: 0;
+  cursor: help;
+}
+.cv-management .company-directory-page .cd-stat-info > span {
+  font-size: 15px;
+}
+.cv-management .company-directory-page .cd-progress-meta {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #6c7587;
+}
+.cv-management .company-directory-page progress.cd-inactive-progress::-webkit-progress-value {
+  background: #a3aeb8;
+}
+.cv-management .company-directory-page progress.cd-inactive-progress::-moz-progress-bar {
+  background: #a3aeb8;
+}
+.cv-management .company-directory-page .cd-register {
+  padding: 6px 10px 0;
+}
+.cv-management .company-directory-page .cd-register-heading {
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-height: 30px;
+  margin-bottom: 4px;
+}
+.cv-management .company-directory-page .cd-selection {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #657184;
+  font-size: 11px;
+}
+.cv-management .company-directory-page .cd-table-scroll {
+  max-width: 100%;
+}
+.cv-management .company-directory-page table {
+  white-space: normal;
+  min-width: 1080px;
+}
+.cv-management .app-body main.page-content .company-directory-page table thead th {
+  vertical-align: middle;
+  padding: 4px 8px;
+}
+.cv-management .app-body main.page-content .company-directory-page table tbody td {
+  padding: 6px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #617087;
+  border-bottom: 1px solid #edf2f5;
+}
+.cv-management .company-directory-page .cd-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: #53677f;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cv-management .company-directory-page .cd-sort > .material-symbols-outlined {
+  font-size: 13px;
+  color: #7d8c9b;
+  flex-shrink: 0;
+}
+.cv-management .company-directory-page .cd-checkbox-cell {
+  width: 30px;
+}
+.cv-management .company-directory-page input[type='checkbox'] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #008afa;
+  cursor: pointer;
+  display: block;
+}
+.cv-management .company-directory-page .cd-selected {
+  background: #eaf5fc;
+}
+.cv-management .company-directory-page .co-table-company {
+  min-width: 160px;
+  gap: 10px;
+  text-decoration: none;
+}
+.cv-management .company-directory-page .co-table-company > span:last-child {
+  max-width: 180px;
+  min-width: 110px;
+  overflow-wrap: anywhere;
+}
+.cv-management .company-directory-page .cd-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: #e5f8ee;
+  color: #087337;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.cv-management .company-directory-page .cd-status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #13b76b;
+}
+.cv-management .company-directory-page .cd-inactive {
+  background: #edf2f5;
+  color: #677386;
+}
+.cv-management .company-directory-page .cd-inactive i {
+  background: #a3aeb8;
+}
+.cv-management .company-directory-page .co-completion {
+  gap: 8px;
+  min-width: 115px;
+}
+.cv-management .company-directory-page .co-completion progress {
+  min-width: 70px;
+  width: 80px;
+  height: 7px;
+}
+.cv-management .company-directory-page .cd-row-action {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 26px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #365878;
+  cursor: pointer;
+}
+.cv-management .company-directory-page .cd-row-action:hover {
+  background: #e4f3fa;
+}
+.cv-management .company-directory-page .cd-row-action > span {
+  font-size: 20px;
+}
+.cv-management .app-body main.page-content .company-directory-page td.cd-empty {
+  text-align: center;
+  padding: 24px 12px;
+}
+.cv-management .company-directory-page .cd-empty > .material-symbols-outlined {
+  color: #008afa;
+  font-size: 30px;
+  display: block;
+  margin-bottom: 6px;
+}
+.cv-management .app-body main.page-content .company-directory-page .cd-empty h3 {
+  color: #002b60;
+  font-size: 14px;
+  font-weight: 700;
+}
+.cv-management .company-directory-page .cd-empty p {
+  font-size: 12px;
+  color: #657184;
+  margin: 4px 0 10px;
+}
+.cv-management .company-directory-page .cd-table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 11px;
+  color: #7a8795;
+}
+.cv-management .company-directory-page .cd-page-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cv-management .company-directory-page .cd-page-controls small {
+  font-size: 10px;
+}
+.cv-management .company-directory-page .cd-pagination {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cv-management .company-directory-page .cd-pagination button {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 3px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  background: #fff;
+  color: #16375b;
+  font-size: 12px;
+  cursor: pointer;
+}
+.cv-management .company-directory-page .cd-pagination button.active {
+  background: #008afa;
+  border-color: #008afa;
+  color: #fff;
+  font-weight: 700;
+}
+.cv-management .company-directory-page .cd-pagination .material-symbols-outlined {
+  font-size: 19px;
+}
+.cv-management .company-directory-page .cd-error {
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  border: 1px solid #f2c8cf;
+  border-radius: 5px;
+  background: #fff5f6;
+  color: #b42334;
+  font-size: 12px;
+}
+.cv-management .company-directory-page :is(button, a, input, mat-select):focus-visible {
+  outline: 2px solid #008bd9;
+  outline-offset: 2px;
+}
+@media (max-width: 1100px) {
+  .cv-management .company-directory-page .cd-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cv-management .company-directory-page .cd-heading {
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .cv-management .company-directory-page .cd-heading .co-heading {
+    margin-bottom: 0;
+  }
+}
+@media (max-width: 760px) {
+  .cv-management .company-directory-page .cd-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cv-management .company-directory-page .cd-actions {
+    justify-content: start;
+  }
+  .cv-management .company-directory-page .cd-table-footer {
+    align-items: start;
+    flex-direction: column;
+  }
+}
+@media (max-width: 480px) {
+  .cv-management .company-directory-page .cd-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

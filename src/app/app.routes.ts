@@ -126,6 +126,14 @@ export const routes: Routes = [
           import('./features/management/companies/companies').then((m) => m.Companies),
       },
       {
+        path: 'companies/directory',
+        title: 'Company directory · CareVerity',
+        loadComponent: () =>
+          import('./features/management/companies/company-directory').then(
+            (m) => m.CompanyDirectory,
+          ),
+      },
+      {
         path: 'companies/new',
         title: 'Add company · CareVerity',
         loadComponent: () =>
