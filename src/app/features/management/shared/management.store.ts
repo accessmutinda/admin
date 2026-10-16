@@ -1,3 +1,7 @@
+import type {
+  CompanyBranding,
+  PublishedCompanyBranding,
+} from '../companies/company-branding.models';
 import type { CompanyContacts } from '../companies/company-contacts.models';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { vacancyClosed, vacancyScheduled } from '../recruitment/vacancy-deadline';
@@ -33,6 +37,8 @@ export interface Company {
   modifiedAt?: string;
   modifiedBy?: string;
   contacts?: CompanyContacts;
+  branding?: CompanyBranding;
+  publishedBranding?: PublishedCompanyBranding;
 }
 export interface StaffDocument {
   id: string;

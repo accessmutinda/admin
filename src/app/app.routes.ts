@@ -141,6 +141,15 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'companies/:id/branding',
+        title: 'Company branding · CareVerity',
+        canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+        loadComponent: () =>
+          import('./features/management/companies/company-branding').then(
+            (m) => m.CompanyBrandingPage,
+          ),
+      },
+      {
         path: 'companies/:id/settings',
         title: 'Company settings · CareVerity',
         loadComponent: () =>

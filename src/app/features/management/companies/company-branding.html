@@ -1,0 +1,721 @@
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/companies">Companies</a
+  ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+  @if (company(); as current) {
+    <a [routerLink]="['/manage/companies', current.id]">{{ current.name }}</a
+    ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+  }
+  <span aria-current="page">Branding</span>
+</nav>
+@if (company(); as current) {
+  <div class="co-heading">
+    <h1>Branding &amp; Portal Customisation</h1>
+    <p>Configure your company's visual identity across the CareVerity platform.</p>
+  </div>
+  <section class="co-summary co-surface" aria-label="Current company overview">
+    <div class="co-company-image" [style.background]="current.logo ? '#eef7fa' : null">
+      @if (current.logo) {
+        <img [src]="current.logo" [alt]="current.name + ' logo'" />
+      } @else {
+        <div class="co-reference-photo" role="img" aria-label="Care home placeholder"></div>
+      }
+    </div>
+    <div class="co-summary-content">
+      <div class="co-summary-header">
+        <div class="co-company-title">
+          <h2>{{ current.name }}</h2>
+          <span
+            class="co-active"
+            [class.co-inactive]="!(current.active ?? !!current.modules.length)"
+            >{{ (current.active ?? !!current.modules.length) ? 'Active' : 'Inactive' }}</span
+          >
+        </div>
+        <a class="co-profile-button" [routerLink]="['/manage/companies', current.id]"
+          >View Company Profile
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a
+        >
+      </div>
+      <div class="co-facts">
+        <div>
+          <span>Company code</span><strong>{{ current.code }}</strong>
+        </div>
+        <div>
+          <span>Registration number</span
+          ><strong>{{ current.registration || 'Not provided' }}</strong>
+        </div>
+        <div class="co-service-type">
+          <span>Service type</span><strong>{{ current.sector }}</strong>
+        </div>
+      </div>
+      <div class="co-details">
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+          ><span
+            ><small>Head Office</small
+            >{{ current.headOfficeAddress || current.postcode || 'Location not added' }}</span
+          >
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+          ><span><small>Last updated</small>{{ modifiedAt(current.modifiedAt) }}</span>
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">person</span
+          ><span><small>Assigned plan</small>{{ current.modules.length }} modules enabled</span>
+        </div>
+      </div>
+    </div>
+  </section>
+  <nav class="cb-tabs co-surface" aria-label="Branding settings sections">
+    @for (item of tabs; track item.key) {
+      <button
+        type="button"
+        [class.active]="tab() === item.key"
+        [attr.aria-pressed]="tab() === item.key"
+        (click)="setTab(item.key)"
+      >
+        {{ item.label }}
+      </button>
+    }
+  </nav>
+  @if (error()) {
+    <p class="cb-error-summary" role="alert">{{ error() }}</p>
+  }
+  @if (submitted() && invalidFields().length) {
+    <div class="cb-error-summary" role="alert">
+      <strong>Check your branding settings:</strong>
+      <ul>
+        @for (message of invalidFields(); track $index) {
+          <li>{{ message }}</li>
+        }
+      </ul>
+    </div>
+  }
+  <div class="cb-layout">
+    <div class="cb-edit-column">
+      @switch (tab()) {
+        @case ('theme') {
+          <section class="co-surface cb-panel" aria-labelledby="cb-assets-title">
+            <div class="cb-panel-heading">
+              <span class="material-symbols-outlined" aria-hidden="true">description</span>
+              <div>
+                <h2 id="cb-assets-title">Brand Assets</h2>
+                <p>Upload your logo and favicon for portal, email and document previews.</p>
+              </div>
+            </div>
+            <div class="cb-assets-grid">
+              @for (asset of assetFields; track asset.key) {
+                <div class="cb-asset">
+                  <h3>{{ asset.label }}</h3>
+                  <div class="cb-asset-content">
+                    <div class="cb-asset-image" [class.cb-favicon]="asset.key === 'favicon'">
+                      @if (draft[asset.key]) {
+                        <img [src]="draft[asset.key]" [alt]="asset.label + ' preview'" />
+                      } @else {
+                        <span class="material-symbols-outlined" aria-hidden="true">{{
+                          asset.key === 'logo' ? 'image' : 'language'
+                        }}</span>
+                      }
+                    </div>
+                    <div>
+                      <div class="cb-asset-actions">
+                        <label class="cb-upload"
+                          ><span class="material-symbols-outlined" aria-hidden="true">upload</span
+                          >{{ draft[asset.key] ? 'Change' : 'Upload' }}
+                          {{ asset.key === 'logo' ? 'Logo' : 'Favicon'
+                          }}<input
+                            type="file"
+                            [accept]="asset.accept"
+                            [attr.aria-label]="'Upload ' + asset.label"
+                            [disabled]="uploading()"
+                            (change)="upload($event, asset.key)"
+                        /></label>
+                        @if (draft[asset.key]) {
+                          <button
+                            type="button"
+                            class="cb-remove-asset"
+                            [attr.aria-label]="'Remove ' + asset.label"
+                            [disabled]="uploading()"
+                            (click)="draft[asset.key] = ''"
+                          >
+                            <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                          </button>
+                        }
+                      </div>
+                      <small>{{ asset.hint }}</small>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+            @if (assetError()) {
+              <p class="cp-field-error" role="alert">{{ assetError() }}</p>
+            }
+            @if (uploading()) {
+              <p class="cb-note" role="status">Reading image…</p>
+            }
+          </section>
+          <section class="co-surface cb-panel" aria-labelledby="cb-colours-title">
+            <div class="cb-panel-heading">
+              <span class="material-symbols-outlined" aria-hidden="true">palette</span>
+              <div>
+                <h2 id="cb-colours-title">Brand Colours</h2>
+                <p>Choose colours for your company's portal previews.</p>
+              </div>
+            </div>
+            <div class="cb-colour-grid">
+              @for (field of colorFields; track field.key) {
+                <div class="cb-colour-field">
+                  <label [for]="field.key + '-hex'">{{ field.label }}</label>
+                  <div class="cb-colour-input">
+                    <input
+                      type="color"
+                      [ngModel]="color(field.key)"
+                      (ngModelChange)="draft[field.key] = $event"
+                      [attr.aria-label]="field.label + ' picker'"
+                    /><input
+                      [id]="field.key + '-hex'"
+                      type="text"
+                      [(ngModel)]="draft[field.key]"
+                      maxlength="7"
+                      spellcheck="false"
+                      [attr.aria-invalid]="submitted() && colorInvalid(field.key)"
+                    />
+                  </div>
+                  <small>{{ field.hint }}</small>
+                </div>
+              }
+            </div>
+          </section>
+          <section class="co-surface cb-panel cb-typography" aria-labelledby="cb-typography-title">
+            <div>
+              <div class="cb-panel-heading">
+                <span class="material-symbols-outlined" aria-hidden="true">text_fields</span>
+                <div>
+                  <h2 id="cb-typography-title">Typography</h2>
+                  <p>Select a font family for portal and communication previews.</p>
+                </div>
+              </div>
+              <label class="cb-field" for="cb-font"
+                >Font Family<mat-select
+                  id="cb-font"
+                  cvSelect
+                  [(ngModel)]="draft.fontFamily"
+                  aria-label="Font family"
+                >
+                  @for (font of fonts; track font) {
+                    <mat-option [value]="font"
+                      >{{ font }}{{ font === 'Lato' ? ' (Recommended)' : '' }}</mat-option
+                    >
+                  }
+                </mat-select></label
+              >
+            </div>
+            <div class="cb-type-sample" [style.font-family]="previewFont()">
+              <small>Preview Text</small><strong>The quick brown fox jumps over the lazy dog</strong
+              ><small>Unavailable fonts use the system fallback.</small>
+            </div>
+          </section>
+          <section class="co-surface cb-panel" aria-labelledby="cb-white-title">
+            <div class="cb-panel-heading">
+              <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+              <div>
+                <h2 id="cb-white-title">White-label Settings</h2>
+                <p>Customise the company's portal identity and welcome message.</p>
+              </div>
+            </div>
+            <div class="cb-white-grid">
+              <div class="cb-field">
+                <label for="cb-subdomain">Custom Subdomain</label>
+                <div class="cb-subdomain">
+                  <input
+                    id="cb-subdomain"
+                    type="text"
+                    [(ngModel)]="draft.subdomain"
+                    maxlength="63"
+                    spellcheck="false"
+                    [attr.aria-invalid]="submitted() && !!subdomainError()"
+                  /><span>.careverity.co.uk</span>
+                </div>
+                <small
+                  >Preview: https://{{ draft.subdomain || 'your-company' }}.careverity.co.uk</small
+                ><span class="cb-domain-status" [class.cb-invalid]="!!subdomainError()"
+                  ><span class="material-symbols-outlined" aria-hidden="true">{{
+                    subdomainError() ? 'info' : 'check_circle'
+                  }}</span
+                  >{{
+                    subdomainError() || 'Available in saved company settings on this device'
+                  }}</span
+                ><small
+                  >Preview address only. Domain setup requires a connected hosting service.</small
+                >
+              </div>
+              <div class="cb-toggle-stack">
+                <label class="cb-switch"
+                  ><span
+                    >Show CareVerity branding<small
+                      >Include the platform identity in portal previews.</small
+                    ></span
+                  ><input
+                    type="checkbox"
+                    role="switch"
+                    [(ngModel)]="draft.showPlatformBranding" /></label
+                ><label class="cb-switch"
+                  ><span>Custom welcome message</span
+                  ><input type="checkbox" role="switch" [(ngModel)]="draft.customWelcome" /></label
+                ><textarea
+                  aria-label="Custom welcome message"
+                  [(ngModel)]="draft.welcomeMessage"
+                  [disabled]="!draft.customWelcome"
+                  maxlength="200"
+                  rows="3"
+                ></textarea
+                ><small class="cb-counter">{{ draft.welcomeMessage.length }}/200 characters</small>
+              </div>
+            </div>
+          </section>
+          <section class="co-surface cb-panel" aria-labelledby="cb-sender-title">
+            <div class="cb-panel-heading">
+              <span class="material-symbols-outlined" aria-hidden="true">mail</span>
+              <div>
+                <h2 id="cb-sender-title">Email Branding</h2>
+                <p>Configure the sender shown in your email previews.</p>
+              </div>
+            </div>
+            <div class="cb-sender-grid">
+              <label class="cb-switch"
+                ><span
+                  >Use custom email sender<small
+                    >Sender verification and delivery require a connected email service.</small
+                  ></span
+                ><input type="checkbox" role="switch" [(ngModel)]="draft.useCustomSender" /></label
+              ><label class="cb-field" for="cb-sender-name"
+                >From name<input
+                  id="cb-sender-name"
+                  type="text"
+                  [(ngModel)]="draft.senderName"
+                  [disabled]="!draft.useCustomSender"
+                  maxlength="100" /></label
+              ><label class="cb-field" for="cb-sender-email"
+                >From email address<input
+                  id="cb-sender-email"
+                  type="email"
+                  [(ngModel)]="draft.senderEmail"
+                  [disabled]="!draft.useCustomSender"
+                  maxlength="150"
+              /></label>
+            </div>
+          </section>
+        }
+        @case ('emails') {
+          <section class="co-surface cb-panel">
+            <div class="cb-panel-heading">
+              <span class="material-symbols-outlined" aria-hidden="true">mail</span>
+              <div>
+                <h2>Email Templates</h2>
+                <p>Write plain-text messages and review them with company branding.</p>
+              </div>
+            </div>
+            <label class="cb-field" for="cb-email-template"
+              >Template<mat-select
+                cvSelect
+                id="cb-email-template"
+                [ngModel]="emailTemplate()"
+                (ngModelChange)="emailTemplate.set($event)"
+                aria-label="Email template"
+                ><mat-option value="welcome">Welcome email</mat-option
+                ><mat-option value="invitation">Invitation email</mat-option
+                ><mat-option value="notification">Notification email</mat-option></mat-select
+              ></label
+            ><label class="cb-field" for="cb-email-subject"
+              >Subject<input
+                id="cb-email-subject"
+                type="text"
+                [(ngModel)]="draft.emailTemplates[emailTemplate()].subject"
+                maxlength="120"
+                required /></label
+            ><label class="cb-field" for="cb-email-body"
+              >Message<textarea
+                id="cb-email-body"
+                [(ngModel)]="draft.emailTemplates[emailTemplate()].body"
+                maxlength="2000"
+                rows="9"
+                required
+              ></textarea>
+            </label>
+            <p class="cb-note">
+              Supported placeholders: <code [textContent]="'{{companyName}}'"></code> and
+              <code [textContent]="'{{recipientName}}'"></code>. The preview uses an example
+              recipient; no email is sent.
+            </p>
+            <label class="cb-field" for="cb-email-footer"
+              >Email footer<textarea
+                id="cb-email-footer"
+                [(ngModel)]="draft.emailFooter"
+                maxlength="200"
+                rows="2"
+              ></textarea>
+            </label>
+          </section>
+        }
+        @case ('documents') {
+          <section class="co-surface cb-panel">
+            <div class="cb-panel-heading">
+              <span class="material-symbols-outlined" aria-hidden="true">description</span>
+              <div>
+                <h2>Document Templates</h2>
+                <p>Set the header and footer used in branded document previews.</p>
+              </div>
+            </div>
+            <label class="cb-field" for="cb-doc-style"
+              >Header style<mat-select
+                cvSelect
+                id="cb-doc-style"
+                [(ngModel)]="draft.document.headerStyle"
+                aria-label="Document header style"
+                ><mat-option value="standard">Standard</mat-option
+                ><mat-option value="compact">Compact</mat-option></mat-select
+              ></label
+            >
+            <div class="cb-toggle-stack">
+              <label class="cb-switch"
+                ><span>Show company logo</span
+                ><input
+                  type="checkbox"
+                  role="switch"
+                  [(ngModel)]="draft.document.showLogo" /></label
+              ><label class="cb-switch"
+                ><span>Show company address</span
+                ><input
+                  type="checkbox"
+                  role="switch"
+                  [(ngModel)]="draft.document.showAddress" /></label
+              ><label class="cb-switch"
+                ><span>Show company strapline</span
+                ><input type="checkbox" role="switch" [(ngModel)]="draft.document.showTagline"
+              /></label>
+            </div>
+            <label class="cb-field" for="cb-doc-footer"
+              >Document footer<textarea
+                id="cb-doc-footer"
+                [(ngModel)]="draft.document.footer"
+                maxlength="200"
+                rows="3"
+              ></textarea>
+            </label>
+            <p class="cb-note">
+              These settings preview the document identity. Existing exports keep their current
+              templates until connected to this configuration.
+            </p>
+          </section>
+        }
+        @case ('portal') {
+          <section class="co-surface cb-panel">
+            <div class="cb-panel-heading">
+              <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+              <div>
+                <h2>Portal Settings</h2>
+                <p>Set the language, support details and links shown in portal previews.</p>
+              </div>
+            </div>
+            <div class="cb-portal-fields">
+              <label class="cb-field" for="cb-language"
+                >Default language<mat-select
+                  cvSelect
+                  id="cb-language"
+                  [(ngModel)]="draft.portal.language"
+                  aria-label="Default portal language"
+                  ><mat-option value="English">English</mat-option
+                  ><mat-option value="Welsh">Welsh</mat-option
+                  ><mat-option value="Irish">Irish</mat-option></mat-select
+                ></label
+              ><label class="cb-field" for="cb-timezone"
+                >Timezone<mat-select
+                  cvSelect
+                  id="cb-timezone"
+                  [(ngModel)]="draft.portal.timezone"
+                  aria-label="Portal timezone"
+                  ><mat-option value="Europe/London">Europe/London</mat-option
+                  ><mat-option value="Europe/Dublin">Europe/Dublin</mat-option
+                  ><mat-option value="Africa/Nairobi">Africa/Nairobi</mat-option
+                  ><mat-option value="UTC">UTC</mat-option></mat-select
+                ></label
+              ><label class="cb-field cb-wide" for="cb-support"
+                >Support email<input
+                  id="cb-support"
+                  type="email"
+                  [(ngModel)]="draft.portal.supportEmail"
+                  maxlength="150" /></label
+              ><label class="cb-field cb-wide" for="cb-privacy"
+                >Privacy policy link<input
+                  id="cb-privacy"
+                  type="url"
+                  [(ngModel)]="draft.portal.privacyUrl"
+                  maxlength="500"
+                  placeholder="https://example.co.uk/privacy" /></label
+              ><label class="cb-field cb-wide" for="cb-terms"
+                >Terms of use link<input
+                  id="cb-terms"
+                  type="url"
+                  [(ngModel)]="draft.portal.termsUrl"
+                  maxlength="500"
+                  placeholder="https://example.co.uk/terms"
+              /></label>
+            </div>
+            <label class="cb-switch"
+              ><span
+                >Show Microsoft sign-in option<small
+                  >Preview visibility does not configure an identity provider.</small
+                ></span
+              ><input type="checkbox" role="switch" [(ngModel)]="draft.portal.microsoftSignIn"
+            /></label>
+            <p class="cb-note">
+              Subdomain and white-label identity settings are in Branding &amp; Theme. Language and
+              timezone are saved portal preferences; previews use the current interface language.
+            </p>
+          </section>
+        }
+      }
+    </div>
+    <aside class="co-surface cb-preview-panel" aria-labelledby="cb-preview-title">
+      <div class="cb-panel-heading">
+        <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
+        <div>
+          <h2 id="cb-preview-title">Live Preview</h2>
+          <p>Preview your company's portal, emails and documents.</p>
+        </div>
+      </div>
+      <nav class="cb-preview-tabs" aria-label="Branding preview type">
+        @for (item of previews; track item.key) {
+          <button
+            type="button"
+            [class.active]="preview() === item.key"
+            [attr.aria-pressed]="preview() === item.key"
+            (click)="preview.set(item.key)"
+          >
+            {{ item.label }}
+          </button>
+        }
+      </nav>
+      <div
+        class="cb-preview-stage"
+        [style.--preview-primary]="color('primaryColor')"
+        [style.--preview-secondary]="color('secondaryColor')"
+        [style.--preview-accent]="color('accentColor')"
+        [style.font-family]="previewFont()"
+      >
+        <div class="cb-browser-strip">
+          @if (draft.favicon) {
+            <img [src]="draft.favicon" alt="Favicon preview" />
+          } @else {
+            <span class="material-symbols-outlined" aria-hidden="true">language</span>
+          }
+          <span>{{ current.name }} · {{ draft.subdomain || 'your-company' }}.careverity.co.uk</span
+          ><small>Preview</small>
+        </div>
+        @switch (preview()) {
+          @case ('login') {
+            <div class="cb-login-scene">
+              <div class="co-reference-photo" aria-hidden="true"></div>
+              <div class="cb-login-card">
+                @if (draft.logo) {
+                  <img class="cb-preview-logo" [src]="draft.logo" alt="" />
+                } @else {
+                  <span class="cb-preview-monogram">{{ current.code }}</span>
+                }
+                <h3>Welcome</h3>
+                <p>
+                  {{
+                    draft.customWelcome
+                      ? draft.welcomeMessage
+                      : 'Sign in to your care management portal'
+                  }}
+                </p>
+                <div class="cb-faux-input">
+                  <span class="material-symbols-outlined" aria-hidden="true">person</span>Email
+                  address
+                </div>
+                <div class="cb-faux-input">
+                  <span class="material-symbols-outlined" aria-hidden="true">lock</span
+                  >Password<span class="material-symbols-outlined" aria-hidden="true"
+                    >visibility_off</span
+                  >
+                </div>
+                <div class="cb-faux-options">
+                  <span>✓ Remember me</span><span>Forgot password?</span>
+                </div>
+                <div class="cb-faux-button">Sign In</div>
+                @if (draft.portal.microsoftSignIn) {
+                  <div class="cb-or">OR</div>
+                  <div class="cb-microsoft">
+                    <span class="cb-microsoft-mark" aria-hidden="true"></span>Sign in with Microsoft
+                  </div>
+                }
+                <div class="cb-login-links">
+                  <span>{{ draft.portal.supportEmail || 'Help & Support' }}</span>
+                  @if (draft.portal.privacyUrl) {
+                    <span>Privacy Policy</span>
+                  }
+                  @if (draft.portal.termsUrl) {
+                    <span>Terms of Use</span>
+                  }
+                </div>
+                @if (draft.showPlatformBranding) {
+                  <small class="cb-powered">Powered by CareVerity</small>
+                }
+              </div>
+              <span class="cb-scene-note">Illustrative portal login preview</span>
+            </div>
+          }
+          @case ('header') {
+            <div class="cb-preview-header">
+              @if (draft.logo) {
+                <img [src]="draft.logo" alt="Company logo preview" />
+              } @else {
+                <strong>{{ current.name }}</strong>
+              }
+              <nav><span>Dashboard</span><span>People</span><span>Care Plans</span></nav>
+              <span class="cb-preview-avatar">{{ previewInitials() }}</span>
+            </div>
+            <div class="cb-preview-workspace">
+              <h3>Welcome to {{ current.name }}</h3>
+              <p>Your team workspace</p>
+              <div class="cb-workspace-tiles">
+                <div><span>Team</span><strong>Your people</strong></div>
+                <div><span>Tasks</span><strong>Everyday work</strong></div>
+              </div>
+              <span class="cb-example-label">Illustrative layout</span>
+              @if (draft.showPlatformBranding) {
+                <small class="cb-powered">Powered by CareVerity</small>
+              }
+            </div>
+          }
+          @case ('email') {
+            <div class="cb-email-preview">
+              <div class="cb-email-meta">
+                <span
+                  >From: {{ draft.useCustomSender ? draft.senderName : 'CareVerity' }}
+                  @if (draft.useCustomSender && draft.senderEmail) {
+                    &lt;{{ draft.senderEmail }}&gt;
+                  }</span
+                ><strong>{{ templateText(draft.emailTemplates[emailTemplate()].subject) }}</strong>
+              </div>
+              <div class="cb-email-content">
+                @if (draft.logo) {
+                  <img class="cb-preview-logo" [src]="draft.logo" alt="Company logo preview" />
+                } @else {
+                  <h3>{{ current.name }}</h3>
+                }
+                <p class="cb-message">
+                  {{ templateText(draft.emailTemplates[emailTemplate()].body) }}
+                </p>
+                <div class="cb-faux-button">Open Portal</div>
+                <p class="cb-email-footer">{{ draft.emailFooter }}</p>
+                @if (draft.showPlatformBranding) {
+                  <small class="cb-powered">Powered by CareVerity</small>
+                }
+              </div>
+            </div>
+          }
+          @case ('document') {
+            <div class="cb-document-preview">
+              <div
+                class="cb-document-header"
+                [class.cb-compact-header]="draft.document.headerStyle === 'compact'"
+              >
+                <div>
+                  @if (draft.document.showLogo && draft.logo) {
+                    <img class="cb-preview-logo" [src]="draft.logo" alt="Company logo preview" />
+                  }
+                  <h3>{{ current.name }}</h3>
+                  @if (draft.document.showTagline) {
+                    <small>{{ current.tagline }}</small>
+                  }
+                </div>
+                @if (draft.document.showAddress) {
+                  <p>{{ address() }}</p>
+                }
+              </div>
+              <h3>Care Plan Summary</h3>
+              <p class="cb-example-label">Sample document · no personal records</p>
+              <div class="cb-document-lines"><i></i><i></i><i></i><i></i><i></i></div>
+              <footer>{{ draft.document.footer }}</footer>
+            </div>
+          }
+        }
+        @if (preview() === 'login') {
+          <div class="cb-mini-preview">
+            <h3>Portal Header Preview</h3>
+            <div class="cb-preview-header">
+              @if (draft.logo) {
+                <img [src]="draft.logo" alt="Company logo preview" />
+              } @else {
+                <strong>{{ current.name }}</strong>
+              }
+              <nav><span>Dashboard</span><span>People</span></nav>
+              <span class="cb-preview-avatar">{{ previewInitials() }}</span>
+            </div>
+          </div>
+          <div class="cb-mini-preview">
+            <h3>Document Header Preview</h3>
+            <div class="cb-document-header">
+              <div>
+                @if (draft.document.showLogo && draft.logo) {
+                  <img class="cb-preview-logo" [src]="draft.logo" alt="Company logo preview" />
+                }
+                <strong>{{ current.name }}</strong>
+              </div>
+              @if (draft.document.showAddress) {
+                <p>{{ address() }}</p>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </aside>
+  </div>
+  <div class="cb-save-bar">
+    <div>
+      <span class="cb-save-state" role="status">{{
+        hasChanges() ? 'You have unsaved branding changes' : 'Theme matches saved company settings'
+      }}</span>
+      @if (current.publishedBranding) {
+        <small
+          >Approved locally {{ modifiedAt(current.publishedBranding.publishedAt) }} by
+          {{ current.publishedBranding.publishedBy }}</small
+        >
+      }
+      <p>
+        Publishing saves an approved version on this device. Live domains, portal deployment and
+        email delivery require connected services.
+      </p>
+    </div>
+    <div class="cb-save-actions">
+      <button type="button" class="cp-button" (click)="reset()" [disabled]="uploading()">
+        <span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>Reset to
+        Default
+      </button>
+      @if (hasChanges()) {
+        <button type="button" class="cb-discard" (click)="discard()" [disabled]="uploading()">
+          Discard changes
+        </button>
+      }
+      <button type="button" class="cp-button cp-outline" (click)="save()" [disabled]="uploading()">
+        <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Theme</button
+      ><button
+        type="button"
+        class="cp-button cp-primary"
+        (click)="save(true)"
+        [disabled]="uploading()"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">send</span>Publish Branding
+      </button>
+    </div>
+  </div>
+} @else {
+  <section class="co-surface cp-not-found">
+    <h1>Company not found</h1>
+    <p>This company is no longer available.</p>
+    <a routerLink="/manage/companies" class="cp-button">Back to companies</a>
+  </section>
+}

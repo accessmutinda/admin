@@ -35,11 +35,8 @@
             >{{ (current.active ?? !!current.modules.length) ? 'Active' : 'Inactive' }}</span
           >
         </div>
-        <a
-          class="co-profile-button"
-          [routerLink]="['/manage/companies', current.id, 'settings']"
-          [queryParams]="{ section: 'Branding' }"
-          >Branding &amp; Modules<span class="material-symbols-outlined" aria-hidden="true"
+        <a class="co-profile-button" [routerLink]="['/manage/companies', current.id, 'branding']"
+          >Branding<span class="material-symbols-outlined" aria-hidden="true"
             >arrow_forward</span
           ></a
         >

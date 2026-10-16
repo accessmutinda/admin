@@ -87,8 +87,7 @@ export class Companies {
         icon: 'palette',
         tone: 'teal',
         state: c?.logo ? 'Complete' : 'In Progress',
-        link: [...this.profileLink(), 'settings'],
-        section: 'Branding',
+        link: [...this.profileLink(), 'branding'],
       },
       {
         title: 'Modules & Subscription',

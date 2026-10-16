@@ -2,7 +2,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Company, MODULES, ManagementStore } from '../shared/management.store';
 import { ToastService } from '../../../shared/ui/toast.service';
 @Component({
@@ -14,6 +14,7 @@ export class CompanyEditor {
   protected readonly store = inject(ManagementStore);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
+  private readonly router = inject(Router);
   protected readonly isNew = this.route.snapshot.paramMap.get('id') === null;
   private readonly duplicateId = this.route.snapshot.queryParamMap.get('duplicate');
   protected readonly existing = this.store
@@ -99,6 +100,11 @@ export class CompanyEditor {
         modules: ['Care delivery', 'People & HR', 'Training academy'],
       };
   constructor() {
+    if (!this.isNew && this.existing && this.step() === 1) {
+      this.router.navigate(['/manage/companies', this.existing?.id, 'branding'], {
+        replaceUrl: true,
+      });
+    }
     if (this.isNew && this.duplicateId) {
       const source = this.store.companies().find((c) => c.id === this.duplicateId);
       if (source)
@@ -109,6 +115,19 @@ export class CompanyEditor {
           code: source.code + '-COPY',
         };
     }
+  }
+  protected selectSection(index: number): void {
+    if (!this.isNew && index === 1) {
+      if (
+        this.hasChanges() &&
+        !window.confirm('You have unsaved company settings. Leave without saving?')
+      )
+        return;
+      this.router.navigate(['/manage/companies', this.company.id, 'branding']);
+      return;
+    }
+    this.step.set(index);
+    this.submitted.set(false);
   }
   protected next(): void {
     this.submitted.set(true);
