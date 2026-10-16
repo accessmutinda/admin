@@ -1,0 +1,352 @@
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/companies">Companies</a
+  ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span
+  ><span aria-current="page">Registration &amp; Compliance</span>
+</nav>
+<div class="co-heading">
+  <h1>Registration &amp; Compliance</h1>
+  <p>Manage registration details, supporting documents and responsible owners.</p>
+</div>
+@if (company(); as current) {
+  <section class="co-summary co-surface" aria-label="Current company overview">
+    <div class="co-company-image" [style.background]="current.logo ? '#eef7fa' : null">
+      @if (current.logo) {
+        <img [src]="current.logo" [alt]="current.name + ' logo'" />
+      } @else {
+        <div class="co-reference-photo" role="img" aria-label="Care home placeholder"></div>
+      }
+    </div>
+    <div class="co-summary-content">
+      <div class="co-summary-header">
+        <div class="co-company-title">
+          <h2>{{ current.name }}</h2>
+          <span
+            class="co-active"
+            [class.co-inactive]="!(current.active ?? !!current.modules.length)"
+            >{{ (current.active ?? !!current.modules.length) ? 'Active' : 'Inactive' }}</span
+          >
+        </div>
+        <a class="co-profile-button" [routerLink]="['/manage/companies', current.id]"
+          >View Company Profile
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a
+        >
+      </div>
+      <div class="co-facts">
+        <div>
+          <span>Company code</span><strong>{{ current.code }}</strong>
+        </div>
+        <div>
+          <span>Registration number</span
+          ><strong>{{ current.registration || 'Not provided' }}</strong>
+        </div>
+        <div class="co-service-type">
+          <span>Service type</span><strong>{{ current.sector }}</strong>
+        </div>
+      </div>
+      <div class="co-details">
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+          ><span
+            ><small>Head Office</small
+            >{{ current.headOfficeAddress || current.postcode || 'Location not added' }}</span
+          >
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+          ><span><small>Last updated</small>{{ modifiedAt(current.modifiedAt) }}</span>
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">person</span
+          ><span><small>Assigned plan</small>{{ current.modules.length }} modules enabled</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <form class="rc-layout" (ngSubmit)="save()" novalidate>
+    <div class="rc-main">
+      <section
+        class="co-surface rc-panel"
+        id="rc-registration"
+        tabindex="-1"
+        aria-labelledby="rc-registration-title"
+      >
+        <div class="co-section-header">
+          <h2 id="rc-registration-title">
+            <span class="material-symbols-outlined" aria-hidden="true">description</span
+            >Registration Details
+          </h2>
+        </div>
+        <p class="rc-description">
+          Official registration and regulatory information for your organisation.
+        </p>
+        <div class="rc-fields">
+          <div class="rc-field">
+            <label for="rc-company-number">Company Number</label>
+            <div id="rc-company-number" class="rc-readonly">
+              {{ current.registration || 'Not recorded' }}
+            </div>
+            <a [routerLink]="['/manage/companies', current.id]" fragment="profile-registration"
+              >Update in General Information
+              <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a
+            >
+            @if (fieldError('companyNumber')) {
+              <small class="rc-error">{{ fieldError('companyNumber') }}</small>
+            }
+          </div>
+          @for (field of fields; track field.key) {
+            <div class="rc-field">
+              <label [for]="'rc-' + field.key"
+                >{{ field.label }}
+                @if (field.required) {
+                  <span class="rc-required" aria-hidden="true">*</span>
+                }
+              </label>
+              @if (field.options) {
+                <mat-select
+                  cvSelect
+                  [id]="'rc-' + field.key"
+                  [name]="field.key"
+                  [aria-label]="field.label"
+                  [required]="!!field.required"
+                  [(ngModel)]="draft[field.key]"
+                  [attr.aria-invalid]="!!fieldError(field.key)"
+                  [attr.aria-describedby]="fieldError(field.key) ? 'rc-error-' + field.key : null"
+                  ><mat-option value="">Select…</mat-option>
+                  @for (option of field.options; track option) {
+                    <mat-option [value]="option">{{ option }}</mat-option>
+                  }
+                </mat-select>
+              } @else {
+                <input
+                  [id]="'rc-' + field.key"
+                  [type]="field.type || 'text'"
+                  [name]="field.key"
+                  [(ngModel)]="draft[field.key]"
+                  [required]="!!field.required"
+                  [attr.maxlength]="field.type === 'date' ? null : 150"
+                  [attr.aria-invalid]="!!fieldError(field.key)"
+                  [attr.aria-describedby]="fieldError(field.key) ? 'rc-error-' + field.key : null"
+                />
+              }
+              @if (fieldError(field.key)) {
+                <small class="rc-error" [id]="'rc-error-' + field.key">{{
+                  fieldError(field.key)
+                }}</small>
+              }
+            </div>
+          }
+        </div>
+      </section>
+      <section
+        class="co-surface rc-panel"
+        id="rc-mapping"
+        tabindex="-1"
+        aria-labelledby="rc-mapping-title"
+      >
+        <div class="co-section-header">
+          <h2 id="rc-mapping-title">
+            <span class="material-symbols-outlined" aria-hidden="true">shield</span>Compliance
+            Mapping
+          </h2>
+        </div>
+        <p class="rc-description">
+          Upload supporting evidence and assign an owner. PDF or DOCX, up to 10MB each.
+        </p>
+        <div class="rc-documents">
+          @for (type of documentTypes; track type.key) {
+            <article class="rc-document" [id]="'rc-document-' + type.key" tabindex="-1">
+              <h3>
+                <span
+                  class="material-symbols-outlined"
+                  aria-hidden="true"
+                  [class.rc-missing]="!draft.documents[type.key]"
+                  >description</span
+                >{{ type.name }}
+              </h3>
+              @if (draft.documents[type.key]; as file) {
+                <button
+                  type="button"
+                  class="rc-file"
+                  (click)="download(type.key)"
+                  [title]="file.name"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">download</span
+                  >{{ file.name }}
+                </button>
+                <small>Added {{ modifiedAt(file.uploadedAt) }} by {{ file.uploadedBy }}</small>
+                <label [for]="'rc-owner-' + type.key">Responsible owner</label
+                ><input
+                  [id]="'rc-owner-' + type.key"
+                  [name]="'owner-' + type.key"
+                  [(ngModel)]="file.owner"
+                  maxlength="150"
+                  placeholder="Assign an owner"
+                />
+                <label [for]="'rc-expiry-' + type.key"
+                  >Document expiry <span class="rc-optional">(if applicable)</span></label
+                ><input
+                  type="date"
+                  [id]="'rc-expiry-' + type.key"
+                  [name]="'expiry-' + type.key"
+                  [(ngModel)]="file.expiry"
+                />
+                <div class="rc-doc-actions">
+                  <button
+                    type="button"
+                    class="rc-link"
+                    (click)="fileInput.click()"
+                    [disabled]="!!uploading()"
+                  >
+                    Replace</button
+                  ><button
+                    type="button"
+                    class="rc-link rc-danger"
+                    (click)="remove(type.key)"
+                    [disabled]="!!uploading()"
+                  >
+                    Remove
+                  </button>
+                </div>
+              } @else {
+                <button
+                  type="button"
+                  class="rc-upload"
+                  (click)="fileInput.click()"
+                  [disabled]="!!uploading()"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">cloud_upload</span
+                  >{{ uploading() === type.key ? 'Loading file…' : 'Click to upload' }}</button
+                ><small>Not uploaded</small>
+              }
+              <input
+                #fileInput
+                type="file"
+                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                hidden
+                [attr.aria-label]="'Upload ' + type.name"
+                (change)="upload(type.key, $event)"
+              />
+              @if (fileErrors()[type.key] || fieldError(type.key)) {
+                <small role="alert" class="rc-error">{{
+                  fileErrors()[type.key] || fieldError(type.key)
+                }}</small>
+              }
+            </article>
+          }
+        </div>
+        <p class="rc-storage-note">
+          Files are stored on this device when you save. Adding a file does not verify its contents
+          or regulatory status.
+        </p>
+      </section>
+    </div>
+    <aside class="rc-sidebar">
+      <section
+        class="co-surface rc-panel"
+        id="rc-review"
+        tabindex="-1"
+        aria-labelledby="rc-checklist-title"
+      >
+        <div class="co-section-header">
+          <h2 id="rc-checklist-title">
+            <span class="material-symbols-outlined" aria-hidden="true">checklist</span>Compliance
+            Checklist
+          </h2>
+          <strong class="rc-percent">{{ completion() }}%</strong>
+        </div>
+        <progress
+          [value]="completion()"
+          max="100"
+          aria-label="Administrative completeness"
+        ></progress>
+        <p class="rc-description">
+          {{ hasChanges() ? 'Includes unsaved changes' : 'Based on saved information' }} ·
+          Administrative completeness
+        </p>
+        @for (check of checks(); track check.key) {
+          <button type="button" class="rc-check" (click)="focus(check.target)">
+            <span
+              class="co-check-status"
+              [class.complete]="check.complete"
+              [class.in-progress]="checkState(check.key, check.complete) === 'In Progress'"
+              aria-hidden="true"
+              ><span class="co-status-icon"></span></span
+            ><span
+              ><strong>{{ check.title }}</strong
+              ><small>{{ check.detail }}</small
+              ><small>{{ checkState(check.key, check.complete) }}</small></span
+            ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+          </button>
+        }
+        <label class="rc-reminders" id="rc-reminders" tabindex="-1"
+          ><input type="checkbox" name="reminders" [(ngModel)]="draft.reminders" />Track renewal
+          dates</label
+        ><small class="rc-muted"
+          >Upcoming dates appear here. Email reminders are not configured.</small
+        >
+        @if (review()) {
+          <p class="rc-review-note" role="status">
+            {{
+              completion() === 100
+                ? 'All administrative checks are complete.'
+                : 'Complete the pending checks above.'
+            }}
+            This checklist does not certify regulatory compliance.
+          </p>
+        }
+      </section>
+      <section class="co-surface rc-panel" aria-labelledby="rc-alerts-title">
+        <div class="co-section-header">
+          <h2 id="rc-alerts-title">
+            <span class="material-symbols-outlined rc-danger" aria-hidden="true">notifications</span
+            >Compliance Alerts
+          </h2>
+          <span class="rc-alert-count">{{ alerts().length }}</span>
+        </div>
+        @for (alert of alerts(); track alert.title) {
+          <button type="button" class="rc-alert" (click)="focus(alert.target)">
+            <span
+              class="material-symbols-outlined"
+              [class.rc-danger]="alert.urgent"
+              aria-hidden="true"
+              >{{ alert.urgent ? 'error' : 'warning' }}</span
+            ><span
+              ><strong>{{ alert.title }}</strong
+              ><small>{{ alert.detail }}</small></span
+            ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+          </button>
+        } @empty {
+          <p class="rc-description">No missing documents or upcoming expiries recorded.</p>
+        }
+      </section>
+    </aside>
+    <div class="rc-footer">
+      @if (error()) {
+        <p class="rc-error" role="alert">{{ error() }}</p>
+      }
+      <span class="rc-save-state">{{
+        uploading() ? 'Loading document…' : hasChanges() ? 'Unsaved changes' : 'All changes saved'
+      }}</span>
+      <div class="rc-footer-actions">
+        <button type="button" class="rc-button" (click)="cancel()" [disabled]="!!uploading()">
+          Cancel</button
+        ><button
+          type="button"
+          class="rc-button rc-outline"
+          (click)="review.set(true); focus('rc-review')"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">fact_check</span>Review
+          Compliance</button
+        ><button type="submit" class="rc-button rc-primary" [disabled]="!!uploading()">
+          <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Changes
+        </button>
+      </div>
+    </div>
+  </form>
+} @else {
+  <section class="co-surface rc-panel">
+    <h2>Company not found</h2>
+    <a routerLink="/manage/companies">Return to Companies</a>
+  </section>
+}

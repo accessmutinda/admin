@@ -1,0 +1,374 @@
+.cv-management .company-compliance-page .rc-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2.15fr) minmax(280px, 1fr);
+  gap: 12px 8px;
+  align-items: start;
+}
+.cv-management .company-compliance-page .rc-main,
+.cv-management .company-compliance-page .rc-sidebar {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.cv-management .company-compliance-page .rc-panel {
+  padding: 10px;
+  min-width: 0;
+}
+.cv-management .company-compliance-page .co-section-header {
+  gap: 6px;
+  margin-bottom: 5px;
+  min-height: 26px;
+}
+.cv-management .company-compliance-page .co-section-header h2 {
+  font-size: 14px;
+}
+.cv-management .company-compliance-page .rc-description {
+  font-size: 11px;
+  line-height: 1.45;
+  color: #6c7587;
+  margin: 0 0 10px;
+}
+.cv-management .company-compliance-page .rc-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+}
+.cv-management .company-compliance-page .rc-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cv-management .company-compliance-page label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #16375b;
+  line-height: 1.4;
+}
+.cv-management .company-compliance-page input:not([type='checkbox']):not([type='file']),
+.cv-management .company-compliance-page .rc-readonly {
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  background: #fff;
+  color: #16375b;
+  font: 400 12px/1.5 var(--font-sans);
+}
+.cv-management .company-compliance-page mat-select {
+  min-height: 32px;
+  font-size: 12px;
+}
+.cv-management .company-compliance-page .rc-readonly {
+  background: #f4f8fb;
+}
+.cv-management .company-compliance-page .rc-field a {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: #008afa;
+}
+.cv-management .company-compliance-page .rc-field a .material-symbols-outlined {
+  font-size: 13px;
+}
+.cv-management .company-compliance-page .rc-required,
+.cv-management .company-compliance-page .rc-error,
+.cv-management .company-compliance-page .rc-danger {
+  color: #db3449;
+}
+.cv-management .company-compliance-page .rc-error {
+  font-size: 11px;
+  line-height: 1.4;
+}
+.cv-management .company-compliance-page .rc-documents {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.cv-management .company-compliance-page .rc-document {
+  padding: 8px;
+  border: 1px solid #e7edf1;
+  border-radius: 6px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.cv-management .company-compliance-page .rc-document h3 {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0;
+  color: #16375b;
+}
+.cv-management .company-compliance-page .rc-document h3 .material-symbols-outlined {
+  font-size: 20px;
+  color: #008afa;
+}
+.cv-management .company-compliance-page .rc-document h3 .rc-missing {
+  color: #e7a100;
+}
+.cv-management .company-compliance-page .rc-document small,
+.cv-management .company-compliance-page .rc-muted,
+.cv-management .company-compliance-page .rc-optional,
+.cv-management .company-compliance-page .rc-storage-note {
+  font-size: 10px;
+  color: #6c7587;
+  line-height: 1.45;
+}
+.cv-management .company-compliance-page .rc-document .rc-error {
+  color: #db3449;
+}
+.cv-management .company-compliance-page .rc-file {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-wrap: anywhere;
+  text-align: left;
+  color: #008afa;
+  font: 700 11px/1.4 var(--font-sans);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.cv-management .company-compliance-page .rc-file .material-symbols-outlined {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.cv-management .company-compliance-page .rc-upload {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed #b9d6eb;
+  border-radius: 5px;
+  background: #f4faff;
+  color: #008afa;
+  font: 700 11px var(--font-sans);
+  min-height: 56px;
+  cursor: pointer;
+}
+.cv-management .company-compliance-page .rc-doc-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cv-management .company-compliance-page .rc-link {
+  background: none;
+  border: 0;
+  color: #008afa;
+  font: 700 11px var(--font-sans);
+  padding: 3px 0;
+  cursor: pointer;
+}
+.cv-management .company-compliance-page .rc-link.rc-danger {
+  color: #db3449;
+}
+.cv-management .company-compliance-page .rc-storage-note {
+  margin: 8px 0 0;
+}
+.cv-management .company-compliance-page .rc-percent {
+  font-size: 16px;
+  color: #008afa;
+}
+.cv-management .company-compliance-page progress {
+  display: block;
+  width: 100%;
+  height: 7px;
+  border: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  accent-color: #27b66a;
+  margin: 8px 0;
+}
+.cv-management .company-compliance-page progress::-webkit-progress-bar {
+  background: #e8eff3;
+  border-radius: 5px;
+}
+.cv-management .company-compliance-page progress::-webkit-progress-value {
+  background: #27b66a;
+  border-radius: 5px;
+}
+.cv-management .company-compliance-page progress::-moz-progress-bar {
+  background: #27b66a;
+  border-radius: 5px;
+}
+.cv-management .company-compliance-page .rc-check,
+.cv-management .company-compliance-page .rc-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid #edf1f4;
+  padding: 8px 0;
+  width: 100%;
+  cursor: pointer;
+  color: #16375b;
+  font-family: var(--font-sans);
+}
+.cv-management .company-compliance-page .rc-check > span:nth-child(2),
+.cv-management .company-compliance-page .rc-alert > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.cv-management .company-compliance-page .rc-check strong,
+.cv-management .company-compliance-page .rc-alert strong {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.cv-management .company-compliance-page .rc-check small,
+.cv-management .company-compliance-page .rc-alert small {
+  display: block;
+  font-size: 10px;
+  color: #6c7587;
+  line-height: 1.45;
+}
+.cv-management .company-compliance-page .rc-check > .material-symbols-outlined,
+.cv-management .company-compliance-page .rc-alert > .material-symbols-outlined {
+  font-size: 21px;
+}
+.cv-management .company-compliance-page .rc-check > .material-symbols-outlined:last-child,
+.cv-management .company-compliance-page .rc-alert > .material-symbols-outlined:last-child {
+  font-size: 16px;
+}
+.cv-management .company-compliance-page .rc-check > .co-check-status {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+.cv-management .company-compliance-page .rc-alert > .material-symbols-outlined:first-child {
+  color: #f5a900;
+  font-variation-settings: 'FILL' 1;
+}
+.cv-management .company-compliance-page .rc-alert > .rc-danger:first-child {
+  color: #db3449;
+}
+.cv-management .company-compliance-page .rc-alert-count {
+  font-size: 11px;
+  background: #ff3047;
+  color: #fff;
+  border-radius: 10px;
+  padding: 2px 6px;
+}
+.cv-management .company-compliance-page .rc-reminders {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0 4px;
+}
+.cv-management .company-compliance-page input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: #008afa;
+}
+.cv-management .company-compliance-page .rc-review-note {
+  font-size: 11px;
+  padding: 8px;
+  background: #eaf5fc;
+  color: #16375b;
+  border-radius: 5px;
+}
+.cv-management .company-compliance-page .rc-footer {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cv-management .company-compliance-page .rc-footer > .rc-error {
+  width: 100%;
+  margin: 0;
+}
+.cv-management .company-compliance-page .rc-save-state {
+  font-size: 11px;
+  color: #6c7587;
+}
+.cv-management .company-compliance-page .rc-footer-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.cv-management .company-compliance-page .rc-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  background: #fff;
+  color: #16375b;
+  font: 700 11px/1.4 var(--font-sans);
+  cursor: pointer;
+}
+.cv-management .company-compliance-page .rc-button > .material-symbols-outlined {
+  font-size: 17px;
+}
+.cv-management .company-compliance-page .rc-primary {
+  background: #008afa;
+  color: #fff;
+  border-color: #008afa;
+}
+.cv-management .company-compliance-page .rc-primary:hover {
+  background: #0079dc;
+}
+.cv-management .company-compliance-page .rc-outline {
+  background: transparent;
+  color: #008afa;
+  border-color: #008afa;
+}
+.cv-management .company-compliance-page .rc-outline:hover {
+  background: #eaf5fc;
+}
+.cv-management .company-compliance-page button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.cv-management
+  .company-compliance-page
+  :is(button, a, input, article, section, label, mat-select):focus-visible {
+  outline: 2px solid #008afa;
+  outline-offset: 2px;
+}
+@media (min-width: 1400px) {
+  .cv-management .company-compliance-page .rc-fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .cv-management .company-compliance-page .rc-documents {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1100px) {
+  .cv-management .company-compliance-page .rc-layout {
+    grid-template-columns: minmax(0, 2.15fr) 270px;
+  }
+}
+@media (max-width: 900px) {
+  .cv-management .company-compliance-page .rc-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cv-management .company-compliance-page .rc-sidebar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+@media (max-width: 600px) {
+  .cv-management .company-compliance-page .rc-fields,
+  .cv-management .company-compliance-page .rc-documents,
+  .cv-management .company-compliance-page .rc-sidebar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

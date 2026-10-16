@@ -140,6 +140,15 @@ export const routes: Routes = [
           import('./features/management/companies/company-editor').then((m) => m.CompanyEditor),
       },
       {
+        path: 'companies/:id/compliance',
+        title: 'Registration & compliance · CareVerity',
+        canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+        loadComponent: () =>
+          import('./features/management/companies/company-compliance').then(
+            (m) => m.CompanyCompliancePage,
+          ),
+      },
+      {
         path: 'companies/:id/contacts',
         title: 'Company contacts · CareVerity',
         canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],

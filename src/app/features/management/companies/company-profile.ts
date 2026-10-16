@@ -1,3 +1,4 @@
+import { complianceChecks, complianceComplete, emptyCompliance } from './company-compliance.models';
 import { locationsComplete } from '../locations/locations.models';
 import { contactInformationComplete } from './company-contacts.models';
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
@@ -167,9 +168,9 @@ export class CompanyProfile {
         fragment: 'general-information',
       },
       {
-        title: 'Registration Details',
-        complete: !!c?.registration,
-        fragment: 'profile-registration',
+        title: 'Registration & Compliance',
+        complete: complianceComplete(c),
+        link: ['/manage/companies', this.id, 'compliance'],
       },
       {
         title: 'Contact Information',
@@ -190,8 +191,14 @@ export class CompanyProfile {
         complete: !!c?.sector && !!c.modules.length,
         link: ['/manage/companies', this.id, 'modules'],
       },
-      { title: 'Compliance Information', complete: false, link: ['/manage/compliance'] },
-      { title: 'Documents & Policies', complete: false },
+      {
+        title: 'Documents & Policies',
+        complete: complianceChecks(emptyCompliance(c), c?.registration ?? '').find(
+          (check) => check.key === 'documents',
+        )!.complete,
+        link: ['/manage/companies', this.id, 'compliance'],
+        fragment: 'rc-mapping',
+      },
     ];
   });
   private newDraft(): Company {

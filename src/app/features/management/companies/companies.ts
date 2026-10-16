@@ -1,3 +1,4 @@
+import { complianceComplete } from './company-compliance.models';
 import { locationsComplete } from '../locations/locations.models';
 import { contactInformationComplete } from './company-contacts.models';
 import { Component, computed, inject, signal } from '@angular/core';
@@ -60,12 +61,12 @@ export class Companies {
         link: this.profileLink(),
       },
       {
-        title: 'Registration Details',
-        description: 'CQC registration and legal details',
-        icon: 'description',
+        title: 'Registration & Compliance',
+        description: 'Registration, documents and responsible owners',
+        icon: 'shield',
         tone: 'teal',
-        state: c?.registration ? 'Complete' : 'Pending',
-        link: this.profileLink(),
+        state: complianceComplete(c) ? 'Complete' : c?.compliance ? 'In Progress' : 'Pending',
+        link: [...this.profileLink(), 'compliance'],
       },
       {
         title: 'Contact Information',
@@ -110,14 +111,6 @@ export class Companies {
         tone: 'cyan',
         state: this.store.data().members.length ? 'Complete' : 'Pending',
         link: ['/manage/access'],
-      },
-      {
-        title: 'Compliance Mapping',
-        description: 'Regulatory requirements and compliance settings',
-        icon: 'shield',
-        tone: 'teal',
-        state: 'Pending',
-        link: ['/manage/compliance'],
       },
       {
         title: 'Integrations',
