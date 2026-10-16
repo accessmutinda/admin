@@ -1,0 +1,418 @@
+.cv-management .company-profile-page .cp-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2.15fr) minmax(290px, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.cv-management .company-profile-page .cp-general,
+.cv-management .company-profile-page .cp-sidebar > section {
+  padding: 10px;
+}
+.cv-management .company-profile-page .cp-panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.cv-management .company-profile-page .cp-panel-heading > div {
+  flex: 1;
+  min-width: 0;
+}
+.cv-management .app-body main.page-content .company-profile-page .cp-panel-heading h2 {
+  color: #002b60;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+.cv-management .company-profile-page .cp-panel-heading p {
+  font-size: 11px;
+  color: #657184;
+  margin-top: 2px;
+}
+.cv-management .company-profile-page .cp-heading-icon {
+  width: 34px;
+  height: 36px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: #008afa;
+  color: #fff;
+  font-size: 23px;
+  flex-shrink: 0;
+  font-variation-settings: 'FILL' 1;
+}
+.cv-management .company-profile-page .cp-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  margin: 0;
+}
+.cv-management .company-profile-page .cp-field {
+  min-width: 0;
+  position: relative;
+  scroll-margin-top: 65px;
+}
+.cv-management .company-profile-page .cp-wide {
+  grid-column: 1 / -1;
+}
+.cv-management .company-profile-page .cp-field label,
+.cv-management .company-profile-page .cp-field dt {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #10355e;
+  margin: 0 0 3px;
+  line-height: 1.25;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .company-profile-page
+  .cp-field
+  input:not([type='checkbox']),
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .company-profile-page
+  .cp-field
+  textarea {
+  display: block;
+  width: 100%;
+  margin: 0;
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  color: #123352;
+  background: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .company-profile-page
+  .cp-field
+  mat-select.cv-select {
+  display: block;
+  width: 100%;
+  margin: 0;
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  color: #123352;
+  font-size: 12px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .company-profile-page
+  .cp-field
+  textarea {
+  resize: vertical;
+  min-height: 78px;
+  padding-bottom: 20px;
+}
+.cv-management .company-profile-page .cp-field small {
+  display: block;
+  font-size: 10px;
+  color: #657184;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+.cv-management .company-profile-page .cp-textarea-wrap {
+  position: relative;
+}
+.cv-management .company-profile-page .cp-character-count {
+  position: absolute;
+  right: 9px;
+  bottom: 7px;
+  color: #657184;
+  font-size: 10px;
+  pointer-events: none;
+}
+.cv-management .company-profile-page .cp-required {
+  color: #d62b41;
+}
+.cv-management .company-profile-page .cp-field-error,
+.cv-management .app-body main.page-content .company-profile-page .cp-validation-summary {
+  display: block;
+  color: #b42334;
+  font-size: 11px;
+  margin: 5px 0;
+}
+.cv-management .company-profile-page .cp-validation-summary {
+  padding: 8px 10px;
+  border: 1px solid #f2c8cf;
+  background: #fff5f6;
+  border-radius: 5px;
+  margin-bottom: 12px;
+}
+.cv-management .company-profile-page .cp-readonly .cp-field {
+  padding: 0 0 9px;
+  border-bottom: 1px solid #edf2f5;
+}
+.cv-management .company-profile-page .cp-readonly dd {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #123352;
+  overflow-wrap: anywhere;
+}
+.cv-management .company-profile-page .cp-readonly .cp-missing {
+  color: #7d8798;
+}
+.cv-management .company-profile-page .cp-description {
+  white-space: pre-wrap;
+}
+.cv-management .company-profile-page .cp-inactive {
+  background: #eef1f4;
+  color: #657184;
+}
+.cv-management .company-profile-page .cp-status-control {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+}
+.cv-management .company-profile-page .cp-status-control input {
+  appearance: none;
+  width: 38px;
+  height: 22px;
+  border: 1px solid #b7c3ce;
+  border-radius: 20px;
+  background: #c5ced6;
+  cursor: pointer;
+  position: relative;
+  margin: 0;
+  flex-shrink: 0;
+}
+.cv-management .company-profile-page .cp-status-control input::after {
+  content: '';
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  box-shadow: 0 1px 3px #12335230;
+}
+.cv-management .company-profile-page .cp-status-control input:checked {
+  background: #009c53;
+  border-color: #009c53;
+}
+.cv-management .company-profile-page .cp-status-control input:checked::after {
+  left: 18px;
+}
+.cv-management .company-profile-page .cp-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  background: linear-gradient(#fff, #f9fcfd);
+  color: #16375b;
+  font-size: 12px;
+  font-weight: 700;
+}
+.cv-management .company-profile-page .cp-button.cp-outline {
+  background: transparent;
+  border-color: #008afa;
+  color: #008afa;
+}
+.cv-management .company-profile-page .cp-button.cp-outline:hover {
+  background: #eaf5fc;
+}
+.cv-management .company-profile-page .cp-button.cp-primary {
+  background: #008afa;
+  border-color: #008afa;
+  color: white;
+}
+.cv-management .company-profile-page .cp-button.cp-primary:hover {
+  background: #0079dc;
+  border-color: #0079dc;
+}
+.cv-management .company-profile-page .cp-button .material-symbols-outlined {
+  font-size: 17px;
+}
+.cv-management .company-profile-page .cp-form-footer {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-top: 1px solid #edf2f5;
+  padding-top: 8px;
+  margin-top: 10px;
+}
+.cv-management .company-profile-page .cp-form-footer > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cv-management .company-profile-page .cp-sidebar {
+  display: grid;
+  gap: 12px;
+}
+.cv-management .company-profile-page .cp-completion .cp-panel-heading {
+  margin-bottom: 4px;
+}
+.cv-management .company-profile-page .cp-completion-value {
+  display: block;
+  color: #081334;
+  font-size: 28px;
+  line-height: 1.2;
+  margin: 5px 0;
+}
+.cv-management .company-profile-page .cp-completion > p {
+  font-size: 11px;
+  color: #657184;
+}
+.cv-management .company-profile-page .cp-completion progress {
+  height: 8px;
+  margin-top: 10px;
+}
+.cv-management .company-profile-page .cp-completion-note {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+  color: #657184;
+  line-height: 1.4;
+}
+.cv-management .company-profile-page .cp-save-status,
+.cv-management .company-profile-page .cp-modified {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: #eefaf4;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 12px;
+  color: #087337;
+}
+.cv-management .company-profile-page .cp-save-status strong,
+.cv-management .company-profile-page .cp-modified strong {
+  display: block;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.cv-management .company-profile-page .cp-save-status small,
+.cv-management .company-profile-page .cp-modified small {
+  display: block;
+  font-size: 10px;
+  color: #657184;
+  line-height: 1.5;
+}
+.cv-management .company-profile-page .cp-save-status.cp-unsaved {
+  background: #fff7e8;
+  color: #b46500;
+}
+.cv-management .company-profile-page .cp-modified {
+  background: #f3f8fc;
+  color: #0066ac;
+}
+.cv-management .company-profile-page .cp-required-sections ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cv-management .company-profile-page .cp-required-sections li {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #edf2f5;
+  font-size: 11px;
+  color: #16375b;
+}
+.cv-management .company-profile-page .cp-required-sections li a {
+  color: #16375b;
+}
+.cv-management .company-profile-page .cp-required-sections li .co-check-status {
+  margin: 0;
+  font-size: 10px;
+}
+.cv-management .company-profile-page .cp-sections-note {
+  margin-top: 10px;
+  font-size: 10px;
+  color: #657184;
+}
+.cv-management .company-profile-page .cp-draft-notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: #eaf5fc;
+  border: 1px solid #d6eaf7;
+  border-radius: 5px;
+  font-size: 12px;
+}
+.cv-management .company-profile-page .cp-draft-notice button {
+  border: 0;
+  background: transparent;
+  text-decoration: underline;
+  color: #0066ac;
+  padding: 3px 5px;
+  font-weight: 700;
+}
+.cv-management .company-profile-page .cp-not-found {
+  padding: 20px;
+}
+.cv-management .company-profile-page :is(button, a, input, textarea, mat-select):focus-visible {
+  outline: 2px solid #008bd9;
+  outline-offset: 2px;
+}
+.cv-management .company-profile-page [aria-invalid='true'] {
+  border-color: #d62b41 !important;
+}
+@media (min-width: 1200px) {
+  .cv-management .company-profile-page .cp-layout {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+  .cv-management .company-profile-page .cp-fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1100px) {
+  .cv-management .company-profile-page .cp-layout {
+    grid-template-columns: minmax(0, 1fr) 270px;
+  }
+  .cv-management .company-profile-page .cp-fields {
+    gap: 8px 12px;
+  }
+}
+@media (max-width: 900px) {
+  .cv-management .company-profile-page .cp-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cv-management .company-profile-page .cp-sidebar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+@media (max-width: 600px) {
+  .cv-management .company-profile-page .cp-fields,
+  .cv-management .company-profile-page .cp-sidebar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cv-management .company-profile-page .cp-panel-heading {
+    flex-wrap: wrap;
+  }
+  .cv-management .company-profile-page .cp-general {
+    padding: 10px;
+  }
+  .cv-management .company-profile-page .cp-form-footer > div {
+    width: 100%;
+  }
+  .cv-management .company-profile-page .cp-form-footer > div button {
+    flex: 1;
+  }
+}

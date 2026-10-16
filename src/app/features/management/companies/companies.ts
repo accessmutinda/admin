@@ -1,7 +1,12 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Company, ManagementStore } from '../shared/management.store';
+import { ManagementStore } from '../shared/management.store';
+import {
+  companyCompletion,
+  companyModifiedAt,
+  generalInformationComplete,
+} from './company-profile.models';
 
 @Component({
   selector: 'cv-companies',
@@ -26,19 +31,8 @@ export class Companies {
           .includes(this.search().trim().toLowerCase()),
       ),
   );
-  protected completion(c: Company): number {
-    const fields = [
-      c.name,
-      c.code,
-      c.registration,
-      c.postcode,
-      c.sector,
-      c.size,
-      c.logo,
-      c.modules.length,
-    ];
-    return Math.round((fields.filter(Boolean).length / fields.length) * 100);
-  }
+  protected readonly completion = companyCompletion;
+  protected readonly modifiedAt = companyModifiedAt;
   protected readonly average = computed(() => {
     const all = this.store.companies();
     return all.length
@@ -46,7 +40,7 @@ export class Companies {
       : 0;
   });
   protected readonly active = computed(
-    () => this.store.companies().filter((c) => c.modules.length > 0).length,
+    () => this.store.companies().filter((c) => c.active ?? c.modules.length > 0).length,
   );
   protected readonly pending = computed(
     () => this.store.companies().filter((c) => this.completion(c) < 75).length,
@@ -55,11 +49,11 @@ export class Companies {
     const c = this.company();
     return [
       {
-        title: 'General Profile',
+        title: 'General Information',
         description: 'Basic company information and service details',
         icon: 'description',
         tone: 'teal',
-        state: c?.name && c?.sector ? 'Complete' : 'Pending',
+        state: generalInformationComplete(c) ? 'Complete' : 'Pending',
         link: this.profileLink(),
       },
       {
@@ -92,7 +86,7 @@ export class Companies {
         icon: 'palette',
         tone: 'teal',
         state: c?.logo ? 'Complete' : 'In Progress',
-        link: this.profileLink(),
+        link: [...this.profileLink(), 'settings'],
         section: 'Branding',
       },
       {
@@ -101,7 +95,7 @@ export class Companies {
         icon: 'deployed_code',
         tone: 'orange',
         state: c?.modules.length ? 'Complete' : 'Pending',
-        link: this.profileLink(),
+        link: [...this.profileLink(), 'settings'],
         section: 'Modules',
       },
       {
@@ -141,11 +135,11 @@ export class Companies {
       link: ['/manage/companies/new'],
       duplicate: this.company()?.id,
     },
-    { title: 'Edit Company Profile', icon: 'edit_square', link: this.profileLink() },
+    { title: 'Edit Company Profile', icon: 'edit_square', link: this.profileLink(), edit: true },
     {
       title: 'Assign Modules',
       icon: 'deployed_code',
-      link: this.profileLink(),
+      link: [...this.profileLink(), 'settings'],
       section: 'Modules',
     },
     { title: 'Invite Admin User', icon: 'person_add', link: ['/manage/access'] },

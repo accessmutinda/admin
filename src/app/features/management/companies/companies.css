@@ -836,3 +836,27 @@
     max-width: none;
   }
 }
+
+.cv-management .companies-page .co-active.co-inactive {
+  background: #eef1f4;
+  color: #657184;
+}
+
+.cv-management .companies-page .co-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  min-height: 16px;
+  line-height: 16px;
+  color: #657184;
+}
+.cv-management .companies-page .co-breadcrumb a {
+  color: #0066ac;
+}
+.cv-management .companies-page .co-breadcrumb > span:nth-child(even) {
+  font-family: 'Material Symbols Outlined';
+  font-size: 16px;
+}

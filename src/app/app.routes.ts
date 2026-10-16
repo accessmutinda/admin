@@ -132,10 +132,17 @@ export const routes: Routes = [
           import('./features/management/companies/company-editor').then((m) => m.CompanyEditor),
       },
       {
-        path: 'companies/:id',
-        title: 'Company profile · CareVerity',
+        path: 'companies/:id/settings',
+        title: 'Company settings · CareVerity',
         loadComponent: () =>
           import('./features/management/companies/company-editor').then((m) => m.CompanyEditor),
+      },
+      {
+        path: 'companies/:id',
+        title: 'Company profile · CareVerity',
+        canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+        loadComponent: () =>
+          import('./features/management/companies/company-profile').then((m) => m.CompanyProfile),
       },
       {
         path: 'access',
@@ -238,7 +245,8 @@ export const routes: Routes = [
       {
         path: 'finance/:area',
         data: { module: 'Finance' },
-        title: (route) => `${route.paramMap.get('area') === 'payroll' ? 'Payroll' : route.paramMap.get('area') === 'billing' ? 'Billing & payments' : 'Finance overview'} · CareVerity`,
+        title: (route) =>
+          `${route.paramMap.get('area') === 'payroll' ? 'Payroll' : route.paramMap.get('area') === 'billing' ? 'Billing & payments' : 'Finance overview'} · CareVerity`,
         loadComponent: () => import('./features/management/payroll/payroll').then((m) => m.Payroll),
       },
       {

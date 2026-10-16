@@ -1,3 +1,6 @@
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/companies" aria-current="page">Companies</a>
+</nav>
 <div class="co-heading">
   <h1>Company Setup Overview</h1>
   <p>Manage and configure care provider companies across the CareVerity platform</p>
@@ -8,14 +11,18 @@
       @if (current.logo) {
         <img [src]="current.logo" [alt]="current.name + ' logo'" />
       } @else {
-        <div class="co-reference-photo" role="img" aria-label="Residential care home"></div>
+        <div class="co-reference-photo" role="img" aria-label="Care home placeholder"></div>
       }
     </div>
     <div class="co-summary-content">
       <div class="co-summary-header">
         <div class="co-company-title">
           <h2>{{ current.name }}</h2>
-          <span class="co-active">{{ current.modules.length ? 'Active' : 'Pending setup' }}</span>
+          <span
+            class="co-active"
+            [class.co-inactive]="!(current.active ?? !!current.modules.length)"
+            >{{ (current.active ?? !!current.modules.length) ? 'Active' : 'Inactive' }}</span
+          >
         </div>
         <a class="co-profile-button" [routerLink]="profileLink()"
           >View Company Profile
@@ -37,11 +44,14 @@
       <div class="co-details">
         <div>
           <span class="material-symbols-outlined" aria-hidden="true">location_on</span
-          ><span><small>Head Office</small>{{ current.postcode || 'Location not added' }}</span>
+          ><span
+            ><small>Head Office</small
+            >{{ current.headOfficeAddress || current.postcode || 'Location not added' }}</span
+          >
         </div>
         <div>
           <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
-          ><span><small>Last updated</small>Not recorded</span>
+          ><span><small>Last updated</small>{{ modifiedAt(current.modifiedAt) }}</span>
         </div>
         <div>
           <span class="material-symbols-outlined" aria-hidden="true">person</span
@@ -172,7 +182,11 @@
         @for (action of actions(); track action.title) {
           <a
             [routerLink]="action.link"
-            [queryParams]="{ section: action.section, duplicate: action.duplicate }"
+            [queryParams]="{
+              section: action.section,
+              duplicate: action.duplicate,
+              edit: action.edit,
+            }"
             [class.co-primary]="$first"
             ><span class="material-symbols-outlined" aria-hidden="true">{{ action.icon }}</span
             >{{ action.title
@@ -239,8 +253,10 @@
               <td>{{ row.code }}</td>
               <td>{{ row.sector }}</td>
               <td>
-                <span class="co-table-status" [class.pending]="!row.modules.length"
-                  ><i></i>{{ row.modules.length ? 'Active' : 'Pending setup' }}</span
+                <span
+                  class="co-table-status"
+                  [class.pending]="!(row.active ?? !!row.modules.length)"
+                  ><i></i>{{ (row.active ?? !!row.modules.length) ? 'Active' : 'Inactive' }}</span
                 >
               </td>
               <td>

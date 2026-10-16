@@ -1,0 +1,335 @@
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/companies">Companies</a><span aria-hidden="true">chevron_right</span>
+  @if (company(); as current) {
+    <span>{{ current.name }}</span
+    ><span aria-hidden="true">chevron_right</span>
+  }
+  <span aria-current="page">General Information</span>
+</nav>
+@if (company(); as current) {
+  <div class="co-heading">
+    <h1>Company Profile{{ editing() ? ' Update' : '' }} – General Information</h1>
+    <p>
+      {{
+        editing()
+          ? 'Update the core details for this care provider company.'
+          : 'View the core details and general information for this care provider company.'
+      }}
+    </p>
+  </div>
+  <section class="co-summary co-surface" aria-label="Company overview">
+    <div class="co-company-image" [style.background]="current.logo ? '#eef7fa' : null">
+      @if (current.logo) {
+        <img [src]="current.logo" [alt]="current.name + ' logo'" />
+      } @else {
+        <div class="co-reference-photo" role="img" aria-label="Care home placeholder"></div>
+      }
+    </div>
+    <div class="co-summary-content">
+      <div class="co-summary-header">
+        <div class="co-company-title">
+          <h2>{{ current.name }}</h2>
+          <span
+            class="co-active"
+            [class.cp-inactive]="!(current.active ?? !!current.modules.length)"
+            >{{ (current.active ?? !!current.modules.length) ? 'Active' : 'Inactive' }}</span
+          >
+        </div>
+        <a
+          class="co-profile-button"
+          [routerLink]="['/manage/companies', current.id, 'settings']"
+          [queryParams]="{ section: 'Branding' }"
+          >Branding &amp; Modules<span class="material-symbols-outlined" aria-hidden="true"
+            >arrow_forward</span
+          ></a
+        >
+      </div>
+      <div class="co-facts">
+        <div>
+          <span>Company code</span><strong>{{ current.code }}</strong>
+        </div>
+        <div>
+          <span>Registration number</span
+          ><strong>{{ current.registration || 'Not provided' }}</strong>
+        </div>
+        <div class="co-service-type">
+          <span>Service type</span><strong>{{ current.sector }}</strong>
+        </div>
+      </div>
+      <div class="co-details">
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+          ><span
+            ><small>Head Office</small
+            >{{ current.headOfficeAddress || current.postcode || 'Location not added' }}</span
+          >
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+          ><span><small>Last updated</small>{{ modifiedAt() }}</span>
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">person</span
+          ><span><small>Assigned plan</small>{{ current.modules.length }} modules enabled</span>
+        </div>
+      </div>
+    </div>
+  </section>
+  @if (draftAvailable() && !editing()) {
+    <div class="cp-draft-notice" role="status">
+      <span class="material-symbols-outlined" aria-hidden="true">draft</span>A saved draft is
+      available on this device.<button type="button" (click)="resumeDraft()">Resume draft</button>
+    </div>
+  }
+  <div class="cp-layout">
+    <section
+      class="cp-general co-surface"
+      id="general-information"
+      aria-labelledby="cp-general-title"
+    >
+      <div class="cp-panel-heading">
+        <span class="cp-heading-icon material-symbols-outlined" aria-hidden="true"
+          >description</span
+        >
+        <div>
+          <h2 id="cp-general-title">General Information</h2>
+          <p>
+            {{
+              editing()
+                ? 'Update the basic details and key information about the company.'
+                : 'Basic details and key information about the company.'
+            }}
+          </p>
+        </div>
+        @if (!editing()) {
+          <button type="button" class="cp-button cp-primary" (click)="edit()">
+            <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
+          </button>
+        }
+      </div>
+      @if (editing()) {
+        <form #profileForm="ngForm" (ngSubmit)="save()" novalidate>
+          @if (submitted()) {
+            <p class="cp-validation-summary" role="alert">
+              {{ saveError() || 'Check the required fields below before saving.' }}
+            </p>
+          }
+          <div class="cp-fields">
+            @for (field of fields; track field.key) {
+              <div class="cp-field" [class.cp-wide]="field.wide" [id]="'profile-' + field.key">
+                <label [for]="'input-' + field.key"
+                  >{{ field.label }}
+                  @if (field.required) {
+                    <span class="cp-required" aria-hidden="true">*</span>
+                  }
+                </label>
+                @switch (field.type) {
+                  @case ('textarea') {
+                    <div class="cp-textarea-wrap">
+                      <textarea
+                        [id]="'input-' + field.key"
+                        [name]="field.key"
+                        [ngModel]="draft[field.key] ?? ''"
+                        (ngModelChange)="setField(field.key, $event)"
+                        [maxlength]="field.max ?? 1000"
+                        [required]="!!field.required"
+                        [attr.aria-invalid]="!!error(field)"
+                        [attr.aria-describedby]="
+                          'hint-' + field.key + (error(field) ? ' error-' + field.key : '')
+                        "
+                        rows="3"
+                      ></textarea>
+                      <span class="cp-character-count"
+                        >{{ draft.description?.length ?? 0 }}/1000</span
+                      >
+                    </div>
+                  }
+                  @case ('select') {
+                    <mat-select
+                      cvSelect
+                      [id]="'input-' + field.key"
+                      [name]="field.key"
+                      [ngModel]="draft[field.key] ?? ''"
+                      (ngModelChange)="setField(field.key, $event)"
+                      [required]="!!field.required"
+                      [attr.aria-label]="field.label"
+                      [attr.aria-invalid]="!!error(field)"
+                      [attr.aria-describedby]="
+                        'hint-' + field.key + (error(field) ? ' error-' + field.key : '')
+                      "
+                      placeholder="Select an option"
+                    >
+                      @for (option of options(field); track option) {
+                        <mat-option [value]="option">{{ option }}</mat-option>
+                      }
+                    </mat-select>
+                  }
+                  @case ('toggle') {
+                    <div class="cp-status-control">
+                      <input
+                        type="checkbox"
+                        [id]="'input-' + field.key"
+                        [name]="field.key"
+                        [ngModel]="draft.active"
+                        (ngModelChange)="setField('active', $event)"
+                        [attr.aria-describedby]="'hint-' + field.key"
+                        role="switch"
+                      /><span>{{ draft.active ? 'Active' : 'Inactive' }}</span>
+                    </div>
+                  }
+                  @default {
+                    <input
+                      [id]="'input-' + field.key"
+                      [name]="field.key"
+                      [type]="field.type ?? 'text'"
+                      [ngModel]="draft[field.key] ?? ''"
+                      (ngModelChange)="setField(field.key, $event)"
+                      [required]="!!field.required"
+                      [attr.maxlength]="field.max ?? null"
+                      [attr.min]="field.type === 'number' ? 0 : null"
+                      [attr.max]="field.type === 'date' ? today : null"
+                      [attr.step]="field.type === 'number' ? 1 : null"
+                      [attr.aria-invalid]="!!error(field)"
+                      [attr.aria-describedby]="
+                        'hint-' + field.key + (error(field) ? ' error-' + field.key : '')
+                      "
+                    />
+                  }
+                }
+                <small [id]="'hint-' + field.key">{{ field.hint }}</small>
+                @if (error(field)) {
+                  <span class="cp-field-error" [id]="'error-' + field.key">{{ error(field) }}</span>
+                }
+              </div>
+            }
+          </div>
+          @if (saveError() && !submitted()) {
+            <p class="cp-field-error" role="alert">{{ saveError() }}</p>
+          }
+          <div class="cp-form-footer">
+            <button type="button" class="cp-button" (click)="cancel()">Cancel</button>
+            <div>
+              <button type="button" class="cp-button cp-outline" (click)="saveDraft()">
+                <span class="material-symbols-outlined" aria-hidden="true">draft</span>Save as Draft</button
+              ><button type="submit" class="cp-button cp-primary">
+                <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Changes
+              </button>
+            </div>
+          </div>
+        </form>
+      } @else {
+        <dl class="cp-fields cp-readonly">
+          @for (field of fields; track field.key) {
+            <div class="cp-field" [class.cp-wide]="field.wide" [id]="'profile-' + field.key">
+              <dt>{{ field.label }}</dt>
+              <dd
+                [class.cp-description]="field.type === 'textarea'"
+                [class.cp-missing]="value(field) === 'Not recorded'"
+              >
+                <span
+                  [class.co-active]="field.type === 'toggle'"
+                  [class.cp-inactive]="field.type === 'toggle' && value(field) === 'Inactive'"
+                  >{{ value(field) }}</span
+                >
+              </dd>
+            </div>
+          }
+        </dl>
+      }
+    </section>
+    <aside class="cp-sidebar">
+      <section class="co-surface cp-completion" aria-labelledby="cp-completion-title">
+        <div class="cp-panel-heading">
+          <span class="cp-heading-icon material-symbols-outlined" aria-hidden="true"
+            >format_list_bulleted</span
+          >
+          <div><h2 id="cp-completion-title">Profile Completion</h2></div>
+        </div>
+        <strong class="cp-completion-value">{{ completion() }}%</strong>
+        <p>Complete the remaining company details to improve your profile.</p>
+        <progress
+          [value]="completion()"
+          max="100"
+          aria-label="Company profile completion"
+        ></progress
+        ><small class="cp-completion-note"
+          >Based on company identity, registration, location, staff size, logo and modules.</small
+        >
+        <div
+          class="cp-save-status"
+          [class.cp-unsaved]="hasChanges() && !draftSaved()"
+          role="status"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">{{
+            hasChanges() && !draftSaved() ? 'edit_note' : 'check_circle'
+          }}</span>
+          <div>
+            <strong>{{
+              hasChanges()
+                ? draftSaved()
+                  ? 'Draft saved on this device'
+                  : 'You have unsaved changes'
+                : 'Viewing saved company details'
+            }}</strong
+            ><small>{{
+              editing()
+                ? 'Use Save Changes to update the company profile.'
+                : 'Choose Edit to update this information.'
+            }}</small>
+          </div>
+        </div>
+        <div class="cp-modified">
+          <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
+          <div>
+            <small>Last modified</small><strong>{{ modifiedAt() }}</strong>
+            @if (current.modifiedBy) {
+              <small>by {{ current.modifiedBy }} · UK time</small>
+            }
+          </div>
+        </div>
+      </section>
+      <section class="co-surface cp-required-sections" aria-labelledby="cp-required-title">
+        <div class="cp-panel-heading">
+          <span class="cp-heading-icon material-symbols-outlined" aria-hidden="true"
+            >description</span
+          >
+          <div>
+            <h2 id="cp-required-title">Required Sections</h2>
+            <p>Review the remaining company setup sections.</p>
+          </div>
+        </div>
+        <ul>
+          @for (section of sections(); track section.title) {
+            <li>
+              <div class="co-check-status" [class.complete]="section.complete">
+                <span class="co-status-icon" aria-hidden="true"></span>
+              </div>
+              @if (section.link) {
+                <a [routerLink]="section.link" [queryParams]="{ section: section.section }">{{
+                  section.title
+                }}</a>
+              } @else if (section.fragment) {
+                <a [href]="'#' + section.fragment">{{ section.title }}</a>
+              } @else {
+                <span>{{ section.title }}</span>
+              }
+              <span class="co-check-status" [class.complete]="section.complete">{{
+                section.complete ? 'Complete' : 'Pending'
+              }}</span>
+            </li>
+          }
+        </ul>
+        <p class="cp-sections-note">
+          Completion reflects saved details. Branch records, compliance and policies need separate
+          verification.
+        </p>
+      </section>
+    </aside>
+  </div>
+} @else {
+  <section class="co-surface cp-not-found">
+    <h1>Company not found</h1>
+    <p>This company is no longer available.</p>
+    <a class="cp-button" routerLink="/manage/companies">Back to companies</a>
+  </section>
+}

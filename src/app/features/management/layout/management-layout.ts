@@ -190,7 +190,7 @@ export class ManagementLayout {
     { path: '/manage/learning', label: 'Training academy', icon: 'school' },
   ];
   protected isCompaniesOverview(): boolean {
-    return this.router.url.split(/[?#]/)[0] === '/manage/companies';
+    return this.router.url.split(/[?#]/)[0].startsWith('/manage/companies');
   }
   protected switchWorkspace(): void {
     this.router.navigateByUrl('/select-workspace');
