@@ -100,10 +100,13 @@ export class CompanyEditor {
         modules: ['Care delivery', 'People & HR', 'Training academy'],
       };
   constructor() {
-    if (!this.isNew && this.existing && this.step() === 1) {
-      this.router.navigate(['/manage/companies', this.existing?.id, 'branding'], {
-        replaceUrl: true,
-      });
+    if (!this.isNew && this.existing && (this.step() === 1 || this.step() === 2)) {
+      this.router.navigate(
+        ['/manage/companies', this.existing?.id, this.step() === 1 ? 'branding' : 'modules'],
+        {
+          replaceUrl: true,
+        },
+      );
     }
     if (this.isNew && this.duplicateId) {
       const source = this.store.companies().find((c) => c.id === this.duplicateId);
@@ -117,13 +120,17 @@ export class CompanyEditor {
     }
   }
   protected selectSection(index: number): void {
-    if (!this.isNew && index === 1) {
+    if (!this.isNew && (index === 1 || index === 2)) {
       if (
         this.hasChanges() &&
         !window.confirm('You have unsaved company settings. Leave without saving?')
       )
         return;
-      this.router.navigate(['/manage/companies', this.company.id, 'branding']);
+      this.router.navigate([
+        '/manage/companies',
+        this.company.id,
+        index === 1 ? 'branding' : 'modules',
+      ]);
       return;
     }
     this.step.set(index);

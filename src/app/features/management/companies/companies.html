@@ -146,11 +146,7 @@
     </div>
     <div class="co-check-grid">
       @for (item of checklist(); track item.title) {
-        <a
-          class="co-check-card"
-          [routerLink]="item.link"
-          [queryParams]="item.section ? { section: item.section } : {}"
-        >
+        <a class="co-check-card" [routerLink]="item.link">
           <span
             class="co-check-icon material-symbols-outlined"
             [attr.data-tone]="item.tone"
@@ -183,7 +179,6 @@
           <a
             [routerLink]="action.link"
             [queryParams]="{
-              section: action.section,
               duplicate: action.duplicate,
               edit: action.edit,
             }"

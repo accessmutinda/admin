@@ -95,8 +95,7 @@ export class Companies {
         icon: 'deployed_code',
         tone: 'orange',
         state: c?.modules.length ? 'Complete' : 'Pending',
-        link: [...this.profileLink(), 'settings'],
-        section: 'Modules',
+        link: [...this.profileLink(), 'modules'],
       },
       {
         title: 'Roles & Permissions',
@@ -137,10 +136,9 @@ export class Companies {
     },
     { title: 'Edit Company Profile', icon: 'edit_square', link: this.profileLink(), edit: true },
     {
-      title: 'Assign Modules',
+      title: 'Manage Modules',
       icon: 'deployed_code',
-      link: [...this.profileLink(), 'settings'],
-      section: 'Modules',
+      link: [...this.profileLink(), 'modules'],
     },
     { title: 'Invite Admin User', icon: 'person_add', link: ['/manage/access'] },
   ]);

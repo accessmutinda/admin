@@ -179,8 +179,7 @@ export class CompanyProfile {
       {
         title: 'Services & Care Types',
         complete: !!c?.sector && !!c.modules.length,
-        link: ['/manage/companies', this.id, 'settings'],
-        section: 'Modules',
+        link: ['/manage/companies', this.id, 'modules'],
       },
       { title: 'Compliance Information', complete: false, link: ['/manage/compliance'] },
       { title: 'Documents & Policies', complete: false },

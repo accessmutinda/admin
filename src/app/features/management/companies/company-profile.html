@@ -311,9 +311,7 @@
                 <span class="co-status-icon" aria-hidden="true"></span>
               </div>
               @if (section.link) {
-                <a [routerLink]="section.link" [queryParams]="{ section: section.section }">{{
-                  section.title
-                }}</a>
+                <a [routerLink]="section.link">{{ section.title }}</a>
               } @else if (section.fragment) {
                 <a [href]="'#' + section.fragment">{{ section.title }}</a>
               } @else {

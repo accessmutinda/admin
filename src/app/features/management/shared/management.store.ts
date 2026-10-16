@@ -1,3 +1,4 @@
+import type { CompanySubscription } from '../companies/company-modules.models';
 import type {
   CompanyBranding,
   PublishedCompanyBranding,
@@ -36,6 +37,7 @@ export interface Company {
   active?: boolean;
   modifiedAt?: string;
   modifiedBy?: string;
+  subscription?: CompanySubscription;
   contacts?: CompanyContacts;
   branding?: CompanyBranding;
   publishedBranding?: PublishedCompanyBranding;

@@ -150,6 +150,23 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'companies/:id/modules',
+        pathMatch: 'full',
+        redirectTo: 'companies/:id/modules/overview',
+      },
+      {
+        path: 'companies/:id/modules/:section',
+        title: 'Modules & subscription · CareVerity',
+        canDeactivate: [
+          (component: { canLeave: (url?: string) => boolean }, _route, _state, next) =>
+            component.canLeave(next.url),
+        ],
+        loadComponent: () =>
+          import('./features/management/companies/company-modules').then(
+            (m) => m.CompanyModulesPage,
+          ),
+      },
+      {
         path: 'companies/:id/settings',
         title: 'Company settings · CareVerity',
         loadComponent: () =>

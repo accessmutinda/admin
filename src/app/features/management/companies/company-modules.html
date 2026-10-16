@@ -1,0 +1,1065 @@
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/companies">Companies</a
+  ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+  @if (company(); as current) {
+    <a [routerLink]="['/manage/companies', current.id]">{{ current.name }}</a
+    ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+  }
+  <span aria-current="page">Modules &amp; Subscription</span>
+</nav>
+@if (company(); as current) {
+  <div class="cm-heading-row">
+    <div class="co-heading">
+      <h1>Modules, Subscription &amp; Feature Access</h1>
+      <p>Manage modules, subscription records and feature access for this company.</p>
+    </div>
+    <div class="cm-actions">
+      <button
+        type="button"
+        class="cm-button"
+        [disabled]="!hasChanges() && !invoiceForm()"
+        (click)="discard()"
+      >
+        Discard</button
+      ><button
+        type="button"
+        class="cm-button cm-primary"
+        [disabled]="!hasChanges() || invoiceForm()"
+        (click)="save()"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Changes
+      </button>
+    </div>
+  </div>
+  <section class="co-summary co-surface" aria-label="Current company overview">
+    <div class="co-company-image" [style.background]="current.logo ? '#eef7fa' : null">
+      @if (current.logo) {
+        <img [src]="current.logo" [alt]="current.name + ' logo'" />
+      } @else {
+        <div class="co-reference-photo" role="img" aria-label="Care home placeholder"></div>
+      }
+    </div>
+    <div class="co-summary-content">
+      <div class="co-summary-header">
+        <div class="co-company-title">
+          <h2>{{ current.name }}</h2>
+          <span
+            class="co-active"
+            [class.co-inactive]="!(current.active ?? !!current.modules.length)"
+            >{{ (current.active ?? !!current.modules.length) ? 'Active' : 'Inactive' }}</span
+          >
+        </div>
+        <a class="co-profile-button" [routerLink]="['/manage/companies', current.id]"
+          >View Company Profile
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a
+        >
+      </div>
+      <div class="co-facts">
+        <div>
+          <span>Company code</span><strong>{{ current.code }}</strong>
+        </div>
+        <div>
+          <span>Registration number</span
+          ><strong>{{ current.registration || 'Not provided' }}</strong>
+        </div>
+        <div class="co-service-type">
+          <span>Service type</span><strong>{{ current.sector }}</strong>
+        </div>
+      </div>
+      <div class="co-details">
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+          ><span
+            ><small>Head Office</small
+            >{{ current.headOfficeAddress || current.postcode || 'Location not added' }}</span
+          >
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+          ><span><small>Last updated</small>{{ modifiedAt(current.modifiedAt) }}</span>
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">person</span
+          ><span><small>Assigned plan</small>{{ current.modules.length }} modules enabled</span>
+        </div>
+      </div>
+    </div>
+  </section>
+  <nav class="cm-tabs co-surface" aria-label="Modules and subscription sections">
+    @for (item of tabs; track item.key) {
+      <a
+        [routerLink]="link(item.key)"
+        [class.active]="
+          section() === item.key || (item.key === 'overview' && section() === 'configure')
+        "
+        [attr.aria-current]="section() === item.key ? 'page' : null"
+        >{{ item.label }}</a
+      >
+    }
+  </nav>
+  @if (error()) {
+    <p class="cm-error" role="alert">{{ error() }}</p>
+  }
+  @if (submitted() && errors().length) {
+    <div class="cm-error" role="alert">
+      <strong>Check the subscription details:</strong>
+      <ul>
+        @for (message of errors(); track message) {
+          <li>{{ message }}</li>
+        }
+      </ul>
+      <a [routerLink]="link('subscription')">Review subscription details</a
+      ><a [routerLink]="link('limits')">Review limits</a>
+    </div>
+  }
+  <div class="cm-layout">
+    <div class="cm-main">
+      @switch (section()) {
+        @case ('overview') {
+          <section class="co-surface cm-panel" aria-labelledby="cm-modules-title">
+            <div class="cm-panel-heading">
+              <span class="material-symbols-outlined" aria-hidden="true">widgets</span>
+              <div>
+                <h2 id="cm-modules-title">Active Modules</h2>
+                <p>Configure modules and access across your company.</p>
+              </div>
+            </div>
+            <div class="cm-module-grid">
+              @for (module of catalog; track module.name) {
+                <article class="cm-module">
+                  <div class="cm-module-top">
+                    <span
+                      class="cm-tile material-symbols-outlined"
+                      [style.background]="module.color"
+                      aria-hidden="true"
+                      >{{ module.icon }}</span
+                    >
+                    <div>
+                      <h3>{{ module.name }}</h3>
+                      <span
+                        class="cm-badge"
+                        [class.cm-neutral]="!selectedModules.includes(module.name)"
+                        >{{
+                          selectedModules.includes(module.name) ? 'Active' : 'Not enabled'
+                        }}</span
+                      >
+                    </div>
+                    <button
+                      type="button"
+                      class="cm-switch"
+                      role="switch"
+                      [attr.aria-checked]="selectedModules.includes(module.name)"
+                      [attr.aria-label]="'Enable ' + module.name"
+                      [class.on]="selectedModules.includes(module.name)"
+                      (click)="toggleModule(module.name)"
+                    >
+                      <span></span>
+                    </button>
+                  </div>
+                  <p>{{ module.description }}</p>
+                  <div class="cm-permissions">
+                    <span class="material-symbols-outlined" aria-hidden="true"
+                      >supervisor_account</span
+                    >
+                    <div>
+                      <strong>Permissions</strong
+                      ><small>{{ permissionSummary(module.name) }}</small>
+                    </div>
+                  </div>
+                  <a
+                    class="cm-configure"
+                    [routerLink]="link('configure')"
+                    [queryParams]="{ module: module.name }"
+                    >Configure<span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_forward</span
+                    ></a
+                  >
+                </article>
+              }
+            </div>
+          </section>
+          <ng-container [ngTemplateOutlet]="addonCards" />
+        }
+        @case ('configure') {
+          <section class="co-surface cm-panel">
+            @if (selectedModule(); as module) {
+              <div class="cm-panel-heading">
+                <span class="material-symbols-outlined" aria-hidden="true">{{ module.icon }}</span>
+                <div>
+                  <h2>{{ module.name }} Configuration</h2>
+                  <p>{{ module.description }}</p>
+                </div>
+                <a class="cm-button" [routerLink]="link()">Back to Modules</a>
+              </div>
+              <div class="cm-setting-row">
+                <div>
+                  <strong>Module access</strong>
+                  <p>Make this module available to the company.</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  class="cm-switch"
+                  [class.on]="selectedModules.includes(module.name)"
+                  [attr.aria-checked]="selectedModules.includes(module.name)"
+                  [attr.aria-label]="'Enable ' + module.name"
+                  (click)="toggleModule(module.name)"
+                >
+                  <span></span>
+                </button>
+              </div>
+              <h3 class="cm-subheading">Included areas</h3>
+              <ul class="cm-feature-list">
+                @for (feature of module.features; track feature) {
+                  <li>
+                    <span class="material-symbols-outlined" aria-hidden="true">check_circle</span
+                    >{{ feature }}
+                  </li>
+                }
+              </ul>
+              <div class="cm-callout">
+                <span class="material-symbols-outlined" aria-hidden="true"
+                  >admin_panel_settings</span
+                >
+                <div>
+                  <strong>Roles &amp; Permissions</strong>
+                  <p>
+                    {{ permissionSummary(module.name) }}. Individual actions are managed through the
+                    existing permission matrix.
+                  </p>
+                  @if (sameWorkspace()) {
+                    <a routerLink="/manage/access" [queryParams]="{ tab: 'permissions' }"
+                      >Manage role permissions<span
+                        class="material-symbols-outlined"
+                        aria-hidden="true"
+                        >arrow_forward</span
+                      ></a
+                    >
+                  } @else {
+                    <p>
+                      Select this company's workspace in the top bar to manage its role permissions.
+                    </p>
+                  }
+                </div>
+              </div>
+              @if (module.name === 'Reports & insights') {
+                <p class="cm-note">
+                  Reporting entitlement is recorded here. There is no separate reports page;
+                  existing exports retain their current permission checks.
+                </p>
+              }
+              <p class="cm-note">
+                Module availability and role permissions work together. Enabling a module does not
+                change role assignments or grant additional actions.
+              </p>
+            } @else {
+              <h2>Choose a module to configure</h2>
+              <p>Select Configure on a module card.</p>
+              <a class="cm-button" [routerLink]="link()">View Modules</a>
+            }
+          </section>
+        }
+        @case ('subscription') {
+          <section class="co-surface cm-panel">
+            <div class="cm-panel-heading">
+              <span class="material-symbols-outlined" aria-hidden="true">description</span>
+              <div>
+                <h2>Subscription Details</h2>
+                <p>Maintain the details of your agreed subscription.</p>
+              </div>
+              <span class="cm-tag">Local record</span>
+            </div>
+
+            <div class="cm-contract-grid">
+              <section class="cm-form-group" aria-label="Plan &amp; Status">
+                <div class="cm-group-heading">
+                  <span
+                    class="material-symbols-outlined cm-category-icon"
+                    data-tone="blue"
+                    aria-hidden="true"
+                    >workspace_premium</span
+                  >
+                  <h3>Plan &amp; Status</h3>
+                </div>
+                <div class="cp-fields">
+                  <div class="cp-field">
+                    <label for="cm-plan">Recorded plan</label
+                    ><mat-select
+                      cvSelect
+                      id="cm-plan"
+                      aria-label="Recorded plan"
+                      [(ngModel)]="draft.plan"
+                    >
+                      @for (plan of plans; track plan) {
+                        <mat-option [value]="plan">{{ plan }}</mat-option>
+                      }
+                    </mat-select>
+                  </div>
+                  <div class="cp-field">
+                    <label for="cm-sub-status">Subscription status</label
+                    ><mat-select
+                      cvSelect
+                      id="cm-sub-status"
+                      aria-label="Subscription status"
+                      [(ngModel)]="draft.status"
+                    >
+                      @for (
+                        status of ['Not recorded', 'Active', 'Trial', 'Suspended', 'Cancelled'];
+                        track status
+                      ) {
+                        <mat-option [value]="status">{{ status }}</mat-option>
+                      }
+                    </mat-select>
+                  </div>
+                </div>
+              </section>
+              <section class="cm-form-group" aria-label="Billing &amp; Renewal">
+                <div class="cm-group-heading">
+                  <span
+                    class="material-symbols-outlined cm-category-icon"
+                    data-tone="purple"
+                    aria-hidden="true"
+                    >event_repeat</span
+                  >
+                  <h3>Billing &amp; Renewal</h3>
+                </div>
+                <div class="cp-fields">
+                  <div class="cp-field">
+                    <label for="cm-cycle">Billing cycle</label
+                    ><mat-select
+                      cvSelect
+                      id="cm-cycle"
+                      aria-label="Billing cycle"
+                      [(ngModel)]="draft.cycle"
+                    >
+                      @for (cycle of ['Not recorded', 'Monthly', 'Annual']; track cycle) {
+                        <mat-option [value]="cycle">{{ cycle }}</mat-option>
+                      }
+                    </mat-select>
+                  </div>
+                  <div class="cp-field">
+                    <label for="cm-renewal">Renewal date</label
+                    ><input id="cm-renewal" type="date" [(ngModel)]="draft.renewalDate" />
+                  </div>
+                </div>
+              </section>
+              <section class="cm-form-group cm-group-wide" aria-label="Support &amp; Agreement">
+                <div class="cm-group-heading">
+                  <span
+                    class="material-symbols-outlined cm-category-icon"
+                    data-tone="teal"
+                    aria-hidden="true"
+                    >support_agent</span
+                  >
+                  <h3>Support &amp; Agreement</h3>
+                </div>
+                <div class="cp-fields">
+                  <div class="cp-field">
+                    <label for="cm-support">Support tier</label
+                    ><input
+                      id="cm-support"
+                      [(ngModel)]="draft.support"
+                      maxlength="100"
+                      placeholder="Agreed support tier"
+                    />
+                  </div>
+                  <div class="cp-field">
+                    <label for="cm-sub-notes">Subscription notes</label
+                    ><textarea
+                      id="cm-sub-notes"
+                      [(ngModel)]="draft.notes"
+                      maxlength="1000"
+                      rows="2"
+                      placeholder="Contract references, renewal notes or agreed terms"
+                    ></textarea
+                    ><small>{{ draft.notes.length }}/1000 characters</small>
+                  </div>
+                </div>
+              </section>
+            </div>
+            <div class="cm-callout">
+              <span class="material-symbols-outlined" aria-hidden="true">info</span>
+              <p>
+                Record your agreed plan here. Saving does not purchase a plan, charge a payment
+                method or change an external contract.
+              </p>
+            </div>
+          </section>
+          <nav
+            class="co-surface cm-panel cm-subscription-links"
+            aria-label="Subscription &amp; Access"
+          >
+            <div class="cm-link-grid">
+              <a [routerLink]="link('limits')"
+                ><span class="material-symbols-outlined" aria-hidden="true">group</span
+                ><strong>Users &amp; Limits</strong
+                ><small>Record your agreed user and storage allocation.</small></a
+              ><a [routerLink]="link('addons')"
+                ><span class="material-symbols-outlined" aria-hidden="true">deployed_code</span
+                ><strong>Add-ons</strong><small>Record additional services for review.</small></a
+              ><a [routerLink]="link('billing')"
+                ><span class="material-symbols-outlined" aria-hidden="true">receipt_long</span
+                ><strong>Billing History</strong
+                ><small>Review subscription invoice records.</small></a
+              >
+            </div>
+          </nav>
+        }
+        @case ('limits') {
+          <section class="co-surface cm-panel">
+            <div class="cm-panel-heading">
+              <span class="material-symbols-outlined" aria-hidden="true">group</span>
+              <div>
+                <h2>Users &amp; Limits</h2>
+                <p>Record agreed capacity and review company usage.</p>
+              </div>
+            </div>
+            <div class="cm-stats">
+              @for (
+                stat of [
+                  { label: 'Active Users', value: activeUsers(), icon: 'person', color: '#00a34e' },
+                  {
+                    label: 'Invited Users',
+                    value: invitedUsers(),
+                    icon: 'person_add',
+                    color: '#008afa',
+                  },
+                  {
+                    label: 'Enabled Modules',
+                    value: selectedModules.length,
+                    icon: 'widgets',
+                    color: '#03a6c1',
+                  },
+                ];
+                track stat.label
+              ) {
+                <section class="cm-stat">
+                  <div>
+                    <h3>{{ stat.label }}</h3>
+                    <strong>{{ stat.value }}</strong
+                    ><small>Current company</small>
+                  </div>
+                  <span
+                    class="cm-tile material-symbols-outlined"
+                    [style.background]="stat.color"
+                    aria-hidden="true"
+                    >{{ stat.icon }}</span
+                  >
+                </section>
+              }
+            </div>
+            <div class="cm-capacity-grid">
+              <div class="cp-field cm-capacity-card">
+                <span
+                  class="material-symbols-outlined cm-category-icon"
+                  data-tone="blue"
+                  aria-hidden="true"
+                  >group</span
+                >
+                <label for="cm-users">Maximum users</label
+                ><input
+                  id="cm-users"
+                  type="number"
+                  min="1"
+                  step="1"
+                  [(ngModel)]="draft.userLimit"
+                  placeholder="Not recorded"
+                />
+                <small>Active and invited accounts count toward this allocation.</small>
+              </div>
+              <div class="cp-field cm-capacity-card">
+                <span
+                  class="material-symbols-outlined cm-category-icon"
+                  data-tone="purple"
+                  aria-hidden="true"
+                  >cloud</span
+                >
+                <label for="cm-storage">Storage allocation (GB)</label
+                ><input
+                  id="cm-storage"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  [(ngModel)]="draft.storageLimitGb"
+                  placeholder="Not recorded"
+                />
+                <small>Agreed storage capacity for your company.</small>
+              </div>
+              <div class="cp-field cm-capacity-card">
+                <span
+                  class="material-symbols-outlined cm-category-icon"
+                  data-tone="orange"
+                  aria-hidden="true"
+                  >folder_shared</span
+                >
+                <label for="cm-records">Care record limit</label
+                ><input
+                  id="cm-records"
+                  type="number"
+                  min="1"
+                  step="1"
+                  [(ngModel)]="draft.careRecordLimit"
+                  placeholder="Not recorded"
+                />
+                <small>Agreed capacity for care records.</small>
+              </div>
+            </div>
+            <p class="cm-note">
+              Limits are reference values for your agreement. They do not enforce quotas. Active and
+              invited accounts both count toward allocated users. Storage and care-record usage are
+              not connected.
+            </p>
+          </section>
+          <section class="co-surface cm-panel">
+            <div class="cm-panel-heading cm-heading-teal">
+              <span class="material-symbols-outlined" aria-hidden="true">supervisor_account</span>
+              <div>
+                <h2>Company Users</h2>
+                <p>Accounts recorded for this company.</p>
+              </div>
+              @if (sameWorkspace()) {
+                <a class="cm-button cm-outline" routerLink="/manage/access">Manage Users</a>
+              }
+            </div>
+            <label class="cm-search"
+              ><span class="material-symbols-outlined" aria-hidden="true">search</span
+              ><input
+                aria-label="Search company users"
+                placeholder="Search name, email or role"
+                [ngModel]="memberSearch()"
+                (ngModelChange)="memberSearch.set($event)"
+            /></label>
+            <div class="cm-table-wrap" tabindex="0" role="region" aria-label="Company users">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Role</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (member of filteredMembers(); track member.id) {
+                    <tr>
+                      <th scope="row">
+                        <span class="cm-person"
+                          ><span class="cm-person-avatar" aria-hidden="true">{{
+                            store.initials(member.name)
+                          }}</span
+                          ><span>{{ member.name }}</span></span
+                        >
+                      </th>
+                      <td>{{ member.email }}</td>
+                      <td>{{ member.role }}</td>
+                      <td>
+                        <span
+                          class="cm-member-status"
+                          [class.cm-member-active]="member.status.toLowerCase() === 'active'"
+                          [class.cm-member-invited]="member.status.toLowerCase() === 'invited'"
+                          >{{ member.status }}</span
+                        >
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="4" class="cm-empty">
+                        {{
+                          memberSearch()
+                            ? 'No users match your search.'
+                            : 'No user accounts recorded for this company.'
+                        }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <p class="cm-note">
+              {{ filteredMembers().length }} of {{ members().length }} users.
+              @if (!sameWorkspace()) {
+                Select this company's workspace to manage its users.
+              }
+            </p>
+          </section>
+        }
+        @case ('addons') {
+          <ng-container [ngTemplateOutlet]="tabStats" />
+          <ng-container [ngTemplateOutlet]="addonCards" />
+        }
+        @case ('billing') {
+          <ng-container [ngTemplateOutlet]="tabStats" />
+          <section class="co-surface cm-panel">
+            <div class="cm-panel-heading">
+              <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+              <div>
+                <h2>Billing History</h2>
+                <p>Manually recorded subscription invoices in GBP.</p>
+              </div>
+              <button
+                type="button"
+                class="cm-button cm-outline"
+                (click)="openInvoice()"
+                [disabled]="invoiceForm()"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">add</span>Add Record</button
+              ><button
+                type="button"
+                class="cm-button"
+                (click)="exportInvoices()"
+                [disabled]="!filteredInvoices().length"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">download</span>Export CSV
+              </button>
+            </div>
+            @if (invoiceForm()) {
+              <form class="cm-invoice-form" (ngSubmit)="addInvoice()">
+                <h3>Invoice Record</h3>
+                <div class="cp-fields">
+                  <div class="cp-field">
+                    <label for="cm-invoice-ref">Reference *</label
+                    ><input
+                      id="cm-invoice-ref"
+                      name="reference"
+                      required
+                      maxlength="80"
+                      [(ngModel)]="invoice.reference"
+                    />
+                  </div>
+                  <div class="cp-field">
+                    <label for="cm-invoice-amount">Amount (GBP) *</label
+                    ><input
+                      id="cm-invoice-amount"
+                      name="amount"
+                      type="number"
+                      required
+                      min="0.01"
+                      step="0.01"
+                      [(ngModel)]="invoice.amount"
+                    />
+                  </div>
+                  <div class="cp-field">
+                    <label for="cm-invoice-date">Invoice date *</label
+                    ><input
+                      id="cm-invoice-date"
+                      name="date"
+                      type="date"
+                      required
+                      [(ngModel)]="invoice.date"
+                    />
+                  </div>
+                  <div class="cp-field">
+                    <label for="cm-invoice-due">Due date *</label
+                    ><input
+                      id="cm-invoice-due"
+                      name="due"
+                      type="date"
+                      required
+                      [(ngModel)]="invoice.dueDate"
+                    />
+                  </div>
+                  <div class="cp-field">
+                    <label for="cm-invoice-status">Status</label
+                    ><mat-select
+                      cvSelect
+                      id="cm-invoice-status"
+                      name="status"
+                      aria-label="Invoice status"
+                      [(ngModel)]="invoice.status"
+                    >
+                      @for (status of ['Outstanding', 'Paid', 'Void']; track status) {
+                        <mat-option [value]="status">{{ status }}</mat-option>
+                      }
+                    </mat-select>
+                  </div>
+                  <div class="cp-field">
+                    <label for="cm-invoice-note">Notes</label
+                    ><input
+                      id="cm-invoice-note"
+                      name="notes"
+                      maxlength="500"
+                      [(ngModel)]="invoice.notes"
+                    />
+                  </div>
+                </div>
+                @if (invoiceError()) {
+                  <p class="cm-error" role="alert">{{ invoiceError() }}</p>
+                }
+                <div class="cm-actions">
+                  <button type="button" class="cm-button" (click)="invoiceForm.set(false)">
+                    Cancel Record</button
+                  ><button type="submit" class="cm-button cm-outline">
+                    Add to Unsaved Changes
+                  </button>
+                </div>
+              </form>
+            }
+            <div class="cm-filter-row">
+              <label class="cm-search"
+                ><span class="material-symbols-outlined" aria-hidden="true">search</span
+                ><input
+                  aria-label="Search invoice references"
+                  placeholder="Search reference"
+                  [ngModel]="invoiceSearch()"
+                  (ngModelChange)="invoiceSearch.set($event)" /></label
+              ><mat-select
+                cvSelect
+                aria-label="Filter invoices by status"
+                [ngModel]="invoiceStatus()"
+                (ngModelChange)="invoiceStatus.set($event)"
+              >
+                @for (status of ['All', 'Paid', 'Outstanding', 'Void']; track status) {
+                  <mat-option [value]="status">{{ status }}</mat-option>
+                }
+              </mat-select>
+            </div>
+            <div
+              class="cm-table-wrap"
+              tabindex="0"
+              role="region"
+              aria-label="Subscription billing records"
+            >
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Reference</th>
+                    <th scope="col">Invoice date</th>
+                    <th scope="col">Due date</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Notes</th>
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (record of filteredInvoices(); track record.id) {
+                    <tr>
+                      <th scope="row">
+                        <span class="cm-invoice-reference"
+                          ><span class="material-symbols-outlined" aria-hidden="true"
+                            >receipt_long</span
+                          >{{ record.reference }}</span
+                        >
+                      </th>
+                      <td>{{ record.date | date: 'd MMM y' }}</td>
+                      <td>{{ record.dueDate | date: 'd MMM y' }}</td>
+                      <td>{{ record.amount | currency: 'GBP' }}</td>
+                      <td>
+                        <span
+                          class="cm-status"
+                          [class.cm-status-active]="record.status === 'Paid'"
+                          [class.cm-status-amber]="record.status === 'Outstanding'"
+                          >{{ record.status }}</span
+                        >
+                      </td>
+                      <td>{{ record.notes || '—' }}</td>
+                      <td>
+                        <button
+                          type="button"
+                          class="cm-text-link"
+                          [disabled]="invoiceForm()"
+                          [attr.aria-label]="'Edit invoice ' + record.reference"
+                          (click)="editInvoice(record)"
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="7" class="cm-empty">
+                        <span class="cm-empty-art" aria-hidden="true"
+                          ><span class="material-symbols-outlined">receipt_long</span></span
+                        >
+                        <h3>
+                          {{
+                            draft.invoices.length
+                              ? 'No matching invoices'
+                              : 'Your billing history starts here'
+                          }}
+                        </h3>
+                        <p>
+                          {{
+                            draft.invoices.length
+                              ? 'No invoices match these filters.'
+                              : 'No subscription billing records yet. Add an invoice record to get started.'
+                          }}
+                        </p>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <p class="cm-note">
+              {{ filteredInvoices().length }} of {{ draft.invoices.length }} records. Payment
+              collection and invoice downloads are not connected. Recording “Paid” does not process
+              a payment.
+            </p>
+          </section>
+        }
+      }
+    </div>
+    <aside class="cm-sidebar" aria-label="Subscription summary and usage">
+      <section class="co-surface cm-panel">
+        <div class="cm-panel-heading">
+          <span class="material-symbols-outlined" aria-hidden="true">description</span>
+          <h2>Subscription Summary</h2>
+        </div>
+        <div class="cm-plan">
+          <strong>{{
+            draft.plan === 'Not recorded' ? 'Plan not recorded' : draft.plan + ' Plan'
+          }}</strong
+          ><span class="cm-badge" [class.cm-neutral]="draft.status !== 'Active'">{{
+            draft.status
+          }}</span>
+          <p>Recorded subscription details</p>
+        </div>
+        <dl class="cm-summary-list">
+          <div>
+            <dt>
+              <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+              >Billing cycle
+            </dt>
+            <dd>{{ draft.cycle }}</dd>
+          </div>
+          <div>
+            <dt>
+              <span class="material-symbols-outlined" aria-hidden="true">autorenew</span>Renewal
+              date
+            </dt>
+            <dd>
+              {{ draft.renewalDate ? (draft.renewalDate | date: 'd MMM y') : 'Not recorded' }}
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <span class="material-symbols-outlined" aria-hidden="true">group</span>Maximum users
+            </dt>
+            <dd>{{ draft.userLimit ?? 'Not recorded' }}</dd>
+          </div>
+          <div>
+            <dt>
+              <span class="material-symbols-outlined" aria-hidden="true">cloud</span>Storage
+              allocation
+            </dt>
+            <dd>
+              {{ draft.storageLimitGb === null ? 'Not recorded' : draft.storageLimitGb + ' GB' }}
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <span class="material-symbols-outlined" aria-hidden="true">support_agent</span>Support
+              tier
+            </dt>
+            <dd>{{ draft.support || 'Not recorded' }}</dd>
+          </div>
+        </dl>
+        <div class="cm-summary-actions">
+          <a class="cm-button cm-primary" [routerLink]="link('subscription')"
+            >Manage Plan<span class="material-symbols-outlined" aria-hidden="true"
+              >arrow_upward</span
+            ></a
+          ><a class="cm-button cm-outline" [routerLink]="link('billing')">Billing History</a>
+        </div>
+      </section>
+      <section class="co-surface cm-panel cm-usage-panel">
+        <div class="cm-panel-heading">
+          <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>
+          <h2>Usage Overview</h2>
+          <a class="cm-text-link" [routerLink]="link('limits')">View Details</a>
+        </div>
+        <div class="cm-usage">
+          <div>
+            <span>Allocated users</span>
+            <strong>{{ assignedUsers() }} / {{ draft.userLimit ?? '—' }}</strong>
+          </div>
+          @if (userPercent(); as percent) {
+            <progress
+              [value]="assignedUsers()"
+              [max]="draft.userLimit || 1"
+              aria-label="Allocated users"
+            ></progress
+            ><small>{{ percent }}% of recorded capacity</small>
+          } @else if (draft.userLimit) {
+            <progress [value]="0" [max]="draft.userLimit" aria-label="Allocated users"></progress
+            ><small>0% of recorded capacity</small>
+          } @else {
+            <small>No user limit recorded</small>
+          }
+        </div>
+        <div class="cm-usage">
+          <div>
+            <span>Enabled modules</span
+            ><strong>{{ selectedModules.length }} / {{ catalog.length }}</strong>
+          </div>
+          <progress
+            [value]="selectedModules.length"
+            [max]="catalog.length"
+            aria-label="Enabled modules"
+          ></progress>
+        </div>
+        <p class="cm-note">Storage and care-record usage are not available.</p>
+      </section>
+      <section class="co-surface cm-panel cm-renewals">
+        <div class="cm-panel-heading">
+          <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
+          <h2>Renewal &amp; Alerts</h2>
+        </div>
+        <a class="cm-alert" [routerLink]="link('subscription')"
+          ><span class="cm-dot cm-amber"></span>
+          <div>
+            <strong>{{ draft.renewalDate ? 'Recorded renewal' : 'Add a renewal date' }}</strong
+            ><small>{{
+              draft.renewalDate
+                ? (draft.renewalDate | date: 'd MMM y')
+                : 'Keep your subscription details up to date.'
+            }}</small>
+          </div>
+          <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></a
+        >
+        @if (draft.userLimit && assignedUsers() >= draft.userLimit) {
+          <a class="cm-alert" [routerLink]="link('limits')"
+            ><span class="cm-dot cm-amber"></span>
+            <div>
+              <strong>User capacity reached</strong
+              ><small
+                >{{ assignedUsers() }} allocated of {{ draft.userLimit }} recorded places.</small
+              >
+            </div></a
+          >
+        }
+        <a class="cm-alert" [routerLink]="link('billing')"
+          ><span class="cm-dot"></span>
+          <div>
+            <strong>{{
+              draft.invoices.length ? 'Recorded outstanding balance' : 'No billing records'
+            }}</strong
+            ><small>{{
+              draft.invoices.length
+                ? (totalOutstanding() | currency: 'GBP')
+                : 'Payment status is not available.'
+            }}</small>
+          </div>
+          <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></a
+        >
+      </section>
+      <p class="cm-save-state" role="status">
+        {{
+          hasChanges()
+            ? 'Unsaved changes · summaries reflect your draft'
+            : 'Showing saved company settings'
+        }}
+      </p>
+    </aside>
+  </div>
+  <ng-template #tabStats>
+    <div class="cm-stats" aria-label="Section summary">
+      @for (stat of sectionStats(); track stat.label) {
+        <section class="cm-stat">
+          <div>
+            <h3>{{ stat.label }}</h3>
+            <strong>
+              @if (stat.currency) {
+                {{ stat.value | currency: 'GBP' }}
+              } @else {
+                {{ stat.value }}
+              }</strong
+            ><small>{{ stat.hint }}</small>
+          </div>
+          <span
+            class="cm-tile material-symbols-outlined"
+            [style.background]="stat.color"
+            aria-hidden="true"
+            >{{ stat.icon }}</span
+          >
+        </section>
+      }
+    </div>
+  </ng-template>
+  <ng-template #addonCards
+    ><section class="co-surface cm-panel">
+      <div class="cm-panel-heading">
+        <span class="material-symbols-outlined" aria-hidden="true">deployed_code</span>
+        <div>
+          <h2>
+            {{
+              section() === 'addons'
+                ? 'Available Add-ons'
+                : 'Available Add-ons & Additional Services'
+            }}
+          </h2>
+          <p>Record interest in additional capabilities for this company.</p>
+        </div>
+        @if (section() === 'overview') {
+          <a class="cm-button cm-outline" [routerLink]="link('addons')">Manage Add-ons</a>
+        }
+      </div>
+      <div class="cm-addon-grid">
+        @for (addon of addons; track addon.id) {
+          <article class="cm-addon" [attr.data-addon]="addon.id">
+            <span class="material-symbols-outlined" aria-hidden="true">{{ addon.icon }}</span>
+            <div>
+              <h3>{{ addon.name }}</h3>
+              <p>{{ addon.description }}</p>
+              <small>Pricing by agreement</small>
+            </div>
+            @if (draft.addons[addon.id]; as request) {
+              @if (section() === 'addons') {
+                <div class="cm-addon-request">
+                  <div>
+                    <span class="cm-request-status">{{ request.status }}</span
+                    ><small>{{ request.requestedAt | date: 'd MMM y' }}</small>
+                  </div>
+                  <button
+                    type="button"
+                    class="cm-text-link"
+                    (click)="removeAddon(addon.id)"
+                    [attr.aria-label]="'Remove request for ' + addon.name"
+                  >
+                    Remove
+                  </button>
+                </div>
+              } @else {
+                <span class="cm-request-status">{{ request.status }}</span>
+              }
+            } @else {
+              @if (section() === 'addons') {
+                <div class="cm-addon-actions">
+                  <button
+                    type="button"
+                    class="cm-button cm-outline"
+                    (click)="requestAddon(addon.id)"
+                  >
+                    Request Add-on
+                  </button>
+                  <button type="button" class="cm-text-link" (click)="requestAddon(addon.id, true)">
+                    Request Trial
+                  </button>
+                </div>
+              } @else {
+                <button type="button" class="cm-button cm-outline" (click)="requestAddon(addon.id)">
+                  Request Add-on
+                </button>
+              }
+            }
+          </article>
+        }
+      </div>
+      <p class="cm-note">
+        @if (section() === 'addons') {
+          Save Changes records requests on this device. No request is sent externally and no service
+          or billable trial is activated.
+        } @else {
+          Requests need review and do not activate services. Save Changes records your selections.
+        }
+      </p>
+    </section></ng-template
+  >
+} @else {
+  <section class="co-surface cm-panel cm-empty">
+    <h1>Company not found</h1>
+    <p>This company is not available.</p>
+    <a class="cm-button" routerLink="/manage/companies">Back to Companies</a>
+  </section>
+}
