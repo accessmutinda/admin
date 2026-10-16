@@ -1,3 +1,4 @@
+import type { CompanyCompliance } from '../companies/company-compliance.models';
 import type { ServiceLocation } from '../locations/locations.models';
 import type { CompanySubscription } from '../companies/company-modules.models';
 import type {
@@ -40,6 +41,7 @@ export interface Company {
   modifiedBy?: string;
   subscription?: CompanySubscription;
   contacts?: CompanyContacts;
+  compliance?: CompanyCompliance;
   branding?: CompanyBranding;
   publishedBranding?: PublishedCompanyBranding;
 }
