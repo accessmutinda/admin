@@ -1,3 +1,4 @@
+import type { WorkspaceSetup } from '../companies/company-create.models';
 import type { CompanyCompliance } from '../companies/company-compliance.models';
 import type { ServiceLocation } from '../locations/locations.models';
 import type { CompanySubscription } from '../companies/company-modules.models';
@@ -23,6 +24,8 @@ export interface Company {
   sector: string;
   size: string;
   registration: string;
+  country?: string;
+  region?: string;
   postcode: string;
   color: string;
   accent: string;
@@ -521,14 +524,25 @@ export class ManagementStore {
   addPerson(person: Person): void {
     this.update((d) => ({ ...d, people: [...d.people, person] }));
   }
-  saveCompany(company: Company): boolean {
+  saveCompany(company: Company, setup?: WorkspaceSetup): boolean {
     const isNew = !this.companies().some((c) => c.id === company.id);
+    const currentCompanies = isNew
+      ? this.restore<Company[]>('cv_companies_v1', this.companies())
+      : this.companies();
+    if (
+      isNew &&
+      currentCompanies.some(
+        (c) =>
+          c.id === company.id || c.code.trim().toLowerCase() === company.code.trim().toLowerCase(),
+      )
+    )
+      return false;
     const nextCompanies = isNew
-      ? [...this.companies(), structuredClone(company)]
+      ? [...currentCompanies, structuredClone(company)]
       : this.companies().map((c) => (c.id === company.id ? structuredClone(company) : c));
     const nextRecords = isNew
       ? {
-          ...this.records(),
+          ...this.restore<Record<string, WorkspaceData>>('cv_management_v1', this.records()),
           [company.id]: {
             ...seed(),
             people: [],
@@ -536,11 +550,42 @@ export class ManagementStore {
             members: [],
             leaves: [],
             reviews: [],
+            cpd: [],
+            locations: [],
+            ...(setup
+              ? {
+                  permissions: structuredClone(setup.permissions),
+                  workflows: structuredClone(setup.workflows),
+                  backup: setup.backup,
+                  rotaPermissions: structuredClone(setup.rotaPermissions ?? {}),
+                  payrollPermissions: structuredClone(setup.payrollPermissions ?? {}),
+                  workflowPreferences: structuredClone(setup.workflowPreferences ?? {}),
+                }
+              : {}),
           },
         }
       : this.records();
-    if (isNew && !this.persist('cv_management_v1', nextRecords)) return false;
-    if (!this.persist('cv_companies_v1', nextCompanies)) return false;
+    let previousRecords: string | null = null;
+    if (isNew) {
+      try {
+        previousRecords = localStorage.getItem('cv_management_v1');
+      } catch {
+        this.storageAvailable.set(false);
+        return false;
+      }
+      if (!this.persist('cv_management_v1', nextRecords)) return false;
+    }
+    if (!this.persist('cv_companies_v1', nextCompanies)) {
+      if (isNew) {
+        try {
+          if (previousRecords === null) localStorage.removeItem('cv_management_v1');
+          else localStorage.setItem('cv_management_v1', previousRecords);
+        } catch {
+          this.storageAvailable.set(false);
+        }
+      }
+      return false;
+    }
     this.companies.set(nextCompanies);
     if (isNew) this.records.set(nextRecords);
     this.workspace.registerWorkspace({

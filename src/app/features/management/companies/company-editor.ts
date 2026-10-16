@@ -16,7 +16,6 @@ export class CompanyEditor {
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   protected readonly isNew = this.route.snapshot.paramMap.get('id') === null;
-  private readonly duplicateId = this.route.snapshot.queryParamMap.get('duplicate');
   protected readonly existing = this.store
     .companies()
     .find((c) => c.id === this.route.snapshot.paramMap.get('id'));
@@ -108,17 +107,8 @@ export class CompanyEditor {
         },
       );
     }
-    if (this.isNew && this.duplicateId) {
-      const source = this.store.companies().find((c) => c.id === this.duplicateId);
-      if (source)
-        this.company = {
-          ...structuredClone(source),
-          id: crypto.randomUUID(),
-          name: source.name + ' (Copy)',
-          code: source.code + '-COPY',
-        };
-    }
   }
+
   protected selectSection(index: number): void {
     if (!this.isNew && (index === 1 || index === 2)) {
       if (
