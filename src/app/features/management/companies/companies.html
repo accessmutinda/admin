@@ -180,6 +180,7 @@
             [routerLink]="action.link"
             [queryParams]="{
               duplicate: action.duplicate,
+              invite: action.invite ? 'true' : null,
               edit: action.edit,
             }"
             [class.co-primary]="$first"

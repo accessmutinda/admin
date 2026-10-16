@@ -110,7 +110,7 @@ export class Companies {
         icon: 'groups',
         tone: 'cyan',
         state: this.store.data().members.length ? 'Complete' : 'Pending',
-        link: ['/manage/access'],
+        link: ['/manage/companies/access'],
       },
       {
         title: 'Integrations',
@@ -139,6 +139,11 @@ export class Companies {
       icon: 'deployed_code',
       link: [...this.profileLink(), 'modules'],
     },
-    { title: 'Invite Admin User', icon: 'person_add', link: ['/manage/access'] },
+    {
+      title: 'Invite Admin User',
+      icon: 'person_add',
+      link: ['/manage/companies/access'],
+      invite: true,
+    },
   ]);
 }

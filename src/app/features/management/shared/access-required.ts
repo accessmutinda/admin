@@ -26,14 +26,15 @@ import { ManagementStore } from './management.store';
           <span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span>
           <p>
             An administrator can enable <strong>{{ viewPermission() }}</strong> in
-            <strong>Users & access → Permissions → {{ permissionsTitle() }}</strong
+            <strong
+              >Companies → Roles & Permissions → Configure Role → {{ permissionsTitle() }}</strong
             >, alongside {{ module() }} permissions.
           </p>
         </div>
         <div class="row access-required-actions">
           <a
             class="button primary"
-            routerLink="/manage/access"
+            routerLink="/manage/companies/access"
             [queryParams]="{ tab: 'permissions', role: role() }"
             ><span class="material-symbols-outlined" aria-hidden="true">manage_accounts</span>Review
             role permissions</a

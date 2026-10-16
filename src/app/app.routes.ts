@@ -134,6 +134,15 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'companies/access',
+        title: 'Users & role permissions · CareVerity',
+        canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+        loadComponent: () =>
+          import('./features/management/company-admin/access/users-access').then(
+            (m) => m.UsersAccess,
+          ),
+      },
+      {
         path: 'companies/new',
         title: 'Create company · CareVerity',
         canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
@@ -205,11 +214,8 @@ export const routes: Routes = [
       },
       {
         path: 'access',
-        title: 'Users & access · CareVerity',
-        loadComponent: () =>
-          import('./features/management/company-admin/access/users-access').then(
-            (m) => m.UsersAccess,
-          ),
+        pathMatch: 'full',
+        redirectTo: 'companies/access',
       },
       {
         path: 'workflows',

@@ -192,7 +192,12 @@
           <h2>Pay rules & allowances</h2>
           <p>New records use these rates. Existing work and pay runs retain their saved amounts.</p>
         </div>
-        <a routerLink="/manage/access" class="text-link">Payroll permissions</a>
+        <a
+          routerLink="/manage/companies/access"
+          [queryParams]="{ tab: 'permissions' }"
+          class="text-link"
+          >Payroll permissions</a
+        >
       </div>
       <form (ngSubmit)="saveSettings()">
         <fieldset

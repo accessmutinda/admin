@@ -176,7 +176,6 @@ export class ManagementLayout {
   protected readonly finance = FINANCE_AREAS;
   protected readonly organisation = [
     { path: '/manage/companies', label: 'Companies', icon: 'domain' },
-    { path: '/manage/access', label: 'Users & access', icon: 'admin_panel_settings' },
     { path: '/manage/workflows', label: 'Approval workflows', icon: 'account_tree' },
     { path: '/manage/settings', label: 'Integrations & data', icon: 'settings' },
   ];

@@ -335,7 +335,9 @@ describe('Company modules and subscription', () => {
     const other = store.companies().find((c) => c.id !== 'lqcs')!;
     const editor = await open('limits', other.id);
     expect(editor.assignedUsers()).toBe(0);
-    expect(harness.routeNativeElement!.querySelector('a[href="/manage/access"]')).toBeNull();
+    expect(
+      harness.routeNativeElement!.querySelector('a[href^="/manage/companies/access"]'),
+    ).toBeNull();
     expect(harness.routeNativeElement!.textContent).toContain('No user accounts recorded');
     editor.draft.plan = 'Starter';
     editor.save();

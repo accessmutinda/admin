@@ -14,6 +14,7 @@
 @import './app/features/management/companies/company-compliance.css';
 @import './app/features/management/companies/company-create.css';
 @import './app/features/management/locations/locations.css';
+@import './app/features/management/company-admin/access/users-access-design.css';
 
 /* CareVerity design tokens — single source of truth for Tailwind utilities
    (bg-navy, text-teal-600, ...) and for the Material theme overrides in
