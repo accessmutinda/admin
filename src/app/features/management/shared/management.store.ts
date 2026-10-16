@@ -634,7 +634,10 @@ export class ManagementStore {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   exportPeople(): void {
-    const escape = (s: string) => '"' + s.replaceAll('"', '""') + '"';
+    const escape = (s: string) => {
+      const safe = /^\s*[=+@-]|^[\t\r\n]/.test(s) ? "'" + s : s;
+      return '"' + safe.replaceAll('"', '""') + '"';
+    };
     const rows = [
       ['Name', 'Email', 'Role', 'Location', 'Stage'],
       ...this.data().people.map((p) => [p.name, p.email, p.role, p.location, p.stage]),
