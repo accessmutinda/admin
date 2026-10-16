@@ -134,6 +134,15 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'companies/integrations',
+        title: 'Company integrations & data · CareVerity',
+        canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+        loadComponent: () =>
+          import('./features/management/company-admin/settings/integrations-settings').then(
+            (m) => m.IntegrationsSettings,
+          ),
+      },
+      {
         path: 'companies/access',
         title: 'Users & role permissions · CareVerity',
         canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
@@ -227,11 +236,8 @@ export const routes: Routes = [
       },
       {
         path: 'settings',
-        title: 'Integrations & data · CareVerity',
-        loadComponent: () =>
-          import('./features/management/company-admin/settings/integrations-settings').then(
-            (m) => m.IntegrationsSettings,
-          ),
+        pathMatch: 'full',
+        redirectTo: 'companies/integrations',
       },
       {
         path: 'clients',

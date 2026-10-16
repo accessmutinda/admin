@@ -114,11 +114,11 @@ export class Companies {
       },
       {
         title: 'Integrations',
-        description: 'Third-party systems and data integrations',
+        description: 'API setup, backup preferences and data exports',
         icon: 'link',
         tone: 'blue',
         state: 'Pending',
-        link: ['/manage/settings'],
+        link: ['/manage/companies/integrations'],
       },
     ];
   });

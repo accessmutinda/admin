@@ -1,74 +1,297 @@
-<div class="page-heading">
-  <div>
-    <p class="eyebrow">ORGANISATION</p>
-    <h1>Integrations & data</h1>
-    <p>Manage integrations, backup preferences and workspace exports.</p>
-  </div>
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/companies">Companies</a
+  ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span
+  ><span aria-current="page">Integrations &amp; Data</span>
+</nav>
+<div class="co-heading">
+  <h1>Integrations &amp; Data</h1>
+  <p>Manage API setup, backup preferences and data exports for this company.</p>
 </div>
-<div class="settings-grid">
-  <section class="panel">
-    <div class="panel-toolbar">
-      <div>
-        <h2>API access</h2>
-        <p>Explore integration key management.</p>
-      </div>
-      <span class="badge">Demo</span>
-    </div>
-    <div class="panel-body">
-      <form #form="ngForm" (ngSubmit)="form.valid && createKey()" class="row">
-        <input
-          [(ngModel)]="keyName"
-          name="keyName"
-          placeholder="Integration name"
-          aria-label="Integration name"
-          required
-        /><button class="button primary">Create key</button>
-      </form>
-      @if (revealedKey) {
-        <div class="key-preview">
-          <small>Sample key · no API access</small><code>{{ revealedKey }}</code>
-        </div>
+@if (company(); as current) {
+  <section class="co-summary co-surface" aria-label="Current company overview">
+    <div class="co-company-image" [style.background]="current.logo ? '#eef7fa' : null">
+      @if (current.logo) {
+        <img [src]="current.logo" [alt]="current.name + ' logo'" />
+      } @else {
+        <div class="co-reference-photo" role="img" aria-label="Care home placeholder"></div>
       }
-      @for (key of keys; track key.id) {
-        <div class="list-row">
+    </div>
+    <div class="co-summary-content">
+      <div class="co-summary-header">
+        <div class="co-company-title">
+          <h2>{{ current.name }}</h2>
           <span
-            ><strong>{{ key.name }}</strong
-            ><small>Created {{ key.created }}</small></span
-          ><button class="text-link" (click)="revokeKey(key.id)">Revoke</button>
+            class="co-active"
+            [class.co-inactive]="!(current.active ?? !!current.modules.length)"
+            >{{ (current.active ?? !!current.modules.length) ? 'Active' : 'Inactive' }}</span
+          >
+        </div>
+        <a class="co-profile-button" [routerLink]="['/manage/companies', current.id]"
+          >View Company Profile
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a
+        >
+      </div>
+      <div class="co-facts">
+        <div>
+          <span>Company code</span><strong>{{ current.code }}</strong>
+        </div>
+        <div>
+          <span>Registration number</span
+          ><strong>{{ current.registration || 'Not provided' }}</strong>
+        </div>
+        <div class="co-service-type">
+          <span>Service type</span><strong>{{ current.sector }}</strong>
+        </div>
+      </div>
+      <div class="co-details">
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+          ><span
+            ><small>Head Office</small
+            >{{ current.headOfficeAddress || current.postcode || 'Location not added' }}</span
+          >
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+          ><span><small>Last updated</small>{{ modifiedAt(current.modifiedAt) }}</span>
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">person</span
+          ><span><small>Assigned plan</small>{{ current.modules.length }} modules enabled</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="ig-layout">
+    <section class="co-surface ig-card" aria-labelledby="ig-api-title">
+      <div class="ig-heading">
+        <span class="ig-tile material-symbols-outlined" aria-hidden="true"
+          >integration_instructions</span
+        >
+        <div>
+          <h2 id="ig-api-title">API Access</h2>
+          <p>Manage sample integration key records for this workspace.</p>
+        </div>
+        <span class="ig-badge">Local setup</span>
+      </div>
+      <div class="ig-info">
+        <span class="material-symbols-outlined" aria-hidden="true">info</span>
+        <p>
+          Sample keys do not grant API access. A connected service is needed for live integrations.
+        </p>
+      </div>
+      <form class="ig-form" (ngSubmit)="createKey()" novalidate>
+        <div>
+          <label for="ig-key-name">Integration name</label
+          ><input
+            id="ig-key-name"
+            name="keyName"
+            [(ngModel)]="keyName"
+            required
+            maxlength="80"
+            placeholder="e.g. Reporting integration"
+            [attr.aria-invalid]="submitted() && !!keyError()"
+            aria-describedby="ig-key-help"
+          /><small id="ig-key-help">Use a unique name for each sample key.</small>
+        </div>
+        <button type="submit" class="ig-button ig-primary">
+          <span class="material-symbols-outlined" aria-hidden="true">add</span>Create Sample Key
+        </button>
+      </form>
+      @if (keyError()) {
+        <p class="ig-error" role="alert">{{ keyError() }}</p>
+      }
+      @if (revealedKey) {
+        <div class="ig-preview" role="status">
+          <div>
+            <strong>Sample key · no API access</strong><code>{{ revealedKey }}</code>
+          </div>
+          <button
+            type="button"
+            class="ig-icon-button"
+            aria-label="Dismiss sample key"
+            (click)="dismissKey()"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
         </div>
       }
-      <p class="muted">API keys here are sample values and are not connected to a service.</p>
-    </div>
-  </section>
-  <section class="panel">
-    <div class="panel-toolbar">
-      <div>
-        <h2>Backups & exports</h2>
-        <p>Your workspace data, when you need it.</p>
+      <div class="ig-register-heading">
+        <h3>
+          Integration Keys <span>{{ keys().length }}</span>
+        </h3>
+        <label class="ig-search"
+          ><span class="material-symbols-outlined" aria-hidden="true">search</span
+          ><input
+            aria-label="Search integration keys"
+            placeholder="Search integration names…"
+            [ngModel]="search()"
+            (ngModelChange)="setSearch($event)"
+        /></label>
       </div>
-      <span class="material-symbols-outlined text-teal-600" aria-hidden="true">cloud_done</span>
-    </div>
-    <div class="panel-body">
-      <label class="check-label"
-        ><input type="checkbox" [(ngModel)]="backup" />Automatic backup preference</label
+      <div
+        class="ig-table-wrap"
+        tabindex="0"
+        role="region"
+        aria-label="Scrollable sample integration key table"
       >
-      <p class="muted">
-        Scheduled backups require a connected backend. Download a snapshot of your demo data below.
-      </p>
-      <button class="button" (click)="saveBackup()">Save preference</button>
-      <hr />
-      <div class="list-row">
-        <span><strong>Workspace snapshot</strong><small>All demo records · JSON</small></span
-        ><button class="button" (click)="downloadBackup()">
-          <span class="material-symbols-outlined" aria-hidden="true">download</span>Download
-        </button>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Integration</th>
+              <th scope="col">Created</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (key of rows(); track key.id) {
+              <tr>
+                <td>
+                  <span class="ig-key-name"
+                    ><span class="material-symbols-outlined" aria-hidden="true">key</span
+                    >{{ key.name }}</span
+                  ><small>Sample key</small>
+                </td>
+                <td>{{ createdDate(key.created) }}</td>
+                <td>
+                  <button
+                    type="button"
+                    class="ig-revoke"
+                    (click)="revokeKey(key.id)"
+                    [attr.aria-label]="'Revoke sample key for ' + key.name"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">key_off</span>Revoke
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="3" class="ig-empty">
+                  {{
+                    keys().length
+                      ? 'No integration keys match your search.'
+                      : 'No integration keys yet. Create a sample key to start your setup.'
+                  }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
-      <div class="list-row">
-        <span><strong>People export</strong><small>Applicant and staff directory · CSV</small></span
-        ><button class="button" (click)="store.exportPeople()">
-          <span class="material-symbols-outlined" aria-hidden="true">download</span>Export
-        </button>
+      <div class="ig-pagination">
+        <span>{{ start() }}–{{ end() }} of {{ filtered().length }} keys</span>
+        <div>
+          <button
+            type="button"
+            class="ig-icon-button"
+            aria-label="Previous key page"
+            [disabled]="currentPage() === 1"
+            (click)="page.set(currentPage() - 1)"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span></button
+          ><span>{{ currentPage() }} / {{ pageCount() }}</span
+          ><button
+            type="button"
+            class="ig-icon-button"
+            aria-label="Next key page"
+            [disabled]="currentPage() === pageCount()"
+            (click)="page.set(currentPage() + 1)"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+          </button>
+        </div>
       </div>
+    </section>
+    <div class="ig-sidebar">
+      <section class="co-surface ig-card" aria-labelledby="ig-backup-title">
+        <div class="ig-heading">
+          <span class="ig-tile ig-teal material-symbols-outlined" aria-hidden="true">backup</span>
+          <div>
+            <h2 id="ig-backup-title">Backup Preferences</h2>
+            <p>Record this company’s backup preference.</p>
+          </div>
+        </div>
+        <label class="ig-preference"
+          ><span
+            ><strong>Automatic backup preference</strong
+            ><small>{{ backup ? 'Preference enabled' : 'Preference disabled' }}</small></span
+          ><input
+            type="checkbox"
+            role="switch"
+            [(ngModel)]="backup"
+            aria-label="Automatic backup preference"
+        /></label>
+        <p class="ig-note">
+          Scheduled backups require a connected backend. You can download a workspace snapshot
+          below.
+        </p>
+        @if (backupError()) {
+          <p class="ig-error" role="alert">{{ backupError() }}</p>
+        }
+        <div class="ig-save">
+          <span aria-live="polite">{{
+            backupChanged() ? 'Unsaved preference' : 'No unsaved changes'
+          }}</span
+          ><button
+            type="button"
+            class="ig-button ig-outline"
+            [disabled]="!backupChanged()"
+            (click)="discardBackup()"
+          >
+            Discard</button
+          ><button
+            type="button"
+            class="ig-button ig-primary"
+            [disabled]="!backupChanged()"
+            (click)="saveBackup()"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">save</span>Save
+          </button>
+        </div>
+      </section>
+      <section class="co-surface ig-card" aria-labelledby="ig-export-title">
+        <div class="ig-heading">
+          <span class="ig-tile ig-purple material-symbols-outlined" aria-hidden="true"
+            >download</span
+          >
+          <div>
+            <h2 id="ig-export-title">Data Exports</h2>
+            <p>Download records from {{ current.name }}.</p>
+          </div>
+        </div>
+        <div class="ig-export">
+          <span class="material-symbols-outlined" aria-hidden="true">data_object</span>
+          <div>
+            <strong>Workspace Snapshot</strong>
+            <p>Saved workspace records · JSON</p>
+          </div>
+          <button type="button" class="ig-button ig-outline" (click)="downloadBackup()">
+            <span class="material-symbols-outlined" aria-hidden="true">download</span>Download
+          </button>
+        </div>
+        <div class="ig-export">
+          <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+          <div>
+            <strong>People Directory</strong>
+            <p>{{ store.data().people.length }} applicant and staff records · CSV</p>
+          </div>
+          <button
+            type="button"
+            class="ig-button ig-outline"
+            (click)="exportPeople()"
+            [disabled]="!store.data().people.length"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">download</span>Export
+          </button>
+        </div>
+        <p class="ig-note">Exports use saved records from the current workspace.</p>
+      </section>
     </div>
+  </div>
+} @else {
+  <section class="co-surface ig-card">
+    <h2>No company workspace selected</h2>
+    <a routerLink="/manage/companies">Return to Companies</a>
   </section>
-</div>
+}

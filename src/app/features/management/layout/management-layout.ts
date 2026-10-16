@@ -177,7 +177,6 @@ export class ManagementLayout {
   protected readonly organisation = [
     { path: '/manage/companies', label: 'Companies', icon: 'domain' },
     { path: '/manage/workflows', label: 'Approval workflows', icon: 'account_tree' },
-    { path: '/manage/settings', label: 'Integrations & data', icon: 'settings' },
   ];
   protected readonly people = [
     { path: '/manage/recruitment', label: 'Recruitment', icon: 'person_search' },
