@@ -204,9 +204,10 @@
   margin-bottom: 12px;
 }
 .cv-management .companies-page .co-stat {
-  padding: 8px 9px 7px;
+  padding: 8px 9px 7px 13px;
   display: flex;
-  gap: 9px;
+  flex-direction: row-reverse;
+  gap: 14px;
   min-width: 0;
 }
 .cv-management .companies-page .co-stat > div {
@@ -247,7 +248,7 @@
 }
 .cv-management .companies-page .co-stat strong {
   display: block;
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1.15;
   color: #081334;
   margin: 2px 0;
@@ -659,8 +660,8 @@
 }
 @media (max-width: 1250px) {
   .cv-management .companies-page .co-stat {
-    gap: 7px;
-    padding: 7px;
+    gap: 11px;
+    padding: 7px 7px 7px 11px;
   }
   .cv-management .companies-page .co-stat-icon {
     width: 30px;
