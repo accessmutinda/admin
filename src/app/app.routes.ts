@@ -135,9 +135,10 @@ export const routes: Routes = [
       },
       {
         path: 'companies/new',
-        title: 'Add company · CareVerity',
+        title: 'Create company · CareVerity',
+        canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
         loadComponent: () =>
-          import('./features/management/companies/company-editor').then((m) => m.CompanyEditor),
+          import('./features/management/companies/company-create').then((m) => m.CompanyCreatePage),
       },
       {
         path: 'companies/:id/compliance',

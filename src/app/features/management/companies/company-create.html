@@ -1,0 +1,632 @@
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/companies">Companies</a
+  ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span
+  ><span aria-current="page">Create New Company</span>
+</nav>
+<div class="cn-heading">
+  <div class="co-heading">
+    <h1>{{ duplicating ? 'Create Company from Existing Setup' : 'Create New Company' }}</h1>
+    <p>Set up a new care provider company in the CareVerity platform.</p>
+  </div>
+  <a class="cn-button" routerLink="/manage/companies"
+    ><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to
+    Companies</a
+  >
+</div>
+@if (invalidSource) {
+  <section class="co-surface cn-panel">
+    <h2>Setup source not found</h2>
+    <p>
+      The selected company is no longer available. Choose an existing company from Companies to
+      duplicate its setup.
+    </p>
+    <a class="cn-button cn-primary" routerLink="/manage/companies">Back to Companies</a>
+  </section>
+} @else if (created()) {
+  <section class="co-surface cn-success" role="status">
+    <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+    <h2>{{ draft.company.name }} has been created</h2>
+    <p>
+      The new workspace is ready with {{ draft.company.modules.length }} modules. Add users and
+      complete the remaining company sections when ready.
+    </p>
+    <div>
+      <a class="cn-button cn-primary" [routerLink]="['/manage/companies', draft.company.id]"
+        >View Company Profile<span class="material-symbols-outlined" aria-hidden="true"
+          >arrow_forward</span
+        ></a
+      ><a class="cn-button cn-outline" routerLink="/manage/companies">Back to Companies</a>
+    </div>
+    @if (notice()) {
+      <p>{{ notice() }}</p>
+    }
+  </section>
+} @else {
+  @if (duplicating) {
+    <div class="cn-copy-note">
+      <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>
+      <div>
+        <strong>Reuse setup, start with a clean company</strong>
+        <p>
+          Modules, appearance, plan configuration, role permissions and standard workflow structure
+          are retained. Company identity, contacts, documents, staff, locations, invoices and
+          activity are cleared.
+        </p>
+      </div>
+    </div>
+  }
+  @if (notice()) {
+    <p class="cn-note" role="status">{{ notice() }}</p>
+  }
+  @if (savedDraft()) {
+    <section class="co-surface cn-resume" aria-label="Saved company setup draft">
+      <div>
+        <strong>You have a saved setup draft</strong>
+        <p>Resume your entries or start with the setup below. Drafts are saved on this device.</p>
+      </div>
+      <button type="button" class="cn-button cn-outline" (click)="resumeDraft()">
+        Resume Draft</button
+      ><button type="button" class="cn-button" (click)="discardDraft()">Delete Draft</button>
+    </section>
+  }
+  <ol class="co-surface cn-steps" aria-label="Company setup progress">
+    @for (label of steps; track label; let i = $index) {
+      <li
+        [class.cn-current]="step() === i"
+        [class.cn-complete]="step() > i && stageComplete(i)"
+        [attr.aria-current]="step() === i ? 'step' : null"
+      >
+        <button type="button" (click)="selectStep(i)">
+          <span class="cn-step-number">
+            @if (step() > i && stageComplete(i)) {
+              <span class="material-symbols-outlined" aria-hidden="true">check</span>
+            } @else {
+              {{ i + 1 }}
+            }</span
+          ><strong>{{ label }}</strong
+          ><small>{{
+            step() === i ? 'In Progress' : step() > i && stageComplete(i) ? 'Complete' : 'Pending'
+          }}</small>
+        </button>
+      </li>
+    }
+  </ol>
+  <form class="cn-layout" (ngSubmit)="next()" novalidate>
+    <section class="co-surface cn-panel cn-form-panel" aria-labelledby="cn-section-title">
+      <div class="co-section-header">
+        <h2 id="cn-section-title">
+          <span class="material-symbols-outlined" aria-hidden="true">{{
+            ['domain', 'description', 'contact_mail', 'deployed_code', 'fact_check'][step()]
+          }}</span
+          >{{
+            [
+              'Company Information',
+              'Registration Details',
+              'Contact Information',
+              'Modules & Access',
+              'Review & Create',
+            ][step()]
+          }}
+        </h2>
+      </div>
+      <p class="cn-description">
+        {{
+          [
+            'Enter the basic company details. Fields marked with * are required.',
+            'Record the new company’s registration details.',
+            'Add the new company’s main contact details. These do not invite a user.',
+            'Choose the modules for the new workspace. Configure them further after creation.',
+            'Review all details before creating the company.',
+          ][step()]
+        }}
+      </p>
+      @if (step() === 0) {
+        <div class="cn-fields">
+          <div class="cn-field">
+            <label for="cn-name">Company Name <span>*</span></label
+            ><input
+              id="cn-name"
+              name="name"
+              [(ngModel)]="draft.company.name"
+              (ngModelChange)="changed()"
+              maxlength="150"
+              required
+              [attr.aria-invalid]="!!fieldError('name')"
+              aria-describedby="cn-name-help"
+            /><small id="cn-name-help" [class.cn-error]="!!fieldError('name')">{{
+              fieldError('name') || 'Legal name of the new company as registered.'
+            }}</small>
+          </div>
+          <div class="cn-field">
+            <label for="cn-tradingName">Trading Name</label
+            ><input
+              id="cn-tradingName"
+              name="tradingName"
+              [(ngModel)]="draft.company.tradingName"
+              (ngModelChange)="changed()"
+              maxlength="150"
+            /><small class="cn-error">{{ fieldError('tradingName') }}</small>
+          </div>
+          <div class="cn-field">
+            <label for="cn-code">Company Code <span>*</span></label
+            ><input
+              id="cn-code"
+              name="code"
+              [(ngModel)]="draft.company.code"
+              (ngModelChange)="changed()"
+              maxlength="20"
+              required
+              [attr.aria-invalid]="!!fieldError('code')"
+              aria-describedby="cn-code-help"
+            /><small id="cn-code-help" [class.cn-error]="!!fieldError('code')">{{
+              fieldError('code') || 'Unique code, 3–20 letters, numbers or hyphens (e.g. RCG-001).'
+            }}</small>
+          </div>
+          <div class="cn-field">
+            <label for="cn-sector">Service Type <span>*</span></label
+            ><mat-select
+              cvSelect
+              id="cn-sector"
+              name="sector"
+              aria-label="Service type"
+              [(ngModel)]="draft.company.sector"
+              (ngModelChange)="changed()"
+              required
+            >
+              @for (sector of sectors; track sector) {
+                <mat-option [value]="sector">{{ sector }}</mat-option>
+              }</mat-select
+            ><small class="cn-error">{{ fieldError('sector') }}</small>
+          </div>
+          <div class="cn-field">
+            <label for="cn-size">Company Size <span>*</span></label
+            ><mat-select
+              cvSelect
+              id="cn-size"
+              name="size"
+              aria-label="Company size"
+              [(ngModel)]="draft.company.size"
+              (ngModelChange)="changed()"
+              required
+            >
+              @for (size of sizes; track size) {
+                <mat-option [value]="size">{{ size }}</mat-option>
+              }</mat-select
+            ><small class="cn-error">{{ fieldError('size') }}</small>
+          </div>
+          <div class="cn-field">
+            <label for="cn-plan">Initial Subscription Plan <span>*</span></label
+            ><mat-select
+              cvSelect
+              id="cn-plan"
+              name="plan"
+              aria-label="Initial subscription plan"
+              [(ngModel)]="draft.company.subscription!.plan"
+              (ngModelChange)="changed()"
+              required
+              [attr.aria-invalid]="!!fieldError('plan')"
+              ><mat-option value="">Choose a plan</mat-option>
+              @for (plan of plans; track plan) {
+                <mat-option [value]="plan">{{ plan }}</mat-option>
+              }</mat-select
+            ><small [class.cn-error]="!!fieldError('plan')">{{
+              fieldError('plan') || 'Records the initial choice. No billing or payment starts here.'
+            }}</small>
+          </div>
+        </div>
+        <div class="cn-options">
+          <h3>
+            <span class="material-symbols-outlined" aria-hidden="true">settings</span>Additional
+            Options
+          </h3>
+          <div>
+            <label class="cn-switch"
+              ><input
+                type="checkbox"
+                name="active"
+                [(ngModel)]="draft.company.active"
+                (ngModelChange)="changed()"
+                role="switch"
+              /><span
+                ><strong>Enable company immediately</strong
+                ><small>Sets the company’s platform status after creation.</small></span
+              ></label
+            ><label class="cn-switch"
+              ><input
+                type="checkbox"
+                disabled
+                role="switch"
+                aria-describedby="cn-email-help"
+              /><span
+                ><strong>Send welcome email</strong
+                ><small id="cn-email-help"
+                  >Email delivery is not configured. Invite users after creation.</small
+                ></span
+              ></label
+            >
+          </div>
+        </div>
+        <details class="cn-appearance">
+          <summary>
+            Brand appearance
+            <span class="cn-muted">Optional · customise further after creation</span>
+          </summary>
+          <div class="cn-fields">
+            <label class="cn-color"
+              >Primary Colour<input
+                type="color"
+                name="primaryColor"
+                [(ngModel)]="draft.company.branding!.primaryColor"
+                (ngModelChange)="draft.company.color = $event; changed()" /></label
+            ><label class="cn-color"
+              >Accent Colour<input
+                type="color"
+                name="accentColor"
+                [(ngModel)]="draft.company.branding!.accentColor"
+                (ngModelChange)="draft.company.accent = $event; changed()"
+            /></label>
+          </div>
+        </details>
+      }
+      @if (step() === 1) {
+        <div class="cn-fields">
+          <div class="cn-field">
+            <label for="cn-registration">Company Registration Number <span>*</span></label
+            ><input
+              id="cn-registration"
+              name="registration"
+              [(ngModel)]="draft.company.registration"
+              (ngModelChange)="changed()"
+              maxlength="60"
+              required
+              [attr.aria-invalid]="!!fieldError('registration')"
+            /><small [class.cn-error]="!!fieldError('registration')">{{
+              fieldError('registration') || 'Use the new company’s official registration number.'
+            }}</small>
+          </div>
+          <div class="cn-field">
+            <label for="cn-taxNumber">Tax / VAT Number</label
+            ><input
+              id="cn-taxNumber"
+              name="taxNumber"
+              [(ngModel)]="draft.company.compliance!.taxNumber"
+              (ngModelChange)="changed()"
+              maxlength="150"
+            /><small [class.cn-error]="!!fieldError('taxNumber')">{{
+              fieldError('taxNumber') || 'Optional, where applicable.'
+            }}</small>
+          </div>
+          <div class="cn-field">
+            <label for="cn-country">Country <span>*</span></label
+            ><input
+              id="cn-country"
+              name="country"
+              [(ngModel)]="draft.company.country"
+              (ngModelChange)="changed()"
+              maxlength="100"
+              required
+              [attr.aria-invalid]="!!fieldError('country')"
+            /><small class="cn-error">{{ fieldError('country') }}</small>
+          </div>
+          <div class="cn-field">
+            <label for="cn-region">Operating Region <span>*</span></label
+            ><mat-select
+              cvSelect
+              id="cn-region"
+              name="region"
+              aria-label="Operating region"
+              [(ngModel)]="draft.company.region"
+              (ngModelChange)="changed()"
+              required
+              ><mat-option value="">Choose a region</mat-option>
+              @for (region of regions; track region) {
+                <mat-option [value]="region">{{ region }}</mat-option>
+              }</mat-select
+            ><small class="cn-error">{{ fieldError('region') }}</small>
+          </div>
+        </div>
+        <div class="cn-info">
+          <span class="material-symbols-outlined" aria-hidden="true">info</span>
+          <p>
+            Add regulatory registration, insurance and supporting evidence in Registration &amp;
+            Compliance after creation.
+          </p>
+        </div>
+      }
+      @if (step() === 2) {
+        <div class="cn-fields">
+          <div class="cn-field">
+            <label for="cn-generalEmail">Company Email <span>*</span></label
+            ><input
+              type="email"
+              id="cn-generalEmail"
+              name="generalEmail"
+              [(ngModel)]="draft.company.contacts!.primary.generalEmail"
+              (ngModelChange)="changed()"
+              maxlength="254"
+              required
+              [attr.aria-invalid]="!!fieldError('generalEmail')"
+            /><small class="cn-error">{{ fieldError('generalEmail') }}</small>
+          </div>
+          <div class="cn-field">
+            <label for="cn-mainPhone">Phone Number <span>*</span></label
+            ><input
+              type="tel"
+              id="cn-mainPhone"
+              name="mainPhone"
+              [(ngModel)]="draft.company.contacts!.primary.mainPhone"
+              (ngModelChange)="changed()"
+              maxlength="30"
+              required
+              [attr.aria-invalid]="!!fieldError('mainPhone')"
+            /><small class="cn-error">{{ fieldError('mainPhone') }}</small>
+          </div>
+          <div class="cn-field cn-wide">
+            <label for="cn-website">Website</label
+            ><input
+              type="url"
+              id="cn-website"
+              name="website"
+              [(ngModel)]="draft.company.contacts!.primary.website"
+              (ngModelChange)="changed()"
+              maxlength="500"
+              placeholder="https://"
+              [attr.aria-invalid]="!!fieldError('website')"
+            /><small class="cn-error">{{ fieldError('website') }}</small>
+          </div>
+        </div>
+        <h3 class="cn-subheading">
+          Head Office Address
+          <span class="cn-muted">Optional · complete all address details if supplied</span>
+        </h3>
+        <div class="cn-fields">
+          @for (field of addressFields; track field.key) {
+            <div class="cn-field">
+              <label [for]="'cn-address-' + field.key">{{ field.label }}</label
+              ><input
+                [id]="'cn-address-' + field.key"
+                [name]="'address-' + field.key"
+                [(ngModel)]="draft.company.contacts!.addresses.headOffice[field.key]"
+                (ngModelChange)="changed()"
+                maxlength="150"
+                [attr.aria-invalid]="!!fieldError('address.' + field.key)"
+              /><small class="cn-error">{{ fieldError('address.' + field.key) }}</small>
+            </div>
+          }
+        </div>
+      }
+      @if (step() === 3) {
+        <div class="cn-modules">
+          @for (module of modules; track module.name) {
+            <label
+              class="cn-module"
+              [class.cn-selected]="draft.company.modules.includes(module.name)"
+              ><span
+                class="cn-module-icon material-symbols-outlined"
+                [style.background]="module.color"
+                aria-hidden="true"
+                >{{ module.icon }}</span
+              ><span
+                ><strong>{{ module.name }}</strong
+                ><small>{{ module.description }}</small></span
+              ><input
+                type="checkbox"
+                [name]="'module-' + $index"
+                [checked]="draft.company.modules.includes(module.name)"
+                (change)="toggleModule(module.name)"
+            /></label>
+          }
+        </div>
+        @if (fieldError('modules')) {
+          <p role="alert" class="cn-error">{{ fieldError('modules') }}</p>
+        }
+        <div class="cn-info">
+          <span class="material-symbols-outlined" aria-hidden="true">shield</span>
+          <p>
+            New workspaces start without users, care records or documents. Access configuration can
+            be reviewed after creation.
+          </p>
+        </div>
+      }
+      @if (step() === 4) {
+        <dl class="cn-review">
+          <div>
+            <dt>Company Name</dt>
+            <dd>{{ draft.company.name }}</dd>
+          </div>
+          <div>
+            <dt>Trading Name</dt>
+            <dd>{{ draft.company.tradingName || 'Not provided' }}</dd>
+          </div>
+          <div>
+            <dt>Company Code</dt>
+            <dd>{{ draft.company.code }}</dd>
+          </div>
+          <div>
+            <dt>Service Type</dt>
+            <dd>{{ draft.company.sector }}</dd>
+          </div>
+          <div>
+            <dt>Company Size</dt>
+            <dd>{{ draft.company.size }}</dd>
+          </div>
+          <div>
+            <dt>Registration Number</dt>
+            <dd>{{ draft.company.registration }}</dd>
+          </div>
+          <div>
+            <dt>Tax / VAT Number</dt>
+            <dd>{{ draft.company.compliance!.taxNumber || 'Not provided' }}</dd>
+          </div>
+          <div>
+            <dt>Country / Region</dt>
+            <dd>{{ draft.company.country }} · {{ draft.company.region }}</dd>
+          </div>
+          <div>
+            <dt>Company Email</dt>
+            <dd>{{ draft.company.contacts!.primary.generalEmail }}</dd>
+          </div>
+          <div>
+            <dt>Phone Number</dt>
+            <dd>{{ draft.company.contacts!.primary.mainPhone }}</dd>
+          </div>
+          <div>
+            <dt>Website</dt>
+            <dd>{{ draft.company.contacts!.primary.website || 'Not provided' }}</dd>
+          </div>
+          <div>
+            <dt>Head Office Address</dt>
+            <dd>{{ addressPreview() }}</dd>
+          </div>
+          <div>
+            <dt>Initial Plan</dt>
+            <dd>
+              {{ draft.company.subscription!.plan }} ·
+              {{
+                draft.company.subscription!.cycle === 'Not recorded'
+                  ? 'Billing cycle not recorded'
+                  : draft.company.subscription!.cycle
+              }}
+            </dd>
+          </div>
+          <div>
+            <dt>Company Status</dt>
+            <dd>{{ draft.company.active ? 'Active' : 'Inactive' }}</dd>
+          </div>
+          <div class="cn-wide">
+            <dt>Modules</dt>
+            <dd class="cn-chips">
+              @for (module of draft.company.modules; track module) {
+                <span>{{ module }}</span>
+              }
+            </dd>
+          </div>
+        </dl>
+        <label class="cn-confirm"
+          ><input
+            type="checkbox"
+            name="reviewed"
+            [ngModel]="reviewed()"
+            (ngModelChange)="reviewed.set($event)"
+          />I have reviewed the details for this new company.</label
+        >
+      }
+    </section>
+    <aside class="cn-sidebar">
+      <section class="cn-guidance co-surface cn-panel">
+        <div class="co-section-header">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">lightbulb</span>Setup
+            Guidance
+          </h2>
+        </div>
+        <div class="cn-guide-row">
+          <span class="material-symbols-outlined" aria-hidden="true">asterisk</span>
+          <div>
+            <strong>Required fields</strong>
+            <p>Fields marked with * are required before continuing.</p>
+          </div>
+        </div>
+        <div class="cn-guide-row">
+          <span class="material-symbols-outlined" aria-hidden="true">description</span>
+          <div>
+            <strong>Naming rules</strong>
+            <p>Use the new company’s official registered name and a recognisable trading name.</p>
+          </div>
+        </div>
+        <div class="cn-guide-row">
+          <span class="material-symbols-outlined" aria-hidden="true">sell</span>
+          <div>
+            <strong>Company code</strong>
+            <p>Use a unique code across the platform, such as RCG-001.</p>
+          </div>
+        </div>
+        <div class="cn-guide-row">
+          <span class="material-symbols-outlined" aria-hidden="true">domain</span>
+          <div>
+            <strong>Registration details</strong>
+            <p>Record the new company’s number. Add tax details where applicable.</p>
+          </div>
+        </div>
+        <div class="cn-guide-row">
+          <span class="material-symbols-outlined" aria-hidden="true">group_add</span>
+          <div>
+            <strong>Onboarding tip</strong>
+            <p>
+              Invite users and complete registration evidence after creation. Creating a company
+              does not send invitations.
+            </p>
+          </div>
+        </div>
+      </section>
+      <section class="co-surface cn-panel">
+        <div class="co-section-header">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">donut_large</span>Setup
+            Progress
+          </h2>
+        </div>
+        <div class="cn-progress">
+          <div
+            class="cn-ring"
+            [style.--progress]="percentage() + '%'"
+            role="progressbar"
+            [attr.aria-valuenow]="percentage()"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-label="Company setup readiness"
+          >
+            <strong>{{ percentage() }}%</strong>
+          </div>
+          <div>
+            <strong>Company setup readiness</strong>
+            <p>{{ completedCount() }} of 5 steps ready</p>
+            <progress [value]="percentage()" max="100" aria-label="Setup readiness"></progress>
+          </div>
+        </div>
+      </section>
+      @if (stageErrors(step()).length) {
+        <section class="cn-missing co-surface cn-panel" aria-labelledby="cn-missing-title">
+          <div class="co-section-header">
+            <h2 id="cn-missing-title">
+              <span class="material-symbols-outlined" aria-hidden="true">error</span>Missing
+              Required Fields
+            </h2>
+          </div>
+          <ul>
+            @for (item of stageErrors(step()); track item.key) {
+              <li>{{ item.message }}</li>
+            }
+          </ul>
+        </section>
+      }
+    </aside>
+    <div class="co-surface cn-footer">
+      @if (error()) {
+        <p role="alert" class="cn-error">{{ error() }}</p>
+      }
+      <button
+        type="button"
+        class="cn-button cn-outline"
+        [disabled]="step() === 0"
+        (click)="previous()"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Previous</button
+      ><span class="cn-draft-state">{{
+        draftSavedAt()
+          ? 'Draft saved at ' + draftSavedAt() + ' (UK time)'
+          : 'Changes are not saved automatically'
+      }}</span>
+      <div>
+        <button type="button" class="cn-button cn-outline" (click)="saveDraft()">
+          <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Draft</button
+        ><button type="submit" class="cn-button cn-primary">
+          {{ step() === 4 ? 'Create Company' : 'Continue'
+          }}<span class="material-symbols-outlined" aria-hidden="true">{{
+            step() === 4 ? 'add_business' : 'arrow_forward'
+          }}</span>
+        </button>
+      </div>
+    </div>
+  </form>
+}

@@ -59,6 +59,7 @@ export class CompanyDirectory {
   }
   protected region(company: Company): string {
     return (
+      company.region ||
       company.contacts?.addresses.registered.county ||
       company.contacts?.addresses.headOffice.county ||
       ''

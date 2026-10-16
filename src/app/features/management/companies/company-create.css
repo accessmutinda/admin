@@ -1,0 +1,668 @@
+.cv-management .company-create-page .cn-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cv-management .company-create-page .cn-heading > .co-heading {
+  margin-bottom: 24px;
+}
+.cv-management .company-create-page .cn-heading > .cn-button {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.cv-management .company-create-page .cn-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 12px 8px;
+}
+.cv-management .company-create-page .cn-steps li {
+  position: relative;
+  min-width: 0;
+}
+.cv-management .company-create-page .cn-steps li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: calc(50% + 23px);
+  right: calc(-50% + 23px);
+  top: 16px;
+  height: 3px;
+  background: #e1e9ef;
+}
+.cv-management .company-create-page .cn-steps li.cn-complete::after {
+  background: #008afa;
+}
+.cv-management .company-create-page .cn-steps button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  background: none;
+  border: 0;
+  color: #16375b;
+  font: 400 11px var(--font-sans);
+  cursor: pointer;
+}
+.cv-management .company-create-page .cn-step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #cbd5df;
+  border-radius: 50%;
+  color: #7d8798;
+  background: #fff;
+  font-size: 14px;
+  margin-bottom: 3px;
+}
+.cv-management .company-create-page .cn-step-number .material-symbols-outlined {
+  font-size: 20px;
+}
+.cv-management .company-create-page .cn-current .cn-step-number {
+  background: #008afa;
+  border-color: #008afa;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 3px #008afa;
+  color: #fff;
+}
+.cv-management .company-create-page .cn-current small {
+  color: #008afa;
+}
+.cv-management .company-create-page .cn-complete .cn-step-number {
+  background: #00a34e;
+  border-color: #00a34e;
+  color: #fff;
+}
+.cv-management .company-create-page .cn-complete small {
+  color: #009c53;
+}
+.cv-management .company-create-page .cn-steps small {
+  font-size: 10px;
+  color: #6c7587;
+}
+.cv-management .company-create-page .cn-steps strong {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.cv-management .company-create-page .cn-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr);
+  gap: 12px 8px;
+  align-items: start;
+}
+.cv-management .company-create-page .cn-panel {
+  padding: 10px;
+  min-width: 0;
+}
+.cv-management .company-create-page .cn-sidebar {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.cv-management .company-create-page .co-section-header {
+  margin-bottom: 5px;
+  min-height: 26px;
+  gap: 6px;
+}
+.cv-management .company-create-page .co-section-header h2 {
+  font-size: 14px;
+}
+.cv-management .company-create-page .cn-description {
+  margin: 0 0 12px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #6c7587;
+}
+.cv-management .company-create-page .cn-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+}
+.cv-management .company-create-page .cn-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cv-management .company-create-page label,
+.cv-management .company-create-page .cn-field label {
+  font: 700 11px/1.4 var(--font-sans);
+  color: #16375b;
+}
+.cv-management .company-create-page .cn-field label > span {
+  color: #e2354a;
+}
+.cv-management .company-create-page .cn-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  background: #fff;
+  font: 400 12px/1.5 var(--font-sans);
+  color: #16375b;
+  min-width: 0;
+}
+.cv-management .company-create-page mat-select {
+  min-height: 32px;
+  font-size: 12px;
+}
+.cv-management .company-create-page .cn-field small,
+.cv-management .company-create-page .cn-muted {
+  color: #6c7587;
+  font: 400 10px/1.45 var(--font-sans);
+}
+.cv-management .company-create-page .cn-field small:empty {
+  display: none;
+}
+.cv-management .company-create-page .cn-field [aria-invalid='true'] {
+  border-color: #db3449;
+}
+.cv-management .company-create-page .cn-error,
+.cv-management .company-create-page .cn-field .cn-error {
+  color: #db3449;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.cv-management .company-create-page .cn-wide {
+  grid-column: 1/-1;
+}
+.cv-management .company-create-page .cn-options {
+  margin-top: 14px;
+}
+.cv-management .company-create-page .cn-options h3,
+.cv-management .company-create-page .cn-subheading {
+  font-size: 12px;
+  font-weight: 700;
+  color: #16375b;
+  margin: 0 0 8px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.cv-management .company-create-page .cn-subheading {
+  margin-top: 12px;
+}
+.cv-management .company-create-page .cn-options h3 > .material-symbols-outlined {
+  font-size: 18px;
+  color: #008afa;
+}
+.cv-management .company-create-page .cn-options > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+}
+.cv-management .company-create-page .cn-switch {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-weight: 400;
+}
+.cv-management .company-create-page .cn-switch input {
+  appearance: none;
+  width: 30px;
+  height: 17px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: #b7c2cd;
+  position: relative;
+  margin: 1px 0 0;
+  cursor: pointer;
+}
+.cv-management .company-create-page .cn-switch input::before {
+  content: '';
+  width: 13px;
+  height: 13px;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.1s;
+}
+.cv-management .company-create-page .cn-switch input:checked {
+  background: #00a34e;
+}
+.cv-management .company-create-page .cn-switch input:checked::before {
+  transform: translateX(13px);
+}
+.cv-management .company-create-page .cn-switch input:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.cv-management .company-create-page .cn-switch strong {
+  font-size: 11px;
+}
+.cv-management .company-create-page .cn-switch small {
+  display: block;
+  font: 400 10px/1.45 var(--font-sans);
+  color: #6c7587;
+}
+.cv-management .company-create-page .cn-guidance {
+  background: #eef8fe;
+  border: 1px solid #dcecf5;
+}
+.cv-management .company-create-page .cn-guide-row {
+  display: flex;
+  gap: 9px;
+  padding: 7px 0;
+  align-items: flex-start;
+}
+.cv-management .company-create-page .cn-guide-row > .material-symbols-outlined {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-radius: 7px;
+  color: #008afa;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.cv-management .company-create-page .cn-guide-row:first-of-type > .material-symbols-outlined {
+  color: #db3449;
+}
+.cv-management .company-create-page .cn-guide-row strong {
+  font-size: 11px;
+  color: #16375b;
+}
+.cv-management .company-create-page .cn-guide-row p {
+  margin: 3px 0 0;
+  color: #6c7587;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.cv-management .company-create-page .cn-progress {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 0;
+}
+.cv-management .company-create-page .cn-progress > div:last-child {
+  flex: 1;
+  min-width: 0;
+}
+.cv-management .company-create-page .cn-progress strong {
+  font-size: 12px;
+  color: #16375b;
+}
+.cv-management .company-create-page .cn-progress p {
+  font-size: 11px;
+  color: #6c7587;
+  margin: 4px 0 8px;
+}
+.cv-management .company-create-page .cn-ring {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: conic-gradient(#03a6c1 var(--progress), #e5edf2 0);
+  display: grid;
+  place-items: center;
+  position: relative;
+  flex-shrink: 0;
+}
+.cv-management .company-create-page .cn-ring::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  background: #fff;
+  border-radius: 50%;
+}
+.cv-management .company-create-page .cn-ring strong {
+  position: relative;
+  font-size: 20px;
+}
+.cv-management .company-create-page progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  border: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  accent-color: #008afa;
+}
+.cv-management .company-create-page progress::-webkit-progress-bar {
+  background: #e5edf2;
+  border-radius: 5px;
+}
+.cv-management .company-create-page progress::-webkit-progress-value {
+  background: #008afa;
+  border-radius: 5px;
+}
+.cv-management .company-create-page progress::-moz-progress-bar {
+  background: #008afa;
+  border-radius: 5px;
+}
+.cv-management .company-create-page .cn-missing {
+  background: #fff5f6;
+  border: 1px solid #f4e5e8;
+}
+.cv-management .company-create-page .cn-missing h2 > .material-symbols-outlined {
+  color: #db3449;
+}
+.cv-management .company-create-page .cn-missing ul {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #7b5360;
+  padding-left: 18px;
+  margin: 7px 0 0;
+}
+.cv-management .company-create-page .cn-missing li {
+  padding: 2px 0;
+}
+.cv-management .company-create-page .cn-footer {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  flex-wrap: wrap;
+}
+.cv-management .company-create-page .cn-footer > .cn-error {
+  width: 100%;
+  margin: 0 0 2px;
+}
+.cv-management .company-create-page .cn-footer > div {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.cv-management .company-create-page .cn-draft-state {
+  font-size: 10px;
+  color: #6c7587;
+}
+.cv-management .company-create-page .cn-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  background: #fff;
+  color: #16375b;
+  font: 700 11px/1.4 var(--font-sans);
+  cursor: pointer;
+  text-decoration: none;
+}
+.cv-management .company-create-page .cn-button > .material-symbols-outlined {
+  font-size: 17px;
+}
+.cv-management .company-create-page .cn-primary {
+  background: #008afa;
+  color: #fff;
+  border-color: #008afa;
+}
+.cv-management .company-create-page .cn-primary:hover {
+  background: #0079dc;
+}
+.cv-management .company-create-page .cn-outline {
+  background: transparent;
+  color: #008afa;
+  border-color: #008afa;
+}
+.cv-management .company-create-page .cn-outline:hover {
+  background: #eaf5fc;
+}
+.cv-management .company-create-page button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cv-management .company-create-page .cn-copy-note,
+.cv-management .company-create-page .cn-info {
+  display: flex;
+  gap: 8px;
+  background: #eaf5fc;
+  border: 1px solid #dcecf5;
+  border-radius: 7px;
+  padding: 8px;
+  margin: 0 0 12px;
+  color: #16375b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.cv-management .company-create-page .cn-copy-note > .material-symbols-outlined,
+.cv-management .company-create-page .cn-info > .material-symbols-outlined {
+  font-size: 20px;
+  color: #008afa;
+  flex-shrink: 0;
+}
+.cv-management .company-create-page .cn-copy-note p,
+.cv-management .company-create-page .cn-info p {
+  margin: 3px 0 0;
+}
+.cv-management .company-create-page .cn-info {
+  margin: 12px 0 0;
+}
+.cv-management .company-create-page .cn-resume {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+  font-size: 11px;
+}
+.cv-management .company-create-page .cn-resume > div {
+  flex: 1;
+}
+.cv-management .company-create-page .cn-resume p {
+  margin: 3px 0;
+  color: #6c7587;
+}
+.cv-management .company-create-page .cn-appearance {
+  margin-top: 12px;
+  border-top: 1px solid #edf1f4;
+  padding-top: 8px;
+}
+.cv-management .company-create-page .cn-appearance summary {
+  font-size: 11px;
+  font-weight: 700;
+  color: #16375b;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+.cv-management .company-create-page .cn-color {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cv-management .company-create-page .cn-color input {
+  width: 30px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+.cv-management .company-create-page .cn-modules {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.cv-management .company-create-page .cn-module {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px solid #e3eaf0;
+  border-radius: 7px;
+  padding: 10px;
+  min-width: 0;
+  cursor: pointer;
+}
+.cv-management .company-create-page .cn-module.cn-selected {
+  border-color: #a9d7f6;
+  background: #f4faff;
+}
+.cv-management .company-create-page .cn-module-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.cv-management .company-create-page .cn-module > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.cv-management .company-create-page .cn-module strong {
+  font-size: 12px;
+}
+.cv-management .company-create-page .cn-module small {
+  display: block;
+  font: 400 10px/1.5 var(--font-sans);
+  color: #6c7587;
+  margin-top: 4px;
+}
+.cv-management .company-create-page :is(.cn-module, .cn-confirm) input {
+  width: 15px;
+  height: 15px;
+  accent-color: #008afa;
+  flex-shrink: 0;
+}
+.cv-management .company-create-page .cn-review {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  margin: 0;
+}
+.cv-management .company-create-page .cn-review > div {
+  min-width: 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #edf1f4;
+}
+.cv-management .company-create-page .cn-review dt {
+  font-size: 10px;
+  color: #6c7587;
+  margin-bottom: 4px;
+}
+.cv-management .company-create-page .cn-review dd {
+  font-size: 12px;
+  color: #16375b;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.cv-management .company-create-page .cn-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.cv-management .company-create-page .cn-chips span {
+  padding: 3px 6px;
+  background: #eaf5fc;
+  color: #006ebc;
+  border-radius: 4px;
+  font-size: 10px;
+}
+.cv-management .company-create-page .cn-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.cv-management .company-create-page .cn-success {
+  text-align: center;
+  padding: 28px 16px;
+}
+.cv-management .company-create-page .cn-success > .material-symbols-outlined {
+  font-size: 40px;
+  color: #00a34e;
+  font-variation-settings: 'FILL' 1;
+}
+.cv-management .company-create-page .cn-success h2 {
+  font-size: 20px;
+  color: #16375b;
+  margin: 10px 0;
+}
+.cv-management .company-create-page .cn-success p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #6c7587;
+  max-width: 550px;
+  margin: 8px auto 14px;
+}
+.cv-management .company-create-page .cn-success > div {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.cv-management .company-create-page .cn-note {
+  font-size: 11px;
+  color: #6c7587;
+}
+.cv-management .company-create-page :is(input, button, a, summary, mat-select):focus-visible {
+  outline: 2px solid #008afa;
+  outline-offset: 2px;
+}
+@media (max-width: 1100px) {
+  .cv-management .company-create-page .cn-layout {
+    grid-template-columns: minmax(0, 1.65fr) 270px;
+  }
+}
+@media (max-width: 900px) {
+  .cv-management .company-create-page .cn-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cv-management .company-create-page .cn-sidebar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  .cv-management .company-create-page .cn-guidance {
+    grid-row: span 2;
+  }
+}
+@media (max-width: 600px) {
+  .cv-management .company-create-page .cn-heading {
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .cv-management .company-create-page .cn-heading > .co-heading {
+    margin-bottom: 0;
+  }
+  .cv-management .company-create-page .cn-fields,
+  .cv-management .company-create-page .cn-options > div,
+  .cv-management .company-create-page .cn-sidebar,
+  .cv-management .company-create-page .cn-modules,
+  .cv-management .company-create-page .cn-review {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cv-management .company-create-page .cn-steps {
+    padding: 10px 3px;
+  }
+  .cv-management .company-create-page .cn-steps strong {
+    font-size: 10px;
+  }
+  .cv-management .company-create-page .cn-steps small {
+    font-size: 9px;
+  }
+  .cv-management .company-create-page .cn-step-number {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+  .cv-management .company-create-page .cn-steps li:not(:last-child)::after {
+    top: 13px;
+    left: calc(50% + 16px);
+    right: calc(-50% + 16px);
+  }
+  .cv-management .company-create-page .cn-draft-state {
+    order: 3;
+    width: 100%;
+  }
+}
