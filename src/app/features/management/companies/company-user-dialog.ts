@@ -1,3 +1,5 @@
+import { AuthService } from '../../../core/auth/auth.service';
+import { accessChange } from '../company-admin/access/access.models';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -11,6 +13,7 @@ import { validContactEmail } from './company-contacts.models';
 export interface CompanyUserDialogData {
   companyId: string;
   mode: 'invite' | 'edit' | 'delete';
+  initialRole?: string;
   member?: Member;
 }
 export const COMPANY_USER_ROLES = Object.values(ROLES)
@@ -139,6 +142,7 @@ export class CompanyUserDialog {
   protected readonly dialog = inject(MatDialogRef<CompanyUserDialog>);
   private readonly store = inject(ManagementStore);
   private readonly toast = inject(ToastService);
+  private readonly auth = inject(AuthService);
   protected readonly submitted = signal(false);
   protected readonly error = signal('');
   protected readonly roles = [
@@ -154,7 +158,11 @@ export class CompanyUserDialog {
     ]),
   ];
   protected email = '';
-  protected role = this.data.member?.role ?? 'Care Worker';
+  protected role =
+    this.data.member?.role ??
+    (COMPANY_USER_ROLES.includes(this.data.initialRole ?? '')
+      ? this.data.initialRole!
+      : 'Care Worker');
   protected status = this.data.member?.status ?? 'Invited';
   protected companyName(): string {
     return this.store.companies().find((c) => c.id === this.data.companyId)?.name ?? 'this company';
@@ -192,6 +200,10 @@ export class CompanyUserDialog {
         }
         return {
           ...data,
+          accessHistory: [
+            ...(data.accessHistory ?? []),
+            accessChange(this.auth.currentUser(), 'invited', email, `Invited as ${this.role}`),
+          ],
           members: [
             ...data.members,
             { id: crypto.randomUUID(), name: '', email, role: this.role, status: 'Invited' },
@@ -203,8 +215,21 @@ export class CompanyUserDialog {
         this.error.set('This user no longer exists. Close the popup and refresh the table.');
         return data;
       }
+      if (this.data.mode === 'edit' && member.role === this.role && member.status === this.status)
+        return data;
       return {
         ...data,
+        accessHistory: [
+          ...(data.accessHistory ?? []),
+          accessChange(
+            this.auth.currentUser(),
+            this.data.mode === 'delete' ? 'removed' : 'updated',
+            member.name || member.email,
+            this.data.mode === 'delete'
+              ? 'Company membership removed'
+              : `Role: ${member.role} → ${this.role}; Status: ${member.status} → ${this.status}`,
+          ),
+        ],
         members:
           this.data.mode === 'delete'
             ? data.members.filter((m) => m.id !== member.id)

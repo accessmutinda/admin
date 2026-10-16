@@ -1,3 +1,4 @@
+import type { AccessChange } from '../company-admin/access/access.models';
 import type { WorkspaceSetup } from '../companies/company-create.models';
 import type { CompanyCompliance } from '../companies/company-compliance.models';
 import type { ServiceLocation } from '../locations/locations.models';
@@ -111,6 +112,9 @@ export interface Member {
   email: string;
   role: string;
   status: string;
+  department?: string;
+  lastLoginAt?: string;
+  mfaEnabled?: boolean;
 }
 export interface Leave {
   id: string;
@@ -243,6 +247,7 @@ const seedPerson = (
   progress: stage === 'Hired' ? { safeguarding: 100, handling: 40 } : {},
 });
 export interface WorkspaceData {
+  accessHistory?: AccessChange[];
   locations?: ServiceLocation[];
   permissionDefaultsVersion?: number;
   quality?: QualityData;

@@ -287,6 +287,17 @@ describe('Create company and duplicate setup', () => {
       permissions: { 'Care Worker:Finance': [true, false, false, false, false] },
       locations: [{ id: 'private-location' }] as WorkspaceData['locations'],
       apiKeys: [{ id: 'private-key', name: 'PrivateSourceMarker', created: '2026-01-01' }],
+      accessHistory: [
+        {
+          id: 'private-history',
+          at: '2026-01-01',
+          actor: 'PrivateSourceMarker',
+          actorId: 'private-user',
+          action: 'invited',
+          subject: 'PrivateSourceMarker',
+          detail: 'PrivateSourceMarker',
+        },
+      ],
     }));
     const sourceCompany = structuredClone(store.company()!);
     const sourceData = structuredClone(store.data());
@@ -320,6 +331,7 @@ describe('Create company and duplicate setup', () => {
     ] as const)
       expect(store.data()[key]).toEqual([]);
     expect(store.data().apiKeys).toBeUndefined();
+    expect(store.data().accessHistory).toBeUndefined();
     expect(store.data().quality).toBeUndefined();
     expect(store.data().payroll).toBeUndefined();
     expect(store.data().rota).toBeUndefined();
