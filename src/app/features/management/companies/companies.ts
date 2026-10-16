@@ -1,3 +1,4 @@
+import { locationsComplete } from '../locations/locations.models';
 import { contactInformationComplete } from './company-contacts.models';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -79,8 +80,12 @@ export class Companies {
         description: 'Manage all company locations and services',
         icon: 'location_on',
         tone: 'blue',
-        state: 'In Progress',
-        link: this.profileLink(),
+        state: locationsComplete(this.store.data().locations)
+          ? 'Complete'
+          : this.store.data().locations?.length
+            ? 'In Progress'
+            : 'Pending',
+        link: ['/manage/locations'],
       },
       {
         title: 'Branding',

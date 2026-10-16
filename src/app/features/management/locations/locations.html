@@ -1,0 +1,486 @@
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/companies">Companies</a
+  ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span
+  ><span aria-current="page">Locations</span>
+</nav>
+<div class="co-heading">
+  <h1>Branches &amp; Service Locations</h1>
+  <p>Manage your company's branches, care homes, service locations and outreach services.</p>
+</div>
+@if (company(); as current) {
+  <section class="co-summary co-surface" aria-label="Current company overview">
+    <div class="co-company-image" [style.background]="current.logo ? '#eef7fa' : null">
+      @if (current.logo) {
+        <img [src]="current.logo" [alt]="current.name + ' logo'" />
+      } @else {
+        <div class="co-reference-photo" role="img" aria-label="Care home placeholder"></div>
+      }
+    </div>
+    <div class="co-summary-content">
+      <div class="co-summary-header">
+        <div class="co-company-title">
+          <h2>{{ current.name }}</h2>
+          <span
+            class="co-active"
+            [class.co-inactive]="!(current.active ?? !!current.modules.length)"
+            >{{ (current.active ?? !!current.modules.length) ? 'Active' : 'Inactive' }}</span
+          >
+        </div>
+        <a class="co-profile-button" [routerLink]="['/manage/companies', current.id]"
+          >View Company Profile
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a
+        >
+      </div>
+      <div class="co-facts">
+        <div>
+          <span>Company code</span><strong>{{ current.code }}</strong>
+        </div>
+        <div>
+          <span>Registration number</span
+          ><strong>{{ current.registration || 'Not provided' }}</strong>
+        </div>
+        <div class="co-service-type">
+          <span>Service type</span><strong>{{ current.sector }}</strong>
+        </div>
+      </div>
+      <div class="co-details">
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+          ><span
+            ><small>Head Office</small
+            >{{ current.headOfficeAddress || current.postcode || 'Location not added' }}</span
+          >
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+          ><span><small>Last updated</small>{{ modifiedAt(current.modifiedAt) }}</span>
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">person</span
+          ><span><small>Assigned plan</small>{{ current.modules.length }} modules enabled</span>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div class="loc-stats" role="region" aria-label="Workspace location statistics">
+    @for (stat of stats(); track stat.label) {
+      <section class="co-stat co-surface">
+        <span
+          class="co-stat-icon material-symbols-outlined"
+          [style.background]="stat.color"
+          aria-hidden="true"
+          >{{ stat.icon }}</span
+        >
+        <div>
+          <h2>{{ stat.label }}</h2>
+          <strong>{{ stat.value }}</strong>
+          @if (stat.progress) {
+            <div class="loc-progress-caption">{{ stat.value }}/{{ locations().length }} active</div>
+            <progress
+              [value]="stat.value"
+              [max]="locations().length || 1"
+              aria-label="Active locations as a share of all locations"
+            ></progress>
+          } @else {
+            <p>{{ stat.hint }}</p>
+          }
+        </div>
+      </section>
+    }
+  </div>
+  @if (error()) {
+    <p class="loc-error" role="alert">{{ error() }}</p>
+  }
+  <div class="loc-layout">
+    <section class="co-surface loc-register" aria-labelledby="loc-register-title">
+      <div class="co-section-header loc-toolbar">
+        <h2 id="loc-register-title">
+          <span class="material-symbols-outlined" aria-hidden="true">location_on</span>Locations ({{
+            filtered().length
+          }})
+        </h2>
+        <div class="loc-actions">
+          <button type="button" class="loc-button loc-primary" (click)="openLocation('new')">
+            <span class="material-symbols-outlined" aria-hidden="true">add</span>Add New Location</button
+          ><button
+            type="button"
+            class="loc-button loc-outline"
+            [disabled]="!selected()"
+            (click)="openLocation('edit')"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit Selected
+            Location</button
+          ><button type="button" class="loc-button" (click)="importLocations()">
+            <span class="material-symbols-outlined" aria-hidden="true">upload</span>Import Locations
+          </button>
+        </div>
+      </div>
+      <div class="loc-filters">
+        <label class="co-search"
+          ><span class="material-symbols-outlined" aria-hidden="true">search</span
+          ><input
+            aria-label="Search locations"
+            placeholder="Search locations, address, code or manager…"
+            [ngModel]="search()"
+            (ngModelChange)="setFilter('search', $event)"
+        /></label>
+        <div>
+          <label for="loc-filter-type">Type</label
+          ><mat-select
+            cvSelect
+            id="loc-filter-type"
+            aria-label="Location type filter"
+            [ngModel]="type()"
+            (ngModelChange)="setFilter('type', $event)"
+            ><mat-option value="all">All types</mat-option>
+            @for (type of types; track type) {
+              <mat-option [value]="type">{{ type }}</mat-option>
+            }
+          </mat-select>
+        </div>
+        <div>
+          <label for="loc-filter-region">Region</label
+          ><mat-select
+            cvSelect
+            id="loc-filter-region"
+            aria-label="Location region filter"
+            [ngModel]="region()"
+            (ngModelChange)="setFilter('region', $event)"
+            ><mat-option value="all">All regions</mat-option>
+            @for (region of regions(); track region) {
+              <mat-option [value]="region">{{ region }}</mat-option>
+            }
+            <mat-option value="missing">Not recorded</mat-option></mat-select
+          >
+        </div>
+        <div>
+          <label for="loc-filter-status">Status</label
+          ><mat-select
+            cvSelect
+            id="loc-filter-status"
+            aria-label="Location status filter"
+            [ngModel]="status()"
+            (ngModelChange)="setFilter('status', $event)"
+            ><mat-option value="all">All statuses</mat-option>
+            @for (status of statuses; track status) {
+              <mat-option [value]="status">{{ status }}</mat-option>
+            }
+          </mat-select>
+        </div>
+      </div>
+      @if (hasFilters()) {
+        <div class="loc-filter-summary">
+          <span>{{ filtered().length }} matching locations</span
+          ><button type="button" class="loc-text-link" (click)="clearFilters()">
+            Clear Filters
+          </button>
+        </div>
+      }
+      <div
+        class="co-table-scroll loc-table-scroll"
+        tabindex="0"
+        role="region"
+        aria-label="Workspace locations register"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th scope="col"><span class="loc-visually-hidden">Select location</span></th>
+              @for (column of columns; track column.key) {
+                <th
+                  scope="col"
+                  [attr.aria-sort]="
+                    sortKey() === column.key ? (descending() ? 'descending' : 'ascending') : 'none'
+                  "
+                >
+                  <button type="button" class="loc-sort" (click)="sort(column.key)">
+                    {{ column.label
+                    }}<span class="material-symbols-outlined" aria-hidden="true">{{
+                      sortKey() === column.key
+                        ? descending()
+                          ? 'arrow_downward'
+                          : 'arrow_upward'
+                        : 'unfold_more'
+                    }}</span>
+                  </button>
+                </th>
+              }
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.id) {
+              <tr [class.loc-selected-row]="row.id === selected()?.id">
+                <td>
+                  <input
+                    type="radio"
+                    name="location-selection"
+                    [checked]="row.id === selected()?.id"
+                    [attr.aria-label]="'Select ' + row.name"
+                    (change)="choose(row.id)"
+                  />
+                </td>
+                <td>
+                  <button type="button" class="loc-name" (click)="choose(row.id)">
+                    <span class="loc-thumbnail material-symbols-outlined" aria-hidden="true">{{
+                      row.type === 'Office / Branch' ? 'domain' : 'home_work'
+                    }}</span
+                    ><span
+                      ><strong>{{ row.name }}</strong
+                      ><small>{{ row.code }}</small></span
+                    >
+                  </button>
+                </td>
+                <td>{{ row.type }}</td>
+                <td>{{ address(row) }}</td>
+                <td>{{ regionOf(row) || 'Not recorded' }}</td>
+                <td>{{ row.registeredPlaces ?? 'Not recorded' }}</td>
+                <td>{{ row.manager || 'Not recorded' }}</td>
+                <td>
+                  <span
+                    class="loc-status"
+                    [class.loc-status-active]="row.status === 'Active'"
+                    [class.loc-status-progress]="
+                      row.status === 'In Progress' || row.status === 'Pending Review'
+                    "
+                    ><i aria-hidden="true"></i>{{ row.status }}</span
+                  >
+                </td>
+                <td>{{ modifiedAt(row.modifiedAt) }}</td>
+                <td>
+                  <button
+                    type="button"
+                    class="loc-row-action"
+                    [matMenuTriggerFor]="locationActions"
+                    [attr.aria-label]="'Actions for ' + row.name"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true"
+                      >more_horiz</span
+                    ></button
+                  ><mat-menu #locationActions="matMenu"
+                    ><button mat-menu-item (click)="openLocation('view', row)">
+                      View Full Profile</button
+                    ><button mat-menu-item (click)="openLocation('edit', row)">Edit Location</button
+                    ><a mat-menu-item [href]="mapUrl(row)" target="_blank" rel="noopener noreferrer"
+                      >View Address on Map</a
+                    ><button mat-menu-item (click)="toggleActive(row)">
+                      {{ row.status === 'Active' ? 'Mark Inactive' : 'Mark Active' }}
+                    </button></mat-menu
+                  >
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="10" class="loc-empty">
+                  <span class="material-symbols-outlined" aria-hidden="true">add_location_alt</span>
+                  <h3>{{ locations().length ? 'No matching locations' : 'No locations yet' }}</h3>
+                  <p>
+                    {{
+                      locations().length
+                        ? 'Try another search or clear your filters.'
+                        : 'Add a branch or import your company’s locations to get started.'
+                    }}
+                  </p>
+                  @if (hasFilters()) {
+                    <button type="button" class="loc-button loc-outline" (click)="clearFilters()">
+                      Clear Filters
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="loc-button loc-primary"
+                      (click)="openLocation('new')"
+                    >
+                      Add New Location
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="loc-footer">
+        <span role="status"
+          >Showing {{ start() }} to {{ end() }} of {{ filtered().length }} locations</span
+        >
+        <nav aria-label="Location pages">
+          <button
+            type="button"
+            aria-label="Previous page"
+            [disabled]="currentPage() === 1"
+            (click)="page.set(currentPage() - 1)"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+          </button>
+          @for (number of pages(); track number) {
+            <button
+              type="button"
+              [class.active]="currentPage() === number"
+              [attr.aria-current]="currentPage() === number ? 'page' : null"
+              [attr.aria-label]="'Page ' + number"
+              (click)="page.set(number)"
+            >
+              {{ number }}
+            </button>
+          }
+          <button
+            type="button"
+            aria-label="Next page"
+            [disabled]="currentPage() === pageCount()"
+            (click)="page.set(currentPage() + 1)"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+          </button>
+        </nav>
+        <small>10 per page · {{ currentPage() }}/{{ pageCount() }}</small>
+      </div>
+    </section>
+    <aside class="loc-sidebar" aria-label="Selected location overview">
+      <section class="co-surface loc-panel">
+        <div class="co-section-header">
+          <h2>Location Overview</h2>
+          <button
+            type="button"
+            class="loc-row-action"
+            (click)="expandMap()"
+            aria-label="Expand location overview"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">open_in_full</span>
+          </button>
+        </div>
+        <cv-location-map
+          [locations]="filtered()"
+          [selectedId]="selected()?.id"
+          (select)="choose($event)"
+        />
+      </section>
+      <section class="co-surface loc-panel">
+        <div class="co-section-header">
+          <h2>Location Details</h2>
+          @if (selected()) {
+            <button type="button" class="loc-text-link" (click)="openLocation('view')">
+              View Full Profile<span class="material-symbols-outlined" aria-hidden="true"
+                >arrow_forward</span
+              >
+            </button>
+          }
+        </div>
+        @if (selected(); as row) {
+          <div class="loc-identity">
+            <span
+              class="loc-thumbnail loc-detail-thumbnail material-symbols-outlined"
+              aria-hidden="true"
+              >home_work</span
+            >
+            <div>
+              <h3>{{ row.name }}</h3>
+              <p>{{ row.type }}</p>
+              <small>{{ row.code }}</small>
+            </div>
+            <span
+              class="loc-status"
+              [class.loc-status-active]="row.status === 'Active'"
+              [class.loc-status-progress]="
+                row.status === 'In Progress' || row.status === 'Pending Review'
+              "
+              >{{ row.status }}</span
+            >
+          </div>
+          <dl class="loc-details">
+            <div>
+              <dt>
+                <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+                >Location Address
+              </dt>
+              <dd>
+                {{ address(row)
+                }}<a
+                  [href]="mapUrl(row)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [attr.aria-label]="'View ' + row.name + ' address on map'"
+                  ><span class="material-symbols-outlined" aria-hidden="true">open_in_new</span></a
+                >
+              </dd>
+            </div>
+            <div>
+              <dt>
+                <span class="material-symbols-outlined" aria-hidden="true">groups</span>Registered
+                Places
+              </dt>
+              <dd>{{ row.registeredPlaces ?? 'Not recorded' }}</dd>
+            </div>
+            <div>
+              <dt>
+                <span class="material-symbols-outlined" aria-hidden="true">person</span>Manager
+              </dt>
+              <dd>
+                {{ row.manager || 'Not recorded' }}
+                <div class="loc-contact-links">
+                  @if (row.managerEmail) {
+                    <a [href]="'mailto:' + row.managerEmail" aria-label="Email location manager"
+                      ><span class="material-symbols-outlined" aria-hidden="true">mail</span></a
+                    >
+                  }
+                  @if (row.managerPhone) {
+                    <a [href]="phoneUrl(row.managerPhone)" aria-label="Call location manager"
+                      ><span class="material-symbols-outlined" aria-hidden="true">call</span></a
+                    >
+                  }
+                </div>
+              </dd>
+            </div>
+            <div>
+              <dt>
+                <span class="material-symbols-outlined" aria-hidden="true">contact_phone</span
+                >Contact Details
+              </dt>
+              <dd>
+                @if (row.phone) {
+                  <a [href]="phoneUrl(row.phone)">{{ row.phone }}</a>
+                }
+                @if (row.email) {
+                  <a [href]="'mailto:' + row.email">{{ row.email }}</a>
+                }
+                @if (!row.phone && !row.email) {
+                  Not recorded
+                }
+              </dd>
+            </div>
+            <div>
+              <dt>
+                <span class="material-symbols-outlined" aria-hidden="true">schedule</span>Operating
+                Hours
+              </dt>
+              <dd>{{ row.hours || 'Not recorded' }}</dd>
+            </div>
+            <div>
+              <dt>
+                <span class="material-symbols-outlined" aria-hidden="true">deployed_code</span
+                >Services Offered
+              </dt>
+              <dd class="loc-service-tags">
+                @for (service of row.services; track service) {
+                  <span>{{ service }}</span>
+                } @empty {
+                  Not recorded
+                }
+              </dd>
+            </div>
+          </dl>
+        } @else {
+          <div class="loc-detail-empty">
+            <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
+            <p>Select a location to see its details.</p>
+          </div>
+        }
+      </section>
+    </aside>
+  </div>
+} @else {
+  <section class="co-surface loc-panel">
+    <h2>Select a workspace</h2>
+    <p>Choose a company in the workspace selector to manage its locations.</p>
+  </section>
+}

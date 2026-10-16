@@ -188,6 +188,12 @@ export const routes: Routes = [
           import('./features/management/companies/company-profile').then((m) => m.CompanyProfile),
       },
       {
+        path: 'locations',
+        title: 'Branches & service locations · CareVerity',
+        loadComponent: () =>
+          import('./features/management/locations/locations').then((m) => m.LocationsPage),
+      },
+      {
         path: 'access',
         title: 'Users & access · CareVerity',
         loadComponent: () =>

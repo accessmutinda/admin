@@ -1,3 +1,4 @@
+import { locationsComplete } from '../locations/locations.models';
 import { contactInformationComplete } from './company-contacts.models';
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -175,7 +176,15 @@ export class CompanyProfile {
         complete: contactInformationComplete(c),
         link: ['/manage/companies', this.id, 'contacts'],
       },
-      { title: 'Branches & Locations', complete: false, fragment: 'profile-headOfficeName' },
+      {
+        title: 'Branches & Locations',
+        complete: locationsComplete(
+          c?.id === this.store.companyId()
+            ? this.store.data().locations
+            : this.store.records()[c?.id ?? '']?.locations,
+        ),
+        link: c?.id === this.store.companyId() ? ['/manage/locations'] : undefined,
+      },
       {
         title: 'Services & Care Types',
         complete: !!c?.sector && !!c.modules.length,
