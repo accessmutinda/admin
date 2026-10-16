@@ -1,3 +1,4 @@
+import type { ServiceLocation } from '../locations/locations.models';
 import type { CompanySubscription } from '../companies/company-modules.models';
 import type {
   CompanyBranding,
@@ -237,6 +238,7 @@ const seedPerson = (
   progress: stage === 'Hired' ? { safeguarding: 100, handling: 40 } : {},
 });
 export interface WorkspaceData {
+  locations?: ServiceLocation[];
   permissionDefaultsVersion?: number;
   quality?: QualityData;
   rota?: RotaData;
