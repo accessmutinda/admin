@@ -1,0 +1,532 @@
+.cv-management .company-contacts-page .cc-page-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.cv-management .company-contacts-page .cc-page-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+.cv-management .company-contacts-page .cc-content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 8px;
+  align-items: start;
+}
+.cv-management .company-contacts-page .cc-main-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.cv-management
+  .company-contacts-page
+  :is(.cc-address-card, .cc-primary-card, .cc-sidebar > section) {
+  padding: 8px;
+  min-width: 0;
+  scroll-margin-top: 64px;
+}
+.cv-management .company-contacts-page .cc-card-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.cv-management .company-contacts-page .cc-card-heading > .material-symbols-outlined {
+  color: #008afa;
+  font-size: 25px;
+  font-variation-settings: 'FILL' 1;
+}
+.cv-management .app-body main.page-content .company-contacts-page .cc-card-heading h2 {
+  color: #002b60;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+.cv-management .company-contacts-page .cc-same-address {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  font-size: 10px;
+  color: #657184;
+}
+.cv-management .company-contacts-page .cc-same-address input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: #008afa;
+}
+.cv-management .company-contacts-page .cc-address-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 10px;
+  align-items: start;
+}
+.cv-management .company-contacts-page :is(.cc-address-fields, .cc-primary-fields) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 8px;
+}
+.cv-management .company-contacts-page .cc-wide {
+  grid-column: 1 / -1;
+}
+.cv-management .company-contacts-page .cp-field label {
+  font-size: 11px;
+  font-weight: 500;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .company-contacts-page
+  .cp-field
+  input:not([type='checkbox']) {
+  min-height: 30px;
+  padding: 4px 7px;
+  font-size: 11px;
+}
+.cv-management .company-contacts-page .cp-field input:disabled {
+  background: #f4f7f9;
+  color: #657184;
+}
+.cv-management .company-contacts-page .cc-map-column {
+  display: grid;
+  gap: 6px;
+}
+.cv-management .company-contacts-page .cc-map-preview {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e2eaf0;
+  border-radius: 4px;
+}
+.cv-management .company-contacts-page .cc-map-preview svg {
+  display: block;
+  width: 100%;
+  height: 64px;
+}
+.cv-management .company-contacts-page .cc-map-preview > span {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffffffd9;
+  font-size: 9px;
+  text-align: center;
+  color: #657184;
+  padding: 2px;
+}
+.cv-management .company-contacts-page :is(.cc-map-link, .cc-validate) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 3px;
+  min-height: 28px;
+  border: 1px solid #b9d9f3;
+  border-radius: 4px;
+  background: #fff;
+  color: #0079dc;
+  font-size: 10px;
+}
+.cv-management .company-contacts-page :is(.cc-map-link, .cc-validate) .material-symbols-outlined {
+  font-size: 14px;
+}
+.cv-management .company-contacts-page .cc-map-unavailable {
+  font-size: 9px;
+  color: #657184;
+  text-align: center;
+  line-height: 1.3;
+}
+.cv-management .company-contacts-page .cc-address-status {
+  gap: 5px;
+  padding: 6px;
+  border-radius: 4px;
+  background: #f4f7f9;
+  font-size: 10px;
+}
+.cv-management .company-contacts-page .cc-address-status.complete {
+  background: #eefaf4;
+}
+.cv-management .company-contacts-page .cc-address-status small {
+  display: block;
+  color: #657184;
+  font-size: 9px;
+  line-height: 1.3;
+  margin-top: 2px;
+}
+.cv-management .company-contacts-page .cc-input-icon {
+  position: relative;
+}
+.cv-management .company-contacts-page .cc-input-icon > .material-symbols-outlined {
+  position: absolute;
+  inset: 1px auto 1px 1px;
+  width: 27px;
+  display: grid;
+  place-items: center;
+  color: #008afa;
+  background: #eff7fe;
+  border-radius: 4px 0 0 4px;
+  font-size: 16px;
+}
+.cv-management
+  .app-body
+  main.page-content:not(:has(cv-ecm-wallboard))
+  .company-contacts-page
+  .cc-input-icon
+  input:not([type='checkbox']) {
+  padding-left: 33px;
+}
+.cv-management .company-contacts-page .cc-sidebar {
+  display: grid;
+  gap: 12px;
+}
+.cv-management .company-contacts-page .cc-validation-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.cv-management .company-contacts-page .cc-validation-list li {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 9px 0;
+  align-items: center;
+  border-bottom: 1px solid #edf2f5;
+}
+.cv-management .company-contacts-page .cc-validation-list .co-check-status {
+  margin: 0;
+}
+.cv-management .company-contacts-page .cc-validation-list strong {
+  display: block;
+  font-size: 11px;
+  color: #10355e;
+}
+.cv-management .company-contacts-page .cc-validation-list small {
+  display: block;
+  font-size: 10px;
+  color: #657184;
+}
+.cv-management .company-contacts-page .cc-validation-list a {
+  font-size: 11px;
+  color: #0079dc;
+}
+.cv-management .company-contacts-page .cc-panel-note {
+  margin-top: 8px;
+  color: #657184;
+  font-size: 10px;
+}
+.cv-management .company-contacts-page .cc-completion-ring {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: conic-gradient(#009c53 var(--completion), #e8eef1 0);
+  display: grid;
+  place-items: center;
+  position: relative;
+  margin: 12px auto;
+}
+.cv-management .company-contacts-page .cc-completion-ring::before {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  background: white;
+  border-radius: 50%;
+}
+.cv-management .company-contacts-page .cc-completion-ring strong {
+  position: relative;
+  z-index: 1;
+  font-size: 24px;
+  color: #081334;
+}
+.cv-management .app-body main.page-content .company-contacts-page .cc-completeness h3 {
+  text-align: center;
+  font-size: 12px;
+  color: #002b60;
+}
+.cv-management .company-contacts-page .cc-completeness > p {
+  font-size: 10px;
+  text-align: center;
+  color: #657184;
+}
+.cv-management .company-contacts-page .cc-completion-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  padding: 9px;
+  margin: 12px 0 0;
+  border: 1px solid #e9eff3;
+  border-radius: 5px;
+}
+.cv-management .company-contacts-page .cc-completion-list .co-check-status {
+  margin: 0;
+  font-size: 10px;
+}
+.cv-management .company-contacts-page .cc-guidance {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+  background: #eff8ff;
+}
+.cv-management .company-contacts-page .cc-guidance > .material-symbols-outlined {
+  font-size: 25px;
+  color: #008afa;
+}
+.cv-management .company-contacts-page .cc-guidance strong {
+  font-size: 11px;
+  color: #0066ac;
+}
+.cv-management .company-contacts-page .cc-guidance p,
+.cv-management .company-contacts-page .cc-guidance small {
+  font-size: 10px;
+  color: #657184;
+}
+.cv-management .company-contacts-page .cc-key-contacts {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.cv-management .company-contacts-page .cc-key-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+}
+.cv-management .company-contacts-page .cc-key-heading .cc-card-heading {
+  margin: 0;
+}
+.cv-management .company-contacts-page .cc-key-heading p {
+  font-size: 10px;
+  color: #657184;
+}
+.cv-management .company-contacts-page .cc-contact-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.cv-management .company-contacts-page .cc-contact-card {
+  padding: 8px;
+  min-width: 0;
+}
+.cv-management .company-contacts-page .cc-contact-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.cv-management .app-body main.page-content .company-contacts-page .cc-contact-heading h3 {
+  font-size: 11px;
+  color: #002b60;
+  font-weight: 700;
+  line-height: 1.3;
+  flex: 1;
+}
+.cv-management .company-contacts-page .cc-contact-avatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 20px;
+  font-variation-settings: 'FILL' 1;
+}
+.cv-management .company-contacts-page .cc-contact-menu {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #365878;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+}
+.cv-management .company-contacts-page .cc-contact-card dl {
+  margin: 0 0 6px;
+  display: grid;
+  gap: 4px;
+}
+.cv-management .company-contacts-page .cc-contact-card dl > div {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 7px;
+  font-size: 10px;
+}
+.cv-management .company-contacts-page .cc-contact-card dt {
+  color: #657184;
+}
+.cv-management .company-contacts-page .cc-contact-card dd {
+  margin: 0;
+  color: #123352;
+  overflow-wrap: anywhere;
+}
+.cv-management .company-contacts-page .cc-contact-card a {
+  color: #0079dc;
+}
+.cv-management .company-contacts-page .cc-contact-card > p {
+  font-size: 11px;
+  color: #657184;
+}
+.cv-management .company-contacts-page .cc-add-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  color: #0079dc;
+  border: 0;
+  min-height: 30px;
+  padding: 4px 0;
+  margin-top: 6px;
+  font-size: 11px;
+}
+.cv-management .company-contacts-page .cc-add-contact .material-symbols-outlined {
+  font-size: 16px;
+}
+.cv-management .company-contacts-page .cc-error-summary {
+  padding: 9px 12px;
+  margin: 0 0 12px;
+  border: 1px solid #f2c8cf;
+  background: #fff5f6;
+  color: #b42334;
+  border-radius: 5px;
+  font-size: 11px;
+}
+.cv-management .company-contacts-page .cc-error {
+  color: #b42334;
+  font-size: 10px;
+  margin-top: 3px;
+}
+.cc-contact-dialog {
+  color: #123352;
+  font-family: var(--font-sans);
+}
+.cc-contact-dialog h2 {
+  color: #002b60;
+  font-size: 18px;
+}
+.cc-contact-dialog mat-dialog-content {
+  display: grid;
+  gap: 5px;
+}
+.cc-contact-dialog label {
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 7px;
+}
+.cc-contact-dialog label > span {
+  color: #d62b41;
+}
+.cc-contact-dialog input:not([type='checkbox']) {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 12px;
+  color: #123352;
+}
+.cc-contact-dialog .cc-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cc-contact-dialog input[type='checkbox'] {
+  accent-color: #008afa;
+  width: 17px;
+  height: 17px;
+}
+.cc-contact-dialog p {
+  font-size: 11px;
+  color: #657184;
+  line-height: 1.5;
+}
+.cc-contact-dialog .cc-error {
+  color: #b42334;
+  font-size: 11px;
+}
+.cc-contact-dialog .cc-dialog-button {
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  min-height: 34px;
+  padding: 6px 12px;
+  color: #16375b;
+  background: white;
+  cursor: pointer;
+  font: 700 12px var(--font-sans);
+}
+.cc-contact-dialog .cc-dialog-primary {
+  background: #008afa;
+  border-color: #008afa;
+  color: white;
+}
+.cc-contact-dialog :is(input, button, mat-select):focus-visible {
+  outline: 2px solid #008bd9;
+  outline-offset: 2px;
+}
+@media (min-width: 1200px) {
+  .cv-management .company-contacts-page .cc-address-fields > .cc-wide {
+    grid-column: auto;
+  }
+}
+@media (max-width: 1350px) {
+  .cv-management .company-contacts-page .cc-address-content {
+    grid-template-columns: minmax(0, 1fr) 90px;
+    gap: 7px;
+  }
+  .cv-management .company-contacts-page .cc-content-grid {
+    grid-template-columns: minmax(0, 1fr) 240px;
+  }
+}
+@media (max-width: 1199px) {
+  .cv-management .company-contacts-page .cc-contact-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1150px) {
+  .cv-management .company-contacts-page .cc-content-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cv-management .company-contacts-page .cc-sidebar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+@media (max-width: 760px) {
+  .cv-management .company-contacts-page .cc-page-heading {
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    gap: 10px;
+  }
+  .cv-management .company-contacts-page .cc-page-heading .co-heading {
+    margin-bottom: 0;
+  }
+  .cv-management .company-contacts-page .cc-sidebar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cv-management .company-contacts-page .cc-contact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cv-management .company-contacts-page .cc-key-heading {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 600px) {
+  .cv-management .company-contacts-page .cc-main-cards,
+  .cv-management .company-contacts-page .cc-contact-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cv-management .company-contacts-page .cc-address-content {
+    grid-template-columns: minmax(0, 1fr) 100px;
+  }
+  .cv-management .company-contacts-page .cc-page-actions {
+    width: 100%;
+  }
+  .cv-management .company-contacts-page .cc-page-actions button {
+    flex: 1;
+  }
+}

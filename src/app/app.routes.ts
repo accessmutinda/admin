@@ -132,6 +132,15 @@ export const routes: Routes = [
           import('./features/management/companies/company-editor').then((m) => m.CompanyEditor),
       },
       {
+        path: 'companies/:id/contacts',
+        title: 'Company contacts · CareVerity',
+        canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+        loadComponent: () =>
+          import('./features/management/companies/company-contacts').then(
+            (m) => m.CompanyContactsPage,
+          ),
+      },
+      {
         path: 'companies/:id/settings',
         title: 'Company settings · CareVerity',
         loadComponent: () =>

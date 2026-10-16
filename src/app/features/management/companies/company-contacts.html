@@ -1,0 +1,431 @@
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/companies">Companies</a
+  ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+  @if (company(); as current) {
+    <a [routerLink]="['/manage/companies', current.id]">{{ current.name }}</a
+    ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+  }
+  <span aria-current="page">Contact Information</span>
+</nav>
+@if (company(); as current) {
+  <div class="cc-page-heading">
+    <div class="co-heading">
+      <h1>Company Profile Update – Contacts &amp; Addresses</h1>
+      <p>
+        Manage the company's addresses and key contacts. Keep your information up to date for
+        compliance and communication.
+      </p>
+    </div>
+    <div class="cc-page-actions">
+      <button type="button" class="cp-button" (click)="cancel()">Cancel</button
+      ><button type="submit" form="company-contacts-form" class="cp-button cp-primary">
+        <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Changes
+      </button>
+    </div>
+  </div>
+  <section class="co-summary co-surface" aria-label="Current company overview">
+    <div class="co-company-image" [style.background]="current.logo ? '#eef7fa' : null">
+      @if (current.logo) {
+        <img [src]="current.logo" [alt]="current.name + ' logo'" />
+      } @else {
+        <div class="co-reference-photo" role="img" aria-label="Care home placeholder"></div>
+      }
+    </div>
+    <div class="co-summary-content">
+      <div class="co-summary-header">
+        <div class="co-company-title">
+          <h2>{{ current.name }}</h2>
+          <span
+            class="co-active"
+            [class.co-inactive]="!(current.active ?? !!current.modules.length)"
+            >{{ (current.active ?? !!current.modules.length) ? 'Active' : 'Inactive' }}</span
+          >
+        </div>
+        <a class="co-profile-button" [routerLink]="['/manage/companies', current.id]"
+          >View Company Profile
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a
+        >
+      </div>
+      <div class="co-facts">
+        <div>
+          <span>Company code</span><strong>{{ current.code }}</strong>
+        </div>
+        <div>
+          <span>Registration number</span
+          ><strong>{{ current.registration || 'Not provided' }}</strong>
+        </div>
+        <div class="co-service-type">
+          <span>Service type</span><strong>{{ current.sector }}</strong>
+        </div>
+      </div>
+      <div class="co-details">
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+          ><span
+            ><small>Head Office</small
+            >{{ current.headOfficeAddress || current.postcode || 'Location not added' }}</span
+          >
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+          ><span><small>Last updated</small>{{ modifiedAt(current.modifiedAt) }}</span>
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">person</span
+          ><span><small>Assigned plan</small>{{ current.modules.length }} modules enabled</span>
+        </div>
+      </div>
+    </div>
+  </section>
+  <form id="company-contacts-form" (ngSubmit)="save()" novalidate>
+    @if (saveError()) {
+      <p class="cc-error-summary" role="alert">{{ saveError() }}</p>
+    }
+    <div class="cc-content-grid">
+      <div class="cc-main-cards">
+        @for (card of addressCards; track card.key) {
+          <section
+            class="co-surface cc-address-card"
+            [id]="'address-' + card.key"
+            [attr.aria-labelledby]="'title-' + card.key"
+          >
+            <div class="cc-card-heading">
+              <span class="material-symbols-outlined" aria-hidden="true">{{ card.icon }}</span>
+              <h2 [id]="'title-' + card.key">{{ card.title }}</h2>
+              @if (card.key === 'billing') {
+                <label class="cc-same-address"
+                  ><input
+                    type="checkbox"
+                    name="billingSameAsRegistered"
+                    [(ngModel)]="draft.billingSameAsRegistered"
+                  />Same as registered address</label
+                >
+              }
+            </div>
+            <div class="cc-address-content">
+              <div class="cc-address-fields">
+                @for (field of addressFields; track field.key) {
+                  <div class="cp-field" [class.cc-wide]="field.wide">
+                    <label [for]="card.key + '-' + field.key"
+                      >{{ field.label }}
+                      @if (field.required) {
+                        <span class="cp-required" aria-hidden="true">*</span>
+                      }</label
+                    ><input
+                      [id]="card.key + '-' + field.key"
+                      [name]="card.key + '-' + field.key"
+                      [ngModel]="address(card.key)[field.key]"
+                      (ngModelChange)="setAddress(card.key, field.key, $event)"
+                      [disabled]="card.key === 'billing' && draft.billingSameAsRegistered"
+                      [required]="!!field.required"
+                      [maxlength]="field.key === 'postcode' ? 20 : 150"
+                      [attr.autocomplete]="
+                        field.key === 'line1'
+                          ? 'address-line1'
+                          : field.key === 'line2'
+                            ? 'address-line2'
+                            : field.key === 'city'
+                              ? 'address-level2'
+                              : field.key === 'county'
+                                ? 'address-level1'
+                                : field.key === 'postcode'
+                                  ? 'postal-code'
+                                  : 'country-name'
+                      "
+                      [attr.list]="field.key === 'country' ? 'company-countries' : null"
+                      [attr.aria-invalid]="!!addressError(card.key, field.key)"
+                      [attr.aria-describedby]="
+                        addressError(card.key, field.key) ? card.key + '-error-' + field.key : null
+                      "
+                    />
+                    @if (addressError(card.key, field.key)) {
+                      <small class="cc-error" [id]="card.key + '-error-' + field.key">{{
+                        addressError(card.key, field.key)
+                      }}</small>
+                    }
+                  </div>
+                }
+              </div>
+              <div class="cc-map-column">
+                <div class="cc-map-preview">
+                  <svg viewBox="0 0 140 94" role="img" aria-label="Illustrative map placeholder">
+                    <rect width="140" height="94" fill="#eef1f2" />
+                    <path d="M85 0H140V36L108 52L75 23Z M0 63L31 50L52 94H0Z" fill="#d6e8d1" />
+                    <path
+                      d="M-10 18L150 76M15 -10L113 110M-10 76L140 8M64 -10L17 105"
+                      fill="none"
+                      stroke="#fff"
+                      stroke-width="9"
+                    />
+                    <path
+                      d="M-10 18L150 76M15 -10L113 110M-10 76L140 8M64 -10L17 105"
+                      fill="none"
+                      stroke="#dce1e4"
+                      stroke-width="1"
+                    />
+                    <path d="M116 94Q77 66 88 0" fill="none" stroke="#b6d8ed" stroke-width="6" />
+                    <path
+                      d="M70 29a10 10 0 0 0-10 10c0 8 10 20 10 20s10-12 10-20a10 10 0 0 0-10-10"
+                      fill="#ef4054"
+                    />
+                    <circle cx="70" cy="39" r="4" fill="#fff" /></svg
+                  ><span>Map placeholder</span>
+                </div>
+                @if (mapUrl(card.key); as url) {
+                  <a class="cc-map-link" [href]="url" target="_blank" rel="noopener noreferrer"
+                    >View on map<span class="material-symbols-outlined" aria-hidden="true"
+                      >open_in_new</span
+                    ></a
+                  >
+                } @else {
+                  <span class="cc-map-unavailable">Add an address to view on map</span>
+                }
+                <button type="button" class="cc-validate" (click)="checkAddress(card.key)">
+                  <span class="material-symbols-outlined" aria-hidden="true">check_circle</span
+                  >Validate Address
+                </button>
+                <div
+                  class="cc-address-status co-check-status"
+                  [class.complete]="isChecked(card.key)"
+                >
+                  <span class="co-status-icon" aria-hidden="true"></span
+                  ><span
+                    >{{ isChecked(card.key) ? 'Details checked' : 'Not checked'
+                    }}<small>{{
+                      isChecked(card.key)
+                        ? 'Format checked on this device'
+                        : 'Check required address details'
+                    }}</small></span
+                  >
+                </div>
+              </div>
+            </div>
+          </section>
+        }
+        <section class="co-surface cc-primary-card" aria-labelledby="cc-primary-title">
+          <div class="cc-card-heading">
+            <span class="material-symbols-outlined" aria-hidden="true">person</span>
+            <h2 id="cc-primary-title">Primary Contact Details</h2>
+          </div>
+          <div class="cc-primary-fields">
+            @for (field of primaryFields; track field.key) {
+              <div class="cp-field">
+                <label [for]="'primary-' + field.key"
+                  >{{ field.label }}
+                  @if (field.required) {
+                    <span class="cp-required" aria-hidden="true">*</span>
+                  }
+                </label>
+                <div class="cc-input-icon">
+                  <span class="material-symbols-outlined" aria-hidden="true">{{ field.icon }}</span
+                  ><input
+                    [id]="'primary-' + field.key"
+                    [name]="'primary-' + field.key"
+                    [type]="field.type"
+                    [(ngModel)]="draft.primary[field.key]"
+                    [required]="!!field.required"
+                    [maxlength]="field.type === 'tel' ? 30 : 200"
+                    [attr.aria-invalid]="!!primaryError(field.key)"
+                    [attr.aria-describedby]="
+                      primaryError(field.key) ? 'error-primary-' + field.key : null
+                    "
+                  />
+                </div>
+                @if (primaryError(field.key)) {
+                  <small class="cc-error" [id]="'error-primary-' + field.key">{{
+                    primaryError(field.key)
+                  }}</small>
+                }
+              </div>
+            }
+          </div>
+        </section>
+        <section class="cc-key-contacts" aria-labelledby="cc-key-title">
+          <div class="co-surface cc-key-heading">
+            <div class="cc-card-heading">
+              <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+              <div>
+                <h2 id="cc-key-title">Key Contacts</h2>
+                <p>Add and manage key contacts for important company communications.</p>
+              </div>
+            </div>
+            <button type="button" class="cp-button cp-outline" (click)="openContact()">
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>Add New Contact
+            </button>
+          </div>
+          <div class="cc-contact-grid">
+            @for (card of contactCards(); track card.contact?.id ?? card.category) {
+              <article class="co-surface cc-contact-card">
+                <div class="cc-contact-heading">
+                  <span
+                    class="cc-contact-avatar material-symbols-outlined"
+                    [style.background]="card.color"
+                    aria-hidden="true"
+                    >{{ card.icon }}</span
+                  >
+                  <h3>{{ card.category }}</h3>
+                  @if (card.contact; as contact) {
+                    <button
+                      type="button"
+                      class="cc-contact-menu"
+                      [matMenuTriggerFor]="contactMenu"
+                      [attr.aria-label]="'Actions for ' + contact.name"
+                    >
+                      <span class="material-symbols-outlined" aria-hidden="true"
+                        >more_vert</span
+                      ></button
+                    ><mat-menu #contactMenu="matMenu"
+                      ><button mat-menu-item type="button" (click)="openContact(contact)">
+                        Edit contact</button
+                      ><button mat-menu-item type="button" (click)="removeContact(contact.id)">
+                        Remove contact
+                      </button></mat-menu
+                    >
+                  }
+                </div>
+                @if (card.contact; as contact) {
+                  <dl>
+                    <div>
+                      <dt>Name</dt>
+                      <dd>{{ contact.name }}</dd>
+                    </div>
+                    <div>
+                      <dt>Role</dt>
+                      <dd>{{ contact.role }}</dd>
+                    </div>
+                    <div>
+                      <dt>Email</dt>
+                      <dd>
+                        <a [href]="'mailto:' + contact.email">{{ contact.email }}</a>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Phone</dt>
+                      <dd>
+                        <a [href]="'tel:' + contact.phone">{{ contact.phone }}</a>
+                      </dd>
+                    </div>
+                  </dl>
+                  <span class="co-check-status" [class.complete]="contact.active"
+                    ><span class="co-status-icon" aria-hidden="true"></span
+                    >{{ contact.active ? 'Active' : 'Inactive' }}</span
+                  >
+                } @else {
+                  <p>No contact added yet.</p>
+                  <button
+                    type="button"
+                    class="cc-add-contact"
+                    (click)="openContact(undefined, card.category)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">add</span>Add contact
+                  </button>
+                }
+              </article>
+            }
+          </div>
+        </section>
+      </div>
+      <aside class="cc-sidebar">
+        <section class="co-surface" aria-labelledby="cc-validation-title">
+          <div class="cc-card-heading">
+            <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
+            <h2 id="cc-validation-title">Address Validation Status</h2>
+          </div>
+          <ul class="cc-validation-list">
+            @for (card of addressCards; track card.key) {
+              <li>
+                <span class="co-check-status" [class.complete]="isChecked(card.key)"
+                  ><span class="co-status-icon" aria-hidden="true"></span
+                ></span>
+                <div>
+                  <strong>{{ card.title }}</strong
+                  ><small>{{
+                    isChecked(card.key)
+                      ? 'Details checked locally'
+                      : addressComplete(card.key)
+                        ? 'Ready to check'
+                        : 'Details incomplete'
+                  }}</small>
+                </div>
+                <a [href]="'#address-' + card.key">View</a>
+              </li>
+            }
+          </ul>
+          <p class="cc-panel-note">
+            Checks cover required fields and UK postcode format. Postal deliverability and external
+            address verification are not connected.
+          </p>
+        </section>
+        <section class="co-surface cc-completeness" aria-labelledby="cc-completeness-title">
+          <div class="cc-card-heading">
+            <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+            <h2 id="cc-completeness-title">Contact Completeness</h2>
+          </div>
+          <div
+            class="cc-completion-ring"
+            [style.--completion]="completion() + '%'"
+            role="progressbar"
+            [attr.aria-valuenow]="completion()"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-label="Company contact completeness"
+          >
+            <strong>{{ completion() }}%</strong>
+          </div>
+          <h3>
+            {{
+              completion() === 100
+                ? 'Complete'
+                : completion() >= 75
+                  ? 'Almost complete'
+                  : 'Complete your contact information'
+            }}
+          </h3>
+          <p>Based on addresses, primary contact details and five key contact types.</p>
+          <ul class="cc-completion-list">
+            <li class="co-check-status" [class.complete]="addressesComplete()">
+              <span class="co-status-icon" aria-hidden="true"></span>Address details
+              {{ addressesComplete() ? 'completed' : 'incomplete' }}
+            </li>
+            <li class="co-check-status" [class.complete]="primaryComplete()">
+              <span class="co-status-icon" aria-hidden="true"></span>Primary contact details
+              {{ primaryComplete() ? 'completed' : 'incomplete' }}
+            </li>
+            <li class="co-check-status" [class.complete]="keyCount() === 5">
+              <span class="co-status-icon" aria-hidden="true"></span>{{ keyCount() }} of 5 key
+              contacts added
+            </li>
+            <li class="co-check-status" [class.complete]="hasITContact()">
+              <span class="co-status-icon" aria-hidden="true"></span
+              >{{ hasITContact() ? 'IT/System contact added' : 'Add IT/System contact' }}
+            </li>
+          </ul>
+        </section>
+        <section class="co-surface cc-guidance">
+          <span class="material-symbols-outlined" aria-hidden="true">lightbulb</span>
+          <div>
+            <strong>Keep your information up to date</strong>
+            <p>Accurate contact and address details help with compliance and communication.</p>
+            <small role="status">{{
+              hasChanges() ? 'You have unsaved changes.' : 'Viewing saved contact details.'
+            }}</small>
+          </div>
+        </section>
+      </aside>
+    </div>
+    <datalist id="company-countries">
+      <option value="United Kingdom"></option>
+      <option value="Ireland"></option>
+      <option value="Kenya"></option>
+      <option value="United States"></option>
+      <option value="Canada"></option>
+      <option value="Australia"></option>
+    </datalist>
+  </form>
+} @else {
+  <section class="co-surface cp-not-found">
+    <h1>Company not found</h1>
+    <p>This company is no longer available.</p>
+    <a routerLink="/manage/companies" class="cp-button">Back to companies</a>
+  </section>
+}

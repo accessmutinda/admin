@@ -1,3 +1,4 @@
+import { contactInformationComplete } from './company-contacts.models';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -69,8 +70,8 @@ export class Companies {
         description: 'Key contacts and communication details',
         icon: 'groups',
         tone: 'cyan',
-        state: c?.postcode ? 'Complete' : 'Pending',
-        link: this.profileLink(),
+        state: contactInformationComplete(c) ? 'Complete' : 'Pending',
+        link: [...this.profileLink(), 'contacts'],
       },
       {
         title: 'Branches & Locations',

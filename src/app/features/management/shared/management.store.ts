@@ -1,3 +1,4 @@
+import type { CompanyContacts } from '../companies/company-contacts.models';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { vacancyClosed, vacancyScheduled } from '../recruitment/vacancy-deadline';
 import type { PayrollData, PayrollAction } from '../payroll/payroll.models';
@@ -31,6 +32,7 @@ export interface Company {
   active?: boolean;
   modifiedAt?: string;
   modifiedBy?: string;
+  contacts?: CompanyContacts;
 }
 export interface StaffDocument {
   id: string;

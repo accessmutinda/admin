@@ -117,83 +117,92 @@
           <div class="cp-fields">
             @for (field of fields; track field.key) {
               <div class="cp-field" [class.cp-wide]="field.wide" [id]="'profile-' + field.key">
-                <label [for]="'input-' + field.key"
+                <label [attr.for]="managedByContacts(field) ? null : 'input-' + field.key"
                   >{{ field.label }}
                   @if (field.required) {
                     <span class="cp-required" aria-hidden="true">*</span>
                   }
                 </label>
-                @switch (field.type) {
-                  @case ('textarea') {
-                    <div class="cp-textarea-wrap">
-                      <textarea
+                @if (managedByContacts(field)) {
+                  <a
+                    class="cp-managed-address"
+                    [routerLink]="['/manage/companies', current.id, 'contacts']"
+                    >{{ value(field)
+                    }}<span class="material-symbols-outlined" aria-hidden="true">edit</span></a
+                  >
+                } @else {
+                  @switch (field.type) {
+                    @case ('textarea') {
+                      <div class="cp-textarea-wrap">
+                        <textarea
+                          [id]="'input-' + field.key"
+                          [name]="field.key"
+                          [ngModel]="draft[field.key] ?? ''"
+                          (ngModelChange)="setField(field.key, $event)"
+                          [maxlength]="field.max ?? 1000"
+                          [required]="!!field.required"
+                          [attr.aria-invalid]="!!error(field)"
+                          [attr.aria-describedby]="
+                            'hint-' + field.key + (error(field) ? ' error-' + field.key : '')
+                          "
+                          rows="3"
+                        ></textarea>
+                        <span class="cp-character-count"
+                          >{{ draft.description?.length ?? 0 }}/1000</span
+                        >
+                      </div>
+                    }
+                    @case ('select') {
+                      <mat-select
+                        cvSelect
                         [id]="'input-' + field.key"
                         [name]="field.key"
                         [ngModel]="draft[field.key] ?? ''"
                         (ngModelChange)="setField(field.key, $event)"
-                        [maxlength]="field.max ?? 1000"
                         [required]="!!field.required"
+                        [attr.aria-label]="field.label"
                         [attr.aria-invalid]="!!error(field)"
                         [attr.aria-describedby]="
                           'hint-' + field.key + (error(field) ? ' error-' + field.key : '')
                         "
-                        rows="3"
-                      ></textarea>
-                      <span class="cp-character-count"
-                        >{{ draft.description?.length ?? 0 }}/1000</span
+                        placeholder="Select an option"
                       >
-                    </div>
-                  }
-                  @case ('select') {
-                    <mat-select
-                      cvSelect
-                      [id]="'input-' + field.key"
-                      [name]="field.key"
-                      [ngModel]="draft[field.key] ?? ''"
-                      (ngModelChange)="setField(field.key, $event)"
-                      [required]="!!field.required"
-                      [attr.aria-label]="field.label"
-                      [attr.aria-invalid]="!!error(field)"
-                      [attr.aria-describedby]="
-                        'hint-' + field.key + (error(field) ? ' error-' + field.key : '')
-                      "
-                      placeholder="Select an option"
-                    >
-                      @for (option of options(field); track option) {
-                        <mat-option [value]="option">{{ option }}</mat-option>
-                      }
-                    </mat-select>
-                  }
-                  @case ('toggle') {
-                    <div class="cp-status-control">
+                        @for (option of options(field); track option) {
+                          <mat-option [value]="option">{{ option }}</mat-option>
+                        }
+                      </mat-select>
+                    }
+                    @case ('toggle') {
+                      <div class="cp-status-control">
+                        <input
+                          type="checkbox"
+                          [id]="'input-' + field.key"
+                          [name]="field.key"
+                          [ngModel]="draft.active"
+                          (ngModelChange)="setField('active', $event)"
+                          [attr.aria-describedby]="'hint-' + field.key"
+                          role="switch"
+                        /><span>{{ draft.active ? 'Active' : 'Inactive' }}</span>
+                      </div>
+                    }
+                    @default {
                       <input
-                        type="checkbox"
                         [id]="'input-' + field.key"
                         [name]="field.key"
-                        [ngModel]="draft.active"
-                        (ngModelChange)="setField('active', $event)"
-                        [attr.aria-describedby]="'hint-' + field.key"
-                        role="switch"
-                      /><span>{{ draft.active ? 'Active' : 'Inactive' }}</span>
-                    </div>
-                  }
-                  @default {
-                    <input
-                      [id]="'input-' + field.key"
-                      [name]="field.key"
-                      [type]="field.type ?? 'text'"
-                      [ngModel]="draft[field.key] ?? ''"
-                      (ngModelChange)="setField(field.key, $event)"
-                      [required]="!!field.required"
-                      [attr.maxlength]="field.max ?? null"
-                      [attr.min]="field.type === 'number' ? 0 : null"
-                      [attr.max]="field.type === 'date' ? today : null"
-                      [attr.step]="field.type === 'number' ? 1 : null"
-                      [attr.aria-invalid]="!!error(field)"
-                      [attr.aria-describedby]="
-                        'hint-' + field.key + (error(field) ? ' error-' + field.key : '')
-                      "
-                    />
+                        [type]="field.type ?? 'text'"
+                        [ngModel]="draft[field.key] ?? ''"
+                        (ngModelChange)="setField(field.key, $event)"
+                        [required]="!!field.required"
+                        [attr.maxlength]="field.max ?? null"
+                        [attr.min]="field.type === 'number' ? 0 : null"
+                        [attr.max]="field.type === 'date' ? today : null"
+                        [attr.step]="field.type === 'number' ? 1 : null"
+                        [attr.aria-invalid]="!!error(field)"
+                        [attr.aria-describedby]="
+                          'hint-' + field.key + (error(field) ? ' error-' + field.key : '')
+                        "
+                      />
+                    }
                   }
                 }
                 <small [id]="'hint-' + field.key">{{ field.hint }}</small>

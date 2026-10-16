@@ -136,9 +136,16 @@
           ><label
             >Postcode<input
               [(ngModel)]="company.postcode"
+              [readOnly]="!!company.contacts"
               placeholder="e.g. SW1A 1AA"
               maxlength="10"
-          /></label>
+            />
+            @if (company.contacts) {
+              <a [routerLink]="['/manage/companies', company.id, 'contacts']" class="text-link"
+                >Update in Contact Information</a
+              >
+            }
+          </label>
         </div>
       }
       @if (step() === 1) {

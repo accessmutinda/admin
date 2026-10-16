@@ -1,3 +1,4 @@
+import { contactInformationComplete } from './company-contacts.models';
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -171,8 +172,8 @@ export class CompanyProfile {
       },
       {
         title: 'Contact Information',
-        complete: !!c?.postcode && !!c.headOfficeAddress,
-        fragment: 'profile-headOfficeAddress',
+        complete: contactInformationComplete(c),
+        link: ['/manage/companies', this.id, 'contacts'],
       },
       { title: 'Branches & Locations', complete: false, fragment: 'profile-headOfficeName' },
       {
@@ -188,6 +189,11 @@ export class CompanyProfile {
   private newDraft(): Company {
     const c = this.company();
     return structuredClone({ ...c, active: c?.active ?? !!c?.modules.length } as Company);
+  }
+  protected managedByContacts(field: ProfileField): boolean {
+    return (
+      !!this.company()?.contacts && (field.key === 'headOfficeAddress' || field.key === 'postcode')
+    );
   }
   protected setField(key: keyof Company, value: string | number | boolean | null): void {
     this.draft = { ...this.draft, [key]: value };
@@ -273,13 +279,15 @@ export class CompanyProfile {
     const current = this.company();
     if (!current) return;
     const next = { ...current };
-    for (const field of this.fields)
+    for (const field of this.fields) {
+      if (this.managedByContacts(field)) continue;
       Object.assign(next, {
         [field.key]:
           typeof this.draft[field.key] === 'string'
             ? String(this.draft[field.key]).trim()
             : this.draft[field.key],
       });
+    }
     next.modifiedAt = new Date().toISOString();
     next.modifiedBy = this.auth.currentUser()?.name ?? 'Company administrator';
     if (!this.store.saveCompany(next)) {

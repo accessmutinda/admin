@@ -416,3 +416,20 @@
     flex: 1;
   }
 }
+
+.cv-management .company-profile-page .cp-managed-address {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+  padding: 5px 8px;
+  color: #0066ac;
+  background: #f3f8fc;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  font-size: 12px;
+}
+.cv-management .company-profile-page .cp-managed-address .material-symbols-outlined {
+  font-size: 16px;
+}
