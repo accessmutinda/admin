@@ -1,0 +1,164 @@
+.cv-management .app-body main.page-content .operations-page {
+  .op-overview-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2.15fr) minmax(295px, 1fr);
+    gap: 12px 8px;
+    margin-bottom: 12px;
+    align-items: stretch;
+  }
+  .op-destinations {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px 6px;
+    padding: 0 8px 8px;
+  }
+  .op-destinations .co-check-card {
+    text-align: left;
+    min-height: 76px;
+  }
+  .op-destinations strong {
+    color: #06376b;
+    font-size: 12px;
+  }
+  .op-destinations small {
+    color: #6b7688;
+    font-size: 11px;
+    margin-top: 4px;
+  }
+  .op-destination-icon {
+    font-size: 23px;
+    color: #008afa;
+    flex-shrink: 0;
+  }
+  .op-quick-actions {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .op-quick-actions h2 {
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .op-quick-actions h2 .material-symbols-outlined {
+    font-size: 20px;
+    color: #00528c;
+  }
+  .op-quick-actions .button {
+    justify-content: flex-start;
+    min-height: 36px;
+    font-size: 12px;
+  }
+  .op-quick-actions .button.primary {
+    background: linear-gradient(#07577b, #00375e);
+    border-color: #00456b;
+  }
+  .op-quick-actions p {
+    color: #657184;
+    font-size: 11px;
+    margin-top: auto;
+  }
+  .rota-workflows {
+    padding: 0 8px 8px;
+    gap: 8px 6px;
+  }
+  :is(.rota-workflow, .workflow-type, .assessment-card) {
+    padding: 8px;
+    border: 1px solid #e8eef0;
+    border-radius: 7px;
+    background: #ffffff80;
+    min-width: 0;
+  }
+  .rota-workflow {
+    align-items: start;
+    min-height: 76px;
+  }
+  :is(.rota-workflow, .workflow-type, .assessment-card):hover {
+    border-color: #8ccde8;
+    background: #f3fbff;
+  }
+  :is(.rota-workflow, .workflow-type) strong {
+    font-size: 12px;
+    font-weight: 700;
+    color: #06376b;
+  }
+  :is(.rota-workflow, .workflow-type) small {
+    color: #6b7688;
+    font-size: 11px;
+  }
+  :is(.rota-flow-icon, .workflow-type .module-icon) {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    padding: 0;
+    border-radius: 6px;
+    color: var(--tone, #008afa);
+    background: color-mix(in srgb, var(--tone, #008afa) 10%, white);
+    font-size: 21px;
+  }
+  .rota-overview-lower {
+    gap: 8px;
+    margin-top: 0;
+  }
+  :is(.rota-navigation, .payroll-navigation) {
+    margin: 0 0 12px;
+  }
+  :is(.rota-navigation, .payroll-navigation) .tabs {
+    margin: 0;
+    padding: 0 8px;
+  }
+  .client-directory .panel-toolbar {
+    background: transparent;
+  }
+  .client-avatar {
+    border-radius: 7px;
+    color: #0066ac;
+    background: #eaf5fc;
+  }
+  .client-open {
+    color: #0066ac;
+    background: #f3fbff;
+    border-color: #dfe6eb;
+  }
+  .client-profile {
+    border: 1px solid #e9eff3;
+    border-radius: 9px;
+    background: linear-gradient(120deg, #fff, #fcfefe);
+  }
+  .client-section-nav {
+    gap: 3px;
+  }
+  .client-section-nav button {
+    min-height: 36px;
+    padding: 6px 8px;
+    color: #536781;
+  }
+  .client-section-nav button.active {
+    background: #eaf5fc;
+    color: #0066ac;
+    box-shadow: inset 3px 0 #008afa;
+  }
+  .client-overview-grid {
+    gap: 12px 8px;
+  }
+  :is(.client-summary, .client-personal, .quality-panel) {
+    padding: 8px;
+  }
+  .client-icon,
+  .client-entry-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    color: #008afa;
+    background: #eaf5fc;
+  }
+  .client-personal blockquote {
+    background: #f3fbff;
+    border-color: #008afa;
+    font-size: 12px;
+  }
+}

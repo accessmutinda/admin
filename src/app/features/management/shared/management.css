@@ -1852,7 +1852,7 @@
   color: color-mix(in srgb, var(--tone) 75%, #0f2d4a);
   font-size: 18px;
 }
-.cv-management .metric[data-tone] > span:not(.metric-icon) {
+.cv-management .metric[data-tone] > span:not(.metric-icon, .co-stat-icon) {
   padding-right: 36px;
 }
 .cv-management .company-card {

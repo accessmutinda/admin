@@ -1,14 +1,14 @@
-.cv-management:has(:is(.companies-page, .people-page)) {
+.cv-management:has(.module-page) {
   --accent: #008bd9;
   --brand-navy: #093252;
   --muted: #657184;
   background: #f1f7fa;
   color: #123352;
 }
-.cv-management:has(:is(.companies-page, .people-page)) .app-sidebar {
+.cv-management:has(.module-page) .app-sidebar {
   background: #0b3050;
 }
-.cv-management:has(:is(.companies-page, .people-page)) .app-sidebar > a.active {
+.cv-management:has(.module-page) .app-sidebar > a.active {
   background: #007caa;
   box-shadow: inset 3px 0 #17c5de;
   color: white;
@@ -16,25 +16,25 @@
 .cv-management .app-sidebar > a.active[href='/manage/companies'] .material-symbols-outlined {
   color: #fff;
 }
-.cv-management:has(:is(.companies-page, .people-page)) .app-header {
+.cv-management:has(.module-page) .app-header {
   background: #fff;
   height: 48px;
   border-bottom: 1px solid #e5edf1;
 }
-.cv-management:has(:is(.companies-page, .people-page)) .app-footer {
+.cv-management:has(.module-page) .app-footer {
   padding-top: 6px;
   padding-bottom: 6px;
 }
-.cv-management:has(:is(.companies-page, .people-page)) .workspace-control {
+.cv-management:has(.module-page) .workspace-control {
   background: #fafdff;
   border-color: #dfe8ed;
 }
-.cv-management:has(:is(.companies-page, .people-page)) .workspace-mark,
-.cv-management:has(:is(.companies-page, .people-page)) .avatar {
+.cv-management:has(.module-page) .workspace-mark,
+.cv-management:has(.module-page) .avatar {
   background: #004579;
   color: #fff;
 }
-.cv-management .app-body main.page-content:has(:is(.companies-page, .people-page)) {
+.cv-management .app-body main.page-content:has(.module-page) {
   padding: 10px 14px;
   background: #f1f7fa;
 }
@@ -484,7 +484,7 @@
   }
 }
 @media (max-width: 760px) {
-  .cv-management .app-body main.page-content:has(:is(.companies-page, .people-page)) {
+  .cv-management .app-body main.page-content:has(.module-page) {
     padding: 12px;
   }
   .cv-management .companies-page .co-metrics {
@@ -553,32 +553,32 @@
     transition: none;
   }
 }
-.cv-management:has(:is(.companies-page, .people-page)) .co-console-heading {
+.cv-management:has(.module-page) .co-console-heading {
   display: flex;
   flex-direction: column;
   gap: 2px;
   margin-right: 28px;
 }
-.cv-management:has(:is(.companies-page, .people-page)) .co-console-heading strong {
+.cv-management:has(.module-page) .co-console-heading strong {
   font-size: 14px;
   line-height: 1.2;
   color: #002b60;
   font-weight: 800;
 }
-.cv-management:has(:is(.companies-page, .people-page)) .co-console-heading span {
+.cv-management:has(.module-page) .co-console-heading span {
   color: #63758b;
   font-size: 12px;
 }
 @media (max-width: 1250px) {
-  .cv-management:has(:is(.companies-page, .people-page)) .co-console-heading span {
+  .cv-management:has(.module-page) .co-console-heading span {
     display: none;
   }
-  .cv-management:has(:is(.companies-page, .people-page)) .co-console-heading {
+  .cv-management:has(.module-page) .co-console-heading {
     margin-right: 8px;
   }
 }
 @media (max-width: 760px) {
-  .cv-management:has(:is(.companies-page, .people-page)) .co-console-heading {
+  .cv-management:has(.module-page) .co-console-heading {
     display: none;
   }
 }

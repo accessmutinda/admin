@@ -70,6 +70,6 @@
   background: transparent;
 }
 
-.cv-management:has(.people-page) .app-sidebar > a.active .material-symbols-outlined {
+.cv-management:has(.module-page) .app-sidebar > a.active .material-symbols-outlined {
   color: #fff;
 }

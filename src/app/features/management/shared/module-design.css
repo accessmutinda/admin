@@ -1,0 +1,128 @@
+.cv-management .app-body main.page-content .operations-page {
+  display: block;
+  min-width: 0;
+  --co-navy: #002b60;
+  --color-navy: #093252;
+  --color-teal: #008afa;
+  --color-teal-50: #eaf5fc;
+  --accent: #008bd9;
+  --border: #e9eff3;
+  --muted: #657184;
+  --panel-gap: 12px;
+  color: #123352;
+  font: 400 12px/1.5 var(--font-sans);
+
+  h1 {
+    color: #081535;
+    font: 800 21px/1.25 var(--font-sans);
+    letter-spacing: -0.7px;
+  }
+  h2 {
+    color: #002b60;
+    font: 800 14px/1.4 var(--font-sans);
+    letter-spacing: -0.35px;
+  }
+  h3 {
+    color: #06376b;
+    font-size: 12px;
+  }
+  .page-heading {
+    margin-bottom: 24px;
+    align-items: start;
+  }
+  .page-heading p:not(.eyebrow) {
+    font-size: 12px;
+    color: #677488;
+    margin-top: 4px;
+  }
+  .page-heading .eyebrow {
+    font-size: 10px;
+    color: #657184;
+  }
+  .panel,
+  .metric.co-stat {
+    border: 1px solid #e9eff3;
+    border-radius: 9px;
+    background: linear-gradient(120deg, #fff, #fcfefe);
+    box-shadow: 0 2px 7px #123c541f;
+  }
+  .panel-toolbar {
+    padding: 8px;
+    background: transparent;
+    border-radius: 9px 9px 0 0;
+    gap: 8px;
+  }
+  .panel-toolbar p {
+    font-size: 11px;
+    color: #657184;
+  }
+  .panel-body {
+    padding: 8px;
+  }
+  .metrics {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .metric.co-stat {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    align-items: start;
+    gap: 10px;
+    padding: 8px 9px 7px 13px;
+    text-align: left;
+    min-height: 86px;
+  }
+  .metric.co-stat > div {
+    min-width: 0;
+    flex: 1;
+  }
+  .metric.co-stat h2 {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: -0.15px;
+  }
+  .metric.co-stat strong {
+    font-size: 20px;
+    line-height: 1.15;
+    margin: 2px 0;
+    letter-spacing: -0.4px;
+  }
+  .metric.co-stat small {
+    font-size: 11px;
+    line-height: 1.5;
+    white-space: normal;
+    color: #6c7587;
+  }
+  .metric.co-stat .co-stat-icon {
+    text-align: center;
+    position: static;
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 7px;
+    font-size: 23px;
+    color: #fff;
+    background: var(--tone, #008afa);
+  }
+  [data-tone='blue'] {
+    --tone: #008afa;
+  }
+  [data-tone='teal'] {
+    --tone: #03a6c1;
+  }
+  [data-tone='green'] {
+    --tone: #00a34e;
+  }
+  [data-tone='amber'] {
+    --tone: #ffb000;
+  }
+  [data-tone='red'] {
+    --tone: #ff3047;
+  }
+  [data-tone='purple'] {
+    --tone: #8b5cf6;
+  }
+}

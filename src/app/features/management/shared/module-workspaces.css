@@ -1,0 +1,215 @@
+.cv-management .app-body main.page-content .operations-page {
+  .quality-overview {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px 8px;
+  }
+  .quality-summary strong {
+    font-size: 20px;
+  }
+  .quality-heading {
+    min-height: 30px;
+    margin-bottom: 8px;
+  }
+  .quality-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 7px;
+  }
+  .quality-task {
+    padding: 8px 0;
+  }
+  .quality-library {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .assessment-card h3 {
+    margin: 3px 0;
+  }
+  .assessment-layout {
+    grid-template-columns: minmax(0, 2.15fr) minmax(270px, 1fr);
+    gap: 8px;
+  }
+  .assessment-steps {
+    gap: 4px;
+  }
+  .assessment-steps button.active {
+    color: #0066ac;
+  }
+  .assessment-steps button.active > span {
+    color: #fff;
+    background: #008afa;
+  }
+  .workflow-type-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .workflow-type.active {
+    background: #f3fbff;
+    border-color: #8ccde8;
+    box-shadow: inset 0 -3px #008afa;
+  }
+  .approval-editor-grid {
+    grid-template-columns: minmax(0, 2.15fr) minmax(295px, 1fr);
+    gap: 8px;
+  }
+  .approval-editor {
+    border-top: 1px solid #e9eff3;
+  }
+  .workflow-enable {
+    border-color: #e2eaf0;
+    border-radius: 7px;
+    background: #f3fbff;
+  }
+  .workflow-enable > .material-symbols-outlined {
+    color: #008afa;
+  }
+  .approval-preview .route-step {
+    border-color: #dfe6eb;
+    background: #f3fbff;
+    color: #123352;
+  }
+  .workflow-context {
+    background: #eff5f8;
+    border-radius: 7px;
+    color: #536781;
+    font-size: 11px;
+  }
+  .workflow-nav .active {
+    background: #007caa;
+    color: #fff;
+    border-color: #007caa;
+  }
+  .ecm-live-strip {
+    border-color: #e9eff3;
+    border-radius: 9px;
+    padding: 8px;
+    box-shadow: 0 2px 7px #123c541f;
+  }
+  .ecm-clock-label {
+    color: #0066ac;
+  }
+  .ecm-clock-face strong {
+    color: #093252;
+    font-size: 30px;
+    font-variant-numeric: tabular-nums;
+  }
+  .finance-icon,
+  .finance-funding-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    color: #008afa;
+    background: #eaf5fc;
+  }
+  .finance-summary .finance-total {
+    border: 1px solid #e9eff3;
+    border-radius: 7px;
+    background: #fff;
+  }
+  .finance-summary .finance-total > strong {
+    font-size: 20px;
+    color: #081334;
+  }
+  .finance-chart-heading h3 {
+    font-size: 12px;
+  }
+  .finance-cost-links button {
+    color: #0066ac;
+  }
+  .finance-prepare {
+    border-color: #e9eff3;
+    background: #fff;
+  }
+  .account-sec-avatar {
+    background: #004579;
+    color: white;
+  }
+  .account-sec-identity {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .account-sec-grid {
+    gap: 12px 8px;
+  }
+  .account-sec-action {
+    color: #0066ac;
+  }
+  .security-tab.active {
+    color: #0066ac;
+    border-color: #008afa;
+  }
+}
+@media (max-width: 1279px) {
+  .cv-management .app-body main.page-content .operations-page {
+    .approval-editor-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .approval-sidebar {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+@media (max-width: 1250px) {
+  .cv-management .app-body main.page-content .operations-page {
+    .workflow-type-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .op-overview-grid {
+      grid-template-columns: minmax(0, 1fr) 270px;
+    }
+    .op-destinations {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .op-overview-grid .rota-workflows {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+@media (max-width: 900px) {
+  .cv-management .app-body main.page-content .operations-page {
+    .assessment-layout,
+    .approval-editor-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .assessment-side {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+@media (max-width: 760px) {
+  .cv-management .app-body main.page-content .operations-page {
+    .quality-overview {
+      grid-template-columns: 1fr;
+    }
+    .op-overview-grid,
+    .quality-library,
+    .rota-overview-lower {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .op-quick-actions .button {
+      min-height: 40px;
+    }
+    .workflow-type-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .workflow-type:last-child {
+      grid-column: auto;
+    }
+    .approval-sidebar {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .assessment-side {
+      grid-template-columns: 1fr;
+    }
+    .assessment-steps {
+      overflow-x: auto;
+    }
+    .assessment-steps button {
+      flex-shrink: 0;
+      min-width: 110px;
+    }
+  }
+}
+@media print {
+  .cv-management .operations-page .op-quick-actions {
+    display: none;
+  }
+}

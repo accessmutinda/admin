@@ -132,13 +132,15 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           >
             <span class="material-symbols-outlined" aria-hidden="true">menu</span>
           </button>
-          @if (isCompaniesOverview() || isPeopleArea()) {
+          @if (!routerUrl().startsWith('/manage/ecm/wallboard')) {
             <div class="co-console-heading">
               <strong>Admin Console</strong
               ><span>{{
                 isPeopleArea()
                   ? 'Manage staff, employment and workforce readiness'
-                  : 'Manage companies, users, and system configuration'
+                  : isCompaniesOverview()
+                    ? 'Manage companies, users, and system configuration'
+                    : 'Manage your company workspace'
               }}</span>
             </div>
           }
@@ -186,6 +188,9 @@ export class ManagementLayout {
   );
   protected readonly store = inject(ManagementStore);
   private readonly router = inject(Router);
+  protected routerUrl(): string {
+    return this.router.url;
+  }
   protected readonly mobile = toSignal(inject(BreakpointObserver).observe('(max-width: 1023px)'));
   protected readonly menuOpen = signal(false);
   protected readonly finance = FINANCE_AREAS;

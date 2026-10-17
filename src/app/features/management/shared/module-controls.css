@@ -1,0 +1,154 @@
+.cv-management .app-body main.page-content .operations-page {
+  .button {
+    min-height: 36px;
+    padding: 6px 10px;
+    border: 1px solid #dfe6eb;
+    border-radius: 5px;
+    background: linear-gradient(#fff, #f9fcfd);
+    color: #16375b;
+    font: 700 11px/1.4 var(--font-sans);
+    gap: 7px;
+  }
+  .button .material-symbols-outlined {
+    font-size: 18px;
+  }
+  .button.primary {
+    background: #008afa;
+    border-color: #008afa;
+    color: #fff;
+  }
+  .button.primary:hover:not(:disabled) {
+    background: #0079dc;
+    border-color: #0079dc;
+  }
+  .button:not(.primary):hover:not(:disabled) {
+    border-color: #8ccde8;
+    background: #eaf5fc;
+  }
+  .text-link {
+    color: #007bcc;
+    font-size: 11px;
+  }
+  .tabs {
+    gap: 16px;
+    margin-bottom: 12px;
+    border-color: #e5edf1;
+    overflow-x: auto;
+  }
+  .tabs :is(button, a) {
+    font-size: 12px;
+    white-space: nowrap;
+    color: #536781;
+  }
+  .tabs :is(button, a).active {
+    color: #0066ac;
+    border-color: #008afa;
+  }
+  .tabs .material-symbols-outlined {
+    font-size: 18px;
+  }
+  .form-grid {
+    gap: 8px;
+  }
+  label {
+    color: #536781;
+    font-size: 11px;
+  }
+  label > :is(input:not([type='checkbox'], [type='radio'], [type='file']), mat-select, textarea) {
+    border-color: #dfe6eb;
+    border-radius: 5px;
+    color: #123352;
+    background: #fff;
+    font-size: 12px;
+  }
+  label > :is(input:not([type='checkbox'], [type='radio'], [type='file']), mat-select) {
+    min-height: 44px;
+  }
+  .search-box {
+    border: 1px solid #e2eaf0;
+    border-radius: 5px;
+    background: #fff;
+    min-height: 32px;
+  }
+  .search-box input:not([type='checkbox'], [type='radio'], [type='file']) {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-height: 20px;
+    font-size: 11px;
+    background: transparent;
+  }
+  .search-box .material-symbols-outlined {
+    color: #7d8c9b;
+    font-size: 18px;
+  }
+  .panel-toolbar mat-select {
+    min-height: 32px;
+    font-size: 11px;
+  }
+  table thead th {
+    padding: 4px 8px;
+    font: 500 10px/1.3 var(--font-sans);
+    color: #53677f;
+    background: #eff5f8;
+  }
+  .table-wrap {
+    border-radius: 0 0 9px 9px;
+  }
+  .badge {
+    border-radius: 5px;
+    font-size: 10px;
+  }
+  .empty-state {
+    background: transparent;
+  }
+  :is(button, a, input, textarea, mat-select):focus-visible {
+    outline: 2px solid #008bd9;
+    outline-offset: 2px;
+  }
+}
+@media (min-width: 768px) {
+  .cv-management .app-body main.page-content .operations-page table tbody :is(td, th) {
+    padding: 6px 12px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+}
+@media (max-width: 760px) {
+  .cv-management .app-body main.page-content .operations-page {
+    .metrics,
+    .metrics.four,
+    .quality-metrics {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .metrics:not(.four) .metric:last-child {
+      grid-column: auto;
+    }
+    .metrics .metric:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+    }
+    .metric.co-stat {
+      padding: 8px 9px 7px 11px;
+      gap: 8px;
+    }
+    .page-heading {
+      flex-wrap: wrap;
+    }
+    .page-heading > .row {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+    .button {
+      min-height: 40px;
+    }
+  }
+}
+
+.cv-management:has(.operations-page) .sidebar-bottom a.active {
+  background: #007caa;
+  box-shadow: inset 3px 0 #17c5de;
+  color: #fff;
+}
+.cv-management:has(.operations-page) .sidebar-bottom a.active .material-symbols-outlined {
+  color: #fff;
+}
