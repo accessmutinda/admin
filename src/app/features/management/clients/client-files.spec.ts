@@ -83,6 +83,106 @@ describe('Client files and care records', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Consent given');
   });
 
+  it('keeps all record sections reachable through grouped navigation and locks them during editing', async () => {
+    const fixture = TestBed.createComponent(ClientFiles);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const page: HTMLElement = fixture.nativeElement;
+    expect(page.querySelector('h1')?.textContent).toContain('Mary Smith');
+    expect(page.querySelectorAll('.client-nav-group')).toHaveLength(4);
+    const buttons = [...page.querySelectorAll<HTMLButtonElement>('.client-section-nav button')];
+    expect(buttons).toHaveLength(CLIENT_SECTIONS.length);
+    for (const section of CLIENT_SECTIONS) {
+      expect(
+        buttons.filter((button) => button.textContent!.trim().endsWith(section.label)),
+      ).toHaveLength(1);
+    }
+    buttons.find((button) => button.textContent!.trim().endsWith('Medication profile'))!.click();
+    fixture.detectChanges();
+    expect(page.querySelector('.client-section-panel h2')?.textContent).toBe('Medication profile');
+    (fixture.componentInstance as unknown as Editor).editEntry();
+    fixture.detectChanges();
+    expect(buttons.every((button) => button.disabled)).toBe(true);
+  });
+
+  it('shows missing overview information explicitly instead of implying no risks, allergies or completed tasks', async () => {
+    const fixture = TestBed.createComponent(ClientFiles);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const page: HTMLElement = fixture.nativeElement;
+    expect(page.querySelectorAll('.client-care-alerts .client-record-state')).toHaveLength(2);
+    for (const state of page.querySelectorAll('.client-care-alerts .client-record-state'))
+      expect(state.textContent?.trim()).toBe('Not recorded');
+    expect(
+      page.querySelector('[aria-labelledby="client-medication-title"]')?.textContent,
+    ).toContain('Not recorded');
+    expect(page.querySelector('[aria-labelledby="client-consent-title"]')?.textContent).toContain(
+      'Not recorded',
+    );
+    expect(page.querySelector('.client-personal blockquote')).toBeNull();
+    expect(page.querySelector('.client-content')!.textContent).not.toContain('0 / 0');
+  });
+
+  it('uses saved review, allergy, medication and consent records and opens the relevant detail', async () => {
+    const file = emptyClientFile();
+    file.details['about'] = 'I enjoy breakfast in the garden.';
+    file.sections['plan'] = {
+      name: 'Morning support',
+      start: '2019-01-01',
+      review: '2020-01-01',
+      status: 'Active',
+    };
+    file.sections['consent'] = { status: 'Withdrawn', date: '2025-01-01' };
+    const entry: ClientEntry = {
+      id: 'allergy-1',
+      name: 'Recorded allergen',
+      detail: 'Saved response guidance',
+      date: '2025-01-01',
+      level: 'High',
+      status: 'Active',
+    };
+    file.entries['allergies'] = [
+      entry,
+      { ...entry, id: 'allergy-2', name: 'Historical allergy record', status: 'Inactive' },
+    ];
+    file.entries['medication'] = [
+      { ...entry, id: 'med-1', name: 'Recorded medication', level: 'Low' },
+    ];
+    file.entries['risks'] = [{ ...entry, id: 'risk-1', name: 'Recorded mobility risk' }];
+    expect(service.saveClient({ ...service.data().clients[0], file })).toBeNull();
+    const fixture = TestBed.createComponent(ClientFiles);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const page: HTMLElement = fixture.nativeElement;
+    expect(page.querySelector('.client-personal blockquote')?.textContent).toBe(
+      file.details['about'],
+    );
+    expect(page.querySelector('[aria-labelledby="client-plan-title"]')?.textContent).toContain(
+      'Overdue',
+    );
+    expect(page.querySelector('[aria-labelledby="client-consent-title"]')?.textContent).toContain(
+      'Withdrawn',
+    );
+    expect(
+      page.querySelector('[aria-labelledby="client-medication-title"]')?.textContent,
+    ).toContain('Recorded medication');
+    expect(page.querySelector('.client-care-alerts')?.textContent).toContain(
+      'Recorded mobility risk',
+    );
+    expect(page.querySelector('.client-care-alerts')?.textContent).toContain('Recorded allergen');
+    expect(page.querySelector('.client-care-alerts')?.textContent).not.toContain(
+      'Historical allergy record',
+    );
+    [...page.querySelectorAll<HTMLButtonElement>('.client-care-alerts button')]
+      .find((button) => button.textContent!.includes('View allergies'))!
+      .click();
+    fixture.detectChanges();
+    expect(page.querySelector('.client-section-panel h2')?.textContent).toBe('Allergies');
+    expect(page.querySelector('.client-content')!.textContent).toContain(
+      'Historical allergy record',
+    );
+  });
+
   it('validates care-plan dates, saves the corrected draft and discards later changes', async () => {
     const fixture = TestBed.createComponent(ClientFiles);
     const editor = fixture.componentInstance as unknown as Editor;

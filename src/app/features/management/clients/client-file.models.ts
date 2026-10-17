@@ -231,6 +231,25 @@ export const CLIENT_SECTIONS: ClientSection[] = [
   },
 ];
 
+export const CLIENT_SECTION_GROUPS = [
+  { label: 'Personal information', keys: ['details', 'family'] },
+  {
+    label: 'Care & clinical',
+    keys: [
+      'plan',
+      'diagnoses',
+      'risks',
+      'moving',
+      'capacity',
+      'consent',
+      'medication',
+      'allergies',
+    ],
+  },
+  { label: 'Daily support', keys: ['access', 'tasks'] },
+  { label: 'Documents', keys: ['documents'] },
+];
+
 export const PERSONAL_FIELDS: ClientField[] = [
   { key: 'dob', label: 'Date of birth', type: 'date' },
   { key: 'gender', label: 'Gender' },

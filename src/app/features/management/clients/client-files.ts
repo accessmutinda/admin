@@ -1,3 +1,4 @@
+import { ModuleDesign } from '../shared/module-design';
 import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -12,6 +13,7 @@ import { AccessRequired } from '../shared/access-required';
 import { ManagementStore } from '../shared/management.store';
 import {
   CLIENT_SECTIONS,
+  CLIENT_SECTION_GROUPS,
   PERSONAL_FIELDS,
   ClientEntry,
   emptyClientFile,
@@ -19,9 +21,18 @@ import {
 
 @Component({
   selector: 'cv-client-files',
-  imports: [DatePipe, FormsModule, RouterLink, MatSelectModule, CvSelect, AccessRequired],
+  imports: [
+    ModuleDesign,
+    DatePipe,
+    FormsModule,
+    RouterLink,
+    MatSelectModule,
+    CvSelect,
+    AccessRequired,
+  ],
+  host: { class: 'module-page operations-page clients-page' },
   templateUrl: './client-files.html',
-  styleUrl: './client-files.css',
+  styleUrls: ['./client-files.css', './client-record.css'],
 })
 export class ClientFiles {
   protected readonly service = inject(RotaService);
@@ -39,6 +50,34 @@ export class ClientFiles {
   protected readonly file = computed(() => this.client()?.file ?? emptyClientFile());
   protected readonly today = londonDate();
   protected readonly sections = CLIENT_SECTIONS;
+  protected readonly sectionGroups = CLIENT_SECTION_GROUPS.map((group) => ({
+    label: group.label,
+    sections: group.keys.map((key) => CLIENT_SECTIONS.find((section) => section.key === key)!),
+  }));
+  protected readonly allergyRecords = computed(() => this.file().entries['allergies'] ?? []);
+  protected readonly activeAllergies = computed(() =>
+    this.allergyRecords().filter((entry) => entry.status === 'Active'),
+  );
+  protected readonly medicationRecords = computed(() => this.file().entries['medication'] ?? []);
+  protected readonly activeMedication = computed(() =>
+    this.medicationRecords().filter((entry) => entry.status === 'Active'),
+  );
+  protected hasSectionDetails(key: string): boolean {
+    return Object.values(this.file().sections[key] ?? {}).some(
+      (value) => value.trim() && value !== 'Not recorded',
+    );
+  }
+  protected reviewState(client: RotaClient): { label: string; tone: string } {
+    const date = this.review(client);
+    if (!date) return { label: 'Not recorded', tone: 'neutral' };
+    if (date < this.today) return { label: 'Overdue', tone: 'danger' };
+    if (date === this.today) return { label: 'Due today', tone: 'warning' };
+    const days =
+      (Date.parse(date + 'T00:00:00Z') - Date.parse(this.today + 'T00:00:00Z')) / 86400000;
+    return days <= 30
+      ? { label: 'Due soon', tone: 'warning' }
+      : { label: 'Scheduled', tone: 'info' };
+  }
   protected readonly personalFields = PERSONAL_FIELDS;
   protected readonly riskFlags = RISK_FLAGS;
   protected readonly sectionKey = signal('overview');

@@ -1,3 +1,4 @@
+<cv-module-design />
 @if (!service.can('view')) {
   <cv-access-required
     feature="Client files"
@@ -7,6 +8,12 @@
   />
 } @else {
   <div class="client-files">
+    <nav class="co-breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manage/clients">Client Files</a>
+      @if (id()) {
+        <span aria-hidden="true">›</span><span>Client record</span>
+      }
+    </nav>
     @if (editing() === 'profile') {
       <div class="page-heading">
         <div>
@@ -138,26 +145,45 @@
         }
       </div>
       <div class="metrics four">
-        <article class="metric" data-tone="teal">
-          <span class="metric-icon material-symbols-outlined" aria-hidden="true">folder_shared</span
-          ><span>Client records</span><strong>{{ service.data().clients.length }}</strong
-          ><small>All service users</small>
+        <article class="metric co-stat co-surface" data-tone="teal">
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true"
+            >folder_shared</span
+          >
+          <div>
+            <h2>Client records</h2>
+            <strong>{{ service.data().clients.length }}</strong
+            ><small>All service users</small>
+          </div>
         </article>
-        <article class="metric" data-tone="green">
-          <span class="metric-icon material-symbols-outlined" aria-hidden="true">person_check</span
-          ><span>Active clients</span><strong>{{ active() }}</strong
-          ><small>Current care records</small>
+        <article class="metric co-stat co-surface" data-tone="green">
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true"
+            >person_check</span
+          >
+          <div>
+            <h2>Active clients</h2>
+            <strong>{{ active() }}</strong
+            ><small>Current care records</small>
+          </div>
         </article>
-        <article class="metric" data-tone="amber">
-          <span class="metric-icon material-symbols-outlined" aria-hidden="true">event_repeat</span
-          ><span>Care plan reviews due</span><strong>{{ reviews() }}</strong
-          ><small>Due today or overdue</small>
+        <article class="metric co-stat co-surface" data-tone="amber">
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true"
+            >event_repeat</span
+          >
+          <div>
+            <h2>Care plan reviews due</h2>
+            <strong>{{ reviews() }}</strong
+            ><small>Due today or overdue</small>
+          </div>
         </article>
-        <article class="metric" data-tone="red">
-          <span class="metric-icon material-symbols-outlined" aria-hidden="true"
+        <article class="metric co-stat co-surface" data-tone="red">
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true"
             >health_and_safety</span
-          ><span>High priority / risk</span><strong>{{ highRisk() }}</strong
-          ><small>Active clients needing attention</small>
+          >
+          <div>
+            <h2>High priority / risk</h2>
+            <strong>{{ highRisk() }}</strong
+            ><small>Active clients needing attention</small>
+          </div>
         </article>
       </div>
       <section class="panel client-directory">
@@ -290,34 +316,22 @@
         </div>
       </section>
     } @else if (client(); as c) {
-      <a class="text-link client-back" routerLink="/manage/clients">← Client files</a>
-      <div class="page-heading">
-        <div>
-          <h1>Client record</h1>
-          <p>Personalised information for safe, consistent care.</p>
-        </div>
-        <div class="row">
-          <a class="button" routerLink="/manage/rota" [queryParams]="{ client: c.id }"
-            >Calls & allocations</a
-          >
-          @if (service.can('manage')) {
-            <button class="button primary" [disabled]="!!editing()" (click)="startProfile()">
-              Edit details
-            </button>
-          }
-        </div>
-      </div>
-      <section class="panel client-profile">
-        <span class="client-avatar client-avatar-large">{{ initials(c.name) }}</span>
+      <section
+        class="panel client-profile client-record-header"
+        aria-labelledby="client-record-name"
+      >
+        <span class="client-avatar client-avatar-large" aria-hidden="true">{{
+          initials(c.name)
+        }}</span>
         <div class="client-profile-info">
           <div class="row">
-            <h2>{{ c.name }}</h2>
+            <h1 id="client-record-name">{{ c.name }}</h1>
             <span class="badge" [class.success]="c.active">{{
               c.active ? 'Active' : 'Inactive'
             }}</span>
           </div>
           <p>
-            {{ c.reference }}
+            Client record · {{ c.reference }}
             @if (file().details['dob']) {
               · Born {{ file().details['dob'] | date: 'dd MMM yyyy' }}
             }
@@ -329,29 +343,64 @@
             <span class="material-symbols-outlined" aria-hidden="true">location_on</span
             >{{ c.address }}, {{ c.postcode }}
           </p>
-          <div class="client-alerts">
-            @for (flag of c.riskFlags ?? []; track flag) {
-              <span class="badge warning">{{ flag }}</span>
+          @if (c.riskFlags?.length) {
+            <div class="client-alerts" aria-label="Recorded care alerts">
+              @for (flag of c.riskFlags ?? []; track flag) {
+                <span class="badge warning">{{ flag }}</span>
+              }
+            </div>
+          }
+        </div>
+        <div class="client-header-aside">
+          <dl class="client-record-meta">
+            <div>
+              <dt>Care priority</dt>
+              <dd [class.client-priority-high]="c.priority === 'High'">{{ c.priority }}</dd>
+            </div>
+            <div>
+              <dt>Funding</dt>
+              <dd>{{ c.funding }}</dd>
+            </div>
+          </dl>
+          <div class="row client-header-actions">
+            <a class="button" routerLink="/manage/rota" [queryParams]="{ client: c.id }"
+              ><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Calls
+              & allocations</a
+            >
+            @if (service.can('manage')) {
+              <button class="button primary" [disabled]="!!editing()" (click)="startProfile()">
+                <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit details
+              </button>
             }
           </div>
-        </div>
-        <div class="client-profile-meta">
-          <span>Care priority</span><strong>{{ c.priority }}</strong
-          ><small>{{ c.funding }}</small>
         </div>
       </section>
       <div class="client-record-layout">
         <nav class="panel client-section-nav" aria-label="Client record sections">
-          @for (s of sections; track s.key) {
-            <button
-              [class.active]="sectionKey() === s.key"
-              [attr.aria-current]="sectionKey() === s.key ? 'page' : null"
-              [disabled]="!!editing()"
-              (click)="setSection(s.key)"
-            >
-              <span class="material-symbols-outlined" aria-hidden="true">{{ s.icon }}</span
-              >{{ s.label }}
-            </button>
+          <button
+            class="client-overview-link"
+            [class.active]="sectionKey() === 'overview'"
+            [attr.aria-current]="sectionKey() === 'overview' ? 'page' : null"
+            [disabled]="!!editing()"
+            (click)="setSection('overview')"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">person</span>Overview
+          </button>
+          @for (group of sectionGroups; track group.label) {
+            <div class="client-nav-group" role="group" [attr.aria-label]="group.label">
+              <h2>{{ group.label }}</h2>
+              @for (s of group.sections; track s.key) {
+                <button
+                  [class.active]="sectionKey() === s.key"
+                  [attr.aria-current]="sectionKey() === s.key ? 'page' : null"
+                  [disabled]="!!editing()"
+                  (click)="setSection(s.key)"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">{{ s.icon }}</span
+                  >{{ s.label }}
+                </button>
+              }
+            </div>
           }
         </nav>
         <label class="client-mobile-nav"
@@ -362,64 +411,92 @@
             (ngModelChange)="setSection($event)"
             [disabled]="!!editing()"
           >
-            @for (s of sections; track s.key) {
-              <mat-option [value]="s.key">{{ s.label }}</mat-option>
+            <mat-option value="overview">Overview</mat-option>
+            @for (group of sectionGroups; track group.label) {
+              <mat-optgroup [label]="group.label">
+                @for (s of group.sections; track s.key) {
+                  <mat-option [value]="s.key">{{ s.label }}</mat-option>
+                }
+              </mat-optgroup>
             }
           </mat-select></label
         >
         <div class="client-content">
           @if (sectionKey() === 'overview') {
             <section class="panel client-personal">
-              <div class="client-panel-title">
-                <span
-                  class="client-icon material-symbols-outlined"
-                  data-tone="teal"
-                  aria-hidden="true"
-                  >favorite</span
-                >
-                <div>
-                  <h2>What matters to me</h2>
-                  <p>Keep the person at the heart of every visit.</p>
-                </div>
-              </div>
-              <blockquote>
-                {{
-                  file().details['about'] ||
-                    'Ask about the person’s routines, interests and what makes a good day. Record their words in personal details.'
-                }}
-              </blockquote>
-            </section>
-            <div class="client-overview-grid">
-              <section class="panel client-summary">
+              <div class="client-personal-heading">
                 <div class="client-panel-title">
-                  <span
-                    class="client-icon material-symbols-outlined"
-                    data-tone="teal"
-                    aria-hidden="true"
+                  <span class="client-icon material-symbols-outlined" aria-hidden="true"
+                    >favorite</span
+                  >
+                  <h2>What matters to me</h2>
+                </div>
+                @if (service.can('manage')) {
+                  <button class="text-link" (click)="startProfile()" [disabled]="!!editing()">
+                    {{ file().details['about'] ? 'Edit personal details' : 'Add preferences'
+                    }}<span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_forward</span
+                    >
+                  </button>
+                }
+              </div>
+              @if (file().details['about']) {
+                <blockquote>{{ file().details['about'] }}</blockquote>
+              } @else {
+                <p>
+                  <span class="client-record-state" data-state="neutral">Not recorded.</span> Record
+                  the person’s routines, preferences and what makes a good day.
+                </p>
+              }
+            </section>
+            <div class="client-overview-grid client-care-overview">
+              <section class="panel client-summary" aria-labelledby="client-plan-title">
+                <div class="client-panel-title">
+                  <span class="client-icon material-symbols-outlined" aria-hidden="true"
                     >assignment</span
                   >
-                  <h2>Care plan</h2>
+                  <h2 id="client-plan-title">Care plan & review</h2>
                 </div>
-                <h3>{{ file().sections['plan']?.['name'] || 'No care plan recorded' }}</h3>
-                <p>
-                  {{
-                    file().sections['plan']?.['needs'] ||
-                      'Capture needs, goals and practical support instructions.'
-                  }}
-                </p>
-                <div class="row">
-                  <span class="badge">{{
-                    file().sections['plan']?.['status'] || 'Not recorded'
-                  }}</span>
-                  @if (review(c)) {
-                    <small [class.client-overdue]="reviewDue(c)"
-                      >Review {{ review(c) | date: 'dd MMM yyyy' }}</small
+                <dl class="client-overview-facts">
+                  <div>
+                    <dt>Plan</dt>
+                    <dd>
+                      {{
+                        file().sections['plan']?.['name'] ||
+                          (hasSectionDetails('plan') ? 'Details recorded' : 'Not recorded')
+                      }}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{{ file().sections['plan']?.['status'] || 'Not recorded' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Next review</dt>
+                    <dd>
+                      <span class="client-record-state" [attr.data-state]="reviewState(c).tone">{{
+                        reviewState(c).label
+                      }}</span>
+                      @if (review(c)) {
+                        <span class="client-fact-secondary">{{
+                          review(c) | date: 'dd MMM yyyy'
+                        }}</span>
+                      }
+                    </dd>
+                  </div>
+                </dl>
+                <div class="client-card-footer">
+                  <button class="text-link" (click)="setSection('plan')">
+                    Open care plan<span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_forward</span
                     >
-                  }
+                  </button>
                 </div>
-                <button class="text-link" (click)="setSection('plan')">Open care plan →</button>
               </section>
-              <section class="panel client-summary">
+              <section
+                class="panel client-summary client-care-alerts"
+                aria-labelledby="client-alerts-title"
+              >
                 <div class="client-panel-title">
                   <span
                     class="client-icon material-symbols-outlined"
@@ -427,22 +504,171 @@
                     aria-hidden="true"
                     >health_and_safety</span
                   >
-                  <h2>Risks & allergies</h2>
+                  <h2 id="client-alerts-title">Risks & allergies</h2>
                 </div>
-                <div class="client-summary-counts">
+                <dl class="client-overview-facts client-alert-facts">
                   <div>
-                    <strong>{{ activeRisks().length }}</strong
-                    ><small>Active assessments</small>
+                    <dt>Risk assessments</dt>
+                    <dd>
+                      <span
+                        class="client-record-state"
+                        [attr.data-state]="activeRisks().length ? 'warning' : 'neutral'"
+                        >{{
+                          activeRisks().length
+                            ? activeRisks().length + ' active'
+                            : file().entries['risks']?.length
+                              ? 'No active assessments'
+                              : 'Not recorded'
+                        }}</span
+                      >
+                      @for (risk of activeRisks().slice(0, 2); track risk.id) {
+                        <span class="client-fact-secondary"
+                          >{{ risk.name }} ·
+                          <span [class.client-priority-high]="risk.level === 'High'">{{
+                            risk.level
+                          }}</span></span
+                        >
+                      }
+                    </dd>
                   </div>
                   <div>
-                    <strong>{{ (file().entries['allergies'] || []).length }}</strong
-                    ><small>Allergy records</small>
+                    <dt>Allergies</dt>
+                    <dd>
+                      <span
+                        class="client-record-state"
+                        [attr.data-state]="activeAllergies().length ? 'warning' : 'neutral'"
+                        >{{
+                          activeAllergies().length
+                            ? activeAllergies().length +
+                              (activeAllergies().length === 1
+                                ? ' active record'
+                                : ' active records')
+                            : allergyRecords().length
+                              ? 'No active allergy records'
+                              : 'Not recorded'
+                        }}</span
+                      >
+                      @for (allergy of activeAllergies().slice(0, 2); track allergy.id) {
+                        <span class="client-fact-secondary">{{ allergy.name }}</span>
+                      }
+                    </dd>
                   </div>
+                </dl>
+                <p class="client-record-hint">
+                  Missing records do not confirm the absence of risks or allergies.
+                </p>
+                <div class="client-card-footer client-card-actions">
+                  <button class="text-link" (click)="setSection('risks')">
+                    View risks<span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_forward</span
+                    ></button
+                  ><button class="text-link" (click)="setSection('allergies')">
+                    View allergies<span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_forward</span
+                    >
+                  </button>
                 </div>
-                <p>Review recorded risks and response guidance before providing care.</p>
-                <button class="text-link" (click)="setSection('risks')">
-                  Review assessments →
-                </button>
+              </section>
+              <section class="panel client-summary" aria-labelledby="client-medication-title">
+                <div class="client-panel-title">
+                  <span
+                    class="client-icon material-symbols-outlined"
+                    data-tone="purple"
+                    aria-hidden="true"
+                    >medication</span
+                  >
+                  <h2 id="client-medication-title">Medication information</h2>
+                </div>
+                <dl class="client-overview-facts">
+                  <div>
+                    <dt>Register</dt>
+                    <dd>
+                      <span
+                        class="client-record-state"
+                        [attr.data-state]="medicationRecords().length ? 'info' : 'neutral'"
+                        >{{
+                          medicationRecords().length
+                            ? activeMedication().length +
+                              (activeMedication().length === 1
+                                ? ' active record'
+                                : ' active records')
+                            : 'Not recorded'
+                        }}</span
+                      >
+                    </dd>
+                  </div>
+                  @if (activeMedication().length) {
+                    <div>
+                      <dt>Recorded items</dt>
+                      <dd>
+                        @for (medication of activeMedication().slice(0, 2); track medication.id) {
+                          <span class="client-fact-secondary">{{ medication.name }}</span>
+                        }
+                      </dd>
+                    </div>
+                  }
+                </dl>
+                <p class="client-record-hint">Administration is recorded through visit evidence.</p>
+                <div class="client-card-footer">
+                  <button class="text-link" (click)="setSection('medication')">
+                    View medication<span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_forward</span
+                    >
+                  </button>
+                </div>
+              </section>
+              <section class="panel client-summary" aria-labelledby="client-consent-title">
+                <div class="client-panel-title">
+                  <span
+                    class="client-icon material-symbols-outlined"
+                    data-tone="green"
+                    aria-hidden="true"
+                    >verified_user</span
+                  >
+                  <h2 id="client-consent-title">Consent & agreements</h2>
+                </div>
+                <dl class="client-overview-facts">
+                  <div>
+                    <dt>Status</dt>
+                    <dd>
+                      <span
+                        class="client-record-state"
+                        [attr.data-state]="
+                          file().sections['consent']?.['status'] === 'Given'
+                            ? 'success'
+                            : ['Declined', 'Withdrawn'].includes(
+                                  file().sections['consent']?.['status'] || ''
+                                )
+                              ? 'warning'
+                              : 'neutral'
+                        "
+                        >{{ file().sections['consent']?.['status'] || 'Not recorded' }}</span
+                      >
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Recorded on</dt>
+                    <dd>
+                      {{
+                        file().sections['consent']?.['date']
+                          ? (file().sections['consent']['date'] | date: 'dd MMM yyyy')
+                          : 'Not recorded'
+                      }}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Given by / authority</dt>
+                    <dd>{{ file().sections['consent']?.['by'] || 'Not recorded' }}</dd>
+                  </div>
+                </dl>
+                <p class="client-record-hint">Review the recorded scope and restrictions.</p>
+                <div class="client-card-footer">
+                  <button class="text-link" (click)="setSection('consent')">
+                    Review consent<span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_forward</span
+                    >
+                  </button>
+                </div>
               </section>
               <section class="panel client-summary">
                 <div class="client-panel-title">
@@ -454,64 +680,127 @@
                   >
                   <h2>Key contact</h2>
                 </div>
-                <h3>{{ c.representative?.name || 'No representative recorded' }}</h3>
-                <p>
-                  {{ c.representative?.relationship || 'Add family or representative details.' }}
-                </p>
-                <p>{{ c.representative?.phone }}</p>
-                <button class="text-link" (click)="setSection('family')">
-                  Contacts & sharing →
-                </button>
+                <dl class="client-overview-facts">
+                  <div>
+                    <dt>Name</dt>
+                    <dd>{{ c.representative?.name || 'Not recorded' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Relationship</dt>
+                    <dd>{{ c.representative?.relationship || 'Not recorded' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Telephone</dt>
+                    <dd>
+                      @if (c.representative?.phone) {
+                        <a class="client-contact-phone" [href]="'tel:' + c.representative?.phone">{{
+                          c.representative?.phone
+                        }}</a>
+                      } @else {
+                        Not recorded
+                      }
+                    </dd>
+                  </div>
+                </dl>
+                <div class="client-card-footer">
+                  <button class="text-link" (click)="setSection('family')">
+                    Contacts & sharing<span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_forward</span
+                    >
+                  </button>
+                </div>
               </section>
               <section class="panel client-summary">
                 <div class="client-panel-title">
-                  <span
-                    class="client-icon material-symbols-outlined"
-                    data-tone="blue"
-                    aria-hidden="true"
+                  <span class="client-icon material-symbols-outlined" aria-hidden="true"
                     >task_alt</span
                   >
                   <h2>Tasks & outcomes</h2>
                 </div>
-                <div class="client-summary-counts">
+                <dl class="client-overview-facts">
                   <div>
-                    <strong
-                      >{{ completedTasks() }} / {{ (file().entries['tasks'] || []).length }}</strong
-                    ><small>Tasks completed</small>
+                    <dt>Tasks completed</dt>
+                    <dd>
+                      @if (file().entries['tasks']?.length) {
+                        {{ completedTasks() }} / {{ file().entries['tasks'].length }}
+                      } @else {
+                        <span class="client-record-state" data-state="neutral">Not recorded</span>
+                      }
+                    </dd>
                   </div>
+                  <div>
+                    <dt>Planned visits</dt>
+                    <dd>{{ visits().length }}</dd>
+                  </div>
+                  <div>
+                    <dt>Call packages</dt>
+                    <dd>{{ calls().length }}</dd>
+                  </div>
+                </dl>
+                <div class="client-card-footer">
+                  <button class="text-link" (click)="setSection('tasks')">
+                    Open care tasks<span class="material-symbols-outlined" aria-hidden="true"
+                      >arrow_forward</span
+                    >
+                  </button>
                 </div>
-                <p>{{ visits().length }} planned visits · {{ calls().length }} call packages</p>
-                <button class="text-link" (click)="setSection('tasks')">Open care tasks →</button>
               </section>
             </div>
-            <section class="panel client-summary">
-              <div class="client-panel-title">
-                <span
-                  class="client-icon material-symbols-outlined"
-                  data-tone="blue"
-                  aria-hidden="true"
-                  >schedule</span
-                >
-                <h2>Call packages</h2>
-              </div>
-              @for (call of calls(); track call.id) {
-                <div class="client-list-row">
-                  <div>
-                    <strong>{{ call.name }}</strong>
-                    <p>
-                      {{ call.start }}–{{ call.end }} · {{ call.carers }}
-                      {{ call.carers === 1 ? 'carer' : 'carers' }} ·
-                      {{ call.active ? 'Active' : 'Inactive' }}
-                    </p>
-                    <p>{{ call.tasks }}</p>
-                  </div>
+            <section class="panel client-call-packages">
+              <div class="panel-toolbar">
+                <div class="client-panel-title">
+                  <span class="client-icon material-symbols-outlined" aria-hidden="true"
+                    >schedule</span
+                  >
+                  <h2>Call packages</h2>
                 </div>
-              } @empty {
-                <p>No call packages yet. Set up regular support in Calls & allocations.</p>
+                <a class="text-link" routerLink="/manage/rota" [queryParams]="{ client: c.id }"
+                  >Manage call packages<span class="material-symbols-outlined" aria-hidden="true"
+                    >arrow_forward</span
+                  ></a
+                >
+              </div>
+              @if (calls().length) {
+                <div
+                  class="table-wrap"
+                  tabindex="0"
+                  role="region"
+                  aria-label="Client call packages"
+                >
+                  <table class="client-package-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Package</th>
+                        <th scope="col">Time</th>
+                        <th scope="col">Carers</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Tasks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (call of calls(); track call.id) {
+                        <tr>
+                          <td data-label="Package">
+                            <strong>{{ call.name }}</strong>
+                          </td>
+                          <td data-label="Time">{{ call.start }}–{{ call.end }}</td>
+                          <td data-label="Carers">{{ call.carers }}</td>
+                          <td data-label="Status">
+                            <span class="badge" [class.success]="call.active">{{
+                              call.active ? 'Active' : 'Inactive'
+                            }}</span>
+                          </td>
+                          <td data-label="Tasks">{{ call.tasks || 'Not recorded' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <p class="client-package-empty">
+                  No call packages configured. Set up regular support through Calls & allocations.
+                </p>
               }
-              <a class="text-link" routerLink="/manage/rota" [queryParams]="{ client: c.id }"
-                >Manage call packages →</a
-              >
             </section>
           } @else {
             <section class="panel client-section-panel">

@@ -21,8 +21,8 @@
   place-items: center;
   border-radius: 9px;
   flex-shrink: 0;
-  color: #087f76;
-  background: #e6f7f5;
+  color: #0066ac;
+  background: #eaf5fc;
 }
 [data-tone='blue'] {
   color: #2563eb;
@@ -49,7 +49,7 @@
   background: #fdf2f8;
 }
 .client-directory .panel-toolbar {
-  background: linear-gradient(120deg, #f0faf9, #fff 75%);
+  background: linear-gradient(120deg, #f3fbff, #fff 75%);
   border-radius: 10px 10px 0 0;
 }
 .client-filters {
@@ -71,15 +71,15 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: #e6f7f5;
-  color: #087f76;
+  background: #eaf5fc;
+  color: #0066ac;
   font-weight: 600;
   flex-shrink: 0;
 }
 .client-open {
-  color: #087f76;
-  background: #f0faf9;
-  border-color: #c5e8e3;
+  color: #0066ac;
+  background: #f3fbff;
+  border-color: #dfe6eb;
 }
 .client-directory-footer {
   padding: 10px 12px;
@@ -97,13 +97,13 @@
   gap: 12px;
   padding: 12px;
   margin-bottom: 12px;
-  background: linear-gradient(110deg, #f0faf9, #fff 65%);
+  background: linear-gradient(110deg, #f3fbff, #fff 65%);
 }
 .client-avatar-large {
   width: 72px;
   height: 72px;
   font-size: 24px;
-  border: 1px solid #c5e8e3;
+  border: 1px solid #dfe6eb;
   border-radius: 12px;
 }
 .client-profile-info {
@@ -162,12 +162,12 @@
   font-size: 12px;
 }
 .client-section-nav button.active {
-  background: #e6f7f5;
-  color: #087f76;
+  background: #eaf5fc;
+  color: #0066ac;
   font-weight: 600;
 }
 .client-section-nav button:hover {
-  background: #f1f8f7;
+  background: #f3fbff;
 }
 .client-mobile-nav {
   display: none;
@@ -184,7 +184,7 @@
 .client-personal blockquote {
   margin: 12px 0 0;
   padding: 10px 12px;
-  background: #f0faf9;
+  background: #f3fbff;
   color: var(--color-navy);
   border-left: 3px solid var(--color-teal);
   border-radius: 0 7px 7px 0;
@@ -384,7 +384,7 @@
 }
 .client-files button:focus-visible,
 .client-files a:focus-visible {
-  outline: 2px solid #087f76;
+  outline: 2px solid #0066ac;
   outline-offset: 3px;
 }
 @media (max-width: 1279px) {
