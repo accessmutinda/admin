@@ -1,0 +1,558 @@
+@if (p.hr; as h) {
+  @if (step === 0) {
+    <div class="hr-personal-editor">
+      <div class="hr-personal-top">
+        <section class="hr-panel hr-photo-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">account_box</span>Profile
+              Photo
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            <div class="hr-photo-upload">
+              <div class="hr-photo-frame">
+                @if (h.personal.photo) {
+                  <img [src]="h.personal.photo" alt="Staff profile photograph" />
+                } @else {
+                  <span class="material-symbols-outlined" aria-hidden="true">person</span>
+                }
+              </div>
+              <label class="hr-upload-target"
+                ><span class="material-symbols-outlined" aria-hidden="true">upload</span
+                ><strong>Click to upload photo</strong><small>JPG or PNG · up to 1 MB</small
+                ><small>Recommended size: 400 × 400px</small
+                ><input
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  (change)="photo($event)"
+                  [disabled]="busy()"
+                  aria-label="Upload profile photograph"
+              /></label>
+            </div>
+            <div class="hr-actions">
+              <label class="hr-button hr-file-button"
+                ><span class="material-symbols-outlined" aria-hidden="true">photo_camera</span
+                >Upload Photo<input
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  (change)="photo($event)"
+                  [disabled]="busy()"
+                  aria-label="Choose profile photograph"
+              /></label>
+              @if (h.personal.photo) {
+                <button class="hr-text-action" type="button" (click)="h.personal.photo = ''">
+                  Remove
+                </button>
+              }
+            </div>
+            @if (error()) {
+              <p class="hr-error" role="alert">{{ error() }}</p>
+            }
+          </div>
+        </section>
+        <section class="hr-panel hr-basic-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">badge</span>Basic
+              Information
+            </h2>
+          </div>
+          <div class="hr-panel-body hr-form hr-basic-fields">
+            <label
+              >Title<mat-select cvSelect [(ngModel)]="h.personal.title" aria-label="Title"
+                ><mat-option value="">Select</mat-option><mat-option value="Mr">Mr</mat-option
+                ><mat-option value="Ms">Ms</mat-option><mat-option value="Mrs">Mrs</mat-option
+                ><mat-option value="Mx">Mx</mat-option
+                ><mat-option value="Dr">Dr</mat-option></mat-select
+              ></label
+            ><label
+              ><span>First name <em>*</em></span
+              ><input
+                [(ngModel)]="h.personal.firstName"
+                autocomplete="given-name"
+                required /></label
+            ><label
+              >Middle name<input
+                [(ngModel)]="h.personal.middleName"
+                autocomplete="additional-name" /></label
+            ><label
+              ><span>Surname <em>*</em></span
+              ><input [(ngModel)]="h.personal.surname" autocomplete="family-name" required /></label
+            ><label>Staff reference number<input [(ngModel)]="h.reference" /></label
+            ><label>Date of birth<input type="date" [(ngModel)]="h.personal.birthDate" /></label
+            ><label
+              >Age<input
+                [value]="age()"
+                readonly
+                aria-label="Age calculated from date of birth" /></label
+            ><label
+              >Gender<mat-select cvSelect [(ngModel)]="h.personal.gender" aria-label="Gender"
+                ><mat-option value="Female">Female</mat-option
+                ><mat-option value="Male">Male</mat-option
+                ><mat-option value="Other">Other</mat-option
+                ><mat-option value="Prefer not to say">Prefer not to say</mat-option></mat-select
+              ></label
+            ><label>Nationality<input [(ngModel)]="h.personal.nationality" /></label
+            ><label>Ethnicity<input [(ngModel)]="h.personal.ethnicity" /></label
+            ><label>Religion<input [(ngModel)]="h.personal.religion" /></label
+            ><label
+              >Marital status<mat-select
+                cvSelect
+                [(ngModel)]="h.personal.maritalStatus"
+                aria-label="Marital status"
+                ><mat-option value="Single">Single</mat-option
+                ><mat-option value="Married">Married</mat-option
+                ><mat-option value="Civil partnership">Civil partnership</mat-option
+                ><mat-option value="Other">Other</mat-option
+                ><mat-option value="Prefer not to say">Prefer not to say</mat-option></mat-select
+              ></label
+            >
+          </div>
+        </section>
+      </div>
+      <section class="hr-panel hr-address-panel">
+        <div class="hr-panel-head">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">contact_mail</span>Address &
+            Contact Details
+          </h2>
+        </div>
+        <div class="hr-panel-body hr-form hr-contact-fields">
+          <label class="span-2"
+            >Address line 1<input
+              [(ngModel)]="h.personal.address"
+              autocomplete="address-line1" /></label
+          ><label class="span-2"
+            >Address line 2<input
+              [(ngModel)]="h.personal.addressLine2"
+              autocomplete="address-line2" /></label
+          ><label
+            >Town / City<input [(ngModel)]="h.personal.town" autocomplete="address-level2" /></label
+          ><label
+            >County<input [(ngModel)]="h.personal.county" autocomplete="address-level1" /></label
+          ><label class="span-2"
+            >Postcode<input [(ngModel)]="h.personal.postcode" autocomplete="postal-code" /></label
+          ><label
+            >Mobile number<input
+              type="tel"
+              [(ngModel)]="h.personal.phone"
+              autocomplete="tel" /></label
+          ><label class="span-3"
+            ><span>Email address <em>*</em></span
+            ><input type="email" [(ngModel)]="p.email" autocomplete="email" required
+          /></label>
+        </div>
+      </section>
+      <div class="hr-grid">
+        <section class="hr-panel hr-emergency-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">emergency</span>Emergency
+              Contact
+            </h2>
+          </div>
+          <div class="hr-panel-body hr-form">
+            <label>Contact name<input [(ngModel)]="h.personal.emergencyName" /></label
+            ><label>Relationship<input [(ngModel)]="h.personal.emergencyRelationship" /></label
+            ><label
+              >Telephone number<input type="tel" [(ngModel)]="h.personal.emergencyPhone" /></label
+            ><label
+              >Alternative number<input type="tel" [(ngModel)]="h.personal.emergencyAlternative"
+            /></label>
+          </div>
+        </section>
+        <section class="hr-panel hr-kin-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">groups</span>Next of Kin
+            </h2>
+          </div>
+          <div class="hr-panel-body hr-form">
+            <label>Contact name<input [(ngModel)]="h.personal.kinName" /></label
+            ><label>Relationship<input [(ngModel)]="h.personal.kinRelationship" /></label
+            ><label>Telephone number<input type="tel" [(ngModel)]="h.personal.kinPhone" /></label
+            ><label
+              >Alternative number<input type="tel" [(ngModel)]="h.personal.kinAlternative"
+            /></label>
+            @if (h.personal.nextOfKin) {
+              <label class="wide"
+                >Previously recorded details<input [(ngModel)]="h.personal.nextOfKin"
+              /></label>
+            }
+          </div>
+        </section>
+      </div>
+      <div class="hr-preferences-row">
+        <section class="hr-panel hr-language-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">translate</span>Languages &
+              Communication
+            </h2>
+          </div>
+          <div class="hr-panel-body hr-form">
+            <label class="wide"
+              >Languages spoken<input
+                [(ngModel)]="h.personal.languages"
+                placeholder="English, Urdu, Arabic…"
+            /></label>
+            <div class="hr-chips wide">
+              @for (language of languages(); track language) {
+                <span class="hr-chip">{{ language }}</span>
+              }
+            </div>
+          </div>
+        </section>
+        <section class="hr-panel hr-driving-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">directions_car</span
+              >Driving & Vehicle Details
+            </h2>
+          </div>
+          <div class="hr-panel-body hr-form">
+            <label
+              >Driver<mat-select cvSelect [(ngModel)]="h.personal.driver" aria-label="Driver"
+                ><mat-option [value]="false">No</mat-option
+                ><mat-option [value]="true">Yes</mat-option></mat-select
+              ></label
+            ><label
+              >Vehicle details<input
+                [(ngModel)]="h.personal.vehicle"
+                placeholder="Make, model and registration"
+            /></label>
+          </div>
+        </section>
+      </div>
+      <section class="hr-panel hr-notes-panel">
+        <div class="hr-panel-head">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">description</span>Additional
+            Notes
+          </h2>
+        </div>
+        <div class="hr-panel-body hr-form">
+          <label class="wide"
+            >Additional information<textarea
+              [(ngModel)]="h.personal.additionalNotes"
+              maxlength="1000"
+              placeholder="Any additional information relevant to their staff profile"
+            ></textarea>
+          </label>
+        </div>
+      </section>
+    </div>
+  }
+  @if (step === 1) {
+    <div class="hr-employment-editor">
+      <section class="hr-panel">
+        <div class="hr-panel-head"><h2>Employment Details</h2></div>
+        <div class="hr-panel-body hr-form hr-employment-fields">
+          <label>Staff reference *<input [(ngModel)]="h.reference" required /></label
+          ><label>Role / Job title *<input [(ngModel)]="p.role" required /></label
+          ><label>Base branch / Location *<input [(ngModel)]="p.location" required /></label
+          ><label
+            >Employment type *<mat-select
+              cvSelect
+              [(ngModel)]="h.employment.type"
+              required
+              aria-label="Employment type"
+            >
+              <mat-option value="">Select employment type</mat-option>
+              <mat-option value="Permanent">Permanent</mat-option>
+              <mat-option value="Fixed term">Fixed term</mat-option>
+              <mat-option value="Bank">Bank</mat-option>
+              <mat-option value="Agency">Agency</mat-option>
+            </mat-select></label
+          ><label>Department<input [(ngModel)]="h.employment.department" /></label
+          ><label>Line manager<input [(ngModel)]="h.employment.manager" /></label
+          ><label>Start date *<input type="date" [(ngModel)]="p.start" required /></label
+          ><label
+            >Employment status<mat-select
+              cvSelect
+              [(ngModel)]="h.status"
+              aria-label="Employment status"
+            >
+              <mat-option value="Onboarding">Onboarding</mat-option>
+              <mat-option value="Active">Active</mat-option>
+              <mat-option value="Inactive">Inactive</mat-option>
+              <mat-option value="Left">Left</mat-option>
+            </mat-select></label
+          ><label
+            >Contracted hours per week<input
+              type="number"
+              min="0"
+              max="168"
+              [(ngModel)]="h.employment.hours"
+          /></label>
+          @if (hr.canPay(true)) {
+            <label
+              >Hourly rate (£)<input
+                type="number"
+                min="0"
+                step="0.01"
+                [(ngModel)]="h.employment.rate" /></label
+            ><label>Payroll number<input [(ngModel)]="h.employment.payrollNumber" /></label>
+          }
+          <label
+            >Probation (months)<input
+              type="number"
+              min="0"
+              [(ngModel)]="h.employment.probationMonths" /></label
+          ><label
+            >Contract end date<input type="date" [(ngModel)]="h.employment.contractEnd" /></label
+          ><label
+            >Notice period (weeks)<input
+              type="number"
+              min="0"
+              [(ngModel)]="h.employment.noticeWeeks" /></label
+          ><label class="wide hr-employment-history"
+            >Previous employment<textarea
+              [(ngModel)]="h.employment.history"
+              placeholder="Organisation, role and employment dates"
+            ></textarea></label
+          ><label class="wide hr-employment-gaps"
+            >Gaps in employment<textarea
+              [(ngModel)]="h.employment.gaps"
+              placeholder="Dates and explanations"
+            ></textarea>
+          </label>
+        </div>
+      </section>
+      <section class="hr-panel">
+        <div class="hr-panel-head">
+          <h2>Employment References</h2>
+          <button class="hr-button" type="button" (click)="addReference()">Add reference</button>
+        </div>
+        <div class="hr-panel-body">
+          @for (r of h.references; track r.id) {
+            <div class="hr-form">
+              <label>Referee name<input [(ngModel)]="r.name" /></label
+              ><label>Organisation<input [(ngModel)]="r.organisation" /></label
+              ><label>Email<input type="email" [(ngModel)]="r.email" /></label
+              ><label
+                >Status<mat-select cvSelect [(ngModel)]="r.status" aria-label="Status">
+                  <mat-option value="Requested">Requested</mat-option>
+                  <mat-option value="Received">Received</mat-option>
+                  <mat-option value="Verified">Verified</mat-option>
+                </mat-select></label
+              >
+            </div>
+            <hr />
+          } @empty {
+            <p class="hr-muted">No references recorded.</p>
+          }
+        </div>
+      </section>
+      <section class="hr-panel">
+        <div class="hr-panel-head">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">person_search</span
+            >Recruitment Information
+          </h2>
+        </div>
+        @if (recruitment(); as r) {
+          <div class="hr-panel-body hr-form hr-employment-fields">
+            <label>Advertisement source<input [(ngModel)]="r.source" /></label
+            ><label>Application date<input type="date" [(ngModel)]="r.applicationDate" /></label
+            ><label>Interview date<input type="date" [(ngModel)]="r.interviewDate" /></label
+            ><label>Offer date<input type="date" [(ngModel)]="r.offerDate" /></label
+            ><label
+              >Next probation / review date<input type="date" [(ngModel)]="r.nextReview" /></label
+            ><label class="wide"
+              >Interview notes<textarea [(ngModel)]="r.interviewNotes"></textarea>
+            </label>
+          </div>
+        }
+      </section>
+    </div>
+  }
+  @if (step === 6) {
+    <div class="hr-check-editor">
+      <div class="hr-notice">
+        Verification requires a reviewer, completion date and supporting document. Upload evidence
+        under Documents before verifying a check.
+      </div>
+      @for (c of h.checks; track c.id) {
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>{{ c.title }}</h2>
+            <span class="hr-badge">{{ checkState(c) }}</span>
+          </div>
+          <div class="hr-panel-body hr-form">
+            <label
+              >Status<mat-select cvSelect [(ngModel)]="c.status" aria-label="Status">
+                <mat-option value="Not started">Not started</mat-option>
+                <mat-option value="Pending">Pending</mat-option>
+                <mat-option value="Recorded">Recorded</mat-option>
+                <mat-option value="Verified">Verified</mat-option>
+                <mat-option value="Not required">Not required</mat-option>
+              </mat-select></label
+            ><label>Completed date<input type="date" [(ngModel)]="c.completed" /></label
+            ><label>Review / Renewal date<input type="date" [(ngModel)]="c.expiry" /></label
+            ><label>Reviewer<input [(ngModel)]="c.reviewer" /></label
+            ><label
+              >Evidence document<mat-select
+                cvSelect
+                [(ngModel)]="c.documentId"
+                aria-label="Evidence document"
+              >
+                <mat-option value="">No evidence attached</mat-option>
+                @for (d of p.documents ?? []; track d.id) {
+                  <mat-option [value]="d.id">{{ d.name }}</mat-option>
+                }
+              </mat-select></label
+            ><label>Review notes<input [(ngModel)]="c.note" /></label>
+          </div>
+        </section>
+      }
+    </div>
+  }
+  @if (step === 2) {
+    <cv-staff-availability [p]="p" [editable]="true" />
+  }
+  @if (step === 3) {
+    <div class="hr-training-editor">
+      <section class="hr-panel">
+        <div class="hr-panel-head"><h2>Training Assignments</h2></div>
+        <div class="hr-panel-body">
+          @for (c of courses; track c.id) {
+            <label class="hr-check"
+              ><input
+                type="checkbox"
+                [checked]="p.learning.includes(c.id)"
+                (change)="toggleCourse(c.id, $any($event.target).checked)"
+              />{{ c.title }} <span class="hr-badge">{{ c.category }}</span></label
+            >
+          }
+        </div>
+      </section>
+      @for (t of h.training; track t.courseId) {
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>{{ title(t.courseId) }}</h2>
+          </div>
+          <div class="hr-panel-body hr-form">
+            <label>Completion date<input type="date" [(ngModel)]="t.completed" /></label
+            ><label>Renewal date<input type="date" [(ngModel)]="t.expiry" /></label
+            ><label>Score (%)<input type="number" min="0" max="100" [(ngModel)]="t.score" /></label
+            ><label>Reassessment due<input type="date" [(ngModel)]="t.reassessmentDue" /></label
+            ><label>Assessor / Training provider<input [(ngModel)]="t.assessor" /></label
+            ><label
+              >Practical competency<mat-select
+                cvSelect
+                [(ngModel)]="t.competency"
+                aria-label="Practical competency"
+              >
+                <mat-option value="Not assessed">Not assessed</mat-option>
+                <mat-option value="Competent">Competent</mat-option>
+                <mat-option value="Needs development">Needs development</mat-option>
+              </mat-select></label
+            ><label
+              >Certificate<mat-select
+                cvSelect
+                [(ngModel)]="t.certificateId"
+                aria-label="Certificate"
+              >
+                <mat-option value="">Not attached</mat-option>
+                @for (d of p.documents ?? []; track d.id) {
+                  <mat-option [value]="d.id">{{ d.name }}</mat-option>
+                }
+              </mat-select></label
+            >
+          </div>
+        </section>
+      }
+      <section class="hr-panel">
+        <div class="hr-panel-head"><h2>Induction Checklist</h2></div>
+        <div class="hr-panel-body">
+          @for (t of h.induction; track t.id) {
+            <label class="hr-check"
+              ><input type="checkbox" [(ngModel)]="t.complete" />{{ t.title }}</label
+            >
+          }
+        </div>
+      </section>
+    </div>
+  }
+  @if (step === 4) {
+    <section class="hr-panel">
+      <div class="hr-panel-head"><h2>Upload Documents</h2></div>
+      <div class="hr-panel-body hr-form">
+        <label
+          >Category<mat-select cvSelect [(ngModel)]="category" aria-label="Category">
+            <mat-option value="Employment & HR">Employment & HR</mat-option>
+            <mat-option value="Right to Work & Identity">Right to Work & Identity</mat-option>
+            <mat-option value="DBS & Background Checks">DBS & Background Checks</mat-option>
+            <mat-option value="Professional & Training">Professional & Training</mat-option>
+            <mat-option value="References">References</mat-option>
+            <mat-option value="Driving & Vehicle">Driving & Vehicle</mat-option>
+            <mat-option value="Other Records">Other Records</mat-option>
+          </mat-select></label
+        ><label
+          >Replace an existing document<mat-select
+            cvSelect
+            [(ngModel)]="replacementId"
+            aria-label="Replace an existing document"
+          >
+            <mat-option value="">Upload as a new document</mat-option>
+            @for (d of p.documents ?? []; track d.id) {
+              <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option>
+            }
+          </mat-select></label
+        ><label
+          >Choose file (up to 1 MB)<input
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+            (change)="upload($event)"
+            [disabled]="busy()"
+        /></label>
+        <p class="hr-muted wide">
+          Documents are saved on this device when you save the staff record. Uploading a file does
+          not verify its contents.
+        </p>
+        @if (error()) {
+          <p class="hr-error wide" role="alert">{{ error() }}</p>
+        }
+      </div>
+      <div class="hr-table-wrap">
+        <table class="hr-table">
+          <thead>
+            <tr>
+              <th scope="col">Document</th>
+              <th scope="col">Category</th>
+              <th scope="col">Status</th>
+              <th scope="col">Version</th>
+              <th scope="col">Expiry / Renewal</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (d of p.documents ?? []; track d.id) {
+              <tr>
+                <td>
+                  {{ d.name }}
+                  @if (d.replacesId) {
+                    <small>Replacement; previous version retained</small>
+                  }
+                </td>
+                <td>{{ d.category || 'Other Records' }}</td>
+                <td>{{ d.status || 'Pending review' }}</td>
+                <td>{{ d.version || 1 }}</td>
+                <td>
+                  <label class="hr-form"
+                    >Expiry date for {{ d.name }}<input type="date" [(ngModel)]="d.expiry"
+                  /></label>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="hr-empty">No documents attached.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+}

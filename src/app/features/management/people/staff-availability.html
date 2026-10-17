@@ -1,0 +1,250 @@
+@if (p.hr; as h) {
+  <div class="hr-availability-top">
+    <section class="hr-panel">
+      <div class="hr-panel-head">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Weekly
+          Availability
+        </h2>
+        @if (editable) {
+          <div class="hr-actions">
+            <button class="hr-text-action" (click)="copyMonday()">Copy Monday to all</button
+            ><button class="hr-text-action" (click)="clear()">Clear all</button>
+          </div>
+        }
+      </div>
+      <div class="hr-panel-body">
+        <p class="hr-muted">
+          {{
+            editable
+              ? 'Choose when the staff member is typically available. Click a slot to cycle between available, preferred and unavailable.'
+              : 'Recurring working pattern. Dated approved leave overrides these preferences.'
+          }}
+        </p>
+        @if (editable) {
+          <label class="hr-check"
+            ><input
+              type="checkbox"
+              [checked]="custom()"
+              (change)="mode($any($event.target).checked)"
+            />Use custom daily time windows</label
+          >
+        }
+        @if (custom()) {
+          <div class="hr-form">
+            @for (a of h.availability; track a.day) {
+              <div class="hr-availability-custom">
+                <strong>{{ a.day }}</strong
+                ><label
+                  >Status<mat-select
+                    cvSelect
+                    [(ngModel)]="a.preference"
+                    [disabled]="!editable"
+                    [attr.aria-label]="a.day + ' availability'"
+                    ><mat-option value="Unavailable">Unavailable</mat-option
+                    ><mat-option value="Available">Available</mat-option
+                    ><mat-option value="Preferred">Preferred</mat-option></mat-select
+                  ></label
+                ><label
+                  >From<input type="time" [(ngModel)]="a.start" [readonly]="!editable" /></label
+                ><label>To<input type="time" [(ngModel)]="a.end" [readonly]="!editable" /></label>
+              </div>
+            }
+          </div>
+        } @else {
+          <div
+            class="hr-table-wrap"
+            role="region"
+            aria-label="Weekly availability matrix"
+            tabindex="0"
+          >
+            <table class="hr-availability-matrix">
+              <thead>
+                <tr>
+                  <th scope="col">Time Slot</th>
+                  @for (day of days; track day) {
+                    <th scope="col">{{ day }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (slot of slots(p); track slot.title; let i = $index) {
+                  <tr>
+                    <th scope="row">
+                      {{ slot.title
+                      }}<small
+                        >{{ slot.start }} – {{ slot.end
+                        }}{{ overnight(slot.start, slot.end) }}</small
+                      >
+                    </th>
+                    @for (day of days; track day; let j = $index) {
+                      <td>
+                        <button
+                          type="button"
+                          [disabled]="!editable"
+                          [attr.aria-label]="day + ' ' + slot.title + ': ' + slot.days[j]"
+                          [class.available]="slot.days[j] === 'Available'"
+                          [class.preferred]="slot.days[j] === 'Preferred'"
+                          [class.unavailable]="slot.days[j] === 'Unavailable'"
+                          (click)="cycle(i, j)"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">{{
+                            slot.days[j] === 'Unavailable' ? 'check_box_outline_blank' : 'check_box'
+                          }}</span
+                          >{{ slot.days[j] }}
+                        </button>
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </section>
+    <section class="hr-panel">
+      <div class="hr-panel-head">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_today</span>Calendar
+          Preview
+        </h2>
+      </div>
+      <div class="hr-panel-body">
+        <div class="hr-calendar-heading">
+          <button class="hr-icon-action" aria-label="Previous month" (click)="moveMonth(-1)">
+            ‹</button
+          ><strong>{{ monthLabel() }}</strong
+          ><button class="hr-icon-action" aria-label="Next month" (click)="moveMonth(1)">›</button>
+        </div>
+        <div class="hr-calendar-legend">
+          <span class="available">Available</span><span class="preferred">Preferred</span
+          ><span class="unavailable">Unavailable</span>
+        </div>
+        <table class="hr-calendar" aria-label="Recurring availability calendar">
+          <thead>
+            <tr>
+              @for (day of days; track day) {
+                <th scope="col">{{ day.slice(0, 3) }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (week of calendarWeeks(); track $index) {
+              <tr>
+                @for (cell of week; track $index) {
+                  <td [attr.aria-label]="cell.date ? cell.date + ': ' + cell.state : 'Empty day'">
+                    @if (cell.day) {
+                      <span>{{ cell.day }}</span
+                      ><i
+                        [class.available]="cell.state === 'Available'"
+                        [class.preferred]="cell.state === 'Preferred'"
+                        [class.unavailable]="cell.state === 'Unavailable'"
+                        [class.leave]="cell.state === 'On leave'"
+                      ></i>
+                    }
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p class="hr-muted">
+          Recurring availability and approved leave. This is not a rota or a booking.
+        </p>
+      </div>
+    </section>
+  </div>
+  <div class="hr-availability-bottom">
+    <section class="hr-panel">
+      <div class="hr-panel-head">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">tune</span>Working Preferences
+        </h2>
+      </div>
+      <div class="hr-panel-body hr-form">
+        <label
+          >Preferred working areas<input
+            [(ngModel)]="h.preferences.areas"
+            [readonly]="!editable" /></label
+        ><label
+          >Maximum travel distance<input
+            [(ngModel)]="h.preferences.travel"
+            [readonly]="!editable" /></label
+        ><label
+          >Driver<mat-select
+            cvSelect
+            [(ngModel)]="h.personal.driver"
+            [disabled]="!editable"
+            aria-label="Driver preference"
+            ><mat-option [value]="true">Yes</mat-option
+            ><mat-option [value]="false">No</mat-option></mat-select
+          ></label
+        ><label
+          >Vehicle access<input [(ngModel)]="h.personal.vehicle" [readonly]="!editable" /></label
+        ><label
+          >Shift preference<input
+            [(ngModel)]="h.preferences.shifts"
+            [readonly]="!editable"
+            placeholder="Days, evenings, nights…" /></label
+        ><label
+          >Live-in preference<mat-select
+            cvSelect
+            [(ngModel)]="h.preferences.liveIn"
+            [disabled]="!editable"
+            aria-label="Live-in preference"
+            ><mat-option value="Interested">Interested</mat-option
+            ><mat-option value="Consider">Consider</mat-option
+            ><mat-option value="Not interested">Not interested</mat-option></mat-select
+          ></label
+        >
+      </div>
+    </section>
+    <section class="hr-panel">
+      <div class="hr-panel-head">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">groups</span>Client Group
+          Suitability
+        </h2>
+      </div>
+      <div class="hr-panel-body">
+        <p class="hr-muted">Recorded working preferences; training requirements still apply.</p>
+        @for (group of groups; track group) {
+          <label class="hr-check"
+            ><input
+              type="checkbox"
+              [checked]="h.preferences.clientGroups?.includes(group)"
+              [disabled]="!editable"
+              (change)="toggleGroup(group, $any($event.target).checked)"
+            />{{ group }}</label
+          >
+        }
+      </div>
+    </section>
+    <section class="hr-panel">
+      <div class="hr-panel-head">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">description</span>Additional
+          Notes
+        </h2>
+      </div>
+      <div class="hr-panel-body hr-form">
+        <label class="wide"
+          >Working preferences and restrictions<textarea
+            [(ngModel)]="h.preferences.notes"
+            [readonly]="!editable"
+            rows="6"
+            placeholder="Additional information about working preferences or restrictions"
+          ></textarea>
+        </label>
+        <div class="hr-notice wide">
+          <strong>Why this information matters</strong>
+          <p>
+            These preferences help coordinators match suitable staff with service users while
+            checking actual skills and readiness.
+          </p>
+        </div>
+      </div>
+    </section>
+  </div>
+}

@@ -37,18 +37,29 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
       /></a>
       <p class="nav-label">ORGANISATION</p>
       @for (item of organisation; track item.path) {
-        <a [routerLink]="item.path" routerLinkActive="active" (click)="menuOpen.set(false)"
+        <a
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          (click)="menuOpen.set(false)"
           ><span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span
           >{{ item.label }}</a
         >
       }
-      <p class="nav-label">PEOPLE & DEVELOPMENT</p>
-      @for (item of people; track item.path) {
-        <a [routerLink]="item.path" routerLinkActive="active" (click)="menuOpen.set(false)"
-          ><span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span
-          >{{ item.label }}</a
-        >
-      }
+      <a
+        routerLink="/manage/people"
+        [class.active]="isPeopleArea()"
+        [attr.aria-current]="isPeopleArea() ? 'page' : null"
+        (click)="menuOpen.set(false)"
+        ><span class="material-symbols-outlined" aria-hidden="true">groups</span>People & HR</a
+      >
+      <a
+        routerLink="/manage/learning"
+        routerLinkActive="active"
+        ariaCurrentWhenActive="page"
+        (click)="menuOpen.set(false)"
+        ><span class="material-symbols-outlined" aria-hidden="true">school</span>Training Academy</a
+      >
       @if (store.company()?.modules.includes('Care delivery')) {
         <p class="nav-label">CARE DELIVERY</p>
         <a routerLink="/manage/clients" routerLinkActive="active" (click)="menuOpen.set(false)"
@@ -121,10 +132,14 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           >
             <span class="material-symbols-outlined" aria-hidden="true">menu</span>
           </button>
-          @if (isCompaniesOverview()) {
+          @if (isCompaniesOverview() || isPeopleArea()) {
             <div class="co-console-heading">
               <strong>Admin Console</strong
-              ><span>Manage companies, users, and system configuration</span>
+              ><span>{{
+                isPeopleArea()
+                  ? 'Manage staff, employment and workforce readiness'
+                  : 'Manage companies, users, and system configuration'
+              }}</span>
             </div>
           }
           <button
@@ -178,18 +193,15 @@ export class ManagementLayout {
     { path: '/manage/companies', label: 'Companies', icon: 'domain' },
     { path: '/manage/workflows', label: 'Approval workflows', icon: 'account_tree' },
   ];
-  protected readonly people = [
-    { path: '/manage/recruitment', label: 'Recruitment', icon: 'person_search' },
-    { path: '/manage/onboarding', label: 'Onboarding', icon: 'assignment_ind' },
-    { path: '/manage/staff', label: 'Staff directory', icon: 'groups' },
-    { path: '/manage/compliance', label: 'Compliance', icon: 'verified_user' },
-    { path: '/manage/leave', label: 'Availability & leave', icon: 'event' },
-    { path: '/manage/reviews', label: 'Supervision & appraisals', icon: 'forum' },
-    { path: '/manage/learning', label: 'Training academy', icon: 'school' },
-  ];
   protected isCompaniesOverview(): boolean {
     const path = this.router.url.split(/[?#]/)[0];
     return path.startsWith('/manage/companies') || path === '/manage/locations';
+  }
+  protected isPeopleArea(): boolean {
+    const path = this.router.url.split(/[?#]/)[0];
+    return ['/manage/people', '/manage/recruitment', '/manage/leave', '/manage/reviews'].some(
+      (area) => path === area || path.startsWith(area + '/'),
+    );
   }
   protected switchWorkspace(): void {
     this.router.navigateByUrl('/select-workspace');

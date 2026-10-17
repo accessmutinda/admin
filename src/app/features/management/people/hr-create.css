@@ -1,0 +1,143 @@
+.hr-steps {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  background: linear-gradient(120deg, #fff, #fcfefe);
+  border: 1px solid #e9eff3;
+  border-radius: 9px;
+  box-shadow: 0 2px 7px #123c541f;
+}
+.hr-step-label {
+  text-align: center;
+}
+.hr-step-label small {
+  display: block;
+  margin-top: 3px;
+}
+.hr-create-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+.hr-create-layout > main {
+  min-width: 0;
+}
+.hr-create-sidebar {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.hr-guidance {
+  padding: 12px 11px;
+  background: #eef8fe;
+  border: 1px solid #dcecf5;
+  border-radius: 9px;
+  font-size: 11px;
+  color: #536781;
+  line-height: 1.6;
+}
+.hr-guidance h2 {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 13px;
+  color: #002b60;
+  margin: 0 0 10px;
+}
+.hr-guidance h2 > .material-symbols-outlined {
+  color: #008afa;
+  font-size: 19px;
+}
+.hr-guidance p {
+  font-size: 11px;
+  margin: 0 0 10px;
+  color: #657184;
+  line-height: 1.6;
+}
+.hr-guidance dl {
+  margin: 0;
+}
+.hr-guidance dt {
+  font-weight: 700;
+  color: #123352;
+  margin-top: 8px;
+}
+.hr-guidance dd {
+  margin: 2px 0 0 20px;
+}
+.hr-guidance em {
+  color: #d62b41;
+  font-style: normal;
+  font-weight: 700;
+  margin-right: 8px;
+}
+.hr-guidance ul {
+  padding-left: 16px;
+  margin: 0;
+}
+.hr-guidance li {
+  margin: 6px 0;
+}
+.hr-guidance.tips {
+  background: #effaf5;
+  border-color: #dff1e8;
+}
+.hr-create-footer {
+  background: linear-gradient(120deg, #fff, #fcfefe);
+  border: 1px solid #e9eff3;
+  border-radius: 9px;
+  box-shadow: 0 2px 7px #123c541f;
+  padding: 8px;
+}
+.hr-create-footer .hr-button {
+  min-height: 32px;
+}
+.hr-create-review .hr-detail {
+  grid-template-columns: 160px 1fr;
+}
+@media (max-width: 1250px) {
+  .hr-create-layout {
+    grid-template-columns: minmax(0, 1.65fr) 270px;
+  }
+}
+@media (max-width: 900px) {
+  .hr-create-layout {
+    grid-template-columns: 1fr;
+  }
+  .hr-create-sidebar {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hr-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px 0;
+  }
+  .hr-steps li:nth-child(3)::after {
+    display: none;
+  }
+}
+@media (max-width: 500px) {
+  .hr-create-sidebar {
+    grid-template-columns: 1fr;
+  }
+  .hr-step-number {
+    flex-basis: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+  .hr-steps li:after {
+    top: 13px;
+  }
+  .hr-create-footer {
+    gap: 6px;
+  }
+  .hr-create-footer .hr-button {
+    padding: 5px 8px;
+  }
+}
+
+.hr-create-layout.availability-step {
+  grid-template-columns: 1fr;
+}
+.availability-step .hr-create-sidebar {
+  display: none;
+}

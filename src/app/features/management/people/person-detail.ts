@@ -5,7 +5,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   CHECKS,
   COURSES,
@@ -34,6 +34,7 @@ import { PersonCompliance } from './compliance/person-compliance';
   templateUrl: './person-detail.html',
 })
 export class PersonDetail {
+  private readonly router = inject(Router);
   protected readonly checks = CHECKS;
   protected readonly store = inject(ManagementStore);
   private readonly toast = inject(ToastService);
@@ -121,6 +122,10 @@ export class PersonDetail {
     const p = this.person();
     if (!p || p.stage === 'Hired') return;
     const next = this.stage();
+    if (next === 'Hired') {
+      void this.router.navigate(['/manage/people/staff/new'], { queryParams: { source: p.id } });
+      return;
+    }
     this.store.updatePerson({
       ...p,
       stage: next,

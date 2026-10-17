@@ -1,0 +1,580 @@
+<nav class="hr-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/people" [attr.aria-current]="mode === 'overview' ? 'page' : null"
+    >People & HR</a
+  >
+  @if (mode !== 'overview') {
+    <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+    <span aria-current="page">{{ headings[mode] }}</span>
+  }
+</nav>
+<div class="hr-heading">
+  <div>
+    <h1>{{ headings[mode] }}</h1>
+    <p>
+      {{
+        mode === 'overview'
+          ? 'Manage your workforce, starter setup and employment checks.'
+          : 'Find employee records and manage personal and employment details.'
+      }}
+    </p>
+  </div>
+  <div class="hr-actions">
+    @if (hr.can('create')) {
+      <a class="hr-button primary" routerLink="/manage/people/staff/new"
+        ><span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add Staff
+        Member</a
+      >
+    }
+    @if (mode !== 'overview' && hr.can('export')) {
+      <button class="hr-button" [disabled]="!filtered().length" (click)="hr.export(filtered())">
+        Export
+      </button>
+    }
+  </div>
+</div>
+@if (mode === 'overview') {
+  @if (hr.store.company(); as company) {
+    <section class="co-summary co-surface" aria-label="Current company workforce overview">
+      <div class="co-company-image">
+        @if (company.logo) {
+          <img [src]="company.logo" [alt]="company.name + ' logo'" />
+        } @else {
+          <div class="co-reference-photo" role="img" aria-label="Care home placeholder"></div>
+        }
+      </div>
+      <div class="co-summary-content">
+        <div class="co-summary-header">
+          <div class="co-company-title">
+            <h2>{{ company.name }}</h2>
+            <span class="co-active">{{ hr.staff().length }} staff</span>
+          </div>
+          <a class="co-profile-button" routerLink="/manage/people/staff"
+            >View Staff Directory<span class="material-symbols-outlined" aria-hidden="true"
+              >arrow_forward</span
+            ></a
+          >
+        </div>
+        <div class="co-facts">
+          <div>
+            <span>Company code</span><strong>{{ company.code }}</strong>
+          </div>
+          <div>
+            <span>Service type</span><strong>{{ company.sector || 'Not recorded' }}</strong>
+          </div>
+          <div>
+            <span>Branches with staff</span><strong>{{ branches().length }}</strong>
+          </div>
+        </div>
+        <div class="co-details">
+          <div>
+            <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+            ><span
+              ><small>Head Office</small
+              >{{ company.headOfficeAddress || company.postcode || 'Location not added' }}</span
+            >
+          </div>
+          <div>
+            <span class="material-symbols-outlined" aria-hidden="true">verified_user</span
+            ><span><small>Compliance</small>{{ complianceRate() }}</span>
+          </div>
+          <div>
+            <span class="material-symbols-outlined" aria-hidden="true">draft</span
+            ><span><small>Saved drafts</small>{{ hr.drafts().length }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  }
+}
+<div
+  class="hr-stats"
+  [class.directory-stats]="mode !== 'overview'"
+  [class.overview-stats]="mode === 'overview'"
+>
+  @for (
+    stat of mode === 'overview' ? stats() : directoryStats();
+    track stat.label;
+    let i = $index
+  ) {
+    <a
+      class="hr-stat"
+      [style.--stat-color]="
+        ['#008afa', '#00a34e', '#03a6c1', '#ff8a00', '#ff3047', '#9553dc', '#008d9f', '#008afa'][i]
+      "
+      [routerLink]="stat.link"
+      [queryParams]="stat.query"
+      ><span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>
+      <div>
+        <small>{{ stat.label }}</small
+        ><strong>{{ stat.value }}</strong
+        ><small>{{ stat.caption }}</small>
+      </div></a
+    >
+  }
+</div>
+@if (mode === 'overview') {
+  <div class="hr-hub-layout">
+    <section class="hr-panel">
+      <div class="hr-panel-head">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">groups</span>Manage your
+          workforce
+        </h2>
+        <span class="hr-muted">{{ hr.staff().length }} staff</span>
+      </div>
+      <div class="hr-destination-grid">
+        @for (item of overviewLinks; track item.path; let i = $index) {
+          <a
+            class="hr-destination"
+            [style.--destination-color]="['#008d9f', '#008eff', '#00aac4', '#ff8a00'][i % 4]"
+            [routerLink]="item.path"
+            ><span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
+            <div>
+              <strong>{{ item.title }}</strong
+              ><small>{{ item.description }}</small>
+            </div></a
+          >
+        }
+      </div>
+    </section>
+    <section class="hr-panel">
+      <div class="hr-panel-head">
+        <h2><span class="material-symbols-outlined" aria-hidden="true">bolt</span>Quick Actions</h2>
+      </div>
+      <div class="hr-quick-actions">
+        @if (hr.can('create')) {
+          <a class="hr-button primary" routerLink="/manage/people/staff/new"
+            ><span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add Staff
+            Member</a
+          >
+        }
+        <a
+          class="hr-button"
+          routerLink="/manage/people/onboarding"
+          [queryParams]="{ lane: 'drafts' }"
+          ><span class="material-symbols-outlined" aria-hidden="true">draft</span>Resume Staff Draft
+          <span class="hr-badge">{{ hr.drafts().length }}</span></a
+        ><a class="hr-button" routerLink="/manage/reviews"
+          ><span class="material-symbols-outlined" aria-hidden="true">event</span>Schedule
+          Supervision</a
+        ><a class="hr-button" routerLink="/manage/recruitment"
+          ><span class="material-symbols-outlined" aria-hidden="true">person_search</span>Open
+          Recruitment</a
+        ><a class="hr-button" routerLink="/manage/people/compliance"
+          ><span class="material-symbols-outlined" aria-hidden="true">verified_user</span>Review
+          Workforce Compliance</a
+        ><a class="hr-button" routerLink="/manage/companies/access"
+          ><span class="material-symbols-outlined" aria-hidden="true">manage_accounts</span>Manage
+          Application Access</a
+        >
+      </div>
+    </section>
+  </div>
+  <section class="hr-panel hr-register">
+    <div class="hr-register-toolbar">
+      <h2>
+        Your team <small>({{ filtered().length }})</small>
+      </h2>
+      <div class="hr-actions">
+        <label class="hr-preview-search"
+          ><span class="material-symbols-outlined" aria-hidden="true">search</span
+          ><input
+            type="search"
+            aria-label="Search team preview"
+            placeholder="Search staff…"
+            [ngModel]="q()"
+            (ngModelChange)="set('q', $event)" /></label
+        ><a class="hr-button" routerLink="/manage/people/staff" queryParamsHandling="preserve"
+          >View directory →</a
+        >
+      </div>
+    </div>
+    <div class="hr-table-wrap" role="region" aria-label="Team preview" tabindex="0">
+      <table class="hr-table">
+        <thead>
+          <tr>
+            <th scope="col">Staff Member</th>
+            <th scope="col">Role / Branch</th>
+            <th scope="col">Employment Status</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of filtered().slice(0, 5); track p.id) {
+            <tr>
+              <td>
+                <div class="hr-identity-cell">
+                  <span class="hr-row-photo">
+                    @if (p.hr.personal.photo) {
+                      <img [src]="p.hr.personal.photo" alt="" />
+                    } @else {
+                      {{ hr.store.initials(p.name) }}
+                    }
+                  </span>
+                  <div>
+                    <a [routerLink]="['/manage/people/staff', p.id, 'overview']"
+                      ><strong>{{ p.name }}</strong></a
+                    ><small>{{ p.hr.reference }}</small>
+                  </div>
+                </div>
+              </td>
+              <td>
+                {{ p.role }}<small>{{ p.location }}</small>
+              </td>
+              <td>
+                <span class="hr-badge" [class.good]="p.hr.status === 'Active'">{{
+                  p.hr.status
+                }}</span>
+              </td>
+              <td>
+                <a [routerLink]="['/manage/people/staff', p.id, 'overview']">Open profile →</a>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4" class="hr-empty">No staff match your search.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="hr-footer">
+      <span>Showing {{ filtered().slice(0, 5).length }} of {{ filtered().length }} staff</span
+      ><a routerLink="/manage/people/staff" queryParamsHandling="preserve">View all staff</a>
+    </div>
+  </section>
+} @else {
+  <section class="hr-panel hr-filter-panel">
+    <div class="hr-filters">
+      <label class="hr-directory-search"
+        >Search staff<input
+          type="search"
+          [ngModel]="q()"
+          (ngModelChange)="set('q', $event)"
+          placeholder="Name, reference, email or phone" /></label
+      ><label
+        >Branch<mat-select
+          cvSelect
+          [ngModel]="branch()"
+          (ngModelChange)="set('branch', $event)"
+          aria-label="Branch"
+        >
+          <mat-option value="">All branches</mat-option>
+          @for (b of branches(); track b) {
+            <mat-option [value]="b">{{ b }}</mat-option>
+          }
+        </mat-select></label
+      ><label
+        >Role<mat-select
+          cvSelect
+          [ngModel]="role()"
+          (ngModelChange)="set('role', $event)"
+          aria-label="Role"
+        >
+          <mat-option value="">All roles</mat-option>
+          @for (r of roles(); track r) {
+            <mat-option [value]="r">{{ r }}</mat-option>
+          }
+        </mat-select></label
+      ><label
+        >Employment status<mat-select
+          cvSelect
+          [ngModel]="status()"
+          (ngModelChange)="set('status', $event)"
+          aria-label="Employment status"
+        >
+          <mat-option value="">All statuses</mat-option>
+          <mat-option value="Onboarding">Onboarding</mat-option>
+          <mat-option value="Active">Active</mat-option>
+          <mat-option value="Inactive">Inactive</mat-option>
+          <mat-option value="Left">Left</mat-option
+          ><mat-option value="archived">Inactive / Left</mat-option>
+        </mat-select></label
+      >
+    </div>
+    <div class="hr-filter-summary">
+      <span>{{ filtered().length }} staff match these filters</span
+      ><button class="hr-clear" (click)="clear()">
+        <span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>Clear filters
+      </button>
+    </div>
+    <div class="hr-filter-chips">
+      <button class="hr-filter-chip" [class.active]="!status() && !driver()" (click)="clear()">
+        <span class="material-symbols-outlined" aria-hidden="true">check_box</span>All ({{
+          hr.staff().length
+        }})</button
+      ><button
+        class="hr-filter-chip"
+        [class.active]="status() === 'Active'"
+        (click)="set('status', 'Active')"
+      >
+        Active</button
+      ><button
+        class="hr-filter-chip"
+        [class.active]="status() === 'Inactive'"
+        (click)="set('status', 'Inactive')"
+      >
+        Inactive</button
+      ><button
+        class="hr-filter-chip"
+        [class.active]="driver() === 'yes'"
+        (click)="set('driver', driver() === 'yes' ? '' : 'yes')"
+      >
+        Driver</button
+      ><button
+        class="hr-filter-chip"
+        [class.active]="driver() === 'no'"
+        (click)="set('driver', driver() === 'no' ? '' : 'no')"
+      >
+        Non-driver
+      </button>
+    </div>
+  </section>
+  <section class="hr-panel hr-register">
+    <div class="hr-register-toolbar">
+      <h2>
+        Staff <small>({{ filtered().length }})</small>
+      </h2>
+      <div class="hr-actions">
+        <div class="hr-view-switch">
+          <span class="hr-muted">View</span
+          ><button
+            class="hr-button"
+            [class.active]="view() === 'cards'"
+            [attr.aria-pressed]="view() === 'cards'"
+            (click)="set('view', 'cards')"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">grid_view</span>Cards</button
+          ><button
+            class="hr-button"
+            [class.active]="view() !== 'cards'"
+            [attr.aria-pressed]="view() !== 'cards'"
+            (click)="set('view', 'table')"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">view_list</span>Table
+          </button>
+        </div>
+        <button class="hr-button" (click)="set('sort', sort() === 'az' ? 'za' : 'az')">
+          Name {{ sort() === 'az' ? '(A–Z)' : '(Z–A)' }}
+        </button>
+        @if (selectedCount() && hr.can('export')) {
+          <button class="hr-button" (click)="exportSelected()">
+            Export selected ({{ selectedCount() }})
+          </button>
+        }
+        @if (selectedIds().length) {
+          <button class="hr-clear" (click)="selectedIds.set([])">Clear selection</button>
+        }
+      </div>
+    </div>
+    @if (view() === 'cards') {
+      <div class="hr-cards">
+        @for (p of visible(); track p.id) {
+          <article class="hr-card">
+            <h2>
+              <a
+                [routerLink]="['/manage/people/staff', p.id, 'overview']"
+                queryParamsHandling="preserve"
+                >{{ p.name }}</a
+              >
+            </h2>
+            <p class="hr-muted">{{ p.hr.reference }}<br />{{ p.role }} · {{ p.location }}</p>
+            <p>
+              <span class="hr-badge">{{ p.hr.status }}</span>
+            </p>
+            <a
+              [routerLink]="['/manage/people/staff', p.id, 'employment']"
+              queryParamsHandling="preserve"
+              >View Employment Details →</a
+            >
+          </article>
+        }
+      </div>
+    } @else {
+      <div class="hr-table-wrap" role="region" aria-label="Staff directory records" tabindex="0">
+        <table class="hr-table hr-staff-table">
+          <thead>
+            <tr>
+              <th scope="col">
+                <input
+                  type="checkbox"
+                  aria-label="Select staff on this page"
+                  [checked]="allSelected()"
+                  [indeterminate]="someSelected()"
+                  (change)="selectPage($any($event.target).checked)"
+                />
+              </th>
+              <th scope="col">Staff Member</th>
+              <th scope="col">Role / Branch</th>
+              <th scope="col">Employment Status</th>
+              <th scope="col">Contact Details</th>
+              <th scope="col">Driver</th>
+              <th scope="col">Availability</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of visible(); track p.id) {
+              <tr [class.hr-selected]="selectedIds().includes(p.id)">
+                <td>
+                  <input
+                    type="checkbox"
+                    [attr.aria-label]="'Select ' + p.name"
+                    [checked]="selectedIds().includes(p.id)"
+                    (change)="toggleSelected(p.id, $any($event.target).checked)"
+                  />
+                </td>
+                <td>
+                  <div class="hr-identity-cell">
+                    <span class="hr-row-photo">
+                      @if (p.hr.personal.photo) {
+                        <img [src]="p.hr.personal.photo" alt="" />
+                      } @else {
+                        {{ hr.store.initials(p.name) }}
+                      }
+                    </span>
+                    <div>
+                      <a
+                        [routerLink]="['/manage/people/staff', p.id, 'overview']"
+                        queryParamsHandling="preserve"
+                        ><strong>{{ p.name }}</strong></a
+                      ><small>{{ p.hr.reference }}</small>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  {{ p.role }}<small>{{ p.location }}</small>
+                </td>
+                <td>
+                  <span class="hr-badge" [class.good]="p.hr.status === 'Active'">{{
+                    p.hr.status
+                  }}</span>
+                </td>
+                <td>
+                  <a class="hr-contact-link" [href]="'tel:' + p.hr.personal.phone">{{
+                    p.hr.personal.phone || 'Not recorded'
+                  }}</a
+                  ><small
+                    ><a class="hr-contact-link" [href]="'mailto:' + p.email">{{
+                      p.email
+                    }}</a></small
+                  >
+                </td>
+                <td>
+                  <span class="hr-badge" [class.good]="p.hr.personal.driver">{{
+                    p.hr.personal.driver ? 'Yes' : 'No'
+                  }}</span>
+                </td>
+                <td>
+                  <a
+                    [routerLink]="['/manage/people/staff', p.id, 'availability']"
+                    queryParamsHandling="preserve"
+                    ><span
+                      class="hr-badge"
+                      [class.good]="availabilityLabel(p) === 'Available'"
+                      [class.warn]="availabilityLabel(p) === 'On leave'"
+                      >{{ availabilityLabel(p) }}</span
+                    ></a
+                  >
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    class="hr-icon-action"
+                    [matMenuTriggerFor]="staffActions"
+                    [attr.aria-label]="'Actions for ' + p.name"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>
+                  </button>
+                  <mat-menu #staffActions="matMenu">
+                    <a
+                      mat-menu-item
+                      [routerLink]="['/manage/people/staff', p.id, 'overview']"
+                      queryParamsHandling="preserve"
+                      >View Staff Profile</a
+                    >
+                    @if (hr.can('edit')) {
+                      <a
+                        mat-menu-item
+                        [routerLink]="['/manage/people/staff', p.id, 'personal']"
+                        queryParamsHandling="merge"
+                        [queryParams]="{ edit: true }"
+                        >Edit Personal Details</a
+                      >
+                    }
+                    <a
+                      mat-menu-item
+                      [routerLink]="['/manage/people/staff', p.id, 'employment']"
+                      queryParamsHandling="preserve"
+                      >Employment & Recruitment</a
+                    >
+                    <a
+                      mat-menu-item
+                      [routerLink]="['/manage/people/staff', p.id, 'documents']"
+                      queryParamsHandling="preserve"
+                      >Documents & Compliance Records</a
+                    >
+                    <a
+                      mat-menu-item
+                      [routerLink]="['/manage/people/staff', p.id, 'training']"
+                      queryParamsHandling="preserve"
+                      >Training & Competency</a
+                    >
+                    <a
+                      mat-menu-item
+                      [routerLink]="['/manage/people/staff', p.id, 'reviews']"
+                      queryParamsHandling="preserve"
+                      >Supervision & Appraisal</a
+                    >
+                  </mat-menu>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="8" class="hr-empty">No staff match these filters.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    <div class="hr-footer">
+      <span role="status"
+        >Showing {{ filtered().length ? (currentPage() - 1) * 10 + 1 : 0 }} to
+        {{ (currentPage() - 1) * 10 + visible().length }} of {{ filtered().length }} staff</span
+      >
+      <div class="hr-page-controls">
+        <nav class="hr-page-nav" aria-label="Staff directory pages">
+          <button
+            class="hr-button"
+            [disabled]="currentPage() <= 1"
+            (click)="set('page', currentPage() - 1)"
+            aria-label="Previous page"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+          </button>
+          @for (number of pageNumbers(); track number) {
+            <button
+              type="button"
+              [class.active]="currentPage() === number"
+              [attr.aria-current]="currentPage() === number ? 'page' : null"
+              [attr.aria-label]="'Page ' + number"
+              (click)="set('page', number)"
+            >
+              {{ number }}
+            </button>
+          }
+          <button
+            class="hr-button"
+            [disabled]="currentPage() >= pages()"
+            (click)="set('page', currentPage() + 1)"
+            aria-label="Next page"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+          </button>
+        </nav>
+        <small>Page {{ currentPage() }} of {{ pages() }}</small>
+      </div>
+    </div>
+  </section>
+}

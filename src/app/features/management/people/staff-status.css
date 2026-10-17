@@ -1,0 +1,15 @@
+:host .hr-profile-stats :is(strong, small)[data-tone='good'] {
+  color: #087337;
+}
+:host .hr-profile-stats :is(strong, small)[data-tone='warning'] {
+  color: #a66500;
+}
+:host .hr-profile-stats :is(strong, small)[data-tone='bad'] {
+  color: #b42334;
+}
+:host .hr-profile-stats :is(strong, small)[data-tone='info'] {
+  color: #0066ac;
+}
+:host .hr-profile-stats :is(strong, small)[data-tone='muted'] {
+  color: #677488;
+}

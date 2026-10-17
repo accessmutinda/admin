@@ -1,0 +1,185 @@
+<nav class="hr-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/people">People & HR</a
+  ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span
+  ><span aria-current="page">Workforce Compliance</span>
+</nav>
+<div class="hr-heading">
+  <div>
+    <h1>Workforce Compliance</h1>
+    <p>
+      Review employment checks, verify evidence and follow up renewals across the current workforce.
+    </p>
+  </div>
+  <div class="hr-actions">
+    @if (hr.can('export')) {
+      <button class="hr-button outline" [disabled]="!rows().length" (click)="export()">
+        <span class="material-symbols-outlined" aria-hidden="true">download</span>Export Checks
+      </button>
+    }
+  </div>
+</div>
+<div class="hr-stats">
+  @for (stat of stats(); track stat.label) {
+    <a
+      class="hr-stat"
+      [style.--stat-color]="stat.color"
+      routerLink="/manage/people/compliance"
+      [queryParams]="{ check: stat.status }"
+      ><span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>
+      <div>
+        <small>{{ stat.label }}</small
+        ><strong>{{ stat.value }}</strong
+        ><small>{{ stat.caption }}</small>
+      </div></a
+    >
+  }
+</div>
+<section class="hr-panel hr-filter-panel hr-compliance-filters">
+  <div class="hr-filters">
+    <label class="hr-directory-search"
+      >Search checks<input
+        type="search"
+        [ngModel]="q()"
+        (ngModelChange)="set('q', $event)"
+        placeholder="Staff name, reference or check" /></label
+    ><label
+      >Check status<mat-select
+        cvSelect
+        aria-label="Check status"
+        [ngModel]="status()"
+        (ngModelChange)="set('check', $event)"
+        ><mat-option value="outstanding">Outstanding checks</mat-option
+        ><mat-option value="all">All applicable checks</mat-option
+        ><mat-option value="Awaiting review">Awaiting review</mat-option
+        ><mat-option value="Not started">Not started</mat-option
+        ><mat-option value="Pending">Pending</mat-option
+        ><mat-option value="Recorded">Recorded history</mat-option
+        ><mat-option value="Needs evidence">Needs evidence</mat-option
+        ><mat-option value="Due soon">Expiring soon</mat-option
+        ><mat-option value="Expired">Expired</mat-option
+        ><mat-option value="Renewal required">Renewal required</mat-option
+        ><mat-option value="Verified">Verified and current</mat-option></mat-select
+      ></label
+    ><label
+      >Check type<mat-select
+        cvSelect
+        aria-label="Check type"
+        [ngModel]="type()"
+        (ngModelChange)="set('checkType', $event)"
+        ><mat-option value="">All check types</mat-option>
+        @for (type of types(); track type) {
+          <mat-option [value]="type">{{ type }}</mat-option>
+        }
+      </mat-select></label
+    ><label
+      >Branch<mat-select
+        cvSelect
+        aria-label="Compliance branch"
+        [ngModel]="branch()"
+        (ngModelChange)="set('branch', $event)"
+        ><mat-option value="">All branches</mat-option>
+        @for (branch of branches(); track branch) {
+          <mat-option [value]="branch">{{ branch }}</mat-option>
+        }
+      </mat-select></label
+    >
+  </div>
+  <div class="hr-filter-summary">
+    <span>{{ rows().length }} checks match these filters</span
+    ><button class="hr-clear" (click)="clear()">Clear filters</button>
+  </div>
+</section>
+<section class="hr-panel hr-register">
+  <div class="hr-register-toolbar">
+    <h2>Check Actions ({{ rows().length }})</h2>
+    <span class="hr-muted">Expired checks first · Current workforce only</span>
+  </div>
+  <div
+    class="hr-table-wrap"
+    tabindex="0"
+    role="region"
+    aria-label="Workforce compliance check actions"
+  >
+    <table class="hr-table hr-compliance-table">
+      <thead>
+        <tr>
+          <th scope="col">Staff Member</th>
+          <th scope="col">Check</th>
+          <th scope="col">Status</th>
+          <th scope="col">Last Checked</th>
+          <th scope="col">Expiry / Renewal</th>
+          <th scope="col">Reviewer</th>
+          <th scope="col">Evidence</th>
+          <th scope="col">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of visible(); track row.key) {
+          <tr>
+            <td>
+              <strong>{{ row.person.name }}</strong
+              ><small>{{ row.person.hr?.reference }} · {{ row.person.location }}</small>
+            </td>
+            <td>
+              {{ row.check.title }}
+              @if (row.state === 'Due soon' || row.state === 'Expired') {
+                <small>{{ row.check.title }} renewal</small>
+              }
+            </td>
+            <td>
+              <span
+                class="hr-badge"
+                [class.bad]="row.state === 'Expired'"
+                [class.warn]="row.state === 'Due soon'"
+                [class.good]="row.state === 'Verified'"
+                >{{ row.state }}</span
+              >
+            </td>
+            <td>{{ row.check.completed || 'Not recorded' }}</td>
+            <td>{{ row.check.expiry || 'Not set' }}</td>
+            <td>{{ row.check.reviewer || 'Not assigned' }}</td>
+            <td>
+              <a [routerLink]="['/manage/people/staff', row.person.id, 'documents']">{{
+                row.evidence?.name || 'Attach evidence'
+              }}</a>
+            </td>
+            <td>
+              <a
+                class="hr-button outline"
+                [routerLink]="['/manage/people/staff', row.person.id, 'compliance']"
+                [fragment]="'check-' + row.check.id"
+                >{{ row.state === 'Verified' ? 'View Check' : 'Review Check' }}</a
+              >
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="8" class="hr-empty">No compliance checks match these filters.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="hr-footer">
+    <span role="status"
+      >Showing {{ rows().length ? (currentPage() - 1) * pageSize + 1 : 0 }} to
+      {{ (currentPage() - 1) * pageSize + visible().length }} of {{ rows().length }} checks</span
+    >
+    <nav class="hr-page-nav" aria-label="Compliance queue pages">
+      <button
+        [disabled]="currentPage() === 1"
+        (click)="set('page', currentPage() - 1)"
+        aria-label="Previous check page"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span></button
+      ><span>Page {{ currentPage() }} of {{ pages() }}</span
+      ><button
+        [disabled]="currentPage() === pages()"
+        (click)="set('page', currentPage() + 1)"
+        aria-label="Next check page"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </button>
+    </nav>
+  </div>
+</section>

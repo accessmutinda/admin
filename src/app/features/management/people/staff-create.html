@@ -1,0 +1,192 @@
+<nav class="hr-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/people">People & HR</a>
+  <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+  <a routerLink="/manage/people/staff">Staff</a>
+  <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+  <span aria-current="page">Create New Staff</span>
+</nav>
+<div class="hr-heading">
+  <div>
+    <h1>Create New Staff</h1>
+    <p>Add a new staff member to your organisation. Complete each step to build their profile.</p>
+  </div>
+  <div class="hr-actions">
+    @if (!invalid()) {
+      <button class="hr-button outline" [disabled]="busy()" (click)="saveDraft()">
+        <span class="material-symbols-outlined" aria-hidden="true">save</span>Save as Draft
+      </button>
+    }
+    <a class="hr-button" routerLink="/manage/people/staff">Cancel</a>
+  </div>
+</div>
+@if (invalid()) {
+  <p class="hr-error" role="alert">{{ invalid() }}</p>
+} @else {
+  <ol class="hr-steps" aria-label="Staff setup steps">
+    @for (s of steps; track s; let i = $index) {
+      <li [class.active]="step() === i" [class.complete]="i < step()">
+        <button
+          type="button"
+          [attr.aria-current]="step() === i ? 'step' : null"
+          (click)="select(i)"
+        >
+          <span class="hr-step-number">
+            @if (i < step()) {
+              <span class="material-symbols-outlined" aria-hidden="true">check</span>
+            } @else {
+              {{ i + 1 }}
+            }</span
+          ><span class="hr-step-label"
+            ><strong>{{ s }}</strong
+            ><small>{{ stepHints[i] }}</small></span
+          >
+        </button>
+      </li>
+    }
+  </ol>
+  @if (error()) {
+    <p class="hr-error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p class="hr-notice" role="status">{{ notice() }}</p>
+  }
+  <div class="hr-create-layout" [class.availability-step]="step() === 2">
+    <main aria-label="Staff setup form">
+      @if (step() < 5) {
+        <cv-staff-fields [p]="p" [step]="step()" (busyChange)="busy.set($event)" />
+        @if (step() === 1) {
+          <cv-staff-fields [p]="p" [step]="6" />
+          <div class="hr-notice">
+            You can create an onboarding record before checks are complete. You can also return to
+            this step after uploading evidence under Documents.
+          </div>
+        }
+      } @else {
+        <section class="hr-panel">
+          <div class="hr-panel-head"><h2>Review & Create</h2></div>
+          <div class="hr-panel-body">
+            <dl class="hr-detail">
+              <dt>Name</dt>
+              <dd>{{ p.hr!.personal.firstName }} {{ p.hr!.personal.surname }}</dd>
+              <dt>Staff reference</dt>
+              <dd>{{ p.hr!.reference }}</dd>
+              <dt>Email</dt>
+              <dd>{{ p.email }}</dd>
+              <dt>Employment</dt>
+              <dd>{{ p.role }} · {{ p.location }} · {{ p.hr!.employment.type }}</dd>
+              <dt>Start date</dt>
+              <dd>{{ p.start }}</dd>
+              <dt>Status</dt>
+              <dd>{{ p.hr!.status }}</dd>
+              <dt>Training</dt>
+              <dd>{{ p.hr!.training.length }} assignments</dd>
+              <dt>Documents</dt>
+              <dd>{{ p.documents?.length || 0 }} attached</dd>
+            </dl>
+          </div>
+        </section>
+        <div class="hr-notice">
+          <strong>{{
+            ready(p).ready ? 'Ready for deployment' : 'Onboarding requirements remain'
+          }}</strong>
+          <p>{{ ready(p).missing.join(', ') || 'The configured requirements are complete.' }}</p>
+          Creating a staff record does not create an application account or add the employee to a
+          pay run.
+        </div>
+      }
+    </main>
+    <aside class="hr-create-sidebar" aria-label="Step guidance">
+      @if (step() === 1) {
+        <section class="hr-guidance">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">verified_user</span
+            >Compliance Status
+          </h2>
+          <p>Employment and compliance readiness.</p>
+          <div class="hr-guidance-checks">
+            @for (c of p.hr!.checks; track c.id) {
+              <div class="hr-row">
+                <span>{{ c.title }}</span
+                ><span
+                  class="hr-badge"
+                  [class.good]="c.status === 'Verified' || c.status === 'Not required'"
+                  >{{ c.status }}</span
+                >
+              </div>
+            }
+          </div>
+        </section>
+      }
+      <section class="hr-guidance">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">info</span>About this step
+        </h2>
+        <p>
+          {{
+            step() === 0
+              ? 'Enter the staff member’s personal details. This information supports communication, compliance and rostering.'
+              : step() === 1
+                ? 'Record the role, employment terms and required checks. You can upload supporting evidence in Documents.'
+                : step() === 2
+                  ? 'Record when and where this staff member can work. Preferences help coordinators plan suitable visits.'
+                  : step() === 3
+                    ? 'Assign the relevant courses and record existing training and induction evidence.'
+                    : step() === 4
+                      ? 'Upload evidence once and link it to employment checks and training records.'
+                      : 'Check the information before creating the staff record.'
+          }}
+        </p>
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">lightbulb</span>Field
+          requirements
+        </h2>
+        <dl>
+          <dt><em>*</em>Required field</dt>
+          <dd>Must be completed to continue.</dd>
+          <dt>○ Optional field</dt>
+          <dd>Record where available and relevant.</dd>
+          <dt>ⓘ Used for</dt>
+          <dd>Communication, employment and workforce planning.</dd>
+        </dl>
+      </section>
+      <section class="hr-guidance tips">
+        <h2><span class="material-symbols-outlined" aria-hidden="true">lightbulb</span>Tips</h2>
+        <ul>
+          <li>Use the staff member’s legal name.</li>
+          <li>Check that contact details are current.</li>
+          <li>Add emergency contact information.</li>
+          <li>Save a draft to continue later.</li>
+        </ul>
+      </section>
+      @if (step() > 0) {
+        <section class="hr-guidance">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">folder_open</span>Document
+            Uploads
+          </h2>
+          <p>{{ p.documents?.length || 0 }} supporting documents attached.</p>
+          <button class="hr-button outline" type="button" (click)="select(4)">
+            View Documents
+          </button>
+        </section>
+      }
+    </aside>
+  </div>
+  <div class="hr-footer hr-create-footer">
+    <button class="hr-button" [disabled]="step() === 0 || busy()" (click)="select(step() - 1)">
+      Back
+    </button>
+    <div class="hr-actions">
+      <button class="hr-button" [disabled]="busy()" (click)="saveDraft()">Save as Draft</button>
+      @if (step() < 5) {
+        <button class="hr-button primary" [disabled]="busy()" (click)="select(step() + 1)">
+          Continue →
+        </button>
+      } @else {
+        <button class="hr-button primary" [disabled]="busy()" (click)="create()">
+          Create Staff Member
+        </button>
+      }
+    </div>
+  </div>
+}

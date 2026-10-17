@@ -2,7 +2,6 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { WritableSignal } from '@angular/core';
 import { of } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
@@ -22,6 +21,7 @@ describe('Compact admin navigation and disclosure controls', () => {
         {
           provide: ActivatedRoute,
           useValue: {
+            queryParamMap: of(convertToParamMap({ tab: 'Profile' })),
             snapshot: {
               paramMap: convertToParamMap({ id: 'james' }),
               queryParamMap: convertToParamMap({ tab: 'Profile' }),
@@ -63,15 +63,12 @@ describe('Compact admin navigation and disclosure controls', () => {
 
   it('updates permission counts in a draft and restores them through Discard', async () => {
     const fixture = TestBed.createComponent(UsersAccess);
-    (fixture.componentInstance as unknown as { tab: WritableSignal<string> }).tab.set(
-      'Permissions',
-    );
     fixture.detectChanges();
     await fixture.whenStable();
     const store = TestBed.inject(ManagementStore);
     const before = JSON.stringify(store.data());
-    const accordion: HTMLElement = fixture.nativeElement.querySelector('.permission-accordion');
-    const beforeCount = accordion.querySelector('.permission-enabled-count')!.textContent;
+    const accordion: HTMLElement = fixture.nativeElement.querySelector('.ua-module-card');
+    const beforeCount = accordion.querySelector('.ua-module-card-heading small')!.textContent;
     const checkbox = accordion.querySelector('input')!;
     const initial = checkbox.checked;
     checkbox.checked = !initial;
@@ -79,21 +76,23 @@ describe('Compact admin navigation and disclosure controls', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(accordion.querySelector('.permission-enabled-count')!.textContent).not.toBe(beforeCount);
-    expect(fixture.nativeElement.querySelector('.settings-save-state').textContent).toContain(
+    expect(accordion.querySelector('.ua-module-card-heading small')!.textContent).not.toBe(
+      beforeCount,
+    );
+    expect(fixture.nativeElement.querySelector('.ua-save-state').textContent).toContain(
       'Unsaved changes',
     );
     expect(JSON.stringify(store.data())).toBe(before);
     const discard = Array.from(
       fixture.nativeElement.querySelectorAll(
-        '.settings-save-footer button',
+        '.ua-permission-footer button',
       ) as NodeListOf<HTMLButtonElement>,
-    ).find((button) => button.textContent!.trim() === 'Discard')!;
+    ).find((button) => button.textContent!.trim() === 'Discard Changes')!;
     discard.click();
     fixture.detectChanges();
     await fixture.whenStable();
     expect(checkbox.checked).toBe(initial);
-    expect(accordion.querySelector('.permission-enabled-count')!.textContent).toBe(beforeCount);
+    expect(accordion.querySelector('.ua-module-card-heading small')!.textContent).toBe(beforeCount);
     expect(JSON.stringify(store.data())).toBe(before);
   });
 

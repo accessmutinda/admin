@@ -1,0 +1,2273 @@
+<nav class="hr-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/people">People & HR</a>
+  <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+  <a routerLink="/manage/people/staff" queryParamsHandling="merge" [queryParams]="{ edit: null }"
+    >Staff</a
+  >
+  <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+  <span aria-current="page">{{ person()?.name || 'Staff record' }}</span>
+</nav>
+@if (person(); as p) {
+  <div class="hr-heading">
+    <div>
+      <h1>
+        {{
+          section === 'overview'
+            ? 'Staff Profile'
+            : section === 'reviews'
+              ? 'Supervision & Appraisal'
+              : section === 'training'
+                ? 'Training & Competency'
+                : section === 'employment'
+                  ? 'Employment History, References & Recruitment Record'
+                  : section === 'availability'
+                    ? 'Availability & Leave'
+                    : section === 'audit'
+                      ? 'Audit Trail'
+                      : section === 'personal'
+                        ? 'Personal Details'
+                        : section === 'documents'
+                          ? 'Documents, Right to Work & Compliance Records'
+                          : section === 'compliance'
+                            ? 'Compliance & Checks'
+                            : section === 'performance'
+                              ? p.role + ' Performance & Service Delivery'
+                              : 'Notes'
+        }}
+      </h1>
+      <p>Manage employment, evidence and professional development.</p>
+    </div>
+    <div class="hr-actions">
+      @if ((section === 'overview' || section === 'reviews') && hr.can('edit')) {
+        <a
+          class="hr-button primary"
+          [routerLink]="['/manage/people/staff', id, 'personal']"
+          [queryParams]="{ edit: true }"
+          queryParamsHandling="merge"
+          ><span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit Profile</a
+        >
+      }
+      @if (section === 'performance') {
+        <a class="hr-button primary" [routerLink]="['/manage/people/staff', id, 'personal']"
+          ><span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit Staff
+          Profile</a
+        ><a class="hr-button" [routerLink]="['/manage/people/staff', id, 'overview']"
+          >View Staff Record</a
+        >
+      }
+      @if (steps[section] !== undefined && !editing() && hr.can('edit')) {
+        <button
+          class="hr-button primary"
+          (click)="section === 'documents' ? chooseDocument() : edit()"
+        >
+          {{ section === 'documents' ? 'Upload Document' : 'Edit Profile' }}
+        </button>
+      }
+      <a
+        class="hr-button"
+        [routerLink]="['/manage/people/staff', id, 'audit']"
+        queryParamsHandling="merge"
+        [queryParams]="{ edit: null }"
+        >View Audit Trail</a
+      >
+    </div>
+  </div>
+  <section
+    class="hr-identity"
+    [class.has-ring-summary]="section === 'documents' || section === 'training'"
+    aria-label="Staff identity"
+  >
+    <div class="hr-profile-photo">
+      @if (p.hr.personal.photo) {
+        <img [src]="p.hr.personal.photo" [alt]="p.name" />
+      } @else {
+        <span class="material-symbols-outlined" aria-hidden="true">person</span>
+      }
+    </div>
+    <div class="hr-profile-name">
+      <div>
+        <h2>{{ p.name }}</h2>
+        <span class="hr-badge" [class.good]="p.hr.status === 'Active'">{{ p.hr.status }}</span>
+      </div>
+      <p>
+        {{ p.role }}
+        @if (section === 'documents' || section === 'training') {
+          <span class="hr-badge">{{ p.hr.personal.driver ? 'Driver' : 'Non-driver' }}</span>
+        }
+      </p>
+      <small>Staff Reference: {{ p.hr.reference }}</small>
+      <div class="hr-profile-contact">
+        <span
+          ><span class="material-symbols-outlined" aria-hidden="true">call</span
+          >{{ p.hr.personal.phone || 'Not recorded' }}</span
+        ><a [href]="'mailto:' + p.email"
+          ><span class="material-symbols-outlined" aria-hidden="true">mail</span>{{ p.email }}</a
+        >
+      </div>
+    </div>
+    <dl class="hr-profile-employment">
+      <div>
+        <span class="material-symbols-outlined" aria-hidden="true">apartment</span
+        ><span
+          ><dd>{{ hr.store.company()?.name }}</dd>
+          <dt>{{ p.location }} · Base branch / company</dt></span
+        >
+      </div>
+      <div>
+        <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+        ><span
+          ><dd>{{ formatDate(p.start) }}</dd>
+          <dt>Start date</dt></span
+        >
+      </div>
+      <div>
+        <span class="material-symbols-outlined" aria-hidden="true">work</span
+        ><span
+          ><dd>{{ p.hr.employment.type || 'Not recorded' }}</dd>
+          <dt>Employment type</dt></span
+        >
+      </div>
+    </dl>
+    @if (section === 'documents' || section === 'training') {
+      <div class="hr-banner-summary">
+        <h3>
+          {{ section === 'training' ? 'Training Compliance Overview' : 'Compliance Summary' }}
+        </h3>
+        <div>
+          @for (stat of bannerSummary(); track stat.label) {
+            <div class="hr-summary-ring-item">
+              <span
+                class="hr-summary-ring"
+                [style.--ring-color]="stat.color"
+                [style.--ring-value]="ringValue(stat.value)"
+                ><strong [title]="'' + stat.value">{{ ringLabel(stat.value) }}</strong></span
+              ><small>{{ stat.label }}</small>
+            </div>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="hr-profile-checks">
+        <span class="hr-banner-chip"
+          ><span class="material-symbols-outlined" aria-hidden="true">directions_car</span
+          >{{ p.hr.personal.driver ? 'Driver' : 'Non-driver' }}</span
+        ><a
+          [routerLink]="['/manage/people/staff', id, 'compliance']"
+          class="hr-banner-chip"
+          [class.good]="staffCheck('Right to work') === 'Valid'"
+          ><span class="material-symbols-outlined" aria-hidden="true">verified_user</span>Right to
+          Work <strong>{{ staffCheck('Right to work') }}</strong></a
+        ><a
+          [routerLink]="['/manage/people/staff', id, 'compliance']"
+          class="hr-banner-chip"
+          [class.good]="staffCheck('DBS check') === 'Cleared'"
+          ><span class="material-symbols-outlined" aria-hidden="true">verified_user</span>DBS
+          <strong>{{ staffCheck('DBS check') }}</strong></a
+        >
+      </div>
+    }
+  </section>
+  @if (profileStats().length) {
+    <div
+      class="hr-stats hr-profile-stats"
+      [class.eight-stats]="section === 'overview'"
+      [class.five-stats]="section === 'reviews'"
+    >
+      @for (stat of profileStats(); track stat.label) {
+        <a
+          class="hr-stat"
+          [style.--stat-color]="stat.color"
+          [routerLink]="['/manage/people/staff', id, stat.section]"
+          queryParamsHandling="merge"
+          [queryParams]="{ edit: null }"
+          ><span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>
+          <div>
+            <small>{{ stat.label }}</small
+            ><strong
+              [class.hr-stat-status]="('' + stat.value).length > 10"
+              [attr.data-tone]="statTone(stat)"
+              >{{ stat.value }}</strong
+            ><small [attr.data-tone]="statCaptionTone(stat)">{{ stat.caption }}</small>
+          </div></a
+        >
+      }
+    </div>
+  }
+  <nav class="hr-tabs" aria-label="Staff profile sections">
+    @for (t of tabs; track t.key) {
+      <a
+        [routerLink]="['/manage/people/staff', id, t.key]"
+        queryParamsHandling="merge"
+        [queryParams]="{ edit: null }"
+        [class.active]="section === t.key"
+        [attr.aria-current]="section === t.key ? 'page' : null"
+        >{{ t.label }}</a
+      >
+    }
+  </nav>
+  @if (error()) {
+    <p class="hr-error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p class="hr-notice" role="status">{{ notice() }}</p>
+  }
+  @if (editing() && draft) {
+    <cv-staff-fields
+      [p]="draft"
+      [step]="steps[section]"
+      [compact]="true"
+      (busyChange)="busy.set($event)"
+    />
+    <div class="hr-footer hr-edit-footer">
+      <button class="hr-button" (click)="cancel()">Cancel changes</button
+      ><button class="hr-button primary" [disabled]="busy()" (click)="save()">Save Changes</button>
+    </div>
+  } @else {
+    @if (section === 'overview') {
+      <div class="hr-overview-layout">
+        <div class="hr-overview-main">
+          <div class="hr-overview-primary">
+            <section class="hr-panel">
+              <div class="hr-panel-head">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">person</span>Personal
+                  Details
+                </h2>
+                <a [routerLink]="['/manage/people/staff', id, 'personal']">Edit</a>
+              </div>
+              <div class="hr-panel-body">
+                <dl class="hr-detail">
+                  <dt>Full name</dt>
+                  <dd>{{ p.name }}</dd>
+                  <dt>Date of birth</dt>
+                  <dd>{{ p.hr.personal.birthDate || 'Not recorded' }}</dd>
+                  <dt>Gender</dt>
+                  <dd>{{ p.hr.personal.gender || 'Not recorded' }}</dd>
+                  <dt>Nationality</dt>
+                  <dd>{{ p.hr.personal.nationality || 'Not recorded' }}</dd>
+                  <dt>Ethnicity</dt>
+                  <dd>{{ p.hr.personal.ethnicity || 'Not recorded' }}</dd>
+                  <dt>Religion</dt>
+                  <dd>{{ p.hr.personal.religion || 'Not recorded' }}</dd>
+                  <dt>Home address</dt>
+                  <dd>
+                    {{ p.hr.personal.address || 'Not recorded' }} {{ p.hr.personal.addressLine2 }}
+                    {{ p.hr.personal.town }} {{ p.hr.personal.county }} {{ p.hr.personal.postcode }}
+                  </dd>
+                  <dt>Telephone</dt>
+                  <dd>{{ p.hr.personal.phone || 'Not recorded' }}</dd>
+                  <dt>Email</dt>
+                  <dd>{{ p.email }}</dd>
+                  <dt>Marital status</dt>
+                  <dd>{{ p.hr.personal.maritalStatus || 'Not recorded' }}</dd>
+                  <dt>Languages</dt>
+                  <dd>{{ p.hr.personal.languages || 'Not recorded' }}</dd>
+                </dl>
+              </div>
+            </section>
+            <section class="hr-panel">
+              <div class="hr-panel-head">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">work</span>Employment
+                  Details
+                </h2>
+                <a [routerLink]="['/manage/people/staff', id, 'employment']">Edit</a>
+              </div>
+              <div class="hr-panel-body">
+                <dl class="hr-detail">
+                  <dt>Role</dt>
+                  <dd>{{ p.role }}</dd>
+                  <dt>Staff reference</dt>
+                  <dd>{{ p.hr.reference }}</dd>
+                  <dt>Employment type</dt>
+                  <dd>{{ p.hr.employment.type || 'Not recorded' }}</dd>
+                  <dt>Base branch</dt>
+                  <dd>{{ p.location }}</dd>
+                  <dt>Start date</dt>
+                  <dd>{{ formatDate(p.start) }}</dd>
+                  <dt>Weekly hours</dt>
+                  <dd>{{ p.hr.employment.hours ?? 'Not recorded' }}</dd>
+                  @if (hr.canPay()) {
+                    <dt>Hourly rate</dt>
+                    <dd>
+                      {{
+                        p.hr.employment.rate === null ? 'Not recorded' : '£' + p.hr.employment.rate
+                      }}
+                    </dd>
+                  }
+                  <dt>Line manager</dt>
+                  <dd>{{ p.hr.employment.manager || 'Not recorded' }}</dd>
+                  <dt>Probation</dt>
+                  <dd>
+                    {{
+                      p.hr.employment.probationMonths === null
+                        ? 'Not recorded'
+                        : p.hr.employment.probationMonths + ' months'
+                    }}
+                  </dd>
+                  <dt>Employment status</dt>
+                  <dd>
+                    <span class="hr-badge" [class.good]="p.hr.status === 'Active'">{{
+                      p.hr.status
+                    }}</span>
+                  </dd>
+                </dl>
+              </div>
+            </section>
+            <section class="hr-panel">
+              <div class="hr-panel-head">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">verified_user</span
+                  >Compliance & Checks
+                </h2>
+                <a [routerLink]="['/manage/people/staff', id, 'compliance']">View all</a>
+              </div>
+              <div class="hr-panel-body">
+                @for (c of p.hr.checks; track c.id) {
+                  <a
+                    class="hr-compliance-line"
+                    [routerLink]="['/manage/people/staff', id, 'compliance']"
+                    ><span>{{ c.title }}</span
+                    ><span
+                      class="hr-status-dot"
+                      [class.good]="checkState(c) === 'Verified' || c.status === 'Not required'"
+                      >{{ checkState(c) }}</span
+                    ></a
+                  >
+                }
+                <p class="hr-muted">
+                  {{
+                    ready(p).ready
+                      ? 'All configured readiness requirements are complete.'
+                      : ready(p).missing.length + ' readiness requirements remain.'
+                  }}
+                </p>
+              </div>
+            </section>
+            <div class="hr-overview-work-pattern">
+              <section class="hr-panel">
+                <div class="hr-panel-head">
+                  <h2>
+                    <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+                    >Availability & Schedule
+                  </h2>
+                  <a [routerLink]="['/manage/people/staff', id, 'availability']">Edit</a>
+                </div>
+                <div class="hr-panel-body">
+                  <dl class="hr-detail">
+                    <dt>Working areas</dt>
+                    <dd>{{ p.hr.preferences.areas || 'Not recorded' }}</dd>
+                    <dt>Shift preference</dt>
+                    <dd>{{ p.hr.preferences.shifts || 'Not recorded' }}</dd>
+                    <dt>Travel distance</dt>
+                    <dd>{{ p.hr.preferences.travel || 'Not recorded' }}</dd>
+                  </dl>
+                </div>
+              </section>
+              <section class="hr-panel">
+                <div class="hr-panel-head">
+                  <h2>
+                    <span class="material-symbols-outlined" aria-hidden="true">directions_car</span
+                    >Driver & Transport
+                  </h2>
+                  <a [routerLink]="['/manage/people/staff', id, 'personal']">Edit</a>
+                </div>
+                <div class="hr-panel-body">
+                  <dl class="hr-detail">
+                    <dt>Driver</dt>
+                    <dd>{{ p.hr.personal.driver ? 'Yes' : 'No' }}</dd>
+                    <dt>Vehicle</dt>
+                    <dd>{{ p.hr.personal.vehicle || 'Not recorded' }}</dd>
+                  </dl>
+                </div>
+              </section>
+            </div>
+          </div>
+          <div class="hr-overview-secondary">
+            <section class="hr-panel">
+              <div class="hr-panel-head">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">groups</span>Emergency
+                  Contact
+                </h2>
+                <a [routerLink]="['/manage/people/staff', id, 'personal']">Edit</a>
+              </div>
+              <div class="hr-panel-body">
+                <dl class="hr-detail">
+                  <dt>Name</dt>
+                  <dd>{{ p.hr.personal.emergencyName || 'Not recorded' }}</dd>
+                  <dt>Relationship</dt>
+                  <dd>{{ p.hr.personal.emergencyRelationship || 'Not recorded' }}</dd>
+                  <dt>Telephone</dt>
+                  <dd>{{ p.hr.personal.emergencyPhone || 'Not recorded' }}</dd>
+                </dl>
+              </div>
+            </section>
+            <section class="hr-panel">
+              <div class="hr-panel-head">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">diversity_3</span
+                  >Assigned Service Users
+                </h2>
+              </div>
+              <div class="hr-panel-body">
+                <strong class="hr-assigned-count">{{ assignedClients().length }}</strong>
+                <p class="hr-muted">With visits this month</p>
+                @for (client of assignedClients().slice(0, 4); track client.id) {
+                  <div class="hr-row">
+                    <span>{{ client.name }}</span>
+                  </div>
+                }
+                <a
+                  class="hr-button"
+                  routerLink="/manage/rota"
+                  [queryParams]="{ staff: id, from: period + '-01', to: periodEnd() }"
+                  >View rota</a
+                >
+              </div>
+            </section>
+          </div>
+        </div>
+        <aside class="hr-record-sidebar">
+          <section class="hr-panel">
+            <div class="hr-panel-head">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">bolt</span>Quick Actions
+              </h2>
+            </div>
+            <div class="hr-profile-actions">
+              <a class="hr-button primary" [routerLink]="['/manage/people/staff', id, 'reviews']"
+                ><span class="material-symbols-outlined" aria-hidden="true">forum</span>Record
+                Supervision</a
+              ><a class="hr-button" [routerLink]="['/manage/people/staff', id, 'training']"
+                ><span class="material-symbols-outlined" aria-hidden="true">school</span>Book
+                Training</a
+              ><a class="hr-button" [routerLink]="['/manage/people/staff', id, 'notes']"
+                ><span class="material-symbols-outlined" aria-hidden="true">edit_note</span>Add
+                Note</a
+              ><a class="hr-button" [routerLink]="['/manage/people/staff', id, 'documents']"
+                ><span class="material-symbols-outlined" aria-hidden="true">upload_file</span>Upload
+                Document</a
+              >
+              @if (payroll.can('view')) {
+                <a
+                  class="hr-button"
+                  routerLink="/manage/finance/payroll"
+                  [queryParams]="{ view: 'Payroll', payrollView: 'Staff pay', person: id }"
+                  >View Payroll</a
+                >
+              }
+            </div>
+          </section>
+          <section class="hr-panel">
+            <div class="hr-panel-head">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">event</span>Upcoming
+                Items
+              </h2>
+              <a [routerLink]="['/manage/people/staff', id, 'reviews']">View all</a>
+            </div>
+            <div class="hr-panel-body">
+              @for (r of reviews(); track r.id) {
+                @if (r.status !== 'Completed') {
+                  <a class="hr-upcoming-line" [routerLink]="['/manage/people/staff', id, 'reviews']"
+                    ><span
+                      >{{ r.type }}<small>{{ r.date }}</small></span
+                    ><span class="hr-badge">Scheduled</span></a
+                  >
+                }
+              }
+              @for (a of p.hr.actions; track a.id) {
+                @if (a.status !== 'Completed') {
+                  <div class="hr-upcoming-line">
+                    <span
+                      >{{ a.title }}<small>{{ a.due }}</small></span
+                    ><span class="hr-badge warn">{{ a.status }}</span>
+                  </div>
+                }
+              }
+              @if (!reviews().length && !p.hr.actions.length) {
+                <p class="hr-muted">No upcoming items recorded.</p>
+              }
+            </div>
+          </section>
+          <section class="hr-panel">
+            <div class="hr-panel-head">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">history</span>Recent
+                Activity
+              </h2>
+              <a [routerLink]="['/manage/people/staff', id, 'audit']">View all</a>
+            </div>
+            <div class="hr-panel-body">
+              @for (a of p.hr.audit.slice(-4).reverse(); track a.id) {
+                <div class="hr-row">
+                  <div>
+                    <strong>{{ a.action }}</strong
+                    ><small>{{ a.actor }} · {{ a.at | date: 'd MMM yyyy' }}</small>
+                  </div>
+                </div>
+              } @empty {
+                <p class="hr-muted">No recorded activity.</p>
+              }
+            </div>
+          </section>
+        </aside>
+      </div>
+    }
+    @if (section === 'personal') {
+      <section class="hr-panel">
+        <div class="hr-panel-head">
+          <h2>{{ section === 'personal' ? 'Personal Information' : 'Employment Summary' }}</h2>
+        </div>
+        <div class="hr-panel-body">
+          <dl class="hr-detail">
+            @if (section === 'personal') {
+              <dt>Name</dt>
+              <dd>{{ p.name }}</dd>
+              <dt>Date of birth</dt>
+              <dd>{{ p.hr.personal.birthDate || 'Not recorded' }}</dd>
+              <dt>Email</dt>
+              <dd>{{ p.email }}</dd>
+              <dt>Phone</dt>
+              <dd>{{ p.hr.personal.phone || 'Not recorded' }}</dd>
+              <dt>Address</dt>
+              <dd>{{ p.hr.personal.address || 'Not recorded' }} {{ p.hr.personal.postcode }}</dd>
+              <dt>Emergency contact</dt>
+              <dd>
+                {{ p.hr.personal.emergencyName || 'Not recorded' }}
+                {{ p.hr.personal.emergencyPhone }}
+              </dd>
+              <dt>Languages</dt>
+              <dd>{{ p.hr.personal.languages || 'Not recorded' }}</dd>
+              <dt>Driver</dt>
+              <dd>{{ p.hr.personal.driver ? 'Yes' : 'No' }}</dd>
+              <dt>Vehicle</dt>
+              <dd>{{ p.hr.personal.vehicle || 'Not recorded' }}</dd>
+            } @else {
+              <dt>Role</dt>
+              <dd>{{ p.role }}</dd>
+              <dt>Staff reference</dt>
+              <dd>{{ p.hr.reference }}</dd>
+              <dt>Employment type</dt>
+              <dd>{{ p.hr.employment.type || 'Not recorded' }}</dd>
+              <dt>Branch</dt>
+              <dd>{{ p.location }}</dd>
+              <dt>Start date</dt>
+              <dd>{{ formatDate(p.start) }}</dd>
+              <dt>Manager</dt>
+              <dd>{{ p.hr.employment.manager || 'Not recorded' }}</dd>
+              <dt>Contracted hours</dt>
+              <dd>{{ p.hr.employment.hours ?? 'Not recorded' }}</dd>
+              @if (hr.canPay()) {
+                <dt>Hourly rate (£)</dt>
+                <dd>{{ p.hr.employment.rate ?? 'Not recorded' }}</dd>
+              }
+              <dt>Probation months</dt>
+              <dd>{{ p.hr.employment.probationMonths ?? 'Not recorded' }}</dd>
+              <dt>Previous employment</dt>
+              <dd>{{ p.hr.employment.history || 'Not recorded' }}</dd>
+              <dt>Employment gaps</dt>
+              <dd>{{ p.hr.employment.gaps || 'Not recorded' }}</dd>
+            }
+          </dl>
+        </div>
+      </section>
+    }
+    @if (section === 'employment') {
+      <div class="hr-recruitment-stage" aria-label="Recorded recruitment milestones">
+        @for (stage of recruitmentStages(); track stage.title) {
+          <div>
+            <span [class.complete]="stage.complete"
+              ><span class="material-symbols-outlined" aria-hidden="true">{{
+                stage.complete ? 'check' : 'remove'
+              }}</span></span
+            ><strong>{{ stage.title }}</strong
+            ><small>{{ stage.date || 'Not recorded' }}</small>
+          </div>
+        }
+      </div>
+      <div class="hr-employment-grid">
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">work</span>Employment
+              Summary
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            <dl class="hr-detail">
+              <dt>Current role</dt>
+              <dd>{{ p.role }}</dd>
+              <dt>Employment type</dt>
+              <dd>{{ p.hr.employment.type || 'Not recorded' }}</dd>
+              <dt>Start date</dt>
+              <dd>{{ formatDate(p.start) }}</dd>
+              <dt>Current status</dt>
+              <dd>
+                <span class="hr-badge">{{ p.hr.status }}</span>
+              </dd>
+              <dt>Probation period</dt>
+              <dd>
+                {{
+                  p.hr.employment.probationMonths === null
+                    ? 'Not recorded'
+                    : p.hr.employment.probationMonths + ' months'
+                }}
+              </dd>
+              <dt>Notice period</dt>
+              <dd>
+                {{
+                  p.hr.employment.noticeWeeks === null
+                    ? 'Not recorded'
+                    : p.hr.employment.noticeWeeks + ' weeks'
+                }}
+              </dd>
+              <dt>Base branch</dt>
+              <dd>{{ p.location }}</dd>
+              <dt>Department</dt>
+              <dd>{{ p.hr.employment.department || 'Not recorded' }}</dd>
+              <dt>Line manager</dt>
+              <dd>{{ p.hr.employment.manager || 'Not recorded' }}</dd>
+            </dl>
+          </div>
+        </section>
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">person_search</span>Key
+              Recruitment Information
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            <dl class="hr-detail">
+              <dt>Job applied for</dt>
+              <dd>{{ p.vacancy || p.role }}</dd>
+              <dt>Advertisement source</dt>
+              <dd>{{ p.hr.employment.recruitment?.source || 'Not recorded' }}</dd>
+              <dt>Application date</dt>
+              <dd>
+                {{
+                  p.hr.employment.recruitment?.applicationDate ||
+                    p.application?.submitted ||
+                    'Not recorded'
+                }}
+              </dd>
+              <dt>Interview date</dt>
+              <dd>{{ p.hr.employment.recruitment?.interviewDate || 'Not recorded' }}</dd>
+              <dt>Offer date</dt>
+              <dd>{{ p.hr.employment.recruitment?.offerDate || 'Not recorded' }}</dd>
+              <dt>Start date</dt>
+              <dd>{{ formatDate(p.start) }}</dd>
+              <dt>Induction status</dt>
+              <dd>{{ p.hr.induction.every(inductionComplete) ? 'Completed' : 'In progress' }}</dd>
+              <dt>Next review due</dt>
+              <dd>{{ p.hr.employment.recruitment?.nextReview || 'Not scheduled' }}</dd>
+            </dl>
+          </div>
+        </section>
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>Safer
+              Recruitment Checks
+            </h2>
+            <a [routerLink]="['/manage/people/staff', id, 'compliance']">View all</a>
+          </div>
+          <div class="hr-table-wrap">
+            <table class="hr-table">
+              <thead>
+                <tr>
+                  <th scope="col">Check</th>
+                  <th scope="col">Completed</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (c of p.hr.checks; track c.id) {
+                  <tr>
+                    <td>{{ c.title }}</td>
+                    <td>{{ c.completed || 'Not recorded' }}</td>
+                    <td>
+                      <span class="hr-badge" [class.good]="checkState(c) === 'Verified'">{{
+                        checkState(c)
+                      }}</span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="hr-panel hr-employment-history">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">history</span>Employment
+              History Timeline
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            <div class="hr-timeline-entry">
+              <small>{{ p.start || 'Start not recorded' }} – Present</small>
+              <div>
+                <strong>{{ p.role }}</strong>
+                <p>{{ hr.store.company()?.name }}</p>
+                <span class="hr-badge">{{ p.hr.status }}</span>
+              </div>
+            </div>
+            <div class="hr-timeline-entry">
+              <small>Previous experience</small>
+              <div>
+                <p>{{ p.hr.employment.history || 'No previous employment history recorded.' }}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">history_edu</span>Previous
+              Care Experience
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            <p class="hr-record-text">{{ p.hr.employment.history || 'Not recorded' }}</p>
+          </div>
+        </section>
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">date_range</span>Gaps in
+              Employment
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            <p class="hr-record-text">{{ p.hr.employment.gaps || 'Not recorded' }}</p>
+          </div>
+        </section>
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span
+              >Qualifications & Certifications
+            </h2>
+            <a [routerLink]="['/manage/people/staff', id, 'training']">View all</a>
+          </div>
+          <div class="hr-table-wrap">
+            <table class="hr-table">
+              <thead>
+                <tr>
+                  <th scope="col">Qualification</th>
+                  <th scope="col">Completed</th>
+                  <th scope="col">Expiry</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (t of p.hr.training; track t.courseId) {
+                  <tr>
+                    <td>{{ course(t.courseId) }}</td>
+                    <td>{{ t.completed || 'Not recorded' }}</td>
+                    <td>{{ t.expiry || 'Not recorded' }}</td>
+                    <td>{{ trainingState(t) }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4" class="hr-empty">No qualifications recorded.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">description</span>Interview
+              Notes
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            <p class="hr-record-text">
+              {{ p.hr.employment.recruitment?.interviewNotes || 'Not recorded' }}
+            </p>
+          </div>
+        </section>
+        <section class="hr-panel hr-reference-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">groups</span>Employment
+              References ({{ p.hr.references.length }})
+            </h2>
+            <a [routerLink]="['/manage/people/staff', id, 'documents']">Supporting documents</a>
+          </div>
+          <div class="hr-table-wrap">
+            <table class="hr-table">
+              <thead>
+                <tr>
+                  <th scope="col">Reference Name</th>
+                  <th scope="col">Organisation</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of p.hr.references; track r.id) {
+                  <tr>
+                    <td>{{ r.name }}</td>
+                    <td>{{ r.organisation }}</td>
+                    <td>{{ r.email }}</td>
+                    <td>
+                      <span class="hr-badge" [class.good]="r.status === 'Verified'">{{
+                        r.status
+                      }}</span>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4" class="hr-empty">No references recorded.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">assignment_turned_in</span
+              >Onboarding Checklist
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            @for (t of p.hr.induction; track t.id) {
+              <div class="hr-row">
+                <span>{{ t.title }}</span
+                ><span class="hr-badge" [class.good]="t.complete">{{
+                  t.complete ? 'Completed' : 'Outstanding'
+                }}</span>
+              </div>
+            }
+          </div>
+        </section>
+      </div>
+      @if (p.application?.answers?.length) {
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>Original Application</h2>
+            <a routerLink="/manage/recruitment">Recruitment →</a>
+          </div>
+          <div class="hr-panel-body">
+            <dl class="hr-detail">
+              @for (answer of p.application!.answers; track $index) {
+                <dt>{{ answer.label }}</dt>
+                <dd>{{ answer.value || 'Not recorded' }}</dd>
+              }
+            </dl>
+          </div>
+        </section>
+      }
+    }
+    @if (section === 'compliance') {
+      <div class="hr-notice">
+        {{
+          ready(p).ready
+            ? 'All configured readiness requirements are complete.'
+            : 'Outstanding: ' + ready(p).missing.join(', ')
+        }}
+      </div>
+      <section class="hr-panel">
+        <div class="hr-table-wrap">
+          <table class="hr-table">
+            <thead>
+              <tr>
+                <th scope="col">Check</th>
+                <th scope="col">Status</th>
+                <th scope="col">Completed</th>
+                <th scope="col">Review / Renewal</th>
+                <th scope="col">Reviewer</th>
+                <th scope="col">Evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of p.hr.checks; track c.id) {
+                <tr [id]="'check-' + c.id">
+                  <td>
+                    {{ c.title }}<small>{{ c.note }}</small>
+                  </td>
+                  <td>
+                    <span class="hr-badge">{{ checkState(c) }}</span>
+                  </td>
+                  <td>{{ c.completed || 'Not recorded' }}</td>
+                  <td>{{ c.expiry || 'Not recorded' }}</td>
+                  <td>{{ c.reviewer || 'Not recorded' }}</td>
+                  <td>
+                    @if (c.documentId) {
+                      <button class="hr-button" (click)="download(c.documentId)">
+                        Download evidence
+                      </button>
+                    } @else {
+                      <a
+                        [routerLink]="['/manage/people/staff', id, 'documents']"
+                        queryParamsHandling="merge"
+                        [queryParams]="{ edit: null }"
+                        >Attach evidence →</a
+                      >
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+    @if (section === 'training') {
+      <div class="hr-course-strip" role="group" aria-label="Training categories">
+        @for (c of courses; track c.id; let i = $index) {
+          <button
+            type="button"
+            [class.active]="trainingQuery === c.title"
+            (click)="trainingQuery = trainingQuery === c.title ? '' : c.title"
+          >
+            <span
+              class="material-symbols-outlined"
+              [style.color]="
+                ['#008afa', '#ff8a00', '#008d9f', '#9553dc', '#ff3047', '#00a34e'][i % 6]
+              "
+              aria-hidden="true"
+              >{{ c.icon }}</span
+            ><span>{{ c.title }}</span
+            ><strong>{{
+              courseRecord(c.id)?.score === undefined || courseRecord(c.id)?.score === null
+                ? '—'
+                : courseRecord(c.id)?.score + '%'
+            }}</strong
+            ><small>{{
+              courseRecord(c.id) ? trainingState(courseRecord(c.id)!) : 'Not assigned'
+            }}</small>
+          </button>
+        }
+      </div>
+      <section class="hr-panel">
+        <div class="hr-panel-head">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">school</span>Training &
+            Competency Matrix
+          </h2>
+          <a
+            class="hr-button"
+            routerLink="/manage/learning"
+            [queryParams]="{ person: id, returnTo: '/manage/people/staff/' + id + '/training' }"
+            >Open Training Academy</a
+          >
+        </div>
+        <div class="hr-filters">
+          <label
+            >Course<mat-select
+              cvSelect
+              [(ngModel)]="trainingQuery"
+              aria-label="Filter training course"
+              ><mat-option value="">All courses</mat-option>
+              @for (c of courses; track c.id) {
+                <mat-option [value]="c.title">{{ c.title }}</mat-option>
+              }
+            </mat-select></label
+          ><label
+            >Status<mat-select
+              cvSelect
+              [(ngModel)]="trainingFilter"
+              aria-label="Filter training status"
+              ><mat-option value="">All statuses</mat-option
+              ><mat-option value="Assigned">Assigned</mat-option
+              ><mat-option value="Completed">Completed</mat-option
+              ><mat-option value="Due soon">Due soon</mat-option
+              ><mat-option value="Expired">Expired</mat-option></mat-select
+            ></label
+          ><label
+            >Search training<input
+              type="search"
+              [(ngModel)]="trainingQuery"
+              placeholder="Search training courses…"
+          /></label>
+        </div>
+        <div
+          class="hr-table-wrap"
+          tabindex="0"
+          role="region"
+          aria-label="Staff training and competency records"
+        >
+          <table class="hr-table">
+            <thead>
+              <tr>
+                <th scope="col">Course / Competency</th>
+                <th scope="col">Type</th>
+                <th scope="col">Last Completed</th>
+                <th scope="col">Expiry Date</th>
+                <th scope="col">Score</th>
+                <th scope="col">Trainer</th>
+                <th scope="col">Certificate</th>
+                <th scope="col">Status</th>
+                <th scope="col">Reassessment Due</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (t of filteredTraining(); track t.courseId) {
+                <tr>
+                  <td>
+                    <strong>{{ course(t.courseId) }}</strong
+                    ><small>{{ t.competency }}</small>
+                  </td>
+                  <td>
+                    <span class="hr-badge">{{ courseCategory(t.courseId) }}</span>
+                  </td>
+                  <td>{{ t.completed || 'Not recorded' }}</td>
+                  <td>{{ t.expiry || 'Not recorded' }}</td>
+                  <td>{{ t.score === undefined || t.score === null ? '—' : t.score + '%' }}</td>
+                  <td>{{ t.assessor || 'Not recorded' }}</td>
+                  <td>
+                    @if (t.certificateId) {
+                      <button class="hr-text-action" (click)="previewDocument(t.certificateId)">
+                        <span class="material-symbols-outlined" aria-hidden="true">description</span
+                        >View
+                      </button>
+                    } @else {
+                      Not attached
+                    }
+                  </td>
+                  <td>
+                    <span
+                      class="hr-badge"
+                      [class.good]="trainingState(t) === 'Completed'"
+                      [class.warn]="trainingState(t) === 'Due soon'"
+                      [class.bad]="trainingState(t) === 'Expired'"
+                      >{{ trainingState(t) }}</span
+                    >
+                  </td>
+                  <td>{{ t.reassessmentDue || 'Not scheduled' }}</td>
+                  <td>
+                    @if (hr.can('edit')) {
+                      <button
+                        class="hr-button"
+                        [class.primary]="
+                          trainingState(t) === 'Expired' || trainingState(t) === 'Due soon'
+                        "
+                        (click)="
+                          prepareBooking(
+                            t.courseId,
+                            t.competency === 'Not assessed' ? 'Training' : 'Reassessment'
+                          )
+                        "
+                      >
+                        {{
+                          trainingState(t) === 'Expired' || trainingState(t) === 'Due soon'
+                            ? 'Book Training'
+                            : 'Schedule'
+                        }}
+                      </button>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="10" class="hr-empty">No training records match these filters.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <div class="hr-grid">
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>Training
+              Completion History
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            @for (t of p.hr.training; track t.courseId) {
+              @if (t.completed) {
+                <div class="hr-row">
+                  <span>{{ course(t.courseId) }}</span
+                  ><span class="hr-badge good">{{ t.completed }}</span>
+                </div>
+              }
+            }
+            @if (!p.hr.training.length) {
+              <p class="hr-empty">No completion records yet.</p>
+            }
+          </div>
+        </section>
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+              >Upcoming Training & Reassessments
+            </h2>
+          </div>
+          <div class="hr-table-wrap">
+            <table class="hr-table">
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Course / Competency</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (b of p.hr.bookings ?? []; track b.id) {
+                  <tr>
+                    <td>{{ b.date }}</td>
+                    <td>
+                      {{ course(b.courseId) }}<small>{{ b.provider }}</small>
+                    </td>
+                    <td>{{ b.type }}</td>
+                    <td>
+                      <span class="hr-badge">{{ b.status }}</span>
+                    </td>
+                    <td>
+                      @if (b.status === 'Scheduled' && hr.can('edit')) {
+                        <button class="hr-button" (click)="cancelBooking(b.id)">Cancel</button>
+                      }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="hr-empty">No sessions scheduled.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      <div class="hr-grid">
+        <section class="hr-panel" id="staff-training-booking">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">event_available</span
+              >Training & Reassessment Bookings
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            @if (hr.can('edit')) {
+              <form class="hr-form" (ngSubmit)="bookTraining()">
+                <label
+                  >Course<mat-select
+                    cvSelect
+                    name="bookCourse"
+                    [(ngModel)]="booking.courseId"
+                    required
+                    aria-label="Book course"
+                    ><mat-option value="">Choose course</mat-option>
+                    @for (c of courses; track c.id) {
+                      <mat-option [value]="c.id">{{ c.title }}</mat-option>
+                    }
+                  </mat-select></label
+                ><label
+                  >Type<mat-select
+                    cvSelect
+                    name="bookType"
+                    [(ngModel)]="booking.type"
+                    aria-label="Session type"
+                    ><mat-option value="Training">Training</mat-option
+                    ><mat-option value="Reassessment">Reassessment</mat-option></mat-select
+                  ></label
+                ><label
+                  >Date<input
+                    type="date"
+                    name="bookDate"
+                    [(ngModel)]="booking.date"
+                    required /></label
+                ><label
+                  >Provider / Assessor<input
+                    name="bookProvider"
+                    [(ngModel)]="booking.provider"
+                    required /></label
+                ><button class="hr-button primary" type="submit">Schedule Session</button>
+              </form>
+            }
+            <p class="hr-muted">
+              Scheduling records the session. Provider confirmation and notifications are separate.
+            </p>
+          </div>
+        </section>
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">assignment_turned_in</span
+              >Induction
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            @for (t of p.hr.induction; track t.id) {
+              <div class="hr-row">
+                <span>{{ t.title }}</span
+                ><span class="hr-badge" [class.good]="t.complete">{{
+                  t.complete ? 'Completed' : 'Outstanding'
+                }}</span>
+              </div>
+            }
+          </div>
+        </section>
+      </div>
+    }
+    @if (section === 'documents') {
+      <div class="hr-document-alerts">
+        @for (alert of documentAlerts(); track alert.title) {
+          <article [class.bad]="alert.tone === 'bad'">
+            <span class="material-symbols-outlined" aria-hidden="true">warning</span>
+            <div>
+              <strong>{{ alert.title }}</strong>
+              <p>{{ alert.detail }}</p>
+              <a class="hr-button" [routerLink]="['/manage/people/staff', id, alert.section]"
+                >{{ alert.button }} →</a
+              >
+            </div>
+          </article>
+        }
+      </div>
+      <div class="hr-document-tabs" role="group" aria-label="Document categories">
+        <button [class.active]="!documentCategory" (click)="documentCategory = ''">
+          All Documents
+        </button>
+        @for (category of documentTypes; track category) {
+          <button
+            [class.active]="documentCategory === category"
+            (click)="documentCategory = category"
+          >
+            {{ category }}
+          </button>
+        }
+      </div>
+      <div class="hr-documents-layout">
+        <main aria-label="Staff document records">
+          <section class="hr-panel">
+            <div class="hr-panel-head">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">folder_open</span
+                >Document Records ({{ documents().length }})
+              </h2>
+              @if (hr.can('edit')) {
+                <button class="hr-button" (click)="edit()">Manage Records</button>
+              }
+            </div>
+            <div class="hr-filters">
+              <label
+                >Search documents<input
+                  type="search"
+                  [(ngModel)]="documentQuery"
+                  placeholder="Document name or category" /></label
+              ><label
+                >Category<mat-select cvSelect [(ngModel)]="documentCategory" aria-label="Category">
+                  <mat-option value="">All categories</mat-option>
+                  @for (category of documentCategories(); track category) {
+                    <mat-option [value]="category">{{ category }}</mat-option>
+                  }
+                </mat-select></label
+              ><label
+                >Status<mat-select cvSelect [(ngModel)]="documentStatus" aria-label="Status">
+                  <mat-option value="">All statuses</mat-option>
+                  <mat-option value="Pending review">Pending review</mat-option>
+                  <mat-option value="Verified">Verified</mat-option>
+                  <mat-option value="Expired">Expired</mat-option>
+                </mat-select></label
+              >
+            </div>
+            <div class="hr-table-wrap">
+              <table class="hr-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Document</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Uploaded</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Reviewed by</th>
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (d of visibleDocuments(); track d.id) {
+                    <tr>
+                      <td>
+                        {{ d.name }}<small>Version {{ d.version || 1 }}</small>
+                      </td>
+                      <td>{{ d.category || 'Other Records' }}</td>
+                      <td>
+                        {{ d.uploadedAt ? (d.uploadedAt | date: 'd MMM yyyy') : 'Not recorded' }}
+                      </td>
+                      <td>
+                        <span class="hr-badge">{{ documentState(d) }}</span>
+                      </td>
+                      <td>{{ d.reviewedBy || 'Not recorded' }}</td>
+                      <td>
+                        <div class="hr-actions">
+                          <button class="hr-button" (click)="previewDocument(d.id)">Preview</button
+                          ><button class="hr-button" (click)="download(d.id)">Download</button>
+                          @if (hr.can('edit') && d.status !== 'Verified') {
+                            <button class="hr-button" (click)="verifyDocument(d.id)">Verify</button>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="6" class="hr-empty">No documents uploaded.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section class="hr-panel">
+            <div class="hr-panel-head"><h2 id="document-requests">Document Requests</h2></div>
+            <div class="hr-panel-body">
+              @if (hr.can('edit')) {
+                <form class="hr-form" (ngSubmit)="requestDocument()">
+                  <label
+                    >Requested document<input
+                      name="requestTitle"
+                      [(ngModel)]="requestTitle"
+                      required
+                  /></label>
+                  <div class="hr-actions">
+                    <button class="hr-button" type="submit">Record Request</button>
+                  </div>
+                </form>
+                <p class="hr-muted">
+                  Requests are recorded here. Outbound delivery is not connected.
+                </p>
+              }
+              @for (r of p.hr.requests; track r.id) {
+                <div class="hr-row">
+                  <span>{{ r.title }} · {{ r.status }}</span>
+                  @if (r.status === 'Open' && hr.can('edit')) {
+                    <button class="hr-button" (click)="fulfill(r.id)">Mark fulfilled</button>
+                  }
+                </div>
+              }
+            </div>
+          </section>
+        </main>
+        <aside class="hr-record-sidebar">
+          <section class="hr-panel">
+            <div class="hr-panel-head">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>Upload
+                New Document
+              </h2>
+            </div>
+            <div class="hr-panel-body hr-form">
+              @if (hr.can('edit')) {
+                <label class="wide"
+                  >Category<mat-select
+                    cvSelect
+                    [(ngModel)]="uploadCategory"
+                    aria-label="Upload document category"
+                  >
+                    @for (category of documentTypes; track category) {
+                      <mat-option [value]="category">{{ category }}</mat-option>
+                    }
+                  </mat-select></label
+                ><label
+                  class="hr-document-drop wide"
+                  (dragover)="$event.preventDefault()"
+                  (drop)="dropDocument($event)"
+                  ><span class="material-symbols-outlined" aria-hidden="true">cloud_upload</span
+                  ><strong>Drag and drop a file here<br />or click to browse</strong
+                  ><small>PDF, JPG, PNG, DOC, DOCX<br />Maximum file size: 1 MB</small
+                  ><input
+                    id="staff-document-input"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    [disabled]="uploadBusy()"
+                    (change)="documentInput($event)"
+                    aria-label="Choose staff document" /></label
+                ><button
+                  class="hr-button primary wide"
+                  [disabled]="uploadBusy()"
+                  (click)="chooseDocument()"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">upload</span
+                  >{{ uploadBusy() ? 'Uploading…' : 'Upload Document' }}
+                </button>
+                @if (pendingDocument()) {
+                  <button class="hr-button outline wide" (click)="savePendingDocument()">
+                    Retry saving {{ pendingDocument()!.name }}
+                  </button>
+                }
+              } @else {
+                <p class="hr-muted">You have read-only access to documents.</p>
+              }
+            </div>
+          </section>
+          <section class="hr-panel">
+            <div class="hr-panel-head">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">folder_copy</span
+                >Document Categories
+              </h2>
+            </div>
+            <div class="hr-panel-body">
+              @for (category of documentTypes; track category) {
+                <button class="hr-category-count" (click)="documentCategory = category">
+                  <span>{{ category }}</span
+                  ><span class="hr-badge">{{ categoryCount(category) }}</span>
+                </button>
+              }
+            </div>
+          </section>
+          <section class="hr-panel">
+            <div class="hr-panel-head">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">history</span>Recent
+                Activity
+              </h2>
+              <a [routerLink]="['/manage/people/staff', id, 'audit']">View all</a>
+            </div>
+            <div class="hr-panel-body">
+              @for (a of p.hr.audit.filter(documentEvent).slice(-4).reverse(); track a.id) {
+                <div class="hr-row">
+                  <div>
+                    <strong>{{ a.action }}</strong
+                    ><small>{{ a.actor }} · {{ a.at | date: 'd MMM yyyy' }}</small>
+                  </div>
+                </div>
+              } @empty {
+                <p class="hr-muted">No document activity recorded.</p>
+              }
+            </div>
+          </section>
+        </aside>
+      </div>
+    }
+    @if (section === 'availability') {
+      <cv-staff-availability [p]="p" [editable]="false" />
+      <section class="hr-panel">
+        <div class="hr-panel-head">
+          <h2>Leave Requests</h2>
+          <a class="hr-button" routerLink="/manage/leave">Team leave →</a>
+        </div>
+        <div class="hr-panel-body">
+          @if (hr.can('edit')) {
+            <form class="hr-form" (ngSubmit)="requestLeave()">
+              <label
+                >Leave type<mat-select
+                  cvSelect
+                  name="leaveType"
+                  [(ngModel)]="leave.type"
+                  aria-label="Leave type"
+                >
+                  <mat-option value="Annual leave">Annual leave</mat-option>
+                  <mat-option value="Sick leave">Sick leave</mat-option>
+                  <mat-option value="Training">Training</mat-option>
+                  <mat-option value="Other">Other</mat-option>
+                </mat-select></label
+              ><label
+                >From<input
+                  type="date"
+                  name="leaveStart"
+                  [(ngModel)]="leave.start"
+                  required /></label
+              ><label
+                >To<input
+                  type="date"
+                  name="leaveEnd"
+                  [(ngModel)]="leave.end"
+                  [min]="leave.start"
+                  required
+              /></label>
+              <div class="hr-actions">
+                <button class="hr-button" type="submit">Request Leave</button>
+              </div>
+            </form>
+          }
+          @for (l of leaves(); track l.id) {
+            <div class="hr-row">
+              <div>
+                {{ l.type
+                }}<small> {{ l.start }} – {{ l.end }} · {{ l.status || 'Legacy record' }}</small>
+              </div>
+              @if (hr.can('edit')) {
+                <div class="hr-actions">
+                  @if (l.status === 'Pending') {
+                    <button class="hr-button" (click)="leaveStatus(l.id, 'Approved')">
+                      Approve</button
+                    ><button class="hr-button" (click)="leaveStatus(l.id, 'Rejected')">
+                      Reject
+                    </button>
+                  }
+                  @if (l.status === 'Pending' || l.status === 'Approved') {
+                    <button class="hr-button" (click)="leaveStatus(l.id, 'Cancelled')">
+                      Cancel
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          } @empty {
+            <p class="hr-empty">No leave recorded.</p>
+          }
+        </div>
+      </section>
+    }
+    @if (section === 'reviews') {
+      <div class="hr-review-insights">
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">query_stats</span
+              >Performance Summary
+            </h2>
+            <span class="hr-muted">Latest appraisal</span>
+          </div>
+          <div class="hr-panel-body">
+            <svg class="hr-radar" viewBox="0 0 260 190" aria-hidden="true">
+              @for (level of [1, 2, 3, 4, 5]; track level) {
+                <polygon
+                  [attr.points]="radarPoints(level)"
+                  fill="none"
+                  stroke="#e1eaf1"
+                  stroke-width="1"
+                />
+              }
+              @if (radarPoints()) {
+                <polygon
+                  [attr.points]="radarPoints()"
+                  fill="#008afa22"
+                  stroke="#008afa"
+                  stroke-width="2"
+                />
+              }
+            </svg>
+            @if (!radarPoints()) {
+              <p class="hr-chart-empty">No complete competency profile recorded.</p>
+            }
+            <div class="hr-radar-legend">
+              @for (d of dimensions; track d) {
+                <span>{{ d }}</span>
+              }
+            </div>
+          </div>
+        </section>
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">monitoring</span>Review
+              Completion Trend
+            </h2>
+            <span class="hr-muted">Last 6 months</span>
+          </div>
+          <div class="hr-panel-body">
+            <svg
+              class="hr-trend-chart"
+              viewBox="0 0 300 190"
+              role="img"
+              aria-label="Monthly completed supervision and spot-check counts"
+            >
+              @for (y of [35, 64, 92, 121, 150]; track y) {
+                <line x1="28" [attr.y1]="y" x2="280" [attr.y2]="y" stroke="#edf2f5" />
+              }
+              <polyline
+                [attr.points]="reviewLine('supervision')"
+                fill="none"
+                stroke="#008afa"
+                stroke-width="2"
+              />
+              <polyline
+                [attr.points]="reviewLine('spots')"
+                fill="none"
+                stroke="#00a34e"
+                stroke-width="2"
+              />
+              @for (m of reviewTrend(); track m.month; let i = $index) {
+                <text
+                  [attr.x]="30 + i * 48"
+                  y="174"
+                  text-anchor="middle"
+                  fill="#68768a"
+                  font-size="9"
+                >
+                  {{ m.month.slice(5) }}
+                </text>
+              }
+            </svg>
+            <div class="hr-chart-legend">
+              <span style="--series-color: #008afa">Supervision completed</span
+              ><span style="--series-color: #00a34e">Spot checks completed</span>
+            </div>
+            <p class="hr-muted">Recorded counts by review date.</p>
+          </div>
+        </section>
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">assignment_ind</span>Latest
+              Appraisal
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            @if (latestAppraisal(); as appraisal) {
+              <strong>Annual Appraisal · {{ appraisal.date }}</strong>
+              <div class="hr-appraisal-score">
+                {{ appraisal.score === undefined ? 'Not rated' : appraisal.score + ' / 5' }}
+              </div>
+              <dl class="hr-detail">
+                <dt>Appraiser</dt>
+                <dd>{{ appraisal.assessor || 'Not recorded' }}</dd>
+                <dt>Outcome</dt>
+                <dd>{{ appraisal.outcome || 'Not recorded' }}</dd>
+              </dl>
+              <p class="hr-appraisal-comment">{{ appraisal.discussion }}</p>
+            } @else {
+              <p class="hr-empty">No completed appraisal recorded.</p>
+            }
+          </div>
+        </section>
+      </div>
+      <nav class="hr-review-tabs" aria-label="Supervision and appraisal records">
+        @for (tab of reviewTabs; track tab.key) {
+          <button
+            type="button"
+            [class.active]="reviewTab === tab.key"
+            (click)="reviewTab = tab.key"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">{{ tab.icon }}</span
+            >{{ tab.label }}
+          </button>
+        }
+      </nav>
+      <div class="hr-review-layout">
+        <main aria-label="Review records">
+          @if (reviewTab !== 'Action plans') {
+            <section class="hr-panel">
+              <div class="hr-panel-head">
+                <h2>{{ reviewTab === 'Supervision' ? 'Supervision History' : reviewTab }}</h2>
+                @if (hr.can('edit')) {
+                  <button
+                    class="hr-button"
+                    (click)="showReviewForm = !showReviewForm; review.type = reviewTab"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">add</span>Add Review
+                    Record
+                  </button>
+                }
+              </div>
+              <div class="hr-table-wrap" tabindex="0" role="region" aria-label="Review history">
+                <table class="hr-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Date</th>
+                      <th scope="col">Type</th>
+                      <th scope="col">Assessor</th>
+                      <th scope="col">Outcome</th>
+                      <th scope="col">Discussion / Development</th>
+                      <th scope="col">Score</th>
+                      <th scope="col">Follow-up</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (r of filteredReviews(); track r.id) {
+                      <tr>
+                        <td>{{ r.date }}</td>
+                        <td>{{ r.type }}</td>
+                        <td>{{ r.assessor || 'Not recorded' }}</td>
+                        <td>{{ r.outcome || 'Pending' }}</td>
+                        <td>{{ r.discussion || 'Not recorded' }}</td>
+                        <td>{{ r.score === undefined ? '—' : r.score + ' / 5' }}</td>
+                        <td>
+                          <span class="hr-badge" [class.good]="r.status === 'Completed'">{{
+                            r.status
+                          }}</span>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="7" class="hr-empty">
+                          No {{ reviewTab.toLowerCase() }} records.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <div class="hr-panel-body">
+                @for (r of filteredReviews(); track r.id) {
+                  <div class="hr-row">
+                    <div>
+                      <strong>{{ r.type }} · {{ r.date }}</strong>
+                      <p>{{ r.assessor || 'Assessor not recorded' }} · {{ r.status }}</p>
+                      <p>{{ r.discussion }}</p>
+                      <p>{{ r.outcome }}</p>
+                      @if (r.score !== undefined) {
+                        <p>Manager appraisal rating: {{ r.score }} / 5</p>
+                      }
+                      @if (r.status !== 'Completed' && hr.can('edit')) {
+                        <div class="hr-form">
+                          @if (r.type === 'Annual appraisal') {
+                            <div class="hr-form wide hr-appraisal-dimensions">
+                              @for (d of dimensions; track d) {
+                                <label
+                                  >{{ d }} (1–5)<input
+                                    type="number"
+                                    min="1"
+                                    max="5"
+                                    step="0.1"
+                                    [(ngModel)]="dimensionDraft(r.id)[d]"
+                                /></label>
+                              }
+                            </div>
+                          }
+                          <label>Discussion<textarea #discussion></textarea></label
+                          ><label>Outcome<textarea #outcome></textarea></label
+                          ><label
+                            >Appraisal rating (1–5)<input
+                              type="number"
+                              min="1"
+                              max="5"
+                              step="0.1"
+                              #reviewScore
+                            /><small
+                              >1: significant support; 2: development required; 3: meets
+                              expectations; 4: strong; 5: exceptional. Required for annual
+                              appraisals.</small
+                            ></label
+                          ><button
+                            class="hr-button"
+                            (click)="
+                              completeReview(
+                                r.id,
+                                discussion.value,
+                                outcome.value,
+                                reviewScore.value
+                              )
+                            "
+                          >
+                            Save Completed Review
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                } @empty {
+                  <p class="hr-empty">No reviews recorded.</p>
+                }
+              </div>
+            </section>
+          }
+          @if (showReviewForm) {
+            <section class="hr-panel">
+              <div class="hr-panel-head"><h2>Schedule a Review</h2></div>
+              <div class="hr-panel-body">
+                @if (hr.can('edit')) {
+                  <form class="hr-form" (ngSubmit)="scheduleReview()">
+                    <label
+                      >Type<mat-select
+                        cvSelect
+                        name="reviewType"
+                        [(ngModel)]="review.type"
+                        aria-label="Type"
+                      >
+                        <mat-option value="Supervision">Supervision</mat-option>
+                        <mat-option value="Annual appraisal">Annual appraisal</mat-option>
+                        <mat-option value="Field spot check">Field spot check</mat-option>
+                        <mat-option value="Medication observation"
+                          >Medication observation</mat-option
+                        >
+                        <mat-option value="Care practice observation"
+                          >Care practice observation</mat-option
+                        >
+                      </mat-select></label
+                    ><label
+                      >Date<input
+                        type="date"
+                        name="reviewDate"
+                        [(ngModel)]="review.date"
+                        required /></label
+                    ><label
+                      >Assessor<input name="assessor" [(ngModel)]="review.assessor" required
+                    /></label>
+                    <div class="hr-actions">
+                      <button class="hr-button" type="submit">Schedule Review</button>
+                    </div>
+                  </form>
+                } @else {
+                  <p class="hr-muted">You have read-only access.</p>
+                }
+              </div>
+            </section>
+          }
+          @if (reviewTab === 'Action plans') {
+            <section class="hr-panel">
+              <div class="hr-panel-head"><h2>Action Plans</h2></div>
+              <div class="hr-panel-body">
+                @if (hr.can('edit')) {
+                  <form class="hr-form" (ngSubmit)="addAction()">
+                    <label
+                      >Action<input name="actionTitle" [(ngModel)]="action.title" required /></label
+                    ><label
+                      >Owner<input name="actionOwner" [(ngModel)]="action.owner" required /></label
+                    ><label
+                      >Due date<input
+                        type="date"
+                        name="actionDue"
+                        [(ngModel)]="action.due"
+                        required
+                    /></label>
+                    <div class="hr-actions">
+                      <button class="hr-button" type="submit">Add Action</button>
+                    </div>
+                  </form>
+                }
+                @for (a of p.hr.actions; track a.id) {
+                  <div class="hr-row">
+                    <div>
+                      <strong>{{ a.title }}</strong>
+                      <p>{{ a.owner }} · {{ a.due }} · {{ a.status }}</p>
+                      <p>{{ a.evidence }}</p>
+                      @if (a.status !== 'Completed' && hr.can('edit')) {
+                        <div class="hr-form">
+                          <label>Completion evidence<input #evidence /></label
+                          ><button class="hr-button" (click)="completeAction(a.id, evidence.value)">
+                            Complete Action
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+        </main>
+        <aside class="hr-record-sidebar">
+          <section class="hr-panel">
+            <div class="hr-panel-head">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">assignment_late</span
+                >Upcoming / Overdue Actions
+              </h2>
+            </div>
+            <div class="hr-panel-body">
+              @for (action of p.hr.actions; track action.id) {
+                @if (action.status !== 'Completed') {
+                  <div class="hr-upcoming-line">
+                    <span
+                      >{{ action.title }}<small>{{ action.owner }} · {{ action.due }}</small></span
+                    ><span class="hr-badge warn">{{ action.status }}</span>
+                  </div>
+                }
+              }
+              @if (!p.hr.actions.length) {
+                <p class="hr-muted">No action-plan items recorded.</p>
+              }
+            </div>
+          </section>
+          <section class="hr-panel">
+            <div class="hr-panel-head">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">description</span
+                >Reflective Practice Notes
+              </h2>
+              <a [routerLink]="['/manage/people/staff', id, 'notes']">View all</a>
+            </div>
+            <div class="hr-panel-body">
+              @for (note of p.hr.notes; track note.id) {
+                @if (note.reflective) {
+                  <div class="hr-row">
+                    <div>
+                      <small>{{ note.at | date: 'd MMM yyyy' }}</small>
+                      <p>{{ note.text }}</p>
+                    </div>
+                  </div>
+                }
+              }
+              @if (!p.hr.notes.length) {
+                <p class="hr-muted">No reflections recorded.</p>
+              }
+            </div>
+          </section>
+        </aside>
+      </div>
+    }
+    @if (section === 'performance') {
+      <div class="hr-performance-toolbar">
+        <h2>Key Performance Indicators</h2>
+        <div class="hr-actions">
+          <button class="hr-button" (click)="movePeriod(-1)" aria-label="Previous reporting month">
+            ‹</button
+          ><label class="hr-month-picker"
+            ><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+            ><input type="month" [(ngModel)]="period" aria-label="Reporting month" /></label
+          ><button class="hr-button" (click)="movePeriod(1)" aria-label="Next reporting month">
+            ›
+          </button>
+          @if (hr.can('export')) {
+            <button class="hr-button" (click)="exportPerformance()">
+              <span class="material-symbols-outlined" aria-hidden="true">download</span>Download
+              Report
+            </button>
+          }
+        </div>
+      </div>
+      <div class="hr-stats hr-performance-kpis">
+        @for (kpi of performanceKpis(); track kpi.title) {
+          <section class="hr-stat" [style.--stat-color]="kpi.color">
+            <span class="material-symbols-outlined" aria-hidden="true">{{ kpi.icon }}</span>
+            <div>
+              <small>{{ kpi.title }}</small
+              ><strong>{{ kpi.value }}</strong
+              ><small>{{ kpi.caption }}</small>
+            </div>
+          </section>
+        }
+      </div>
+      <div class="hr-performance-main">
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>Monthly
+              Performance Trend
+            </h2>
+            <span class="hr-muted">Last 6 months</span>
+          </div>
+          <div class="hr-panel-body">
+            <div
+              class="hr-performance-bars"
+              role="img"
+              aria-label="Assigned and completed visits for the last six months"
+            >
+              @for (t of monthlyTrend(); track t.month) {
+                <div>
+                  <div>
+                    <span class="assigned" [style.height.px]="trendHeight(t.assigned)"></span
+                    ><span class="completed" [style.height.px]="trendHeight(t.completed)"></span>
+                  </div>
+                  <small>{{ t.month.slice(5) }}</small>
+                </div>
+              }
+            </div>
+            <div class="hr-chart-legend">
+              <span style="--series-color: #008afa">Assigned visits</span
+              ><span style="--series-color: #00a34e">Completed attendance</span>
+            </div>
+            <details class="hr-metric-source">
+              <summary>View exact monthly counts</summary>
+              <table class="hr-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Month</th>
+                    <th scope="col">Assigned</th>
+                    <th scope="col">Completed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (t of monthlyTrend(); track t.month) {
+                    <tr>
+                      <td>{{ t.month }}</td>
+                      <td>{{ t.assigned }}</td>
+                      <td>{{ t.completed }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </details>
+          </div>
+        </section>
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">calendar_view_month</span
+              >Late Visits Heatmap
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            <table
+              class="hr-heatmap"
+              [attr.aria-label]="'Late recorded attendance in ' + periodLabel()"
+            >
+              <thead>
+                <tr>
+                  <th scope="col"></th>
+                  @for (slot of heatSlots; track slot) {
+                    <th scope="col">{{ slot }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (day of heatDays; track day; let i = $index) {
+                  <tr>
+                    <th scope="row">{{ day }}</th>
+                    @for (slot of heatSlots; track slot; let j = $index) {
+                      <td [class]="lateTone(lateCell(i, j))">{{ lateCell(i, j) ?? '—' }}</td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+            <p class="hr-muted">
+              Recorded attendance only. A late start is after the scheduled UK start time.
+            </p>
+          </div>
+        </section>
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">groups</span>Assigned
+              Service Users
+            </h2>
+            <a
+              routerLink="/manage/rota"
+              [queryParams]="{ staff: id, from: period + '-01', to: periodEnd() }"
+              >View all ({{ assignedClients().length }})</a
+            >
+          </div>
+          <div class="hr-table-wrap">
+            <table class="hr-table">
+              <thead>
+                <tr>
+                  <th scope="col">Service User</th>
+                  <th scope="col">Visits</th>
+                  <th scope="col">Punctuality</th>
+                  <th scope="col">Feedback</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (client of assignedClients(); track client.id) {
+                  <tr>
+                    <td>{{ client.name }}</td>
+                    <td>{{ client.visits }}</td>
+                    <td>
+                      <span class="hr-badge">{{ clientPunctuality(client.id) }}</span>
+                    </td>
+                    <td>Not recorded</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4" class="hr-empty">No assigned visits in this period.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      <div class="hr-performance-bottom">
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">location_on</span>Branches
+              & Working Areas
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            <div class="hr-area-summary">
+              <span class="material-symbols-outlined" aria-hidden="true">map</span
+              ><strong>{{ p.location }}</strong
+              ><small>Recorded base branch</small>
+            </div>
+            <p class="hr-muted">Preferred areas: {{ p.hr.preferences.areas || 'Not recorded' }}</p>
+          </div>
+        </section>
+        <section class="hr-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">flag</span>Positive
+              Outcomes
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            <p class="hr-empty">No attributed outcome records available.</p>
+            <a class="hr-button" routerLink="/manage/quality">View quality records</a>
+          </div>
+        </section>
+        <section class="hr-panel hr-development-panel">
+          <div class="hr-panel-head">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">monitoring</span
+              >Performance Summary & Development
+            </h2>
+          </div>
+          <div class="hr-panel-body">
+            <div class="hr-development-grid">
+              <div class="hr-strengths">
+                <h3>Key Strengths</h3>
+                @for (rating of strengthRatings(); track rating.title) {
+                  <p>✓ {{ rating.title }} · {{ rating.score }} / 5</p>
+                } @empty {
+                  <p>No strength ratings recorded.</p>
+                }
+              </div>
+              <div class="hr-development">
+                <h3>Areas for Development</h3>
+                @for (rating of developmentRatings(); track rating.title) {
+                  <p>{{ rating.title }} · {{ rating.score }} / 5</p>
+                } @empty {
+                  <p>No development ratings recorded.</p>
+                }
+              </div>
+            </div>
+            <div class="hr-development-grid">
+              <div>
+                <h3>Recommended Actions</h3>
+                @for (action of p.hr.actions; track action.id) {
+                  @if (action.status !== 'Completed') {
+                    <p>
+                      {{ action.title }}<small>{{ action.owner }} · {{ action.due }}</small>
+                    </p>
+                  }
+                }
+                @if (!p.hr.actions.length) {
+                  <p>No action-plan items recorded.</p>
+                }
+              </div>
+              <div>
+                <h3>Manager Comments</h3>
+                <p>{{ latestAppraisal()?.discussion || 'Not recorded' }}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+      <section class="hr-panel">
+        <div class="hr-panel-head">
+          <h2>Visits & Service Delivery Evidence</h2>
+          <a
+            class="hr-button"
+            routerLink="/manage/rota"
+            [queryParams]="{ staff: id, from: period + '-01', to: periodEnd() }"
+            >View Source Visits</a
+          >
+        </div>
+        <div class="hr-table-wrap" role="region" aria-label="Source visits" tabindex="0">
+          <table class="hr-table">
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Service User</th>
+                <th scope="col">Scheduled</th>
+                <th scope="col">Visit</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (v of performanceVisits(); track v.id) {
+                <tr>
+                  <td>{{ v.date }}</td>
+                  <td>{{ v.clientName }}</td>
+                  <td>{{ v.start }} – {{ v.end }}</td>
+                  <td>{{ v.callName }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4" class="hr-empty">No assigned visits in this period.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="hr-muted hr-source-note">
+          Unrecorded attendance is not automatically classified as a missed call. Quality scores and
+          feedback need recorded evidence; they are not inferred from rota activity.
+        </p>
+      </section>
+    }
+    @if (section === 'notes') {
+      <section class="hr-panel">
+        <div class="hr-panel-head"><h2>Notes & Reflective Practice</h2></div>
+        <div class="hr-panel-body">
+          @if (hr.can('edit')) {
+            <form (ngSubmit)="addNote()">
+              <div class="hr-form">
+                <label class="wide"
+                  >Note<textarea name="note" [(ngModel)]="note" required></textarea>
+                </label>
+              </div>
+              <label class="hr-check"
+                ><input type="checkbox" name="reflective" [(ngModel)]="reflective" />Reflective
+                practice</label
+              ><button class="hr-button primary" type="submit">Add Note</button>
+            </form>
+          }
+          @for (n of p.hr.notes.slice().reverse(); track n.id) {
+            <article class="hr-row">
+              <div>
+                <small
+                  >{{ n.author }} ·
+                  {{ n.at ? (n.at | date: 'd MMM yyyy, HH:mm') : 'Date not recorded' }} ·
+                  {{ n.reflective ? 'Reflective practice' : 'Note' }}</small
+                >
+                <p>{{ n.text }}</p>
+              </div>
+            </article>
+          } @empty {
+            <p class="hr-empty">No notes recorded.</p>
+          }
+        </div>
+      </section>
+    }
+    @if (section === 'audit') {
+      <section class="hr-panel">
+        <div class="hr-panel-head"><h2>Record History</h2></div>
+        <div class="hr-panel-body">
+          @for (a of p.hr.audit.slice().reverse(); track a.id) {
+            <div class="hr-row">
+              <div>
+                <strong>{{ a.action }}</strong>
+                <p>{{ a.actor }} · {{ a.at | date: 'd MMM yyyy, HH:mm' }}</p>
+              </div>
+            </div>
+          } @empty {
+            <p class="hr-empty">
+              No recorded changes since this staff record was introduced. Earlier activity is not
+              reconstructed.
+            </p>
+          }
+        </div>
+      </section>
+    }
+  }
+} @else {
+  <section class="hr-panel">
+    <div class="hr-empty">
+      <h1>Staff record unavailable</h1>
+      <p>This employee is not available in the selected company.</p>
+      <a class="hr-button" routerLink="/manage/people/staff">Return to Staff Directory</a>
+    </div>
+  </section>
+}
+
+@if (preview(); as doc) {
+  <div class="modal-backdrop" (click)="closePreview()">
+    <section
+      class="hr-preview hr-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="hr-preview-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (keydown.escape)="closePreview()"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="hr-panel-head">
+        <h2 id="hr-preview-title">{{ doc.name }}</h2>
+        <button class="hr-button" (click)="closePreview()">Close preview</button>
+      </div>
+      <div class="hr-panel-body">
+        @if (doc.type.startsWith('image/')) {
+          <img [src]="doc.url" [alt]="doc.name" style="max-width: 100%; max-height: 70vh" />
+        } @else {
+          <iframe
+            [src]="doc.safeUrl"
+            [title]="doc.name"
+            sandbox
+            style="width: 100%; height: 65vh; border: 0"
+          ></iframe>
+        }
+      </div>
+    </section>
+  </div>
+}

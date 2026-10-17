@@ -1,0 +1,173 @@
+:host(.hr-compact-editor) {
+  display: block;
+  container: staff-editor / inline-size;
+}
+:host(.hr-compact-editor) .hr-panel-head {
+  padding: 6px 9px 4px;
+}
+:host(.hr-compact-editor) .hr-panel-body {
+  padding: 4px 9px 8px;
+}
+:host(.hr-compact-editor) .hr-form {
+  gap: 6px 10px;
+}
+:host(.hr-compact-editor) .hr-form label {
+  gap: 3px;
+}
+:host(.hr-compact-editor) .hr-photo-frame {
+  width: 64px;
+  height: 72px;
+  flex-basis: 64px;
+}
+:host(.hr-compact-editor) .hr-photo-frame > .material-symbols-outlined {
+  font-size: 36px;
+}
+:host(.hr-compact-editor) .hr-photo-panel .hr-panel-body {
+  display: block;
+}
+:host(.hr-compact-editor) .hr-photo-upload {
+  gap: 8px;
+  margin: 0 0 8px;
+}
+:host(.hr-compact-editor) .hr-upload-target {
+  padding: 6px;
+  gap: 2px;
+}
+:host(.hr-compact-editor) .hr-upload-target > .material-symbols-outlined {
+  font-size: 22px;
+}
+:host(.hr-compact-editor) .hr-upload-target small:last-of-type {
+  display: none;
+}
+:host(.hr-compact-editor) .hr-check {
+  padding: 4px 0;
+  font-size: 11px;
+}
+@container staff-editor (min-width: 900px) {
+  :host(.hr-compact-editor) .hr-personal-editor,
+  :host(.hr-compact-editor) .hr-employment-editor,
+  :host(.hr-compact-editor) .hr-check-editor,
+  :host(.hr-compact-editor) .hr-training-editor {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    align-items: start;
+  }
+  :host(.hr-compact-editor) .hr-personal-editor > .hr-personal-top,
+  :host(.hr-compact-editor) .hr-personal-editor > .hr-grid,
+  :host(.hr-compact-editor) .hr-personal-editor > .hr-preferences-row {
+    display: contents;
+  }
+  :host(.hr-compact-editor) .hr-personal-editor .hr-panel,
+  :host(.hr-compact-editor) .hr-employment-editor > .hr-panel,
+  :host(.hr-compact-editor) .hr-check-editor > .hr-panel,
+  :host(.hr-compact-editor) .hr-training-editor > .hr-panel {
+    margin-bottom: 0;
+  }
+  :host(.hr-compact-editor) .hr-photo-panel {
+    grid-column: 1;
+  }
+  :host(.hr-compact-editor) .hr-basic-panel {
+    grid-column: 2 / span 2;
+  }
+  :host(.hr-compact-editor) .hr-basic-fields,
+  :host(.hr-compact-editor) .hr-contact-fields,
+  :host(.hr-compact-editor) .hr-employment-fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  :host(.hr-compact-editor) .hr-address-panel {
+    grid-column: span 2;
+  }
+  :host(.hr-compact-editor) .hr-contact-fields .span-2,
+  :host(.hr-compact-editor) .hr-contact-fields .span-3 {
+    grid-column: auto;
+  }
+  :host(.hr-compact-editor) .hr-contact-fields label:first-child {
+    grid-column: span 2;
+  }
+  :host(.hr-compact-editor) .hr-contact-fields label:last-child {
+    grid-column: span 2;
+  }
+  :host(.hr-compact-editor) .hr-notes-panel {
+    grid-column: 1 / -1;
+  }
+  :host(.hr-compact-editor) .hr-employment-editor > .hr-panel:first-child {
+    grid-column: 1 / -1;
+  }
+  :host(.hr-compact-editor) .hr-employment-editor > .hr-panel:last-child {
+    grid-column: span 2;
+  }
+  :host(.hr-compact-editor) .hr-employment-fields .hr-employment-history {
+    grid-column: span 2;
+  }
+  :host(.hr-compact-editor) .hr-employment-fields .hr-employment-gaps {
+    grid-column: auto;
+  }
+  :host(.hr-compact-editor) .hr-check-editor > .hr-notice {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 6px 9px;
+  }
+  :host(.hr-compact-editor) .hr-training-editor > .hr-panel:first-child,
+  :host(.hr-compact-editor) .hr-training-editor > .hr-panel:last-child {
+    grid-column: 1 / -1;
+  }
+  :host(.hr-compact-editor) .hr-training-editor > .hr-panel:first-child .hr-panel-body,
+  :host(.hr-compact-editor) .hr-training-editor > .hr-panel:last-child .hr-panel-body {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 12px;
+  }
+}
+@container staff-editor (min-width: 620px) and (max-width: 899px) {
+  :host(.hr-compact-editor) .hr-basic-fields,
+  :host(.hr-compact-editor) .hr-contact-fields,
+  :host(.hr-compact-editor) .hr-employment-fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  :host(.hr-compact-editor) .hr-contact-fields .span-2,
+  :host(.hr-compact-editor) .hr-contact-fields .span-3 {
+    grid-column: auto;
+  }
+  :host(.hr-compact-editor) .hr-contact-fields label:first-child,
+  :host(.hr-compact-editor) .hr-contact-fields label:last-child {
+    grid-column: span 2;
+  }
+  :host(.hr-compact-editor) .hr-personal-top {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+  :host(.hr-compact-editor) .hr-check-editor,
+  :host(.hr-compact-editor) .hr-training-editor {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    align-items: start;
+  }
+  :host(.hr-compact-editor) .hr-check-editor > .hr-notice,
+  :host(.hr-compact-editor) .hr-training-editor > .hr-panel:first-child,
+  :host(.hr-compact-editor) .hr-training-editor > .hr-panel:last-child {
+    grid-column: 1 / -1;
+  }
+}
+@container staff-editor (max-width: 619px) {
+  :host(.hr-compact-editor) .hr-personal-top {
+    grid-template-columns: 1fr;
+  }
+  :host(.hr-compact-editor) .hr-basic-fields,
+  :host(.hr-compact-editor) .hr-contact-fields,
+  :host(.hr-compact-editor) .hr-employment-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container staff-editor (max-width: 419px) {
+  :host(.hr-compact-editor) .hr-form,
+  :host(.hr-compact-editor) .hr-basic-fields,
+  :host(.hr-compact-editor) .hr-contact-fields,
+  :host(.hr-compact-editor) .hr-employment-fields {
+    grid-template-columns: 1fr;
+  }
+  :host(.hr-compact-editor) .hr-form .span-2,
+  :host(.hr-compact-editor) .hr-form .span-3 {
+    grid-column: auto;
+  }
+}

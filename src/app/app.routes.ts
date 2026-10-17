@@ -1,6 +1,42 @@
-import { Routes } from '@angular/router';
+import { Router, Routes } from '@angular/router';
 import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
 import { authGuard, guestGuard, workspaceGuard } from './core/auth/auth.guard';
+
+const peopleGuard = (
+  route: import('@angular/router').ActivatedRouteSnapshot,
+  state: import('@angular/router').RouterStateSnapshot,
+) => {
+  const context = inject(EnvironmentInjector);
+  return import('./features/management/people/hr.service').then((m) =>
+    runInInjectionContext(context, () => m.hrGuard(route, state)),
+  );
+};
+
+const legacyPersonGuard = (route: import('@angular/router').ActivatedRouteSnapshot) => {
+  const context = inject(EnvironmentInjector);
+  return import('./features/management/people/hr.service').then((m) =>
+    runInInjectionContext(context, () => {
+      const hr = inject(m.HrService);
+      const router = inject(Router);
+      if (!hr.can('view')) return router.createUrlTree(['/manage/companies']);
+      const id = route.paramMap.get('id');
+      if (hr.store.data().people.find((p) => p.id === id)?.stage !== 'Hired') return true;
+      const sections: Record<string, string> = {
+        Profile: 'overview',
+        Onboarding: 'employment',
+        Compliance: 'compliance',
+        Documents: 'documents',
+        Learning: 'training',
+        Notes: 'notes',
+      };
+      return router.createUrlTree([
+        '/manage/people/staff',
+        id,
+        sections[route.queryParamMap.get('tab') ?? 'Profile'] ?? 'overview',
+      ]);
+    }),
+  );
+};
 
 export const routes: Routes = [
   {
@@ -321,20 +357,93 @@ export const routes: Routes = [
         loadComponent: () => import('./features/management/payroll/payroll').then((m) => m.Payroll),
       },
       {
+        path: 'people',
+        pathMatch: 'full',
+        canActivate: [peopleGuard],
+        data: { module: 'People & HR', hrMode: 'overview' },
+        title: 'People & HR · CareVerity',
+
+        loadComponent: () =>
+          import('./features/management/people/hr-workspace').then((m) => m.HrWorkspace),
+      },
+      {
+        path: 'people/staff',
+        pathMatch: 'full',
+        canActivate: [peopleGuard],
+        data: { module: 'People & HR', hrMode: 'directory' },
+        title: 'Staff Directory · CareVerity',
+        loadComponent: () =>
+          import('./features/management/people/hr-workspace').then((m) => m.HrWorkspace),
+      },
+      {
+        path: 'people/onboarding',
+        canActivate: [peopleGuard],
+        data: { module: 'People & HR' },
+        title: 'Onboarding · CareVerity',
+        loadComponent: () =>
+          import('./features/management/people/hr-onboarding').then((m) => m.HrOnboarding),
+      },
+      {
+        path: 'people/compliance',
+        canActivate: [peopleGuard],
+        data: { module: 'People & HR' },
+        title: 'Workforce Compliance · CareVerity',
+        loadComponent: () =>
+          import('./features/management/people/hr-compliance').then((m) => m.HrCompliance),
+      },
+      {
+        path: 'people/staff/new',
+        canActivate: [peopleGuard],
+        data: { module: 'People & HR' },
+        title: 'Create staff · CareVerity',
+        canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+        loadComponent: () =>
+          import('./features/management/people/staff-create').then((m) => m.StaffCreate),
+      },
+      ...[
+        'overview',
+        'personal',
+        'employment',
+        'compliance',
+        'availability',
+        'training',
+        'documents',
+        'reviews',
+        'performance',
+        'notes',
+        'audit',
+      ].map((staffSection) => ({
+        path: 'people/staff/:id/' + staffSection,
+        canActivate: [peopleGuard],
+        data: { module: 'People & HR', staffSection },
+        title: 'Staff profile · CareVerity',
+        canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+        loadComponent: () =>
+          import('./features/management/people/staff-profile').then((m) => m.StaffProfile),
+      })),
+      { path: 'people/staff/:id', pathMatch: 'full', redirectTo: 'people/staff/:id/overview' },
+      ...['staff', 'onboarding', 'compliance'].map((area) => ({
+        path: area,
+        pathMatch: 'full' as const,
+        redirectTo: 'people/' + area,
+      })),
+      {
         path: 'recruitment',
         data: { module: 'People & HR' },
         title: 'Recruitment · CareVerity',
         loadComponent: () =>
           import('./features/management/recruitment/recruitment').then((m) => m.Recruitment),
       },
-      ...['onboarding', 'staff', 'compliance', 'leave', 'reviews'].map((section) => ({
+      ...['leave', 'reviews'].map((section) => ({
         path: section,
         data: { section, module: 'People & HR' },
         title: 'People & development · CareVerity',
-        loadComponent: () => import('./features/management/people/people').then((m) => m.People),
+        canActivate: [peopleGuard],
+        loadComponent: () => import('./features/management/people/hr-team').then((m) => m.HrTeam),
       })),
       {
         path: 'people/:id',
+        canActivate: [legacyPersonGuard],
         data: { module: 'People & HR' },
         title: 'Person profile · CareVerity',
         loadComponent: () =>
