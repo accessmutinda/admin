@@ -45,6 +45,90 @@ describe('Vacancy applications', () => {
     documents: [],
   });
 
+  it('opens recruitment summary destinations with matching vacancy and applicant scopes', async () => {
+    const person = store.data().people[0];
+    store.update((data) => ({
+      ...data,
+      vacancies: [
+        { ...vacancy(), id: 'open', title: 'Open role' },
+        { ...vacancy(), id: 'paused', title: 'Paused role', published: false },
+        { ...vacancy(), id: 'scheduled', title: 'Future role', goLiveDate: '2999-01-01' },
+      ],
+      people: [
+        { ...person, id: 'applied', name: 'Current applicant', stage: 'Applied' },
+        { ...person, id: 'offer', name: 'Offer applicant', stage: 'Offer' },
+        { ...person, id: 'hired', name: 'Existing employee', stage: 'Hired' },
+      ],
+    }));
+    const before = JSON.stringify(store.data());
+    const fixture = TestBed.createComponent(Recruitment);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const openSummary = async (label: string) => {
+      Array.from<HTMLButtonElement>(
+        fixture.nativeElement.querySelectorAll('.recruitment-stats button'),
+      )
+        .find((button) => button.textContent?.includes(label))!
+        .click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+    };
+    await openSummary('Open Vacancies');
+    expect(fixture.nativeElement.querySelectorAll('.vacancies-table tbody tr')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelector('.vacancies-table tbody').textContent).toContain(
+      'Open role',
+    );
+    await openSummary('Active Applicants');
+    expect(fixture.nativeElement.querySelectorAll('.recruitment-table tbody tr')).toHaveLength(2);
+    expect(
+      fixture.nativeElement.querySelector('.recruitment-table tbody').textContent,
+    ).not.toContain('Existing employee');
+    await openSummary('Offers Made');
+    expect(fixture.nativeElement.querySelectorAll('.recruitment-table tbody tr')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelector('.recruitment-table tbody').textContent).toContain(
+      'Offer applicant',
+    );
+    expect(JSON.stringify(store.data())).toBe(before);
+  });
+
+  it('combines vacancy search and application status and clears them together', async () => {
+    store.update((data) => ({
+      ...data,
+      vacancies: [
+        vacancy(),
+        { ...vacancy(), id: 'paused', title: 'Senior Carer', published: false },
+      ],
+    }));
+    const fixture = TestBed.createComponent(Recruitment);
+    fixture.detectChanges();
+    Array.from<HTMLButtonElement>(
+      fixture.nativeElement.querySelectorAll('.recruitment-tabs button'),
+    )
+      .find((button) => button.textContent?.trim() === 'Vacancies')!
+      .click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const search = fixture.nativeElement.querySelector(
+      'input[aria-label="Search vacancies"]',
+    ) as HTMLInputElement;
+    search.value = 'Senior';
+    search.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    fixture.debugElement
+      .query(By.css('mat-select[aria-label="Vacancy application status"]'))
+      .triggerEventHandler('ngModelChange', 'Accepting applications');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.vacancies-table tbody').textContent).toContain(
+      'No vacancies match',
+    );
+    fixture.nativeElement.querySelector('.vacancy-filters button').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelectorAll('.vacancies-table tbody tr')).toHaveLength(2);
+    expect(search.value).toBe('');
+  });
+
   it('preserves applicant details and profile links while combining table filters', async () => {
     const person = store.data().people[0];
     store.update((data) => ({
@@ -172,7 +256,7 @@ describe('Vacancy applications', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const tab = Array.from<HTMLButtonElement>(
-      fixture.nativeElement.querySelectorAll('.segmented button'),
+      fixture.nativeElement.querySelectorAll('.recruitment-tabs button'),
     ).find((button) => button.textContent?.trim() === 'Vacancies')!;
     tab.click();
     fixture.detectChanges();

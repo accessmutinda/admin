@@ -22,9 +22,18 @@ import { ToastService } from '../../../shared/ui/toast.service';
     FormsModule,
     RouterLink,
   ],
-  host: { '(document:keydown.escape)': "modal.set('')" },
+  host: {
+    class: 'module-page people-page recruitment-page',
+    '(document:keydown.escape)': "modal.set('')",
+  },
   templateUrl: './recruitment.html',
-  styleUrl: './recruitment.css',
+  styleUrls: [
+    '../people/hr.css',
+    '../people/hr-directory.css',
+    '../people/hr-tables.css',
+    '../people/hr-forms.css',
+    './recruitment.css',
+  ],
 })
 export class Recruitment {
   protected readonly store = inject(ManagementStore);
@@ -34,13 +43,73 @@ export class Recruitment {
   protected readonly search = signal('');
   protected readonly vacancyFilter = signal('All vacancies');
   protected readonly stageFilter = signal('All stages');
+  protected readonly vacancyState = signal('All statuses');
+  protected readonly vacancyStates = [
+    'Accepting applications',
+    'Scheduled',
+    'Not accepting applications',
+    'Deadline passed',
+  ];
+  protected readonly vacancies = computed(() =>
+    this.store
+      .data()
+      .vacancies.filter(
+        (vacancy) =>
+          `${vacancy.title} ${vacancy.location} ${vacancy.type} ${vacancy.salary}`
+            .toLowerCase()
+            .includes(this.search().trim().toLowerCase()) &&
+          (this.vacancyState() === 'All statuses' ||
+            this.store.vacancyStatus(vacancy) === this.vacancyState()),
+      ),
+  );
   protected readonly modal = signal('');
+  protected readonly summary = computed(() => [
+    {
+      label: 'Open Vacancies',
+      value: this.store.openVacancies().length,
+      caption: 'Accepting applications now',
+      icon: 'work',
+      color: '#008afa',
+      view: 'Vacancies',
+      stage: 'All stages',
+      vacancyState: 'Accepting applications',
+    },
+    {
+      label: 'Active Applicants',
+      value: this.store.applicants().length,
+      caption: 'Applications in progress',
+      icon: 'groups',
+      color: '#03a6c1',
+      view: 'Pipeline',
+      stage: 'Active applicants',
+      vacancyState: 'All statuses',
+    },
+    {
+      label: 'Offers Made',
+      value: this.store.applicants().filter((person) => person.stage === 'Offer').length,
+      caption: 'Awaiting the next hiring step',
+      icon: 'handshake',
+      color: '#00a34e',
+      view: 'Pipeline',
+      stage: 'Offer',
+      vacancyState: 'All statuses',
+    },
+  ]);
+  protected openView(view: string, stage = 'All stages', vacancyState = 'All statuses'): void {
+    this.view.set(view);
+    this.stageFilter.set(stage);
+    this.vacancyFilter.set('All vacancies');
+    this.search.set('');
+    this.vacancyState.set(vacancyState);
+  }
   protected readonly people = computed(() =>
     this.store
       .data()
       .people.filter(
         (p) =>
-          `${p.name} ${p.role} ${p.location}`.toLowerCase().includes(this.search().toLowerCase()) &&
+          `${p.name} ${p.email} ${p.role} ${p.location}`
+            .toLowerCase()
+            .includes(this.search().trim().toLowerCase()) &&
           (this.vacancyFilter() === 'All vacancies' ||
             p.vacancyId === this.vacancyFilter() ||
             (!p.vacancyId &&
@@ -66,7 +135,11 @@ export class Recruitment {
     this.stages
       .flatMap((stage) => this.inStage(stage))
       .filter(
-        (person) => this.stageFilter() === 'All stages' || person.stage === this.stageFilter(),
+        (person) =>
+          this.stageFilter() === 'All stages' ||
+          (this.stageFilter() === 'Active applicants'
+            ? person.stage !== 'Hired'
+            : person.stage === this.stageFilter()),
       ),
   );
   protected applicantCount(vacancy: Vacancy): number {
@@ -165,7 +238,7 @@ export class Recruitment {
     }
     this.savedVacancy.set(vacancy);
     this.vacancy = null;
-    this.view.set('Vacancies');
+    this.openView('Vacancies');
     this.toast.success('Vacancy and application form saved.');
   }
   protected openApplicant(): void {
