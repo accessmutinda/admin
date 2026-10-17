@@ -211,7 +211,16 @@ export class Rota {
   );
   constructor() {
     if (this.clientFiles) this.tab.set('Service users');
-    const clientId = this.route.snapshot.queryParamMap.get('client');
+    const params = this.route.snapshot.queryParamMap;
+    const staffId = params.get('staff');
+    if (staffId && this.store.staff().some((p) => p.id === staffId)) {
+      this.staffFilter.set(staffId);
+      this.tab.set('Staff view');
+    }
+    if (validVacancyDate(params.get('from') ?? '')) this.from.set(params.get('from')!);
+    if (validVacancyDate(params.get('to') ?? '') && params.get('to')! >= this.from())
+      this.to.set(params.get('to')!);
+    const clientId = params.get('client');
     if (clientId && this.service.data().clients.some((client) => client.id === clientId)) {
       this.packageClient.set(clientId);
       this.tab.set('Service users');

@@ -1,3 +1,4 @@
+import { readiness, availabilityCovers } from '../people/hr.models';
 import { Injectable, computed, inject } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ROLES } from '../../../core/auth/models/role';
@@ -184,7 +185,17 @@ export class RotaService {
     const person = this.store.staff().find((p) => p.id === id);
     if (!person) return ['A selected carer is no longer hired.'];
     return visit.skills
-      .filter((s) => (person.progress[s] ?? 0) < 100)
+      .filter((s) =>
+        person.hr
+          ? !person.hr.training.some(
+              (t) =>
+                t.courseId === s &&
+                t.completed &&
+                t.completed <= visit.date &&
+                (!t.expiry || t.expiry >= visit.date),
+            )
+          : (person.progress[s] ?? 0) < 100,
+      )
       .map((s) => `${person.name} has not completed ${s} training.`);
   }
   conflicts(visit: RotaVisit, all = this.data().visits): string[] {
@@ -225,20 +236,29 @@ export class RotaService {
           .data()
           .leaves.some(
             (l) =>
-              l.person === person.name &&
+              (l.personId ? l.personId === person.id : l.person === person.name) &&
+              (!l.status || l.status === 'Approved') &&
               l.start <= addDays(visit.date, visit.end <= visit.start ? 1 : 0) &&
               l.end >= visit.date,
           )
       )
         problems.push(`${person.name} has recorded leave or training on this date.`);
       if (
-        Object.entries(person.checkExpiry ?? {}).some(
-          ([, expiry]) => expiry && (!validVacancyDate(expiry) || expiry < visit.date),
-        ) ||
+        Object.entries(person.checkExpiry ?? {})
+          .filter(
+            ([title]) =>
+              !person.hr ||
+              person.hr.checks.find((c) => c.title === title)?.status !== 'Not required',
+          )
+          .some(([, expiry]) => expiry && (!validVacancyDate(expiry) || expiry < visit.date)) ||
         (person.visaExpiry && person.visaExpiry < visit.date)
       )
         problems.push(`${person.name} has an expired employment check.`);
-      if (person.checks.some((check) => !check))
+      if (person.hr && (person.hr.status !== 'Active' || !readiness(person, visit.date).ready))
+        problems.push(`${person.name} is not ready for deployment on this date.`);
+      if (!availabilityCovers(person, visit.date, visit.start, visit.end))
+        problems.push(`${person.name} is outside their recorded availability.`);
+      if (!person.hr && person.checks.some((check) => !check))
         problems.push(`${person.name} has incomplete employment checks.`);
       const clash = all.find(
         (other) =>

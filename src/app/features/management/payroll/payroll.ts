@@ -106,11 +106,13 @@ export class Payroll {
       ? this.service.data().contractors.find((c) => c.id === this.selected()?.id)
       : undefined,
   );
+  protected readonly staffFilter = signal('');
   protected readonly filteredWork = computed(() =>
     this.service
       .data()
       .work.filter(
         (w) =>
+          (!this.staffFilter() || w.personId === this.staffFilter()) &&
           (this.tab() === 'Overtime' ? w.kind === 'Overtime' : w.kind !== 'Overtime') &&
           this.match(
             `${this.personName(w.personId)} ${w.date} ${w.kind} ${w.reason} ${w.status}`,
@@ -140,8 +142,10 @@ export class Payroll {
   protected readonly filteredProfiles = computed(() =>
     this.service
       .data()
-      .profiles.filter((p) =>
-        this.match(`${this.personName(p.personId)} ${p.basis} ${p.frequency} ${p.effective}`),
+      .profiles.filter(
+        (p) =>
+          (!this.staffFilter() || p.personId === this.staffFilter()) &&
+          this.match(`${this.personName(p.personId)} ${p.basis} ${p.frequency} ${p.effective}`),
       )
       .sort((a, b) => b.effective.localeCompare(a.effective)),
   );
@@ -206,6 +210,7 @@ export class Payroll {
     );
     this.invoiceTab.set(params.get('invoiceView') === 'Clients' ? 'Clients' : 'Suppliers');
     this.query.set(params.get('search') ?? '');
+    this.staffFilter.set(params.get('person') ?? '');
     this.status.set('All');
     this.selected.set(null);
     this.modal.set('');

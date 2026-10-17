@@ -1,3 +1,4 @@
+import { staffRecord } from '../people/hr.models';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -67,6 +68,43 @@ describe('Rota allocation and publishing', () => {
     }));
     expect(service.saveClient(client())).toBeNull();
     expect(service.saveCall(call())).toBeNull();
+  });
+  it('blocks approved leave by person ID while ignoring pending, rejected and cancelled requests', () => {
+    const setLeave = (status: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled') =>
+      store.update((d) => ({
+        ...d,
+        leaves: [
+          {
+            id: 'leave',
+            person: 'Old display name',
+            personId: 'james',
+            type: 'Annual leave',
+            start: '2026-10-06',
+            end: '2026-10-06',
+            status,
+          },
+        ],
+      }));
+    setLeave('Pending');
+    expect(service.generate('client', ['call'], '2026-10-06', '2026-10-06', ['james'])).toBeNull();
+    const visit = service.data().visits[0];
+    expect(service.conflicts(visit).some((c) => c.includes('recorded leave'))).toBe(false);
+    setLeave('Approved');
+    expect(service.conflicts(visit).some((c) => c.includes('recorded leave'))).toBe(true);
+    setLeave('Rejected');
+    expect(service.conflicts(visit).some((c) => c.includes('recorded leave'))).toBe(false);
+    setLeave('Cancelled');
+    expect(service.conflicts(visit).some((c) => c.includes('recorded leave'))).toBe(false);
+  });
+  it('uses structured deployment readiness and availability after a staff record is upgraded', () => {
+    expect(service.generate('client', ['call'], '2026-10-06', '2026-10-06', ['james'])).toBeNull();
+    store.update((d) => ({
+      ...d,
+      people: d.people.map((p) => (p.id === 'james' ? { ...p, hr: staffRecord(p) } : p)),
+    }));
+    const conflicts = service.conflicts(service.data().visits[0]);
+    expect(conflicts.some((c) => c.includes('not ready for deployment'))).toBe(true);
+    expect(conflicts.some((c) => c.includes('outside their recorded availability'))).toBe(true);
   });
   it('keeps rota records isolated by company and honours saved restrictions', () => {
     expect(service.generate('client', ['call'], '2026-10-06', '2026-10-06', ['james'])).toBeNull();

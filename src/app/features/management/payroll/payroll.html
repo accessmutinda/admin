@@ -1,3 +1,10 @@
+@if (staffFilter()) {
+  <div class="panel panel-body">
+    <a class="button" [routerLink]="['/manage/people/staff', staffFilter(), 'overview']"
+      >← Back to Staff Profile</a
+    ><span> Showing records for the selected staff member.</span>
+  </div>
+}
 <div class="page-heading">
   <div>
     <p class="eyebrow">FINANCE</p>
