@@ -32,7 +32,7 @@
   height: 36px;
   border-radius: 9px;
   background: var(--color-teal-50);
-  color: #087f76;
+  color: #0066ac;
   font-size: 22px;
 }
 .finance-dashboard .panel-toolbar {
@@ -87,11 +87,11 @@
 }
 .billing-dot,
 .billing-bar {
-  background: var(--color-brand-blue);
+  background: #008afa;
 }
 .cost-dot,
 .cost-bar {
-  background: var(--color-teal);
+  background: #ffb000;
 }
 .finance-chart {
   display: flex;
@@ -128,7 +128,7 @@
 summary {
   cursor: pointer;
   padding: 10px 0;
-  color: #087f76;
+  color: #0066ac;
 }
 .finance-cost-links {
   display: grid;
@@ -165,7 +165,7 @@ summary {
   font-size: 12px;
 }
 .finance-empty > span {
-  color: #087f76;
+  color: #0066ac;
   font-size: 32px;
 }
 .finance-empty strong {
@@ -229,7 +229,7 @@ dd {
 }
 button:focus-visible,
 summary:focus-visible {
-  outline: 2px solid #087f76;
+  outline: 2px solid #0066ac;
   outline-offset: 2px;
 }
 @media (max-width: 1023px) {

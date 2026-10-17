@@ -1,3 +1,4 @@
+import { ModuleDesign } from '../shared/module-design';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, startWith } from 'rxjs';
@@ -31,6 +32,7 @@ import { AREA_VIEWS, financeArea, financeView, viewArea } from './finance/financ
 @Component({
   selector: 'cv-payroll',
   imports: [
+    ModuleDesign,
     CurrencyPipe,
     DatePipe,
     FormsModule,
@@ -42,6 +44,7 @@ import { AREA_VIEWS, financeArea, financeView, viewArea } from './finance/financ
     FinanceOverview,
     ClientBilling,
   ],
+  host: { class: 'module-page operations-page finance-page' },
   templateUrl: './payroll.html',
   styleUrl: './payroll.css',
 })

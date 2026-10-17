@@ -1,3 +1,5 @@
+<cv-module-design />
+<nav class="co-breadcrumb" aria-label="Breadcrumb"><a routerLink="/manage/finance">Finance</a></nav>
 @if (staffFilter()) {
   <div class="panel panel-body">
     <a class="button" [routerLink]="['/manage/people/staff', staffFilter(), 'overview']"
@@ -7,7 +9,6 @@
 }
 <div class="page-heading">
   <div>
-    <p class="eyebrow">FINANCE</p>
     <h1>{{ heading() }}</h1>
     <p>{{ description() }}</p>
   </div>
@@ -24,41 +25,67 @@
 } @else {
   <div class="metrics" [class.four]="area() === 'overview'">
     @if (area() !== 'billing') {
-      <button class="metric" data-tone="teal" (click)="choose('Payroll')">
-        <span class="metric-icon material-symbols-outlined" aria-hidden="true">payments</span
-        ><span>Prepared gross pay</span><strong>{{ gross() | currency: 'GBP' }}</strong
-        ><small>Draft, locked and exported runs</small>
+      <button class="metric co-stat co-surface" data-tone="teal" (click)="choose('Payroll')">
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">payments</span>
+        <div>
+          <h2>Prepared gross pay</h2>
+          <strong>{{ gross() | currency: 'GBP' }}</strong
+          ><small>Draft, locked and exported runs</small>
+        </div>
       </button>
-      <button class="metric" data-tone="purple" (click)="choose('Overtime')">
-        <span class="metric-icon material-symbols-outlined" aria-hidden="true">more_time</span
-        ><span>Overtime to review</span><strong>{{ pendingOvertime().length }}</strong
-        ><small>Extra work awaiting completion</small>
+      <button class="metric co-stat co-surface" data-tone="purple" (click)="choose('Overtime')">
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">more_time</span>
+        <div>
+          <h2>Overtime to review</h2>
+          <strong>{{ pendingOvertime().length }}</strong
+          ><small>Extra work awaiting completion</small>
+        </div>
       </button>
     }
     @if (area() !== 'payroll') {
-      <button class="metric" data-tone="amber" (click)="choose('Invoices')">
-        <span class="metric-icon material-symbols-outlined" aria-hidden="true">receipt_long</span
-        ><span>Unpaid invoices</span><strong>{{ invoiceDue() | currency: 'GBP' }}</strong
-        ><small>{{ outstandingInvoices().length }} invoices with a balance</small>
+      <button class="metric co-stat co-surface" data-tone="amber" (click)="choose('Invoices')">
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">receipt_long</span>
+        <div>
+          <h2>Unpaid invoices</h2>
+          <strong>{{ invoiceDue() | currency: 'GBP' }}</strong
+          ><small>{{ outstandingInvoices().length }} invoices with a balance</small>
+        </div>
       </button>
     }
     @if (area() !== 'billing') {
-      <button class="metric" data-tone="blue" (click)="choosePayroll('Staff pay')">
-        <span class="metric-icon material-symbols-outlined" aria-hidden="true">badge</span
-        ><span>Pay setup needed</span><strong>{{ missingProfiles() }}</strong
-        ><small>Hired staff without an effective profile</small>
+      <button
+        class="metric co-stat co-surface"
+        data-tone="blue"
+        (click)="choosePayroll('Staff pay')"
+      >
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">badge</span>
+        <div>
+          <h2>Pay setup needed</h2>
+          <strong>{{ missingProfiles() }}</strong
+          ><small>Hired staff without an effective profile</small>
+        </div>
       </button>
     }
     @if (area() === 'billing') {
-      <button class="metric" data-tone="purple" (click)="choose('Contractors')">
-        <span class="metric-icon material-symbols-outlined" aria-hidden="true">handshake</span
-        ><span>Contractors & agencies</span><strong>{{ service.data().contractors.length }}</strong
-        ><small>Saved supplier agreements</small>
+      <button class="metric co-stat co-surface" data-tone="purple" (click)="choose('Contractors')">
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">handshake</span>
+        <div>
+          <h2>Contractors & agencies</h2>
+          <strong>{{ service.data().contractors.length }}</strong
+          ><small>Saved supplier agreements</small>
+        </div>
       </button>
-      <button class="metric" data-tone="blue" (click)="chooseInvoices('Clients')">
-        <span class="metric-icon material-symbols-outlined" aria-hidden="true">request_quote</span
-        ><span>Client invoices to approve</span><strong>{{ pendingClientInvoices() }}</strong
-        ><small>Prepared drafts awaiting review</small>
+      <button
+        class="metric co-stat co-surface"
+        data-tone="blue"
+        (click)="chooseInvoices('Clients')"
+      >
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">request_quote</span>
+        <div>
+          <h2>Client invoices to approve</h2>
+          <strong>{{ pendingClientInvoices() }}</strong
+          ><small>Prepared drafts awaiting review</small>
+        </div>
       </button>
     }
   </div>
