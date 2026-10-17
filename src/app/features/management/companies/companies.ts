@@ -13,7 +13,7 @@ import {
 
 @Component({
   selector: 'cv-companies',
-  host: { class: 'companies-page' },
+  host: { class: 'module-page companies-page' },
   imports: [FormsModule, RouterLink],
   templateUrl: './companies.html',
 })

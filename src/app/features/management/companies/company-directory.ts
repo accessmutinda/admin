@@ -16,7 +16,7 @@ type FilterKey = 'status' | 'region' | 'service' | 'plan' | 'completion' | 'upda
 
 @Component({
   selector: 'cv-company-directory',
-  host: { class: 'companies-page company-directory-page' },
+  host: { class: 'module-page companies-page company-directory-page' },
   imports: [FormsModule, RouterLink, MatSelectModule, MatMenuModule, MatTooltipModule, CvSelect],
   templateUrl: './company-directory.html',
 })

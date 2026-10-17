@@ -28,7 +28,7 @@ interface SavedCompanyDraft {
 }
 @Component({
   selector: 'cv-company-create',
-  host: { class: 'companies-page company-create-page' },
+  host: { class: 'module-page module-create companies-page company-create-page' },
   imports: [FormsModule, RouterLink, MatSelectModule, CvSelect],
   templateUrl: './company-create.html',
 })

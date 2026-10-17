@@ -15,7 +15,7 @@ import { companyModifiedAt } from '../../companies/company-profile.models';
 
 @Component({
   selector: 'cv-integrations-settings',
-  host: { class: 'companies-page integrations-page' },
+  host: { class: 'module-page companies-page integrations-page' },
   imports: [FormsModule, RouterLink],
   templateUrl: './integrations-settings.html',
   styleUrl: './integrations-settings.css',

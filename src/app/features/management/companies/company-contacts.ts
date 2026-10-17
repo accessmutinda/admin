@@ -40,7 +40,7 @@ import {
 
 @Component({
   selector: 'cv-company-contacts',
-  host: { class: 'companies-page company-profile-page company-contacts-page' },
+  host: { class: 'module-page companies-page company-profile-page company-contacts-page' },
   imports: [FormsModule, RouterLink, MatDialogModule, MatMenuModule],
   templateUrl: './company-contacts.html',
 })

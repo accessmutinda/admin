@@ -37,7 +37,7 @@ import { ManagementRole } from '../../shared/role-pill';
     MatDialogModule,
     MatMenuModule,
   ],
-  host: { class: 'companies-page users-access-page' },
+  host: { class: 'module-page companies-page users-access-page' },
   templateUrl: './users-access.html',
 })
 export class UsersAccess {

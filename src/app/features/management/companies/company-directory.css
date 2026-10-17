@@ -11,40 +11,7 @@
   justify-content: end;
   gap: 8px;
 }
-.cv-management .company-directory-page .cd-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 32px;
-  padding: 5px 10px;
-  border: 1px solid #dfe6eb;
-  border-radius: 5px;
-  background: linear-gradient(#fff, #f9fcfd);
-  color: #16375b;
-  font: 700 11px/1.4 var(--font-sans);
-  text-decoration: none;
-  cursor: pointer;
-}
-.cv-management .company-directory-page .cd-button > .material-symbols-outlined {
-  font-size: 18px;
-}
-.cv-management .company-directory-page .cd-primary {
-  background: #008afa;
-  border-color: #008afa;
-  color: white;
-}
-.cv-management .company-directory-page .cd-primary:hover {
-  background: #0079dc;
-}
-.cv-management .company-directory-page .cd-outline {
-  color: #008afa;
-  border-color: #008afa;
-  background: transparent;
-}
-.cv-management .company-directory-page .cd-outline:hover {
-  background: #eaf5fc;
-}
+
 .cv-management .company-directory-page button:disabled {
   opacity: 0.5;
   cursor: default;

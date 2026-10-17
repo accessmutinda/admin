@@ -22,7 +22,7 @@ import {
 
 @Component({
   selector: 'cv-company-branding',
-  host: { class: 'companies-page company-profile-page company-branding-page' },
+  host: { class: 'module-page companies-page company-profile-page company-branding-page' },
   imports: [FormsModule, RouterLink, MatSelectModule, CvSelect],
   templateUrl: './company-branding.html',
 })

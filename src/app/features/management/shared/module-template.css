@@ -1,0 +1,546 @@
+.cv-management .module-page :is(.co-heading, .hr-heading) {
+  margin-bottom: 24px;
+}
+
+.cv-management .module-page :is(.co-heading p, .hr-heading p) {
+  font-size: 12px;
+  margin-top: 4px;
+  color: #677488;
+}
+
+.cv-management .module-page :is(.co-surface, .hr-panel) {
+  background: linear-gradient(120deg, #fff, #fcfefe);
+  border: 1px solid #e9eff3;
+  border-radius: 9px;
+  box-shadow: 0 2px 7px #123c541f;
+}
+
+.cv-management .module-page :is(.co-stat, .hr-stat) {
+  padding: 8px 9px 7px 13px;
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 14px;
+  min-width: 0;
+}
+
+.cv-management .module-page :is(.co-stat > div, .hr-stat > div) {
+  flex: 1;
+  min-width: 0;
+}
+
+.cv-management .module-page :is(.co-stat strong, .hr-stat strong) {
+  display: block;
+  font-size: 20px;
+  line-height: 1.15;
+  color: #081334;
+  margin: 2px 0;
+}
+
+.cv-management .module-page :is(.co-stat p, .hr-stat small:last-child) {
+  font-size: 11px;
+  color: #6c7587;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.cv-management .module-page :is(.co-stat-icon, .hr-stat > :where(.material-symbols-outlined)) {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: white;
+  border-radius: 7px;
+  font-size: 23px;
+  box-shadow: inset 0 0 9px #ffffff29;
+}
+
+.cv-management .module-page :is(.co-main-grid, .hr-hub-layout) {
+  display: grid;
+  grid-template-columns: minmax(0, 2.15fr) minmax(295px, 1fr);
+  gap: 12px 8px;
+  align-items: stretch;
+}
+
+.cv-management .module-page :is(.co-check-grid, .hr-destination-grid) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 6px;
+}
+
+.cv-management .module-page :is(.co-check-card, .hr-destination) {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #e8eef0;
+  border-radius: 7px;
+  color: var(--co-navy);
+  min-height: 76px;
+  background: #ffffff80;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.cv-management .module-page :is(.co-check-card:hover, .hr-destination:hover) {
+  background: #f3fbff;
+  border-color: #8ccde8;
+}
+
+.cv-management .module-page :is(.co-check-card > div, .hr-destination > div) {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cv-management .module-page :is(.co-breadcrumb, .hr-breadcrumb) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  min-height: 16px;
+  line-height: 16px;
+  color: #657184;
+}
+
+.cv-management .module-page :is(.co-breadcrumb a, .hr-breadcrumb a) {
+  color: #0066ac;
+}
+
+.cv-management .module-page :is(.cd-button, .hr-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  background: linear-gradient(#fff, #f9fcfd);
+  color: #16375b;
+  font: 700 11px/1.4 var(--font-sans);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cv-management
+  .module-page
+  :is(.cd-button > .material-symbols-outlined, .hr-button > .material-symbols-outlined) {
+  font-size: 18px;
+}
+
+.cv-management .module-page :is(.cd-primary, .hr-button.primary) {
+  background: #008afa;
+  border-color: #008afa;
+  color: white;
+}
+
+.cv-management .module-page :is(.cd-primary:hover, .hr-button.primary:hover) {
+  background: #0079dc;
+}
+
+.cv-management .module-page :is(.cd-outline, .hr-button.outline) {
+  color: #008afa;
+  border-color: #008afa;
+  background: transparent;
+}
+
+.cv-management .module-page :is(.cd-outline:hover, .hr-button.outline:hover) {
+  background: #eaf5fc;
+}
+
+.cv-management .module-create :is(.cn-steps, .hr-steps) {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 12px 8px;
+}
+
+.cv-management .module-create :is(.cn-steps, .hr-steps) li {
+  position: relative;
+  min-width: 0;
+}
+
+.cv-management .module-create :is(.cn-steps, .hr-steps) li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: calc(50% + 23px);
+  right: calc(-50% + 23px);
+  top: 16px;
+  height: 3px;
+  background: #e1e9ef;
+}
+
+.cv-management .module-create :is(.cn-steps, .hr-steps) li:is(.cn-complete, .complete)::after {
+  background: #008afa;
+}
+
+.cv-management .module-create :is(.cn-steps, .hr-steps) button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  background: none;
+  border: 0;
+  color: #16375b;
+  font: 400 11px var(--font-sans);
+  cursor: pointer;
+}
+
+.cv-management .module-create :is(.cn-step-number, .hr-step-number) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #cbd5df;
+  border-radius: 50%;
+  color: #7d8798;
+  background: #fff;
+  font-size: 14px;
+  margin-bottom: 3px;
+}
+
+.cv-management .module-create :is(.cn-step-number, .hr-step-number) .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.cv-management .module-create :is(.cn-current, .active) :is(.cn-step-number, .hr-step-number) {
+  background: #008afa;
+  border-color: #008afa;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 3px #008afa;
+  color: #fff;
+}
+
+.cv-management .module-create :is(.cn-current, .active) small {
+  color: #008afa;
+}
+
+.cv-management .module-create :is(.cn-complete, .complete) :is(.cn-step-number, .hr-step-number) {
+  background: #00a34e;
+  border-color: #00a34e;
+  color: #fff;
+}
+
+.cv-management .module-create :is(.cn-complete, .complete) small {
+  color: #009c53;
+}
+
+.cv-management .module-create :is(.cn-steps, .hr-steps) small {
+  font-size: 10px;
+  color: #6c7587;
+}
+
+.cv-management .module-create :is(.cn-steps, .hr-steps) strong {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.cv-management .module-page .co-summary {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.cv-management .module-page .co-company-image {
+  width: 88px;
+  height: 72px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  overflow: hidden;
+  background: linear-gradient(150deg, #d9f2ff 0%, #eefbff 44%, #a6cfb8 45%, #618d6c 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #075475;
+  gap: 8px;
+}
+
+.cv-management .module-page .co-company-image > .material-symbols-outlined {
+  font-size: 66px;
+  font-variation-settings: 'FILL' 1;
+}
+
+.cv-management .module-page .co-company-image img {
+  width: 100%;
+  height: 72px;
+  object-fit: contain;
+  padding: 5px;
+}
+
+.cv-management .module-page .co-summary-content {
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+}
+
+.cv-management .module-page .co-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-bottom: 6px;
+}
+
+.cv-management .module-page .co-company-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cv-management .app-body main.page-content .module-page .co-company-title h2 {
+  color: #071536;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.cv-management .module-page .co-active {
+  background: #c9f4df;
+  color: #087337;
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.cv-management .module-page .co-profile-button {
+  display: flex;
+  flex-shrink: 0;
+  white-space: nowrap;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #e0e8ee;
+  padding: 5px 8px;
+  border-radius: 5px;
+  color: #0066ac;
+  font-size: 11px;
+}
+
+.cv-management .module-page .co-profile-button .material-symbols-outlined {
+  font-size: 17px;
+}
+
+.cv-management .module-page .co-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 6px;
+  font-size: 11px;
+}
+
+.cv-management .module-page .co-facts div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 3px 6px;
+}
+
+.cv-management .module-page .co-facts strong {
+  font-weight: 700;
+  color: #10355e;
+}
+
+.cv-management .module-page .co-facts div > span {
+  color: #68768a;
+}
+
+.cv-management .module-page .co-details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px solid #edf2f5;
+}
+
+.cv-management .module-page .co-details > div {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.cv-management .module-page .co-details > div:first-child {
+  padding-left: 0;
+  border: 0;
+}
+
+.cv-management .module-page .co-details .material-symbols-outlined {
+  color: #0089e3;
+  font-size: 20px;
+  font-variation-settings: 'FILL' 1;
+}
+
+.cv-management .module-page .co-details small {
+  display: inline;
+  margin-right: 6px;
+  font-size: 11px;
+  color: #536781;
+}
+
+.cv-management .module-record-tabs :is(.cm-tabs, .hr-tabs) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 8px;
+  margin-bottom: 12px;
+}
+
+.cv-management .module-record-tabs :is(.cm-tabs, .hr-tabs) a {
+  position: relative;
+  padding: 9px 14px;
+  min-height: 36px;
+  color: #657184;
+  font-size: 12px;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+}
+
+.cv-management .module-record-tabs :is(.cm-tabs, .hr-tabs) a.active {
+  color: #0079dc;
+  font-weight: 700;
+}
+
+.cv-management .module-record-tabs :is(.cm-tabs, .hr-tabs) a.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 4px 4px 0 0;
+  background: #008afa;
+}
+
+.cv-management .hr-create-page .hr-steps {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.cv-management .hr-create-page .hr-step-label {
+  text-align: center;
+}
+.cv-management .hr-profile-page .hr-tabs {
+  border-bottom: 0;
+  white-space: normal;
+  overflow: visible;
+}
+.cv-management .hr-profile-page .hr-tabs a {
+  border-bottom: 0;
+  background: transparent;
+}
+.cv-management
+  .app-body
+  main.page-content
+  .people-page
+  .hr-form
+  :is(input:not([type='checkbox'], [type='file']), textarea, mat-select.cv-select) {
+  margin: 0;
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  font: 400 12px/1.5 var(--font-sans);
+  color: #123352;
+  background: #fff;
+}
+.cv-management .app-body main.page-content .people-page .hr-form textarea {
+  min-height: 78px;
+}
+.cv-management .app-body main.page-content .people-page .hr-form input[readonly] {
+  background: #f6f9fc;
+  color: #68768a;
+}
+@media (max-width: 1250px) {
+  .cv-management .people-page .hr-stat {
+    gap: 11px;
+    padding: 7px 7px 7px 11px;
+  }
+  .cv-management .people-page .hr-stat > .material-symbols-outlined {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+    font-size: 21px;
+  }
+}
+@media (max-width: 1100px) {
+  .cv-management .people-page .hr-hub-layout {
+    grid-template-columns: minmax(0, 1fr) 270px;
+  }
+  .cv-management .people-page .hr-destination-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .cv-management .hr-create-page .hr-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px 0;
+  }
+  .cv-management .hr-create-page .hr-steps li:nth-child(3)::after {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .cv-management .people-page .hr-hub-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cv-management .people-page .co-summary {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .cv-management .people-page .co-company-image {
+    width: 72px;
+    height: 78px;
+    align-self: start;
+  }
+  .cv-management .people-page .co-company-image > .material-symbols-outlined {
+    font-size: 48px;
+  }
+  .cv-management .people-page .co-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cv-management .people-page .co-facts > div:last-child {
+    grid-column: 1/-1;
+  }
+  .cv-management .people-page .co-details {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+  .cv-management .people-page .hr-destination {
+    padding: 11px 8px;
+    gap: 7px;
+  }
+}
+@media (max-width: 600px) {
+  .cv-management .hr-create-page .hr-steps strong {
+    font-size: 10px;
+  }
+  .cv-management .hr-create-page .hr-steps small {
+    font-size: 9px;
+  }
+  .cv-management .hr-create-page .hr-step-number {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+  .cv-management .hr-create-page .hr-steps li:not(:last-child)::after {
+    top: 13px;
+    left: calc(50% + 16px);
+    right: calc(-50% + 16px);
+  }
+}

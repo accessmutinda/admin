@@ -5,7 +5,9 @@
 @import './app/features/management/shared/admin-panel.css';
 @import './app/features/management/shared/admin-tables.css';
 @import './app/features/management/shared/admin-refinements.css';
+@import './app/features/management/shared/module-template.css';
 @import './app/features/management/companies/companies.css';
+@import './app/features/management/people/hr-shell.css';
 @import './app/features/management/companies/company-profile.css';
 @import './app/features/management/companies/company-contacts.css';
 @import './app/features/management/companies/company-branding.css';

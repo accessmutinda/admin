@@ -31,7 +31,7 @@ import {
 
 @Component({
   selector: 'cv-company-compliance',
-  host: { class: 'companies-page company-profile-page company-compliance-page' },
+  host: { class: 'module-page companies-page company-profile-page company-compliance-page' },
   imports: [FormsModule, RouterLink, MatSelectModule, CvSelect],
   templateUrl: './company-compliance.html',
 })

@@ -22,7 +22,7 @@ type LocationSort =
   'name' | 'type' | 'address' | 'region' | 'registeredPlaces' | 'manager' | 'status' | 'modifiedAt';
 @Component({
   selector: 'cv-locations',
-  host: { class: 'companies-page locations-page' },
+  host: { class: 'module-page companies-page locations-page' },
   imports: [
     FormsModule,
     RouterLink,

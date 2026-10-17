@@ -36,7 +36,8 @@ import {
 @Component({
   selector: 'cv-company-modules',
   host: {
-    class: 'companies-page company-profile-page company-modules-page',
+    class:
+      'module-page module-record-tabs companies-page company-profile-page company-modules-page',
     '[attr.data-section]': 'section()',
   },
   imports: [

@@ -28,7 +28,7 @@ interface ProfileField {
 
 @Component({
   selector: 'cv-company-profile',
-  host: { class: 'companies-page company-profile-page' },
+  host: { class: 'module-page companies-page company-profile-page' },
   imports: [FormsModule, RouterLink, MatSelectModule, CvSelect],
   templateUrl: './company-profile.html',
 })
