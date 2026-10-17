@@ -54,7 +54,7 @@
   height: 24px;
   border-radius: 5px;
   background: #edf8f5;
-  color: #087f76;
+  color: #0066ac;
   font-size: 16px;
 }
 .activity-device-actions {
@@ -91,7 +91,7 @@
   filter: brightness(0.97);
 }
 .activity-action:focus-visible {
-  outline: 2px solid #087f76;
+  outline: 2px solid #0066ac;
   outline-offset: 2px;
 }
 .activity-revoke-pending {

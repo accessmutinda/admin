@@ -1,3 +1,4 @@
+import { ModuleDesign } from '../../management/shared/module-design';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { SecurityPageHeader } from './security-page-header';
 import { LOGIN_HISTORY, TRUSTED_DEVICES } from '../../../core/auth/fixtures';
@@ -6,7 +7,8 @@ import { Skeleton } from '../../../shared/ui/skeleton';
 
 @Component({
   selector: 'cv-login-history',
-  imports: [Skeleton, SecurityPageHeader],
+  imports: [ModuleDesign, Skeleton, SecurityPageHeader],
+  host: { class: 'module-page operations-page security-page' },
   templateUrl: './login-history.html',
   styleUrl: './login-history.css',
 })

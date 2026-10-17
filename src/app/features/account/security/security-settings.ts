@@ -1,3 +1,4 @@
+import { ModuleDesign } from '../../management/shared/module-design';
 import { A11yModule } from '@angular/cdk/a11y';
 import { DatePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
@@ -10,8 +11,11 @@ import { SecurityPageHeader } from './security-page-header';
 
 @Component({
   selector: 'cv-security-settings',
-  imports: [A11yModule, DatePipe, RouterLink, ManagementRole, SecurityPageHeader],
-  host: { '(document:keydown.escape)': 'details.set(null)' },
+  imports: [ModuleDesign, A11yModule, DatePipe, RouterLink, ManagementRole, SecurityPageHeader],
+  host: {
+    class: 'module-page operations-page security-page',
+    '(document:keydown.escape)': 'details.set(null)',
+  },
   templateUrl: './security-settings.html',
   styleUrl: './security-settings.css',
 })
