@@ -18,6 +18,8 @@ import { ROLES } from '../../../core/auth/models/role';
 import { PAYROLL_ACTIONS } from '../payroll/payroll.models';
 import { ROTA_ACTIONS } from '../rota/rota.models';
 
+import type { StaffRecord, StaffDraft } from '../people/hr.models';
+
 export interface Company {
   id: string;
   name: string;
@@ -56,8 +58,17 @@ export interface StaffDocument {
   content: string;
   requirement?: string;
   requirementId?: string;
+  category?: string;
+  uploadedAt?: string;
+  expiry?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  status?: 'Pending review' | 'Verified';
+  version?: number;
+  replacesId?: string;
 }
 export interface Person {
+  hr?: StaffRecord;
   id: string;
   name: string;
   email: string;
@@ -117,6 +128,8 @@ export interface Member {
   mfaEnabled?: boolean;
 }
 export interface Leave {
+  personId?: string;
+  status?: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
   id: string;
   person: string;
   type: string;
@@ -124,6 +137,13 @@ export interface Leave {
   end: string;
 }
 export interface Review {
+  competencies?: { title: string; score: number }[];
+  score?: number;
+  personId?: string;
+  assessor?: string;
+  discussion?: string;
+  outcome?: string;
+  completedAt?: string;
   id: string;
   person: string;
   type: string;
@@ -247,6 +267,7 @@ const seedPerson = (
   progress: stage === 'Hired' ? { safeguarding: 100, handling: 40 } : {},
 });
 export interface WorkspaceData {
+  staffDrafts?: StaffDraft[];
   accessHistory?: AccessChange[];
   locations?: ServiceLocation[];
   permissionDefaultsVersion?: number;
