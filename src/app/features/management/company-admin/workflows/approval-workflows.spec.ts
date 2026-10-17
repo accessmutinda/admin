@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { WorkspaceService } from '../../../../core/auth/workspace.service';
@@ -19,10 +20,10 @@ describe('Approval workflow configuration', () => {
   let store: ManagementStore;
   beforeEach(() => {
     localStorage.clear();
-    TestBed.configureTestingModule({ imports: [ApprovalWorkflows] }).overrideComponent(
-      ApprovalWorkflows,
-      { set: { template: '' } },
-    );
+    TestBed.configureTestingModule({
+      imports: [ApprovalWorkflows],
+      providers: [provideRouter([])],
+    }).overrideComponent(ApprovalWorkflows, { set: { template: '' } });
     TestBed.inject(AuthService).signInWithMicrosoft();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
@@ -61,7 +62,10 @@ describe('Approval workflow configuration', () => {
 describe('Approval workflow cards', () => {
   beforeEach(() => {
     localStorage.clear();
-    TestBed.configureTestingModule({ imports: [ApprovalWorkflows] });
+    TestBed.configureTestingModule({
+      imports: [ApprovalWorkflows],
+      providers: [provideRouter([])],
+    });
     TestBed.inject(AuthService).signInWithMicrosoft();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
   });

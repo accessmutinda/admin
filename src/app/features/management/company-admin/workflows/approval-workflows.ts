@@ -1,3 +1,4 @@
+import { ModuleDesign } from '../../shared/module-design';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../../shared/ui/select';
 import { Component, inject } from '@angular/core';
@@ -6,7 +7,8 @@ import { ManagementStore } from '../../shared/management.store';
 import { ToastService } from '../../../../shared/ui/toast.service';
 @Component({
   selector: 'cv-approval-workflows',
-  imports: [FormsModule, MatSelectModule, CvSelect],
+  imports: [ModuleDesign, FormsModule, MatSelectModule, CvSelect],
+  host: { class: 'module-page operations-page approvals-page' },
   templateUrl: './approval-workflows.html',
 })
 export class ApprovalWorkflows {
