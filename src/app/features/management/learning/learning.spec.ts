@@ -38,9 +38,7 @@ describe('Training Academy workspace', () => {
     const harness = await RouterTestingHarness.create('/manage/learning?person=' + person.id);
     const page = harness.routeNativeElement!;
     expect(page.querySelector('h1')!.textContent).toBe('Training Academy');
-    expect(page.querySelector('cv-hr-company-banner')!.textContent).toContain(
-      store.company()!.name,
-    );
+    expect(page.querySelector('.co-summary')).toBeNull();
     expect(
       page.querySelector('a[href="/manage/people/staff/' + person.id + '/training"]'),
     ).not.toBeNull();

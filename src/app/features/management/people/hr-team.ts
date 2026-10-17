@@ -5,11 +5,10 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HrService } from './hr.service';
 import { today } from './hr.models';
-import { HrCompanyBanner } from './hr-company-banner';
 @Component({
   selector: 'cv-hr-team',
   host: { class: 'module-page people-page hr-team-page' },
-  imports: [MatSelectModule, CvSelect, FormsModule, RouterLink, HrCompanyBanner],
+  imports: [MatSelectModule, CvSelect, FormsModule, RouterLink],
   styleUrls: ['./hr.css', './hr-directory.css', './hr-tables.css'],
   template: ` <nav class="hr-breadcrumb" aria-label="Breadcrumb">
       <a routerLink="/manage/people">People & HR</a>
@@ -25,7 +24,6 @@ import { HrCompanyBanner } from './hr-company-banner';
         </p>
       </div>
     </div>
-    <cv-hr-company-banner />
     <section class="hr-panel">
       <div class="hr-filters">
         <label

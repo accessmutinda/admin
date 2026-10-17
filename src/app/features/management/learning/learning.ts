@@ -9,7 +9,6 @@ import { ToastService } from '../../../shared/ui/toast.service';
 import { AcademyCourses } from './courses/academy-courses';
 import { AcademyProgress } from './progress/academy-progress';
 import { AcademyCpd } from './cpd/academy-cpd';
-import { HrCompanyBanner } from '../people/hr-company-banner';
 @Component({
   selector: 'cv-learning',
   imports: [
@@ -21,7 +20,6 @@ import { HrCompanyBanner } from '../people/hr-company-banner';
     AcademyCourses,
     AcademyProgress,
     AcademyCpd,
-    HrCompanyBanner,
   ],
   host: {
     class: 'module-page people-page academy-page',

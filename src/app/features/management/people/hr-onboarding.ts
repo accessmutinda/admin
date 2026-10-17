@@ -7,12 +7,11 @@ import { CvSelect } from '../../../shared/ui/select';
 import { HrService } from './hr.service';
 import { onboardingRow } from './hr-queues.models';
 import { staffRecord } from './hr.models';
-import { HrCompanyBanner } from './hr-company-banner';
 
 @Component({
   selector: 'cv-hr-onboarding',
   host: { class: 'module-page people-page hr-workspace-page' },
-  imports: [FormsModule, RouterLink, MatSelectModule, CvSelect, HrCompanyBanner],
+  imports: [FormsModule, RouterLink, MatSelectModule, CvSelect],
   templateUrl: './hr-onboarding.html',
   styleUrls: ['./hr.css', './hr-directory.css', './hr-tables.css', './hr-queues.css'],
 })
