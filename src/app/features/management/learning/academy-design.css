@@ -1,0 +1,114 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+:host([hidden]) {
+  display: none;
+}
+.academy-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.academy-stats .academy-stat-date {
+  font-size: 14px;
+}
+.hr-panel-head > div {
+  min-width: 0;
+}
+.hr-panel-head p {
+  margin: 3px 0 0;
+  font-size: 11px;
+  color: #677488;
+}
+.academy-link {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: #007bcc;
+  font-size: 11px;
+  text-decoration: none;
+}
+.academy-link .material-symbols-outlined {
+  font-size: 16px;
+}
+.hr-filters label.academy-search {
+  display: block;
+  position: relative;
+}
+.academy-search > .material-symbols-outlined {
+  position: absolute;
+  left: 8px;
+  bottom: 7px;
+  color: #7d8c9b;
+  font-size: 18px;
+}
+:host .hr-filters label.academy-search input {
+  padding-left: 30px;
+}
+.academy-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-top: 1px solid #edf2f5;
+}
+.academy-form-footer > span:first-child {
+  margin-right: auto;
+}
+.academy-icon-button {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  background: #fff;
+  color: #365878;
+  cursor: pointer;
+}
+.academy-icon-button .material-symbols-outlined {
+  font-size: 18px;
+}
+.academy-icon-button:focus-visible,
+.academy-link:focus-visible {
+  outline: 2px solid #008bd9;
+  outline-offset: 2px;
+}
+.academy-person-cell {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.academy-person-cell .avatar {
+  width: 26px;
+  height: 26px;
+  font-size: 11px;
+  border-radius: 5px;
+}
+.empty-state {
+  text-align: center;
+  padding: 24px 12px;
+  color: #677488;
+}
+.empty-state h3 {
+  color: #002b60;
+  font-size: 14px;
+  margin: 6px 0;
+}
+.empty-state p {
+  font-size: 12px;
+  margin: 4px 0 10px;
+}
+.empty-state > .material-symbols-outlined {
+  color: #6e91bc;
+  font-size: 32px;
+}
+@media (max-width: 760px) {
+  .academy-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .academy-form-footer .hr-button {
+    min-height: 40px;
+  }
+}

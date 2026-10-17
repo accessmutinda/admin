@@ -1,42 +1,9 @@
-<section class="academy-summary-strip">
-  <div class="academy-summary-heading">
-    <h2>Team learning</h2>
-    <div class="academy-average-inline">
-      <strong>{{ animatedCompletion() }}%</strong>
-      <span>Average progress</span>
-    </div>
-  </div>
-  <div class="academy-average-track" aria-hidden="true">
-    <span [style.width.%]="animatedCompletion()"></span>
-  </div>
-  <div class="academy-summary-values">
-    <span class="summary-tile" data-tone="blue"
-      ><strong>{{ store.staff().length }}</strong
-      >Team members</span
-    >
-    <span class="summary-tile" data-tone="purple"
-      ><strong>{{ assignedCount() }}</strong
-      >Assignments</span
-    >
-    <span class="summary-tile" data-tone="green"
-      ><strong>{{ completedCount() }}</strong
-      >Completed</span
-    >
-  </div>
-  <details>
-    <summary>About these figures</summary>
-    <p>Learning across {{ store.company()?.name }} · based on assigned courses.</p>
-    <p>
-      Team members in this workspace · assignments across their learning plans ·
-      {{ assignedCount() - completedCount() }} assignments remaining.
-    </p>
-  </details>
-</section>
-<section class="academy-progress-hero">
+<section class="hr-panel academy-progress-summary">
   <div>
-    <p class="eyebrow">TEAM LEARNING AT A GLANCE</p>
-    <h2>Team learning progress</h2>
-    <p>Learning across {{ store.company()?.name }} · based on assigned courses.</p>
+    <h2>Team Learning Progress</h2>
+    <p class="hr-muted">
+      Sample learning across {{ store.company()?.name }} · based on assigned courses.
+    </p>
   </div>
   <div class="academy-average-overview">
     <div
@@ -51,40 +18,49 @@
       <strong>{{ animatedCompletion() }}<span>%</span></strong>
     </div>
     <div class="academy-average-copy">
-      <span class="academy-average-label">Average progress</span>
-      <span class="academy-average-detail">{{
+      <span class="academy-average-label">Average progress</span
+      ><span class="academy-average-detail">{{
         assignedCount()
           ? completedCount() + ' of ' + assignedCount() + ' assignments completed'
           : 'No courses assigned yet'
       }}</span>
+      <div class="academy-average-track" aria-hidden="true">
+        <span [style.width.%]="animatedCompletion()"></span>
+      </div>
     </div>
   </div>
 </section>
-<div class="metrics academy-metrics">
-  <div class="metric" data-tone="blue">
-    <span class="metric-icon material-symbols-outlined" aria-hidden="true">groups</span
-    ><span>Team members</span><strong>{{ store.staff().length }}</strong
-    ><small>In this workspace</small>
+<div class="hr-stats academy-stats">
+  <div class="hr-stat" style="--stat-color: #008afa">
+    <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+    <div>
+      <small>Team Members</small><strong>{{ store.staff().length }}</strong
+      ><small>In this workspace</small>
+    </div>
   </div>
-  <div class="metric" data-tone="purple">
-    <span class="metric-icon material-symbols-outlined" aria-hidden="true">menu_book</span
-    ><span>Course assignments</span><strong>{{ assignedCount() }}</strong
-    ><small>Across the team's learning plans</small>
+  <div class="hr-stat" style="--stat-color: #03a6c1">
+    <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+    <div>
+      <small>Course Assignments</small><strong>{{ assignedCount() }}</strong
+      ><small>Across staff learning plans</small>
+    </div>
   </div>
-  <div class="metric" data-tone="green">
-    <span class="metric-icon material-symbols-outlined" aria-hidden="true">task_alt</span
-    ><span>Completed assignments</span><strong>{{ completedCount() }}</strong
-    ><small>{{ assignedCount() - completedCount() }} assignments remaining</small>
+  <div class="hr-stat" style="--stat-color: #00a34e">
+    <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
+    <div>
+      <small>Completed Assignments</small><strong>{{ completedCount() }}</strong
+      ><small>{{ assignedCount() - completedCount() }} assignments remaining</small>
+    </div>
   </div>
 </div>
-<section class="panel academy-team-progress">
-  <div class="panel-toolbar">
+<section class="hr-panel academy-progress-register">
+  <div class="hr-panel-head">
     <div>
-      <h2>Every learner, a clearer next step</h2>
+      <h2>Staff Learning Register</h2>
       <p>Find a team member and review their learning plan.</p>
     </div>
-    <div class="academy-progress-filters">
-      <label class="search-box"
+    <div class="academy-register-filters hr-filters">
+      <label class="academy-search"
         ><span class="material-symbols-outlined" aria-hidden="true">search</span
         ><input
           aria-label="Search learning progress"
@@ -106,8 +82,8 @@
       </mat-select>
     </div>
   </div>
-  <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
-    <table class="learner-progress-table data-columns" aria-label="Team learning progress">
+  <div class="hr-table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+    <table class="learner-progress-table hr-table" aria-label="Team learning progress">
       <thead>
         <tr>
           <th scope="col" class="table-primary">Team member</th>
@@ -126,7 +102,7 @@
         @for (p of progressPeople(); track p.id) {
           <tr>
             <td class="learner-identity">
-              <div class="person-cell">
+              <div class="academy-person-cell">
                 <span class="avatar">{{ store.initials(p.name) }}</span>
                 <span
                   ><strong>{{ p.name }}</strong></span
@@ -156,8 +132,8 @@
             </td>
             <td data-label="Status" class="table-status">
               <span
-                class="badge"
-                [class.success]="p.learning.length > 0 && completedFor(p) === p.learning.length"
+                class="hr-badge"
+                [class.good]="p.learning.length > 0 && completedFor(p) === p.learning.length"
                 >{{
                   !p.learning.length
                     ? 'Ready for a learning plan'
@@ -173,7 +149,7 @@
               <a
                 [routerLink]="['/manage/people', p.id]"
                 [queryParams]="{ tab: 'Learning' }"
-                class="text-link"
+                class="academy-link"
                 >{{ p.learning.length ? 'View learning' : 'Assign courses'
                 }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a
               >
@@ -188,7 +164,7 @@
                   {{
                     store.staff().length
                       ? 'No learners match this view.'
-                      : 'Your learning team starts here.'
+                      : 'No staff learning records.'
                   }}
                 </h3>
                 <p>
@@ -200,13 +176,13 @@
                 </p>
                 @if (store.staff().length) {
                   <button
-                    class="button"
+                    class="hr-button"
                     (click)="progressSearch.set(''); progressFilter.set('Everyone')"
                   >
                     Clear filters
                   </button>
                 } @else {
-                  <a class="button" routerLink="/manage/staff">View team members</a>
+                  <a class="hr-button" routerLink="/manage/staff">View team members</a>
                 }
               </div>
             </td>

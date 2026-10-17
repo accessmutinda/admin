@@ -124,7 +124,7 @@ describe('Team learning register', () => {
     );
     expect(rows[1].textContent).toContain('Not assigned');
     expect(rows[1].textContent).toContain('Assign courses');
-    expect(rows[2].querySelector('.badge.success')?.textContent).toContain(
+    expect(rows[2].querySelector('.hr-badge.good')?.textContent).toContain(
       'All assigned courses complete',
     );
   });

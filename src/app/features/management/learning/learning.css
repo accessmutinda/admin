@@ -1,0 +1,168 @@
+.academy-context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 8px 10px;
+}
+.academy-context > .hr-button {
+  margin-left: auto;
+}
+.academy-context > .material-symbols-outlined {
+  color: #008afa;
+  font-size: 24px;
+}
+.academy-person-select {
+  width: 260px;
+  max-width: 100%;
+  grid-template-columns: 1fr;
+  gap: 3px;
+  color: #10355e;
+  font-size: 11px;
+  font-weight: 700;
+}
+.academy-section-picker {
+  display: none;
+}
+.academy-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 0 8px;
+}
+.academy-tabs button {
+  position: relative;
+  min-height: 36px;
+  padding: 9px 14px;
+  border: 0;
+  background: transparent;
+  color: #657184;
+  font: 400 12px var(--font-sans);
+  cursor: pointer;
+}
+.academy-tabs button.active {
+  color: #0079dc;
+  font-weight: 700;
+}
+.academy-tabs button.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 4px 4px 0 0;
+  background: #008afa;
+}
+.academy-tabs button:focus-visible {
+  outline: 2px solid #008bd9;
+  outline-offset: 2px;
+}
+.academy-webinar {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #edf2f5;
+}
+.academy-webinar-icon,
+.academy-certificate-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  background: #008afa;
+  color: #fff;
+  font-size: 23px;
+  flex-shrink: 0;
+}
+.academy-webinar h3 {
+  font-size: 12px;
+  color: #10355e;
+  margin: 0;
+}
+.academy-webinar p {
+  font-size: 11px;
+  margin: 3px 0 0;
+  color: #677488;
+}
+.academy-table-hint {
+  padding: 0 10px 6px;
+}
+.matrix-table {
+  min-width: 1100px;
+}
+:host .matrix-table th:first-child,
+:host .matrix-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #fff;
+  min-width: 160px;
+}
+:host .matrix-table th:first-child {
+  background: #eff5f8;
+  z-index: 2;
+}
+.academy-certificate-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #edf2f5;
+}
+.academy-certificate-row small {
+  display: block;
+  font-size: 11px;
+  color: #677488;
+}
+.academy-lesson-banner {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 0 10px 8px;
+  padding: 16px;
+  border-radius: 7px;
+  background: linear-gradient(120deg, #07577b, #00375e);
+  color: white;
+  font-size: 14px;
+}
+.academy-lesson-banner .material-symbols-outlined {
+  font-size: 30px;
+}
+.academy-lesson-copy {
+  font-size: 12px;
+  color: #536781;
+  line-height: 1.6;
+  margin: 8px 0 12px;
+}
+@media (max-width: 760px) {
+  .academy-tabs {
+    display: none;
+  }
+  .academy-section-picker {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 12px;
+    font-size: 11px;
+    color: #10355e;
+    font-weight: 700;
+  }
+  .academy-context > .hr-button {
+    margin-left: 0;
+  }
+  .academy-webinar {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+  .academy-webinar > .hr-button {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .academy-certificate-row {
+    flex-wrap: wrap;
+  }
+}

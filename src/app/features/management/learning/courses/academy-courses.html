@@ -1,28 +1,38 @@
-<div class="panel-toolbar course-toolbar">
-  <label class="search-box"
+<div class="hr-panel-head">
+  <div>
+    <h2>Sample Course Catalogue</h2>
+    <p class="hr-muted">
+      Explore courses and continue sample lessons for the selected staff member.
+    </p>
+  </div>
+</div>
+<div class="hr-filters course-toolbar">
+  <label class="academy-search"
     ><span class="material-symbols-outlined" aria-hidden="true">search</span
     ><input
       aria-label="Search courses"
       placeholder="Find your next course…"
       [ngModel]="search()"
       (ngModelChange)="search.set($event)" /></label
-  ><mat-select
-    cvSelect
-    aria-label="Filter course category"
-    [ngModel]="category()"
-    (ngModelChange)="category.set($event)"
+  ><label
+    >Category<mat-select
+      cvSelect
+      aria-label="Filter course category"
+      [ngModel]="category()"
+      (ngModelChange)="category.set($event)"
+    >
+      <mat-option value="All courses">All courses</mat-option>
+      <mat-option value="Mandatory">Mandatory</mat-option>
+      <mat-option value="Clinical care">Clinical care</mat-option>
+      <mat-option value="Development">Development</mat-option>
+    </mat-select></label
   >
-    <mat-option value="All courses">All courses</mat-option>
-    <mat-option value="Mandatory">Mandatory</mat-option>
-    <mat-option value="Clinical care">Clinical care</mat-option>
-    <mat-option value="Development">Development</mat-option>
-  </mat-select>
 </div>
 <div class="academy-course-list">
   @for (course of filtered(); track course.id) {
     @let progress = person()?.progress?.[course.id] || 0;
     <article
-      class="academy-course-entry panel"
+      class="academy-course-entry hr-panel"
       [class.course-completed]="progress === 100"
       [class.course-in-progress]="progress > 0 && progress < 100"
     >

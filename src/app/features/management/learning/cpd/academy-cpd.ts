@@ -10,6 +10,13 @@ import { ToastService } from '../../../../shared/ui/toast.service';
   imports: [DatePipe, A11yModule, FormsModule, RouterLink],
   host: { '(document:keydown.escape)': 'cpdModal.set(false)' },
   templateUrl: './academy-cpd.html',
+  styleUrls: [
+    '../../people/hr.css',
+    '../../people/hr-tables.css',
+    '../../people/hr-forms.css',
+    '../academy-design.css',
+    './academy-cpd.css',
+  ],
 })
 export class AcademyCpd {
   readonly personId = input.required<string>();

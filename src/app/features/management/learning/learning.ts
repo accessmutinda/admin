@@ -3,12 +3,13 @@ import { CvSelect } from '../../../shared/ui/select';
 import { A11yModule } from '@angular/cdk/a11y';
 import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { COURSES, Course, ManagementStore } from '../shared/management.store';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { AcademyCourses } from './courses/academy-courses';
 import { AcademyProgress } from './progress/academy-progress';
 import { AcademyCpd } from './cpd/academy-cpd';
+import { HrCompanyBanner } from '../people/hr-company-banner';
 @Component({
   selector: 'cv-learning',
   imports: [
@@ -20,12 +21,25 @@ import { AcademyCpd } from './cpd/academy-cpd';
     AcademyCourses,
     AcademyProgress,
     AcademyCpd,
+    HrCompanyBanner,
   ],
-  host: { '(document:keydown.escape)': 'player.set(null)' },
+  host: {
+    class: 'module-page people-page academy-page',
+    '(document:keydown.escape)': 'player.set(null)',
+  },
   templateUrl: './learning.html',
+  styleUrls: [
+    '../people/hr.css',
+    '../people/hr-tables.css',
+    '../people/hr-forms.css',
+    './academy-design.css',
+    './learning.css',
+  ],
 })
 export class Learning {
   protected readonly store = inject(ManagementStore);
+  private readonly route = inject(ActivatedRoute);
+  protected readonly staffReturn = this.route.snapshot.queryParamMap.get('person');
   private readonly toast = inject(ToastService);
   protected readonly tabs = [
     'Courses',
@@ -35,8 +49,16 @@ export class Learning {
     'CPD',
     'Progress',
   ];
-  protected readonly tab = signal('Courses');
-  protected readonly selectedPerson = signal(this.store.staff()[0]?.id ?? '');
+  protected readonly tab = signal(
+    this.tabs.includes(this.route.snapshot.queryParamMap.get('tab') ?? '')
+      ? this.route.snapshot.queryParamMap.get('tab')!
+      : 'Courses',
+  );
+  protected readonly selectedPerson = signal(
+    this.store.staff().find((p) => p.id === this.staffReturn)?.id ??
+      this.store.staff()[0]?.id ??
+      '',
+  );
   protected readonly person = computed(() =>
     this.store.staff().find((p) => p.id === this.selectedPerson()),
   );

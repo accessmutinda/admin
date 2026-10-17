@@ -1,186 +1,180 @@
 .course-toolbar {
+  padding: 8px 10px;
   margin-bottom: 8px;
+  border: 1px solid #e9eff3;
+  border-radius: 9px;
+  background: #fff;
 }
-
+.course-toolbar > label:last-child {
+  flex: 1;
+  max-width: 260px;
+}
 .academy-course-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+  align-items: stretch;
 }
 .academy-course-entry {
-  --course-state-color: #d5e2e8;
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
-  align-items: start;
+  grid-template-columns: 34px minmax(0, 1fr);
   gap: 8px;
-  padding: 8px 10px;
-  border-left: 3px solid var(--course-state-color);
-  border-radius: 7px;
+  padding: 10px;
+  margin: 0;
+  border-left: 3px solid #dfe6eb;
 }
 .academy-course-entry.course-completed {
-  --course-state-color: #22a06b;
+  border-left-color: #00a34e;
 }
 .academy-course-entry.course-in-progress {
-  --course-state-color: #4a83cf;
+  border-left-color: #008afa;
 }
 .academy-course-symbol {
-  --course-color: var(--brand-teal);
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
   display: grid;
   place-items: center;
-  place-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--course-color) 12%, white);
-  color: var(--course-color);
-}
-.academy-course-symbol[data-course='handling'] {
-  --course-color: var(--brand-blue);
-}
-.academy-course-symbol[data-course='medication'] {
-  --course-color: var(--color-role-po);
-}
-.academy-course-symbol[data-course='dementia'] {
-  --course-color: var(--color-warning);
-}
-.academy-course-symbol[data-course='wellbeing'] {
-  --course-color: var(--color-role-hr);
+  background: #008afa;
+  color: #fff;
 }
 .academy-course-symbol[data-course='infection'] {
-  --course-color: var(--color-success);
+  background: #00a34e;
+}
+.academy-course-symbol[data-course='dementia'] {
+  background: #ffb000;
+}
+.academy-course-symbol[data-course='wellbeing'] {
+  background: #9553dc;
+}
+.academy-course-symbol[data-course='medication'] {
+  background: #03a6c1;
 }
 .academy-course-symbol .material-symbols-outlined {
-  font-size: 18px;
+  font-size: 23px;
 }
 .academy-course-copy {
   min-width: 0;
 }
 .academy-course-copy h3 {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.3;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #10355e;
+}
+.academy-course-copy p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #677488;
 }
 .academy-course-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 3px 6px;
-  margin-top: 3px;
-  color: var(--muted);
+  margin-top: 4px;
   font-size: 10px;
-}
-.academy-course-copy p {
-  margin: 3px 0 0;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--muted);
+  color: #677488;
 }
 .academy-category,
-.academy-course-level {
-  display: inline-flex;
-  align-items: center;
+.academy-course-level,
+.academy-course-status {
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 10px;
-  font-weight: 600;
   line-height: 1.4;
-  background: #f1f5f9;
-  color: #526477;
+  background: #edf2f5;
+  color: #677488;
 }
 .academy-category[data-category='Mandatory'] {
-  background: #fff3d6;
-  color: #8a5300;
+  background: #fff2d6;
+  color: #a66500;
 }
 .academy-category[data-category='Clinical care'] {
-  background: #eaf2ff;
-  color: #285eaa;
+  background: #eaf5fc;
+  color: #0066ac;
 }
 .academy-category[data-category='Development'] {
   background: #f2ecff;
   color: #7444a6;
 }
-.academy-course-duration {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-.academy-course-duration .material-symbols-outlined {
-  font-size: 12px;
-}
-.academy-course-actions {
-  display: grid;
-  align-self: center;
-  justify-items: end;
-  gap: 4px;
-}
+.academy-course-duration,
 .academy-course-status {
   display: inline-flex;
+  gap: 3px;
   align-items: center;
-  gap: 4px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: #f1f5f9;
-  color: #526477;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.4;
-  white-space: nowrap;
 }
-.academy-course-status.completed {
-  background: #e7f6ed;
-  color: #187044;
-}
-.academy-course-status.in-progress {
-  background: #eaf2ff;
-  color: #285eaa;
-}
+.academy-course-duration .material-symbols-outlined,
 .academy-course-status .material-symbols-outlined {
   font-size: 13px;
 }
+.academy-course-actions {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px solid #edf2f5;
+}
+.academy-course-status.completed {
+  background: #c9f4df;
+  color: #087337;
+}
+.academy-course-status.in-progress {
+  background: #eaf5fc;
+  color: #0066ac;
+}
 .academy-course-progress {
   width: 100%;
-  height: 3px;
+  height: 4px;
+  background: #e5edf2;
+  border-radius: 4px;
   overflow: hidden;
-  border-radius: 3px;
-  background: #e4edf9;
+  order: 3;
 }
 .academy-course-progress > span {
   display: block;
   height: 100%;
-  background: #4a83cf;
+  background: #008afa;
   border-radius: inherit;
 }
 .academy-course-open {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  min-height: 28px;
-  padding: 3px 6px;
-  border: 1px solid #c5e4dc;
+  gap: 5px;
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 1px solid #008afa;
   border-radius: 5px;
-  background: #edf8f5;
-  color: #087f76;
-  font-size: 11px;
+  background: #008afa;
+  color: #fff;
+  font: 700 11px/1.4 var(--font-sans);
+  cursor: pointer;
   white-space: nowrap;
 }
 .academy-course-open .material-symbols-outlined {
   font-size: 16px;
 }
 .academy-course-open:hover {
-  background: #dff2eb;
+  background: #0079dc;
 }
 .academy-course-open:focus-visible {
-  outline: 2px solid #087f76;
+  outline: 2px solid #008bd9;
   outline-offset: 2px;
 }
-@media (max-width: 1023px) {
+@media (max-width: 1200px) {
   .academy-course-list {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-@media (max-width: 767px) {
+@media (max-width: 650px) {
+  .academy-course-list {
+    grid-template-columns: 1fr;
+  }
   .academy-course-open {
-    min-height: 44px;
+    min-height: 40px;
   }
 }
