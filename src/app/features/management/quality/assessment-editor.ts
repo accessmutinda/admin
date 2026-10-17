@@ -1,3 +1,4 @@
+import { ModuleDesign } from '../shared/module-design';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
@@ -11,10 +12,21 @@ import { AccessRequired } from '../shared/access-required';
 
 @Component({
   selector: 'cv-assessment-editor',
-  imports: [FormsModule, DatePipe, RouterLink, MatSelectModule, CvSelect, AccessRequired],
+  imports: [
+    ModuleDesign,
+    FormsModule,
+    DatePipe,
+    RouterLink,
+    MatSelectModule,
+    CvSelect,
+    AccessRequired,
+  ],
   templateUrl: './assessment-editor.html',
   styleUrls: ['./quality.css', './assessment-editor.css'],
-  host: { '(window:beforeunload)': 'beforeUnload($event)' },
+  host: {
+    class: 'module-page operations-page assessment-page',
+    '(window:beforeunload)': 'beforeUnload($event)',
+  },
 })
 export class AssessmentEditor {
   protected readonly service = inject(QualityService);

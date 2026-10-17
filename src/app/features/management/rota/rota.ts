@@ -1,3 +1,4 @@
+import { ModuleDesign } from '../shared/module-design';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -26,6 +27,7 @@ import {
 @Component({
   selector: 'cv-rota',
   imports: [
+    ModuleDesign,
     DatePipe,
     FormsModule,
     MatSelectModule,
@@ -34,6 +36,7 @@ import {
     RouterLink,
     AccessRequired,
   ],
+  host: { class: 'module-page operations-page rota-page' },
   templateUrl: './rota.html',
 })
 export class Rota {

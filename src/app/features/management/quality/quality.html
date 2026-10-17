@@ -1,6 +1,9 @@
+<cv-module-design />
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/quality">Supervision & Quality</a>
+</nav>
 <div class="page-heading">
   <div>
-    <p class="eyebrow">SUPERVISION & QUALITY</p>
     <h1>{{ supervisor ? 'Supervisor dashboard' : 'Quality & QA' }}</h1>
     <p>Assess care, support your team and follow every improvement through.</p>
   </div>
@@ -19,45 +22,49 @@
   />
 } @else {
   <div class="metrics four quality-metrics">
-    <button class="metric" data-tone="blue" (click)="switchTab('Assessments')">
-      <div class="metric-label">
-        <span>Assessments to finish</span
-        ><span class="material-symbols-outlined" aria-hidden="true">assignment</span>
+    <button class="metric co-stat co-surface" data-tone="blue" (click)="switchTab('Assessments')">
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
+      <div>
+        <h2>Assessments to finish</h2>
+        <strong>{{ openAssessments().length }}</strong
+        ><small>{{ overdueAssessments().length }} overdue</small>
       </div>
-      <strong>{{ openAssessments().length }}</strong
-      ><small>{{ overdueAssessments().length }} overdue</small>
     </button>
     <button
-      class="metric"
+      class="metric co-stat co-surface"
       data-tone="purple"
       (click)="switchTab('Assessment library'); category.set('Quality assurance')"
     >
-      <div class="metric-label">
-        <span>Spot checks & quality visits</span
-        ><span class="material-symbols-outlined" aria-hidden="true">fact_check</span>
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">fact_check</span>
+      <div>
+        <h2>Spot checks & quality visits</h2>
+        <strong>{{ countType('spot') + countType('visit') }}</strong
+        ><small>Recorded in this workspace</small>
       </div>
-      <strong>{{ countType('spot') + countType('visit') }}</strong
-      ><small>Recorded in this workspace</small>
     </button>
     <button
-      class="metric"
+      class="metric co-stat co-surface"
       data-tone="teal"
       (click)="switchTab('Assessments'); status.set('Submitted')"
     >
-      <div class="metric-label">
-        <span>Awaiting sign-off</span
-        ><span class="material-symbols-outlined" aria-hidden="true">draw</span>
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">draw</span>
+      <div>
+        <h2>Awaiting sign-off</h2>
+        <strong>{{ pendingSignOff().length }}</strong
+        ><small>Submitted for review</small>
       </div>
-      <strong>{{ pendingSignOff().length }}</strong
-      ><small>Submitted for review</small>
     </button>
-    <button class="metric" data-tone="amber" (click)="switchTab('Corrective actions')">
-      <div class="metric-label">
-        <span>Open quality actions</span
-        ><span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
+    <button
+      class="metric co-stat co-surface"
+      data-tone="amber"
+      (click)="switchTab('Corrective actions')"
+    >
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">task_alt</span>
+      <div>
+        <h2>Open quality actions</h2>
+        <strong>{{ openActions().length }}</strong
+        ><small>{{ overdueActions().length }} overdue</small>
       </div>
-      <strong>{{ openActions().length }}</strong
-      ><small>{{ overdueActions().length }} overdue</small>
     </button>
   </div>
   <nav class="tabs quality-tabs" aria-label="Quality workspace views">
@@ -72,6 +79,46 @@
     }
   </nav>
   @if (tab() === 'Overview') {
+    <div class="op-overview-grid">
+      <section class="panel">
+        <div class="panel-toolbar">
+          <div>
+            <h2>Quality workspace</h2>
+            <p>Choose the assessment, review or improvement work you need.</p>
+          </div>
+        </div>
+        <div class="op-destinations">
+          @for (destination of destinations; track destination.view) {
+            <button class="co-check-card" (click)="switchTab(destination.view)">
+              <span class="op-destination-icon material-symbols-outlined" aria-hidden="true">{{
+                destination.icon
+              }}</span>
+              <div>
+                <strong>{{ destination.view }}</strong
+                ><small>{{ destination.description }}</small>
+              </div>
+            </button>
+          }
+        </div>
+      </section>
+      <aside class="panel op-quick-actions" aria-label="Quality quick actions">
+        <h2><span class="material-symbols-outlined" aria-hidden="true">bolt</span>Quick Actions</h2>
+        @if (service.can('create')) {
+          <button class="button primary" (click)="switchTab('Assessment library')">
+            <span class="material-symbols-outlined" aria-hidden="true">add</span>New assessment
+          </button>
+        }
+        <button class="button" (click)="switchTab('Review schedule')">
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Review
+          schedule
+        </button>
+        <a class="button" routerLink="/manage/reviews"
+          ><span class="material-symbols-outlined" aria-hidden="true">groups</span>Staff
+          supervision</a
+        >
+        <p>Assessment sign-off and corrective actions remain part of their saved records.</p>
+      </aside>
+    </div>
     <div class="quality-overview" [class.supervisor-overview]="supervisor">
       <section class="panel quality-panel">
         <div class="quality-heading">
@@ -111,34 +158,7 @@
           </div>
         }
       </section>
-      <section class="panel quality-panel">
-        <div class="quality-heading">
-          <div>
-            <h2>Recent activity</h2>
-            <p>Saved assessment and action history.</p>
-          </div>
-          <span class="quality-icon" data-tone="teal"
-            ><span class="material-symbols-outlined" aria-hidden="true">history</span></span
-          >
-        </div>
-        @for (event of activity(); track event.auditId) {
-          <button class="quality-task activity-item" (click)="openEvent(event)">
-            <span class="activity-dot" aria-hidden="true"></span
-            ><span
-              ><strong>{{ event.action }}</strong
-              ><small>{{ event.title }} · {{ event.actor }}</small
-              ><small>{{ timestamp(event.at) }}</small></span
-            ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
-          </button>
-        }
-        @if (!activity().length) {
-          <div class="empty-state compact-empty">
-            <span class="material-symbols-outlined" aria-hidden="true">history</span>
-            <h3>Your activity will appear here</h3>
-            <p>Saved drafts, submissions, sign-offs and action updates create an audit record.</p>
-          </div>
-        }
-      </section>
+
       <section class="panel quality-panel quality-supervision-panel">
         <div class="quality-heading">
           <div>
@@ -464,6 +484,34 @@
     </section>
   }
   @if (tab() === 'Reports') {
+    <section class="panel quality-panel">
+      <div class="quality-heading">
+        <div>
+          <h2>Assessment & action history</h2>
+          <p>Saved assessment and action history.</p>
+        </div>
+        <span class="quality-icon" data-tone="teal"
+          ><span class="material-symbols-outlined" aria-hidden="true">history</span></span
+        >
+      </div>
+      @for (event of activity(); track event.auditId) {
+        <button class="quality-task activity-item" (click)="openEvent(event)">
+          <span class="activity-dot" aria-hidden="true"></span
+          ><span
+            ><strong>{{ event.action }}</strong
+            ><small>{{ event.title }} · {{ event.actor }}</small
+            ><small>{{ timestamp(event.at) }}</small></span
+          ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+        </button>
+      }
+      @if (!activity().length) {
+        <div class="empty-state compact-empty">
+          <span class="material-symbols-outlined" aria-hidden="true">history</span>
+          <h3>No saved history yet</h3>
+          <p>Saved drafts, submissions, sign-offs and action updates create an audit record.</p>
+        </div>
+      }
+    </section>
     <section class="panel quality-panel">
       <div class="quality-heading">
         <div>

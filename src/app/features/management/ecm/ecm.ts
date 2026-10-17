@@ -1,3 +1,4 @@
+import { ModuleDesign } from '../shared/module-design';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
@@ -26,6 +27,7 @@ import {
 @Component({
   selector: 'cv-ecm',
   imports: [
+    ModuleDesign,
     FormsModule,
     MatSelectModule,
     RouterLink,
@@ -34,6 +36,7 @@ import {
     AccessRequired,
     VisitEvidence,
   ],
+  host: { class: 'module-page operations-page ecm-page' },
   templateUrl: './ecm.html',
   styleUrl: './ecm.css',
 })

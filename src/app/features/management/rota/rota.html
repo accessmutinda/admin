@@ -1,6 +1,9 @@
+<cv-module-design />
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/rota">Care Delivery</a>
+</nav>
 <div class="page-heading">
   <div>
-    <p class="eyebrow">CARE DELIVERY</p>
     <h1>{{ clientFiles ? 'Service users & client files' : 'Rota & shift allocation' }}</h1>
     <p>
       {{
@@ -35,32 +38,46 @@
   @if (!clientFiles) {
     <div class="metrics four">
       <button
-        class="metric"
+        class="metric co-stat co-surface"
         data-tone="amber"
         (click)="choose('Unallocated'); from.set(''); to.set('')"
       >
-        <span class="metric-icon material-symbols-outlined" aria-hidden="true">person_alert</span
-        ><span>Unallocated visits</span><strong>{{ unallocated().length }}</strong
-        ><small>Visits with missing carer places</small>
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">person_alert</span>
+        <div>
+          <h2>Unallocated visits</h2>
+          <strong>{{ unallocated().length }}</strong
+          ><small>Visits with missing carer places</small>
+        </div>
       </button>
       <button
-        class="metric"
+        class="metric co-stat co-surface"
         data-tone="blue"
         (click)="choose('Allocations'); stateFilter.set('Draft'); from.set(''); to.set('')"
       >
-        <span class="metric-icon material-symbols-outlined" aria-hidden="true">edit_calendar</span
-        ><span>Draft visits</span><strong>{{ drafts().length }}</strong
-        ><small>Review before publishing</small>
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">edit_calendar</span>
+        <div>
+          <h2>Draft visits</h2>
+          <strong>{{ drafts().length }}</strong
+          ><small>Review before publishing</small>
+        </div>
       </button>
-      <button class="metric" data-tone="teal" (click)="choose('Service users')">
-        <span class="metric-icon material-symbols-outlined" aria-hidden="true">groups</span
-        ><span>Regular carers</span><strong>{{ regularCarers() }}</strong
-        ><small>Assigned to active call packages</small>
+      <button class="metric co-stat co-surface" data-tone="teal" (click)="choose('Service users')">
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">groups</span>
+        <div>
+          <h2>Regular carers</h2>
+          <strong>{{ regularCarers() }}</strong
+          ><small>Assigned to active call packages</small>
+        </div>
       </button>
-      <button class="metric" data-tone="green" (click)="choose('Published')">
-        <span class="metric-icon material-symbols-outlined" aria-hidden="true">event_available</span
-        ><span>Published visits</span><strong>{{ published().length }}</strong
-        ><small>Today and future allocations</small>
+      <button class="metric co-stat co-surface" data-tone="green" (click)="choose('Published')">
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true"
+          >event_available</span
+        >
+        <div>
+          <h2>Published visits</h2>
+          <strong>{{ published().length }}</strong
+          ><small>Today and future allocations</small>
+        </div>
       </button>
     </div>
     <section class="panel rota-navigation">
@@ -81,33 +98,56 @@
     }
   }
   @if (tab() === 'Overview') {
-    <section class="panel">
-      <div class="panel-toolbar">
-        <div>
-          <h2>Choose a rota workflow</h2>
-          <p>Start with a service user and their call package.</p>
+    <div class="op-overview-grid">
+      <section class="panel">
+        <div class="panel-toolbar">
+          <div>
+            <h2>Choose a rota workflow</h2>
+            <p>Start with a service user and their call package.</p>
+          </div>
+          <button class="text-link" (click)="choose('Service users')">Service users & calls</button>
         </div>
-        <button class="text-link" (click)="choose('Service users')">Service users & calls</button>
-      </div>
-      <div class="rota-workflows">
-        @for (flow of workflows; track flow.name) {
-          <button
-            class="rota-workflow"
-            [attr.data-tone]="flow.tone"
-            [disabled]="flow.view === 'new' && !service.can('manage')"
-            (click)="choose(flow.view)"
-          >
-            <span class="rota-flow-icon material-symbols-outlined" aria-hidden="true">{{
-              flow.icon
-            }}</span
-            ><span
-              ><strong>{{ flow.name }}</strong
-              ><small>{{ flow.description }}</small></span
-            ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+        <div class="rota-workflows">
+          @for (flow of workflows; track flow.name) {
+            <button
+              class="rota-workflow"
+              [attr.data-tone]="flow.tone"
+              [disabled]="flow.view === 'new' && !service.can('manage')"
+              (click)="choose(flow.view)"
+            >
+              <span class="rota-flow-icon material-symbols-outlined" aria-hidden="true">{{
+                flow.icon
+              }}</span
+              ><span
+                ><strong>{{ flow.name }}</strong
+                ><small>{{ flow.description }}</small></span
+              ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+            </button>
+          }
+        </div>
+      </section>
+      <aside class="panel op-quick-actions" aria-label="Rota quick actions">
+        <h2><span class="material-symbols-outlined" aria-hidden="true">bolt</span>Quick Actions</h2>
+        @if (service.can('manage')) {
+          <button class="button primary" (click)="open('allocation')">
+            <span class="material-symbols-outlined" aria-hidden="true">add</span>New allocation
           </button>
         }
-      </div>
-    </section>
+        <button class="button" (click)="choose('Service users')">
+          <span class="material-symbols-outlined" aria-hidden="true">folder_shared</span>Manage call
+          packages
+        </button>
+        <button class="button" (click)="choose('Planning')">
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Open
+          monthly planning
+        </button>
+        <a class="button" routerLink="/manage/ecm"
+          ><span class="material-symbols-outlined" aria-hidden="true">monitor_heart</span>Open live
+          ECM board</a
+        >
+        <p>Check availability and resolve allocation conflicts before publishing visits.</p>
+      </aside>
+    </div>
     <div class="rota-overview-lower">
       <section class="panel">
         <div class="panel-toolbar">

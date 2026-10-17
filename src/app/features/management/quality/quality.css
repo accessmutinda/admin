@@ -29,21 +29,6 @@
   text-align: left;
   cursor: pointer;
 }
-.metric-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #475569;
-}
-.metric-label .material-symbols-outlined {
-  padding: 7px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--tone) 12%, white);
-  color: var(--tone);
-  font-size: 20px;
-}
 .quality-overview {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -245,7 +230,7 @@
 }
 .agenda-date {
   flex-shrink: 0;
-  color: #087f76;
+  color: #0066ac;
   font-size: 12px;
   font-weight: 600;
   width: 48px;

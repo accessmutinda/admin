@@ -1,7 +1,11 @@
+<cv-module-design />
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/rota">Care Delivery</a><span aria-hidden="true">›</span
+  ><span>Live ECM</span>
+</nav>
 <div id="ecm-surface" [class.ecm-wallboard]="wallboard">
   <div class="page-heading">
     <div>
-      <p class="eyebrow">CARE DELIVERY</p>
       <h1>{{ wallboard ? 'Live ECM wallboard' : 'Live ECM board' }}</h1>
       <p>Monitor expected visits, spot delays and coordinate care.</p>
     </div>
@@ -58,26 +62,47 @@
       </div>
     </div>
     <div class="metrics four ecm-metrics">
-      <button class="metric" data-tone="blue" (click)="metricView('All visits')">
-        <span class="metric-icon material-symbols-outlined" aria-hidden="true">event_note</span
-        ><span>Expected visits</span><strong>{{ totals().total }}</strong
-        ><small>{{ totals().high }} high-risk calls</small>
+      <button class="metric co-stat co-surface" data-tone="blue" (click)="metricView('All visits')">
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">event_note</span>
+        <div>
+          <h2>Expected visits</h2>
+          <strong>{{ totals().total }}</strong
+          ><small>{{ totals().high }} high-risk calls</small>
+        </div>
       </button>
-      <button class="metric" data-tone="amber" (click)="metricView('Needs attention')">
-        <span class="metric-icon material-symbols-outlined" aria-hidden="true"
+      <button
+        class="metric co-stat co-surface"
+        data-tone="amber"
+        (click)="metricView('Needs attention')"
+      >
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true"
           >notification_important</span
-        ><span>Needs attention</span><strong>{{ totals().urgent }}</strong
-        ><small>{{ totals().red }} red · {{ totals().amber }} amber alerts</small>
+        >
+        <div>
+          <h2>Needs attention</h2>
+          <strong>{{ totals().urgent }}</strong
+          ><small>{{ totals().red }} red · {{ totals().amber }} amber alerts</small>
+        </div>
       </button>
-      <button class="metric" data-tone="teal" (click)="metricView('Care in progress')">
-        <span class="metric-icon material-symbols-outlined" aria-hidden="true">monitor_heart</span
-        ><span>Care in progress</span><strong>{{ totals().progress }}</strong
-        ><small>All required carers arrived</small>
+      <button
+        class="metric co-stat co-surface"
+        data-tone="teal"
+        (click)="metricView('Care in progress')"
+      >
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">monitor_heart</span>
+        <div>
+          <h2>Care in progress</h2>
+          <strong>{{ totals().progress }}</strong
+          ><small>All required carers arrived</small>
+        </div>
       </button>
-      <button class="metric" data-tone="green" (click)="metricView('Completed')">
-        <span class="metric-icon material-symbols-outlined" aria-hidden="true">task_alt</span
-        ><span>Completed</span><strong>{{ totals().completed }}</strong
-        ><small>All carers checked out</small>
+      <button class="metric co-stat co-surface" data-tone="green" (click)="metricView('Completed')">
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">task_alt</span>
+        <div>
+          <h2>Completed</h2>
+          <strong>{{ totals().completed }}</strong
+          ><small>All carers checked out</small>
+        </div>
       </button>
     </div>
     <section class="panel ecm-register" aria-labelledby="ecm-list-title">

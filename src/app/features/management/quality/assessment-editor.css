@@ -18,6 +18,8 @@
   margin-top: 10px;
 }
 .assessment-side .text-link {
+  display: flex;
+  width: fit-content;
   margin-top: 8px;
 }
 .assessment-steps {
@@ -52,10 +54,10 @@
 }
 .assessment-steps button.active {
   background: var(--color-teal-50);
-  color: #087f76;
+  color: #0066ac;
 }
 .assessment-steps button.active span {
-  background: #087f76;
+  background: #0066ac;
   color: white;
 }
 .assessment-main > h2 {
@@ -86,7 +88,7 @@
 }
 .quality-upload > .material-symbols-outlined {
   font-size: 36px;
-  color: #087f76;
+  color: #0066ac;
 }
 .quality-upload input {
   width: 100%;

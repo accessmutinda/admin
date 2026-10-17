@@ -1,3 +1,4 @@
+import { ModuleDesign } from '../shared/module-design';
 import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -21,6 +22,7 @@ import {
 @Component({
   selector: 'cv-quality',
   imports: [
+    ModuleDesign,
     DatePipe,
     FormsModule,
     RouterLink,
@@ -29,6 +31,7 @@ import {
     CvSelect,
     AccessRequired,
   ],
+  host: { class: 'module-page operations-page quality-page' },
   templateUrl: './quality.html',
   styleUrl: './quality.css',
 })
@@ -39,6 +42,33 @@ export class Quality {
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   protected readonly supervisor = this.route.snapshot.data['supervisor'] === true;
+  protected readonly destinations = [
+    {
+      view: 'Assessment library',
+      icon: 'library_books',
+      description: 'Find the right assessment form.',
+    },
+    {
+      view: 'Assessments',
+      icon: 'assignment',
+      description: 'Continue drafts and review submitted records.',
+    },
+    {
+      view: 'Corrective actions',
+      icon: 'task_alt',
+      description: 'Track owners, due dates and resolutions.',
+    },
+    {
+      view: 'Review schedule',
+      icon: 'calendar_month',
+      description: 'Plan assessments and follow-up reviews.',
+    },
+    {
+      view: 'Reports',
+      icon: 'bar_chart',
+      description: 'Review outcomes, exports and saved history.',
+    },
+  ];
   protected readonly tabs = [
     'Overview',
     'Assessment library',

@@ -1,3 +1,4 @@
+import { ModuleDesign } from '../shared/module-design';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -15,6 +16,7 @@ import { liveVisit, EcmEscalation, ClientInvoice } from './ecm.models';
 @Component({
   selector: 'cv-ecm-workflows',
   imports: [
+    ModuleDesign,
     FormsModule,
     RouterLink,
     MatSelectModule,
@@ -23,6 +25,7 @@ import { liveVisit, EcmEscalation, ClientInvoice } from './ecm.models';
     AccessRequired,
     VisitEvidence,
   ],
+  host: { class: 'module-page operations-page ecm-workflows-page' },
   templateUrl: './ecm-workflows.html',
   styles: [
     `
@@ -70,13 +73,13 @@ import { liveVisit, EcmEscalation, ClientInvoice } from './ecm.models';
         border-radius: 8px;
       }
       .workflow-context {
-        background: #e6f7f5;
+        background: #eaf5fc;
         border-radius: 10px;
         padding: 10px 12px;
         margin-bottom: 12px;
       }
       .workflow-nav .active {
-        background: #0f2d4a;
+        background: #093252;
         color: white;
       }
       .mobile-preview {
@@ -118,7 +121,7 @@ import { liveVisit, EcmEscalation, ClientInvoice } from './ecm.models';
       }
       .workflow-kpis strong {
         font-size: 26px;
-        color: #0f2d4a;
+        color: #093252;
       }
     `,
   ],
