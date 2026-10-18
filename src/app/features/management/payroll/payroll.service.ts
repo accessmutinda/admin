@@ -74,7 +74,7 @@ export class PayrollService {
       .profiles.filter((p) => p.personId === personId && p.effective <= date)
       .sort((a, b) => b.effective.localeCompare(a.effective))[0];
   }
-  private reviewer(workflow: string, index: number): boolean {
+  private reviewer(workflow: string, _index: number): boolean {
     const defaults: Record<string, string[]> = {
       Overtime: ['Registered Manager', 'Finance Officer'],
       Timesheets: ['Registered Manager'],
@@ -83,9 +83,7 @@ export class PayrollService {
     };
     const route = this.store.data().workflows[workflow] ?? defaults[workflow];
     if (!route.length) return false;
-    return (
-      ['Company Admin', 'Platform Owner'].includes(this.role()) || this.role() === route[index]
-    );
+    return this.can(workflow === 'Payroll runs' ? 'finalise' : 'approve');
   }
   saveProfile(profile: PayProfile): string | null {
     if (this.allowed('manage')) return this.allowed('manage');
@@ -253,9 +251,9 @@ export class PayrollService {
     } else if (decision === 'Approve' && work.status === 'Confirmed') {
       if (
         money(work.actualHours * work.rate) > this.data().settings.approvalThreshold &&
-        !['Company Admin', 'Platform Owner', 'Finance Officer'].includes(this.role())
+        !this.can('finalise')
       )
-        return 'This amount exceeds the approval threshold. Finance or a company administrator must approve it.';
+        return 'This amount exceeds the approval threshold. Finalisation permission is required to approve it.';
       status = 'Approved';
     } else if (decision === 'Return') status = 'Returned';
     else if (decision === 'Reject') status = 'Rejected';
@@ -367,11 +365,8 @@ export class PayrollService {
     if (decision === 'Confirm work' && ['Recorded', 'Returned'].includes(invoice.status))
       status = 'Work confirmed';
     else if (decision === 'Approve' && invoice.status === 'Work confirmed') {
-      if (
-        invoiceTotal(invoice) > this.data().settings.approvalThreshold &&
-        !['Company Admin', 'Platform Owner', 'Finance Officer'].includes(this.role())
-      )
-        return 'Finance or a company administrator must approve invoices above the threshold.';
+      if (invoiceTotal(invoice) > this.data().settings.approvalThreshold && !this.can('finalise'))
+        return 'Finalisation permission is required to approve invoices above the threshold.';
       status = 'Approved';
     } else if (decision === 'Return' && invoice.status !== 'Approved') status = 'Returned';
     else if (decision === 'Reject' && invoice.status !== 'Approved') status = 'Rejected';

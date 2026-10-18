@@ -351,8 +351,8 @@ export class EcmService {
     );
   }
   reviewEvidence(id: string): string | null {
-    if (!['Company Admin', 'Platform Owner', 'Registered Manager'].includes(this.rota.role()))
-      return 'Manager access is required to review sensitive evidence.';
+    if (!this.rota.can('manage'))
+      return 'Manage permission is required to review sensitive evidence.';
     if (!this.data().evidence.some((e) => e.id === id)) return 'Evidence is no longer available.';
     return this.save('Visit evidence reviewed', id, (d) => ({
       ...d,
@@ -370,21 +370,15 @@ export class EcmService {
   viewAudio(id: string): string | null {
     const e = this.data().evidence.find((e) => e.id === id);
     if (!e?.audio) return 'Voice note is no longer available.';
-    if (
-      e.type !== 'Care note' &&
-      !['Company Admin', 'Platform Owner', 'Registered Manager'].includes(this.rota.role())
-    )
-      return 'Manager access is required to play sensitive recordings.';
+    if (e.type !== 'Care note' && !this.rota.can('manage'))
+      return 'Manage permission is required to play sensitive recordings.';
     return this.save('Visit voice note played', `${e.visitId} · ${e.id}`, (d) => d);
   }
   viewPhoto(id: string): string | null {
     const e = this.data().evidence.find((e) => e.id === id);
     if (!e || !e.photo) return 'Photo is no longer available.';
-    if (
-      e.type !== 'Care note' &&
-      !['Company Admin', 'Platform Owner', 'Registered Manager'].includes(this.rota.role())
-    )
-      return 'Manager access is required to view sensitive photos.';
+    if (e.type !== 'Care note' && !this.rota.can('manage'))
+      return 'Manage permission is required to view sensitive photos.';
     return this.save('Visit photo viewed', `${e.visitId} · ${e.id}`, (d) => d);
   }
 }

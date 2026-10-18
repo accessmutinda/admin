@@ -131,6 +131,10 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
         </button>
       }
       <div class="sidebar-bottom">
+        <a routerLink="/inspector/dashboard" (click)="menuOpen.set(false)"
+          ><span class="material-symbols-outlined" aria-hidden="true">policy</span>Inspector
+          Portal</a
+        >
         <span class="demo-label"><span></span> Demo workspace</span
         ><a
           routerLink="/account/security"

@@ -1,0 +1,126 @@
+.provider-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.provider-mark {
+  width: 90px;
+  min-width: 90px;
+  height: 84px;
+  background: #eef5f9;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.provider-mark > span {
+  font-size: 44px;
+  color: #0089e3;
+}
+.provider-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.provider-identity {
+  flex: 1;
+  min-width: 0;
+}
+.identity-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.identity-title h2 {
+  font-size: 18px;
+  font-weight: 800;
+  color: #071536;
+  margin: 0;
+}
+.provider-identity > p {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #657184;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.provider-identity > p .material-symbols-outlined {
+  font-size: 15px;
+}
+.banner-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0 0;
+}
+.banner-facts > div {
+  border-right: 1px solid #edf2f5;
+  padding-right: 8px;
+}
+.banner-facts > div:last-child {
+  border: 0;
+}
+dt {
+  color: #68768a;
+  font-size: 11px;
+}
+dd {
+  margin: 2px 0 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.banner-facts dd {
+  font-weight: 700;
+  color: #10355e;
+}
+.inspection-context {
+  border-left: 1px solid #e5edf1;
+  padding-left: 16px;
+  display: flex;
+  gap: 10px;
+  width: 235px;
+  min-width: 190px;
+}
+.inspection-context > span {
+  font-size: 30px;
+  color: #008d9f;
+}
+.inspection-context h2 {
+  margin: 0;
+}
+.inspection-context p {
+  font-size: 11px;
+  color: #657184;
+  margin: 4px 0;
+}
+.inspection-context strong,
+.inspection-context small {
+  display: block;
+  font-size: 11px;
+}
+.inspection-context small {
+  color: #657184;
+  margin-top: 4px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 5px;
+  padding: 2px 8px;
+  background: #c9f4df;
+  color: #087337;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: normal;
+}
+.warning {
+  background: #fff0ce;
+  color: #995700;
+}
+.danger {
+  background: #ffe1e6;
+  color: #b42334;
+}

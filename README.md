@@ -2,7 +2,7 @@
 
 Web admin console for CareVerity, a care management platform. This build covers authentication and account security, company setup and
 administration, recruitment, employee onboarding, compliance, training, rota,
-payroll, the Live ECM board, supervisor assessments and quality assurance.
+payroll, the Live ECM board, supervisor assessments, quality assurance and the inspector portal.
 
 There is no backend yet. Every sign-in, MFA check, invite, and password reset
 runs against fixed demo data (`src/app/core/auth/fixtures.ts`) and
@@ -18,6 +18,38 @@ with records isolated by workspace.
 - Each client also has `visits`, `contacts`, `documents`, `family` and `audit` workspace pages. Family previews are linked from active sharing records; direct family views at `/family/:clientId/:accessId` require matching signed-in email, current sharing consent and enabled scopes.
 
 These workflows share the existing workspace-scoped browser store. Document bytes, prescriptions, MAR and messages remain on this device. No backend, external invitation delivery or production family authentication is added. The family view is a permission-scoped demonstration within the existing demo authentication system. Use fictitious records for evaluation.
+
+## Inspector portal
+
+`/inspector/dashboard` opens the dedicated reviewer shell. Its eleven destinations cover
+the dashboard, provider, service users, staffing, medication, incidents, quality,
+documents, visits, reports and inspector notes. Every signed-in worker role can
+open the portal and use its actions within the selected workspace. Inspectors go
+directly to the portal after selecting a workspace; the administration sidebar
+shows one Inspector Portal link for every role. The portal has its own page navigation and an Admin Console link to return.
+
+The full-access defaults apply to all worker roles across enabled company modules,
+including create, edit, delete, export, rota, payroll and evidence-review permissions.
+Existing saved permission configurations are upgraded once to version 2. Subsequent
+explicit permission edits remain supported. Sign-in, workspace isolation, validation,
+paused workflows and checks against approving one's own work remain in place.
+
+The normal Care Worker demo sign-in can open the portal directly. A separate
+inspector demo is also available at `/auth/invite/inspector-demo` after signing out.
+
+The portal reads existing workspace records without changing care or workforce
+records. Inspection notes, provisional ratings, findings, inspection dates and
+uploaded evidence are saved in the workspace's browser store. Drafts detect stale
+revisions and retain changes after a failed save. Documents support category,
+status, owner and key-question filters, eight-row pagination and ZIP evidence packs
+containing original files and a CSV index. Reports export saved content as JSON;
+the full report supports browser Print / Save as PDF. Uploads accept non-empty PDF,
+PNG, JPEG, text, CSV, DOCX and XLSX files up to 5 MB, subject to browser storage limits.
+
+Counts reflect saved records; empty records do not imply compliance or a regulatory
+rating. Coordinates, external notifications and published regulatory reports are
+not available in the underlying local data. No regulator submission or remote file
+storage is connected.
 
 ## Running it
 

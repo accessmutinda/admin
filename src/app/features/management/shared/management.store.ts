@@ -267,6 +267,7 @@ const seedPerson = (
   progress: stage === 'Hired' ? { safeguarding: 100, handling: 40 } : {},
 });
 export interface WorkspaceData {
+  inspection?: import('../../inspector/inspector.models').InspectorData;
   staffDrafts?: StaffDraft[];
   accessHistory?: AccessChange[];
   locations?: ServiceLocation[];
@@ -297,7 +298,7 @@ export interface WorkspaceData {
 }
 function seed(): WorkspaceData {
   return {
-    permissionDefaultsVersion: 1,
+    permissionDefaultsVersion: 2,
     people: [
       seedPerson('sophie', 'Sophie Williams', 'Care Worker', 'Interview', 'Manchester'),
       seedPerson('oliver', 'Oliver Bennett', 'Senior Carer', 'Applied', 'London'),
@@ -671,7 +672,7 @@ export class ManagementStore {
       if (key !== 'cv_management_v1') return restored;
       return Object.fromEntries(
         Object.entries(restored as Record<string, WorkspaceData>).map(([id, data]) => {
-          if (data.permissionDefaultsVersion === 1) return [id, data];
+          if (data.permissionDefaultsVersion === 2) return [id, data];
           this.accessMigrationPending = true;
           const roles = new Set([
             ...Object.values(ROLES).map((role) => role.label),
@@ -685,7 +686,7 @@ export class ManagementStore {
             id,
             {
               ...data,
-              permissionDefaultsVersion: 1,
+              permissionDefaultsVersion: 2,
               permissions: {
                 ...Object.fromEntries(
                   Object.keys(data.permissions).map((permission) => [

@@ -40,6 +40,35 @@ const legacyPersonGuard = (route: import('@angular/router').ActivatedRouteSnapsh
 
 export const routes: Routes = [
   {
+    path: 'inspector',
+    canActivate: [workspaceGuard],
+    loadComponent: () =>
+      import('./features/inspector/inspector-layout').then((m) => m.InspectorLayout),
+    children: [
+      ...[
+        'dashboard',
+        'provider',
+        'service-users',
+        'staffing',
+        'medication',
+        'incidents',
+        'quality',
+        'documents',
+        'visits',
+        'reports',
+        'notes',
+      ].map((page) => ({
+        path: page,
+        data: { page },
+        title: `${page.replaceAll('-', ' ')} · Inspector Portal · CareVerity`,
+        loadComponent: () =>
+          import('./features/inspector/inspector-page').then((m) => m.InspectorPage),
+        canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+      })),
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+    ],
+  },
+  {
     path: 'apply/:companyId/:vacancyId',
     title: 'Apply for a vacancy · CareVerity',
     loadComponent: () =>

@@ -1,0 +1,1552 @@
+<div class="inspection-page">
+  <div class="page-heading">
+    <div>
+      <h1>{{ page().label }}</h1>
+      <p>{{ page().description }}</p>
+    </div>
+    <div class="actions">
+      @if (page().path === 'reports' || page().path === 'notes') {
+        <span class="muted">{{ dirty() ? 'Unsaved changes' : 'Saved draft' }}</span
+        ><button class="secondary" (click)="reload()">Reload saved</button
+        ><button class="primary" (click)="save()">
+          <span class="material-symbols-outlined" aria-hidden="true">save</span>Save draft
+        </button>
+      } @else {
+        <button class="secondary" (click)="openModal('setup', 'Inspection details')">
+          <span class="material-symbols-outlined" aria-hidden="true">event</span>Inspection details
+        </button>
+      }
+    </div>
+  </div>
+  <section class="panel provider-banner" aria-label="Selected provider">
+    <div class="provider-mark">
+      @if (company()?.logo) {
+        <img [src]="company()!.logo" alt="Provider logo" />
+      } @else {
+        <span class="material-symbols-outlined" aria-hidden="true">domain</span>
+      }
+    </div>
+    <div class="provider-identity">
+      <div class="identity-title">
+        <h2>{{ company()?.name || 'Provider not recorded' }}</h2>
+        <span class="badge" [class.warning]="company()?.active === false">{{
+          company()?.active === false ? 'Inactive' : 'Active'
+        }}</span>
+      </div>
+      <p>
+        <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+        >{{ company()?.headOfficeAddress || company()?.postcode || 'Address not recorded' }}
+      </p>
+      <dl class="banner-facts">
+        <div>
+          <dt>Provider ID</dt>
+          <dd>{{ company()?.code || 'Not recorded' }}</dd>
+        </div>
+        <div>
+          <dt>Service type</dt>
+          <dd>{{ company()?.sector || 'Not recorded' }}</dd>
+        </div>
+        <div>
+          <dt>Registered places</dt>
+          <dd>{{ company()?.registeredPlaces ?? 'Not recorded' }}</dd>
+        </div>
+        <div>
+          <dt>Last provider update</dt>
+          <dd>{{ date(company()?.modifiedAt) }}</dd>
+        </div>
+      </dl>
+    </div>
+    <div class="inspection-context">
+      <span class="material-symbols-outlined" aria-hidden="true">description</span>
+      <div>
+        <h2>{{ data.state().draft.type }}</h2>
+        <p>Inspection period</p>
+        <strong>{{
+          data.state().draft.start
+            ? date(data.state().draft.start) + ' – ' + date(data.state().draft.end)
+            : 'Dates not recorded'
+        }}</strong
+        ><small>Source records are read only</small>
+      </div>
+    </div>
+  </section>
+  @if (error()) {
+    <div role="alert" class="notice error">{{ error() }}</div>
+  }
+  @if (message()) {
+    <div role="status" class="notice success">
+      {{ message()
+      }}<button class="icon-button" aria-label="Dismiss message" (click)="message.set('')">
+        ×
+      </button>
+    </div>
+  }
+
+  @if (page().path !== 'documents' && page().path !== 'provider') {
+    <cv-inspection-metrics [items]="metrics()" />
+  }
+
+  @if (page().path === 'dashboard' || page().path === 'quality') {
+    <div class="main-grid">
+      <section class="panel">
+        <div class="section-heading">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>CQC key
+            questions — evidence overview
+          </h2>
+          <a routerLink="/inspector/reports">Review ratings →</a>
+        </div>
+        <cv-inspection-questions [draft]="data.state().draft" [documents]="data.documents()" />
+        <p class="footnote">
+          Ratings are inspector recommendations. Evidence counts indicate available files, rather
+          than a compliance decision.
+        </p>
+      </section>
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span
+          >Inspection preparation
+        </h2>
+        <div class="readiness">
+          <span class="material-symbols-outlined" aria-hidden="true">fact_check</span>
+          <div>
+            <strong>{{ readyCount() }}/5 review checks complete</strong>
+            <p>
+              {{
+                readyCount() === 5 ? 'Draft preparation checks complete' : 'Further review required'
+              }}
+            </p>
+          </div>
+        </div>
+        <ul class="checklist">
+          @for (check of readiness(); track check.label) {
+            <li>
+              <span [class.done]="check.complete" aria-hidden="true">{{
+                check.complete ? '✓' : '○'
+              }}</span
+              >{{ check.label }}
+            </li>
+          }
+        </ul>
+      </section>
+    </div>
+  }
+  @if (page().path === 'dashboard') {
+    <div class="main-grid">
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">assignment_late</span>Review
+          priorities
+        </h2>
+        @for (finding of findings(); track finding.id) {
+          @if (finding.status !== 'Completed') {
+            <div class="list-row">
+              <div>
+                <strong>{{ finding.text }}</strong
+                ><small
+                  >{{ finding.question }} · {{ finding.type }} ·
+                  {{ finding.owner || 'Owner not assigned' }}</small
+                >
+              </div>
+              <span class="badge warning">{{ finding.status }}</span>
+            </div>
+          }
+        }
+        @if (!findings().length) {
+          <p class="empty">
+            No inspection findings recorded. Add observations and actions as you review the
+            evidence.
+          </p>
+        }
+        <a routerLink="/inspector/notes" class="text-link">Open inspector notes →</a>
+      </section>
+      <section class="panel quick-actions">
+        <h2><span class="material-symbols-outlined" aria-hidden="true">bolt</span>Quick Actions</h2>
+        <button class="primary" (click)="pack(true)" [disabled]="!data.documents().length">
+          <span class="material-symbols-outlined" aria-hidden="true">download</span>Download full
+          evidence pack</button
+        ><a class="secondary" routerLink="/inspector/documents">Review documents <span>›</span></a
+        ><a class="secondary" routerLink="/inspector/notes"
+          >Record inspection findings <span>›</span></a
+        ><a class="secondary" routerLink="/inspector/reports"
+          >Prepare draft report <span>›</span></a
+        >
+        <p class="footnote">
+          Packs include original files and an evidence index. Downloads contain the selected
+          workspace’s records.
+        </p>
+      </section>
+    </div>
+  }
+
+  @if (page().path === 'provider') {
+    <section class="panel">
+      <div class="section-heading">
+        <h2>Recorded inspection recommendations</h2>
+        <a routerLink="/inspector/reports">Review ratings →</a>
+      </div>
+      <cv-inspection-questions [draft]="data.state().draft" [documents]="data.documents()" />
+    </section>
+    <div class="three-grid">
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">domain</span>About the Provider
+        </h2>
+        <dl class="details">
+          <div>
+            <dt>Provider name</dt>
+            <dd>{{ company()?.name }}</dd>
+          </div>
+          <div>
+            <dt>Trading name</dt>
+            <dd>{{ company()?.tradingName || 'Not recorded' }}</dd>
+          </div>
+          <div>
+            <dt>Company number</dt>
+            <dd>{{ company()?.registration || 'Not recorded' }}</dd>
+          </div>
+          <div>
+            <dt>Registered address</dt>
+            <dd>{{ company()?.headOfficeAddress || 'Not recorded' }}</dd>
+          </div>
+          <div>
+            <dt>Provider type</dt>
+            <dd>{{ company()?.compliance?.providerType || 'Not recorded' }}</dd>
+          </div>
+          <div>
+            <dt>Established</dt>
+            <dd>{{ date(company()?.establishedDate) }}</dd>
+          </div>
+        </dl>
+      </section>
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">description</span>Registration
+          Details
+        </h2>
+        <dl class="details">
+          <div>
+            <dt>CQC registration number</dt>
+            <dd>{{ company()?.compliance?.cqcNumber || 'Not recorded' }}</dd>
+          </div>
+          <div>
+            <dt>Registration status</dt>
+            <dd>{{ company()?.compliance?.registrationStatus || 'Not recorded' }}</dd>
+          </div>
+          <div>
+            <dt>Regulatory region</dt>
+            <dd>{{ company()?.compliance?.regulatoryRegion || 'Not recorded' }}</dd>
+          </div>
+          <div>
+            <dt>Inspection type</dt>
+            <dd>{{ company()?.compliance?.inspectionType || 'Not recorded' }}</dd>
+          </div>
+          <div>
+            <dt>Data protection number</dt>
+            <dd>{{ company()?.compliance?.dataProtectionNumber || 'Not recorded' }}</dd>
+          </div>
+        </dl>
+      </section>
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>Compliance
+          record
+        </h2>
+        <dl class="details">
+          <div>
+            <dt>Insurance expiry</dt>
+            <dd>{{ date(company()?.compliance?.insuranceExpiry) }}</dd>
+          </div>
+          <div>
+            <dt>Safeguarding lead</dt>
+            <dd>{{ company()?.compliance?.safeguardingLead || 'Not recorded' }}</dd>
+          </div>
+          <div>
+            <dt>Medication lead</dt>
+            <dd>{{ company()?.compliance?.medicationLead || 'Not recorded' }}</dd>
+          </div>
+          <div>
+            <dt>Business continuity evidence</dt>
+            <dd>
+              {{ company()?.compliance?.documents?.continuity ? 'File recorded' : 'Not recorded' }}
+            </dd>
+          </div>
+        </dl>
+        <p class="footnote">
+          Registration details are workspace records and have not been verified against an external
+          register.
+        </p>
+      </section>
+    </div>
+    <div class="main-grid">
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">location_on</span>Service
+          Locations
+        </h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Registered places</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (location of data.store.data().locations ?? []; track location.id) {
+                <tr>
+                  <td>{{ location.name }}</td>
+                  <td>{{ location.type }}</td>
+                  <td>{{ location.registeredPlaces ?? 'Not recorded' }}</td>
+                  <td>{{ location.status }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4" class="empty">No service locations recorded.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">home_health</span>Service
+          Information
+        </h2>
+        <dl class="details">
+          <div>
+            <dt>Service type</dt>
+            <dd>{{ company()?.sector }}</dd>
+          </div>
+          <div>
+            <dt>Registered places</dt>
+            <dd>{{ company()?.registeredPlaces ?? 'Not recorded' }}</dd>
+          </div>
+          <div>
+            <dt>Recorded service users</dt>
+            <dd>{{ data.clients().length }}</dd>
+          </div>
+          <div>
+            <dt>Country / region</dt>
+            <dd>
+              {{ company()?.country || 'Not recorded' }} / {{ company()?.region || 'Not recorded' }}
+            </dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+    <div class="panel">
+      <h2>
+        <span class="material-symbols-outlined" aria-hidden="true">contact_page</span>Provider
+        contacts &amp; addresses
+      </h2>
+      <cv-inspection-fields [value]="company()?.contacts || {}" />
+    </div>
+    <section class="panel">
+      <div class="section-heading">
+        <h2>Certificates &amp; Documents</h2>
+        <a routerLink="/inspector/documents">View all evidence →</a>
+      </div>
+      @for (document of data.documents(); track document.id) {
+        @if (document.source === 'Provider compliance') {
+          <div class="list-row">
+            <div>
+              <strong>{{ document.name }}</strong
+              ><small
+                >{{ document.category }} · {{ document.status }} ·
+                {{ date(document.updated) }}</small
+              >
+            </div>
+            <button class="secondary" (click)="downloadDocument(document)">Download</button>
+          </div>
+        }
+      }
+      @if (!company()?.compliance) {
+        <p class="empty">No provider compliance documents recorded.</p>
+      }
+    </section>
+  }
+
+  @if (page().path === 'staffing') {
+    <div class="main-grid">
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">school</span>Mandatory Training
+          &amp; Competency
+        </h2>
+        <p class="footnote">
+          Verified workforce training records. Academy lesson progress is separate from recorded
+          training.
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Training</th>
+                <th>Current</th>
+                <th>Expired</th>
+                <th>Not completed</th>
+                <th>Competent</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (training of data.training(); track training.name) {
+                <tr>
+                  <td>{{ training.name }}</td>
+                  <td class="positive-cell">{{ training.current }}</td>
+                  <td [class.concern-cell]="training.expired > 0">{{ training.expired }}</td>
+                  <td>{{ training.missing }}</td>
+                  <td>{{ training.competent }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Recruitment
+          Pipeline
+        </h2>
+        @for (stage of ['Applied', 'Interview', 'Offer']; track stage) {
+          <div class="list-row">
+            <span>{{ stage }}</span
+            ><strong>{{ pipelineCount(stage) }}</strong>
+          </div>
+        }
+        <p class="footnote">
+          Applicants are counted from the current workspace. Open a staff row below to review
+          checks, references and training evidence.
+        </p>
+      </section>
+    </div>
+  }
+
+  @if (page().path === 'medication') {
+    <section class="panel">
+      <div class="section-heading">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">medication</span>Service User
+          Medication Record
+        </h2>
+      </div>
+      <div class="filter-row">
+        <label
+          >Service user<mat-select
+            cvSelect
+            aria-label="Medication service user"
+            [ngModel]="selectedClient()"
+            (ngModelChange)="selectedClient.set($event); filterChanged()"
+            ><mat-option value="">All service users</mat-option>
+            @for (person of data.clients(); track person.id) {
+              <mat-option [value]="person.id">{{ person.name }}</mat-option>
+            }
+          </mat-select></label
+        ><label
+          >From<input
+            type="date"
+            [ngModel]="rangeStart()"
+            (ngModelChange)="rangeStart.set($event); filterChanged()" /></label
+        ><label
+          >To<input
+            type="date"
+            [min]="rangeStart()"
+            [ngModel]="rangeEnd()"
+            (ngModelChange)="rangeEnd.set($event); filterChanged()"
+        /></label>
+      </div>
+      <div class="tabs" role="group" aria-label="Medication views">
+        @for (
+          tab of ['Overview', 'Controlled drugs', 'PRN prescriptions', 'Medication profiles'];
+          track tab
+        ) {
+          <button
+            [class.selected]="activeTab() === tab"
+            [attr.aria-pressed]="activeTab() === tab"
+            (click)="activeTab.set(tab); filterChanged()"
+          >
+            {{ tab === 'Overview' ? 'Administration record' : tab }}
+          </button>
+        }
+      </div>
+      <p class="footnote">
+        Recorded administrations only; this view does not infer omitted doses from prescription
+        schedules. Controlled drug balances are recorded stock, with no independent reconciliation
+        implied.
+      </p>
+    </section>
+  }
+
+  @if (page().path === 'incidents') {
+    <div class="main-grid">
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">target</span>Outcomes &amp;
+          Learning
+        </h2>
+        <p class="muted">
+          Review source records, document concerns and link evidence to your inspection findings.
+        </p>
+        <div class="list-row">
+          <span>Reviewed source events</span><strong>{{ reviewedIncidents() }}</strong>
+        </div>
+        <div class="list-row">
+          <span>Required inspection actions</span
+          ><strong>{{ findingCount('Required action') }}</strong>
+        </div>
+        <div class="list-row">
+          <span>Completed inspection actions</span><strong>{{ completedFindings() }}</strong>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">health_and_safety</span
+          >Safeguarding review
+        </h2>
+        <p class="empty">
+          Events below include recorded visit concerns and saved care incidents. External
+          notifications and statutory reporting decisions are not recorded by this portal.
+        </p>
+        <a class="secondary" routerLink="/inspector/notes">Record a finding →</a>
+      </section>
+    </div>
+  }
+
+  @if (page().path === 'quality') {
+    <section class="panel">
+      <h2>
+        <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Corrective
+        Action Plans
+      </h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Owner</th>
+              <th>Due date</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Resolution</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (action of data.quality().actions; track action.id) {
+              <tr>
+                <td>{{ action.title }}</td>
+                <td>{{ staffName(action.ownerId) }}</td>
+                <td>{{ date(action.due) }}</td>
+                <td>{{ action.priority }}</td>
+                <td>
+                  <span class="badge" [class.warning]="action.status !== 'Completed'">{{
+                    action.status
+                  }}</span>
+                </td>
+                <td>{{ action.resolution || 'Not recorded' }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="empty">
+                  No corrective actions recorded in the Quality workspace.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  @if (page().path === 'visits') {
+    <div class="main-grid">
+      <section class="panel">
+        <div class="section-heading">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Monthly
+            Visit Allocation
+          </h2>
+          <div class="actions">
+            <button class="icon-button" aria-label="Previous month" (click)="changeMonth(-1)">
+              ‹</button
+            ><label class="sr-only" for="visit-month">Visit month</label
+            ><input
+              id="visit-month"
+              type="month"
+              [ngModel]="month()"
+              (ngModelChange)="$event && month.set($event); selectedDay.set(''); filterChanged()"
+            /><button class="icon-button" aria-label="Next month" (click)="changeMonth(1)">
+              ›
+            </button>
+          </div>
+        </div>
+        <div class="calendar">
+          <div class="weekdays">
+            @for (day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; track day) {
+              <span>{{ day }}</span>
+            }
+          </div>
+          <div class="days">
+            @for (day of calendar(); track day.date) {
+              <button
+                [class.other-month]="!day.inMonth"
+                [class.selected]="selectedDay() === day.date"
+                [disabled]="!day.inMonth"
+                [attr.aria-label]="
+                  day.date +
+                  ': ' +
+                  day.count +
+                  ' visits, ' +
+                  day.completed +
+                  ' completed, ' +
+                  day.issues +
+                  ' need review'
+                "
+                [attr.aria-pressed]="selectedDay() === day.date"
+                (click)="
+                  selectedDay.set(selectedDay() === day.date ? '' : day.date); filterChanged()
+                "
+              >
+                <strong>{{ day.day }}</strong
+                ><small>{{ day.count ? day.count + ' visits' : '—' }}</small>
+                @if (day.issues) {
+                  <span class="issue-dot" aria-hidden="true"></span>
+                }
+              </button>
+            }
+          </div>
+        </div>
+        @if (selectedDay()) {
+          <button class="text-link" (click)="selectedDay.set(''); filterChanged()">
+            Clear day filter
+          </button>
+        }
+      </section>
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">location_on</span>Electronic
+          Call Monitoring
+        </h2>
+        <p class="empty">
+          Saved attendance is available in each visit record. Verified coordinates and route
+          tracking are not available in these source records.
+        </p>
+        <div class="readiness">
+          <span class="material-symbols-outlined" aria-hidden="true">info</span>
+          <div>
+            <strong>Review attendance exceptions</strong>
+            <p>
+              “No attendance” means no check-in is recorded after the planned visit end. Review the
+              source record before concluding that care was missed.
+            </p>
+          </div>
+        </div>
+        <p class="footnote">Operational dates and times use Europe/London.</p>
+      </section>
+    </div>
+  }
+
+  @if (page().path === 'documents') {
+    <div class="main-grid documents-layout">
+      <div>
+        <section class="panel">
+          <div class="section-heading">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">folder</span>Documents
+              &amp; Evidence
+            </h2>
+            <button class="primary" (click)="openUpload()">
+              <span class="material-symbols-outlined" aria-hidden="true">upload</span>Upload
+              Document
+            </button>
+          </div>
+          <div class="folders">
+            @for (folder of categories; track folder; let i = $index) {
+              <button
+                [class.selected]="category() === folder"
+                (click)="category.set(category() === folder ? '' : folder); filterChanged()"
+              >
+                <span
+                  class="material-symbols-outlined"
+                  [style.color]="questions[i % 5].color"
+                  aria-hidden="true"
+                  >folder</span
+                ><span
+                  ><strong>{{ folder }}</strong
+                  ><small>{{ categoryCount(folder) }} documents</small></span
+                >
+              </button>
+            }
+          </div>
+        </section>
+        <section class="panel filters" aria-label="Document filters">
+          <div class="filter-row">
+            <label class="search-field"
+              >Search documents<input
+                type="search"
+                placeholder="Name, category, owner or key question…"
+                [ngModel]="search()"
+                (ngModelChange)="search.set($event); filterChanged()" /></label
+            ><label
+              >Category<mat-select
+                cvSelect
+                aria-label="Document category"
+                [ngModel]="category()"
+                (ngModelChange)="category.set($event); filterChanged()"
+                ><mat-option value="">All categories</mat-option>
+                @for (value of categories; track value) {
+                  <mat-option [value]="value">{{ value }}</mat-option>
+                }
+              </mat-select></label
+            ><label
+              >Status<mat-select
+                cvSelect
+                aria-label="Document status"
+                [ngModel]="statusFilter()"
+                (ngModelChange)="statusFilter.set($event); filterChanged()"
+                ><mat-option value="">All statuses</mat-option>
+                @for (
+                  value of ['Recorded', 'Verified', 'Pending review', 'Review due', 'Expired'];
+                  track value
+                ) {
+                  <mat-option [value]="value">{{ value }}</mat-option>
+                }
+              </mat-select></label
+            ><label
+              >Owner<mat-select
+                cvSelect
+                aria-label="Document owner"
+                [ngModel]="owner()"
+                (ngModelChange)="owner.set($event); filterChanged()"
+                ><mat-option value="">All owners</mat-option>
+                @for (value of owners(); track value) {
+                  <mat-option [value]="value">{{ value }}</mat-option>
+                }
+              </mat-select></label
+            ><button class="secondary" (click)="clearFilters()">Clear</button>
+          </div>
+        </section>
+        <section class="panel register">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>
+                    <input
+                      type="checkbox"
+                      aria-label="Select documents on this page"
+                      [checked]="allSelected()"
+                      (change)="toggleVisible($any($event.target).checked)"
+                    />
+                  </th>
+                  <th [attr.aria-sort]="sortDirection() === 1 ? 'ascending' : 'descending'">
+                    <button class="sort" (click)="sortDirection.set(-sortDirection())">
+                      Document Name ↕
+                    </button>
+                  </th>
+                  <th>Category</th>
+                  <th>Key Questions</th>
+                  <th>Updated</th>
+                  <th>Owner</th>
+                  <th>Version</th>
+                  <th>Status</th>
+                  <th>Expiry</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (document of visibleDocuments(); track document.id) {
+                  <tr>
+                    <td>
+                      <input
+                        type="checkbox"
+                        [attr.aria-label]="'Select ' + document.name"
+                        [checked]="selected().includes(document.id)"
+                        (change)="toggleDocument(document.id, $any($event.target).checked)"
+                      />
+                    </td>
+                    <td>
+                      <span class="document-name"
+                        ><span class="material-symbols-outlined" aria-hidden="true"
+                          >description</span
+                        >{{ document.name }}</span
+                      ><small>{{ document.source }}</small>
+                    </td>
+                    <td>{{ document.category }}</td>
+                    <td>{{ document.questions.join(', ') }}</td>
+                    <td>{{ date(document.updated) }}</td>
+                    <td>{{ document.owner || 'Not recorded' }}</td>
+                    <td>{{ document.version }}</td>
+                    <td>
+                      <span
+                        class="badge"
+                        [class.warning]="document.status !== 'Verified'"
+                        [class.danger]="document.status === 'Expired'"
+                        >{{ document.status }}</span
+                      >
+                    </td>
+                    <td>{{ date(document.expiry) }}</td>
+                    <td>
+                      <button
+                        class="icon-button"
+                        [attr.aria-label]="'Download ' + document.name"
+                        (click)="downloadDocument(document)"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">download</span>
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="10" class="empty">
+                      No documents match these filters. Upload evidence or review the source
+                      modules.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <ng-container *ngTemplateOutlet="pagination" />
+        </section>
+      </div>
+      <div class="side-stack">
+        <section class="panel">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>Inspection
+            Evidence Pack
+          </h2>
+          <p class="muted">
+            Select documents to build a ZIP of original evidence files with an index.
+          </p>
+          <button class="primary full" [disabled]="!selectedDocuments().length" (click)="pack()">
+            <span class="material-symbols-outlined" aria-hidden="true">download</span>Download Pack
+            ({{ selectedDocuments().length }})
+          </button>
+          <h3>Selected documents ({{ selectedDocuments().length }})</h3>
+          @for (document of selectedDocuments(); track document.id) {
+            <div class="list-row">
+              <div>
+                <strong>{{ document.name }}</strong
+                ><small>{{ document.category }} · {{ date(document.updated) }}</small>
+              </div>
+              <button
+                class="icon-button"
+                [attr.aria-label]="'Remove ' + document.name + ' from pack'"
+                (click)="toggleDocument(document.id, false)"
+              >
+                ×
+              </button>
+            </div>
+          } @empty {
+            <p class="empty">Select documents using the checkboxes in the register.</p>
+          }
+        </section>
+        <section class="panel">
+          <h2>Filter by CQC Key Question</h2>
+          @for (question of questions; track question.key) {
+            <label class="check-row"
+              ><input
+                type="checkbox"
+                [checked]="questionFilter().includes(question.key)"
+                (change)="setQuestion(question.key, $any($event.target).checked)"
+              /><span
+                class="question-icon material-symbols-outlined"
+                [style.background]="question.color"
+                aria-hidden="true"
+                >{{ question.icon }}</span
+              ><strong>{{ question.key }}</strong
+              ><small>{{ evidenceCount(question.key) }}</small></label
+            >
+          }
+        </section>
+        <section class="panel">
+          <h2>Document Information</h2>
+          <dl class="legend">
+            <div>
+              <dt>Verified</dt>
+              <dd>Verified in its source module</dd>
+            </div>
+            <div>
+              <dt>Recorded</dt>
+              <dd>Saved file, approval not recorded</dd>
+            </div>
+            <div>
+              <dt>Pending review</dt>
+              <dd>Requires source review</dd>
+            </div>
+            <div>
+              <dt>Review due</dt>
+              <dd>Expires within 30 days</dd>
+            </div>
+            <div>
+              <dt>Expired</dt>
+              <dd>Recorded expiry date has passed</dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+    </div>
+  }
+
+  @if (page().path === 'reports' || page().path === 'notes') {
+    <div class="main-grid">
+      <div>
+        <section class="panel">
+          <div class="section-heading">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">fact_check</span>Rating
+              Recommendations
+            </h2>
+            <span class="muted">Provisional</span>
+          </div>
+          <div class="rating-grid">
+            @for (question of questions; track question.key) {
+              <label
+                ><span class="rating-label"
+                  ><span
+                    class="question-icon material-symbols-outlined"
+                    aria-hidden="true"
+                    [style.background]="question.color"
+                    >{{ question.icon }}</span
+                  >{{ question.key }}</span
+                ><mat-select
+                  cvSelect
+                  [attr.aria-label]="question.key + ' rating'"
+                  [ngModel]="draft().ratings[question.key] || 'Not assessed'"
+                  (ngModelChange)="updateRating(question.key, $event)"
+                >
+                  @for (rating of ratings; track rating) {
+                    <mat-option [value]="rating">{{ rating }}</mat-option>
+                  }
+                </mat-select></label
+              >
+            }
+          </div>
+        </section>
+        <section class="panel">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>Inspector
+            Notes
+          </h2>
+          <div class="tabs" role="group" aria-label="Note sections">
+            @for (tab of noteTabs; track tab) {
+              <button
+                [class.selected]="noteTab() === tab"
+                [attr.aria-pressed]="noteTab() === tab"
+                (click)="noteTab.set(tab)"
+              >
+                {{ tab }}
+              </button>
+            }
+          </div>
+          <label class="note-label" for="inspection-note">{{ noteTab() }} observations</label
+          ><textarea
+            id="inspection-note"
+            rows="8"
+            maxlength="5000"
+            [ngModel]="draft().notes[noteTab()] || ''"
+            (ngModelChange)="updateNote($event)"
+            placeholder="Record observations, evidence reviewed and your reasoning…"
+          ></textarea>
+          <div class="editor-footer">
+            <span>{{ (draft().notes[noteTab()] || '').length }}/5000 characters</span
+            ><span>{{
+              draft().updated
+                ? 'Last saved ' + date(draft().updated) + ' by ' + draft().by
+                : 'No saved inspection notes yet'
+            }}</span>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="section-heading">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Findings
+              &amp; Required Actions
+            </h2>
+            <button class="primary" (click)="openFinding()">Add finding</button>
+          </div>
+          @for (finding of draft().findings; track finding.id) {
+            <div class="finding-row">
+              <div>
+                <span class="badge" [class.warning]="finding.type !== 'Strength'">{{
+                  finding.type
+                }}</span
+                ><strong>{{ finding.text }}</strong
+                ><small
+                  >{{ finding.question }} · {{ finding.status }} ·
+                  {{ finding.owner || 'Owner not assigned'
+                  }}{{ finding.due ? ' · Due ' + date(finding.due) : '' }}</small
+                ><small>{{ finding.evidenceIds.length }} evidence references</small>
+              </div>
+              <button class="secondary" (click)="openFinding(finding)">Edit</button>
+            </div>
+          } @empty {
+            <p class="empty">
+              No findings recorded. Add strengths, concerns or actions and link them to evidence.
+            </p>
+          }
+        </section>
+      </div>
+      <div class="side-stack">
+        <section class="panel">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">description</span>Generated
+            Inspection Report
+          </h2>
+          <p class="muted">Review the saved findings, ratings and notes before exporting.</p>
+          <div class="report-preview">
+            <img src="/brand/logo-full.png" alt="CareVerity" /><span class="badge warning"
+              >DRAFT</span
+            >
+            <h3>{{ company()?.name }}</h3>
+            <p>{{ data.state().draft.type }}</p>
+            @for (question of questions; track question.key) {
+              <div class="list-row">
+                <span>{{ question.key }}</span
+                ><strong>{{ data.state().draft.ratings[question.key] || 'Not assessed' }}</strong>
+              </div>
+            }
+            <p class="footnote">
+              {{ data.state().draft.summary || 'Add an inspection summary below.' }}
+            </p>
+          </div>
+          <div class="actions">
+            <button class="secondary" (click)="showReport()">View full report</button
+            ><button class="primary" (click)="downloadReport()">Export JSON</button>
+          </div>
+          <p class="footnote">Open the full report to print or save as PDF using your browser.</p>
+        </section>
+        <section class="panel">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">summarize</span>Draft
+            Inspection Summary
+          </h2>
+          <label for="report-summary">Concise summary for the draft report</label
+          ><textarea
+            id="report-summary"
+            rows="9"
+            maxlength="5000"
+            [ngModel]="draft().summary"
+            (ngModelChange)="updateDraft('summary', $event)"
+            placeholder="Summarise findings and any improvements required…"
+          ></textarea>
+        </section>
+        <section class="panel">
+          <h2>Inspection workflow</h2>
+          <ol class="workflow">
+            <li>Review source evidence</li>
+            <li>Record notes and findings</li>
+            <li>Recommend ratings</li>
+            <li>Save and review the draft report</li>
+          </ol>
+          <p class="footnote">
+            This workspace prepares a draft. It does not publish to a regulator.
+          </p>
+        </section>
+      </div>
+    </div>
+  }
+
+  @if (!['documents', 'provider', 'reports', 'notes'].includes(page().path)) {
+    <section class="panel filters" aria-label="Register filters">
+      <div class="filter-row">
+        <label class="search-field"
+          >Search {{ page().label.toLowerCase()
+          }}<input
+            type="search"
+            placeholder="Search records…"
+            [ngModel]="search()"
+            (ngModelChange)="search.set($event); filterChanged()"
+        /></label>
+        @if (page().path === 'service-users') {
+          <label
+            >Risk status<mat-select
+              cvSelect
+              aria-label="Risk status"
+              [ngModel]="riskFilter()"
+              (ngModelChange)="riskFilter.set($event); filterChanged()"
+              ><mat-option value="">All risk levels</mat-option
+              ><mat-option value="High">High</mat-option
+              ><mat-option value="Medium">Medium</mat-option><mat-option value="Low">Low</mat-option
+              ><mat-option value="Not assessed">Not assessed</mat-option></mat-select
+            ></label
+          >
+          <label
+            >Funding<mat-select
+              cvSelect
+              aria-label="Funding"
+              [ngModel]="fundingFilter()"
+              (ngModelChange)="fundingFilter.set($event); filterChanged()"
+              ><mat-option value="">All funding</mat-option>
+              @for (value of ['Local authority', 'Private', 'NHS']; track value) {
+                <mat-option [value]="value">{{ value }}</mat-option>
+              }
+            </mat-select></label
+          >
+          <label
+            >Location<mat-select
+              cvSelect
+              aria-label="Location postcode"
+              [ngModel]="locationFilter()"
+              (ngModelChange)="locationFilter.set($event); filterChanged()"
+              ><mat-option value="">All postcodes</mat-option>
+              @for (value of locations(); track value) {
+                <mat-option [value]="value">{{ value }}</mat-option>
+              }
+            </mat-select></label
+          >
+          <label
+            >Status<mat-select
+              cvSelect
+              aria-label="Service user status"
+              [ngModel]="statusFilter()"
+              (ngModelChange)="statusFilter.set($event); filterChanged()"
+              ><mat-option value="">All statuses</mat-option
+              ><mat-option value="Active">Active</mat-option
+              ><mat-option value="Inactive">Inactive</mat-option></mat-select
+            ></label
+          >
+        }
+        <button class="secondary" (click)="clearFilters()">Clear filters</button>
+      </div>
+    </section>
+    <section class="panel register">
+      <div class="section-heading">
+        <h2>
+          {{ register().title }} <span class="muted">({{ filteredRows().length }})</span>
+        </h2>
+        <button class="secondary" (click)="exportRegister()">
+          <span class="material-symbols-outlined" aria-hidden="true">download</span>Export CSV
+        </button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              @for (column of register().columns; track column; let i = $index) {
+                <th
+                  [attr.aria-sort]="
+                    i === 0 ? (sortDirection() === 1 ? 'ascending' : 'descending') : null
+                  "
+                >
+                  @if (i === 0) {
+                    <button class="sort" (click)="sortDirection.set(-sortDirection())">
+                      {{ column }} ↕
+                    </button>
+                  } @else {
+                    {{ column }}
+                  }
+                </th>
+              }
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of visibleRows(); track row.id) {
+              <tr>
+                @for (cell of row.cells; track $index; let i = $index) {
+                  <td [class.record-name]="i === 0">{{ cell }}</td>
+                }
+                <td>
+                  <button
+                    class="text-link"
+                    (click)="openRecord(row)"
+                    [attr.aria-label]="'View ' + row.cells[0]"
+                  >
+                    View →
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td [attr.colspan]="register().columns.length + 1" class="empty">
+                  No records match this view. Records will appear when saved in the source
+                  workspace.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <ng-container *ngTemplateOutlet="pagination" />
+    </section>
+  }
+</div>
+
+<ng-template #pagination
+  ><div class="pagination">
+    <span>Showing {{ startRow() }}–{{ endRow() }} of {{ count() }} records · 8 per page</span>
+    <div class="actions">
+      <button
+        class="secondary"
+        [disabled]="currentPage() === 1"
+        (click)="currentPage.set(currentPage() - 1)"
+      >
+        Previous</button
+      ><span>Page {{ currentPage() }} of {{ pages() }}</span
+      ><button
+        class="secondary"
+        [disabled]="currentPage() >= pages()"
+        (click)="currentPage.set(currentPage() + 1)"
+      >
+        Next
+      </button>
+    </div>
+  </div></ng-template
+>
+
+@if (modalOpen()) {
+  <div class="modal-backdrop">
+    <div
+      class="record-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="inspection-dialog-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      [class.report-modal]="modalKind() === 'report'"
+      (keydown.escape)="closeModal()"
+    >
+      <div class="modal-heading">
+        <h2 id="inspection-dialog-title">{{ modalTitle() }}</h2>
+        <button
+          class="icon-button"
+          aria-label="Close dialog"
+          [disabled]="uploading()"
+          (click)="closeModal()"
+        >
+          ×
+        </button>
+      </div>
+      @if (modalError()) {
+        <div class="notice error" role="alert">{{ modalError() }}</div>
+      }
+      @switch (modalKind()) {
+        @case ('setup') {
+          <form (submit)="$event.preventDefault(); save() && closeModal()">
+            <label
+              >Inspection type<input
+                [ngModel]="draft().type"
+                name="inspectionType"
+                (ngModelChange)="updateDraft('type', $event)"
+                maxlength="100"
+                required
+            /></label>
+            <div class="two-grid">
+              <label
+                >Start date<input
+                  type="date"
+                  name="start"
+                  [ngModel]="draft().start"
+                  (ngModelChange)="updateDraft('start', $event)" /></label
+              ><label
+                >End date<input
+                  type="date"
+                  name="end"
+                  [min]="draft().start"
+                  [ngModel]="draft().end"
+                  (ngModelChange)="updateDraft('end', $event)"
+              /></label>
+            </div>
+            @if (error()) {
+              <p class="notice error" role="alert">{{ error() }}</p>
+            }
+            <p class="footnote">Saved inspection metadata belongs to the current workspace.</p>
+            <div class="modal-actions">
+              <button type="button" class="secondary" (click)="closeModal()">Close</button
+              ><button class="primary" type="submit">Save details</button>
+            </div>
+          </form>
+        }
+        @case ('upload') {
+          <form (submit)="$event.preventDefault(); upload()">
+            <label
+              >Evidence file<input
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.txt,.csv,.docx,.xlsx"
+                (change)="fileChanged($event)"
+                [disabled]="uploading()"
+                required /></label
+            ><small>Up to 5 MB. PDF, images, text, CSV or Office documents.</small
+            ><label
+              >Document name<input
+                name="name"
+                maxlength="150"
+                [ngModel]="uploadName()"
+                (ngModelChange)="uploadName.set($event)"
+                required
+            /></label>
+            <div class="two-grid">
+              <label
+                >Category<mat-select
+                  cvSelect
+                  aria-label="Upload category"
+                  name="category"
+                  [ngModel]="uploadCategory()"
+                  (ngModelChange)="uploadCategory.set($event)"
+                >
+                  @for (value of categories; track value) {
+                    <mat-option [value]="value">{{ value }}</mat-option>
+                  }
+                </mat-select></label
+              ><label
+                >Key question<mat-select
+                  cvSelect
+                  aria-label="Upload key question"
+                  name="question"
+                  [ngModel]="uploadQuestion()"
+                  (ngModelChange)="uploadQuestion.set($event)"
+                >
+                  @for (question of questions; track question.key) {
+                    <mat-option [value]="question.key">{{ question.key }}</mat-option>
+                  }
+                </mat-select></label
+              >
+            </div>
+            <label
+              >Expiry date (optional)<input
+                type="date"
+                name="expiry"
+                [ngModel]="uploadExpiry()"
+                (ngModelChange)="uploadExpiry.set($event)"
+            /></label>
+            <p class="footnote">
+              Evidence is saved on this device as pending review. Uploading does not mark it
+              approved.
+            </p>
+            <div class="modal-actions">
+              <button
+                type="button"
+                class="secondary"
+                [disabled]="uploading()"
+                (click)="closeModal()"
+              >
+                Cancel</button
+              ><button class="primary" type="submit" [disabled]="uploading()">
+                {{ uploading() ? 'Saving…' : 'Save evidence' }}
+              </button>
+            </div>
+          </form>
+        }
+        @case ('finding') {
+          <form (submit)="$event.preventDefault(); saveFinding()">
+            <div class="two-grid">
+              <label
+                >Type<mat-select
+                  cvSelect
+                  aria-label="Finding type"
+                  name="type"
+                  [ngModel]="finding().type"
+                  (ngModelChange)="findingField('type', $event)"
+                >
+                  @for (type of ['Strength', 'Concern', 'Required action']; track type) {
+                    <mat-option [value]="type">{{ type }}</mat-option>
+                  }
+                </mat-select></label
+              ><label
+                >Key question<mat-select
+                  cvSelect
+                  aria-label="Finding key question"
+                  name="question"
+                  [ngModel]="finding().question"
+                  (ngModelChange)="findingField('question', $event)"
+                >
+                  @for (question of questions; track question.key) {
+                    <mat-option [value]="question.key">{{ question.key }}</mat-option>
+                  }
+                </mat-select></label
+              >
+            </div>
+            <label
+              >Finding<textarea
+                name="text"
+                rows="4"
+                maxlength="2000"
+                [ngModel]="finding().text"
+                (ngModelChange)="findingField('text', $event)"
+                required
+              ></textarea>
+            </label>
+            <div class="two-grid">
+              <label
+                >Responsible owner<input
+                  name="owner"
+                  maxlength="150"
+                  [ngModel]="finding().owner"
+                  (ngModelChange)="findingField('owner', $event)"
+                  [required]="finding().type === 'Required action'" /></label
+              ><label
+                >Due date<input
+                  type="date"
+                  name="due"
+                  [ngModel]="finding().due"
+                  (ngModelChange)="findingField('due', $event)"
+                  [required]="finding().type === 'Required action'"
+              /></label>
+            </div>
+            <label
+              >Status<mat-select
+                cvSelect
+                aria-label="Finding status"
+                name="status"
+                [ngModel]="finding().status"
+                (ngModelChange)="findingField('status', $event)"
+              >
+                @for (status of ['Open', 'In progress', 'Completed']; track status) {
+                  <mat-option [value]="status">{{ status }}</mat-option>
+                }
+              </mat-select></label
+            >
+            <fieldset>
+              <legend>Evidence references</legend>
+              @for (document of data.documents(); track document.id) {
+                <label class="check-row"
+                  ><input
+                    type="checkbox"
+                    [checked]="finding().evidenceIds.includes(document.id)"
+                    (change)="findingEvidence(document.id, $any($event.target).checked)"
+                  />{{ document.name }}</label
+                >
+              } @empty {
+                <p class="empty">
+                  No evidence documents available. You can add references after uploading evidence.
+                </p>
+              }
+            </fieldset>
+            <div class="modal-actions">
+              <button class="secondary" type="button" (click)="closeModal()">Cancel</button
+              ><button class="primary" type="submit">Save finding &amp; draft</button>
+            </div>
+          </form>
+        }
+        @case ('detail') {
+          @if (client(); as person) {
+            <div class="tabs" role="group" aria-label="Service user record sections">
+              @for (tab of ['Overview', 'Care & Health', 'Risk & Alerts', 'Documents']; track tab) {
+                <button
+                  [class.selected]="activeTab() === tab"
+                  [attr.aria-pressed]="activeTab() === tab"
+                  (click)="activeTab.set(tab)"
+                >
+                  {{ tab }}
+                </button>
+              }
+            </div>
+            @switch (activeTab()) {
+              @case ('Care & Health') {
+                <cv-inspection-fields [value]="person.file?.sections || {}" />
+              }
+              @case ('Risk & Alerts') {
+                <h3>Risk flags</h3>
+                <cv-inspection-fields [value]="person.riskFlags || []" />
+                <h3>Risk assessments</h3>
+                <cv-inspection-fields [value]="person.file?.entries?.['risks'] || []" />
+              }
+              @case ('Documents') {
+                @for (document of clientDocuments(person.id); track document.id) {
+                  <div class="list-row">
+                    <strong>{{ document.name }}</strong
+                    ><button class="secondary" (click)="downloadDocument(document)">
+                      Download
+                    </button>
+                  </div>
+                } @empty {
+                  <p class="empty">No file evidence recorded for this person.</p>
+                }
+              }
+              @default {
+                <cv-inspection-fields [value]="record()?.detail" />
+              }
+            }
+          } @else {
+            <cv-inspection-fields [value]="record()?.detail" />
+          }
+          <p class="footnote">
+            Read-only source record. Corrections belong in the originating workspace.
+          </p>
+        }
+        @case ('report') {
+          <article class="print-report">
+            <div class="report-brand">
+              <img src="/brand/logo-full.png" alt="CareVerity" /><span
+                >DRAFT · Inspection report</span
+              >
+            </div>
+            <h1>{{ company()?.name }}</h1>
+            <p>{{ company()?.headOfficeAddress || company()?.postcode }}</p>
+            <dl class="details">
+              <div>
+                <dt>Provider ID</dt>
+                <dd>{{ company()?.code }}</dd>
+              </div>
+              <div>
+                <dt>Inspection type</dt>
+                <dd>{{ data.state().draft.type }}</dd>
+              </div>
+              <div>
+                <dt>Inspection period</dt>
+                <dd>{{ date(data.state().draft.start) }} – {{ date(data.state().draft.end) }}</dd>
+              </div>
+              <div>
+                <dt>Saved by</dt>
+                <dd>{{ data.state().draft.by || 'Not recorded' }}</dd>
+              </div>
+            </dl>
+            <h2>Provisional rating recommendations</h2>
+            @for (question of questions; track question.key) {
+              <div class="list-row">
+                <strong>{{ question.key }}</strong
+                ><span>{{ data.state().draft.ratings[question.key] || 'Not assessed' }}</span>
+              </div>
+            }
+            <h2>Inspection summary</h2>
+            <p class="report-prose">{{ data.state().draft.summary || 'Not recorded' }}</p>
+            @for (tab of noteTabs; track tab) {
+              @if (data.state().draft.notes[tab]) {
+                <h2>{{ tab }}</h2>
+                <p class="report-prose">{{ data.state().draft.notes[tab] }}</p>
+              }
+            }
+            <h2>Findings &amp; Actions</h2>
+            @for (finding of findings(); track finding.id) {
+              <section class="report-finding">
+                <h3>{{ finding.question }} · {{ finding.type }}</h3>
+                <p class="report-prose">{{ finding.text }}</p>
+                <p>
+                  {{ finding.owner || 'Owner not assigned' }} · {{ finding.status }} · Due
+                  {{ date(finding.due) }}
+                </p>
+                <ul>
+                  @for (id of finding.evidenceIds; track id) {
+                    <li>{{ evidenceName(id) }}</li>
+                  }
+                </ul>
+              </section>
+            } @empty {
+              <p>No findings recorded.</p>
+            }
+            <h2>Evidence index</h2>
+            <ol>
+              @for (document of data.documents(); track document.id) {
+                <li>{{ document.name }} · {{ document.source }} · {{ document.status }}</li>
+              } @empty {
+                <li>No evidence files recorded.</li>
+              }
+            </ol>
+            <p class="footnote">
+              Draft for review. Recommendations are recorded by the inspector and are not a
+              published regulatory rating.
+            </p>
+          </article>
+          <div class="modal-actions print-controls">
+            <button class="secondary" (click)="closeModal()">Close</button
+            ><button class="primary" (click)="printReport()">Print / Save as PDF</button>
+          </div>
+        }
+      }
+    </div>
+  </div>
+}

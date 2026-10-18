@@ -153,8 +153,7 @@ describe('Payroll administration', () => {
     switchActor('manager', 'RM');
     expect(service.workDecision('ot', 'Authorise', 'Cover approved', 2)).toBeNull();
     expect(service.workDecision('ot', 'Confirm', 'Worked extra cover', 3)).toBeNull();
-    expect(service.workDecision('ot', 'Approve', '', 3)).toContain('configured reviewer');
-    switchActor('finance', 'FN');
+    switchActor('worker-reviewer', 'CW');
     expect(service.workDecision('ot', 'Approve', 'Actual hours checked', 3)).toBeNull();
     expect(service.data().work[0].actualHours).toBe(3);
     expect(service.data().work[0].audit.map((a) => a.action)).toEqual([
@@ -176,10 +175,13 @@ describe('Payroll administration', () => {
     }));
     service.saveSettings({ ...service.data().settings, approvalThreshold: 50 });
     switchActor('manager', 'RM');
+    store.update((d) => ({
+      ...d,
+      payrollPermissions: { ...d.payrollPermissions, 'Registered Manager': ['view', 'approve'] },
+    }));
     expect(service.workDecision('work', 'Approve', '', 8)).toContain('threshold');
     switchActor('finance', 'FN');
-    expect(service.workDecision('work', 'Approve', 'Checked', 8)).toContain('configured reviewer');
-    switchActor('admin-b');
+    switchActor('worker-reviewer', 'CW');
     expect(service.workDecision('work', 'Approve', 'Checked', 8)).toBeNull();
   });
   it('prevents duplicate supplier invoices, self approval and payments above the balance', () => {

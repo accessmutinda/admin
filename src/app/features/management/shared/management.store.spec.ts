@@ -8,6 +8,8 @@ import { ROTA_ACTIONS } from '../rota/rota.models';
 import { PAYROLL_ACTIONS } from '../payroll/payroll.models';
 import { RotaService } from '../rota/rota.service';
 import { PayrollService } from '../payroll/payroll.service';
+import { HrService } from '../people/hr.service';
+import { EcmOperations } from '../ecm/ecm.operations';
 import { QualityService } from '../quality/quality.service';
 
 describe('ManagementStore', () => {
@@ -67,12 +69,18 @@ describe('ManagementStore', () => {
     const rota = TestBed.inject(RotaService);
     const payroll = TestBed.inject(PayrollService);
     const quality = TestBed.inject(QualityService);
+    const hr = TestBed.inject(HrService);
+    const ecm = TestBed.inject(EcmOperations);
     for (const role of Object.values(ROLES)) {
       currentUser.set({ ...user, roleCode: role.code });
       for (const action of ROTA_ACTIONS) expect(rota.can(action.key)).toBe(true);
       for (const action of PAYROLL_ACTIONS) expect(payroll.can(action.key)).toBe(true);
-      for (const action of ['view', 'create', 'edit', 'export'] as const)
+      for (const action of ['view', 'create', 'edit', 'export'] as const) {
         expect(quality.can(action)).toBe(true);
+        expect(hr.can(action)).toBe(true);
+      }
+      expect(hr.canPay(true)).toBe(true);
+      expect(ecm.manager()).toBe(true);
     }
     actor.mockRestore();
     auth.signOut();
@@ -86,6 +94,7 @@ describe('ManagementStore', () => {
     const records = {
       lqcs: {
         ...legacy,
+        permissionDefaultsVersion: 1,
         permissions: { 'Care Worker:Finance': [false, false, false, false, false] },
         rotaPermissions: { 'Care Worker': [] },
         payrollPermissions: { 'Care Worker': [] },
@@ -97,7 +106,7 @@ describe('ManagementStore', () => {
     TestBed.configureTestingModule({});
     const restored = TestBed.inject(ManagementStore);
     for (const data of Object.values(restored.records())) {
-      expect(data.permissionDefaultsVersion).toBe(1);
+      expect(data.permissionDefaultsVersion).toBe(2);
       for (const role of Object.values(ROLES)) {
         for (const module of MODULES)
           expect(data.permissions[role.label + ':' + module]).toEqual([

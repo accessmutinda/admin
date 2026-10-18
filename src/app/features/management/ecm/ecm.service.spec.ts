@@ -106,7 +106,7 @@ describe('ECM records', () => {
     expect(service.attendance(v.id, 'james', end, 'Check out', 'Verified')).toBeNull();
     expect(service.attendance(v.id, 'james', end, 'Check out', 'Verified')).toContain('locked');
   });
-  it('requires photo permission and manager review, auditing photo views', () => {
+  it('allows any role with manage permission to review evidence and audits photo views', () => {
     const evidence = {
       type: 'Safeguarding' as const,
       note: 'Sample concern',
@@ -117,8 +117,8 @@ describe('ECM records', () => {
     expect(service.evidence(v.id, evidence, true)).toBeNull();
     const id = service.data().evidence[0].id;
     actor.set({ ...actor(), roleCode: 'CC' });
-    expect(service.viewPhoto(id)).toContain('Manager');
-    expect(service.reviewEvidence(id)).toContain('Manager');
+    expect(service.viewPhoto(id)).toBeNull();
+    expect(service.reviewEvidence(id)).toBeNull();
     actor.set({ ...actor(), roleCode: 'CA' });
     expect(service.viewPhoto(id)).toBeNull();
     expect(service.reviewEvidence(id)).toBeNull();

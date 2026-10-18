@@ -2,6 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthCenteredLayout } from '../../../shared/layouts/auth-centered-layout';
 import { Skeleton } from '../../../shared/ui/skeleton';
+import { AuthService } from '../../../core/auth/auth.service';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
 
 @Component({
@@ -10,6 +11,7 @@ import { WorkspaceService } from '../../../core/auth/workspace.service';
   templateUrl: './workspace-select.html',
 })
 export class WorkspaceSelect implements OnInit {
+  private readonly auth = inject(AuthService);
   private readonly workspaceSvc = inject(WorkspaceService);
   private readonly router = inject(Router);
 
@@ -35,7 +37,9 @@ export class WorkspaceSelect implements OnInit {
     this.switching.set(workspaceId);
     setTimeout(() => {
       this.workspaceSvc.switchWorkspace(workspaceId);
-      this.router.navigateByUrl('/manage/companies');
+      this.router.navigateByUrl(
+        this.auth.hasRole('IN') ? '/inspector/dashboard' : '/manage/companies',
+      );
     }, 500);
   }
 }

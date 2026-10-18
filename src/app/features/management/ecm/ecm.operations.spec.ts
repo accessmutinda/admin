@@ -163,7 +163,7 @@ describe('ECM frontend workflows', () => {
     expect(changed.start).toBe('00:15');
     expect(changed.end).toBe('01:00');
   });
-  it('allows manager overrides with explicit reasons and audits soft conflicts but enforces required carers', () => {
+  it('allows authorised worker overrides with explicit reasons and audits conflicts while enforcing required carers', () => {
     demo.setup();
     const v = demo.visits()[4];
     store.update((d) => ({
@@ -186,7 +186,7 @@ describe('ECM frontend workflows', () => {
         ?.manualOverride?.conflicts.join(),
     ).toContain('medication');
     actor.set({ ...actor(), roleCode: 'CC' });
-    expect(ops.override(v.id, v.staffIds, 'Cover', true)).toContain('manager');
+    expect(ops.override(v.id, v.staffIds, 'Cover', true)).toBeNull();
   });
   it('queues demo messages, handles failure/retry/delivery, assigns and resolves an escalation', () => {
     demo.setup();

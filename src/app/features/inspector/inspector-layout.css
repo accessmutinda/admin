@@ -1,0 +1,275 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #f1f7fa;
+  color: #123352;
+  font: 400 12px/1.5 var(--font-sans);
+}
+* {
+  box-sizing: border-box;
+}
+a {
+  text-decoration: none;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid #008bd9;
+  outline-offset: 3px;
+}
+.skip {
+  position: fixed;
+  top: -60px;
+  left: 280px;
+  background: white;
+  padding: 10px;
+  z-index: 100;
+}
+.skip:focus {
+  top: 4px;
+}
+aside {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 272px;
+  background: #0b3050;
+  color: white;
+  padding: 10px 12px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.brand {
+  padding: 5px 12px 13px;
+}
+.brand img {
+  height: 36px;
+  max-width: 100%;
+  object-fit: contain;
+}
+.nav-label {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #9cbbce;
+  margin: 14px 12px 6px;
+}
+nav {
+  display: grid;
+  gap: 3px;
+}
+nav a,
+.bottom a,
+.bottom button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+}
+nav a:hover,
+.bottom a:hover,
+.bottom button:hover {
+  background: #144460;
+}
+nav a.active {
+  background: #007caa;
+  box-shadow: inset 3px 0 #17c5de;
+  color: white;
+}
+.material-symbols-outlined {
+  font-size: 18px;
+}
+nav a.active .material-symbols-outlined {
+  color: white;
+}
+.bottom {
+  display: grid;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid #ffffff25;
+}
+.body {
+  margin-left: 272px;
+  min-width: 0;
+}
+header {
+  height: 48px;
+  padding: 0 16px;
+  background: white;
+  border-bottom: 1px solid #e5edf1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+.console {
+  display: grid;
+  gap: 2px;
+  margin-right: auto;
+  white-space: nowrap;
+}
+.console strong {
+  font-size: 14px;
+  line-height: 1.2;
+  color: #002b60;
+}
+.console span {
+  color: #677488;
+  font-size: 12px;
+}
+form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e2eaf0;
+  border-radius: 5px;
+  padding: 4px 8px;
+  width: 280px;
+}
+form input {
+  border: 0;
+  outline: 0;
+  min-width: 0;
+  width: 100%;
+  background: transparent;
+  font: inherit;
+  height: 24px;
+}
+.account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.avatar {
+  width: 32px;
+  height: 32px;
+  background: #004579;
+  color: white;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.account strong {
+  display: block;
+  font-size: 12px;
+}
+.account small {
+  font-size: 10px;
+  color: #677488;
+}
+.menu {
+  display: none;
+  border: 0;
+  background: none;
+  color: #123352;
+  width: 36px;
+  height: 36px;
+}
+main {
+  padding: 10px 14px;
+  min-height: calc(100vh - 82px);
+}
+footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 14px;
+  color: #657184;
+  font-size: 10px;
+}
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: #08153570;
+  z-index: 40;
+  border: 0;
+}
+@media (max-width: 1279px) and (min-width: 1024px) {
+  aside {
+    width: 244px;
+  }
+  .body {
+    margin-left: 244px;
+  }
+}
+@media (max-width: 1250px) {
+  .console span {
+    display: none;
+  }
+  form {
+    width: 230px;
+  }
+}
+@media (max-width: 1023px) {
+  aside {
+    width: 252px;
+    transform: translateX(-100%);
+  }
+  aside.open {
+    transform: translateX(0);
+  }
+  .body {
+    margin-left: 0;
+  }
+  .menu {
+    display: block;
+  }
+  .skip {
+    left: 12px;
+  }
+}
+@media (max-width: 760px) {
+  header {
+    gap: 8px;
+    padding: 0 12px;
+  }
+  .console,
+  .account > span:last-child {
+    display: none;
+  }
+  form {
+    width: auto;
+    flex: 1;
+  }
+  main {
+    padding: 12px;
+  }
+  footer {
+    flex-wrap: wrap;
+  }
+  .bottom a,
+  .bottom button,
+  nav a {
+    min-height: 44px;
+  }
+}
+@media print {
+  aside,
+  header,
+  footer,
+  .skip {
+    display: none;
+  }
+  .body {
+    margin: 0;
+  }
+  main {
+    padding: 0;
+  }
+}

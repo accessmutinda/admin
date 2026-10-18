@@ -66,6 +66,17 @@ export const WORKSPACES: Workspace[] = [
 ];
 
 export const INVITES: Record<string, Invite> = {
+  'inspector-demo': {
+    token: 'inspector-demo',
+    inviterName: 'Sarah Mitchell',
+    inviterRoleLabel: 'Company Admin',
+    inviteeEmail: DEMO_EMAIL,
+    roleCode: 'IN',
+    workspaceName: 'London Quality Care Services',
+    message: 'Review the provider records in the Inspector Portal demo workspace.',
+    expiresAt: daysFromNow(14),
+    status: 'pending',
+  },
   'demo-invite': {
     token: 'demo-invite',
     inviterName: 'Sarah Mitchell',

@@ -22,11 +22,7 @@ export class EcmOperations {
   readonly payroll = inject(PayrollService);
   private readonly auth = inject(AuthService);
   readonly data = computed(() => ({ ...emptyEcm(), ...this.rota.data().ecm }));
-  readonly manager = computed(
-    () =>
-      this.rota.can('manage') &&
-      ['Company Admin', 'Platform Owner', 'Registered Manager'].includes(this.rota.role()),
-  );
+  readonly manager = computed(() => this.rota.can('manage'));
   private entry(action: string, detail: string) {
     const user = this.auth.currentUser()!;
     return {
