@@ -1,5 +1,6 @@
 import {
   Component,
+  ViewEncapsulation,
   DestroyRef,
   afterNextRender,
   computed,
@@ -25,6 +26,8 @@ import { Logo } from '../../../shared/ui/logo';
   selector: 'cv-ecm-wallboard',
   imports: [FormsModule, MatSelectModule, CvSelect, A11yModule, AccessRequired, Logo],
   templateUrl: './ecm-wallboard.html',
+  encapsulation: ViewEncapsulation.None,
+  styleUrls: ['./ecm-wallboard.css', './ecm-wallboard-layout.css'],
 })
 export class EcmWallboard {
   protected readonly service = inject(EcmService);
