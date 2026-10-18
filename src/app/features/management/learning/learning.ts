@@ -1,3 +1,5 @@
+import { QuickActions } from '../shared/quick-actions';
+import { WorkspaceCards } from '../shared/workspace-cards';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { A11yModule } from '@angular/cdk/a11y';
@@ -12,6 +14,8 @@ import { AcademyCpd } from './cpd/academy-cpd';
 @Component({
   selector: 'cv-learning',
   imports: [
+    QuickActions,
+    WorkspaceCards,
     MatSelectModule,
     CvSelect,
     A11yModule,
@@ -40,6 +44,7 @@ export class Learning {
   protected readonly staffReturn = this.route.snapshot.queryParamMap.get('person');
   private readonly toast = inject(ToastService);
   protected readonly tabs = [
+    'Overview',
     'Courses',
     'Webinars',
     'Training matrix',
@@ -50,7 +55,9 @@ export class Learning {
   protected readonly tab = signal(
     this.tabs.includes(this.route.snapshot.queryParamMap.get('tab') ?? '')
       ? this.route.snapshot.queryParamMap.get('tab')!
-      : 'Courses',
+      : this.staffReturn
+        ? 'Courses'
+        : 'Overview',
   );
   protected readonly selectedPerson = signal(
     this.store.staff().find((p) => p.id === this.staffReturn)?.id ??
@@ -60,6 +67,87 @@ export class Learning {
   protected readonly person = computed(() =>
     this.store.staff().find((p) => p.id === this.selectedPerson()),
   );
+  protected readonly homeViews = [
+    {
+      view: 'Courses',
+      title: 'Courses',
+      description: 'Browse sample courses and continue personal learning.',
+      icon: 'menu_book',
+    },
+    {
+      view: 'Training matrix',
+      title: 'Training matrix',
+      description: 'Review recorded staff training and requirements.',
+      icon: 'grid_view',
+    },
+    {
+      view: 'Progress',
+      title: 'Team progress',
+      description: 'Track assigned learning and sample course completion.',
+      icon: 'monitoring',
+    },
+    {
+      view: 'Certificates',
+      title: 'Certificates',
+      description: 'View demonstration certificates for completed sample courses.',
+      icon: 'workspace_premium',
+    },
+    {
+      view: 'CPD',
+      title: 'CPD records',
+      description: 'Record reflections and continuing professional development.',
+      icon: 'history_edu',
+    },
+    {
+      view: 'Webinars',
+      title: 'Webinars',
+      description: 'Explore sample webinar topics and record reflections.',
+      icon: 'videocam',
+    },
+  ];
+  protected readonly homeStats = computed(() => {
+    const staff = this.store.staff();
+    const assignments = staff.flatMap((person) =>
+      person.learning.map((id) => person.progress[id] ?? 0),
+    );
+    return [
+      {
+        label: 'Staff',
+        value: staff.length,
+        caption: 'Current company',
+        icon: 'groups',
+        view: 'Progress',
+      },
+      {
+        label: 'Assigned courses',
+        value: assignments.length,
+        caption: 'Sample learning assignments',
+        icon: 'menu_book',
+        view: 'Progress',
+      },
+      {
+        label: 'Completed learning',
+        value: assignments.filter((value) => value >= 100).length,
+        caption: 'Completed sample assignments',
+        icon: 'task_alt',
+        view: 'Progress',
+      },
+      {
+        label: 'In progress',
+        value: assignments.filter((value) => value > 0 && value < 100).length,
+        caption: 'Started sample assignments',
+        icon: 'trending_up',
+        view: 'Progress',
+      },
+      {
+        label: 'CPD hours',
+        value: this.store.data().cpd.reduce((sum, entry) => sum + entry.hours, 0),
+        caption: 'Recorded across the team',
+        icon: 'history_edu',
+        view: 'CPD',
+      },
+    ];
+  });
   protected readonly courses = COURSES;
   protected readonly player = signal<Course | null>(null);
   protected readonly lesson = signal(0);

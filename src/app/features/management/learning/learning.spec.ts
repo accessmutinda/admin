@@ -60,9 +60,16 @@ describe('Training Academy workspace', () => {
     const before = JSON.stringify(store.data());
     const harness = await RouterTestingHarness.create('/manage/learning');
     const page = harness.routeNativeElement!;
+    expect(page.querySelectorAll('.academy-home .co-check-card')).toHaveLength(6);
+    expect(page.querySelector('.academy-context')).toBeNull();
+    expect(page.querySelector('[cvQuickActions]')).not.toBeNull();
     const tab = async (label: string) => {
-      Array.from(page.querySelectorAll<HTMLButtonElement>('.academy-tabs button'))
-        .find((button) => button.textContent?.trim() === label)!
+      Array.from(
+        page.querySelectorAll<HTMLButtonElement>(
+          '.academy-tabs button, .academy-home button[data-view]',
+        ),
+      )
+        .find((button) => button.dataset['view'] === label || button.textContent?.trim() === label)!
         .click();
       harness.detectChanges();
       await harness.fixture.whenStable();

@@ -17,59 +17,123 @@
     <a class="hr-button outline" routerLink="/manage/people/staff">Staff Directory</a>
   </div>
 </div>
-<section class="hr-panel academy-context" aria-label="Learning record context">
-  @if (tab() !== 'Progress' && tab() !== 'Training matrix') {
-    <label class="hr-form academy-person-select"
-      >Learning record<mat-select
-        cvSelect
-        aria-label="Choose staff learning record"
-        [ngModel]="selectedPerson()"
-        (ngModelChange)="selectedPerson.set($event)"
+@if (tab() === 'Overview') {
+  <div class="hr-stats academy-overview-stats" aria-label="Team learning summary">
+    @for (stat of homeStats(); track stat.label; let i = $index) {
+      <button
+        class="hr-stat"
+        [style.--stat-color]="['#008afa', '#00a34e', '#03a6c1', '#ff8a00', '#9553dc'][i]"
+        (click)="tab.set(stat.view)"
       >
-        @for (person of store.staff(); track person.id) {
-          <mat-option [value]="person.id">{{ person.name }}</mat-option>
-        }
-      </mat-select></label
-    >
-    @if (person(); as learner) {
-      <span class="hr-muted">{{ learner.role }} · {{ learner.location }}</span
-      ><a class="hr-button" [routerLink]="['/manage/people/staff', learner.id, 'training']"
-        >Open Staff Training Record<span class="material-symbols-outlined" aria-hidden="true"
-          >arrow_forward</span
-        ></a
-      >
+        <span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>
+        <div>
+          <small>{{ stat.label }}</small
+          ><strong>{{ stat.value }}</strong
+          ><small>{{ stat.caption }}</small>
+        </div>
+      </button>
     }
-  } @else {
-    <span class="material-symbols-outlined" aria-hidden="true">groups</span>
-    <div>
-      <strong>Team-wide learning</strong>
-      <p class="hr-muted">{{ store.staff().length }} staff in the current company</p>
-    </div>
-  }
-</section>
-<label class="academy-section-picker"
-  >Academy section<mat-select
-    cvSelect
-    aria-label="Training academy section"
-    [ngModel]="tab()"
-    (ngModelChange)="tab.set($event)"
+  </div>
+  <div class="co-main-grid academy-home">
+    <section
+      cvWorkspaceCards
+      headingId="academy-workspace-title"
+      title="Training Workspace"
+      icon="school"
+    >
+      @for (item of homeViews; track item.view; let i = $index) {
+        <button class="co-check-card" [attr.data-view]="item.view" (click)="tab.set(item.view)">
+          <span
+            class="material-symbols-outlined"
+            [style.color]="['#008d9f', '#008eff', '#00aac4', '#ff8a00'][i % 4]"
+            aria-hidden="true"
+            >{{ item.icon }}</span
+          >
+          <div>
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.description }}</p>
+          </div>
+        </button>
+      }
+    </section>
+    <section cvQuickActions headingId="academy-quick-actions" [actionCount]="5">
+      <button class="co-primary" (click)="tab.set('Courses')">
+        <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>Browse
+        Courses<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </button>
+      <button (click)="tab.set('Progress')">
+        <span class="material-symbols-outlined" aria-hidden="true">monitoring</span>Review Team
+        Progress<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </button>
+      <button (click)="tab.set('Training matrix')">
+        <span class="material-symbols-outlined" aria-hidden="true">grid_view</span>Training
+        Matrix<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </button>
+      <button (click)="tab.set('CPD')">
+        <span class="material-symbols-outlined" aria-hidden="true">history_edu</span>Open CPD
+        Records<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </button>
+      <a routerLink="/manage/people/staff"
+        ><span class="material-symbols-outlined" aria-hidden="true">groups</span>Staff
+        Directory<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></a
+      >
+    </section>
+  </div>
+} @else {
+  <section class="hr-panel academy-context" aria-label="Learning record context">
+    @if (tab() !== 'Progress' && tab() !== 'Training matrix') {
+      <label class="hr-form academy-person-select"
+        >Learning record<mat-select
+          cvSelect
+          aria-label="Choose staff learning record"
+          [ngModel]="selectedPerson()"
+          (ngModelChange)="selectedPerson.set($event)"
+        >
+          @for (person of store.staff(); track person.id) {
+            <mat-option [value]="person.id">{{ person.name }}</mat-option>
+          }
+        </mat-select></label
+      >
+      @if (person(); as learner) {
+        <span class="hr-muted">{{ learner.role }} · {{ learner.location }}</span
+        ><a class="hr-button" [routerLink]="['/manage/people/staff', learner.id, 'training']"
+          >Open Staff Training Record<span class="material-symbols-outlined" aria-hidden="true"
+            >arrow_forward</span
+          ></a
+        >
+      }
+    } @else {
+      <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+      <div>
+        <strong>Team-wide learning</strong>
+        <p class="hr-muted">{{ store.staff().length }} staff in the current company</p>
+      </div>
+    }
+  </section>
+  <label class="academy-section-picker"
+    >Academy section<mat-select
+      cvSelect
+      aria-label="Training academy section"
+      [ngModel]="tab()"
+      (ngModelChange)="tab.set($event)"
+    >
+      @for (item of tabs; track item) {
+        <mat-option [value]="item">{{ item }}</mat-option>
+      }
+    </mat-select></label
   >
+  <nav class="academy-tabs" aria-label="Training academy sections">
     @for (item of tabs; track item) {
-      <mat-option [value]="item">{{ item }}</mat-option>
+      <button
+        [class.active]="tab() === item"
+        [attr.aria-pressed]="tab() === item"
+        (click)="tab.set(item)"
+      >
+        {{ item }}
+      </button>
     }
-  </mat-select></label
->
-<nav class="academy-tabs" aria-label="Training academy sections">
-  @for (item of tabs; track item) {
-    <button
-      [class.active]="tab() === item"
-      [attr.aria-pressed]="tab() === item"
-      (click)="tab.set(item)"
-    >
-      {{ item }}
-    </button>
-  }
-</nav>
+  </nav>
+}
 <cv-academy-courses
   [hidden]="tab() !== 'Courses'"
   [person]="person()"
