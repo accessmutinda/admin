@@ -243,7 +243,10 @@ export class EcmOperations {
       return (
         start &&
         v.attendance.some(
-          (a) => Date.parse(a.start) > Date.parse(start) + this.data().lateMinutes * 60000,
+          (a) =>
+            Date.parse(a.start) >
+            Date.parse(start) +
+              (v.timeSensitive ? (v.toleranceMinutes ?? 30) : this.data().lateMinutes) * 60000,
         )
       );
     });

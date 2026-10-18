@@ -11,6 +11,14 @@ export interface ClientFile {
   details: Record<string, string>;
   sections: Record<string, Record<string, string>>;
   entries: Record<string, ClientEntry[]>;
+  photo?: string;
+  contacts?: import('../care/care.models').CareContact[];
+  documents?: import('../care/care.models').CareDocument[];
+  medications?: import('../care/care.models').Prescription[];
+  administrations?: import('../care/care.models').Administration[];
+  familyAccess?: import('../care/care.models').FamilyAccess[];
+  messages?: import('../care/care.models').FamilyMessage[];
+  audit?: import('../care/care.models').CareAudit[];
   updatedAt: string;
 }
 
@@ -59,6 +67,9 @@ export const CLIENT_SECTIONS: ClientSection[] = [
     nameLabel: 'Diagnosis',
     detailLabel: 'Communication needs and support',
     fields: [
+      { key: 'primary', label: 'Primary diagnosis' },
+      { key: 'diet', label: 'Dietary needs', type: 'textarea' },
+      { key: 'ongoing', label: 'Ongoing healthcare', type: 'textarea' },
       { key: 'communication', label: 'How to communicate with me', type: 'textarea' },
       { key: 'sensory', label: 'Hearing, sight and other support', type: 'textarea' },
     ],
@@ -121,6 +132,15 @@ export const CLIENT_SECTIONS: ClientSection[] = [
     detailLabel: 'Findings, decision and best interests',
     fields: [
       {
+        key: 'status',
+        label: 'Capacity summary',
+        options: ['Not recorded', 'Has capacity', 'Lacks capacity', 'Fluctuates'],
+      },
+      { key: 'assessed', label: 'Last assessed', type: 'date' },
+      { key: 'welfareLpa', label: 'Health & Welfare attorney and contact' },
+      { key: 'financeLpa', label: 'Property & Finance attorney and contact' },
+      { key: 'advance', label: 'Advance decision / DNR and document reference', type: 'textarea' },
+      {
         key: 'support',
         label: 'Support to understand and communicate decisions',
         type: 'textarea',
@@ -167,7 +187,7 @@ export const CLIENT_SECTIONS: ClientSection[] = [
     icon: 'medication',
     tone: 'purple',
     description:
-      'A medication information register. Administration is recorded through visit evidence; this is not a MAR chart.',
+      'Historical medication information. Open Medication & MAR for structured prescriptions and administration records.',
     entryLabel: 'medication',
     nameLabel: 'Medication and strength',
     detailLabel: 'Dose, route, frequency and support instructions',
@@ -219,6 +239,24 @@ export const CLIENT_SECTIONS: ClientSection[] = [
     ],
   },
   {
+    key: 'support',
+    label: 'Support & preferences',
+    icon: 'volunteer_activism',
+    tone: 'teal',
+    description: 'Daily support, continuity and allocation requirements.',
+    fields: [
+      { key: 'personal', label: 'Personal care', type: 'textarea' },
+      { key: 'nutrition', label: 'Nutrition and hydration', type: 'textarea' },
+      { key: 'continence', label: 'Continence', type: 'textarea' },
+      { key: 'safety', label: 'Safety and mental wellbeing', type: 'textarea' },
+      { key: 'behaviour', label: 'Behaviour and reassuring approaches', type: 'textarea' },
+      { key: 'gender', label: 'Carer gender requirement', options: ['Any', 'Female', 'Male'] },
+      { key: 'preferredStaff', label: 'Preferred carers' },
+      { key: 'backupStaff', label: 'Backup carer ID' },
+      { key: 'continuity', label: 'Continuity notes', type: 'textarea' },
+    ],
+  },
+  {
     key: 'documents',
     label: 'Documents & care summary',
     icon: 'description',
@@ -246,7 +284,7 @@ export const CLIENT_SECTION_GROUPS = [
       'allergies',
     ],
   },
-  { label: 'Daily support', keys: ['access', 'tasks'] },
+  { label: 'Daily support', keys: ['access', 'tasks', 'support'] },
   { label: 'Documents', keys: ['documents'] },
 ];
 
@@ -259,6 +297,10 @@ export const PERSONAL_FIELDS: ClientField[] = [
   { key: 'religion', label: 'Religion / beliefs' },
   { key: 'ethnicity', label: 'Ethnicity' },
   { key: 'gp', label: 'GP / practice and contact' },
+  { key: 'living', label: 'Living arrangement' },
+  { key: 'sexuality', label: 'Sexuality' },
+  { key: 'likes', label: 'Likes', type: 'textarea' },
+  { key: 'dislikes', label: 'Dislikes', type: 'textarea' },
   { key: 'about', label: 'What matters to me', type: 'textarea' },
 ];
 

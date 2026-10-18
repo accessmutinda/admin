@@ -96,8 +96,73 @@ export class RotaService {
       )
     )
       return 'A service user with this reference already exists.';
+    const existing = this.data().clients.find((c) => c.id === client.id);
+    const at = new Date().toISOString();
+    const changedSections = client.file
+      ? [
+          ...new Set([
+            ...Object.keys(client.file.sections),
+            ...Object.keys(existing?.file?.sections ?? {}),
+          ]),
+        ].filter(
+          (key) =>
+            JSON.stringify(client.file?.sections[key]) !==
+            JSON.stringify(existing?.file?.sections[key]),
+        )
+      : [];
+    const changedEntries = client.file
+      ? [
+          ...new Set([
+            ...Object.keys(client.file.entries),
+            ...Object.keys(existing?.file?.entries ?? {}),
+          ]),
+        ].filter(
+          (key) =>
+            JSON.stringify(client.file?.entries[key]) !==
+            JSON.stringify(existing?.file?.entries[key]),
+        )
+      : [];
+    const changedDetails = Object.keys(client.file?.details ?? {}).filter(
+      (key) => client.file?.details[key] !== existing?.file?.details[key],
+    );
+    const fields = [
+      'name',
+      'address',
+      'postcode',
+      'funding',
+      'priority',
+      'active',
+      'representative',
+      'riskFlags',
+    ].filter(
+      (key) =>
+        JSON.stringify(client[key as keyof RotaClient]) !==
+        JSON.stringify(existing?.[key as keyof RotaClient]),
+    );
+    const changes = [
+      ...new Set([...changedSections, ...changedEntries, ...changedDetails, ...fields]),
+    ];
+    const detail = existing
+      ? 'Updated fields: ' + (changes.join(', ') || 'Record metadata')
+      : 'Service user created';
     const saved = {
       ...client,
+      file: client.file
+        ? {
+            ...client.file,
+            updatedAt: at,
+            audit: [
+              ...(existing?.file?.audit ?? []),
+              {
+                id: crypto.randomUUID(),
+                at,
+                by: this.auth.currentUser()!.name,
+                action: 'Service user saved',
+                detail,
+              },
+            ],
+          }
+        : client.file,
       name: client.name.trim(),
       reference: client.reference.trim(),
       address: client.address.trim(),
@@ -113,7 +178,21 @@ export class RotaService {
     );
   }
   saveCall(call: RotaCall): string | null {
+    call = {
+      ...call,
+      mileage: call.mileage ?? undefined,
+      toleranceMinutes: call.toleranceMinutes ?? 30,
+    };
     if (this.denied('manage')) return this.denied('manage');
+    if (
+      (call.toleranceMinutes !== undefined &&
+        (!Number.isInteger(call.toleranceMinutes) ||
+          call.toleranceMinutes < 0 ||
+          call.toleranceMinutes > 120)) ||
+      (call.mileage !== undefined && (!Number.isFinite(call.mileage) || call.mileage < 0)) ||
+      (call.backupStaffId && !this.store.staff().some((p) => p.id === call.backupStaffId))
+    )
+      return 'Choose a valid tolerance, mileage and backup carer.';
     if (call.priority && !['Standard', 'High'].includes(call.priority))
       return 'Choose a valid call priority.';
     if (
@@ -179,6 +258,14 @@ export class RotaService {
       riskFlags: [...(client.riskFlags ?? [])],
       attendance: [],
       exception: '',
+      timeSensitive: call.timeSensitive ?? false,
+      toleranceMinutes: call.toleranceMinutes ?? 30,
+      flexible: call.flexible ?? false,
+      location: call.location ?? 'Home',
+      taskType: call.taskType ?? '',
+      mileage: call.mileage,
+      driverRequired: call.driverRequired ?? false,
+      backupStaffId: call.backupStaffId,
     };
   }
   private skillConflicts(visit: RotaVisit, id: string): string[] {
@@ -229,6 +316,15 @@ export class RotaService {
       const person = this.store.staff().find((p) => p.id === id);
       problems.push(...this.skillConflicts(visit, id));
       if (!person) continue;
+      const preferredGender = client?.file?.sections['support']?.['gender'];
+      if (
+        preferredGender &&
+        preferredGender !== 'Any' &&
+        person.hr?.personal.gender !== preferredGender
+      )
+        problems.push(`${person.name} does not match the recorded carer gender requirement.`);
+      if (visit.driverRequired && !person.hr?.personal.driver)
+        problems.push(`${person.name} does not have a recorded driving qualification.`);
       if (person.start && person.start > visit.date)
         problems.push(`${person.name} has not reached their employment start date.`);
       if (
@@ -488,6 +584,196 @@ export class RotaService {
       { ...this.data(), visits: this.data().visits.map((v) => (v.id === id ? updated : v)) },
       'Attendance recorded',
       `${visit.clientName} · ${visit.date} · ${this.store.data().people.find((p) => p.id === personId)?.name ?? personId} · ${start} to ${end} · ${note.trim()}`,
+    );
+  }
+  candidates(
+    visit: RotaVisit,
+    all = this.data().visits,
+  ): { id: string; name: string; hours: number; preferred: boolean; issues: string[] }[] {
+    const client = this.data().clients.find((c) => c.id === visit.clientId);
+    const preferred =
+      client?.file?.sections['support']?.['preferredStaff']?.split(',').map((s) => s.trim()) ?? [];
+    const regular = this.data().calls.find((c) => c.id === visit.callId)?.regularStaffIds ?? [];
+    const start = new Date(visit.date + 'T12:00:00Z');
+    const weekday = (start.getUTCDay() + 6) % 7;
+    const from = addDays(visit.date, -weekday),
+      to = addDays(from, 6);
+    return this.store
+      .staff()
+      .map((person) => {
+        const hours = all
+          .filter(
+            (v) =>
+              v.state !== 'Cancelled' &&
+              v.date >= from &&
+              v.date <= to &&
+              v.staffIds.includes(person.id),
+          )
+          .reduce((sum, v) => {
+            const [a, b] = visitWindow(v);
+            return sum + (b - a) / 60;
+          }, 0);
+        const trial = {
+          ...visit,
+          staffIds: [...visit.staffIds.filter((id) => id !== person.id), person.id],
+        };
+        const issues = this.conflicts(trial, all);
+        const contract = person.hr?.employment.hours;
+        const [a, b] = visitWindow(visit);
+        if (
+          contract !== null &&
+          contract !== undefined &&
+          !visit.staffIds.includes(person.id) &&
+          hours + (b - a) / 60 > contract
+        )
+          issues.push('This allocation exceeds recorded contracted weekly hours.');
+        return {
+          id: person.id,
+          name: person.name,
+          hours,
+          preferred:
+            preferred.includes(person.id) ||
+            regular.includes(person.id) ||
+            (visit.backupStaffId || client?.file?.sections['support']?.['backupStaff']) ===
+              person.id,
+          issues,
+        };
+      })
+      .sort(
+        (a, b) =>
+          a.issues.length - b.issues.length ||
+          Number(b.preferred) - Number(a.preferred) ||
+          a.hours - b.hours ||
+          a.name.localeCompare(b.name),
+      );
+  }
+  suggest(
+    ids: string[],
+    allowedStaffIds?: string[],
+  ): { plans: { id: string; staffIds: string[]; original: string }[]; unfilled: string[] } {
+    const all = structuredClone(this.data().visits);
+    const plans: { id: string; staffIds: string[]; original: string }[] = [],
+      unfilled: string[] = [];
+    const selected = all
+      .filter(
+        (v) =>
+          ids.includes(v.id) &&
+          v.state !== 'Cancelled' &&
+          !v.attendance.length &&
+          v.staffIds.length < v.carers,
+      )
+      .sort(
+        (a, b) =>
+          Number(b.priority === 'High') - Number(a.priority === 'High') ||
+          (a.date + a.start).localeCompare(b.date + b.start),
+      );
+    for (const visit of selected) {
+      const original = JSON.stringify(visit);
+      while (visit.staffIds.length < visit.carers) {
+        const candidate = this.candidates(visit, all).find(
+          (c) =>
+            !c.issues.length &&
+            !visit.staffIds.includes(c.id) &&
+            (!allowedStaffIds || allowedStaffIds.includes(c.id)),
+        );
+        if (!candidate) break;
+        visit.staffIds.push(candidate.id);
+      }
+      if (visit.staffIds.length === visit.carers)
+        plans.push({ id: visit.id, staffIds: [...visit.staffIds], original });
+      else {
+        visit.staffIds = JSON.parse(original).staffIds;
+        unfilled.push(visit.id);
+      }
+    }
+    return { plans, unfilled };
+  }
+  bulkAllocate(
+    plans: { id: string; staffIds: string[]; original: string }[],
+    workspace: string,
+    reason: string,
+  ): string | null {
+    if (this.denied('manage')) return this.denied('manage');
+    if (workspace !== this.store.companyId())
+      return 'Workspace changed. Reopen the allocation preview.';
+    if (!plans.length || !reason.trim() || new Set(plans.map((p) => p.id)).size !== plans.length)
+      return 'Select visits and record an allocation reason.';
+    const all = structuredClone(this.data().visits);
+    for (const plan of plans) {
+      const visit = all.find((v) => v.id === plan.id);
+      if (
+        !visit ||
+        visit.state === 'Cancelled' ||
+        visit.attendance.length ||
+        JSON.stringify(visit) !== plan.original
+      )
+        return 'A visit changed. Refresh the allocation preview.';
+      if (plan.staffIds.length !== visit.carers)
+        return 'Every selected visit needs all required carers.';
+      visit.staffIds = [...plan.staffIds];
+      visit.allocation = 'Temporary';
+    }
+    for (const plan of plans) {
+      const visit = all.find((v) => v.id === plan.id)!;
+      const issues = this.conflicts(visit, all);
+      if (issues.length)
+        return `${visit.clientName} ${visit.date} ${visit.start}: ${issues.join(' ')}`;
+    }
+    return this.commit(
+      { ...this.data(), visits: all },
+      'Bulk allocation confirmed',
+      `${plans.length} visits · ${reason.trim()}`,
+    );
+  }
+  updateVisit(
+    updated: RotaVisit,
+    workspace: string,
+    original: string,
+    reason: string,
+  ): string | null {
+    if (this.denied('manage')) return this.denied('manage');
+    const previous = this.data().visits.find((v) => v.id === updated.id);
+    if (
+      workspace !== this.store.companyId() ||
+      !previous ||
+      JSON.stringify(previous) !== original ||
+      previous.attendance.length ||
+      previous.state === 'Cancelled'
+    )
+      return 'This visit changed or has attendance. Reopen the editor.';
+    if (!reason.trim()) return 'Record a reason for the visit change.';
+    const next: RotaVisit = {
+      ...previous,
+      start: updated.start,
+      end: updated.end,
+      date: updated.date,
+      staffIds: [...updated.staffIds],
+      allocation: updated.allocation,
+      timeSensitive: !!updated.timeSensitive,
+      toleranceMinutes: updated.toleranceMinutes,
+      flexible: !!updated.flexible,
+      location: updated.location,
+      taskType: updated.taskType,
+      mileage: updated.mileage ?? undefined,
+      driverRequired: !!updated.driverRequired,
+      tasks: updated.tasks,
+    };
+    if (
+      (next.toleranceMinutes !== undefined &&
+        (!Number.isInteger(next.toleranceMinutes) ||
+          next.toleranceMinutes < 0 ||
+          next.toleranceMinutes > 120)) ||
+      (next.mileage !== undefined && (!Number.isFinite(next.mileage) || next.mileage < 0))
+    )
+      return 'Tolerance must be 0–120 minutes and mileage must be non-negative.';
+    if (previous.state === 'Published' && next.staffIds.length !== next.carers)
+      return 'Published visits must retain all required carers.';
+    const issues = this.conflicts(next);
+    if (issues.length) return issues.join(' ');
+    return this.commit(
+      { ...this.data(), visits: this.data().visits.map((v) => (v.id === next.id ? next : v)) },
+      'Visit updated',
+      `${next.clientName} · ${next.date} ${next.start} · ${reason.trim()}`,
     );
   }
   saveTravel(value: number): string | null {

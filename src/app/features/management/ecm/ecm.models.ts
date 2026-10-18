@@ -203,10 +203,21 @@ export function liveVisit(v: RotaVisit, now: number, rules = emptyEcm()) {
   else if (!start || !end) status = 'Timing unavailable';
   else if (arrived)
     status =
-      first! < Date.parse(start) - 5 * 60000 && now < Date.parse(start) ? 'Early' : 'In progress';
-  else if (delay >= rules.missedMinutes) status = 'Missed visit';
-  else if (delay >= rules.riskMinutes) status = 'Missed visit risk';
-  else if (delay >= rules.lateMinutes) status = 'Running late';
+      first! < Date.parse(start) - (v.timeSensitive ? (v.toleranceMinutes ?? 30) : 5) * 60000 &&
+      now < Date.parse(start)
+        ? 'Early'
+        : 'In progress';
+  else if (
+    delay >=
+    (v.timeSensitive ? (v.toleranceMinutes ?? 30) + rules.missedMinutes : rules.missedMinutes)
+  )
+    status = 'Missed visit';
+  else if (
+    delay >= (v.timeSensitive ? (v.toleranceMinutes ?? 30) + rules.riskMinutes : rules.riskMinutes)
+  )
+    status = 'Missed visit risk';
+  else if (delay >= (v.timeSensitive ? (v.toleranceMinutes ?? 30) + 1 : rules.lateMinutes))
+    status = 'Running late';
   const red = status === 'Missed visit' || status === 'Timing unavailable';
   const amber = status === 'Running late' || status === 'Missed visit risk';
   return {

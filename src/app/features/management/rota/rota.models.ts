@@ -42,7 +42,17 @@ export interface RotaClient {
   priority: 'Standard' | 'High';
   active: boolean;
 }
-export interface RotaCall {
+export interface VisitRequirements {
+  timeSensitive?: boolean;
+  toleranceMinutes?: number;
+  flexible?: boolean;
+  location?: 'Home' | 'Community';
+  taskType?: string;
+  mileage?: number;
+  driverRequired?: boolean;
+  backupStaffId?: string;
+}
+export interface RotaCall extends VisitRequirements {
   priority?: 'Standard' | 'High';
   id: string;
   clientId: string;
@@ -61,7 +71,7 @@ export interface VisitAttendance {
   start: string;
   end: string;
 }
-export interface RotaVisit {
+export interface RotaVisit extends VisitRequirements {
   riskFlags?: RiskFlag[];
   demo?: boolean;
   manualOverride?: { at: string; by: string; reason: string; conflicts: string[] };
@@ -93,6 +103,7 @@ export const RISK_FLAGS = [
 export type RiskFlag = (typeof RISK_FLAGS)[number];
 export interface RotaAudit {
   id: string;
+  clientId?: string;
   userId: string;
   at: string;
   user: string;

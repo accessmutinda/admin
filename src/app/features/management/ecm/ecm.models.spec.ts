@@ -38,6 +38,13 @@ describe('ECM live timing', () => {
       'Missed visit risk',
     );
   });
+  it('honours an inclusive per-visit time-sensitive tolerance before escalating', () => {
+    const v = { ...visit(), timeSensitive: true, toleranceMinutes: 30 };
+    expect(liveVisit(v, at('08:30')).status).toBe('Scheduled');
+    expect(liveVisit(v, at('08:31')).status).toBe('Running late');
+    expect(liveVisit(v, at('08:45')).status).toBe('Missed visit risk');
+    expect(liveVisit(v, at('09:00')).status).toBe('Missed visit');
+  });
   it('waits for both carers and ignores unrelated attendance', () => {
     const v = {
       ...visit(),

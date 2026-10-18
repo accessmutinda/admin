@@ -69,6 +69,89 @@ describe('Rota allocation and publishing', () => {
     expect(service.saveClient(client())).toBeNull();
     expect(service.saveCall(call())).toBeNull();
   });
+  it('suggests suitable carers without mutating visits and rechecks stale previews', () => {
+    expect(service.generate('client', ['call'], '2026-10-06', '2026-10-06')).toBeNull();
+    const visit = service.data().visits[0];
+    const before = structuredClone(visit);
+    const result = service.suggest([visit.id]);
+    expect(result.plans).toHaveLength(1);
+    expect(service.data().visits[0]).toEqual(before);
+    expect(service.bulkAllocate(result.plans, 'other', 'Review')).toContain('Workspace');
+    expect(
+      service.bulkAllocate(result.plans, store.companyId(), 'Suitable staff reviewed'),
+    ).toBeNull();
+    expect(service.data().visits[0].staffIds).toHaveLength(1);
+    expect(service.bulkAllocate(result.plans, store.companyId(), 'Retry')).toContain('changed');
+  });
+  it('prefers continuity and keeps ineligible staff out of automatic suggestions', () => {
+    const preferred = store.staff()[0].id;
+    const saved = structuredClone(service.data().clients[0]);
+    saved.file = {
+      details: {},
+      sections: { support: { preferredStaff: preferred } },
+      entries: {},
+      updatedAt: '',
+    };
+    service.saveClient(saved);
+    service.generate('client', ['call'], '2026-10-06', '2026-10-06');
+    const id = service.data().visits[0].id;
+    expect(service.suggest([id]).plans[0].staffIds).toEqual([preferred]);
+    expect(service.suggest([id], []).unfilled).toEqual([id]);
+  });
+  it('allocates both double-up places together and never saves a partially filled suggestion', () => {
+    service.saveCall({ ...call(), carers: 2 });
+    service.generate('client', ['call'], '2026-10-06', '2026-10-06');
+    const id = service.data().visits[0].id;
+    const result = service.suggest([id]);
+    expect(result.plans[0].staffIds).toHaveLength(2);
+    expect(new Set(result.plans[0].staffIds).size).toBe(2);
+    expect(service.suggest([id], [store.staff()[0].id]).unfilled).toEqual([id]);
+    expect(service.data().visits[0].staffIds).toEqual([]);
+  });
+  it('rejects a conflicting bulk allocation atomically', () => {
+    service.generate('client', ['call'], '2026-10-06', '2026-10-07');
+    const visits = service.data().visits;
+    const plans = visits.map((v) => ({
+      id: v.id,
+      staffIds: [store.staff()[0].id],
+      original: JSON.stringify(v),
+    }));
+    plans[1].staffIds = ['missing-staff'];
+    expect(service.bulkAllocate(plans, store.companyId(), 'Reviewed')).not.toBeNull();
+    expect(service.data().visits.every((v) => !v.staffIds.length)).toBe(true);
+  });
+  it('copies time sensitivity and visit requirements from packages and audits visit edits', () => {
+    service.saveCall({
+      ...call(),
+      timeSensitive: true,
+      toleranceMinutes: 30,
+      location: 'Community',
+      taskType: 'Outreach',
+      mileage: 3.2,
+    });
+    service.generate('client', ['call'], '2026-10-06', '2026-10-06');
+    const v = service.data().visits[0];
+    expect(v.timeSensitive).toBe(true);
+    expect(v.location).toBe('Community');
+    expect(v.mileage).toBe(3.2);
+    expect(
+      service.updateVisit(
+        { ...v, toleranceMinutes: -1 },
+        store.companyId(),
+        JSON.stringify(v),
+        'Review',
+      ),
+    ).toContain('Tolerance');
+    expect(
+      service.updateVisit(
+        { ...v, start: '09:00', end: '09:45' },
+        store.companyId(),
+        JSON.stringify(v),
+        'Agreed new time',
+      ),
+    ).toBeNull();
+    expect(service.data().visits[0].start).toBe('09:00');
+  });
   it('blocks approved leave by person ID while ignoring pending, rejected and cancelled requests', () => {
     const setLeave = (status: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled') =>
       store.update((d) => ({
