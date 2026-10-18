@@ -137,37 +137,29 @@
         }
       </div>
     </section>
-    <section class="hr-panel">
-      <div class="hr-panel-head">
-        <h2><span class="material-symbols-outlined" aria-hidden="true">bolt</span>Quick Actions</h2>
-      </div>
-      <div class="hr-quick-actions">
-        @if (hr.can('create')) {
-          <a class="hr-button primary" routerLink="/manage/people/staff/new"
-            ><span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add Staff
-            Member</a
-          >
-        }
-        <a
-          class="hr-button"
-          routerLink="/manage/people/onboarding"
-          [queryParams]="{ lane: 'drafts' }"
-          ><span class="material-symbols-outlined" aria-hidden="true">draft</span>Resume Staff Draft
-          <span class="hr-badge">{{ hr.drafts().length }}</span></a
-        ><a class="hr-button" routerLink="/manage/reviews"
-          ><span class="material-symbols-outlined" aria-hidden="true">event</span>Schedule
-          Supervision</a
-        ><a class="hr-button" routerLink="/manage/recruitment"
-          ><span class="material-symbols-outlined" aria-hidden="true">person_search</span>Open
-          Recruitment</a
-        ><a class="hr-button" routerLink="/manage/people/compliance"
-          ><span class="material-symbols-outlined" aria-hidden="true">verified_user</span>Review
-          Workforce Compliance</a
-        ><a class="hr-button" routerLink="/manage/companies/access"
-          ><span class="material-symbols-outlined" aria-hidden="true">manage_accounts</span>Manage
-          Application Access</a
+    <section cvQuickActions headingId="hr-quick-actions" [actionCount]="hr.can('create') ? 6 : 5">
+      @if (hr.can('create')) {
+        <a class="co-primary" routerLink="/manage/people/staff/new"
+          ><span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add Staff
+          Member</a
         >
-      </div>
+      }
+      <a routerLink="/manage/people/onboarding" [queryParams]="{ lane: 'drafts' }"
+        ><span class="material-symbols-outlined" aria-hidden="true">draft</span>Resume Staff Draft
+        <span class="hr-badge">{{ hr.drafts().length }}</span></a
+      ><a routerLink="/manage/reviews"
+        ><span class="material-symbols-outlined" aria-hidden="true">event</span>Schedule
+        Supervision</a
+      ><a routerLink="/manage/recruitment"
+        ><span class="material-symbols-outlined" aria-hidden="true">person_search</span>Open
+        Recruitment</a
+      ><a routerLink="/manage/people/compliance"
+        ><span class="material-symbols-outlined" aria-hidden="true">verified_user</span>Review
+        Workforce Compliance</a
+      ><a routerLink="/manage/companies/access"
+        ><span class="material-symbols-outlined" aria-hidden="true">manage_accounts</span>Manage
+        Application Access</a
+      >
     </section>
   </div>
   <section class="hr-panel hr-register">

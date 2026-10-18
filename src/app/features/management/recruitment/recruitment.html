@@ -286,26 +286,19 @@
         >
       </div>
     </section>
-    <section class="hr-panel">
-      <div class="hr-panel-head">
-        <h2><span class="material-symbols-outlined" aria-hidden="true">bolt</span>Quick Actions</h2>
-      </div>
-      <div class="hr-quick-actions">
-        <button class="hr-button primary" type="button" (click)="openVacancy()">
-          <span class="material-symbols-outlined" aria-hidden="true">add</span>Create New Vacancy
-        </button>
-        <button
-          class="hr-button"
-          type="button"
-          [disabled]="!store.data().vacancies.length"
-          (click)="openApplicant()"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add Applicant
-        </button>
-        <button class="hr-button" type="button" (click)="openView('Pipeline', 'Offer')">
-          <span class="material-symbols-outlined" aria-hidden="true">handshake</span>Review Offers
-        </button>
-      </div>
+    <section cvQuickActions headingId="recruitment-quick-actions" [actionCount]="3">
+      <button class="co-primary" type="button" (click)="openVacancy()">
+        <span class="material-symbols-outlined" aria-hidden="true">add</span>Create New Vacancy
+        <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </button>
+      <button type="button" [disabled]="!store.data().vacancies.length" (click)="openApplicant()">
+        <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add Applicant
+        <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </button>
+      <button type="button" (click)="openView('Pipeline', 'Offer')">
+        <span class="material-symbols-outlined" aria-hidden="true">handshake</span>Review Offers
+        <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </button>
     </section>
   </div>
   @if (savedVacancy(); as saved) {

@@ -1,3 +1,5 @@
+import { WorkspaceCards } from '../shared/workspace-cards';
+import { QuickActions } from '../shared/quick-actions';
 import { ModuleDesign } from '../shared/module-design';
 import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
@@ -22,6 +24,8 @@ import {
 @Component({
   selector: 'cv-quality',
   imports: [
+    QuickActions,
+    WorkspaceCards,
     ModuleDesign,
     DatePipe,
     FormsModule,

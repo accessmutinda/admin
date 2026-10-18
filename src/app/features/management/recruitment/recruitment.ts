@@ -1,3 +1,4 @@
+import { QuickActions } from '../shared/quick-actions';
 import { DatePipe } from '@angular/common';
 import { validVacancyDate } from './vacancy-deadline';
 import { MatSelectModule } from '@angular/material/select';
@@ -13,6 +14,7 @@ import { ToastService } from '../../../shared/ui/toast.service';
 @Component({
   selector: 'cv-recruitment',
   imports: [
+    QuickActions,
     DatePipe,
     ApplicationForm,
     MatSelectModule,

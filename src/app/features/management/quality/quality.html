@@ -67,57 +67,67 @@
       </div>
     </button>
   </div>
-  <nav class="tabs quality-tabs" aria-label="Quality workspace views">
-    @for (t of tabs; track t) {
-      <button
-        [class.active]="tab() === t"
-        [attr.aria-current]="tab() === t ? 'page' : null"
-        (click)="switchTab(t)"
-      >
-        {{ t }}
-      </button>
-    }
-  </nav>
+  @if (tab() !== 'Overview') {
+    <nav class="tabs quality-tabs" aria-label="Quality workspace views">
+      @for (t of tabs; track t) {
+        <button
+          [class.active]="tab() === t"
+          [attr.aria-current]="tab() === t ? 'page' : null"
+          (click)="switchTab(t)"
+        >
+          {{ t }}
+        </button>
+      }
+    </nav>
+  }
   @if (tab() === 'Overview') {
     <div class="op-overview-grid">
-      <section class="panel">
-        <div class="panel-toolbar">
-          <div>
-            <h2>Quality workspace</h2>
-            <p>Choose the assessment, review or improvement work you need.</p>
-          </div>
-        </div>
-        <div class="op-destinations">
-          @for (destination of destinations; track destination.view) {
-            <button class="co-check-card" (click)="switchTab(destination.view)">
-              <span class="op-destination-icon material-symbols-outlined" aria-hidden="true">{{
-                destination.icon
-              }}</span>
-              <div>
-                <strong>{{ destination.view }}</strong
-                ><small>{{ destination.description }}</small>
-              </div>
-            </button>
-          }
-        </div>
-      </section>
-      <aside class="panel op-quick-actions" aria-label="Quality quick actions">
-        <h2><span class="material-symbols-outlined" aria-hidden="true">bolt</span>Quick Actions</h2>
-        @if (service.can('create')) {
-          <button class="button primary" (click)="switchTab('Assessment library')">
-            <span class="material-symbols-outlined" aria-hidden="true">add</span>New assessment
+      <section
+        cvWorkspaceCards
+        headingId="quality-workspace-title"
+        title="Quality workspace"
+        icon="fact_check"
+      >
+        @for (destination of destinations; track destination.view; let i = $index) {
+          <button class="co-check-card" (click)="switchTab(destination.view)">
+            <span
+              class="material-symbols-outlined"
+              [style.color]="['#008d9f', '#008eff', '#00aac4', '#ff8a00'][i % 4]"
+              aria-hidden="true"
+              >{{ destination.icon }}</span
+            >
+            <div>
+              <h3>{{ destination.view }}</h3>
+              <p>{{ destination.description }}</p>
+            </div>
           </button>
         }
-        <button class="button" (click)="switchTab('Review schedule')">
+      </section>
+      <section
+        cvQuickActions
+        headingId="quality-quick-actions"
+        [actionCount]="service.can('create') ? 3 : 2"
+      >
+        @if (service.can('create')) {
+          <button class="co-primary" (click)="switchTab('Assessment library')">
+            <span class="material-symbols-outlined" aria-hidden="true">add</span>New assessment<span
+              class="material-symbols-outlined"
+              aria-hidden="true"
+              >chevron_right</span
+            >
+          </button>
+        }
+        <button (click)="switchTab('Review schedule')">
           <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Review
-          schedule
+          schedule<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
         </button>
-        <a class="button" routerLink="/manage/reviews"
+        <a routerLink="/manage/reviews"
           ><span class="material-symbols-outlined" aria-hidden="true">groups</span>Staff
-          supervision</a
+          supervision<span class="material-symbols-outlined" aria-hidden="true"
+            >chevron_right</span
+          ></a
         >
-        <p>Assessment sign-off and corrective actions remain part of their saved records.</p>
-      </aside>
+      </section>
     </div>
     <div class="quality-overview" [class.supervisor-overview]="supervisor">
       <section class="panel quality-panel">

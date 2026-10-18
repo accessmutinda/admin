@@ -1,3 +1,4 @@
+import { RouterLink } from '@angular/router';
 import { ModuleDesign } from '../../shared/module-design';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../../shared/ui/select';
@@ -7,7 +8,7 @@ import { ManagementStore } from '../../shared/management.store';
 import { ToastService } from '../../../../shared/ui/toast.service';
 @Component({
   selector: 'cv-approval-workflows',
-  imports: [ModuleDesign, FormsModule, MatSelectModule, CvSelect],
+  imports: [RouterLink, ModuleDesign, FormsModule, MatSelectModule, CvSelect],
   host: { class: 'module-page operations-page approvals-page' },
   templateUrl: './approval-workflows.html',
 })

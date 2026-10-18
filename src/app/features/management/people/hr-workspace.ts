@@ -1,3 +1,4 @@
+import { QuickActions } from '../shared/quick-actions';
 import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { CvSelect } from '../../../shared/ui/select';
@@ -12,7 +13,7 @@ import { checkState, staffRecord, today, DAYS } from './hr.models';
 @Component({
   selector: 'cv-hr-workspace',
   host: { class: 'module-page people-page hr-workspace-page' },
-  imports: [MatSelectModule, MatMenuModule, CvSelect, FormsModule, RouterLink],
+  imports: [QuickActions, MatSelectModule, MatMenuModule, CvSelect, FormsModule, RouterLink],
   templateUrl: './hr-workspace.html',
   styleUrls: ['./hr.css', './hr-directory.css', './hr-tables.css'],
 })
