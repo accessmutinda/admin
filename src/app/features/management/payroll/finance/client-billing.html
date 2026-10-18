@@ -1,23 +1,4 @@
-<section class="panel payroll-register">
-  <div class="panel-toolbar">
-    <div>
-      <h2>Client invoices</h2>
-      <p>Local authority, private and NHS billing from completed care visits.</p>
-    </div>
-    @if (ops.rota.can('view')) {
-      <a class="text-link" routerLink="/manage/clients">Client files & billing rates</a>
-    }
-  </div>
-  @if (ops.payroll.can('manage')) {
-    <form class="panel-body client-billing-prepare" (ngSubmit)="prepare()">
-      <label>Visit date<input type="date" name="date" [(ngModel)]="date" /></label
-      ><button class="button primary">Prepare client invoices</button>
-      <p>Uses saved actual attendance and client rates. Visits already invoiced are skipped.</p>
-    </form>
-  }
-  @if (error() && !selected()) {
-    <p class="payroll-error" role="alert">{{ error() }}</p>
-  }
+<section class="panel finance-filter-card" aria-label="Filter client invoices">
   <div class="panel-body payroll-filters">
     <label class="search-box"
       ><span class="material-symbols-outlined" aria-hidden="true">search</span
@@ -25,14 +6,14 @@
         aria-label="Search client invoices"
         placeholder="Search clients, dates or references…"
         [ngModel]="query()"
-        (ngModelChange)="query.set($event)"
+        (ngModelChange)="query.set($event); page.set(1)"
     /></label>
     <label class="client-billing-filter"
       >Funding<mat-select
         cvSelect
         aria-label="Filter client funding"
         [ngModel]="funding()"
-        (ngModelChange)="funding.set($event)"
+        (ngModelChange)="funding.set($event); page.set(1)"
       >
         @for (item of ['All', 'Local authority', 'Private', 'NHS']; track item) {
           <mat-option [value]="item">{{ item }}</mat-option>
@@ -44,7 +25,7 @@
         cvSelect
         aria-label="Filter client invoice status"
         [ngModel]="status()"
-        (ngModelChange)="status.set($event)"
+        (ngModelChange)="status.set($event); page.set(1)"
       >
         @for (item of ['All', 'Draft', 'Approved', 'Exported']; track item) {
           <mat-option [value]="item">{{ item }}</mat-option>
@@ -53,6 +34,27 @@
     >
     <button class="button" (click)="clear()">Clear</button>
   </div>
+</section>
+<section class="panel payroll-register">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Client invoices</h2>
+      <p>Local authority, private and NHS billing from completed care visits.</p>
+    </div>
+    <div class="finance-register-actions">
+      @if (ops.payroll.can('manage')) {
+        <button class="button primary" (click)="error.set(''); preparing.set(true)">
+          Prepare Client Invoices
+        </button>
+      }
+      @if (ops.rota.can('view')) {
+        <a class="text-link" routerLink="/manage/clients">Client files & billing rates</a>
+      }
+    </div>
+  </div>
+  @if (error() && !selected() && !preparing()) {
+    <p class="payroll-error" role="alert">{{ error() }}</p>
+  }
   <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
     <table class="payroll-table data-columns">
       <thead>
@@ -68,7 +70,7 @@
         </tr>
       </thead>
       <tbody>
-        @for (invoice of filtered(); track invoice.id) {
+        @for (invoice of rows(); track invoice.id) {
           <tr>
             <td data-label="Invoice">
               <strong>{{ invoice.number }}</strong>
@@ -105,15 +107,34 @@
       </tbody>
     </table>
   </div>
+  <div class="finance-register-footer">
+    <span
+      >Showing {{ filtered().length ? (currentPage() - 1) * 8 + 1 : 0 }}–{{
+        currentPage() * 8 < filtered().length ? currentPage() * 8 : filtered().length
+      }}
+      of {{ filtered().length }} invoices · Page {{ currentPage() }} of {{ pageCount() }} · 8 per
+      page</span
+    >
+    <div class="finance-register-actions">
+      <button class="button" [disabled]="currentPage() <= 1" (click)="page.set(currentPage() - 1)">
+        Previous</button
+      ><button
+        class="button"
+        [disabled]="currentPage() >= pageCount()"
+        (click)="page.set(currentPage() + 1)"
+      >
+        Next
+      </button>
+    </div>
+  </div>
   <p class="panel-note">
-    {{ filtered().length }} matching invoices · UK time · GBP. Export records a file download; it
-    does not send an invoice or record a payment.
+    UK time · GBP. Export records a file download; it does not send an invoice or record a payment.
   </p>
 </section>
 @if (selected(); as invoice) {
-  <div class="modal-backdrop" (click)="close()">
+  <div class="modal-backdrop finance-review-backdrop" (click)="close()">
     <section
-      class="modal panel payroll-modal"
+      class="panel finance-review-drawer"
       role="dialog"
       aria-modal="true"
       aria-labelledby="client-invoice-title"
@@ -202,6 +223,47 @@
           </div>
         }
       </div>
+    </section>
+  </div>
+}
+
+@if (preparing() && ops.payroll.can('manage')) {
+  <div class="modal-backdrop finance-review-backdrop" (click)="preparing.set(false)">
+    <section
+      class="panel finance-review-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="prepare-client-invoices-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (keydown.escape)="preparing.set(false)"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="panel-toolbar">
+        <h2 id="prepare-client-invoices-title" tabindex="-1" cdkFocusInitial>
+          Prepare client invoices
+        </h2>
+        <button
+          class="icon-button"
+          aria-label="Close invoice preparation"
+          (click)="preparing.set(false)"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <form class="panel-body requirement-list" (ngSubmit)="prepare()">
+        <label>Visit date<input type="date" name="date" [(ngModel)]="date" required /></label>
+        <p class="payroll-note">
+          Uses saved actual attendance and client rates. Visits already invoiced are skipped.
+        </p>
+        @if (error()) {
+          <p class="payroll-error" role="alert">{{ error() }}</p>
+        }
+        <div class="finance-register-actions">
+          <button type="button" class="button" (click)="preparing.set(false)">Cancel</button
+          ><button class="button primary">Prepare client invoices</button>
+        </div>
+      </form>
     </section>
   </div>
 }

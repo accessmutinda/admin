@@ -39,15 +39,17 @@ describe('Finance area navigation', () => {
     const before = structuredClone(store.data().payroll);
     const harness = await RouterTestingHarness.create('/manage/finance/overview');
     const page = harness.routeNativeElement!;
-    expect(page.querySelector('.finance-main-grid > .payroll-prepare-panel')).not.toBeNull();
-    expect(page.querySelector('.finance-main-grid > .finance-dashboard')).not.toBeNull();
-    expect(page.querySelector('.finance-review-stack > .payroll-review-panel')).not.toBeNull();
-    expect(page.querySelector('.finance-review-stack > .finance-next-run')).not.toBeNull();
-    page.querySelector<HTMLButtonElement>('.payroll-prepare-panel .payroll-setup-action')!.click();
+    expect(page.querySelector('.finance-workspace-grid > [cvWorkspaceCards]')).not.toBeNull();
+    expect(page.querySelector('.finance-workspace-grid > [cvQuickActions]')).not.toBeNull();
+    expect(page.querySelectorAll('.finance-workspace-grid .co-check-card')).toHaveLength(8);
+    expect(page.querySelector('.finance-report-grid > .finance-dashboard')).not.toBeNull();
+    expect(page.querySelector('.finance-review-grid > .payroll-review-panel')).not.toBeNull();
+    expect(page.querySelector('.finance-report-grid > .finance-next-run')).not.toBeNull();
+    page.querySelector<HTMLAnchorElement>('.finance-workspace-grid .co-check-card')!.click();
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(TestBed.inject(Router).url).toContain('/manage/finance/payroll');
-    expect(page.querySelector('.payroll-view-tabs button.active')?.textContent?.trim()).toBe(
+    expect(page.querySelector('.payroll-register-heading h2')?.textContent?.trim()).toBe(
       'Staff pay',
     );
     expect(store.data().payroll).toEqual(before);
@@ -76,20 +78,23 @@ describe('Finance area navigation', () => {
     expect(harness.routeNativeElement?.querySelector('.finance-area-nav')).toBeNull();
     expect(harness.routeNativeElement?.querySelector('h1')?.textContent).toBe('Payroll');
     expect(
-      harness.routeNativeElement?.querySelector('nav[aria-label="Payroll sections"]')?.textContent,
-    ).toContain('Pay settings');
+      harness.routeNativeElement?.querySelectorAll('cv-finance-area-home .co-check-card'),
+    ).toHaveLength(5);
+    expect(harness.routeNativeElement?.querySelector('.payroll-register')).toBeNull();
     expect(harness.routeNativeElement?.querySelector('nav[aria-label="Invoice views"]')).toBeNull();
     await harness.navigateByUrl('/manage/finance/billing?view=Contractors');
     expect(harness.routeNativeElement?.querySelector('h1')?.textContent).toBe('Billing & payments');
     expect(
-      harness.routeNativeElement?.querySelector('.payroll-register-heading h2')?.textContent,
+      harness.routeNativeElement
+        ?.querySelector('.payroll-register-heading h2')
+        ?.textContent?.trim(),
     ).toBe('Contractors');
     expect(harness.routeNativeElement?.querySelector('nav[aria-label="Payroll views"]')).toBeNull();
     await harness.navigateByUrl('/manage/payroll');
     expect(TestBed.inject(Router).url).toBe('/manage/finance/payroll');
     expect(
-      harness.routeNativeElement?.querySelector('nav[aria-label="Payroll views"]'),
-    ).not.toBeNull();
+      harness.routeNativeElement?.querySelectorAll('cv-finance-area-home .co-check-card'),
+    ).toHaveLength(5);
   });
 
   it('restores deep-linked views and review records without moving or changing company data', async () => {
@@ -120,7 +125,7 @@ describe('Finance area navigation', () => {
     await harness.navigateByUrl('/manage/finance/payroll?view=Payroll&payrollView=Staff%20pay');
     expect(
       harness.routeNativeElement
-        ?.querySelector('.payroll-view-tabs button.active')
+        ?.querySelector('.payroll-register-heading h2')
         ?.textContent?.trim(),
     ).toBe('Staff pay');
     await harness.navigateByUrl('/manage/finance/billing?view=Settings&invoiceView=Clients');

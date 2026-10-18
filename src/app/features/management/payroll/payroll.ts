@@ -1,3 +1,5 @@
+import { clientInvoiceTotal } from './finance/finance.models';
+import { FinanceAreaHome } from './finance/finance-area-home';
 import { ModuleDesign } from '../shared/module-design';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -42,11 +44,12 @@ import { AREA_VIEWS, financeArea, financeView, viewArea } from './finance/financ
     RouterLink,
     AccessRequired,
     FinanceOverview,
+    FinanceAreaHome,
     ClientBilling,
   ],
   host: { class: 'module-page operations-page finance-page' },
   templateUrl: './payroll.html',
-  styleUrl: './payroll.css',
+  styleUrls: ['./payroll.css', './finance/finance-register-controls.css'],
 })
 export class Payroll {
   protected readonly service = inject(PayrollService);
@@ -77,6 +80,25 @@ export class Payroll {
         ? 'Manage client billing, supplier invoices and recorded payments.'
         : 'Review company income, payroll estimates and supplier costs.',
   );
+  protected readonly reportingPeriod = signal(6);
+  protected readonly page = signal(1);
+  protected readonly registerCount = computed(() =>
+    this.tab() === 'Invoices'
+      ? this.filteredInvoices().length
+      : this.tab() === 'Contractors'
+        ? this.filteredContractors().length
+        : this.tab() === 'Overtime' || this.payrollTab() === 'Timesheets'
+          ? this.filteredWork().length
+          : this.payrollTab() === 'Staff pay'
+            ? this.filteredProfiles().length
+            : this.filteredRuns().length,
+  );
+  protected readonly pageCount = computed(() => Math.max(1, Math.ceil(this.registerCount() / 8)));
+  protected readonly currentPage = computed(() => Math.min(this.page(), this.pageCount()));
+  protected pageRows<T>(rows: T[]): T[] {
+    return rows.slice((this.currentPage() - 1) * 8, this.currentPage() * 8);
+  }
+
   protected readonly tab = signal('Overview');
   protected readonly payrollTab = signal('Pay runs');
   protected readonly invoiceTab = signal('Suppliers');
@@ -131,7 +153,10 @@ export class Payroll {
           this.match(
             `${this.contractorName(i.contractorId)} ${i.number} ${i.due} ${this.invoiceStatus(i)}`,
           ) &&
-          (this.status() === 'All' || this.invoiceStatus(i) === this.status()),
+          (this.status() === 'All' ||
+            (this.status() === 'Outstanding'
+              ? i.status === 'Approved' && invoiceBalance(i) > 0
+              : this.invoiceStatus(i) === this.status())),
       ),
   );
   protected readonly filteredContractors = computed(() =>
@@ -167,6 +192,12 @@ export class Payroll {
   );
   protected readonly invoiceDue = computed(() =>
     this.outstandingInvoices().reduce((sum, i) => sum + invoiceBalance(i), 0),
+  );
+  protected readonly approvedClientBilling = computed(() =>
+    this.ops
+      .data()
+      .invoices.filter((invoice) => invoice.state !== 'Draft')
+      .reduce((sum, invoice) => sum + clientInvoiceTotal(invoice), 0),
   );
   protected readonly pendingClientInvoices = computed(
     () => this.ops.data().invoices.filter((invoice) => invoice.state === 'Draft').length,
@@ -206,7 +237,17 @@ export class Payroll {
     const area = financeArea(this.route.snapshot.paramMap.get('area'));
     const params = this.route.snapshot.queryParamMap;
     this.area.set(area);
-    this.tab.set(financeView(area, params.get('view')));
+    this.tab.set(
+      financeView(
+        area,
+        params.get('view') ??
+          (params.has('payrollView') || params.has('invoiceView') || params.has('record')
+            ? area === 'billing'
+              ? 'Invoices'
+              : 'Payroll'
+            : null),
+      ),
+    );
     this.payrollTab.set(
       ['Pay runs', 'Staff pay', 'Timesheets'].find((view) => view === params.get('payrollView')) ??
         'Pay runs',
@@ -214,7 +255,22 @@ export class Payroll {
     this.invoiceTab.set(params.get('invoiceView') === 'Clients' ? 'Clients' : 'Suppliers');
     this.query.set(params.get('search') ?? '');
     this.staffFilter.set(params.get('person') ?? '');
-    this.status.set('All');
+    this.status.set(
+      [
+        'Outstanding',
+        'Recorded',
+        'Work confirmed',
+        'Returned',
+        'Rejected',
+        'Awaiting payment',
+        'Partially paid',
+        'Paid',
+        'Cancelled',
+      ].includes(params.get('status') ?? '')
+        ? params.get('status')!
+        : 'All',
+    );
+    this.page.set(1);
     this.selected.set(null);
     this.modal.set('');
     this.error.set('');

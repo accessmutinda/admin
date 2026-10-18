@@ -12,6 +12,24 @@
     <h1>{{ heading() }}</h1>
     <p>{{ description() }}</p>
   </div>
+  @if (area() !== 'overview' && tab() !== 'Home' && service.can('view')) {
+    <a class="button" [routerLink]="['/manage/finance', area()]"
+      ><span class="material-symbols-outlined" aria-hidden="true">dashboard</span>All views</a
+    >
+  }
+  @if (area() === 'overview' && service.can('view')) {
+    <label class="finance-reporting-period"
+      >Reporting period<mat-select
+        cvSelect
+        aria-label="Finance reporting period"
+        [ngModel]="reportingPeriod()"
+        (ngModelChange)="reportingPeriod.set($event)"
+        ><mat-option [value]="1">This month</mat-option
+        ><mat-option [value]="6">Last 6 months</mat-option
+        ><mat-option [value]="12">Last 12 months</mat-option></mat-select
+      ></label
+    >
+  }
 </div>
 @if (!service.can('view')) {
   <cv-access-required
@@ -23,86 +41,96 @@
     permissionsTitle="Payroll & payments access"
   />
 } @else {
-  <div class="metrics" [class.four]="area() === 'overview'">
-    @if (area() !== 'billing') {
-      <button class="metric co-stat co-surface" data-tone="teal" (click)="choose('Payroll')">
-        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">payments</span>
-        <div>
-          <h2>Prepared gross pay</h2>
-          <strong>{{ gross() | currency: 'GBP' }}</strong
-          ><small>Draft, locked and exported runs</small>
-        </div>
-      </button>
-      <button class="metric co-stat co-surface" data-tone="purple" (click)="choose('Overtime')">
-        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">more_time</span>
-        <div>
-          <h2>Overtime to review</h2>
-          <strong>{{ pendingOvertime().length }}</strong
-          ><small>Extra work awaiting completion</small>
-        </div>
-      </button>
-    }
-    @if (area() !== 'payroll') {
-      <button class="metric co-stat co-surface" data-tone="amber" (click)="choose('Invoices')">
-        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">receipt_long</span>
-        <div>
-          <h2>Unpaid invoices</h2>
-          <strong>{{ invoiceDue() | currency: 'GBP' }}</strong
-          ><small>{{ outstandingInvoices().length }} invoices with a balance</small>
-        </div>
-      </button>
-    }
-    @if (area() !== 'billing') {
-      <button
-        class="metric co-stat co-surface"
-        data-tone="blue"
-        (click)="choosePayroll('Staff pay')"
-      >
-        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">badge</span>
-        <div>
-          <h2>Pay setup needed</h2>
-          <strong>{{ missingProfiles() }}</strong
-          ><small>Hired staff without an effective profile</small>
-        </div>
-      </button>
-    }
-    @if (area() === 'billing') {
-      <button class="metric co-stat co-surface" data-tone="purple" (click)="choose('Contractors')">
-        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">handshake</span>
-        <div>
-          <h2>Contractors & agencies</h2>
-          <strong>{{ service.data().contractors.length }}</strong
-          ><small>Saved supplier agreements</small>
-        </div>
-      </button>
-      <button
-        class="metric co-stat co-surface"
-        data-tone="blue"
-        (click)="chooseInvoices('Clients')"
-      >
-        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">request_quote</span>
-        <div>
-          <h2>Client invoices to approve</h2>
-          <strong>{{ pendingClientInvoices() }}</strong
-          ><small>Prepared drafts awaiting review</small>
-        </div>
-      </button>
-    }
-  </div>
   @if (area() !== 'overview') {
-    <section class="panel payroll-navigation">
-      <nav class="tabs" [attr.aria-label]="heading() + ' sections'">
-        @for (item of tabs(); track item) {
-          <button
-            [class.active]="tab() === item"
-            [attr.aria-pressed]="tab() === item"
-            (click)="choose(item)"
+    <div class="metrics" [class.four]="area() === 'billing'">
+      @if (area() !== 'billing') {
+        <button class="metric co-stat co-surface" data-tone="teal" (click)="choose('Payroll')">
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">payments</span>
+          <div>
+            <h2>Prepared gross estimate</h2>
+            <strong>{{ gross() | currency: 'GBP' }}</strong
+            ><small>Draft, locked &amp; exported · all dates</small>
+          </div>
+        </button>
+        <button class="metric co-stat co-surface" data-tone="purple" (click)="choose('Overtime')">
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">more_time</span>
+          <div>
+            <h2>Overtime to review</h2>
+            <strong>{{ pendingOvertime().length }}</strong
+            ><small>Extra work awaiting completion</small>
+          </div>
+        </button>
+      }
+      @if (area() !== 'payroll') {
+        <button class="metric co-stat co-surface" data-tone="amber" (click)="choose('Invoices')">
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true"
+            >receipt_long</span
           >
-            {{ item === 'Settings' ? 'Pay settings' : item === 'Payroll' ? 'Staff payroll' : item }}
-          </button>
-        }
-      </nav>
-    </section>
+          <div>
+            <h2>Unpaid supplier invoices</h2>
+            <strong>{{ invoiceDue() | currency: 'GBP' }}</strong
+            ><small>{{ outstandingInvoices().length }} invoices with a balance · all dates</small>
+          </div>
+        </button>
+      }
+      @if (area() !== 'billing') {
+        <button
+          class="metric co-stat co-surface"
+          data-tone="blue"
+          (click)="choosePayroll('Staff pay')"
+        >
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">badge</span>
+          <div>
+            <h2>Pay setup needed</h2>
+            <strong>{{ missingProfiles() }}</strong
+            ><small>Hired staff without an effective profile</small>
+          </div>
+        </button>
+      }
+      @if (area() === 'billing') {
+        <button
+          class="metric co-stat co-surface"
+          data-tone="teal"
+          (click)="chooseInvoices('Clients')"
+        >
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true"
+            >request_quote</span
+          >
+          <div>
+            <h2>Approved client billing</h2>
+            <strong>{{ approvedClientBilling() | currency: 'GBP' }}</strong
+            ><small>Approved and exported · all dates</small>
+          </div>
+        </button>
+
+        <button
+          class="metric co-stat co-surface"
+          data-tone="purple"
+          (click)="choose('Contractors')"
+        >
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">handshake</span>
+          <div>
+            <h2>Contractors & agencies</h2>
+            <strong>{{ service.data().contractors.length }}</strong
+            ><small>Saved supplier agreements</small>
+          </div>
+        </button>
+        <button
+          class="metric co-stat co-surface"
+          data-tone="blue"
+          (click)="chooseInvoices('Clients')"
+        >
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true"
+            >request_quote</span
+          >
+          <div>
+            <h2>Client invoices to approve</h2>
+            <strong>{{ pendingClientInvoices() }}</strong
+            ><small>Prepared drafts awaiting review</small>
+          </div>
+        </button>
+      }
+    </div>
   }
   @if (error() && !modal() && !selected()) {
     <p class="payroll-error" role="alert">{{ error() }}</p>
@@ -110,61 +138,19 @@
   @if (tab() === 'Overview') {
     <cv-finance-overview
       [today]="today"
+      [period]="reportingPeriod()"
+      [missingProfiles]="missingProfiles()"
       (navigate)="financeNavigate($event)"
       (reviewRun)="reviewFinanceRun($event)"
     >
-      <section class="panel payroll-prepare-panel">
-        <div class="panel-toolbar">
-          <div>
-            <h2>Prepare payroll</h2>
-            <p>From staff pay setup to an approved pay run.</p>
-          </div>
-        </div>
-        <div class="payroll-setup-list">
-          <button class="payroll-setup-action" (click)="choosePayroll('Staff pay')">
-            <span class="payroll-step-icon material-symbols-outlined" aria-hidden="true"
-              >badge</span
-            >
-            <span
-              ><strong>Manage staff pay</strong
-              ><small>{{ missingProfiles() }} staff need a pay profile</small></span
-            >
-            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
-          </button>
-          <button class="payroll-setup-action" (click)="choosePayroll('Timesheets')">
-            <span class="payroll-step-icon material-symbols-outlined" aria-hidden="true"
-              >schedule</span
-            >
-            <span
-              ><strong>Review timesheets</strong
-              ><small>Confirm actual work and approve hours</small></span
-            >
-            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
-          </button>
-          <button class="payroll-setup-action" (click)="choosePayroll('Pay runs')">
-            <span class="payroll-step-icon material-symbols-outlined" aria-hidden="true"
-              >payments</span
-            >
-            <span
-              ><strong>Prepare a pay run</strong
-              ><small>Bring approved work together for sign-off</small></span
-            >
-            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
-          </button>
-        </div>
-        <p class="payroll-prepare-note">
-          Gross estimates only. Tax, National Insurance and pensions are not calculated; HMRC
-          submissions and bank transfers require connected services.
-        </p>
-      </section>
       <section class="panel payroll-review-panel">
         <div class="panel-toolbar">
           <div>
             <h2>
-              Review queue
+              Needs attention
               <span class="count">{{ pendingWork().length + outstandingInvoices().length }}</span>
             </h2>
-            <p>Work awaiting review and invoices with a balance.</p>
+            <p>Work awaiting review and unpaid supplier invoices · all dates.</p>
           </div>
           <a class="text-link" routerLink="/manage/workflows">Approval routes</a>
         </div>
@@ -201,23 +187,10 @@
         </div>
       </section>
     </cv-finance-overview>
-  } @else if (tab() === 'Invoices') {
-    <section class="panel payroll-navigation">
-      <nav class="tabs" aria-label="Invoice views">
-        @for (item of ['Suppliers', 'Clients']; track item) {
-          <button
-            [class.active]="invoiceTab() === item"
-            [attr.aria-pressed]="invoiceTab() === item"
-            (click)="chooseInvoices(item)"
-          >
-            {{ item === 'Suppliers' ? 'Supplier invoices' : 'Client invoices' }}
-          </button>
-        }
-      </nav>
-    </section>
-    @if (invoiceTab() === 'Clients') {
-      <cv-client-billing />
-    }
+  } @else if (tab() === 'Home') {
+    <cv-finance-area-home [area]="area()" [today]="today" />
+  } @else if (tab() === 'Invoices' && invoiceTab() === 'Clients') {
+    <cv-client-billing />
   }
   @if (tab() === 'Settings') {
     <section class="panel">
@@ -299,64 +272,12 @@
         </div>
       </form>
     </section>
-  } @else if (tab() !== 'Overview' && !(tab() === 'Invoices' && invoiceTab() === 'Clients')) {
-    <section class="panel payroll-register">
-      <div
-        class="panel-toolbar payroll-register-toolbar"
-        [class.has-payroll-views]="tab() === 'Payroll'"
-      >
-        <div class="payroll-register-heading">
-          <h2>{{ tab() === 'Invoices' ? 'Supplier invoices' : tab() }}</h2>
-          @if (tab() === 'Payroll') {
-            <nav class="segmented payroll-view-tabs" aria-label="Payroll views">
-              @for (p of ['Pay runs', 'Staff pay', 'Timesheets']; track p) {
-                <button
-                  [class.active]="payrollTab() === p"
-                  [attr.aria-pressed]="payrollTab() === p"
-                  (click)="choosePayroll(p)"
-                >
-                  {{ p }}
-                </button>
-              }
-            </nav>
-          }
-        </div>
-        @if (service.can('manage')) {
-          <button
-            class="button primary"
-            (click)="
-              open(
-                tab() === 'Payroll'
-                  ? payrollTab() === 'Staff pay'
-                    ? 'profile'
-                    : payrollTab() === 'Timesheets'
-                      ? 'work'
-                      : 'run'
-                  : tab() === 'Overtime'
-                    ? 'work'
-                    : tab() === 'Contractors'
-                      ? 'contractor'
-                      : 'invoice'
-              )
-            "
-          >
-            <span class="material-symbols-outlined" aria-hidden="true">add</span
-            >{{
-              tab() === 'Payroll'
-                ? payrollTab() === 'Staff pay'
-                  ? 'Add pay profile'
-                  : payrollTab() === 'Timesheets'
-                    ? 'Record work'
-                    : 'Prepare pay run'
-                : tab() === 'Overtime'
-                  ? 'Record overtime'
-                  : tab() === 'Contractors'
-                    ? 'Add contractor'
-                    : 'Record invoice'
-            }}
-          </button>
-        }
-      </div>
+  } @else if (
+    tab() !== 'Overview' &&
+    tab() !== 'Home' &&
+    !(tab() === 'Invoices' && invoiceTab() === 'Clients')
+  ) {
+    <section class="panel finance-filter-card" aria-label="Filter financial records">
       <div class="panel-body payroll-filters">
         <label class="search-box"
           ><span class="material-symbols-outlined" aria-hidden="true">search</span
@@ -364,16 +285,10 @@
             aria-label="Search payroll records"
             placeholder="Search names, dates or references…"
             [ngModel]="query()"
-            (ngModelChange)="query.set($event)" /></label
-        ><button class="button" (click)="query.set(''); status.set('All')">Clear</button>
-        @if (
-          service.can('export') &&
-          (tab() === 'Overtime' ||
-            tab() === 'Invoices' ||
-            (tab() === 'Payroll' && payrollTab() === 'Timesheets'))
-        ) {
-          <button class="button" (click)="exportRegister()">Export full register</button>
-        }
+            (ngModelChange)="query.set($event); page.set(1)" /></label
+        ><button class="button" (click)="query.set(''); status.set('All'); page.set(1)">
+          Clear
+        </button>
         @if (
           tab() === 'Overtime' ||
           tab() === 'Invoices' ||
@@ -384,13 +299,14 @@
             ><mat-select
               cvSelect
               [ngModel]="status()"
-              (ngModelChange)="status.set($event)"
+              (ngModelChange)="status.set($event); page.set(1)"
               aria-label="Filter payroll status"
             >
               @for (
                 s of tab() === 'Invoices'
                   ? [
                       'All',
+                      'Outstanding',
                       'Recorded',
                       'Work confirmed',
                       'Returned',
@@ -417,6 +333,69 @@
           >
         }
       </div>
+    </section>
+    <section class="panel payroll-register">
+      <div
+        class="panel-toolbar payroll-register-toolbar"
+        [class.has-payroll-views]="tab() === 'Payroll'"
+      >
+        <div class="payroll-register-heading">
+          <h2>
+            {{
+              tab() === 'Invoices'
+                ? 'Supplier invoices'
+                : tab() === 'Payroll'
+                  ? payrollTab()
+                  : tab()
+            }}
+          </h2>
+        </div>
+        <div class="finance-register-actions">
+          @if (
+            service.can('export') &&
+            (tab() === 'Overtime' ||
+              tab() === 'Invoices' ||
+              (tab() === 'Payroll' && payrollTab() === 'Timesheets'))
+          ) {
+            <button class="button" (click)="exportRegister()">Export full register</button>
+          }
+          @if (service.can('manage')) {
+            <button
+              class="button primary"
+              (click)="
+                open(
+                  tab() === 'Payroll'
+                    ? payrollTab() === 'Staff pay'
+                      ? 'profile'
+                      : payrollTab() === 'Timesheets'
+                        ? 'work'
+                        : 'run'
+                    : tab() === 'Overtime'
+                      ? 'work'
+                      : tab() === 'Contractors'
+                        ? 'contractor'
+                        : 'invoice'
+                )
+              "
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">add</span
+              >{{
+                tab() === 'Payroll'
+                  ? payrollTab() === 'Staff pay'
+                    ? 'Add pay profile'
+                    : payrollTab() === 'Timesheets'
+                      ? 'Record work'
+                      : 'Prepare pay run'
+                  : tab() === 'Overtime'
+                    ? 'Record overtime'
+                    : tab() === 'Contractors'
+                      ? 'Add contractor'
+                      : 'Record invoice'
+              }}
+            </button>
+          }
+        </div>
+      </div>
       <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
         <table
           class="payroll-table payroll-register-table data-columns"
@@ -436,7 +415,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (w of filteredWork(); track w.id) {
+              @for (w of pageRows(filteredWork()); track w.id) {
                 <tr>
                   <td data-label="Employee">
                     <strong>{{ personName(w.personId) }}</strong>
@@ -497,7 +476,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (c of filteredContractors(); track c.id) {
+              @for (c of pageRows(filteredContractors()); track c.id) {
                 <tr>
                   <td data-label="Supplier">
                     <strong>{{ c.name }}</strong>
@@ -546,7 +525,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (i of filteredInvoices(); track i.id) {
+              @for (i of pageRows(filteredInvoices()); track i.id) {
                 <tr>
                   <td data-label="Invoice">
                     <strong>{{ i.number }}</strong>
@@ -597,7 +576,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (p of filteredProfiles(); track p.id) {
+              @for (p of pageRows(filteredProfiles()); track p.id) {
                 <tr>
                   <td data-label="Employee">
                     <a class="text-link" [routerLink]="['/manage/people', p.personId]">{{
@@ -663,7 +642,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (r of filteredRuns(); track r.id) {
+              @for (r of pageRows(filteredRuns()); track r.id) {
                 <tr>
                   <td data-label="Pay run">
                     <strong>{{ r.name }}</strong>
@@ -707,356 +686,381 @@
           }
         </table>
       </div>
-      <div class="panel-note">
-        {{
-          tab() === 'Invoices'
-            ? filteredInvoices().length
-            : tab() === 'Contractors'
-              ? filteredContractors().length
-              : tab() === 'Overtime' || payrollTab() === 'Timesheets'
-                ? filteredWork().length
-                : payrollTab() === 'Staff pay'
-                  ? filteredProfiles().length
-                  : filteredRuns().length
-        }}
-        matching records · UK time · GBP
+      <div class="finance-register-footer">
+        <span
+          >Showing {{ registerCount() ? (currentPage() - 1) * 8 + 1 : 0 }}–{{
+            currentPage() * 8 < registerCount() ? currentPage() * 8 : registerCount()
+          }}
+          of {{ registerCount() }} records · Page {{ currentPage() }} of {{ pageCount() }} · 8 per
+          page</span
+        >
+        <div class="finance-register-actions">
+          <button
+            class="button"
+            [disabled]="currentPage() <= 1"
+            (click)="page.set(currentPage() - 1)"
+          >
+            Previous</button
+          ><button
+            class="button"
+            [disabled]="currentPage() >= pageCount()"
+            (click)="page.set(currentPage() + 1)"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </section>
   }
-  @if (selected()) {
-    <section class="panel payroll-detail">
-      <div class="panel-toolbar">
-        <h2 id="payroll-record-title" tabindex="-1">
-          {{
-            workRecord()
-              ? 'Work record review'
-              : invoiceRecord()
-                ? 'Invoice review'
-                : runRecord()
-                  ? 'Pay run review'
-                  : 'Contractor record'
-          }}
-        </h2>
-        <button class="icon-button" aria-label="Close record" (click)="selected.set(null)">
-          <span class="material-symbols-outlined" aria-hidden="true">close</span>
-        </button>
-      </div>
-      @if (error() && !modal()) {
-        <p class="payroll-error" role="alert">{{ error() }}</p>
-      }
-      @if (workRecord(); as w) {
-        <div class="panel-body requirement-list">
-          <div class="payroll-detail-heading">
-            <a class="text-link" [routerLink]="['/manage/people', w.personId]">{{
-              personName(w.personId)
-            }}</a
-            ><span class="badge">{{ w.status }}</span>
-          </div>
-          <p>
-            {{ w.kind }} · {{ w.date | date: 'd MMM yyyy' }} · requested {{ w.hours }} hours / units
-            at {{ w.rate | currency: 'GBP' }}
-          </p>
-          <p>{{ w.reason }}</p>
-          @if (!w.runId && !['Approved', 'Rejected'].includes(w.status)) {
-            <div class="form-grid">
-              <label
-                >Review / confirmation note<textarea [(ngModel)]="note" rows="2"></textarea></label
-              ><label
-                >Actual hours / units<input
-                  type="number"
-                  [(ngModel)]="actualHours"
-                  min="0.01"
-                  step="0.01"
-              /></label>
-            </div>
-            <div class="payroll-actions">
-              @if (service.can('approve')) {
-                @if (
-                  w.status === 'Requested' ||
-                  (w.status === 'Returned' && w.returnStage === 'Requested')
-                ) {
-                  <button class="button primary" (click)="workAction('Authorise')">
-                    Authorise overtime
-                  </button>
-                }
-                @if (w.status === 'Confirmed') {
-                  <button class="button primary" (click)="workAction('Approve')">
-                    Approve for payroll
-                  </button>
-                }
-                <button class="button" (click)="workAction('Return')">Return</button
-                ><button class="button" (click)="workAction('Reject')">Reject</button>
-              }
-              @if (
-                service.can('manage') &&
-                (w.status === 'Authorised' ||
-                  (w.status === 'Returned' && w.returnStage !== 'Requested'))
-              ) {
-                <button class="button primary" (click)="workAction('Confirm')">
-                  Confirm actual work
-                </button>
-              }
-            </div>
-          } @else {
-            <p class="payroll-note">
-              {{
-                w.runId
-                  ? 'This record is reserved in a pay run. Changes require cancellation of the draft run.'
-                  : 'This review is complete. Approved amounts are available to payroll.'
-              }}
-            </p>
-          }
-          <h3>Review history</h3>
-          @for (a of w.audit; track $index) {
-            <div class="payroll-history">
-              <strong>{{ a.action }} · {{ a.user }}</strong
-              ><small>{{ auditDate(a.at) }} · UK time</small>
-              <p>{{ a.note }}</p>
-            </div>
-          }
+  @if (selected() && !modal()) {
+    <div class="modal-backdrop finance-review-backdrop" (click)="selected.set(null)">
+      <section
+        class="panel payroll-detail finance-review-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="payroll-record-title"
+        cdkTrapFocus
+        [cdkTrapFocusAutoCapture]="true"
+        (keydown.escape)="selected.set(null)"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="panel-toolbar">
+          <h2 id="payroll-record-title" tabindex="-1" cdkFocusInitial>
+            {{
+              workRecord()
+                ? 'Work record review'
+                : invoiceRecord()
+                  ? 'Invoice review'
+                  : runRecord()
+                    ? 'Pay run review'
+                    : 'Contractor record'
+            }}
+          </h2>
+          <button class="icon-button" aria-label="Close record" (click)="selected.set(null)">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
         </div>
-      }
-      @if (invoiceRecord(); as i) {
-        <div class="panel-body requirement-list">
-          <div class="payroll-detail-heading">
-            <h3>{{ i.number }} · {{ contractorName(i.contractorId) }}</h3>
-            <span class="badge">{{ invoiceStatus(i) }}</span>
-          </div>
-          <p>
-            Services {{ i.start | date: 'd MMM yyyy' }} to {{ i.end | date: 'd MMM yyyy' }} · due
-            {{ i.due | date: 'd MMM yyyy' }}
-          </p>
-          @if (rateWarning(i)) {
-            <p class="payroll-warning">
-              One or more rates exceed the contractor agreement. Record an explanation before
-              approval.
-            </p>
-          }
-          <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
-            <table class="data-columns">
-              <thead>
-                <tr>
-                  <th scope="col">Work</th>
-                  <th class="table-number" scope="col">Quantity</th>
-                  <th class="table-number table-money" scope="col">Rate</th>
-                  <th class="table-number" scope="col">VAT</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (l of i.lines; track $index) {
-                  <tr>
-                    <td>{{ l.description }}</td>
-                    <td class="table-number">{{ l.quantity }}</td>
-                    <td class="table-number table-money">{{ l.rate | currency: 'GBP' }}</td>
-                    <td class="table-number">{{ l.vat }}%</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          <p>
-            <strong
-              >Total {{ invoiceTotal(i) | currency: 'GBP' }} · outstanding
-              {{ invoiceBalance(i) | currency: 'GBP' }}</strong
-            >
-          </p>
-          @if (i.attachment; as file) {
-            <button class="button" (click)="download(file)">Download {{ file.name }}</button>
-          }
-          @if (
-            service.can('approve') &&
-            !['Rejected', 'Cancelled'].includes(i.status) &&
-            !i.payments.length
-          ) {
-            <label>Review note<textarea [(ngModel)]="note" rows="2"></textarea></label>
-            <div class="payroll-actions">
-              @if (['Recorded', 'Returned'].includes(i.status)) {
-                <button class="button primary" (click)="invoiceAction('Confirm work')">
-                  Confirm work
-                </button>
-              }
-              @if (i.status === 'Work confirmed') {
-                <button class="button primary" (click)="invoiceAction('Approve')">
-                  Approve invoice
-                </button>
-              }
-              @if (i.status !== 'Approved') {
-                <button class="button" (click)="invoiceAction('Return')">Return</button
-                ><button class="button" (click)="invoiceAction('Reject')">Reject</button>
-              }
-              <button class="button" (click)="invoiceAction('Cancel')">Cancel invoice</button>
+        @if (error() && !modal()) {
+          <p class="payroll-error" role="alert">{{ error() }}</p>
+        }
+        @if (workRecord(); as w) {
+          <div class="panel-body requirement-list">
+            <div class="payroll-detail-heading">
+              <a class="text-link" [routerLink]="['/manage/people', w.personId]">{{
+                personName(w.personId)
+              }}</a
+              ><span class="badge">{{ w.status }}</span>
             </div>
-          }
-          @if (service.can('pay') && i.status === 'Approved' && invoiceBalance(i) > 0) {
-            <h3>Record a payment</h3>
-            <div class="form-grid">
-              <label>Payment date<input type="date" [(ngModel)]="payment.date" /></label
-              ><label
-                >Amount (£)<input
-                  type="number"
-                  [(ngModel)]="payment.amount"
-                  min="0.01"
-                  step="0.01" /></label
-              ><label class="full-width"
-                >Payment reference<input [(ngModel)]="payment.reference"
-              /></label>
-            </div>
-            <button class="button primary" (click)="payInvoice()">Record payment</button>
-            <p class="payroll-note">
-              Record a payment already made through your bank. This action does not transfer money.
-            </p>
-          }
-          @for (p of i.payments; track $index) {
             <p>
-              Payment {{ p.amount | currency: 'GBP' }} · {{ p.date | date: 'd MMM yyyy' }} ·
-              {{ p.reference }}
+              {{ w.kind }} · {{ w.date | date: 'd MMM yyyy' }} · requested {{ w.hours }} hours /
+              units at {{ w.rate | currency: 'GBP' }}
             </p>
-          }
-          <h3>Review history</h3>
-          @for (a of i.audit; track $index) {
-            <div class="payroll-history">
-              <strong>{{ a.action }} · {{ a.user }}</strong
-              ><small>{{ auditDate(a.at) }} · UK time</small>
-              <p>{{ a.note }}</p>
-            </div>
-          }
-        </div>
-      }
-      @if (runRecord(); as r) {
-        <div class="panel-body requirement-list">
-          <div class="payroll-detail-heading">
-            <h3>{{ r.name }} · {{ runTotal(r) | currency: 'GBP' }}</h3>
-            <span class="badge">{{ r.status }}</span>
-          </div>
-          <p>
-            Period {{ r.start | date: 'd MMM yyyy' }} to {{ r.end | date: 'd MMM yyyy' }} · cutoff
-            {{ r.cutoff | date: 'd MMM yyyy' }} · payday {{ r.payday | date: 'd MMM yyyy' }}
-          </p>
-          <p class="payroll-note">
-            Gross estimate only. Salary uses annual pay ÷ 52, 26 or 12 for a full weekly,
-            fortnightly or monthly period. Part-period salary needs an explained adjustment. Hourly
-            pay uses approved work records and their saved rates.
-          </p>
-          @if (previousRun(r); as previous) {
-            <p>
-              Previous run: {{ runTotal(previous) | currency: 'GBP' }} · change
-              {{ runTotal(r) - runTotal(previous) | currency: 'GBP' }}
-            </p>
-          }
-          <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
-            <table class="data-columns">
-              <thead>
-                <tr>
-                  <th class="table-primary" scope="col">Employee</th>
-                  <th class="table-number" scope="col">Hours</th>
-                  <th class="table-number table-money" scope="col">Basic</th>
-                  <th class="table-number table-money" scope="col">Overtime</th>
-                  <th class="table-number table-money" scope="col">Allowances</th>
-                  <th class="table-number table-money" scope="col">Adjustment</th>
-                  <th scope="col">Adjustment reason</th>
-                  <th class="table-number table-money" scope="col">Gross</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (l of r.lines; track l.personId) {
-                  <tr>
-                    <td>
-                      <a class="text-link" [routerLink]="['/manage/people', l.personId]">{{
-                        l.name
-                      }}</a>
-                    </td>
-                    <td class="table-number">{{ l.hours }}</td>
-                    <td class="table-number table-money">{{ l.basic | currency: 'GBP' }}</td>
-                    <td class="table-number table-money">{{ l.overtime | currency: 'GBP' }}</td>
-                    <td class="table-number table-money">{{ l.allowances | currency: 'GBP' }}</td>
-                    <td class="table-number table-money">{{ l.adjustment | currency: 'GBP' }}</td>
-                    <td data-label="Adjustment reason">{{ l.adjustmentReason || '—' }}</td>
-                    <td class="table-number table-money">{{ l.total | currency: 'GBP' }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          @if (r.status === 'Draft' && service.can('manage')) {
-            <div class="form-grid">
-              <label
-                >Employee<mat-select
-                  cvSelect
-                  [(ngModel)]="adjustment.personId"
-                  aria-label="Adjustment employee"
-                >
-                  @for (l of r.lines; track l.personId) {
-                    <mat-option [value]="l.personId">{{ l.name }}</mat-option>
+            <p>{{ w.reason }}</p>
+            @if (!w.runId && !['Approved', 'Rejected'].includes(w.status)) {
+              <div class="form-grid">
+                <label
+                  >Review / confirmation note<textarea
+                    [(ngModel)]="note"
+                    rows="2"
+                  ></textarea></label
+                ><label
+                  >Actual hours / units<input
+                    type="number"
+                    [(ngModel)]="actualHours"
+                    min="0.01"
+                    step="0.01"
+                /></label>
+              </div>
+              <div class="payroll-actions">
+                @if (service.can('approve')) {
+                  @if (
+                    w.status === 'Requested' ||
+                    (w.status === 'Returned' && w.returnStage === 'Requested')
+                  ) {
+                    <button class="button primary" (click)="workAction('Authorise')">
+                      Authorise overtime
+                    </button>
                   }
-                </mat-select></label
-              ><label
-                >Adjustment (£)<input
-                  type="number"
-                  [(ngModel)]="adjustment.amount"
-                  step="0.01" /></label
-              ><label class="full-width">Reason<input [(ngModel)]="adjustment.reason" /></label>
-            </div>
-            <button class="button" (click)="saveAdjustment()">Save adjustment</button>
-          }
-          <div class="payroll-actions">
-            @if (r.status === 'Draft' && service.can('finalise')) {
-              <button class="button primary" (click)="runAction('Lock')">Approve & lock</button
-              ><button class="button" (click)="runAction('Cancel')">Cancel draft</button>
+                  @if (w.status === 'Confirmed') {
+                    <button class="button primary" (click)="workAction('Approve')">
+                      Approve for payroll
+                    </button>
+                  }
+                  <button class="button" (click)="workAction('Return')">Return</button
+                  ><button class="button" (click)="workAction('Reject')">Reject</button>
+                }
+                @if (
+                  service.can('manage') &&
+                  (w.status === 'Authorised' ||
+                    (w.status === 'Returned' && w.returnStage !== 'Requested'))
+                ) {
+                  <button class="button primary" (click)="workAction('Confirm')">
+                    Confirm actual work
+                  </button>
+                }
+              </div>
+            } @else {
+              <p class="payroll-note">
+                {{
+                  w.runId
+                    ? 'This record is reserved in a pay run. Changes require cancellation of the draft run.'
+                    : 'This review is complete. Approved amounts are available to payroll.'
+                }}
+              </p>
             }
-            @if (['Locked', 'Exported'].includes(r.status) && service.can('export')) {
-              <button class="button" (click)="runAction('Export')">Export gross pay CSV</button>
+            <h3>Review history</h3>
+            @for (a of w.audit; track $index) {
+              <div class="payroll-history">
+                <strong>{{ a.action }} · {{ a.user }}</strong
+                ><small>{{ auditDate(a.at) }} · UK time</small>
+                <p>{{ a.note }}</p>
+              </div>
             }
           </div>
-          @if (['Locked', 'Exported'].includes(r.status) && service.can('pay')) {
-            <div class="form-grid">
-              <label>Payment date<input type="date" [(ngModel)]="payment.date" /></label
-              ><label>Payment reference<input [(ngModel)]="payment.reference" /></label>
+        }
+        @if (invoiceRecord(); as i) {
+          <div class="panel-body requirement-list">
+            <div class="payroll-detail-heading">
+              <h3>{{ i.number }} · {{ contractorName(i.contractorId) }}</h3>
+              <span class="badge">{{ invoiceStatus(i) }}</span>
             </div>
-            <button class="button primary" (click)="runAction('Pay')">Record run as paid</button>
-            <p class="payroll-note">
-              Only record this after payroll has been processed and paid externally.
+            <p>
+              Services {{ i.start | date: 'd MMM yyyy' }} to {{ i.end | date: 'd MMM yyyy' }} · due
+              {{ i.due | date: 'd MMM yyyy' }}
             </p>
-          }
-          <h3>Run history</h3>
-          @for (a of r.audit; track $index) {
-            <div class="payroll-history">
-              <strong>{{ a.action }} · {{ a.user }}</strong
-              ><small>{{ auditDate(a.at) }} · UK time</small>
-              <p>{{ a.note }}</p>
-            </div>
-          }
-        </div>
-      }
-      @if (contractorRecord(); as c) {
-        <div class="panel-body requirement-list">
-          <h3>{{ c.name }}</h3>
-          <p>{{ c.email }} · {{ c.type }}</p>
-          <p>
-            {{ c.rate | currency: 'GBP' }} / {{ c.unit.toLowerCase() }} · {{ c.terms }} day payment
-            terms
-          </p>
-          <p>
-            Contract reference: {{ c.reference || 'Not provided' }} · responsible manager:
-            {{ memberName(c.managerId) }}
-          </p>
-          <p>
-            {{ c.start | date: 'd MMM yyyy' }} to
-            {{ c.end ? (c.end | date: 'd MMM yyyy') : 'ongoing' }}
-          </p>
-          @if (c.attachment; as file) {
-            <button class="button" (click)="download(file)">Download {{ file.name }}</button>
-          }
-          <div class="payroll-actions">
-            @if (service.can('manage')) {
-              <button class="button" (click)="editContractor(c)">Edit contractor</button>
+            @if (rateWarning(i)) {
+              <p class="payroll-warning">
+                One or more rates exceed the contractor agreement. Record an explanation before
+                approval.
+              </p>
             }
-            <button class="button" (click)="chooseInvoices('Suppliers', c.name)">
-              View invoices
-            </button>
+            <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+              <table class="data-columns">
+                <thead>
+                  <tr>
+                    <th scope="col">Work</th>
+                    <th class="table-number" scope="col">Quantity</th>
+                    <th class="table-number table-money" scope="col">Rate</th>
+                    <th class="table-number" scope="col">VAT</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (l of i.lines; track $index) {
+                    <tr>
+                      <td>{{ l.description }}</td>
+                      <td class="table-number">{{ l.quantity }}</td>
+                      <td class="table-number table-money">{{ l.rate | currency: 'GBP' }}</td>
+                      <td class="table-number">{{ l.vat }}%</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <p>
+              <strong
+                >Total {{ invoiceTotal(i) | currency: 'GBP' }} · outstanding
+                {{ invoiceBalance(i) | currency: 'GBP' }}</strong
+              >
+            </p>
+            @if (i.attachment; as file) {
+              <button class="button" (click)="download(file)">Download {{ file.name }}</button>
+            }
+            @if (
+              service.can('approve') &&
+              !['Rejected', 'Cancelled'].includes(i.status) &&
+              !i.payments.length
+            ) {
+              <label>Review note<textarea [(ngModel)]="note" rows="2"></textarea></label>
+              <div class="payroll-actions">
+                @if (['Recorded', 'Returned'].includes(i.status)) {
+                  <button class="button primary" (click)="invoiceAction('Confirm work')">
+                    Confirm work
+                  </button>
+                }
+                @if (i.status === 'Work confirmed') {
+                  <button class="button primary" (click)="invoiceAction('Approve')">
+                    Approve invoice
+                  </button>
+                }
+                @if (i.status !== 'Approved') {
+                  <button class="button" (click)="invoiceAction('Return')">Return</button
+                  ><button class="button" (click)="invoiceAction('Reject')">Reject</button>
+                }
+                <button class="button" (click)="invoiceAction('Cancel')">Cancel invoice</button>
+              </div>
+            }
+            @if (service.can('pay') && i.status === 'Approved' && invoiceBalance(i) > 0) {
+              <h3>Record a payment</h3>
+              <div class="form-grid">
+                <label>Payment date<input type="date" [(ngModel)]="payment.date" /></label
+                ><label
+                  >Amount (£)<input
+                    type="number"
+                    [(ngModel)]="payment.amount"
+                    min="0.01"
+                    step="0.01" /></label
+                ><label class="full-width"
+                  >Payment reference<input [(ngModel)]="payment.reference"
+                /></label>
+              </div>
+              <button class="button primary" (click)="payInvoice()">Record payment</button>
+              <p class="payroll-note">
+                Record a payment already made through your bank. This action does not transfer
+                money.
+              </p>
+            }
+            @for (p of i.payments; track $index) {
+              <p>
+                Payment {{ p.amount | currency: 'GBP' }} · {{ p.date | date: 'd MMM yyyy' }} ·
+                {{ p.reference }}
+              </p>
+            }
+            <h3>Review history</h3>
+            @for (a of i.audit; track $index) {
+              <div class="payroll-history">
+                <strong>{{ a.action }} · {{ a.user }}</strong
+                ><small>{{ auditDate(a.at) }} · UK time</small>
+                <p>{{ a.note }}</p>
+              </div>
+            }
           </div>
-        </div>
-      }
-    </section>
+        }
+        @if (runRecord(); as r) {
+          <div class="panel-body requirement-list">
+            <div class="payroll-detail-heading">
+              <h3>{{ r.name }} · {{ runTotal(r) | currency: 'GBP' }}</h3>
+              <span class="badge">{{ r.status }}</span>
+            </div>
+            <p>
+              Period {{ r.start | date: 'd MMM yyyy' }} to {{ r.end | date: 'd MMM yyyy' }} · cutoff
+              {{ r.cutoff | date: 'd MMM yyyy' }} · payday {{ r.payday | date: 'd MMM yyyy' }}
+            </p>
+            <p class="payroll-note">
+              Gross estimate only. Salary uses annual pay ÷ 52, 26 or 12 for a full weekly,
+              fortnightly or monthly period. Part-period salary needs an explained adjustment.
+              Hourly pay uses approved work records and their saved rates.
+            </p>
+            @if (previousRun(r); as previous) {
+              <p>
+                Previous run: {{ runTotal(previous) | currency: 'GBP' }} · change
+                {{ runTotal(r) - runTotal(previous) | currency: 'GBP' }}
+              </p>
+            }
+            <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
+              <table class="data-columns">
+                <thead>
+                  <tr>
+                    <th class="table-primary" scope="col">Employee</th>
+                    <th class="table-number" scope="col">Hours</th>
+                    <th class="table-number table-money" scope="col">Basic</th>
+                    <th class="table-number table-money" scope="col">Overtime</th>
+                    <th class="table-number table-money" scope="col">Allowances</th>
+                    <th class="table-number table-money" scope="col">Adjustment</th>
+                    <th scope="col">Adjustment reason</th>
+                    <th class="table-number table-money" scope="col">Gross</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (l of r.lines; track l.personId) {
+                    <tr>
+                      <td>
+                        <a class="text-link" [routerLink]="['/manage/people', l.personId]">{{
+                          l.name
+                        }}</a>
+                      </td>
+                      <td class="table-number">{{ l.hours }}</td>
+                      <td class="table-number table-money">{{ l.basic | currency: 'GBP' }}</td>
+                      <td class="table-number table-money">{{ l.overtime | currency: 'GBP' }}</td>
+                      <td class="table-number table-money">{{ l.allowances | currency: 'GBP' }}</td>
+                      <td class="table-number table-money">{{ l.adjustment | currency: 'GBP' }}</td>
+                      <td data-label="Adjustment reason">{{ l.adjustmentReason || '—' }}</td>
+                      <td class="table-number table-money">{{ l.total | currency: 'GBP' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (r.status === 'Draft' && service.can('manage')) {
+              <div class="form-grid">
+                <label
+                  >Employee<mat-select
+                    cvSelect
+                    [(ngModel)]="adjustment.personId"
+                    aria-label="Adjustment employee"
+                  >
+                    @for (l of r.lines; track l.personId) {
+                      <mat-option [value]="l.personId">{{ l.name }}</mat-option>
+                    }
+                  </mat-select></label
+                ><label
+                  >Adjustment (£)<input
+                    type="number"
+                    [(ngModel)]="adjustment.amount"
+                    step="0.01" /></label
+                ><label class="full-width">Reason<input [(ngModel)]="adjustment.reason" /></label>
+              </div>
+              <button class="button" (click)="saveAdjustment()">Save adjustment</button>
+            }
+            <div class="payroll-actions">
+              @if (r.status === 'Draft' && service.can('finalise')) {
+                <button class="button primary" (click)="runAction('Lock')">Approve & lock</button
+                ><button class="button" (click)="runAction('Cancel')">Cancel draft</button>
+              }
+              @if (['Locked', 'Exported'].includes(r.status) && service.can('export')) {
+                <button class="button" (click)="runAction('Export')">Export gross pay CSV</button>
+              }
+            </div>
+            @if (['Locked', 'Exported'].includes(r.status) && service.can('pay')) {
+              <div class="form-grid">
+                <label>Payment date<input type="date" [(ngModel)]="payment.date" /></label
+                ><label>Payment reference<input [(ngModel)]="payment.reference" /></label>
+              </div>
+              <button class="button primary" (click)="runAction('Pay')">Record run as paid</button>
+              <p class="payroll-note">
+                Only record this after payroll has been processed and paid externally.
+              </p>
+            }
+            <h3>Run history</h3>
+            @for (a of r.audit; track $index) {
+              <div class="payroll-history">
+                <strong>{{ a.action }} · {{ a.user }}</strong
+                ><small>{{ auditDate(a.at) }} · UK time</small>
+                <p>{{ a.note }}</p>
+              </div>
+            }
+          </div>
+        }
+        @if (contractorRecord(); as c) {
+          <div class="panel-body requirement-list">
+            <h3>{{ c.name }}</h3>
+            <p>{{ c.email }} · {{ c.type }}</p>
+            <p>
+              {{ c.rate | currency: 'GBP' }} / {{ c.unit.toLowerCase() }} · {{ c.terms }} day
+              payment terms
+            </p>
+            <p>
+              Contract reference: {{ c.reference || 'Not provided' }} · responsible manager:
+              {{ memberName(c.managerId) }}
+            </p>
+            <p>
+              {{ c.start | date: 'd MMM yyyy' }} to
+              {{ c.end ? (c.end | date: 'd MMM yyyy') : 'ongoing' }}
+            </p>
+            @if (c.attachment; as file) {
+              <button class="button" (click)="download(file)">Download {{ file.name }}</button>
+            }
+            <div class="payroll-actions">
+              @if (service.can('manage')) {
+                <button class="button" (click)="editContractor(c)">Edit contractor</button>
+              }
+              <button class="button" (click)="chooseInvoices('Suppliers', c.name)">
+                View invoices
+              </button>
+            </div>
+          </div>
+        }
+      </section>
+    </div>
   }
   <p class="payroll-footer">
     Device demo · records stay in this workspace on this browser. Live approvals across accounts,

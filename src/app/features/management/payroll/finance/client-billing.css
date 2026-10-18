@@ -1,34 +1,10 @@
 :host {
   display: block;
+  min-width: 0;
 }
-.client-billing-prepare {
+.finance-review-drawer form > label {
   display: flex;
-  gap: 8px;
-  align-items: end;
-  flex-wrap: wrap;
-  background: linear-gradient(120deg, var(--color-teal-50), white);
-  border-bottom: 1px solid var(--color-line);
-}
-.client-billing-prepare label {
-  width: 180px;
-}
-.client-billing-prepare p {
-  flex: 1;
-  min-width: 200px;
-  font-size: 12px;
-  color: var(--color-slate);
-  padding-bottom: 8px;
-}
-.client-billing-filter {
-  width: 160px;
-}
-@media (max-width: 600px) {
-  .client-billing-prepare label,
-  .client-billing-filter {
-    width: 100%;
-  }
-  .client-billing-prepare p {
-    min-width: 0;
-    flex-basis: 100%;
-  }
+  flex-direction: column;
+  gap: 4px;
+  max-width: 260px;
 }

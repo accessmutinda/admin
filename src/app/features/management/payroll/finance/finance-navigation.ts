@@ -25,5 +25,6 @@ export function viewArea(view: string): FinanceArea {
 }
 
 export function financeView(area: FinanceArea, value: string | null): string {
+  if (!value && area !== 'overview') return 'Home';
   return AREA_VIEWS[area].find((view) => view === value) ?? AREA_VIEWS[area][0];
 }

@@ -3,7 +3,7 @@ import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatSelectModule } from '@angular/material/select';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CvSelect } from '../../../../shared/ui/select';
 import { ToastService } from '../../../../shared/ui/toast.service';
 import { EcmOperations } from '../../ecm/ecm.operations';
@@ -24,16 +24,23 @@ import { clientInvoiceTotal } from './finance.models';
     RouterLink,
   ],
   templateUrl: './client-billing.html',
-  styleUrls: ['../payroll.css', './client-billing.css'],
+  styleUrls: ['../payroll.css', './client-billing.css', './finance-register-controls.css'],
 })
 export class ClientBilling {
   protected readonly ops = inject(EcmOperations);
   private readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
+  protected readonly preparing = signal(
+    this.route.snapshot.queryParamMap.get('prepare') === 'true' && this.ops.payroll.can('manage'),
+  );
+  protected readonly page = signal(1);
   protected readonly query = signal('');
   protected readonly status = signal('All');
   protected readonly funding = signal('All');
   protected readonly error = signal('');
-  protected readonly selectedId = signal('');
+  protected readonly selectedId = signal(
+    this.route.snapshot.queryParamMap.get('clientInvoice') ?? '',
+  );
   protected readonly selected = computed(() =>
     this.ops.data().invoices.find((i) => i.id === this.selectedId()),
   );
@@ -50,6 +57,11 @@ export class ClientBilling {
       )
       .sort((a, b) => b.date.localeCompare(a.date)),
   );
+  protected readonly pageCount = computed(() => Math.max(1, Math.ceil(this.filtered().length / 8)));
+  protected readonly currentPage = computed(() => Math.min(this.page(), this.pageCount()));
+  protected readonly rows = computed(() =>
+    this.filtered().slice((this.currentPage() - 1) * 8, this.currentPage() * 8),
+  );
   protected date = londonDate();
   protected readonly total = clientInvoiceTotal;
   protected clientName(id: string): string {
@@ -62,11 +74,16 @@ export class ClientBilling {
     this.query.set('');
     this.status.set('All');
     this.funding.set('All');
+    this.page.set(1);
   }
   protected prepare(): void {
     const error = this.ops.createInvoices(this.date);
     this.error.set(error ?? '');
-    if (!error) this.toast.success('Client invoice drafts prepared.');
+    if (!error) {
+      this.toast.success('Client invoice drafts prepared.');
+      this.preparing.set(false);
+      this.page.set(1);
+    }
   }
   protected review(id: string): void {
     this.error.set('');

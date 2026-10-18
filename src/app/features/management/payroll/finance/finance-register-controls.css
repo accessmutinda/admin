@@ -1,0 +1,97 @@
+.finance-filter-card {
+  margin-bottom: 12px;
+}
+:host .finance-filter-card .payroll-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 0;
+  margin: 0;
+}
+:host .finance-filter-card .payroll-filters .search-box {
+  flex: 1;
+  min-width: 180px;
+}
+:host .finance-filter-card .payroll-filters :is(input, mat-select) {
+  box-sizing: border-box;
+  min-height: 32px;
+  height: 32px;
+  margin: 0;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  font-size: 12px;
+  line-height: 20px;
+  border-radius: 5px;
+}
+:host .finance-filter-card .payroll-status-filter,
+:host .finance-filter-card .client-billing-filter {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  width: auto;
+  font-size: 11px;
+  font-weight: 700;
+}
+:host .finance-filter-card :is(.payroll-status-filter, .client-billing-filter) > mat-select {
+  width: 160px;
+}
+:host .finance-filter-card .button {
+  min-height: 32px;
+  height: 32px;
+  padding: 5px 10px;
+}
+.finance-register-actions,
+.finance-register-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.finance-register-footer {
+  justify-content: space-between;
+  padding: 8px;
+  border-top: 1px solid #edf2f5;
+  color: #657184;
+  font-size: 11px;
+}
+:host .finance-review-backdrop {
+  justify-content: flex-end;
+  align-items: stretch;
+  padding: 0;
+}
+:host .finance-review-drawer {
+  width: min(760px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: auto;
+  margin: 0;
+  border-radius: 9px 0 0 9px;
+}
+.finance-review-drawer > .panel-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+  border-bottom: 1px solid #e9eff3;
+}
+@media (max-width: 600px) {
+  :host .finance-filter-card .payroll-filters {
+    align-items: stretch;
+  }
+  :host .finance-filter-card .payroll-status-filter,
+  :host .finance-filter-card .client-billing-filter {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+}
+@media (pointer: coarse) {
+  :host .finance-filter-card .payroll-filters :is(input, mat-select),
+  :host .finance-filter-card .button {
+    min-height: 44px;
+    height: 44px;
+  }
+}
