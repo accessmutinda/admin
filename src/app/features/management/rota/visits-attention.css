@@ -1,0 +1,172 @@
+:host {
+  display: block;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+.attention-panel {
+  padding: 8px;
+}
+.attention-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 30px;
+  margin-bottom: 6px;
+}
+h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  color: #002b60;
+  font-size: 14px;
+  font-weight: 800;
+}
+h2 > span {
+  color: #00528c;
+  font-size: 20px;
+  font-variation-settings: 'FILL' 1;
+}
+small {
+  color: #657184;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.attention-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+article {
+  min-width: 0;
+  border: 1px solid #e8eef0;
+  border-radius: 7px;
+  padding: 8px;
+  background: #ffffff80;
+}
+.attention-group-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.attention-group-heading > span:first-child {
+  font-size: 20px;
+  color: #657184;
+}
+.attention-group-heading > span.has-issues {
+  color: #d97706;
+}
+h3 {
+  color: #06376b;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0;
+}
+.attention-count {
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #eaf5fc;
+  color: #06376b;
+  font-size: 11px;
+  font-weight: 700;
+}
+.attention-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid #edf2f5;
+  padding: 7px 0;
+}
+.attention-copy {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+strong {
+  display: block;
+  color: #123352;
+  font-size: 12px;
+}
+.attention-copy small {
+  display: block;
+}
+p {
+  margin: 3px 0 0;
+  color: #657184;
+  font-size: 11px;
+  line-height: 1.4;
+}
+a {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  color: #007bcc;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  min-height: 28px;
+}
+a > span {
+  font-size: 16px;
+}
+a:hover {
+  text-decoration: underline;
+}
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid #008bd9;
+  outline-offset: 2px;
+}
+.attention-sensitive {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 5px;
+  background: #fff4db;
+  color: #925700;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.attention-empty {
+  display: flex;
+  gap: 6px;
+  align-items: start;
+  padding: 8px 0;
+}
+.attention-empty > span {
+  color: #008b49;
+  font-size: 17px;
+}
+.attention-more {
+  margin-top: 5px;
+  border: 0;
+  padding: 4px 0;
+  color: #007bcc;
+  background: transparent;
+  font: 700 11px/1.4 var(--font-sans);
+  cursor: pointer;
+}
+@media (max-width: 1150px) {
+  .attention-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (pointer: coarse) {
+  a,
+  .attention-more {
+    min-height: 44px;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

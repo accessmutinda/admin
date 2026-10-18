@@ -1,0 +1,747 @@
+<cv-module-design />
+@if (service.can('view')) {
+  @if (clientId()) {
+    @if (client(); as c) {
+      <cv-care-header [client]="c" />
+    } @else {
+      <p class="care-error">Service user unavailable.</p>
+    }
+  }
+  @if (!clientId() || client()) {
+    @if (!workspaceView) {
+      <div class="care-heading">
+        <div>
+          <h1>{{ clientId() ? 'Visits & Allocation' : 'Visits & Rota' }}</h1>
+          <p>
+            {{
+              clientId()
+                ? 'Schedules, recurring calls and care continuity.'
+                : 'Plan visits, allocate staff and review workforce coverage.'
+            }}
+          </p>
+        </div>
+        <div class="care-actions">
+          <div class="planner-period-navigation" role="group" aria-label="Schedule period">
+            <button class="care-button" (click)="move(-1)" aria-label="Previous period">‹</button>
+            <label class="planner-period"
+              >Period<input type="date" [ngModel]="anchor()" (ngModelChange)="changeDate($event)"
+            /></label>
+            <button class="care-button" (click)="move(1)" aria-label="Next period">›</button>
+          </div>
+          <button class="care-button" (click)="anchor.set(today)">Today</button>
+          @if (service.can('manage')) {
+            <button class="care-button primary" (click)="create()">+ Add / plan visits</button>
+          }
+        </div>
+      </div>
+    }
+    @if (error() && !modal()) {
+      <p class="care-error" role="alert">{{ error() }}</p>
+    }
+    @if (notice()) {
+      <p role="status" class="care-note">{{ notice() }}</p>
+    }
+    @if (!workspaceView) {
+      <div class="care-stats">
+        @for (
+          stat of [
+            {
+              label: 'Scheduled visits',
+              value: visits().length,
+              icon: 'calendar_month',
+              tone: 'blue',
+            },
+            { label: 'Allocated', value: allocated().length, icon: 'person_check', tone: 'green' },
+            {
+              label: 'Unallocated',
+              value: unallocated().length,
+              icon: 'person_alert',
+              tone: 'red',
+            },
+            { label: 'Double-up visits', value: doubleUps().length, icon: 'group', tone: 'blue' },
+            { label: 'Staff on rota', value: staffOnRota(), icon: 'groups', tone: 'blue' },
+            { label: 'Late / at risk', value: late().length, icon: 'warning', tone: 'red' },
+          ];
+          track stat.label
+        ) {
+          <section class="metric co-stat co-surface" [attr.data-tone]="stat.tone">
+            <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">{{
+              stat.icon
+            }}</span>
+            <div>
+              <h2>{{ stat.label }}</h2>
+              <strong>{{ stat.value }}</strong
+              ><small>{{ start() | date: 'dd MMM' }} – {{ end() | date: 'dd MMM' }}</small>
+            </div>
+          </section>
+        }
+      </div>
+    }
+    @if (workspaceView) {
+      <div class="care-toolbar" aria-label="Schedule controls">
+        <h2>Schedule</h2>
+        <div class="care-actions">
+          <div class="planner-period-navigation" role="group" aria-label="Schedule period">
+            <button class="care-button" (click)="move(-1)" aria-label="Previous period">‹</button>
+            <label class="planner-period"
+              >Period<input type="date" [ngModel]="anchor()" (ngModelChange)="changeDate($event)"
+            /></label>
+            <button class="care-button" (click)="move(1)" aria-label="Next period">›</button>
+          </div>
+          <button class="care-button" (click)="anchor.set(today)">Today</button>
+        </div>
+      </div>
+    }
+    <section class="care-panel planner-filter-panel" aria-label="Search and filter visits">
+      <div class="care-fields planner-filters">
+        <label
+          >Search<input
+            [ngModel]="query()"
+            (ngModelChange)="query.set($event)"
+            placeholder="Name, call or address"
+        /></label>
+        @if (!clientId()) {
+          <label
+            >Service user<mat-select
+              cvSelect
+              aria-label="Filter service user"
+              [ngModel]="clientFilter()"
+              (ngModelChange)="clientFilter.set($event)"
+              ><mat-option value="">All service users</mat-option>
+              @for (c of service.data().clients; track c.id) {
+                <mat-option [value]="c.id">{{ c.name }}</mat-option>
+              }
+            </mat-select></label
+          >
+        }
+        <label
+          >Carer<mat-select
+            cvSelect
+            aria-label="Filter carer"
+            [ngModel]="staffFilter()"
+            (ngModelChange)="staffFilter.set($event); staffPage.set(1)"
+            ><mat-option value="">All staff</mat-option>
+            @for (p of store.staff(); track p.id) {
+              <mat-option [value]="p.id">{{ p.name }}</mat-option>
+            }
+          </mat-select></label
+        ><label
+          >Location / area<input
+            [ngModel]="locationFilter()"
+            (ngModelChange)="locationFilter.set($event)" /></label
+        ><label
+          >Required training<mat-select
+            cvSelect
+            aria-label="Required training filter"
+            [ngModel]="skillFilter()"
+            (ngModelChange)="skillFilter.set($event); staffPage.set(1)"
+            ><mat-option value="">Any skill</mat-option>
+            @for (course of courses; track course.id) {
+              <mat-option [value]="course.id">{{ course.title }}</mat-option>
+            }
+          </mat-select></label
+        ><label
+          >Carer gender<mat-select
+            cvSelect
+            aria-label="Carer gender filter"
+            [ngModel]="genderFilter()"
+            (ngModelChange)="genderFilter.set($event); staffPage.set(1)"
+            ><mat-option value="">Any</mat-option><mat-option value="Female">Female</mat-option
+            ><mat-option value="Male">Male</mat-option></mat-select
+          ></label
+        ><label
+          >Driver<mat-select
+            cvSelect
+            aria-label="Driver filter"
+            [ngModel]="driverFilter()"
+            (ngModelChange)="driverFilter.set($event); staffPage.set(1)"
+            ><mat-option value="">Any</mat-option><mat-option value="Yes">Yes</mat-option
+            ><mat-option value="No">No</mat-option></mat-select
+          ></label
+        ><label
+          >Allocation<mat-select
+            cvSelect
+            aria-label="Allocation filter"
+            [ngModel]="allocationFilter()"
+            (ngModelChange)="allocationFilter.set($event)"
+          >
+            @for (s of ['All', 'Allocated', 'Unallocated']; track s) {
+              <mat-option [value]="s">{{ s }}</mat-option>
+            }
+          </mat-select></label
+        >
+        <div class="planner-filter-actions">
+          <label
+            ><input
+              type="checkbox"
+              [ngModel]="showUnallocated()"
+              (ngModelChange)="showUnallocated.set($event)"
+            />
+            Show unallocated visits</label
+          ><button class="care-button" (click)="clear()">Clear filters</button>
+        </div>
+      </div>
+    </section>
+    <div class="care-grid planner-schedule-only">
+      <section class="care-panel">
+        <div class="care-toolbar">
+          <h2>{{ view() }} schedule</h2>
+          <div class="care-actions">
+            @for (v of ['Week', 'Month', 'List', 'Staff', 'Service user']; track v) {
+              <button
+                class="care-button"
+                [attr.aria-pressed]="view() === v"
+                (click)="view.set(v); selected.set([])"
+              >
+                {{ v }}
+              </button>
+            }
+          </div>
+        </div>
+        <p class="care-note">
+          UK time · {{ totalHours().toFixed(1) }} care hours ·
+          {{ service.data().travelMinutes }} minute minimum travel buffer
+        </p>
+        @if (view() === 'List') {
+          <div class="care-scroll" tabindex="0" role="region" aria-label="Visit schedule">
+            <table class="care-table planner-list">
+              <thead>
+                <tr>
+                  <th>
+                    <input
+                      type="checkbox"
+                      aria-label="Select all visits"
+                      [checked]="!!visits().length && selected().length === visits().length"
+                      (change)="selectAll()"
+                    />
+                  </th>
+                  <th>Date / time</th>
+                  <th>Service user / call</th>
+                  <th>Carers</th>
+                  <th>Care type</th>
+                  <th>Time sensitive</th>
+                  <th>Flexible</th>
+                  <th>Location / task</th>
+                  <th>Mileage</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (v of visits(); track v.id) {
+                  <tr>
+                    <td>
+                      <input
+                        type="checkbox"
+                        [attr.aria-label]="'Select ' + v.clientName + ' ' + v.date + ' ' + v.start"
+                        [checked]="selected().includes(v.id)"
+                        (change)="toggle(v.id)"
+                      />
+                    </td>
+                    <td>
+                      {{ v.date | date: 'EEE dd MMM'
+                      }}<small>{{ v.start }} – {{ v.end }} · {{ duration(v) }}m</small>
+                    </td>
+                    <td>
+                      {{ v.clientName }}<small>{{ v.callName }}</small>
+                    </td>
+                    <td>
+                      @for (id of v.staffIds; track id) {
+                        <span>{{ name(id) }}<br /></span>
+                      }
+                      @if (v.staffIds.length < v.carers) {
+                        <span class="care-tag" data-tone="red"
+                          >Needs {{ v.carers - v.staffIds.length }} carer(s)</span
+                        >
+                      }
+                    </td>
+                    <td>
+                      {{ v.carers === 2 ? 'Double' : 'Single' }}<small>{{ v.allocation }}</small>
+                    </td>
+                    <td>
+                      {{ v.timeSensitive ? 'Yes · ±' + (v.toleranceMinutes ?? 30) + 'm' : 'No' }}
+                    </td>
+                    <td>{{ v.flexible ? 'Yes' : 'No' }}</td>
+                    <td>
+                      {{ v.location || 'Home' }}<small>{{ v.taskType || v.tasks }}</small>
+                    </td>
+                    <td>{{ v.mileage ?? '—' }}</td>
+                    <td>
+                      <span
+                        class="care-tag"
+                        [attr.data-tone]="v.staffIds.length < v.carers ? 'red' : 'green'"
+                        >{{ status(v) }}</span
+                      >
+                    </td>
+                    <td>
+                      @if (service.can('manage')) {
+                        <button class="care-button" (click)="edit(v)">View / Allocate</button>
+                      }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="11" class="care-empty">
+                      No visits match these dates and filters.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else if (view() === 'Month') {
+          <div
+            class="planner-scroll"
+            tabindex="0"
+            role="region"
+            aria-label="Monthly visit calendar"
+          >
+            <div class="planner-month">
+              @for (day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; track day) {
+                <strong>{{ day }}</strong>
+              }
+              @for (date of monthDays(); track date) {
+                <div [class.planner-muted]="date.slice(0, 7) !== anchor().slice(0, 7)">
+                  <strong>{{ date | date: 'd MMM' }}</strong>
+                  @for (v of dayVisits(date); track v.id) {
+                    <button
+                      class="visit-card"
+                      [class.needs-cover]="v.staffIds.length < v.carers"
+                      [style.background]="background(v)"
+                      (click)="edit(v)"
+                    >
+                      <strong>{{ v.start }} {{ v.callName }}</strong
+                      ><small>{{ v.clientName }}</small
+                      ><small>{{
+                        v.staffIds.length ? preferredNames(v.staffIds.join(',')) : 'Needs cover'
+                      }}</small>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        } @else {
+          <div
+            class="planner-scroll"
+            tabindex="0"
+            role="region"
+            aria-label="Weekly staff and service user calendar"
+          >
+            <div class="planner-grid">
+              <div class="planner-day">
+                {{ view() === 'Service user' ? 'Service user' : 'Carer / staff' }}
+              </div>
+              @for (date of days(); track date) {
+                <div class="planner-day">{{ date | date: 'EEE dd MMM' }}</div>
+              }
+              @if (view() === 'Service user') {
+                @for (c of clientRows(); track c.id) {
+                  <div class="planner-person">
+                    <strong>{{ c.name }}</strong
+                    ><small>{{ c.postcode }}</small
+                    ><a [routerLink]="['/manage/clients', c.id, 'visits']">Open schedule</a>
+                  </div>
+                  @for (date of days(); track date) {
+                    <div>
+                      @for (v of dayVisits(date, '', c.id); track v.id) {
+                        <button
+                          class="visit-card"
+                          [class.needs-cover]="v.staffIds.length < v.carers"
+                          [style.background]="background(v)"
+                          (click)="edit(v)"
+                        >
+                          <strong>{{ v.start }} – {{ v.end }}</strong
+                          ><small>{{ v.callName }}</small
+                          ><small>{{ status(v) }}</small>
+                        </button>
+                      }
+                    </div>
+                  }
+                }
+              } @else {
+                @for (p of pageStaff(); track p.id) {
+                  <div class="planner-person">
+                    <strong>{{ p.name }}</strong
+                    ><small>{{ p.role }}</small
+                    ><small
+                      >{{ hours(p.id).toFixed(1) }}h / {{ p.hr?.employment?.hours ?? '—' }}h</small
+                    >
+                  </div>
+                  @for (date of days(); track date) {
+                    <div>
+                      @for (v of dayVisits(date, p.id); track v.id) {
+                        <button
+                          class="visit-card"
+                          [style.background]="background(v)"
+                          (click)="edit(v)"
+                        >
+                          <strong>{{ v.start }} – {{ v.end }}</strong
+                          ><small>{{ v.clientName }}</small
+                          ><small>{{ v.callName }} · {{ status(v) }}</small>
+                        </button>
+                      } @empty {
+                        <span class="care-note">{{
+                          store.data().leaves.some(leaveFor(p.id, date))
+                            ? 'Leave / unavailable'
+                            : '—'
+                        }}</span>
+                      }
+                    </div>
+                  }
+                }
+              }
+              @if (showUnallocated()) {
+                <div class="planner-person planner-alert">Unallocated</div>
+                @for (date of days(); track date) {
+                  <div>
+                    @for (v of dayVisits(date); track v.id) {
+                      @if (v.staffIds.length < v.carers) {
+                        <button class="visit-card needs-cover" (click)="edit(v)">
+                          <strong>{{ v.start }} {{ v.clientName }}</strong
+                          ><small>{{ v.callName }} · Needs staff</small>
+                        </button>
+                      }
+                    }
+                  </div>
+                }
+              }
+            </div>
+          </div>
+          <div class="care-footer">
+            <small>{{ staff().length }} matching carers</small>
+            <div class="care-actions">
+              <button
+                class="care-button"
+                [disabled]="staffPage() <= 1"
+                (click)="staffPage.update(previousPage)"
+              >
+                Previous staff</button
+              ><span>Page {{ staffPage() }}</span
+              ><button
+                class="care-button"
+                [disabled]="staffPage() * 8 >= staff().length"
+                (click)="staffPage.update(nextPage)"
+              >
+                Next staff
+              </button>
+            </div>
+          </div>
+        }
+        <div class="care-footer">
+          <span>{{ visits().length }} matching visits · {{ selected().length }} selected</span>
+          <div class="care-actions">
+            <button class="care-button" (click)="findAvailable()">Find Available Staff</button>
+            @if (service.can('manage')) {
+              <button
+                class="care-button"
+                (click)="prepareAuto()"
+                [disabled]="!unallocated().length"
+              >
+                Auto Allocate</button
+              ><button class="care-button" (click)="prepareBulk()" [disabled]="!selected().length">
+                Bulk Allocate
+              </button>
+            }
+            @if (service.can('publish')) {
+              <a class="care-button" routerLink="/manage/rota/publishing"
+                >Review &amp; publish drafts</a
+              >
+            }
+            @if (service.can('export')) {
+              <button class="care-button" (click)="exportExcel()">Export Excel</button>
+              <button class="care-button" (click)="export()">Export CSV</button
+              ><button class="care-button" (click)="print()">Print / Save PDF</button>
+            }
+          </div>
+        </div>
+        <p class="care-note">
+          Select visits in List view for bulk actions. Automatic suggestions require review before
+          saving.
+        </p>
+      </section>
+    </div>
+    @if (modal()) {
+      <div class="care-overlay" (click)="close()">
+        <section
+          class="care-drawer"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="planner-dialog-title"
+          cdkTrapFocus
+          [cdkTrapFocusAutoCapture]="true"
+          (click)="$event.stopPropagation()"
+          (keydown.escape)="close()"
+        >
+          <div class="care-toolbar">
+            <h2 id="planner-dialog-title">
+              {{
+                modal() === 'visit'
+                  ? 'Visit details & allocation'
+                  : modal() === 'plan'
+                    ? 'Plan recurring visits'
+                    : modal() === 'auto'
+                      ? 'Review automatic allocations'
+                      : 'Bulk allocate selected visits'
+              }}
+            </h2>
+            <button class="care-button" aria-label="Close planner" (click)="close()">×</button>
+          </div>
+          <form (ngSubmit)="save()">
+            <div class="care-panel care-fields">
+              @if (modal() === 'view' && draft) {
+                <dl class="care-dl care-wide">
+                  <div>
+                    <dt>Service user / call</dt>
+                    <dd>{{ draft.clientName }} · {{ draft.callName }}</dd>
+                  </div>
+                  <div>
+                    <dt>Schedule</dt>
+                    <dd>{{ draft.date }} · {{ draft.start }} – {{ draft.end }}</dd>
+                  </div>
+                  <div>
+                    <dt>Carers</dt>
+                    <dd>{{ preferredNames(draft.staffIds.join(',')) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Instructions</dt>
+                    <dd>{{ draft.tasks || 'Not recorded' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{{ status(draft) }}</dd>
+                  </div>
+                </dl>
+              } @else if (modal() === 'visit' && draft) {
+                <p class="care-wide">
+                  {{ draft.clientName }} · {{ draft.callName }} · {{ draft.carers }} carer(s)
+                  required.
+                </p>
+                <label class="care-wide"
+                  >Date<input type="date" name="date" [(ngModel)]="draft.date" required /></label
+                ><label
+                  >Start (UK)<input
+                    type="time"
+                    name="start"
+                    [(ngModel)]="draft.start"
+                    required /></label
+                ><label
+                  >End (UK)<input type="time" name="end" [(ngModel)]="draft.end" required /></label
+                ><label class="care-wide"
+                  >Carers<mat-select
+                    cvSelect
+                    multiple
+                    name="staffIds"
+                    aria-label="Allocated carers"
+                    [(ngModel)]="draft.staffIds"
+                  >
+                    @for (candidate of candidateList(); track candidate.id) {
+                      <mat-option [value]="candidate.id"
+                        >{{ candidate.name }} · {{ candidate.hours.toFixed(1) }}h
+                        {{ candidate.preferred ? '· Preferred' : '' }}
+                        {{ candidate.issues.length ? '· Check issues' : '' }}</mat-option
+                      >
+                    }
+                  </mat-select></label
+                ><label
+                  >Allocation type<mat-select
+                    cvSelect
+                    name="allocation"
+                    aria-label="Allocation type"
+                    [(ngModel)]="draft.allocation"
+                    ><mat-option value="Regular">Regular</mat-option
+                    ><mat-option value="Temporary">Temporary cover</mat-option></mat-select
+                  ></label
+                ><label
+                  >Location<mat-select
+                    cvSelect
+                    name="location"
+                    aria-label="Visit location"
+                    [(ngModel)]="draft.location"
+                    ><mat-option value="Home">Home</mat-option
+                    ><mat-option value="Community">Community</mat-option></mat-select
+                  ></label
+                ><label>Task category<input name="taskType" [(ngModel)]="draft.taskType" /></label
+                ><label
+                  >Mileage<input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    name="mileage"
+                    [(ngModel)]="draft.mileage" /></label
+                ><label class="care-check"
+                  ><input
+                    type="checkbox"
+                    name="sensitive"
+                    [(ngModel)]="draft.timeSensitive"
+                  />Time-sensitive visit</label
+                ><label
+                  >Tolerance (minutes)<input
+                    type="number"
+                    min="0"
+                    max="120"
+                    name="tolerance"
+                    [(ngModel)]="draft.toleranceMinutes" /></label
+                ><label class="care-check"
+                  ><input type="checkbox" name="flexible" [(ngModel)]="draft.flexible" />Flexible
+                  visit</label
+                ><label class="care-check"
+                  ><input type="checkbox" name="driver" [(ngModel)]="draft.driverRequired" />Driver
+                  required</label
+                ><label class="care-wide"
+                  >Tasks & instructions<textarea
+                    name="tasks"
+                    [(ngModel)]="draft.tasks"
+                  ></textarea></label
+                ><label class="care-wide"
+                  >Change reason *<textarea name="reason" [(ngModel)]="reason" required></textarea>
+                </label>
+                <div class="care-wide">
+                  <h3>Available staff & requirements</h3>
+                  @for (candidate of candidateList(); track candidate.id) {
+                    <p [class.planner-alert]="candidate.issues.length">
+                      {{ candidate.name }}:
+                      {{
+                        candidate.issues.length
+                          ? candidate.issues.join(' ')
+                          : 'Available · requirements met'
+                      }}
+                    </p>
+                  }
+                </div>
+              } @else if (modal() === 'plan') {
+                <label class="care-wide"
+                  >Service user<mat-select
+                    cvSelect
+                    name="client"
+                    aria-label="Plan service user"
+                    [(ngModel)]="plan.clientId"
+                    (ngModelChange)="plan.callIds = []"
+                  >
+                    @for (c of service.data().clients; track c.id) {
+                      @if (c.active) {
+                        <mat-option [value]="c.id">{{ c.name }}</mat-option>
+                      }
+                    }
+                  </mat-select></label
+                ><label class="care-wide"
+                  >Call types<mat-select
+                    cvSelect
+                    multiple
+                    name="calls"
+                    aria-label="Plan call types"
+                    [(ngModel)]="plan.callIds"
+                  >
+                    @for (c of planCalls(); track c.id) {
+                      <mat-option [value]="c.id"
+                        >{{ c.name }} · {{ c.start }} – {{ c.end }} ·
+                        {{ c.carers }} carers</mat-option
+                      >
+                    }
+                  </mat-select></label
+                ><label
+                  >Start date<input
+                    name="from"
+                    type="date"
+                    [(ngModel)]="plan.from"
+                    required /></label
+                ><label
+                  >End date<input name="to" type="date" [(ngModel)]="plan.to" required /></label
+                ><label class="care-wide"
+                  >Carers (blank uses regular package carers)<mat-select
+                    cvSelect
+                    multiple
+                    name="staff"
+                    aria-label="Planning carers"
+                    [(ngModel)]="plan.staffIds"
+                  >
+                    @for (p of store.staff(); track p.id) {
+                      <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                    }
+                  </mat-select></label
+                ><label class="care-wide"
+                  >Allocation type<mat-select
+                    cvSelect
+                    name="type"
+                    aria-label="Recurring allocation type"
+                    [(ngModel)]="plan.allocation"
+                    ><mat-option value="Regular">Regular / permanent</mat-option
+                    ><mat-option value="Temporary">Temporary cover</mat-option></mat-select
+                  ></label
+                >
+                <p class="care-note care-wide">
+                  Select up to 31 days. Package weekdays, double-up count, training, travel and
+                  availability rules apply. Existing visits are retained.
+                </p>
+                <a
+                  class="care-wide"
+                  routerLink="/manage/rota/call-packages"
+                  [queryParams]="{ client: plan.clientId }"
+                  >Manage recurring call times, weekdays and backup carers</a
+                >
+              } @else {
+                @if (modal() === 'auto') {
+                  <p class="care-wide">
+                    {{ plans.length }} visits can be fully allocated. {{ unfilled.length }} visits
+                    still need suitable staff.
+                  </p>
+                  @for (p of plans; track p.id) {
+                    <div class="care-wide">
+                      <strong>{{ previewName(p.id) }}</strong>
+                      <p>{{ preferredNames(p.staffIds.join(',')) }}</p>
+                    </div>
+                  }
+                  @for (id of unfilled; track id) {
+                    <p class="care-wide planner-alert">Needs cover: {{ previewName(id) }}</p>
+                  }
+                } @else {
+                  <p class="care-wide">
+                    {{ selected().length }} visits selected. Assign the same carers to each selected
+                    visit. All visits must pass validation together.
+                  </p>
+                  <label class="care-wide"
+                    >Carers<mat-select
+                      cvSelect
+                      multiple
+                      name="bulkStaff"
+                      aria-label="Bulk carers"
+                      [(ngModel)]="bulkStaff"
+                    >
+                      @for (p of store.staff(); track p.id) {
+                        <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                      }
+                    </mat-select></label
+                  >
+                }
+                <label class="care-wide"
+                  >Allocation reason *<textarea
+                    name="reason"
+                    [(ngModel)]="reason"
+                    required
+                  ></textarea>
+                </label>
+              }
+            </div>
+            @if (error()) {
+              <p class="care-error" role="alert">{{ error() }}</p>
+            }
+            <footer>
+              <button class="care-button" type="button" (click)="close()">Cancel</button>
+              @if (modal() !== 'view') {
+                <button
+                  class="care-button primary"
+                  type="submit"
+                  [disabled]="modal() === 'auto' && !plans.length"
+                >
+                  Confirm {{ modal() === 'visit' ? 'visit changes' : 'allocation' }}
+                </button>
+              }
+            </footer>
+          </form>
+        </section>
+      </div>
+    }
+  }
+} @else {
+  <p class="care-empty">Rota view permission is required.</p>
+}

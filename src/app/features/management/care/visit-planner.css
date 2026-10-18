@@ -1,0 +1,236 @@
+.planner-period-navigation {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+:host .planner-period-navigation .planner-period {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  white-space: nowrap;
+}
+:host .planner-period-navigation .planner-period > input {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 144px;
+  min-width: 0;
+  min-height: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 6px 8px;
+  line-height: 20px;
+}
+.planner-scroll {
+  overflow: auto;
+  max-width: 100%;
+  margin-top: 8px;
+}
+.planner-grid {
+  display: grid;
+  grid-template-columns: 150px repeat(7, minmax(120px, 1fr));
+  min-width: 990px;
+}
+.planner-grid > div {
+  border-right: 1px solid #e2edf3;
+  border-bottom: 1px solid #e2edf3;
+  padding: 6px;
+  min-height: 80px;
+}
+.planner-grid > .planner-day {
+  background: #eaf5fc;
+  min-height: 30px;
+  font-weight: 700;
+}
+.planner-grid > .planner-person {
+  background: #fcfefe;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+.planner-person small {
+  display: block;
+  color: #657184;
+  margin-top: 5px;
+}
+.visit-card {
+  border: 1px solid #dce8ef;
+  border-left: 3px solid #008afa;
+  border-radius: 5px;
+  display: block;
+  width: 100%;
+  text-align: left;
+  color: #123352;
+  padding: 6px;
+  margin-bottom: 5px;
+  font: inherit;
+  cursor: pointer;
+}
+.visit-card strong,
+.visit-card small {
+  display: block;
+}
+.visit-card small {
+  font-size: 10px;
+  margin-top: 2px;
+}
+.visit-card.needs-cover {
+  background: #fff5f6 !important;
+  border-color: #f2c8cf;
+  border-left-color: #ff3047;
+}
+.planner-month {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(125px, 1fr));
+  min-width: 900px;
+}
+.planner-month > div {
+  padding: 5px;
+  min-height: 130px;
+  border: 1px solid #edf2f5;
+}
+.planner-month > div > strong {
+  display: block;
+  margin: 4px;
+}
+.planner-muted {
+  opacity: 0.5;
+}
+.planner-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #edf2f5;
+}
+.planner-row small {
+  display: block;
+  color: #657184;
+}
+.planner-alert {
+  color: #b42334;
+}
+:host .planner-filter-panel {
+  container-type: inline-size;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+:host .planner-filter-panel .planner-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) repeat(4, minmax(0, 1fr));
+  gap: 6px 8px;
+  align-items: end;
+}
+:host .planner-filter-panel .planner-filters label {
+  min-width: 0;
+  margin: 0;
+  gap: 2px;
+  line-height: 1.35;
+}
+:host .planner-filter-panel .planner-filters label > :is(input:not([type='checkbox']), mat-select) {
+  box-sizing: border-box;
+  min-height: 32px;
+  margin-top: 0;
+  padding: 5px 8px;
+  font-size: 12px;
+  line-height: 20px;
+}
+.planner-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+  grid-column: span 2;
+  min-height: 32px;
+}
+:host .planner-filter-panel .planner-filter-actions label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+}
+.planner-filter-actions input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+}
+.planner-filter-actions .care-button {
+  min-height: 32px;
+  padding: 4px 10px;
+}
+@container (max-width: 899px) {
+  :host .planner-filter-panel .planner-filters {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@container (max-width: 679px) {
+  :host .planner-filter-panel .planner-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (max-width: 439px) {
+  :host .planner-filter-panel .planner-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .planner-filter-actions {
+    grid-column: auto;
+  }
+}
+@media (pointer: coarse) {
+  :host
+    .planner-filter-panel
+    .planner-filters
+    label
+    > :is(input:not([type='checkbox']), mat-select),
+  :host .planner-filter-panel .planner-filter-actions label,
+  .planner-filter-actions .care-button {
+    min-height: 44px;
+  }
+}
+.planner-summary {
+  position: sticky;
+  top: 60px;
+}
+.planner-summary > .cv-quick-actions {
+  margin-bottom: 12px;
+}
+.planner-list th:first-child {
+  width: 30px;
+}
+.planner-row button {
+  flex-shrink: 0;
+}
+@media (max-width: 760px) {
+  .planner-summary {
+    position: static;
+  }
+}
+@media print {
+  .planner-scroll {
+    overflow: visible;
+  }
+  .planner-grid,
+  .planner-month {
+    min-width: 0;
+  }
+  .visit-card {
+    font-size: 9px;
+  }
+  .planner-summary {
+    position: static;
+  }
+  .planner-filter-panel {
+    display: none;
+  }
+}
+
+:host .care-grid.planner-schedule-only {
+  grid-template-columns: minmax(0, 1fr);
+}

@@ -6,7 +6,7 @@
 <div id="ecm-surface" [class.ecm-wallboard]="wallboard">
   <div class="page-heading">
     <div>
-      <h1>{{ wallboard ? 'Live ECM wallboard' : 'Live ECM board' }}</h1>
+      <h1>{{ wallboard ? 'Live ECM wallboard' : 'Live Visits / ECM' }}</h1>
       <p>Monitor expected visits, spot delays and coordinate care.</p>
     </div>
     @if (service.rota.can('view')) {
@@ -35,7 +35,7 @@
       feature="Live ECM board"
       module="Care delivery"
       viewPermission="View rota"
-      permissionsTitle="Rota & shifts access"
+      permissionsTitle="Visits & Rota access"
     />
   } @else {
     <div class="row ecm-heading-actions" style="margin-bottom: 12px; flex-wrap: wrap">

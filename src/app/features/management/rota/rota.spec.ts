@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
 import { DEMO_USER } from '../../../core/auth/fixtures';
@@ -15,6 +15,37 @@ describe('Rota screens', () => {
     auth.signInWithMicrosoft();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     vi.spyOn(auth, 'currentUser').mockReturnValue({ ...DEMO_USER, roleCode: 'CA' });
+  });
+  it('opens call packages within the shared workspace without allocation workflow cards', () => {
+    TestBed.inject(ActivatedRoute).snapshot.data = { rotaSection: 'call-packages' };
+    const fixture = TestBed.createComponent(Rota);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('.rota-package-grid')).not.toBeNull();
+    expect(element.querySelector('.rota-workflows')).toBeNull();
+  });
+  it('uses the planner when starting allocations from publishing', () => {
+    TestBed.inject(ActivatedRoute).snapshot.data = { rotaSection: 'publishing' };
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const fixture = TestBed.createComponent(Rota);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain('Draft review');
+    expect(element.querySelector('.rota-workflows')).toBeNull();
+    (fixture.componentInstance as unknown as { open(kind: string): void }).open('allocation');
+    expect(navigate).toHaveBeenCalledWith(['/manage/rota/planner'], {
+      queryParams: { plan: 'true', client: null },
+    });
+    expect(element.querySelector('.rota-allocation-modal')).toBeNull();
+  });
+  it('opens past visit history and retains access to audit', () => {
+    TestBed.inject(ActivatedRoute).snapshot.data = { rotaSection: 'history' };
+    const fixture = TestBed.createComponent(Rota);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain('History visits');
+    expect(element.querySelector('.rota-navigation')?.textContent).toContain('Audit');
+    expect(element.querySelector('.rota-package-grid')).toBeNull();
   });
   it('renders all starting workflows before any visits have been created', async () => {
     const fixture = TestBed.createComponent(Rota);

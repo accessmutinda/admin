@@ -420,7 +420,7 @@
                 }
                 <a
                   class="hr-button"
-                  routerLink="/manage/rota"
+                  routerLink="/manage/rota/planner"
                   [queryParams]="{ staff: id, from: period + '-01', to: periodEnd() }"
                   >View rota</a
                 >
@@ -2021,7 +2021,7 @@
               Service Users
             </h2>
             <a
-              routerLink="/manage/rota"
+              routerLink="/manage/rota/planner"
               [queryParams]="{ staff: id, from: period + '-01', to: periodEnd() }"
               >View all ({{ assignedClients().length }})</a
             >
@@ -2138,7 +2138,7 @@
           <h2>Visits & Service Delivery Evidence</h2>
           <a
             class="hr-button"
-            routerLink="/manage/rota"
+            routerLink="/manage/rota/planner"
             [queryParams]="{ staff: id, from: period + '-01', to: periodEnd() }"
             >View Source Visits</a
           >

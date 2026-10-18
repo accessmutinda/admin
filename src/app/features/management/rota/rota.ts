@@ -46,6 +46,20 @@ export class Rota {
   private readonly router = inject(Router);
   protected readonly today = londonDate();
   private readonly route = inject(ActivatedRoute);
+  protected readonly workspaceView = this.route.snapshot.data['visitsWorkspace'] === true;
+  protected readonly section = this.route.snapshot.data['rotaSection'] as string | undefined;
+  protected readonly sectionTitle =
+    this.section === 'call-packages'
+      ? 'Call packages'
+      : this.section === 'history'
+        ? 'History & audit'
+        : 'Publishing';
+  protected readonly sectionTabs =
+    this.section === 'publishing'
+      ? ['Allocations', 'Published', 'Planning']
+      : this.section === 'history'
+        ? ['History', 'Audit']
+        : [];
   protected readonly clientFiles = !!this.route.snapshot.data['clientFiles'];
   protected readonly riskFlags = RISK_FLAGS;
   protected readonly callTypes = computed(() =>
@@ -179,6 +193,7 @@ export class Rota {
       .data()
       .visits.filter(
         (v) =>
+          (this.section !== 'history' || v.date <= this.today) &&
           (!this.from() || v.date >= this.from()) &&
           (!this.to() || v.date <= this.to()) &&
           (!this.clientFilter() || v.clientId === this.clientFilter()) &&
@@ -214,11 +229,25 @@ export class Rota {
   );
   constructor() {
     if (this.clientFiles) this.tab.set('Service users');
+    if (this.section) {
+      this.tab.set(
+        this.section === 'call-packages'
+          ? 'Service users'
+          : this.section === 'history'
+            ? 'History'
+            : 'Allocations',
+      );
+      if (this.section === 'history') {
+        this.from.set('');
+        this.to.set(this.today);
+      }
+      if (this.section === 'publishing') this.stateFilter.set('Draft');
+    }
     const params = this.route.snapshot.queryParamMap;
     const staffId = params.get('staff');
     if (staffId && this.store.staff().some((p) => p.id === staffId)) {
       this.staffFilter.set(staffId);
-      this.tab.set('Staff view');
+      this.tab.set(this.section === 'history' ? 'History' : 'Staff view');
     }
     if (validVacancyDate(params.get('from') ?? '')) this.from.set(params.get('from')!);
     if (validVacancyDate(params.get('to') ?? '') && params.get('to')! >= this.from())
@@ -226,7 +255,15 @@ export class Rota {
     const clientId = params.get('client');
     if (clientId && this.service.data().clients.some((client) => client.id === clientId)) {
       this.packageClient.set(clientId);
-      this.tab.set('Service users');
+      if (!this.section || this.section === 'call-packages') this.tab.set('Service users');
+      else this.clientFilter.set(clientId);
+    }
+    const review = this.service.data().visits.find((visit) => visit.id === params.get('visit'));
+    if (this.section === 'publishing' && review?.state === 'Draft') {
+      this.selected.set(review.id);
+      this.clientFilter.set(review.clientId);
+      this.from.set(review.date);
+      this.to.set(review.date);
     }
     const timer = setInterval(() => this.clock.set(Date.now()), 60000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
@@ -253,6 +290,13 @@ export class Rota {
     return {
       id: crypto.randomUUID(),
       clientId: this.packageClient(),
+      timeSensitive: false,
+      toleranceMinutes: 30,
+      flexible: false,
+      location: 'Home',
+      taskType: '',
+      driverRequired: false,
+      backupStaffId: '',
       name: 'Morning call',
       start: '08:00',
       end: '08:45',
@@ -297,12 +341,16 @@ export class Rota {
     this.query.set('');
     this.selected.set(null);
     this.selectedIds.set([]);
-    this.stateFilter.set('All');
+    this.stateFilter.set(this.section === 'publishing' && view === 'Allocations' ? 'Draft' : 'All');
     this.error.set('');
     this.clientFilter.set('');
     this.staffFilter.set('');
     this.from.set(this.today);
     this.to.set(['Live board', 'Staff view'].includes(view) ? this.today : addDays(this.today, 30));
+    if (this.section === 'history') {
+      this.from.set('');
+      this.to.set(this.today);
+    }
     if (view === 'Planning') this.setMonth(this.month);
   }
   protected personName(id: string): string {
@@ -410,6 +458,18 @@ export class Rota {
     }).format(new Date(at));
   }
   protected open(kind: string, id = ''): void {
+    if (this.section && kind === 'allocation') {
+      void this.router.navigate(['/manage/rota/planner'], {
+        queryParams: { plan: 'true', client: this.packageClient() || null },
+      });
+      return;
+    }
+    if (this.section && kind === 'cover') {
+      void this.router.navigate(['/manage/rota/planner'], {
+        queryParams: { visit: id || this.selected() },
+      });
+      return;
+    }
     if (!this.service.can(kind === 'attendance' ? 'attendance' : 'manage')) return;
     this.error.set('');
     this.modal.set(kind);
@@ -454,6 +514,9 @@ export class Rota {
         note: '',
       };
     }
+  }
+  canLeave(): boolean {
+    return !this.modal() || window.confirm('Discard the unsaved rota changes?');
   }
   protected close(): void {
     this.modal.set('');

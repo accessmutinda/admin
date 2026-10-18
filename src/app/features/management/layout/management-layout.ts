@@ -1,3 +1,4 @@
+import { WorkspaceTools } from '../care/workspace-tools';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MAT_SELECT_CONFIG } from '@angular/material/select';
 import { BreakpointObserver } from '@angular/cdk/layout';
@@ -14,7 +15,15 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
 @Component({
   selector: 'cv-management-layout',
   providers: [{ provide: MAT_SELECT_CONFIG, useValue: { overlayPanelClass: 'cv-select-overlay' } }],
-  imports: [ManagementRole, A11yModule, RouterOutlet, RouterLink, RouterLinkActive, Logo],
+  imports: [
+    ManagementRole,
+    A11yModule,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    Logo,
+    WorkspaceTools,
+  ],
   template: ` <div class="cv-management">
     <a class="skip-link" href="#main-content">Skip to content</a>
     @if (menuOpen()) {
@@ -63,19 +72,31 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
       @if (store.company()?.modules.includes('Care delivery')) {
         <p class="nav-label">CARE DELIVERY</p>
         <a routerLink="/manage/clients" routerLinkActive="active" (click)="menuOpen.set(false)"
-          ><span class="material-symbols-outlined" aria-hidden="true">folder_shared</span>Client
-          files</a
+          ><span class="material-symbols-outlined" aria-hidden="true">folder_shared</span>Service
+          users</a
         >
 
-        <a routerLink="/manage/rota" routerLinkActive="active" (click)="menuOpen.set(false)"
-          ><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Rota &
-          shifts</a
+        <a
+          routerLink="/manage/rota"
+          [class.active]="
+            routerUrl().startsWith('/manage/rota') && !routerUrl().startsWith('/manage/rota/live')
+          "
+          [attr.aria-current]="
+            routerUrl().startsWith('/manage/rota') && !routerUrl().startsWith('/manage/rota/live')
+              ? 'page'
+              : null
+          "
+          (click)="menuOpen.set(false)"
+          ><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Visits
+          &amp; Rota</a
         >
-      }
-      @if (store.company()?.modules.includes('Care delivery')) {
-        <a routerLink="/manage/ecm" routerLinkActive="active" (click)="menuOpen.set(false)"
-          ><span class="material-symbols-outlined" aria-hidden="true">monitor_heart</span>Live ECM
-          board</a
+        <a
+          routerLink="/manage/ecm"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          (click)="menuOpen.set(false)"
+          ><span class="material-symbols-outlined" aria-hidden="true">monitor_heart</span>Live
+          Visits / ECM</a
         >
       }
       @if (store.company()?.modules.includes('Quality & compliance')) {
@@ -160,6 +181,9 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
             ><span class="material-symbols-outlined" aria-hidden="true">unfold_more</span>
           </button>
         </div>
+        @defer (on idle) {
+          <cv-workspace-tools />
+        }
         <a routerLink="/account/security" class="user-control" aria-label="Account settings"
           ><span class="avatar small">{{ auth.currentUser()?.initials }}</span
           ><span

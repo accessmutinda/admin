@@ -6,7 +6,7 @@ export const MODULE_CATALOG = [
     icon: 'description',
     color: '#008afa',
     description: 'Care plans, client records, visits and rota.',
-    features: ['Client files', 'Rota & shifts', 'Live ECM board'],
+    features: ['Client files', 'Visits & Rota', 'Live ECM board'],
   },
   {
     name: 'People & HR',

@@ -1,98 +1,126 @@
 <cv-module-design />
-<nav class="co-breadcrumb" aria-label="Breadcrumb">
-  <a routerLink="/manage/rota">Care Delivery</a>
-</nav>
-<div class="page-heading">
-  <div>
-    <h1>{{ clientFiles ? 'Service users & client files' : 'Rota & shift allocation' }}</h1>
-    <p>
-      {{
-        clientFiles
-          ? 'Maintain care risks, family contacts, billing and call packages.'
-          : 'Plan client calls, arrange suitable carers and publish your rota.'
-      }}
-    </p>
-  </div>
-  @if (service.can('view')) {
-    <div class="row">
-      <a class="button" routerLink="/manage/ecm">
-        <span class="material-symbols-outlined" aria-hidden="true">monitor_heart</span>Live visit
-        board
-      </a>
-      @if (service.can('manage')) {
-        <button class="button primary" (click)="open('allocation')">
-          <span class="material-symbols-outlined" aria-hidden="true">add</span>New allocation
-        </button>
-      }
+@if (!workspaceView) {
+  <nav class="co-breadcrumb" aria-label="Breadcrumb">
+    <a routerLink="/manage/rota">Care Delivery</a>
+  </nav>
+  <div class="page-heading">
+    <div>
+      <h1>
+        {{
+          clientFiles
+            ? 'Service users & client files'
+            : section
+              ? 'Visits & Rota · ' + sectionTitle
+              : 'Visits & Rota'
+        }}
+      </h1>
+      <p>
+        {{
+          clientFiles
+            ? 'Maintain care risks, family contacts, billing and call packages.'
+            : section === 'call-packages'
+              ? 'Configure recurring calls, care requirements and preferred carers.'
+              : section === 'history'
+                ? 'Review past visits, attendance and recorded changes.'
+                : 'Review draft visits, resolve issues and publish confirmed care.'
+        }}
+      </p>
     </div>
-  }
-</div>
+    @if (service.can('view')) {
+      <div class="row">
+        @if (service.can('manage')) {
+          <button class="button primary" (click)="open('allocation')">
+            <span class="material-symbols-outlined" aria-hidden="true">add</span>Plan visits
+          </button>
+        }
+      </div>
+    }
+  </div>
+}
 @if (!service.can('view')) {
   <cv-access-required
     feature="Rota"
     module="Care delivery"
     viewPermission="View rota"
-    permissionsTitle="Rota & shifts access"
+    permissionsTitle="Visits & Rota access"
   />
 } @else {
   @if (!clientFiles) {
-    <div class="metrics four">
-      <button
-        class="metric co-stat co-surface"
-        data-tone="amber"
-        (click)="choose('Unallocated'); from.set(''); to.set('')"
-      >
-        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">person_alert</span>
-        <div>
-          <h2>Unallocated visits</h2>
-          <strong>{{ unallocated().length }}</strong
-          ><small>Visits with missing carer places</small>
-        </div>
-      </button>
-      <button
-        class="metric co-stat co-surface"
-        data-tone="blue"
-        (click)="choose('Allocations'); stateFilter.set('Draft'); from.set(''); to.set('')"
-      >
-        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">edit_calendar</span>
-        <div>
-          <h2>Draft visits</h2>
-          <strong>{{ drafts().length }}</strong
-          ><small>Review before publishing</small>
-        </div>
-      </button>
-      <button class="metric co-stat co-surface" data-tone="teal" (click)="choose('Service users')">
-        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">groups</span>
-        <div>
-          <h2>Regular carers</h2>
-          <strong>{{ regularCarers() }}</strong
-          ><small>Assigned to active call packages</small>
-        </div>
-      </button>
-      <button class="metric co-stat co-surface" data-tone="green" (click)="choose('Published')">
-        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true"
-          >event_available</span
+    @if (!section) {
+      <div class="metrics four">
+        <button
+          class="metric co-stat co-surface"
+          data-tone="amber"
+          (click)="choose('Unallocated'); from.set(''); to.set('')"
         >
-        <div>
-          <h2>Published visits</h2>
-          <strong>{{ published().length }}</strong
-          ><small>Today and future allocations</small>
-        </div>
-      </button>
-    </div>
-    <section class="panel rota-navigation">
-      <nav class="tabs" aria-label="Rota sections">
-        @for (item of tabs; track item) {
-          <button
-            [class.active]="tab() === item"
-            [attr.aria-pressed]="tab() === item"
-            (click)="choose(item)"
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true"
+            >person_alert</span
           >
-            {{ item }}
-          </button>
-        }
-      </nav>
-    </section>
+          <div>
+            <h2>Unallocated visits</h2>
+            <strong>{{ unallocated().length }}</strong
+            ><small>Visits with missing carer places</small>
+          </div>
+        </button>
+        <button
+          class="metric co-stat co-surface"
+          data-tone="blue"
+          (click)="choose('Allocations'); stateFilter.set('Draft'); from.set(''); to.set('')"
+        >
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true"
+            >edit_calendar</span
+          >
+          <div>
+            <h2>Draft visits</h2>
+            <strong>{{ drafts().length }}</strong
+            ><small>Review before publishing</small>
+          </div>
+        </button>
+        <button
+          class="metric co-stat co-surface"
+          data-tone="teal"
+          (click)="choose('Service users')"
+        >
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">groups</span>
+          <div>
+            <h2>Regular carers</h2>
+            <strong>{{ regularCarers() }}</strong
+            ><small>Assigned to active call packages</small>
+          </div>
+        </button>
+        <button class="metric co-stat co-surface" data-tone="green" (click)="choose('Published')">
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true"
+            >event_available</span
+          >
+          <div>
+            <h2>Published visits</h2>
+            <strong>{{ published().length }}</strong
+            ><small>Today and future allocations</small>
+          </div>
+        </button>
+      </div>
+    }
+    @if (!section || sectionTabs.length) {
+      <section class="panel rota-navigation">
+        <nav class="tabs" aria-label="Rota sections">
+          @for (item of section ? sectionTabs : tabs; track item) {
+            <button
+              [class.active]="tab() === item"
+              [attr.aria-pressed]="tab() === item"
+              (click)="choose(item)"
+            >
+              {{
+                section && item === 'Allocations'
+                  ? 'Draft review'
+                  : section && item === 'Planning'
+                    ? 'Rules & copy week'
+                    : item
+              }}
+            </button>
+          }
+        </nav>
+      </section>
+    }
     @if (error() && !modal()) {
       <p class="rota-error" role="alert">{{ error() }}</p>
     }
@@ -363,17 +391,19 @@
     <section class="panel">
       <div class="panel-toolbar">
         <div>
-          <h2>Monthly planning</h2>
+          <h2>{{ section ? 'Rota rules & copying' : 'Monthly planning' }}</h2>
           <p>Open a day to review visits. Copied visits start as drafts.</p>
         </div>
         <div class="row">
-          <label class="rota-month-label"
-            >Month<input
-              type="month"
-              aria-label="Planning month"
-              [ngModel]="month"
-              (ngModelChange)="setMonth($event)"
-          /></label>
+          @if (!section) {
+            <label class="rota-month-label"
+              >Month<input
+                type="month"
+                aria-label="Planning month"
+                [ngModel]="month"
+                (ngModelChange)="setMonth($event)"
+            /></label>
+          }
           @if (service.can('manage')) {
             <button class="button" (click)="open('copy')">
               <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>Copy
@@ -382,28 +412,30 @@
           }
         </div>
       </div>
-      <div class="rota-calendar">
-        @for (d of weekdays; track d.id) {
-          <span class="rota-calendar-weekday">{{ d.name }}</span>
-        }
-        @for (date of monthDays(); track date; let i = $index) {
-          <button
-            class="rota-calendar-day"
-            [style.grid-column-start]="i === 0 ? calendarOffset() + 1 : null"
-            (click)="showDay(date)"
-          >
-            <strong>{{ date | date: 'd' }}</strong
-            ><span>{{ dayVisits(date).length }} visits</span
-            ><small [class.rota-warning]="dayUnallocated(date) > 0">{{
-              dayUnallocated(date)
-                ? dayUnallocated(date) + ' need carers'
-                : dayVisits(date).length
-                  ? 'Open day'
-                  : 'No visits planned'
-            }}</small>
-          </button>
-        }
-      </div>
+      @if (!section) {
+        <div class="rota-calendar">
+          @for (d of weekdays; track d.id) {
+            <span class="rota-calendar-weekday">{{ d.name }}</span>
+          }
+          @for (date of monthDays(); track date; let i = $index) {
+            <button
+              class="rota-calendar-day"
+              [style.grid-column-start]="i === 0 ? calendarOffset() + 1 : null"
+              (click)="showDay(date)"
+            >
+              <strong>{{ date | date: 'd' }}</strong
+              ><span>{{ dayVisits(date).length }} visits</span
+              ><small [class.rota-warning]="dayUnallocated(date) > 0">{{
+                dayUnallocated(date)
+                  ? dayUnallocated(date) + ' need carers'
+                  : dayVisits(date).length
+                    ? 'Open day'
+                    : 'No visits planned'
+              }}</small>
+            </button>
+          }
+        </div>
+      }
     </section>
     <section class="panel rota-rules">
       <div class="panel-toolbar">
@@ -444,7 +476,9 @@
                 ? 'Expected visit board'
                 : tab() === 'Staff view'
                   ? 'Staff visit schedule'
-                  : tab() + ' visits'
+                  : section && tab() === 'Allocations'
+                    ? 'Draft review'
+                    : tab() + ' visits'
             }}
             <span class="count">{{ filtered().length }}</span>
           </h2>
@@ -512,7 +546,7 @@
             }
           </mat-select></label
         >
-        @if (tab() === 'Allocations') {
+        @if (tab() === 'Allocations' && !section) {
           <label
             >State<mat-select
               cvSelect
@@ -647,7 +681,10 @@
         {{ service.data().travelMinutes }} min travel buffer
       </div>
     </section>
-    @if (tab() === 'Live board' && service.can('manage')) {
+    @if (
+      (tab() === 'Live board' || (section === 'history' && tab() === 'History')) &&
+      service.can('manage')
+    ) {
       <div class="rota-transfer panel panel-body">
         <div>
           <h3>Completed attendance → Payroll</h3>
@@ -656,7 +693,12 @@
             access and effective pay profiles are required; timesheets still need approval.
           </p>
         </div>
-        <button class="button" (click)="transfer()">Send completed visits to payroll</button>
+        <label
+          >Attendance date<input type="date" [ngModel]="from()" (ngModelChange)="from.set($event)"
+        /></label>
+        <button class="button" [disabled]="!from()" (click)="transfer()">
+          Send completed visits to payroll
+        </button>
       </div>
     }
   }
@@ -894,6 +936,63 @@
             ><label>End time (UK)<input type="time" name="end" [(ngModel)]="call.end" /></label
             ><small class="full-width"
               >An end time before the start means the call ends the next day.</small
+            >
+            <label class="check-label"
+              ><input
+                type="checkbox"
+                name="timeSensitive"
+                [(ngModel)]="call.timeSensitive"
+              />Time-sensitive visit</label
+            >
+            <label
+              >Tolerance (minutes)<input
+                type="number"
+                min="0"
+                max="120"
+                name="toleranceMinutes"
+                [(ngModel)]="call.toleranceMinutes"
+            /></label>
+            <label class="check-label"
+              ><input type="checkbox" name="flexible" [(ngModel)]="call.flexible" />Flexible
+              visit</label
+            >
+            <label class="check-label"
+              ><input
+                type="checkbox"
+                name="driverRequired"
+                [(ngModel)]="call.driverRequired"
+              />Driver required</label
+            >
+            <label
+              >Location<mat-select
+                cvSelect
+                name="location"
+                aria-label="Call location"
+                [(ngModel)]="call.location"
+                ><mat-option value="Home">Home</mat-option
+                ><mat-option value="Community">Community</mat-option></mat-select
+              ></label
+            >
+            <label>Task category<input name="taskType" [(ngModel)]="call.taskType" /></label>
+            <label
+              >Mileage<input
+                type="number"
+                min="0"
+                step="0.1"
+                name="mileage"
+                [(ngModel)]="call.mileage"
+            /></label>
+            <label
+              >Backup carer<mat-select
+                cvSelect
+                name="backupStaffId"
+                aria-label="Backup carer"
+                [(ngModel)]="call.backupStaffId"
+                ><mat-option value="">None</mat-option>
+                @for (person of store.staff(); track person.id) {
+                  <mat-option [value]="person.id">{{ person.name }}</mat-option>
+                }
+              </mat-select></label
             >
             <fieldset class="full-width rota-weekdays">
               <legend>Days of the week</legend>

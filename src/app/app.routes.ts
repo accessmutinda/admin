@@ -142,6 +142,13 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'family/:clientId/:accessId',
+    canActivate: [workspaceGuard],
+    title: 'Family Portal · CareVerity',
+    loadComponent: () =>
+      import('./features/management/care/family-portal').then((m) => m.FamilyPortal),
+  },
+  {
     path: 'manage',
     canActivate: [workspaceGuard],
     canActivateChild: [
@@ -277,17 +284,17 @@ export const routes: Routes = [
       },
       {
         path: 'clients',
+        canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
         data: { module: 'Care delivery' },
-        title: 'Client files · CareVerity',
+        title: 'Service users · CareVerity',
         loadComponent: () =>
           import('./features/management/clients/client-files').then((m) => m.ClientFiles),
       },
       {
         path: 'clients/:id',
         data: { module: 'Care delivery' },
-        title: 'Client record · CareVerity',
-        loadComponent: () =>
-          import('./features/management/clients/client-files').then((m) => m.ClientFiles),
+        loadChildren: () =>
+          import('./features/management/care/care.routes').then((m) => m.CARE_ROUTES),
       },
       {
         path: 'ecm/workflows',
@@ -312,8 +319,10 @@ export const routes: Routes = [
       {
         path: 'rota',
         data: { module: 'Care delivery' },
-        title: 'Rota & shift allocation · CareVerity',
-        loadComponent: () => import('./features/management/rota/rota').then((m) => m.Rota),
+        loadComponent: () =>
+          import('./features/management/rota/visits-workspace').then((m) => m.VisitsWorkspace),
+        loadChildren: () =>
+          import('./features/management/rota/visits.routes').then((m) => m.VISITS_ROUTES),
       },
       {
         path: 'supervisor',
