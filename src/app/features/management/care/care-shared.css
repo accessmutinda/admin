@@ -1,0 +1,230 @@
+:host {
+  display: block;
+  min-width: 0;
+  color: #123352;
+  font-size: 12px;
+}
+.care-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+  margin-bottom: var(--page-heading-gap, 12px);
+  flex-wrap: wrap;
+}
+.care-heading h1 {
+  font-size: 21px;
+  font-weight: 800;
+  color: #081535;
+  margin: 0;
+}
+.care-heading p {
+  color: #677488;
+  margin: 4px 0 0;
+}
+.care-actions,
+.care-tabs,
+.care-filters,
+.care-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.care-tabs {
+  border-bottom: 1px solid #dfe8ed;
+  margin: 12px 0;
+  padding-bottom: 6px;
+}
+.care-tabs a,
+.care-tabs button {
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #06376b;
+  text-decoration: none;
+  background: transparent;
+}
+.care-tabs .active {
+  background: #eaf5fc;
+  border-color: #8ccde8;
+  box-shadow: inset 0 -3px #008afa;
+}
+.care-panel {
+  background: linear-gradient(120deg, #fff, #fcfefe);
+  border: 1px solid #e9eff3;
+  border-radius: 9px;
+  box-shadow: 0 2px 7px #123c541f;
+  padding: 10px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+.care-panel h2 {
+  font-size: 14px;
+  color: #002b60;
+  margin: 0;
+}
+.care-panel h3 {
+  font-size: 12px;
+  margin: 8px 0;
+}
+.care-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.care-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px 8px;
+  margin-bottom: 12px;
+}
+.care-stats .metric.co-stat {
+  min-height: 0;
+}
+.care-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2.15fr) minmax(295px, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+.care-empty {
+  padding: 24px 12px;
+  text-align: center;
+  color: #657184;
+}
+.care-dl {
+  margin: 8px 0;
+}
+.care-dl div {
+  padding: 6px 0;
+  border-bottom: 1px solid #edf2f5;
+  display: grid;
+  grid-template-columns: minmax(100px, 0.8fr) minmax(0, 1.2fr);
+  gap: 8px;
+}
+.care-dl dt {
+  color: #657184;
+}
+.care-dl dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.care-overlay {
+  position: fixed;
+  inset: 0;
+  background: #07153666;
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+}
+.care-drawer {
+  width: 480px;
+  max-width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  background: #f1f7fa;
+  padding: 16px;
+  box-sizing: border-box;
+  box-shadow: -5px 0 20px #12335222;
+}
+.care-drawer footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 12px;
+}
+.care-drawer h2 {
+  font-size: 18px;
+}
+.care-drawer .care-panel {
+  box-shadow: none;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #008bd9;
+  outline-offset: 2px;
+}
+.care-button {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #dfe6eb;
+  background: linear-gradient(#fff, #f9fcfd);
+  border-radius: 5px;
+  color: #16375b;
+  font: 700 11px/1.4 var(--font-sans);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.care-button.primary {
+  color: #fff;
+  background: #008afa;
+  border-color: #008afa;
+}
+.care-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.care-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: center;
+}
+@media (min-width: 901px) and (max-width: 1100px) {
+  .care-grid {
+    grid-template-columns: minmax(0, 2.15fr) minmax(270px, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .care-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .care-stats > :last-child:nth-child(odd) {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 900px) {
+  .care-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .care-tabs a {
+    padding: 8px;
+  }
+  .care-heading {
+    gap: 8px;
+  }
+}
+@media print {
+  .care-tabs,
+  .care-actions,
+  .care-filters,
+  .care-overlay,
+  .care-button {
+    display: none !important;
+  }
+  .care-panel {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+  .care-scroll {
+    overflow: visible;
+  }
+  .care-grid {
+    display: block;
+  }
+}

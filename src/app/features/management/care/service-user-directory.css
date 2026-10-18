@@ -1,0 +1,92 @@
+:host {
+  container-type: inline-size;
+}
+.directory-filter-card {
+  padding: 8px;
+}
+.directory-filter-card .directory-filter-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(100px, 1fr)) auto;
+  gap: 6px 8px;
+  align-items: end;
+  margin: 0;
+}
+.directory-filter-card .directory-filter-grid label {
+  min-width: 0;
+  gap: 3px;
+  font-size: 11px;
+}
+.directory-filter-card .directory-filter-grid label > :is(input, mat-select) {
+  box-sizing: border-box;
+  min-height: 32px;
+  height: 32px;
+  margin-top: 0;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  line-height: 20px;
+}
+.directory-filter-card .care-button {
+  min-height: 32px;
+  height: 32px;
+  padding: 5px 10px;
+}
+@container (max-width: 900px) {
+  .directory-filter-card .directory-filter-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .directory-filter-grid > label:first-child {
+    grid-column: span 2;
+  }
+}
+@container (max-width: 600px) {
+  .directory-filter-card .directory-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (max-width: 420px) {
+  .directory-filter-card .directory-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .directory-filter-grid > label:first-child {
+    grid-column: auto;
+  }
+}
+@media (pointer: coarse) {
+  .directory-filter-card .directory-filter-grid label > :is(input, mat-select),
+  .directory-filter-card .care-button {
+    min-height: 44px;
+    height: 44px;
+  }
+}
+
+.directory-results .directory-sort {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  margin: 0;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+}
+.directory-results .directory-sort > mat-select {
+  box-sizing: border-box;
+  width: 148px;
+  min-height: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 7px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  line-height: 20px;
+}
+@media (pointer: coarse) {
+  .directory-results .directory-sort > mat-select {
+    min-height: 44px;
+    height: 44px;
+    padding-top: 11px;
+    padding-bottom: 11px;
+  }
+}

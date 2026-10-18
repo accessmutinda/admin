@@ -1,0 +1,251 @@
+<section class="care-panel directory-filter-card" aria-label="Filter service users">
+  <div class="care-fields care-filters directory-filter-grid">
+    <label
+      >Search service users<input
+        [ngModel]="query()"
+        (ngModelChange)="query.set($event); page.set(1)"
+        placeholder="Name, GP, next of kin, postcode or notes" /></label
+    ><label
+      >Status<mat-select
+        cvSelect
+        aria-label="Service-user status"
+        [ngModel]="status()"
+        (ngModelChange)="status.set($event); page.set(1)"
+      >
+        @for (s of ['Active', 'Inactive', 'All']; track s) {
+          <mat-option [value]="s">{{ s }}</mat-option>
+        }
+      </mat-select></label
+    ><label
+      >Care package<mat-select
+        cvSelect
+        aria-label="Care package filter"
+        [ngModel]="packageFilter()"
+        (ngModelChange)="packageFilter.set($event); page.set(1)"
+        ><mat-option value="">All</mat-option>
+        @for (p of packages(); track p) {
+          <mat-option [value]="p">{{ p }}</mat-option>
+        }
+      </mat-select></label
+    ><label
+      >Primary need<mat-select
+        cvSelect
+        aria-label="Primary need filter"
+        [ngModel]="need()"
+        (ngModelChange)="need.set($event); page.set(1)"
+        ><mat-option value="">All</mat-option>
+        @for (n of needs(); track n) {
+          <mat-option [value]="n">{{ n }}</mat-option>
+        }
+      </mat-select></label
+    ><label
+      >Funder<mat-select
+        cvSelect
+        aria-label="Funder filter"
+        [ngModel]="funding()"
+        (ngModelChange)="funding.set($event); page.set(1)"
+        ><mat-option value="">All</mat-option>
+        @for (f of ['Local authority', 'Private', 'NHS']; track f) {
+          <mat-option [value]="f">{{ f }}</mat-option>
+        }
+      </mat-select></label
+    ><button class="care-button" (click)="clear()">Clear</button>
+  </div>
+</section>
+<section class="care-panel directory-results" aria-label="Service user results">
+  <div class="care-toolbar">
+    <h2>Service Users ({{ clients().length }})</h2>
+    <div class="care-actions">
+      <label class="directory-sort"
+        ><span>Sort</span
+        ><mat-select
+          cvSelect
+          aria-label="Sort service users"
+          [ngModel]="sort()"
+          (ngModelChange)="sort.set($event)"
+          ><mat-option value="name">Name</mat-option
+          ><mat-option value="next">Next visit date</mat-option></mat-select
+        ></label
+      >
+      @if (care.rota.can('export')) {
+        <button class="care-button" (click)="export()">
+          Export {{ selected().length ? 'selected' : 'results' }}
+        </button>
+      }
+      <button
+        class="care-button"
+        [attr.aria-pressed]="view() === 'Table'"
+        (click)="view.set('Table')"
+      >
+        Table</button
+      ><button
+        class="care-button"
+        [attr.aria-pressed]="view() === 'Cards'"
+        (click)="view.set('Cards')"
+      >
+        Cards
+      </button>
+    </div>
+  </div>
+  @if (view() === 'Table') {
+    <div class="care-scroll" tabindex="0" role="region" aria-label="Service-user directory">
+      <table class="care-table">
+        <thead>
+          <tr>
+            <th>
+              <input type="checkbox" aria-label="Select current page" (change)="selectAll()" />
+            </th>
+            <th>Service user</th>
+            <th>Age / DOB</th>
+            <th>Primary needs</th>
+            <th>Key flags</th>
+            <th>Care package</th>
+            <th>Next of kin</th>
+            <th>GP</th>
+            <th>Funder</th>
+            <th>Next visit</th>
+            <th>Alerts</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of rows(); track c.id) {
+            <tr>
+              <td>
+                <input
+                  type="checkbox"
+                  [attr.aria-label]="'Select ' + c.name"
+                  [checked]="selected().includes(c.id)"
+                  (change)="toggle(c.id)"
+                />
+              </td>
+              <td>
+                <div class="directory-identity">
+                  @if (c.file?.photo) {
+                    <img class="directory-avatar" [src]="c.file!.photo" alt="" />
+                  } @else {
+                    <span class="directory-avatar" aria-hidden="true">{{ initials(c.name) }}</span>
+                  }
+                  <div>
+                    <a [routerLink]="['/manage/clients', c.id]"
+                      ><strong>{{ c.name }}</strong></a
+                    ><small>{{ c.address }}, {{ c.postcode }}</small>
+                  </div>
+                </div>
+              </td>
+              <td>
+                {{ age(c.file?.details?.['dob'] ?? '') ?? '—' }} years<small>{{
+                  c.file?.details?.['dob'] | date: 'dd MMM yyyy'
+                }}</small>
+              </td>
+              <td>
+                @for (n of primaryNeeds(c); track n) {
+                  <span class="care-tag">{{ n }}</span>
+                } @empty {
+                  <small>Not recorded</small>
+                }
+              </td>
+              <td>
+                @for (f of c.riskFlags ?? []; track f) {
+                  <span class="care-tag">{{ f }}</span>
+                }
+              </td>
+              <td>
+                {{ calls(c).length }} call packages<small>
+                  @for (call of calls(c); track call.id) {
+                    {{ call.name }}<br />
+                  }
+                </small>
+              </td>
+              <td>
+                {{ kin(c)?.name || 'Not recorded'
+                }}<small>{{ kin(c)?.relationship }} · {{ kin(c)?.phone }}</small>
+              </td>
+              <td>{{ c.file?.details?.['gp'] || 'Not recorded' }}</td>
+              <td>{{ c.funding }}</td>
+              <td>
+                @if (nextVisit(c); as v) {
+                  <a [routerLink]="['/manage/clients', c.id, 'visits']"
+                    >{{ v.date | date: 'dd MMM' }} {{ v.start }}</a
+                  ><small>{{ v.staffIds.length < v.carers ? 'Needs staff' : 'Allocated' }}</small>
+                } @else {
+                  <small>No upcoming visits</small>
+                }
+              </td>
+              <td>
+                @for (alert of alerts(c); track alert) {
+                  <span class="care-tag" data-tone="amber">{{ alert }}</span>
+                } @empty {
+                  <small>No recorded alerts</small>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="11" class="care-empty">No service users match these filters.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="directory-cards">
+      @for (c of rows(); track c.id) {
+        <article class="care-panel">
+          <div class="directory-identity">
+            @if (c.file?.photo) {
+              <img class="directory-avatar" [src]="c.file!.photo" alt="" />
+            } @else {
+              <span class="directory-avatar">{{ initials(c.name) }}</span>
+            }
+            <h3>
+              <a [routerLink]="['/manage/clients', c.id]">{{ c.name }}</a>
+            </h3>
+          </div>
+          <p>{{ c.address }}, {{ c.postcode }}</p>
+          <p>{{ c.funding }} · {{ calls(c).length }} call packages</p>
+          <p>{{ primaryNeeds(c).join(', ') || 'Primary needs not recorded' }}</p>
+          <p>Next of kin: {{ kin(c)?.name || 'Not recorded' }}</p>
+          @for (alert of alerts(c); track alert) {
+            <span class="care-tag" data-tone="amber">{{ alert }}</span>
+          }
+          <div class="care-footer">
+            <a [routerLink]="['/manage/clients', c.id, 'visits']">Visits & Allocation</a
+            ><label
+              ><input
+                type="checkbox"
+                [checked]="selected().includes(c.id)"
+                (change)="toggle(c.id)"
+              />Select {{ c.name }}</label
+            >
+          </div>
+        </article>
+      } @empty {
+        <p class="care-empty">No service users match these filters.</p>
+      }
+    </div>
+  }
+  <div class="care-footer">
+    <span
+      >Showing {{ clients().length ? (currentPage() - 1) * pageSize + 1 : 0 }}–{{
+        currentPage() * pageSize < clients().length ? currentPage() * pageSize : clients().length
+      }}
+      of {{ clients().length }} service users · Page {{ currentPage() }} of {{ pageCount() }} · 8
+      per page</span
+    >
+    <div class="care-actions">
+      <button
+        class="care-button"
+        [disabled]="currentPage() <= 1"
+        (click)="page.set(currentPage() - 1)"
+      >
+        Previous</button
+      ><button
+        class="care-button"
+        [disabled]="currentPage() >= pageCount()"
+        (click)="page.set(currentPage() + 1)"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+</section>

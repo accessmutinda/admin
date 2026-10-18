@@ -1,0 +1,39 @@
+.client-workspace-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-bottom: 1px solid #dfe8ed;
+  padding: 6px 0;
+  margin: 12px 0;
+}
+.client-workspace-tabs a,
+.client-workspace-tabs > span {
+  padding: 8px 10px;
+  color: #06376b;
+  text-decoration: none;
+  border-radius: 5px;
+}
+.client-workspace-tabs > span {
+  background: #eaf5fc;
+  box-shadow: inset 0 -3px #008afa;
+}
+.client-workspace-tabs a:hover {
+  background: #eaf5fc;
+}
+.client-profile-photo {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 7px;
+  flex-shrink: 0;
+}
+cv-clinical-summary {
+  display: block;
+  grid-column: 1/-1;
+  min-width: 0;
+}
+@media print {
+  .client-workspace-tabs {
+    display: none !important;
+  }
+}

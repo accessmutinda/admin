@@ -1,0 +1,427 @@
+<cv-module-design />
+@if (client(); as c) {
+  <cv-care-header [client]="c" />
+  <div class="care-heading">
+    <div>
+      <h1>{{ title() }}</h1>
+      <p>{{ c.name }} · Connected care records and sharing preferences.</p>
+    </div>
+    <div class="care-actions">
+      @if (care.rota.can('manage')) {
+        @if (section() === 'contacts') {
+          <button class="care-button primary" (click)="open('contact')">+ Add contact</button>
+        }
+        @if (section() === 'family') {
+          <button class="care-button primary" (click)="open('access')">+ Add family access</button>
+        }
+      }
+      @if (section() === 'audit' && care.rota.can('export')) {
+        <button class="care-button" (click)="export()">Export audit</button>
+      }
+    </div>
+  </div>
+  @if (error()) {
+    <p class="care-error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p class="care-note" role="status">{{ notice() }}</p>
+  }
+  @if (section() === 'contacts') {
+    <section class="care-panel">
+      <h2>Primary representative</h2>
+      <dl class="care-dl">
+        <div>
+          <dt>Name</dt>
+          <dd>{{ c.representative?.name || 'Not recorded' }}</dd>
+        </div>
+        <div>
+          <dt>Relationship</dt>
+          <dd>{{ c.representative?.relationship || 'Not recorded' }}</dd>
+        </div>
+        <div>
+          <dt>Phone / email</dt>
+          <dd>
+            {{ c.representative?.phone || 'Not recorded' }} ·
+            {{ c.representative?.email || 'Not recorded' }}
+          </dd>
+        </div>
+      </dl>
+      <p class="care-note">
+        The primary representative remains editable from the profile. Additional contacts are
+        managed below.
+      </p>
+    </section>
+    <section class="care-panel">
+      <h2>Family, emergency & professional contacts</h2>
+      <div class="care-scroll" tabindex="0" role="region" aria-label="Contact register">
+        <table class="care-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Relationship</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (contact of c.file?.contacts ?? []; track contact.id) {
+              <tr>
+                <td>
+                  {{ contact.name }}
+                  @if (contact.nextOfKin) {
+                    <span class="care-tag" data-tone="green">Next of kin</span>
+                  }
+                </td>
+                <td>{{ contact.type }}</td>
+                <td>{{ contact.relationship }}</td>
+                <td>
+                  <a [href]="'tel:' + contact.phone">{{ contact.phone }}</a>
+                </td>
+                <td>
+                  <a [href]="'mailto:' + contact.email">{{ contact.email }}</a>
+                </td>
+                <td>
+                  @if (care.rota.can('manage')) {
+                    <button class="care-button" (click)="open('contact', contact)">
+                      Edit contact
+                    </button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="care-empty">No additional contacts recorded.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  } @else if (section() === 'documents') {
+    @if (care.rota.can('manage')) {
+      <section class="care-panel">
+        <h2>Upload supporting document</h2>
+        <p class="care-note">
+          Files are held on this device. PDF, DOCX, PNG and JPEG, maximum 5 MB each.
+        </p>
+        <div class="care-fields">
+          <label
+            >Category<mat-select cvSelect aria-label="Document category" [(ngModel)]="category">
+              @for (
+                v of [
+                  'Care plan',
+                  'LPA',
+                  'Capacity assessment',
+                  'Advance decision',
+                  'Clinical',
+                  'Other',
+                ];
+                track v
+              ) {
+                <mat-option [value]="v">{{ v }}</mat-option>
+              }
+            </mat-select></label
+          ><label>Version<input [(ngModel)]="documentVersion" /></label
+          ><label class="care-wide"
+            >Document<input
+              type="file"
+              accept=".pdf,.docx,.png,.jpg,.jpeg"
+              (change)="upload($event)"
+              [disabled]="busy() || !!pendingDocument()"
+          /></label>
+        </div>
+        @if (busy()) {
+          <p role="status">Reading document…</p>
+        }
+        @if (pendingDocument(); as pending) {
+          <p class="care-note">{{ pending.name }} is retained for retry.</p>
+          <button class="care-button primary" (click)="savePendingDocument()">
+            Retry saving document</button
+          ><button class="care-button" (click)="pendingDocument.set(null)">
+            Discard pending upload
+          </button>
+        }
+      </section>
+    }
+    <section class="care-panel">
+      <h2>Saved documents</h2>
+      <div class="care-scroll">
+        <table class="care-table">
+          <thead>
+            <tr>
+              <th>Document</th>
+              <th>Category / version</th>
+              <th>Uploaded</th>
+              <th>Size</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (d of c.file?.documents ?? []; track d.id) {
+              <tr>
+                <td>{{ d.name }}</td>
+                <td>{{ d.category }} · v{{ d.version }}</td>
+                <td>
+                  {{ ukStamp(d.at) }}<small>{{ d.by }}</small>
+                </td>
+                <td>{{ (d.size / 1024).toFixed(0) }} KB</td>
+                <td>
+                  @if (care.rota.can('export')) {
+                    <button class="care-button" (click)="download(d)">Download</button>
+                  }
+                  @if (care.rota.can('manage')) {
+                    <button class="care-button" (click)="remove(d)">Remove</button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="care-empty">
+                  No files uploaded. Existing storage references remain in the profile’s document
+                  register.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  } @else if (section() === 'family') {
+    <p class="care-note">
+      Sharing consent: {{ c.file?.sections?.['consent']?.['family'] || 'Not recorded' }}. Access is
+      checked against the signed-in email and selected workspace in this device demo. Invitations
+      and external messaging are not delivered.
+    </p>
+    <section class="care-panel">
+      <h2>Family access & permissions</h2>
+      <div class="care-scroll">
+        <table class="care-table">
+          <thead>
+            <tr>
+              <th>Family member</th>
+              <th>Status</th>
+              @for (scope of scopes; track scope) {
+                <th>{{ scope }}</th>
+              }
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of c.file?.familyAccess ?? []; track a.id) {
+              <tr>
+                <td>
+                  {{ a.name }}<small>{{ a.email }} · {{ a.relationship }}</small>
+                </td>
+                <td>
+                  <span
+                    class="care-tag"
+                    [attr.data-tone]="a.status === 'Active' ? 'green' : 'amber'"
+                    >{{ a.status }}</span
+                  >
+                </td>
+                @for (scope of scopes; track scope) {
+                  <td>
+                    @if (care.rota.can('manage')) {
+                      <button
+                        class="care-button"
+                        role="switch"
+                        [attr.aria-label]="a.name + ' · ' + scope"
+                        [attr.aria-checked]="a.scopes.includes(scope)"
+                        (click)="toggleAccess(a, scope)"
+                      >
+                        {{ a.scopes.includes(scope) ? 'On' : 'Off' }}
+                      </button>
+                    } @else {
+                      {{ a.scopes.includes(scope) ? 'On' : 'Off' }}
+                    }
+                  </td>
+                }
+                <td>
+                  @if (care.rota.can('manage')) {
+                    <button class="care-button" (click)="open('access', a)">Manage access</button>
+                    @if (a.status === 'Active') {
+                      <a
+                        class="care-button"
+                        [routerLink]="['/family', c.id, a.id]"
+                        [queryParams]="{ preview: '1' }"
+                        >Preview approved view</a
+                      >
+                    }
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9" class="care-empty">No family access recorded.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    @if (care.rota.can('manage')) {
+      <section class="care-panel">
+        <h2>Family messages</h2>
+        <p class="care-note">
+          Messages are recorded locally. Only members with active Messages permission can view their
+          conversation.
+        </p>
+        <div class="care-fields">
+          <label
+            >Recipient<mat-select
+              cvSelect
+              aria-label="Message recipient"
+              [(ngModel)]="messageAccess"
+            >
+              @for (a of c.file?.familyAccess ?? []; track a.id) {
+                @if (a.status === 'Active' && a.scopes.includes('Messages')) {
+                  <mat-option [value]="a.id">{{ a.name }}</mat-option>
+                }
+              }
+            </mat-select></label
+          ><label class="care-wide">Message<textarea [(ngModel)]="messageText"></textarea></label>
+        </div>
+        <button class="care-button primary" (click)="sendMessage()">Record message</button>
+      </section>
+    }
+  } @else {
+    <section class="care-panel">
+      <div class="care-toolbar">
+        <h2>Client change history</h2>
+        <label>Search audit<input [ngModel]="query()" (ngModelChange)="query.set($event)" /></label>
+      </div>
+      <div class="care-scroll">
+        <table class="care-table">
+          <thead>
+            <tr>
+              <th>Date & time</th>
+              <th>User</th>
+              <th>Action</th>
+              <th>Detail</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of audit(); track a.id) {
+              <tr>
+                <td>{{ ukStamp(a.at) }}</td>
+                <td>{{ a.by }}</td>
+                <td>{{ a.action }}</td>
+                <td>{{ a.detail }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="4" class="care-empty">
+                  No matching audit entries. Earlier saves remain in the rota audit.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+  @if (modal()) {
+    <div class="care-overlay" (click)="close()">
+      <section
+        class="care-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="care-record-dialog"
+        cdkTrapFocus
+        [cdkTrapFocusAutoCapture]="true"
+        (click)="$event.stopPropagation()"
+        (keydown.escape)="close()"
+      >
+        <div class="care-toolbar">
+          <h2 id="care-record-dialog">
+            {{ modal() === 'contact' ? 'Contact details' : 'Family access permissions' }}
+          </h2>
+          <button class="care-button" aria-label="Close editor" (click)="close()">×</button>
+        </div>
+        <form (ngSubmit)="save()">
+          <div class="care-panel care-fields">
+            @if (modal() === 'contact') {
+              <label>Name *<input name="name" [(ngModel)]="contact.name" required /></label
+              ><label
+                >Relationship *<input
+                  name="relationship"
+                  [(ngModel)]="contact.relationship"
+                  required /></label
+              ><label
+                >Type<mat-select
+                  cvSelect
+                  name="type"
+                  aria-label="Contact type"
+                  [(ngModel)]="contact.type"
+                >
+                  @for (t of ['Family', 'Emergency', 'GP', 'Pharmacy', 'Professional']; track t) {
+                    <mat-option [value]="t">{{ t }}</mat-option>
+                  }
+                </mat-select></label
+              ><label>Phone<input name="phone" type="tel" [(ngModel)]="contact.phone" /></label
+              ><label class="care-wide"
+                >Email<input name="email" type="email" [(ngModel)]="contact.email" /></label
+              ><label class="care-check care-wide"
+                ><input type="checkbox" name="kin" [(ngModel)]="contact.nextOfKin" />Next of
+                kin</label
+              >
+            } @else {
+              <label>Name *<input name="name" [(ngModel)]="access.name" required /></label
+              ><label
+                >Relationship *<input
+                  name="relationship"
+                  [(ngModel)]="access.relationship"
+                  required /></label
+              ><label class="care-wide"
+                >Email *<input
+                  name="email"
+                  type="email"
+                  [(ngModel)]="access.email"
+                  required /></label
+              ><label class="care-wide"
+                >Status<mat-select
+                  cvSelect
+                  name="status"
+                  aria-label="Family access status"
+                  [(ngModel)]="access.status"
+                >
+                  @for (s of ['Pending', 'Active', 'Revoked']; track s) {
+                    <mat-option [value]="s">{{ s }}</mat-option>
+                  }
+                </mat-select></label
+              >
+              <fieldset class="care-wide">
+                <legend>Approved information</legend>
+                @for (scope of scopes; track scope) {
+                  <label class="care-check"
+                    ><input
+                      type="checkbox"
+                      [checked]="access.scopes.includes(scope)"
+                      (change)="toggleScope(scope)"
+                    />{{ scope }}</label
+                  >
+                }
+              </fieldset>
+              <p class="care-note care-wide">
+                Active access also requires recorded family-sharing agreement. Notes show only the
+                approved sharing summary, never internal clinical notes. Pending access records do
+                not send invitations.
+              </p>
+            }
+          </div>
+          @if (error()) {
+            <p class="care-error" role="alert">{{ error() }}</p>
+          }
+          <footer>
+            <button class="care-button" type="button" (click)="close()">Cancel</button
+            ><button class="care-button primary" type="submit">Save changes</button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  }
+} @else {
+  <p class="care-empty">Service user unavailable or access restricted.</p>
+}

@@ -4,7 +4,7 @@
     feature="Client files"
     module="Care delivery"
     viewPermission="View rota"
-    permissionsTitle="Rota & shifts access"
+    permissionsTitle="Visits & Rota access"
   />
 } @else {
   <div class="client-files">
@@ -15,43 +15,66 @@
       }
     </nav>
     @if (editing() === 'profile') {
-      <div class="page-heading">
+      <div class="page-heading client-profile-heading">
         <div>
           <h1>{{ sourceId ? 'Edit client details' : 'Add client' }}</h1>
           <p>Build a person-centred record with clear contacts and care priorities.</p>
         </div>
       </div>
       <form class="panel client-editor client-profile-editor" (ngSubmit)="save()">
-        <h2>Personal details</h2>
-        <p class="client-form-hint">Name, reference, address and postcode are required.</p>
+        <div class="client-profile-form-header">
+          <div>
+            <h2>Personal details</h2>
+            <p class="client-form-hint">Name, reference, address and postcode are required.</p>
+          </div>
+          <div class="client-profile-tools">
+            @if (draft.file?.photo) {
+              <img
+                class="client-photo-preview"
+                [src]="draft.file!.photo"
+                alt="Profile photo preview"
+              />
+            }
+            <label class="client-photo-upload"
+              >Profile photo · JPEG / PNG, up to 1 MB<input
+                type="file"
+                accept="image/png,image/jpeg"
+                (change)="uploadPhoto($event)"
+                [disabled]="photoLoading()"
+            /></label>
+            @if (draft.file?.photo) {
+              <button type="button" class="button" (click)="draft.file!.photo = ''">
+                Remove photo
+              </button>
+            }
+            @if (photoLoading()) {
+              <span role="status">Reading photo…</span>
+            }
+          </div>
+        </div>
         <div class="form-grid">
           <label>Full name *<input name="name" [(ngModel)]="draft.name" required /></label>
           <label
             >Client reference *<input name="reference" [(ngModel)]="draft.reference" required
           /></label>
           @for (field of personalFields; track field.key) {
-            <label [class.client-wide]="field.type === 'textarea'"
-              >{{ field.label }}
-              @if (field.type === 'textarea') {
-                <textarea
-                  [name]="field.key"
-                  [(ngModel)]="draft.file!.details[field.key]"
-                  rows="3"
-                ></textarea>
-              } @else {
-                <input
+            @if (field.type !== 'textarea') {
+              <label
+                >{{ field.label
+                }}<input
                   [type]="field.type || 'text'"
                   [name]="field.key"
                   [(ngModel)]="draft.file!.details[field.key]"
                   [max]="field.key === 'dob' ? today : null"
-                />
-              }
-            </label>
-            @if (field.key === 'gp') {
-              <label>Address *<input name="address" [(ngModel)]="draft.address" required /></label>
-              <label
-                >Postcode *<input name="postcode" [(ngModel)]="draft.postcode" required
               /></label>
+              @if (field.key === 'gp') {
+                <label
+                  >Address *<input name="address" [(ngModel)]="draft.address" required
+                /></label>
+                <label
+                  >Postcode *<input name="postcode" [(ngModel)]="draft.postcode" required
+                /></label>
+              }
             }
           }
           <label>Phone<input name="phone" [(ngModel)]="draft.phone" type="tel" /></label>
@@ -88,6 +111,20 @@
               ><mat-option [value]="false">Inactive</mat-option></mat-select
             ></label
           >
+        </div>
+        <div class="form-grid client-profile-narratives">
+          @for (field of personalFields; track field.key) {
+            @if (field.type === 'textarea') {
+              <label
+                >{{ field.label
+                }}<textarea
+                  [name]="field.key"
+                  [(ngModel)]="draft.file!.details[field.key]"
+                  rows="2"
+                ></textarea>
+              </label>
+            }
+          }
         </div>
         <h2 class="client-form-title">Care alerts</h2>
         <div class="client-checks">
@@ -135,12 +172,13 @@
     } @else if (!id()) {
       <div class="page-heading">
         <div>
-          <h1>Client files</h1>
+          <h1>Service Users</h1>
           <p>Connected information for personalised care, from first contact to daily delivery.</p>
         </div>
         @if (service.can('manage')) {
           <button class="button primary" (click)="startProfile(true)">
-            <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add client
+            <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add service
+            user
           </button>
         }
       </div>
@@ -150,9 +188,9 @@
             >folder_shared</span
           >
           <div>
-            <h2>Client records</h2>
-            <strong>{{ service.data().clients.length }}</strong
-            ><small>All service users</small>
+            <h2>Time-sensitive visits</h2>
+            <strong>{{ timeSensitive() }}</strong
+            ><small>Today and tomorrow</small>
           </div>
         </article>
         <article class="metric co-stat co-surface" data-tone="green">
@@ -170,9 +208,9 @@
             >event_repeat</span
           >
           <div>
-            <h2>Care plan reviews due</h2>
-            <strong>{{ reviews() }}</strong
-            ><small>Due today or overdue</small>
+            <h2>Capacity / LPA review</h2>
+            <strong>{{ capacityAlerts() }}</strong
+            ><small>Recorded capacity needs review</small>
           </div>
         </article>
         <article class="metric co-stat co-surface" data-tone="red">
@@ -186,143 +224,19 @@
           </div>
         </article>
       </div>
-      <section class="panel client-directory">
-        <div class="panel-toolbar">
-          <div class="client-panel-title">
-            <span class="client-icon material-symbols-outlined" data-tone="teal" aria-hidden="true"
-              >contact_page</span
-            >
-            <div>
-              <h2>Service-user directory</h2>
-              <p>Personal details, care plans and the people supporting them.</p>
-            </div>
-          </div>
-          <a class="text-link" routerLink="/manage/ecm"
-            >Live ECM board <span aria-hidden="true">→</span></a
-          >
-        </div>
-        <div class="client-filters">
-          <label class="search-box"
-            ><span class="material-symbols-outlined" aria-hidden="true">search</span
-            ><input
-              aria-label="Search client files"
-              placeholder="Search name, reference or postcode…"
-              [ngModel]="query()"
-              (ngModelChange)="query.set($event)"
-          /></label>
-          <mat-select
-            cvSelect
-            aria-label="Filter client status"
-            [ngModel]="status()"
-            (ngModelChange)="status.set($event)"
-          >
-            @for (value of ['All', 'Active', 'Inactive']; track value) {
-              <mat-option [value]="value">{{
-                value === 'All' ? 'All statuses' : value
-              }}</mat-option>
-            }
-          </mat-select>
-          @if (query() || status() !== 'All') {
-            <button class="button" (click)="query.set(''); status.set('All')">Clear</button>
-          }
-        </div>
-        @if (clients().length) {
-          <div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">
-            <table class="client-table data-columns">
-              <thead>
-                <tr>
-                  <th scope="col" class="table-primary">Client</th>
-                  <th scope="col">Reference</th>
-                  <th scope="col">Postcode</th>
-                  <th scope="col">Care priority</th>
-                  <th scope="col">Call packages</th>
-                  <th scope="col">Plan review</th>
-                  <th scope="col">Review alert</th>
-                  <th scope="col" class="table-status">Status</th>
-                  <th scope="col" class="table-actions">Record</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (c of clients(); track c.id) {
-                  <tr>
-                    <td data-label="Client">
-                      <div class="person-cell">
-                        <span class="client-avatar">{{ initials(c.name) }}</span>
-                        <div>
-                          <a class="text-link" [routerLink]="['/manage/clients', c.id]">{{
-                            c.name
-                          }}</a>
-                        </div>
-                      </div>
-                    </td>
-                    <td data-label="Reference">{{ c.reference }}</td>
-                    <td data-label="Postcode">{{ c.postcode || '—' }}</td>
-                    <td data-label="Care priority">
-                      <span class="badge" [class.warning]="c.priority === 'High'">{{
-                        c.priority
-                      }}</span>
-                    </td>
-                    <td data-label="Call packages">{{ count(c) }} active</td>
-                    <td data-label="Plan review">
-                      <span [class.client-overdue]="reviewDue(c)">{{
-                        review(c) ? (review(c) | date: 'dd MMM yyyy') : 'Not recorded'
-                      }}</span>
-                    </td>
-                    <td data-label="Review alert" [class.client-overdue]="reviewDue(c)">
-                      {{ reviewDue(c) ? 'Review due' : '—' }}
-                    </td>
-                    <td data-label="Status" class="table-status">
-                      <span class="badge" [class.success]="c.active">{{
-                        c.active ? 'Active' : 'Inactive'
-                      }}</span>
-                    </td>
-                    <td data-label="Record" class="table-actions">
-                      <a
-                        class="button client-open"
-                        [routerLink]="['/manage/clients', c.id]"
-                        [attr.aria-label]="'Open record for ' + c.name"
-                        >Open file<span class="material-symbols-outlined" aria-hidden="true"
-                          >arrow_forward</span
-                        ></a
-                      >
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        } @else {
-          <div class="empty-state">
-            <span class="material-symbols-outlined" aria-hidden="true">folder_shared</span>
-            <h3>
-              {{ service.data().clients.length ? 'No matching clients' : 'Start with the person' }}
-            </h3>
-            <p>
-              {{
-                service.data().clients.length
-                  ? 'Try another name, reference or postcode, or clear your filters.'
-                  : 'Add a client to bring their preferences, care plans and daily support together.'
-              }}
-            </p>
-            @if (!service.data().clients.length && service.can('manage')) {
-              <button class="button primary" (click)="startProfile(true)">
-                Add your first client
-              </button>
-            }
-          </div>
-        }
-        <div class="client-directory-footer">
-          {{ clients().length }} of {{ service.data().clients.length }} client records
-        </div>
-      </section>
+      <cv-service-user-directory />
     } @else if (client(); as c) {
       <section
         class="panel client-profile client-record-header"
         aria-labelledby="client-record-name"
       >
-        <span class="client-avatar client-avatar-large" aria-hidden="true">{{
-          initials(c.name)
-        }}</span>
+        @if (c.file?.photo) {
+          <img class="client-profile-photo" [src]="c.file!.photo" [alt]="c.name" />
+        } @else {
+          <span class="client-avatar client-avatar-large" aria-hidden="true">{{
+            initials(c.name)
+          }}</span>
+        }
         <div class="client-profile-info">
           <div class="row">
             <h1 id="client-record-name">{{ c.name }}</h1>
@@ -333,11 +247,16 @@
           <p>
             Client record · {{ c.reference }}
             @if (file().details['dob']) {
-              · Born {{ file().details['dob'] | date: 'dd MMM yyyy' }}
+              · {{ age(file().details['dob']) }} years · Born
+              {{ file().details['dob'] | date: 'dd MMM yyyy' }}
             }
             @if (file().details['gender']) {
               · {{ file().details['gender'] }}
             }
+          </p>
+          <p>
+            NHS: {{ file().details['nhs'] || 'Not recorded' }} ·
+            {{ file().details['living'] || 'Living arrangement not recorded' }}
           </p>
           <p>
             <span class="material-symbols-outlined" aria-hidden="true">location_on</span
@@ -350,6 +269,11 @@
               }
             </div>
           }
+          <div class="client-alerts" aria-label="Clinical and contact summary">
+            @for (flag of headerFlags(); track flag) {
+              <span class="badge">{{ flag }}</span>
+            }
+          </div>
         </div>
         <div class="client-header-aside">
           <dl class="client-record-meta">
@@ -363,7 +287,7 @@
             </div>
           </dl>
           <div class="row client-header-actions">
-            <a class="button" routerLink="/manage/rota" [queryParams]="{ client: c.id }"
+            <a class="button" routerLink="/manage/rota/call-packages" [queryParams]="{ client: c.id }"
               ><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Calls
               & allocations</a
             >
@@ -375,6 +299,12 @@
           </div>
         </div>
       </section>
+      <nav class="client-workspace-tabs" aria-label="Service user workspace">
+        <span aria-current="page">Overview & care record</span>
+        @for (tab of workspaceTabs; track tab.path) {
+          <a [routerLink]="['/manage/clients', c.id, tab.path]">{{ tab.label }}</a>
+        }
+      </nav>
       <div class="client-record-layout">
         <nav class="panel client-section-nav" aria-label="Client record sections">
           <button
@@ -608,7 +538,9 @@
                     </div>
                   }
                 </dl>
-                <p class="client-record-hint">Administration is recorded through visit evidence.</p>
+                <p class="client-record-hint">
+                  Open Medication & MAR for prescriptions and administration records.
+                </p>
                 <div class="client-card-footer">
                   <button class="text-link" (click)="setSection('medication')">
                     View medication<span class="material-symbols-outlined" aria-hidden="true"
@@ -746,6 +678,7 @@
                 </div>
               </section>
             </div>
+            <cv-clinical-summary [client]="c" (edit)="editOverviewSection($event)" />
             <section class="panel client-call-packages">
               <div class="panel-toolbar">
                 <div class="client-panel-title">
@@ -754,7 +687,7 @@
                   >
                   <h2>Call packages</h2>
                 </div>
-                <a class="text-link" routerLink="/manage/rota" [queryParams]="{ client: c.id }"
+                <a class="text-link" routerLink="/manage/rota/call-packages" [queryParams]="{ client: c.id }"
                   >Manage call packages<span class="material-symbols-outlined" aria-hidden="true"
                     >arrow_forward</span
                   ></a
@@ -832,7 +765,31 @@
                     @for (field of section().fields; track field.key) {
                       <label [class.client-wide]="field.type === 'textarea'"
                         >{{ field.label }}
-                        @if (field.options) {
+                        @if (field.key === 'preferredStaff') {
+                          <mat-select
+                            cvSelect
+                            multiple
+                            [name]="field.key"
+                            aria-label="Preferred carers"
+                            [ngModel]="preferredStaff()"
+                            (ngModelChange)="setPreferredStaff($event)"
+                          >
+                            @for (person of staffChoices(); track person.id) {
+                              <mat-option [value]="person.id">{{ person.name }}</mat-option>
+                            }
+                          </mat-select>
+                        } @else if (field.key === 'backupStaff') {
+                          <mat-select
+                            cvSelect
+                            [name]="field.key"
+                            aria-label="Backup carer"
+                            [(ngModel)]="values[field.key]"
+                            ><mat-option value="">None</mat-option>
+                            @for (person of staffChoices(); track person.id) {
+                              <mat-option [value]="person.id">{{ person.name }}</mat-option>
+                            }
+                          </mat-select>
+                        } @else if (field.options) {
                           <mat-select
                             cvSelect
                             [name]="field.key"
@@ -950,8 +907,9 @@
                     </div>
                   </dl>
                   <p class="client-info">
-                    This is an internal contact record. Family portal access and message delivery
-                    are not connected.
+                    Additional contacts and family access permissions are managed in the Contacts
+                    and Family Portal tabs. External invitations and message delivery are not
+                    configured.
                   </p>
                 }
               }

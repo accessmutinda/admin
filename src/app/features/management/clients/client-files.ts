@@ -1,5 +1,8 @@
+import { ServiceUserDirectory } from '../care/service-user-directory';
+import { ClinicalSummary } from '../care/clinical-summary';
+import { age } from '../care/care.models';
 import { ModuleDesign } from '../shared/module-design';
-import { Component, computed, inject, signal } from '@angular/core';
+import { HostListener, Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -23,6 +26,8 @@ import {
   selector: 'cv-client-files',
   imports: [
     ModuleDesign,
+    ServiceUserDirectory,
+    ClinicalSummary,
     DatePipe,
     FormsModule,
     RouterLink,
@@ -32,7 +37,12 @@ import {
   ],
   host: { class: 'module-page operations-page clients-page' },
   templateUrl: './client-files.html',
-  styleUrls: ['./client-files.css', './client-record.css'],
+  styleUrls: [
+    './client-files.css',
+    './client-record.css',
+    './client-enhancements.css',
+    './client-profile-editor.css',
+  ],
 })
 export class ClientFiles {
   protected readonly service = inject(RotaService);
@@ -49,6 +59,118 @@ export class ClientFiles {
   );
   protected readonly file = computed(() => this.client()?.file ?? emptyClientFile());
   protected readonly today = londonDate();
+  protected readonly age = age;
+  protected readonly photoLoading = signal(false);
+  protected readonly timeSensitive = computed(
+    () =>
+      this.service
+        .data()
+        .visits.filter(
+          (v) =>
+            v.state !== 'Cancelled' &&
+            v.timeSensitive &&
+            v.date >= this.today &&
+            v.date <= new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+        ).length,
+  );
+  protected readonly capacityAlerts = computed(
+    () =>
+      this.service
+        .data()
+        .clients.filter(
+          (c) =>
+            c.active &&
+            ['Lacks capacity', 'Fluctuates'].includes(
+              c.file?.sections['capacity']?.['status'] ?? '',
+            ),
+        ).length,
+  );
+  protected readonly workspaceTabs = [
+    { label: 'Medication & MAR', path: 'medication' },
+    { label: 'Visits & Allocation', path: 'visits' },
+    { label: 'Contacts', path: 'contacts' },
+    { label: 'Documents', path: 'documents' },
+    { label: 'Family Portal', path: 'family' },
+    { label: 'Audit Trail', path: 'audit' },
+  ];
+  @HostListener('window:beforeunload', ['$event'])
+  protected beforeUnload(event: BeforeUnloadEvent): void {
+    if (this.editing() || this.photoLoading()) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  }
+  canLeave(): boolean {
+    return (
+      (!this.editing() && !this.photoLoading()) ||
+      window.confirm('Discard the unsaved client record?')
+    );
+  }
+  protected editOverviewSection(key: string): void {
+    this.setSection(key);
+    this.editSection();
+  }
+  protected preferredStaff(): string[] {
+    return (this.values['preferredStaff'] ?? '').split(',').filter(Boolean);
+  }
+  protected setPreferredStaff(ids: string[]): void {
+    this.values['preferredStaff'] = ids.join(',');
+  }
+  protected staffChoices() {
+    return this.store.staff();
+  }
+  protected async uploadPhoto(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement,
+      photo = input.files?.[0];
+    input.value = '';
+    if (!photo) return;
+    if (
+      !['image/png', 'image/jpeg'].includes(photo.type) ||
+      photo.size <= 0 ||
+      photo.size > 1024 * 1024
+    ) {
+      this.error.set('Choose a nonempty JPEG or PNG up to 1 MB.');
+      return;
+    }
+    const draft = this.draft;
+    const workspace = this.store.companyId();
+    this.photoLoading.set(true);
+    try {
+      const data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Could not read photo.'));
+        reader.readAsDataURL(photo);
+      });
+      if (
+        this.editing() !== 'profile' ||
+        this.draft !== draft ||
+        workspace !== this.store.companyId()
+      )
+        return;
+      draft.file!.photo = data;
+    } catch {
+      this.error.set('Could not read photo. Try again.');
+    } finally {
+      this.photoLoading.set(false);
+    }
+  }
+  protected readonly headerFlags = computed(() => {
+    const file = this.file();
+    const calls = this.service.data().calls.filter((c) => c.clientId === this.id() && c.active);
+    const kin =
+      file.contacts?.find((c) => c.nextOfKin)?.name ?? this.client()?.representative?.name;
+    return [
+      file.sections['capacity']?.['status']
+        ? 'Capacity: ' + file.sections['capacity']['status']
+        : '',
+      file.sections['capacity']?.['welfareLpa'] ? 'LPA: Health & Welfare' : '',
+      file.sections['capacity']?.['financeLpa'] ? 'LPA: Property & Finance' : '',
+      calls.some((c) => c.timeSensitive) ? 'Time-sensitive calls' : '',
+      file.sections['access']?.['location'] ? 'Key safe recorded' : '',
+      kin ? 'Next of kin: ' + kin : '',
+    ].filter(Boolean);
+  });
   protected readonly sections = CLIENT_SECTIONS;
   protected readonly sectionGroups = CLIENT_SECTION_GROUPS.map((group) => ({
     label: group.label,
@@ -58,7 +180,19 @@ export class ClientFiles {
   protected readonly activeAllergies = computed(() =>
     this.allergyRecords().filter((entry) => entry.status === 'Active'),
   );
-  protected readonly medicationRecords = computed(() => this.file().entries['medication'] ?? []);
+  protected readonly medicationRecords = computed(() => [
+    ...(this.file().entries['medication'] ?? []),
+    ...(this.file().medications ?? [])
+      .filter((m) => !m.discontinuedAt && m.start <= this.today && (!m.end || m.end >= this.today))
+      .map((m) => ({
+        id: m.id,
+        name: m.name + ' ' + m.strength,
+        detail: m.dose + ' · ' + m.route + ' · ' + m.times.join(', '),
+        date: m.start,
+        level: 'Medium' as const,
+        status: 'Active' as const,
+      })),
+  ]);
   protected readonly activeMedication = computed(() =>
     this.medicationRecords().filter((entry) => entry.status === 'Active'),
   );
@@ -238,6 +372,10 @@ export class ClientFiles {
       : [...(this.draft.riskFlags ?? []), flag];
   }
   protected save(): void {
+    if (this.photoLoading()) {
+      this.error.set('Wait for the photo to finish loading.');
+      return;
+    }
     if (this.sourceWorkspace !== this.store.companyId()) {
       this.error.set(
         'The workspace changed. Discard this draft before editing the current workspace.',

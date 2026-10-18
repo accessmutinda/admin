@@ -1,0 +1,118 @@
+.care-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+}
+.care-fields label,
+.care-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 700;
+  min-width: 0;
+}
+.care-fields input,
+.care-fields textarea,
+.care-filters input {
+  min-height: 40px;
+  width: 100%;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  padding: 8px;
+  background: white;
+  font: inherit;
+  color: #123352;
+  box-sizing: border-box;
+}
+.care-fields textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+.care-wide {
+  grid-column: 1/-1;
+}
+.care-fields .care-check {
+  flex-direction: row;
+  align-items: center;
+  font-weight: 400;
+}
+.care-check input {
+  width: 18px;
+  min-height: 18px;
+}
+.care-filters {
+  margin-bottom: 12px;
+  align-items: end;
+}
+.care-filters label {
+  flex: 1;
+  min-width: 140px;
+}
+.care-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.care-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 12px;
+}
+.care-table th {
+  background: #eff5f8;
+  color: #53677f;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+.care-table td {
+  padding: 6px 12px;
+  border-bottom: 1px solid #edf2f5;
+  vertical-align: top;
+}
+.care-table small {
+  display: block;
+  color: #657184;
+}
+.care-table button {
+  white-space: nowrap;
+}
+.care-tag {
+  display: inline-block;
+  padding: 3px 7px;
+  background: #eaf5fc;
+  color: #0066ac;
+  border-radius: 4px;
+  margin: 2px;
+  font-size: 11px;
+}
+.care-tag[data-tone='red'],
+.care-error {
+  color: #b42334;
+  background: #fff5f6;
+}
+.care-tag[data-tone='green'] {
+  background: #e5f8ed;
+  color: #137d4c;
+}
+.care-tag[data-tone='amber'] {
+  color: #915b00;
+  background: #fff3d7;
+}
+.care-note {
+  color: #657184;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.care-error {
+  border: 1px solid #f2c8cf;
+  padding: 8px;
+  border-radius: 5px;
+}
+
+@media (max-width: 600px) {
+  .care-fields {
+    grid-template-columns: 1fr;
+  }
+}

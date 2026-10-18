@@ -1,0 +1,111 @@
+.client-files .client-profile-heading {
+  margin-bottom: 12px;
+}
+.client-files .client-profile-editor {
+  container-type: inline-size;
+  padding: 10px;
+}
+.client-profile-form-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 8px;
+}
+.client-profile-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.client-profile-tools .client-photo-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  font-size: 11px;
+  max-width: 100%;
+}
+.client-profile-tools input[type='file'] {
+  max-width: 260px;
+  width: 100%;
+  font: inherit;
+}
+.client-photo-preview {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 5px;
+}
+.client-files .client-profile-editor .form-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px 10px;
+}
+.client-files .client-profile-editor .form-grid > label {
+  min-width: 0;
+  line-height: 1.35;
+}
+.client-files .client-profile-editor .form-grid > label > :is(input, mat-select, textarea) {
+  box-sizing: border-box;
+  margin-top: 3px;
+  min-height: 36px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.client-files .client-profile-editor .client-profile-narratives {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 6px;
+}
+.client-files .client-profile-editor .client-profile-narratives textarea {
+  min-height: 54px;
+  resize: vertical;
+}
+.client-files .client-profile-editor .client-contact-email {
+  grid-column: auto;
+}
+.client-files .client-profile-editor .client-form-hint {
+  margin: 2px 0 0 !important;
+  font-size: 11px;
+}
+.client-files .client-profile-editor .client-form-title {
+  margin: 8px 0 4px !important;
+}
+.client-files .client-profile-editor .client-checks {
+  gap: 4px 12px;
+}
+.client-files .client-profile-editor .client-checks label {
+  min-height: 32px;
+  gap: 6px;
+}
+.client-files .client-profile-editor .client-save {
+  margin-top: 8px;
+  padding-top: 8px;
+}
+@container (max-width: 899px) {
+  .client-files .client-profile-editor .form-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@container (max-width: 679px) {
+  .client-files .client-profile-editor .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .client-files .client-profile-editor .client-profile-narratives > label:last-child {
+    grid-column: 1 / -1;
+  }
+}
+@container (max-width: 439px) {
+  .client-files .client-profile-editor .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (pointer: coarse) {
+  .client-files .client-profile-editor .form-grid > label > :is(input, mat-select) {
+    min-height: 44px;
+  }
+  .client-files .client-profile-editor .client-checks label {
+    min-height: 44px;
+  }
+}
