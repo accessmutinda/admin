@@ -9,6 +9,16 @@ runs against fixed demo data (`src/app/core/auth/fixtures.ts`) and
 `localStorage`. Company and people records are saved on the current device,
 with records isolated by workspace.
 
+## Care delivery workspaces
+
+- **Service users** (`/manage/clients`): searchable table/card directory with compact filters and eight records per page, profile photographs, clinical information, capacity/LPA, support preferences, contacts and care-plan summaries.
+- **Medication & MAR** (`/manage/clients/:id/medication`): prescriptions, PRN protocols, standard/controlled weekly and monthly MAR, stock, recorded outcomes and audited corrections. Historical medication notes remain in the profile.
+- **Visits & Rota** (`/manage/rota`): a home screen with current-week stats, view cards, quick actions and upcoming cover gaps, drafts and conflicts. Schedule, call packages, publishing and history share the same records. The schedule supports staff and service-user calendars, reviewed automatic suggestions, atomic bulk allocation, CSV/Excel export and print/Save PDF.
+- **Live Visits / ECM** (`/manage/ecm`): a separate sidebar destination and home-screen card for attendance, running visits, delays and missed calls.
+- Each client also has `visits`, `contacts`, `documents`, `family` and `audit` workspace pages. Family previews are linked from active sharing records; direct family views at `/family/:clientId/:accessId` require matching signed-in email, current sharing consent and enabled scopes.
+
+These workflows share the existing workspace-scoped browser store. Document bytes, prescriptions, MAR and messages remain on this device. No backend, external invitation delivery or production family authentication is added. The family view is a permission-scoped demonstration within the existing demo authentication system. Use fictitious records for evaluation.
+
 ## Running it
 
 Requires Node `v22.23.3` (see `.nvmrc`) — the system default on most machines
