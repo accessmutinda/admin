@@ -1,44 +1,115 @@
-<div class="finance-main-grid">
-  <ng-content select=".payroll-prepare-panel" />
+<div class="finance-metrics" aria-label="Financial summary">
+  <section class="metric co-stat co-surface" data-tone="blue">
+    <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">request_quote</span>
+    <div>
+      <h2>Approved client billing</h2>
+      <strong>{{ totals().revenue | currency: 'GBP' }}</strong
+      ><small>Selected reporting period</small>
+    </div>
+  </section>
+  <section class="metric co-stat co-surface" data-tone="amber">
+    <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">payments</span>
+    <div>
+      <h2>Recorded costs</h2>
+      <strong>{{ totals().costs | currency: 'GBP' }}</strong
+      ><small>Selected reporting period</small>
+    </div>
+  </section>
+  <section class="metric co-stat co-surface" data-tone="teal">
+    <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">balance</span>
+    <div>
+      <h2>Billing less costs</h2>
+      <strong>{{ totals().revenue - totals().costs | currency: 'GBP' }}</strong
+      ><small>Estimate for selected period</small>
+    </div>
+  </section>
+  <section class="metric co-stat co-surface" data-tone="purple">
+    <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">receipt_long</span>
+    <div>
+      <h2>Unpaid supplier invoices</h2>
+      <strong>{{ unpaidSuppliers() | currency: 'GBP' }}</strong
+      ><small>Outstanding balance · all dates</small>
+    </div>
+  </section>
+  <section class="metric co-stat co-surface" data-tone="red">
+    <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">fact_check</span>
+    <div>
+      <h2>Work awaiting review</h2>
+      <strong>{{ pendingWork() }}</strong
+      ><small>Recorded work · all dates</small>
+    </div>
+  </section>
+</div>
+<div class="co-main-grid finance-workspace-grid">
+  <section
+    cvWorkspaceCards
+    headingId="finance-workspace-title"
+    title="Finance Workspace"
+    icon="account_balance_wallet"
+  >
+    @for (item of workspaceLinks; track item.key; let i = $index) {
+      <a class="co-check-card" [routerLink]="item.link" [queryParams]="item.query"
+        ><span
+          class="material-symbols-outlined"
+          [style.color]="['#008d9f', '#008eff', '#00aac4', '#ff8a00'][i % 4]"
+          aria-hidden="true"
+          >{{ item.icon }}</span
+        >
+        <div>
+          <h3>{{ item.title }}</h3>
+          <p>{{ item.description }}</p>
+          @if (item.key === 'staff') {
+            <span class="workspace-card-state">{{ missingProfiles() }} staff need pay setup</span>
+          }
+        </div></a
+      >
+    }
+  </section>
+  <section cvQuickActions headingId="finance-quick-actions" [actionCount]="5">
+    <a
+      class="co-primary"
+      routerLink="/manage/finance/payroll"
+      [queryParams]="{ view: 'Payroll', payrollView: 'Pay runs' }"
+      ><span class="material-symbols-outlined" aria-hidden="true">payments</span>Prepare a Pay
+      Run<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></a
+    >
+    <a
+      routerLink="/manage/finance/payroll"
+      [queryParams]="{ view: 'Payroll', payrollView: 'Timesheets' }"
+      ><span class="material-symbols-outlined" aria-hidden="true">schedule</span>Review
+      Timesheets<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></a
+    >
+    <a
+      routerLink="/manage/finance/payroll"
+      [queryParams]="{ view: 'Payroll', payrollView: 'Staff pay' }"
+      ><span class="material-symbols-outlined" aria-hidden="true">badge</span>Manage Staff Pay<span
+        class="material-symbols-outlined"
+        aria-hidden="true"
+        >chevron_right</span
+      ></a
+    >
+    <a
+      routerLink="/manage/finance/billing"
+      [queryParams]="{ view: 'Invoices', invoiceView: 'Clients' }"
+      ><span class="material-symbols-outlined" aria-hidden="true">request_quote</span>Review Client
+      Invoices<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></a
+    >
+    <a routerLink="/manage/workflows"
+      ><span class="material-symbols-outlined" aria-hidden="true">account_tree</span>Approval
+      Routes<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></a
+    >
+  </section>
+</div>
+<div class="finance-report-grid">
   <section class="panel finance-dashboard">
     <div class="panel-toolbar">
       <div class="finance-title">
         <span class="finance-icon material-symbols-outlined" aria-hidden="true">monitoring</span>
-        <div>
-          <h2>Finance dashboard</h2>
-          <p>Client billing and recorded company costs.</p>
-        </div>
+        <h2>Billing &amp; Costs</h2>
       </div>
-      <mat-select
-        cvSelect
-        aria-label="Finance reporting period"
-        [ngModel]="period()"
-        (ngModelChange)="period.set($event)"
-      >
-        <mat-option [value]="1">This month</mat-option
-        ><mat-option [value]="6">Last 6 months</mat-option
-        ><mat-option [value]="12">Last 12 months</mat-option>
-      </mat-select>
     </div>
     <div class="panel-body">
-      <div class="finance-summary">
-        <button class="finance-total" data-tone="blue" (click)="navigate.emit('Clients')">
-          <span>Approved client billing</span
-          ><strong>{{ totals().revenue | currency: 'GBP' }}</strong
-          ><small>Approved and exported invoices</small>
-        </button>
-        <button class="finance-total" data-tone="amber" (click)="navigate.emit('Payroll')">
-          <span>Recorded costs</span><strong>{{ totals().costs | currency: 'GBP' }}</strong
-          ><small>Gross payroll and supplier invoices</small>
-        </button>
-        <div class="finance-total" data-tone="teal">
-          <span>Balance estimate</span
-          ><strong>{{ totals().revenue - totals().costs | currency: 'GBP' }}</strong
-          ><small>Billing less recorded costs</small>
-        </div>
-      </div>
       <div class="finance-chart-heading">
-        <h3>Billing & costs</h3>
         <div class="finance-legend">
           <span><i class="billing-dot"></i>Client billing</span
           ><span><i class="cost-dot"></i>Costs</span>
@@ -103,68 +174,73 @@
           <span>Supplier invoices</span><strong>{{ totals().suppliers | currency: 'GBP' }}</strong>
         </button>
       </div>
-      <p class="finance-note">
-        Billing uses invoice dates; payroll uses payday; supplier costs use invoice dates. Includes
-        draft pay runs and recorded supplier costs. This estimate excludes tax, pensions and
-        unrecorded costs; it is not a profit or cash-flow statement.
-      </p>
+      <details class="finance-reporting-notes">
+        <summary>Reporting scope</summary>
+        <p class="finance-note">
+          Billing uses invoice dates; payroll uses payday; supplier costs use invoice dates.
+          Includes draft pay runs and recorded supplier costs. This estimate excludes tax, pensions
+          and unrecorded costs; it is not a profit or cash-flow statement.
+        </p>
+        <p class="finance-note">
+          Gross payroll estimates exclude tax, National Insurance and pensions. HMRC submissions and
+          bank transfers require connected services.
+        </p>
+      </details>
+    </div>
+  </section>
+  <section class="panel finance-next-run">
+    <div class="panel-toolbar">
+      <div class="finance-title">
+        <span class="finance-icon material-symbols-outlined" aria-hidden="true"
+          >event_available</span
+        >
+        <div>
+          <h2>Next payroll run</h2>
+          <p>Review the earliest unpaid run.</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel-body">
+      @if (nextRun(); as run) {
+        <div class="finance-run-name">
+          <h3>{{ run.name }}</h3>
+          <span class="badge">{{ run.status }}</span>
+        </div>
+        <p class="finance-note">
+          {{ run.start | date: 'd MMM yyyy' }} – {{ run.end | date: 'd MMM yyyy' }}
+        </p>
+        <dl>
+          <div>
+            <dt>Payday</dt>
+            <dd>{{ run.payday | date: 'd MMM yyyy' }}</dd>
+          </div>
+          <div>
+            <dt>Employees</dt>
+            <dd>{{ run.lines.length }}</dd>
+          </div>
+          <div>
+            <dt>Estimated gross</dt>
+            <dd>{{ runTotal(run) | currency: 'GBP' }}</dd>
+          </div>
+        </dl>
+        <button class="button primary" (click)="reviewRun.emit(run)">
+          Review pay run<span class="material-symbols-outlined" aria-hidden="true"
+            >arrow_forward</span
+          >
+        </button>
+      } @else {
+        <div class="finance-empty compact-empty">
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+          ><strong>No upcoming pay run</strong>
+          <p>Bring approved staff work together for review.</p>
+          <button class="button" (click)="navigate.emit('Payroll')">View pay runs</button>
+        </div>
+      }
     </div>
   </section>
 </div>
-<div class="finance-side-grid">
-  <div class="finance-review-stack">
-    <ng-content select=".payroll-review-panel" />
-    <section class="panel finance-next-run">
-      <div class="panel-toolbar">
-        <div class="finance-title">
-          <span class="finance-icon material-symbols-outlined" aria-hidden="true"
-            >event_available</span
-          >
-          <div>
-            <h2>Next payroll run</h2>
-            <p>Review the earliest unpaid run.</p>
-          </div>
-        </div>
-      </div>
-      <div class="panel-body">
-        @if (nextRun(); as run) {
-          <div class="finance-run-name">
-            <h3>{{ run.name }}</h3>
-            <span class="badge">{{ run.status }}</span>
-          </div>
-          <p class="finance-note">
-            {{ run.start | date: 'd MMM yyyy' }} – {{ run.end | date: 'd MMM yyyy' }}
-          </p>
-          <dl>
-            <div>
-              <dt>Payday</dt>
-              <dd>{{ run.payday | date: 'd MMM yyyy' }}</dd>
-            </div>
-            <div>
-              <dt>Employees</dt>
-              <dd>{{ run.lines.length }}</dd>
-            </div>
-            <div>
-              <dt>Estimated gross</dt>
-              <dd>{{ runTotal(run) | currency: 'GBP' }}</dd>
-            </div>
-          </dl>
-          <button class="button primary" (click)="reviewRun.emit(run)">
-            Review pay run<span class="material-symbols-outlined" aria-hidden="true"
-              >arrow_forward</span
-            >
-          </button>
-        } @else {
-          <div class="finance-empty compact-empty">
-            <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
-            ><strong>No upcoming pay run</strong>
-            <p>Bring approved staff work together for review.</p>
-            <button class="button" (click)="navigate.emit('Payroll')">View pay runs</button>
-          </div>
-        }
-      </div>
-    </section>
-  </div>
+<div class="finance-review-grid">
+  <ng-content select=".payroll-review-panel" />
   <section class="panel">
     <div class="panel-toolbar">
       <div class="finance-title">
