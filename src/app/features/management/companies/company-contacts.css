@@ -499,7 +499,7 @@
 @media (max-width: 760px) {
   .cv-management .company-contacts-page .cc-page-heading {
     flex-wrap: wrap;
-    margin-bottom: 16px;
+    margin-bottom: var(--page-heading-gap, 12px);
     gap: 10px;
   }
   .cv-management .company-contacts-page .cc-page-heading .co-heading {

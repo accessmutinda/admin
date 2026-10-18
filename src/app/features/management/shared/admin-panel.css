@@ -23,7 +23,7 @@
   padding: 14px 16px;
 }
 .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .page-heading {
-  margin-bottom: 12px;
+  margin-bottom: var(--page-heading-gap, 12px);
   gap: 10px;
 }
 .cv-management .app-body .page-content:not(:has(cv-ecm-wallboard)) .page-heading > div:first-child {
@@ -1278,7 +1278,7 @@
 }
 
 @media print {
-  .cv-management:has(cv-client-files) .page-content {
+  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner)) .page-content {
     padding: 0;
   }
 }

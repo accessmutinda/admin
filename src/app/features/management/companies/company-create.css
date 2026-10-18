@@ -5,7 +5,7 @@
   gap: 12px;
 }
 .cv-management .company-create-page .cn-heading > .co-heading {
-  margin-bottom: 24px;
+  margin-bottom: var(--page-heading-gap, 12px);
 }
 .cv-management .company-create-page .cn-heading > .cn-button {
   margin-top: 2px;

@@ -27,7 +27,7 @@
     font-size: 12px;
   }
   .page-heading {
-    margin-bottom: 24px;
+    margin-bottom: var(--page-heading-gap, 12px);
     align-items: start;
   }
   .page-heading p:not(.eyebrow) {
@@ -67,8 +67,8 @@
     display: flex;
     flex-direction: row-reverse;
     justify-content: space-between;
-    align-items: start;
-    gap: 10px;
+    align-items: flex-start;
+    gap: 14px;
     padding: 8px 9px 7px 13px;
     text-align: left;
     min-height: 86px;
@@ -97,6 +97,7 @@
   .metric.co-stat .co-stat-icon {
     text-align: center;
     position: static;
+    align-self: flex-start;
     flex: 0 0 34px;
     width: 34px;
     height: 34px;
@@ -124,5 +125,20 @@
   }
   [data-tone='purple'] {
     --tone: #8b5cf6;
+  }
+}
+
+@media (max-width: 1250px) {
+  .cv-management .app-body main.page-content .operations-page {
+    .metric.co-stat {
+      padding: 7px 7px 7px 11px;
+      gap: 11px;
+    }
+    .metric.co-stat .co-stat-icon {
+      width: 30px;
+      height: 30px;
+      flex-basis: 30px;
+      font-size: 21px;
+    }
   }
 }

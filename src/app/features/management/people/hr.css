@@ -23,7 +23,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin: 0 0 24px;
+  margin: 0 0 var(--page-heading-gap, 12px);
 }
 .hr-heading h1 {
   font-size: 21px;

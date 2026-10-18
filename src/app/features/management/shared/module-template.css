@@ -1,5 +1,5 @@
 .cv-management .module-page :is(.co-heading, .hr-heading) {
-  margin-bottom: 24px;
+  margin-bottom: var(--page-heading-gap, 12px);
 }
 
 .cv-management .module-page :is(.co-heading p, .hr-heading p) {
@@ -19,6 +19,7 @@
   padding: 8px 9px 7px 13px;
   display: flex;
   flex-direction: row-reverse;
+  align-items: flex-start;
   gap: 14px;
   min-width: 0;
 }
@@ -46,6 +47,8 @@
 .cv-management .module-page :is(.co-stat-icon, .hr-stat > :where(.material-symbols-outlined)) {
   width: 34px;
   height: 34px;
+  align-self: flex-start;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   color: white;

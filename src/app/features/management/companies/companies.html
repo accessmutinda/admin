@@ -168,28 +168,21 @@
     </div>
   </section>
   <aside class="co-right-column">
-    <section class="co-actions co-surface" aria-labelledby="co-actions-title">
-      <div class="co-section-header">
-        <h2 id="co-actions-title">
-          <span class="material-symbols-outlined" aria-hidden="true">bolt</span>Quick Actions
-        </h2>
-      </div>
-      <div class="co-action-list">
-        @for (action of actions(); track action.title) {
-          <a
-            [routerLink]="action.link"
-            [queryParams]="{
-              duplicate: action.duplicate,
-              invite: action.invite ? 'true' : null,
-              edit: action.edit,
-            }"
-            [class.co-primary]="$first"
-            ><span class="material-symbols-outlined" aria-hidden="true">{{ action.icon }}</span
-            >{{ action.title
-            }}<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></a
-          >
-        }
-      </div>
+    <section cvQuickActions headingId="co-actions-title" [actionCount]="actions().length">
+      @for (action of actions(); track action.title) {
+        <a
+          [routerLink]="action.link"
+          [queryParams]="{
+            duplicate: action.duplicate,
+            invite: action.invite ? 'true' : null,
+            edit: action.edit,
+          }"
+          [class.co-primary]="$first"
+          ><span class="material-symbols-outlined" aria-hidden="true">{{ action.icon }}</span
+          >{{ action.title
+          }}<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></a
+        >
+      }
     </section>
   </aside>
   <section class="co-updates co-surface" aria-labelledby="co-updates-title">

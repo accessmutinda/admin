@@ -1,20 +1,21 @@
 @import '../rota/rota.css';
 
 @media print {
-  .cv-management:has(cv-client-files) .app-sidebar,
-  .cv-management:has(cv-client-files) .app-header,
-  .cv-management:has(cv-client-files) .app-footer {
+  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner)) .app-sidebar,
+  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner)) .app-header,
+  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner)) .app-footer {
     display: none !important;
   }
-  .cv-management:has(cv-client-files) .app-body {
+  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner)) .app-body {
     margin-left: 0 !important;
   }
-  .cv-management:has(cv-client-files) .page-content {
+  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner)) .page-content {
     padding: 0 !important;
   }
 }
 
 .cv-management {
+  --page-heading-gap: 12px;
   --accent: #087f76;
   --muted: var(--color-slate);
   --border: var(--color-line);
@@ -287,7 +288,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: var(--page-heading-gap, 12px);
 }
 .cv-management .page-heading p:not(.eyebrow) {
   margin-top: 4px;
@@ -2884,7 +2885,7 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: var(--page-heading-gap, 12px);
   }
   .cv-management .welcome-banner {
     padding: 16px;

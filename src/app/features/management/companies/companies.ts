@@ -1,3 +1,4 @@
+import { QuickActions } from '../shared/quick-actions';
 import { complianceComplete } from './company-compliance.models';
 import { locationsComplete } from '../locations/locations.models';
 import { contactInformationComplete } from './company-contacts.models';
@@ -14,7 +15,7 @@ import {
 @Component({
   selector: 'cv-companies',
   host: { class: 'module-page companies-page' },
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, QuickActions],
   templateUrl: './companies.html',
 })
 export class Companies {
