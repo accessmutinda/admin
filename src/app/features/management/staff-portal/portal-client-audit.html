@@ -7,13 +7,13 @@
   </div>
   <button class="button" (click)="export()">Export filtered records</button>
 </div>
-<div class="audit-summary">
+<div class="metrics four audit-summary">
   @for (stat of summary(); track stat.name) {
-    <div class="portal-panel">
-      <span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>
+    <div class="metric co-stat co-surface" data-tone="blue">
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>
       <div>
-        <span>{{ stat.name }}</span
-        ><strong>{{ stat.count }}</strong
+        <h2>{{ stat.name }}</h2>
+        <strong>{{ stat.count }}</strong
         ><small>All time</small>
       </div>
     </div>
@@ -97,17 +97,17 @@
         (ngModelChange)="query.set($event); page.set(1)"
       />
     </div>
-    <div class="portal-scroll">
+    <div class="portal-scroll" tabindex="0" role="region" aria-label="Communication timeline">
       <table>
         <thead>
           <tr>
-            <th>Date & time ↓</th>
-            <th>Type</th>
-            <th>Subject / description</th>
-            <th>User</th>
-            <th>Contact / recipient</th>
-            <th>Status</th>
-            <th>Action</th>
+            <th scope="col">Date & time ↓</th>
+            <th scope="col">Type</th>
+            <th scope="col">Subject / description</th>
+            <th scope="col">User</th>
+            <th scope="col">Contact / recipient</th>
+            <th scope="col">Status</th>
+            <th scope="col">Action</th>
           </tr>
         </thead>
         <tbody>

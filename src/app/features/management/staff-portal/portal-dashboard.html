@@ -23,40 +23,40 @@
 </div>
 <div class="metrics four portal-stat-row">
   <a class="metric co-stat co-surface" data-tone="teal" routerLink="/staff-portal/tasks"
-    ><div>
+    ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
+    <div>
       <h2>{{ manager ? 'Open staff tasks' : 'Outstanding tasks' }}</h2>
       <strong>{{ openTasks().length }}</strong
       ><small>{{ overdue().length }} overdue</small>
-    </div>
-    <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span></a
+    </div></a
   >
   <a class="metric co-stat co-surface" data-tone="amber" routerLink="/staff-portal/concerns"
-    ><div>
+    ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">warning</span>
+    <div>
       <h2>Unresolved concerns</h2>
       <strong>{{ portal.openConcerns().length }}</strong
       ><small>Follow every concern through</small>
-    </div>
-    <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">warning</span></a
+    </div></a
   >
   <a class="metric co-stat co-surface" data-tone="blue" routerLink="/staff-portal/service-users"
-    ><div>
+    ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">calendar_month</span>
+    <div>
       <h2>{{ manager ? 'Service users' : 'Today’s visits' }}</h2>
       <strong>{{ manager ? portal.clients().length : visits().length }}</strong
       ><small>{{ manager ? 'Care and communications' : 'Planned care calls today' }}</small>
-    </div>
-    <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">calendar_month</span></a
+    </div></a
   >
   <a class="metric co-stat co-surface" data-tone="purple" routerLink="/staff-portal/journal"
-    ><div>
+    ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">mail</span>
+    <div>
       <h2>Unread communications</h2>
       <strong>{{ unread().length }}</strong
       ><small>Updates in your inbox</small>
-    </div>
-    <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">mail</span></a
+    </div></a
   >
 </div>
 @if (manager) {
-  <div class="oversight-mini-grid">
+  <div class="metrics four oversight-mini-grid">
     @for (
       stat of [
         ['Client journal entries', clientJournalEntries().length, 'forum'],
@@ -66,11 +66,11 @@
       ];
       track stat[0]
     ) {
-      <div class="portal-panel mini-stat">
-        <span class="material-symbols-outlined" aria-hidden="true">{{ stat[2] }}</span>
+      <div class="metric co-stat co-surface mini-stat" data-tone="blue">
+        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">{{ stat[2] }}</span>
         <div>
-          <span>{{ stat[0] }}</span
-          ><strong>{{ stat[1] }}</strong>
+          <h2>{{ stat[0] }}</h2>
+          <strong>{{ stat[1] }}</strong>
         </div>
       </div>
     }
@@ -101,16 +101,21 @@
           (ngModelChange)="query.set($event)"
         />
       </div>
-      <div class="portal-scroll">
+      <div
+        class="portal-scroll"
+        tabindex="0"
+        role="region"
+        aria-label="Priority communications and actions"
+      >
         <table>
           <thead>
             <tr>
-              <th>Type</th>
-              <th>Subject / description</th>
-              <th>Related to</th>
-              <th>Due date</th>
-              <th>Status</th>
-              <th>Action</th>
+              <th scope="col">Type</th>
+              <th scope="col">Subject / description</th>
+              <th scope="col">Related to</th>
+              <th scope="col">Due date</th>
+              <th scope="col">Status</th>
+              <th scope="col">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -163,6 +168,9 @@
           </tbody>
         </table>
       </div>
+      <p class="portal-register-count">
+        Showing {{ queue().length > 8 ? 8 : queue().length }} of {{ queue().length }} priority items
+      </p>
     </section>
     @if (manager) {
       <div class="dashboard-charts">

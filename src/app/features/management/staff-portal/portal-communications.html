@@ -148,18 +148,23 @@
         }
       </mat-select>
     </div>
-    <div class="portal-scroll">
+    <div
+      class="portal-scroll"
+      tabindex="0"
+      role="region"
+      aria-label="Professional communication records"
+    >
       <table>
         <thead>
           <tr>
-            <th>Date / time</th>
-            <th>Type</th>
-            <th>Subject</th>
-            <th>From / with</th>
-            <th>Logged by</th>
-            <th>Documents</th>
-            <th>Follow-up</th>
-            <th>Action</th>
+            <th scope="col">Date / time</th>
+            <th scope="col">Type</th>
+            <th scope="col">Subject</th>
+            <th scope="col">From / with</th>
+            <th scope="col">Logged by</th>
+            <th scope="col">Documents</th>
+            <th scope="col">Follow-up</th>
+            <th scope="col">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -195,6 +200,9 @@
         </tbody>
       </table>
     </div>
+    <p class="portal-register-count">
+      Showing {{ records().length }} of {{ context.communications().length }} communications
+    </p>
   </section>
   <section class="portal-panel">
     <div class="portal-panel-header">

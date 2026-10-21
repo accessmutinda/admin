@@ -60,40 +60,40 @@
   </section>
   <div class="metrics four portal-stat-row">
     <div class="metric co-stat co-surface" data-tone="teal">
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
       <div>
         <h2>Outstanding tasks</h2>
         <strong>{{ pending().length }}</strong
         ><small>Actions to follow up</small>
       </div>
-      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
     </div>
     <a
       class="metric co-stat co-surface"
       data-tone="amber"
       routerLink="/staff-portal/concerns"
       [queryParams]="{ staff: staff() }"
-      ><div>
+      ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">warning</span>
+      <div>
         <h2>Unresolved concerns</h2>
         <strong>{{ unresolved().length }}</strong
         ><small>Investigation and review</small>
-      </div>
-      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">warning</span></a
+      </div></a
     >
     <div class="metric co-stat co-surface" data-tone="purple">
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">flag</span>
       <div>
         <h2>Escalated actions</h2>
         <strong>{{ escalatedCount }}</strong
         ><small>Need attention</small>
       </div>
-      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">flag</span>
     </div>
     <div class="metric co-stat co-surface" data-tone="blue">
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">task_alt</span>
       <div>
         <h2>Resolved tasks</h2>
         <strong>{{ resolved().length }}</strong
         ><small>Completed follow-ups</small>
       </div>
-      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">task_alt</span>
     </div>
   </div>
   <nav class="tabs" aria-label="Staff profile sections">
@@ -138,17 +138,17 @@
           (ngModelChange)="search.set($event)"
         />
       </div>
-      <div class="portal-scroll">
+      <div class="portal-scroll" tabindex="0" role="region" aria-label="Staff tasks">
         <table>
           <thead>
             <tr>
-              <th>Task</th>
-              <th>Related client</th>
-              <th>Due date</th>
-              <th>Assigned by</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Action</th>
+              <th scope="col">Task</th>
+              <th scope="col">Related client</th>
+              <th scope="col">Due date</th>
+              <th scope="col">Assigned by</th>
+              <th scope="col">Priority</th>
+              <th scope="col">Status</th>
+              <th scope="col">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -199,6 +199,9 @@
           </tbody>
         </table>
       </div>
+      <p class="portal-register-count">
+        Showing {{ tasks().length }} of {{ ownTasks().length }} tasks
+      </p>
     </section>
     @if (editing()) {
       <section class="portal-panel">

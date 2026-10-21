@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { PortalClientContext } from './portal-client-context';
 import { age } from '../care/care.models';
 @Component({
@@ -22,12 +22,21 @@ import { age } from '../care/care.models';
           }
         </div>
         <div class="client-identity-content">
-          <h1>
-            {{ client.name }}
-            <span class="portal-badge" [attr.data-tone]="client.active ? 'green' : 'amber'">{{
-              client.active ? 'Active' : 'Inactive'
-            }}</span>
-          </h1>
+          @if (overview()) {
+            <h1>
+              {{ client.name }}
+              <span class="portal-badge" [attr.data-tone]="client.active ? 'green' : 'amber'">{{
+                client.active ? 'Active' : 'Inactive'
+              }}</span>
+            </h1>
+          } @else {
+            <h2>
+              {{ client.name }}
+              <span class="portal-badge" [attr.data-tone]="client.active ? 'green' : 'amber'">{{
+                client.active ? 'Active' : 'Inactive'
+              }}</span>
+            </h2>
+          }
           <p>
             {{ client.file?.details?.['gender'] || 'Gender not recorded' }}
             @if (client.file?.details?.['dob']) {
@@ -56,6 +65,7 @@ import { age } from '../care/care.models';
             client.file?.details?.['living'] || 'Living arrangements not recorded'
           }}</span>
         </div>
+        <a class="button" [routerLink]="['/manage/clients', context.id()]">Edit care profile</a>
       </section>
       <nav class="client-nav" aria-label="Service user portal sections">
         @for (tab of tabs; track tab.path) {
@@ -87,6 +97,10 @@ import { age } from '../care/care.models';
 })
 export class PortalClientShell {
   protected readonly context = inject(PortalClientContext);
+  private readonly router = inject(Router);
+  protected overview(): boolean {
+    return this.router.url.split(/[?#]/)[0].endsWith('/overview');
+  }
   protected readonly age = age;
   protected readonly tabs = [
     { path: 'overview', label: 'Overview', icon: 'home' },

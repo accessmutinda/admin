@@ -27,12 +27,12 @@
     track stat[0]
   ) {
     <div class="metric co-stat co-surface" [attr.data-tone]="stat[3]">
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">{{ stat[2] }}</span>
       <div>
         <h2>{{ stat[0] }}</h2>
         <strong>{{ stat[1] }}</strong
         ><small>Current workspace</small>
       </div>
-      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">{{ stat[2] }}</span>
     </div>
   }
 </div>
@@ -57,16 +57,16 @@
           }
         </mat-select>
       </div>
-      <div class="portal-scroll">
+      <div class="portal-scroll" tabindex="0" role="region" aria-label="Concern register">
         <table>
           <thead>
             <tr>
-              <th>Concern</th>
-              <th>Service user</th>
-              <th>Assigned to</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Action</th>
+              <th scope="col">Concern</th>
+              <th scope="col">Service user</th>
+              <th scope="col">Assigned to</th>
+              <th scope="col">Priority</th>
+              <th scope="col">Status</th>
+              <th scope="col">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -107,6 +107,9 @@
           </tbody>
         </table>
       </div>
+      <p class="portal-register-count">
+        Showing {{ concerns().length }} of {{ portal.concerns().length }} concerns
+      </p>
     </section>
     @if (editing()) {
       <section class="portal-panel">

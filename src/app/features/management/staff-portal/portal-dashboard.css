@@ -3,7 +3,7 @@
   align-items: center;
   gap: 8px;
   background: #fff;
-  border: 1px solid #e2ebf2;
+  border: 1px solid #e9eff3;
   padding: 10px 12px;
   border-radius: 6px;
   font-size: 11px;
@@ -15,38 +15,12 @@
   color: #008eff;
 }
 .oversight-mini-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.mini-stat {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 16px;
-}
-.mini-stat > .material-symbols-outlined {
-  color: #008eff;
-  background: #eaf6ff;
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 24px;
-}
-.mini-stat div {
-  font-size: 11px;
-  color: #64819a;
-}
-.mini-stat strong {
-  display: block;
-  color: #173e60;
-  font-size: 22px;
-  margin-top: 5px;
+  margin-bottom: 12px;
 }
 .dashboard-charts {
   display: grid;
   grid-template-columns: 1.35fr 1fr;
-  gap: 16px;
+  gap: 12px 8px;
 }
 .bar-chart {
   display: flex;
@@ -70,10 +44,10 @@
   border-radius: 4px 4px 0 0;
 }
 .bar-chart small {
-  height: 30px;
+  min-height: 30px;
   text-align: center;
-  font-size: 9px;
-  color: #728ba0;
+  font-size: 11px;
+  color: #657184;
 }
 .bar-chart strong {
   font-size: 11px;
@@ -121,17 +95,6 @@
   color: #315c7c;
 }
 @media (max-width: 639px) {
-  .oversight-mini-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .mini-stat {
-    padding: 10px;
-    gap: 7px;
-  }
-  .mini-stat > .material-symbols-outlined {
-    font-size: 18px;
-    padding: 8px;
-  }
   .dashboard-charts {
     grid-template-columns: 1fr;
   }

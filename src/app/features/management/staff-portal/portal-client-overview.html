@@ -1,30 +1,46 @@
-<div class="page-heading">
-  <div>
-    <h1>Service User Profile</h1>
-    <p>Care needs, key contacts, communications and outstanding actions at a glance.</p>
-  </div>
-  <a class="button" [routerLink]="['/manage/clients', context.id()]">Edit care profile</a>
-</div>
-<section class="portal-panel client-summary-title">
+<section class="client-summary-title" aria-label="Communication summary">
   <div class="portal-panel-header">
     <h2>
       <span class="material-symbols-outlined" aria-hidden="true">forum</span>Communication summary
     </h2>
     <span class="portal-muted">{{ portal.today | date: 'EEEE, d MMM y' }}</span>
   </div>
-  <div class="portal-panel-body client-summary-stats">
-    <a routerLink="/staff-portal/tasks" [queryParams]="{ client: context.id() }"
-      >Open tasks<strong>{{ openTasks().length }}</strong
-      ><small>Follow-ups and next steps</small></a
-    ><a [routerLink]="['../journal']"
-      >Journal entries<strong>{{ context.journal().length }}</strong
-      ><small>Staff and team updates</small></a
-    ><a [routerLink]="['../communications']"
-      >Professional communications<strong>{{ context.communications().length }}</strong
-      ><small>GP, nursing and care team</small></a
-    ><a routerLink="/staff-portal/concerns"
-      >Escalations & concerns<strong>{{ escalations().length }}</strong
-      ><small>Investigation and review</small></a
+  <div class="metrics four client-summary-stats">
+    <a
+      class="metric co-stat co-surface"
+      data-tone="green"
+      routerLink="/staff-portal/tasks"
+      [queryParams]="{ client: context.id() }"
+      ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
+      <div>
+        <h2>Open tasks</h2>
+        <strong>{{ openTasks().length }}</strong
+        ><small>Follow-ups and next steps</small>
+      </div></a
+    >
+    <a class="metric co-stat co-surface" data-tone="purple" [routerLink]="['../journal']"
+      ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">menu_book</span>
+      <div>
+        <h2>Journal entries</h2>
+        <strong>{{ context.journal().length }}</strong
+        ><small>Staff and team updates</small>
+      </div></a
+    >
+    <a class="metric co-stat co-surface" data-tone="blue" [routerLink]="['../communications']"
+      ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">groups</span>
+      <div>
+        <h2>Professional communications</h2>
+        <strong>{{ context.communications().length }}</strong
+        ><small>GP, nursing and care team</small>
+      </div></a
+    >
+    <a class="metric co-stat co-surface" data-tone="red" routerLink="/staff-portal/concerns"
+      ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">warning</span>
+      <div>
+        <h2>Escalations & concerns</h2>
+        <strong>{{ escalations().length }}</strong
+        ><small>Investigation and review</small>
+      </div></a
     >
   </div>
 </section>
@@ -126,14 +142,14 @@
       <h2>Recent communications</h2>
       <a [routerLink]="['../communications']">View all</a>
     </div>
-    <div class="portal-scroll">
+    <div class="portal-scroll" tabindex="0" role="region" aria-label="Recent communications">
       <table>
         <thead>
           <tr>
-            <th>From / with</th>
-            <th>Type</th>
-            <th>Subject / summary</th>
-            <th>Date</th>
+            <th scope="col">From / with</th>
+            <th scope="col">Type</th>
+            <th scope="col">Subject / summary</th>
+            <th scope="col">Date</th>
           </tr>
         </thead>
         <tbody>
@@ -162,6 +178,10 @@
         </tbody>
       </table>
     </div>
+    <p class="portal-register-count">
+      Showing {{ context.communications().length > 5 ? 5 : context.communications().length }} of
+      {{ context.communications().length }} communications
+    </p>
   </section>
   <section class="portal-panel">
     <div class="portal-panel-header">

@@ -1,9 +1,10 @@
 .portal-form {
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  gap: 12px;
+  padding: 12px;
 }
 .portal-form label {
+  min-width: 0;
   display: block;
   font-size: 11px;
   color: #55718c;
@@ -22,9 +23,10 @@
 .portal-form textarea,
 .portal-toolbar input {
   box-sizing: border-box;
+  min-width: 0;
   background: #fff;
-  border: 1px solid #dfe8ef;
-  color: #31536f;
+  border: 1px solid #dfe6eb;
+  color: #123352;
   padding: 10px;
   border-radius: 5px;
   min-height: 40px;
@@ -38,7 +40,7 @@
 }
 .portal-form-pair {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
 }
 .portal-form-actions {
@@ -46,11 +48,11 @@
   justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
-  border-top: 1px solid #edf2f6;
-  padding-top: 14px;
+  border-top: 1px solid #edf2f5;
+  padding-top: 12px;
 }
 .portal-required {
-  color: #dc566a;
+  color: #b42334;
 }
 .portal-check {
   display: flex !important;
@@ -77,7 +79,7 @@
 }
 .portal-definition dd {
   margin: 0;
-  color: #31536f;
+  color: #123352;
   overflow-wrap: anywhere;
 }
 .portal-copy {
@@ -92,7 +94,7 @@
   gap: 8px;
   overflow-x: auto;
   padding: 8px 14px;
-  border-bottom: 1px solid #edf2f6;
+  border-bottom: 1px solid #edf2f5;
 }
 .portal-filters button {
   border: 0;
@@ -106,13 +108,13 @@
   cursor: pointer;
 }
 .portal-filters button.active {
-  background: #eaf5ff;
-  color: #007ed8;
+  background: #eaf5fc;
+  color: #007bcc;
   font-weight: 700;
 }
 .portal-form :focus-visible,
 .portal-toolbar input:focus-visible {
-  outline: 2px solid #008eff;
+  outline: 2px solid #008bd9;
   outline-offset: 2px;
 }
 @media (max-width: 639px) {
@@ -125,4 +127,33 @@
   .portal-definition {
     grid-template-columns: 90px minmax(0, 1fr);
   }
+}
+
+.portal-toolbar input {
+  height: 28px;
+  min-height: 28px;
+  padding: 3px 8px;
+  margin: 0;
+  border-color: #e2eaf0;
+  font-size: 11px;
+  line-height: 20px;
+}
+@media (pointer: coarse) {
+  .portal-toolbar input {
+    min-height: 44px;
+    height: 44px;
+  }
+}
+@media (max-width: 760px) {
+  .portal-toolbar input {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+}
+
+.portal-form > .button {
+  white-space: normal;
+  min-width: 0;
+  text-align: center;
+  justify-content: center;
 }

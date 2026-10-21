@@ -30,48 +30,48 @@
       data-tone="purple"
       (click)="changeView('Journal'); openFolder('Inbox'); filter.set('Unread')"
     >
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">mail</span>
       <div>
         <h2>Unread messages</h2>
         <strong>{{ unread() }}</strong
         ><small>Updates from your team</small>
       </div>
-      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">mail</span>
     </button>
     <button
       class="metric co-stat co-surface"
       data-tone="amber"
       (click)="changeView('Journal'); openFolder('Follow up'); filter.set('All messages')"
     >
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">flag</span>
       <div>
         <h2>Follow-ups</h2>
         <strong>{{ followUps() }}</strong
         ><small>Messages needing your attention</small>
       </div>
-      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">flag</span>
     </button>
     <button
       class="metric co-stat co-surface"
       data-tone="blue"
       (click)="changeView('Tasks & actions')"
     >
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
       <div>
         <h2>Outstanding tasks</h2>
         <strong>{{ openTasks().length }}</strong
         ><small>Assigned to you</small>
       </div>
-      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
     </button>
     <button
       class="metric co-stat co-surface"
       data-tone="teal"
       (click)="changeView('Journal'); openFolder('Mentions'); filter.set('All messages')"
     >
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">alternate_email</span>
       <div>
         <h2>Team mentions</h2>
         <strong>{{ mentions() }}</strong
         ><small>Conversations you’re copied into</small>
       </div>
-      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">alternate_email</span>
     </button>
   </div>
   <nav class="tabs journal-tabs" aria-label="Staff workspace views">
@@ -412,15 +412,15 @@
           (ngModelChange)="search.set($event)"
         />
       </div>
-      <div class="table-scroll">
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Journal tasks">
         <table>
           <thead>
             <tr>
-              <th>Task</th>
-              <th>Related service user</th>
-              <th>Due date</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th scope="col">Task</th>
+              <th scope="col">Related service user</th>
+              <th scope="col">Due date</th>
+              <th scope="col">Status</th>
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>

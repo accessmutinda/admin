@@ -24,21 +24,21 @@ table {
   font-size: 12px;
 }
 th {
-  background: #f6f9fc;
+  background: #eff5f8;
   color: #668198;
   font-size: 11px;
 }
 th,
 td {
   padding: 14px 16px;
-  border-bottom: 1px solid #edf1f5;
+  border-bottom: 1px solid #edf2f5;
 }
 td strong {
   color: #355570;
 }
 .task-status {
   display: inline-block;
-  background: #eaf3ff;
+  background: #eaf5fc;
   color: #337bb3;
   padding: 5px 8px;
   border-radius: 4px;
@@ -56,7 +56,7 @@ td strong {
   display: flex;
   gap: 18px;
   padding: 20px 0;
-  border-bottom: 1px solid #edf1f5;
+  border-bottom: 1px solid #edf2f5;
 }
 .activity-list article > div {
   flex: 1;
@@ -75,7 +75,7 @@ td strong {
 }
 .activity-list small,
 .activity-list time {
-  color: #8b9baa;
+  color: #657184;
   font-size: 11px;
 }
 .activity-dot {
@@ -90,7 +90,7 @@ td strong {
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #008eff;
+  outline: 2px solid #008bd9;
   outline-offset: 2px;
 }
 @media (max-width: 1279px) {
@@ -115,7 +115,7 @@ textarea:focus-visible {
   .folders {
     padding: 12px;
     border-right: 0;
-    border-bottom: 1px solid #edf1f5;
+    border-bottom: 1px solid #edf2f5;
   }
   .folders h2,
   .folders > .button,

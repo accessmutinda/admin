@@ -93,9 +93,24 @@ import { ModuleDesign } from '../shared/module-design';
               <span class="material-symbols-outlined" aria-hidden="true">menu</span>
             </button>
             <div class="staff-console">
-              <strong>Staff Portal</strong><span>{{ store.company()?.name }}</span>
+              <strong>Staff Portal</strong><span>Team, care and communications</span>
             </div>
           </div>
+          <button
+            type="button"
+            class="workspace-control"
+            (click)="switchWorkspace()"
+            [attr.aria-label]="
+              'Switch workspace. Current workspace: ' + (store.company()?.name ?? '')
+            "
+          >
+            <span class="workspace-mark">{{ store.company()?.code }}</span>
+            <span class="workspace-text"
+              ><strong>{{ store.company()?.name }}</strong
+              ><small>Switch workspace</small></span
+            >
+            <span class="material-symbols-outlined" aria-hidden="true">unfold_more</span>
+          </button>
           <form class="staff-search" role="search" (submit)="search($event, searchBox.value)">
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
             <input

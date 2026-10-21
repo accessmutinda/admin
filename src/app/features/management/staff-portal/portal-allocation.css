@@ -1,5 +1,5 @@
 .month-input {
-  border: 1px solid #dfe8ef;
+  border: 1px solid #dfe6eb;
   background: white;
   border-radius: 5px;
   padding: 8px;
@@ -55,7 +55,7 @@
   margin: 3px 0;
 }
 .calendar-days .outside {
-  background: #f8fafc;
+  background: #eff5f8;
   opacity: 0.5;
 }
 @media (max-width: 639px) {

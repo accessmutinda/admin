@@ -1,5 +1,5 @@
 .professional-contacts {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .contact-grid {
   display: grid;
@@ -63,7 +63,7 @@
   padding-left: 23px;
 }
 .contact-editor {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   max-width: 700px;
 }
 .contact-card-heading button {
