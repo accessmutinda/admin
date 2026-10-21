@@ -40,6 +40,14 @@ const legacyPersonGuard = (route: import('@angular/router').ActivatedRouteSnapsh
 
 export const routes: Routes = [
   {
+    path: 'staff-portal',
+    canActivate: [workspaceGuard],
+    loadComponent: () =>
+      import('./features/management/staff-portal/portal-shell').then((m) => m.PortalShell),
+    loadChildren: () =>
+      import('./features/management/staff-portal/portal.routes').then((m) => m.PORTAL_ROUTES),
+  },
+  {
     path: 'inspector',
     canActivate: [workspaceGuard],
     loadComponent: () =>
@@ -352,6 +360,24 @@ export const routes: Routes = [
           import('./features/management/rota/visits-workspace').then((m) => m.VisitsWorkspace),
         loadChildren: () =>
           import('./features/management/rota/visits.routes').then((m) => m.VISITS_ROUTES),
+      },
+      {
+        path: 'staff-journal',
+        pathMatch: 'full',
+        redirectTo: '/staff-portal/journal',
+      },
+      {
+        path: 'staff-portal',
+        children: [
+          {
+            path: '**',
+            redirectTo: ({ url, queryParams, fragment }) =>
+              inject(Router).createUrlTree(
+                ['/staff-portal', ...url.map((segment) => segment.path)],
+                { queryParams, fragment: fragment ?? undefined },
+              ),
+          },
+        ],
       },
       {
         path: 'supervisor',

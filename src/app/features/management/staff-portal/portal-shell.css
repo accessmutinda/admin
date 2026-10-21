@@ -1,0 +1,143 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  min-width: 0;
+}
+.staff-navigation {
+  display: grid;
+  gap: 3px;
+}
+.staff-navigation a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  min-height: 40px;
+  padding: 8px 12px;
+  margin-bottom: 3px;
+  border-radius: 5px;
+  color: #b4cad9;
+  font-size: 13px;
+}
+.staff-navigation a.active {
+  background: #007caa;
+  box-shadow: inset 3px 0 #17c5de;
+  color: white;
+}
+.staff-navigation a:hover {
+  background: #144460;
+  color: white;
+}
+.staff-navigation .material-symbols-outlined {
+  font-size: 18px;
+}
+.staff-header-leading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+.staff-console {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.staff-console strong {
+  font-size: 14px;
+  color: #002b60;
+}
+.staff-console > span {
+  font-size: 11px;
+  color: #7b8c9b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.staff-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #fff;
+  border: 1px solid #e2eaf0;
+  border-radius: 5px;
+  padding: 5px 9px;
+  width: 260px;
+  min-width: 0;
+  color: #6d8ca4;
+}
+.staff-search .material-symbols-outlined {
+  font-size: 18px;
+}
+.staff-search input {
+  border: 0;
+  background: transparent;
+  outline: 0;
+  font: inherit;
+  font-size: 12px;
+  min-width: 0;
+  width: 100%;
+  min-height: 28px;
+  color: #31536f;
+}
+.staff-search:focus-within {
+  outline: 2px solid #008eff;
+  outline-offset: 2px;
+}
+.portal-content {
+  min-width: 0;
+}
+.staff-navigation a:focus-visible {
+  outline: 2px solid #22c5df;
+  outline-offset: 2px;
+}
+@media (max-width: 1023px) {
+  .staff-navigation a {
+    min-height: 44px;
+  }
+}
+@media (max-width: 639px) {
+  .staff-header {
+    gap: 10px;
+    padding-inline: 12px;
+  }
+  .staff-header-leading {
+    flex: 1;
+  }
+  .staff-console > span {
+    display: none;
+  }
+  .staff-search {
+    width: 40px;
+    min-height: 36px;
+    padding: 5px;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .staff-search input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .staff-search:focus-within {
+    position: absolute;
+    left: 60px;
+    right: 60px;
+    top: 5px;
+    width: auto;
+    z-index: 2;
+    background: white;
+    justify-content: flex-start;
+    padding: 5px 9px;
+  }
+  .staff-search:focus-within input {
+    position: static;
+    opacity: 1;
+    cursor: text;
+  }
+  .staff-header .user-control > span:last-child {
+    display: none;
+  }
+}

@@ -1,0 +1,55 @@
+import { TestBed } from '@angular/core/testing';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { of } from 'rxjs';
+import { routes } from '../../../app.routes';
+import { AuthService } from '../../../core/auth/auth.service';
+import { WorkspaceService } from '../../../core/auth/workspace.service';
+
+describe('Standalone staff portal', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter(routes),
+        {
+          provide: BreakpointObserver,
+          useValue: { observe: () => of({ matches: false, breakpoints: {} }) },
+        },
+      ],
+    });
+    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
+  });
+  it('loads its own layout and dedicated navigation outside the management layout', async () => {
+    const harness = await RouterTestingHarness.create('/staff-portal/dashboard');
+    const root = harness.fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('cv-staff-portal')).not.toBeNull();
+    expect(root.querySelector('cv-management-layout')).toBeNull();
+    const links = Array.from(root.querySelectorAll('nav[aria-label="Staff portal navigation"] a'));
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/staff-portal/dashboard',
+      '/staff-portal/journal',
+      '/staff-portal/tasks',
+      '/staff-portal/concerns',
+      '/staff-portal/service-users',
+      '/staff-portal/oversight',
+    ]);
+    expect(root.querySelector('.staff-console')?.textContent).toContain('Staff Portal');
+    expect(root.querySelector('.portal-nav')).toBeNull();
+  });
+  it('redirects previous portal URLs while preserving the destination and query', async () => {
+    const harness = await RouterTestingHarness.create('/manage/staff-portal/tasks?new=true');
+    const root = harness.fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('cv-management-layout')).toBeNull();
+    expect(root.querySelector('cv-portal-tasks')).not.toBeNull();
+    expect(root.querySelector('input[name="taskTitle"]')).not.toBeNull();
+  });
+  it('redirects the original journal URL to the standalone portal', async () => {
+    const harness = await RouterTestingHarness.create('/manage/staff-journal');
+    const root = harness.fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('cv-management-layout')).toBeNull();
+    expect(root.querySelector('cv-staff-journal')).not.toBeNull();
+  });
+});

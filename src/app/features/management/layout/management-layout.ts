@@ -131,6 +131,14 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
         </button>
       }
       <div class="sidebar-bottom">
+        <a
+          routerLink="/staff-portal"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          (click)="menuOpen.set(false)"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">forum</span>Staff portal
+        </a>
         <a routerLink="/inspector/dashboard" (click)="menuOpen.set(false)"
           ><span class="material-symbols-outlined" aria-hidden="true">policy</span>Inspector
           Portal</a
