@@ -1,0 +1,244 @@
+.panel-heading {
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #edf1f5;
+}
+.panel-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-heading h2 .material-symbols-outlined {
+  color: #008eff;
+}
+.panel-heading > span {
+  color: #8090a1;
+  font-size: 12px;
+}
+.composer form {
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+}
+.composer label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #536c83;
+}
+.composer label > input,
+.composer label > textarea,
+.composer label > mat-select {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  font-size: 12px;
+  font-weight: 400;
+}
+input,
+textarea {
+  background: #fff;
+  color: #294a66;
+  border: 1px solid #dee6ee;
+  border-radius: 5px;
+  padding: 10px;
+  font: inherit;
+  box-sizing: border-box;
+  min-height: 40px;
+}
+textarea {
+  resize: vertical;
+  line-height: 1.7;
+}
+.required {
+  color: #e15c69;
+}
+.form-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.attach-zone {
+  position: relative;
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  border: 1px dashed #a4c3de;
+  background: #f8fbfe;
+  border-radius: 6px;
+  padding: 14px 10px;
+  color: #0079d6 !important;
+  cursor: pointer;
+}
+.attach-zone small {
+  font-weight: 400;
+  color: #8496a8;
+  margin-left: auto;
+  font-size: 10px;
+}
+.attach-zone input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  cursor: pointer;
+  margin: 0 !important;
+}
+.attach-zone:focus-within {
+  outline: 2px solid #008eff;
+  outline-offset: 2px;
+}
+.attachment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e3eaf1;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.attachment span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.attachment small,
+.sender small,
+td small {
+  display: block;
+  color: #8a99a8;
+  font-size: 10px;
+  margin-top: 4px;
+}
+.attachment button,
+.journal-alert button {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  min-height: 40px;
+  min-width: 40px;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #edf1f5;
+  padding-top: 16px;
+}
+.text-action {
+  border: 0;
+  background: transparent;
+  color: #0079d6;
+  cursor: pointer;
+  min-height: 40px;
+  padding: 6px;
+  font-size: 12px;
+}
+.journal-empty {
+  padding: 60px 22px;
+  text-align: center;
+  color: #8191a2;
+}
+.journal-empty > .material-symbols-outlined {
+  font-size: 38px;
+  padding: 16px;
+  color: #64a7d7;
+  background: #eff7fd;
+  border-radius: 18px;
+}
+.journal-empty h3 {
+  color: #365670;
+  font-size: 15px;
+  margin: 18px 0 8px;
+}
+.journal-empty p {
+  font-size: 12px;
+  max-width: 300px;
+  margin: 0 auto 20px;
+  line-height: 1.8;
+}
+.journal-alert {
+  display: flex;
+  align-items: center;
+  background: #eaf8f1;
+  color: #25785b;
+  padding: 4px 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 12px;
+}
+.journal-alert.error {
+  background: #fff0f0;
+  color: #b73f55;
+}
+.detail-content {
+  padding: 20px;
+}
+.detail-content > h2 {
+  font-size: 19px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  margin-top: 10px;
+}
+.detail-category {
+  font-size: 11px;
+  color: #66839d;
+}
+.sender {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  margin: 20px 0;
+}
+dl {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 12px;
+  font-size: 11px;
+  padding: 16px 0;
+  border-block: 1px solid #edf1f5;
+}
+dt {
+  color: #8797a7;
+}
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.entry-body {
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.9;
+  color: #49647b;
+  margin: 24px 0;
+  overflow-wrap: anywhere;
+}
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+.download {
+  width: 100%;
+  background: #f7fafc;
+  cursor: pointer;
+  text-align: left;
+  margin: 8px 0;
+}
+
+:host.compose-only .composer form {
+  gap: 10px;
+  padding: 12px;
+}
+:host.compose-only .panel-heading {
+  padding: 12px;
+}
+:host.compose-only .form-actions {
+  padding-top: 12px;
+}

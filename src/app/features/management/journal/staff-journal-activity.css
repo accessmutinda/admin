@@ -1,0 +1,175 @@
+.task-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  gap: 18px;
+  align-items: start;
+}
+.task-workspace > :only-child {
+  grid-column: 1/-1;
+}
+.task-search {
+  padding: 16px;
+}
+.task-search input {
+  width: 100%;
+  font-size: 12px;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 12px;
+}
+th {
+  background: #f6f9fc;
+  color: #668198;
+  font-size: 11px;
+}
+th,
+td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #edf1f5;
+}
+td strong {
+  color: #355570;
+}
+.task-status {
+  display: inline-block;
+  background: #eaf3ff;
+  color: #337bb3;
+  padding: 5px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.task-status.resolved {
+  background: #e7f8ef;
+  color: #258559;
+}
+.activity-list {
+  padding: 12px 24px;
+}
+.activity-list article {
+  display: flex;
+  gap: 18px;
+  padding: 20px 0;
+  border-bottom: 1px solid #edf1f5;
+}
+.activity-list article > div {
+  flex: 1;
+  min-width: 0;
+}
+.activity-list h3 {
+  font-size: 13px;
+  color: #305571;
+  margin: 0;
+}
+.activity-list p {
+  font-size: 12px;
+  color: #6e8395;
+  overflow-wrap: anywhere;
+  margin: 6px 0;
+}
+.activity-list small,
+.activity-list time {
+  color: #8b9baa;
+  font-size: 11px;
+}
+.activity-dot {
+  width: 10px;
+  height: 10px;
+  background: #008eff;
+  border: 3px solid #e1f1ff;
+  border-radius: 50%;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #008eff;
+  outline-offset: 2px;
+}
+@media (max-width: 1279px) {
+  .journal-workspace.has-detail {
+    grid-template-columns: 1fr;
+  }
+  .journal-workspace.has-detail .composer,
+  .journal-workspace.has-detail .entry-detail {
+    grid-row: 1;
+  }
+  .task-workspace {
+    grid-template-columns: 1fr;
+  }
+  .task-workspace .composer {
+    grid-row: 1;
+  }
+}
+@media (max-width: 639px) {
+  .mailbox {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .folders {
+    padding: 12px;
+    border-right: 0;
+    border-bottom: 1px solid #edf1f5;
+  }
+  .folders h2,
+  .folders > .button,
+  .mailbox-note {
+    display: none;
+  }
+  .folders nav {
+    display: flex;
+    overflow-x: auto;
+  }
+  .folders nav button {
+    flex-shrink: 0;
+  }
+  .message-tools {
+    flex-direction: column;
+    padding: 12px;
+  }
+  .message-tools mat-select {
+    width: 100%;
+  }
+  .message-row {
+    padding: 14px 12px;
+    gap: 8px;
+  }
+  .message-meta {
+    align-items: start;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .form-pair {
+    grid-template-columns: 1fr;
+  }
+  .composer form,
+  .detail-content {
+    padding: 14px;
+  }
+  .panel-heading {
+    padding: 12px;
+  }
+  .form-actions {
+    flex-wrap: wrap;
+  }
+  .attach-zone {
+    flex-wrap: wrap;
+  }
+  .activity-list {
+    padding: 8px 14px;
+  }
+  .activity-list article {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .activity-list time {
+    padding-left: 26px;
+    width: 100%;
+  }
+}

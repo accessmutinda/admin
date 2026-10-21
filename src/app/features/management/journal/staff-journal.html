@@ -1,0 +1,546 @@
+<cv-module-design />
+@if (!embedded()) {
+  <nav class="co-breadcrumb" aria-label="Breadcrumb">
+    Staff workspace / Journal & communications
+  </nav>
+  <div class="page-heading">
+    <div>
+      <h1>Staff Journal & Communication Centre</h1>
+      <p>Keep your team informed, follow up on care and manage your daily actions.</p>
+    </div>
+    <button class="button primary" (click)="changeView('Journal'); newMessage()">
+      <span class="material-symbols-outlined" aria-hidden="true">add</span>New message
+    </button>
+  </div>
+}
+@if (error()) {
+  <div class="journal-alert error" role="alert">
+    {{ error() }}<button aria-label="Dismiss error" (click)="error.set('')">×</button>
+  </div>
+}
+@if (notice()) {
+  <div class="journal-alert" role="status">
+    {{ notice() }}<button aria-label="Dismiss notification" (click)="notice.set('')">×</button>
+  </div>
+}
+@if (!embedded()) {
+  <div class="metrics four">
+    <button
+      class="metric co-stat co-surface"
+      data-tone="purple"
+      (click)="changeView('Journal'); openFolder('Inbox'); filter.set('Unread')"
+    >
+      <div>
+        <h2>Unread messages</h2>
+        <strong>{{ unread() }}</strong
+        ><small>Updates from your team</small>
+      </div>
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">mail</span>
+    </button>
+    <button
+      class="metric co-stat co-surface"
+      data-tone="amber"
+      (click)="changeView('Journal'); openFolder('Follow up'); filter.set('All messages')"
+    >
+      <div>
+        <h2>Follow-ups</h2>
+        <strong>{{ followUps() }}</strong
+        ><small>Messages needing your attention</small>
+      </div>
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">flag</span>
+    </button>
+    <button
+      class="metric co-stat co-surface"
+      data-tone="blue"
+      (click)="changeView('Tasks & actions')"
+    >
+      <div>
+        <h2>Outstanding tasks</h2>
+        <strong>{{ openTasks().length }}</strong
+        ><small>Assigned to you</small>
+      </div>
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
+    </button>
+    <button
+      class="metric co-stat co-surface"
+      data-tone="teal"
+      (click)="changeView('Journal'); openFolder('Mentions'); filter.set('All messages')"
+    >
+      <div>
+        <h2>Team mentions</h2>
+        <strong>{{ mentions() }}</strong
+        ><small>Conversations you’re copied into</small>
+      </div>
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">alternate_email</span>
+    </button>
+  </div>
+  <nav class="tabs journal-tabs" aria-label="Staff workspace views">
+    @for (tab of ['Journal', 'Tasks & actions', 'Activity timeline']; track tab) {
+      <button
+        [class.active]="view() === tab"
+        [attr.aria-current]="view() === tab ? 'page' : null"
+        (click)="changeView(tab)"
+      >
+        {{ tab }}
+      </button>
+    }
+  </nav>
+}
+@if (view() === 'Journal') {
+  <div class="journal-workspace" [class.has-detail]="!composeOnly() && (composing() || selected())">
+    @if (!composeOnly()) {
+      <section class="journal-panel mailbox" aria-label="Journal mailbox">
+        <aside class="folders">
+          <h2>Messages</h2>
+          <button class="button primary" (click)="newMessage()">
+            <span class="material-symbols-outlined" aria-hidden="true">edit_square</span>Compose
+          </button>
+          <nav aria-label="Message folders">
+            @for (item of folders; track item.name) {
+              <button
+                [class.active]="folder() === item.name"
+                [attr.aria-current]="folder() === item.name ? 'page' : null"
+                (click)="openFolder(item.name)"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span
+                ><span>{{ clientId() && item.name === 'Inbox' ? 'All journal' : item.name }}</span
+                ><small>{{ folderEntries(item.name).length }}</small>
+              </button>
+            }
+          </nav>
+          <div class="mailbox-note">
+            <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>
+            <p>Your journal history stays with this workspace.</p>
+          </div>
+        </aside>
+        <div class="message-list">
+          <div class="message-tools">
+            <label class="search-field"
+              ><span class="material-symbols-outlined" aria-hidden="true">search</span
+              ><input
+                aria-label="Search messages"
+                placeholder="Search messages, subjects or people…"
+                [ngModel]="search()"
+                (ngModelChange)="search.set($event)" /></label
+            ><mat-select
+              cvSelect
+              aria-label="Filter messages"
+              [ngModel]="filter()"
+              (ngModelChange)="filter.set($event)"
+            >
+              @for (
+                option of ['All messages', 'Unread', 'High priority', 'With attachments'];
+                track option
+              ) {
+                <mat-option [value]="option">{{ option }}</mat-option>
+              }
+            </mat-select>
+          </div>
+          <div class="list-heading">
+            <h2>{{ clientId() && folder() === 'Inbox' ? 'All journal' : folder() }}</h2>
+            <span>{{ messages().length }} entries</span>
+          </div>
+          @for (entry of messages(); track entry.id) {
+            <button
+              class="message-row"
+              [class.selected]="selected()?.id === entry.id"
+              [class.unread]="entry.state === 'Sent' && !entry.readBy.includes(service.email())"
+              (click)="open(entry)"
+            >
+              <span class="journal-avatar">{{ initials(entry.author) }}</span
+              ><span class="message-content"
+                ><span class="message-meta"
+                  ><strong>{{
+                    entry.authorEmail === service.email() ? 'You' : entry.author
+                  }}</strong
+                  ><time>{{ entry.createdAt | date: 'd MMM, HH:mm' }}</time></span
+                ><strong class="message-subject">{{ entry.subject }}</strong
+                ><span class="message-preview">{{
+                  entry.body || 'Draft — continue writing your message'
+                }}</span
+                ><span class="message-tags"
+                  ><span>{{ entry.category }}</span>
+                  @if (entry.clientId) {
+                    <span>{{ client(entry.clientId) }}</span>
+                  }
+                  @if (entry.priority === 'High') {
+                    <span class="high">High priority</span>
+                  }
+                  @if (entry.attachments.length) {
+                    <span class="material-symbols-outlined" aria-label="Has attachments"
+                      >attach_file</span
+                    >
+                  }
+                </span></span
+              >
+              @if (entry.state === 'Sent' && !entry.readBy.includes(service.email())) {
+                <span class="unread-dot" aria-label="Unread"></span>
+              }
+            </button>
+          } @empty {
+            <div class="journal-empty">
+              <span class="material-symbols-outlined" aria-hidden="true">mark_email_read</span>
+              <h3>
+                {{
+                  search() || filter() !== 'All messages'
+                    ? 'No matching messages'
+                    : 'Your ' + folder().toLowerCase() + ' is clear'
+                }}
+              </h3>
+              <p>
+                {{
+                  search() || filter() !== 'All messages'
+                    ? 'Try another search or choose All messages.'
+                    : 'Share care updates, ask a question or start a conversation with your team.'
+                }}
+              </p>
+              <button class="button" (click)="newMessage()">Write a journal entry</button>
+            </div>
+          }
+        </div>
+      </section>
+    }
+    @if (composeOnly() && !composing()) {
+      <button class="button primary" (click)="newMessage()">Compose another entry</button>
+    }
+    @if (composing()) {
+      <section class="journal-panel composer" aria-labelledby="compose-title">
+        <div class="panel-heading">
+          <h2 id="compose-title">
+            <span class="material-symbols-outlined" aria-hidden="true">edit_square</span>Compose
+            journal entry
+          </h2>
+          <button class="text-action" [disabled]="uploading()" (click)="save(false)">
+            Save draft
+          </button>
+        </div>
+        <form (ngSubmit)="save(true)">
+          <label
+            >To <span class="required">*</span
+            ><mat-select
+              cvSelect
+              multiple
+              name="to"
+              aria-label="Recipients"
+              [(ngModel)]="draft.to"
+              placeholder="Choose staff members"
+            >
+              @for (person of service.recipients(draft.clientId); track person.email) {
+                <mat-option [value]="person.email.toLowerCase()"
+                  >{{ person.name }} · {{ person.role }}</mat-option
+                >
+              }
+            </mat-select></label
+          >
+          <label
+            >CC<mat-select
+              cvSelect
+              multiple
+              name="cc"
+              aria-label="Copy recipients"
+              [(ngModel)]="draft.cc"
+              placeholder="Copy team members"
+            >
+              @for (person of service.recipients(draft.clientId); track person.email) {
+                <mat-option [value]="person.email.toLowerCase()">{{ person.name }}</mat-option>
+              }
+            </mat-select></label
+          >
+          <label
+            >Subject <span class="required">*</span
+            ><input
+              name="subject"
+              [(ngModel)]="draft.subject"
+              maxlength="200"
+              required
+              placeholder="What is this update about?"
+          /></label>
+          <label
+            >Related service user<mat-select
+              cvSelect
+              name="client"
+              aria-label="Related service user"
+              [(ngModel)]="draft.clientId"
+              ><mat-option value="">General / no service user</mat-option>
+              @for (client of service.clients(); track client.id) {
+                <mat-option [value]="client.id">{{ client.name }}</mat-option>
+              }
+            </mat-select></label
+          >
+          <div class="form-pair">
+            <label
+              >Priority<mat-select
+                cvSelect
+                name="priority"
+                aria-label="Priority"
+                [(ngModel)]="draft.priority"
+                ><mat-option value="Normal">Normal</mat-option
+                ><mat-option value="High">High</mat-option></mat-select
+              ></label
+            ><label
+              >Category<mat-select
+                cvSelect
+                name="category"
+                aria-label="Category"
+                [(ngModel)]="draft.category"
+              >
+                @for (category of categories; track category) {
+                  <mat-option [value]="category">{{ category }}</mat-option>
+                }
+              </mat-select></label
+            >
+          </div>
+          <label
+            >Message <span class="required">*</span
+            ><textarea
+              name="body"
+              [(ngModel)]="draft.body"
+              required
+              [rows]="composeOnly() ? 4 : 10"
+              placeholder="Share your observations, actions taken and any follow-up needed…"
+            ></textarea>
+          </label>
+          <label class="attach-zone"
+            ><span class="material-symbols-outlined" aria-hidden="true">attach_file</span
+            ><strong>{{ uploading() ? 'Reading attachments…' : 'Attach files' }}</strong
+            ><small>Up to 5 MB total</small
+            ><input
+              type="file"
+              multiple
+              aria-label="Attach files"
+              [disabled]="uploading()"
+              (change)="attach($event)"
+          /></label>
+          @for (file of draft.attachments; track file.id) {
+            <div class="attachment">
+              <span class="material-symbols-outlined" aria-hidden="true">description</span
+              ><span
+                >{{ file.name }}<small>{{ (file.size / 1024).toFixed(1) }} KB</small></span
+              ><button
+                type="button"
+                [attr.aria-label]="'Remove ' + file.name"
+                (click)="removeAttachment(file.id)"
+              >
+                ×
+              </button>
+            </div>
+          }
+          <div class="form-actions">
+            <button type="button" class="button" [disabled]="uploading()" (click)="cancelCompose()">
+              Cancel</button
+            ><button type="submit" class="button primary" [disabled]="uploading()">
+              <span class="material-symbols-outlined" aria-hidden="true">send</span>Send journal
+              entry
+            </button>
+          </div>
+        </form>
+      </section>
+    } @else if (selected(); as entry) {
+      <section class="journal-panel entry-detail">
+        <div class="panel-heading">
+          <h2>Entry details</h2>
+          <button class="text-action" aria-label="Close entry" (click)="selected.set(null)">
+            Close
+          </button>
+        </div>
+        <div class="detail-content">
+          <div class="detail-category">{{ entry.category }} · {{ entry.priority }} priority</div>
+          <h2>{{ entry.subject }}</h2>
+          <p class="sender">
+            <span class="journal-avatar">{{ initials(entry.author) }}</span
+            ><span
+              ><strong>{{ entry.author }}</strong
+              ><small>{{ entry.createdAt | date: 'd MMM y, HH:mm' }}</small></span
+            >
+          </p>
+          <dl>
+            <dt>To</dt>
+            <dd>
+              @for (email of entry.to; track email) {
+                <span>{{ contact(email) }}; </span>
+              }
+            </dd>
+            @if (entry.cc.length) {
+              <dt>CC</dt>
+              <dd>
+                @for (email of entry.cc; track email) {
+                  <span>{{ contact(email) }}; </span>
+                }
+              </dd>
+            }
+            <dt>Service user</dt>
+            <dd>{{ client(entry.clientId) }}</dd>
+          </dl>
+          <p class="entry-body">{{ entry.body }}</p>
+          @for (file of entry.attachments; track file.id) {
+            <button class="attachment download" (click)="download(file.id)">
+              <span class="material-symbols-outlined" aria-hidden="true">download</span
+              >{{ file.name }}
+            </button>
+          }
+          <div class="detail-actions">
+            <button class="button primary" (click)="newMessage(true)">Reply</button
+            ><button class="button" (click)="mark('followUpBy')">
+              {{ has('followUpBy') ? 'Clear follow-up' : 'Flag follow-up' }}</button
+            ><button class="button" (click)="mark('starredBy')">
+              {{ has('starredBy') ? 'Unstar' : 'Star' }}</button
+            ><button class="button" (click)="mark('readBy')">
+              {{ has('readBy') ? 'Mark unread' : 'Mark read' }}</button
+            ><button class="button" (click)="mark('archivedBy')">
+              {{ has('archivedBy') ? 'Restore' : 'Archive' }}
+            </button>
+          </div>
+        </div>
+      </section>
+    }
+  </div>
+} @else if (view() === 'Tasks & actions') {
+  <div class="task-workspace">
+    <section class="journal-panel">
+      <div class="panel-heading">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">assignment</span>My tasks &
+          actions
+        </h2>
+        <button class="button primary" (click)="editTask()">Add task</button>
+      </div>
+      <div class="task-search">
+        <input
+          aria-label="Search tasks"
+          placeholder="Search tasks, service users or status…"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+        />
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Task</th>
+              <th>Related service user</th>
+              <th>Due date</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (task of tasks(); track task.id) {
+              <tr>
+                <td>
+                  <strong>{{ task.title }}</strong
+                  ><small>{{ task.priority }} priority</small>
+                </td>
+                <td>{{ client(task.clientId) }}</td>
+                <td>{{ task.due | date: 'd MMM y' }}</td>
+                <td>
+                  <span class="task-status" [class.resolved]="task.status === 'Resolved'">{{
+                    task.status
+                  }}</span>
+                </td>
+                <td><button class="text-action" (click)="editTask(task)">Edit</button></td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5">
+                  <div class="journal-empty">
+                    <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
+                    <h3>{{ search() ? 'No matching tasks' : 'Keep track of your next steps' }}</h3>
+                    <p>Add follow-up tasks and update their progress here.</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    @if (editingTask()) {
+      <section class="journal-panel composer">
+        <div class="panel-heading"><h2>Task details</h2></div>
+        <form (ngSubmit)="saveTask()">
+          <label
+            >Task <span class="required">*</span
+            ><input
+              name="title"
+              [(ngModel)]="task.title"
+              required
+              maxlength="200"
+              placeholder="What needs to happen?" /></label
+          ><label
+            >Related service user<mat-select
+              cvSelect
+              name="taskClient"
+              aria-label="Task service user"
+              [(ngModel)]="task.clientId"
+              ><mat-option value="">General / no service user</mat-option>
+              @for (client of service.clients(); track client.id) {
+                <mat-option [value]="client.id">{{ client.name }}</mat-option>
+              }
+            </mat-select></label
+          ><label
+            >Due date <span class="required">*</span
+            ><input name="due" type="date" [(ngModel)]="task.due" required
+          /></label>
+          <div class="form-pair">
+            <label
+              >Priority<mat-select
+                cvSelect
+                name="taskPriority"
+                aria-label="Task priority"
+                [(ngModel)]="task.priority"
+                ><mat-option value="Normal">Normal</mat-option
+                ><mat-option value="High">High</mat-option></mat-select
+              ></label
+            ><label
+              >Status<mat-select
+                cvSelect
+                name="taskStatus"
+                aria-label="Task status"
+                [(ngModel)]="task.status"
+              >
+                @for (
+                  status of ['Open', 'In progress', 'Awaiting response', 'Escalated', 'Resolved'];
+                  track status
+                ) {
+                  <mat-option [value]="status">{{ status }}</mat-option>
+                }
+              </mat-select></label
+            >
+          </div>
+          <div class="form-actions">
+            <button type="button" class="button" (click)="cancelTask()">Cancel</button
+            ><button class="button primary" type="submit">Save task</button>
+          </div>
+        </form>
+      </section>
+    }
+  </div>
+} @else {
+  <section class="journal-panel">
+    <div class="panel-heading">
+      <h2>
+        <span class="material-symbols-outlined" aria-hidden="true">history</span>Activity timeline
+      </h2>
+      <span>{{ service.events().length }} records</span>
+    </div>
+    <div class="activity-list">
+      @for (event of service.events(); track event.id) {
+        <article>
+          <span class="activity-dot"></span>
+          <div>
+            <h3>{{ event.action }}</h3>
+            <p>{{ event.subject }}</p>
+            <small>{{ event.actor }}</small>
+          </div>
+          <time>{{ event.at | date: 'd MMM y, HH:mm' }}</time>
+        </article>
+      } @empty {
+        <div class="journal-empty">
+          <span class="material-symbols-outlined" aria-hidden="true">history</span>
+          <h3>Your activity, in one place</h3>
+          <p>Journal entries, follow-ups and task updates will appear here as you work.</p>
+        </div>
+      }
+    </div>
+  </section>
+}
