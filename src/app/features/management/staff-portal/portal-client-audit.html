@@ -1,0 +1,252 @@
+<div class="page-heading">
+  <div>
+    <h1>Audit Trail & Communication Timeline</h1>
+    <p>
+      Communications, journal entries, allocations and actions for {{ context.client()?.name }}.
+    </p>
+  </div>
+  <button class="button" (click)="export()">Export filtered records</button>
+</div>
+<div class="audit-summary">
+  @for (stat of summary(); track stat.name) {
+    <div class="portal-panel">
+      <span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>
+      <div>
+        <span>{{ stat.name }}</span
+        ><strong>{{ stat.count }}</strong
+        ><small>All time</small>
+      </div>
+    </div>
+  }
+</div>
+<section class="portal-panel audit-filter-panel">
+  <div class="portal-form">
+    <div class="audit-filters">
+      <label
+        >From<input
+          type="date"
+          [ngModel]="from()"
+          (ngModelChange)="from.set($event); page.set(1)" /></label
+      ><label
+        >To<input
+          type="date"
+          [ngModel]="to()"
+          (ngModelChange)="to.set($event); page.set(1)" /></label
+      ><label
+        >Communication type<mat-select
+          cvSelect
+          aria-label="Audit communication type"
+          [ngModel]="type()"
+          (ngModelChange)="type.set($event); page.set(1)"
+          ><mat-option value="All">All types</mat-option>
+          @for (c of categories(); track c) {
+            <mat-option [value]="c">{{ c }}</mat-option>
+          }
+        </mat-select></label
+      ><label
+        >User<mat-select
+          cvSelect
+          aria-label="Audit user"
+          [ngModel]="user()"
+          (ngModelChange)="user.set($event); page.set(1)"
+          ><mat-option value="All">All users</mat-option>
+          @for (u of users(); track u) {
+            <mat-option [value]="u">{{ u }}</mat-option>
+          }
+        </mat-select></label
+      ><label
+        >Status<mat-select
+          cvSelect
+          aria-label="Audit status"
+          [ngModel]="status()"
+          (ngModelChange)="status.set($event); page.set(1)"
+          ><mat-option value="All">All statuses</mat-option>
+          @for (s of statuses(); track s) {
+            <mat-option [value]="s">{{ s }}</mat-option>
+          }
+        </mat-select></label
+      ><label
+        >Sent / received<mat-select
+          cvSelect
+          aria-label="Audit direction"
+          [ngModel]="direction()"
+          (ngModelChange)="direction.set($event); page.set(1)"
+        >
+          @for (d of ['All', 'Sent', 'Received', 'Internal']; track d) {
+            <mat-option [value]="d">{{ d }}</mat-option>
+          }
+        </mat-select></label
+      >
+      <button class="portal-text-button" (click)="reset()">Reset</button>
+    </div>
+  </div>
+</section>
+<div class="portal-grid">
+  <section class="portal-panel">
+    <div class="portal-panel-header">
+      <h2>
+        <span class="material-symbols-outlined" aria-hidden="true">history</span>Timeline
+        <span class="portal-muted">({{ records().length }} records)</span>
+      </h2>
+    </div>
+    <div class="portal-toolbar">
+      <input
+        aria-label="Search communication timeline"
+        placeholder="Search subjects, details or people…"
+        [ngModel]="query()"
+        (ngModelChange)="query.set($event); page.set(1)"
+      />
+    </div>
+    <div class="portal-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Date & time ↓</th>
+            <th>Type</th>
+            <th>Subject / description</th>
+            <th>User</th>
+            <th>Contact / recipient</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of visible(); track e.id) {
+            <tr [class.audit-selected]="selected()?.id === e.id">
+              <td>
+                {{ e.at | date: 'd MMM y' }}<small>{{ e.at | date: 'HH:mm' }}</small>
+              </td>
+              <td>
+                <span class="portal-badge" data-tone="purple">{{ e.category }}</span>
+              </td>
+              <td>
+                <strong>{{ e.action }}</strong
+                ><small>{{ e.detail.slice(0, 85) }}</small>
+              </td>
+              <td>{{ e.actor }}</td>
+              <td>{{ e.recipient || '—' }}</td>
+              <td>
+                <span
+                  class="portal-badge"
+                  [attr.data-tone]="e.status === 'Resolved' ? 'green' : 'amber'"
+                  >{{ e.status }}</span
+                >
+              </td>
+              <td>
+                <button class="portal-text-button" (click)="selected.set(e)">View details</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7">
+                <div class="portal-empty">
+                  <span class="material-symbols-outlined" aria-hidden="true">history</span>
+                  <h3>No records in this view</h3>
+                  <p>
+                    Communication records and care actions appear here as they are saved. Try
+                    clearing your filters.
+                  </p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="audit-pagination">
+      <span>Page {{ activePage() }} of {{ pages() }} · {{ records().length }} records</span>
+      <div>
+        <button class="button" [disabled]="activePage() <= 1" (click)="page.set(activePage() - 1)">
+          Previous</button
+        ><button
+          class="button"
+          [disabled]="activePage() >= pages()"
+          (click)="page.set(activePage() + 1)"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  </section>
+  <section class="portal-panel">
+    <div class="portal-panel-header">
+      <h2>
+        <span class="material-symbols-outlined" aria-hidden="true">description</span>Entry details
+      </h2>
+      @if (selected()) {
+        <button class="portal-text-button" (click)="selected.set(null)">Close</button>
+      }
+    </div>
+    @if (selected(); as entry) {
+      <div class="portal-panel-body">
+        <span class="portal-badge" data-tone="green">{{ entry.status }}</span>
+        <h2 class="audit-detail-title">{{ entry.action }}</h2>
+        <dl class="portal-definition">
+          <dt>Date & time</dt>
+          <dd>{{ entry.at | date: 'd MMM y, HH:mm' }}</dd>
+          <dt>Recorded by</dt>
+          <dd>{{ entry.actor }}</dd>
+          <dt>Related to</dt>
+          <dd>{{ context.client()?.name }}</dd>
+          <dt>Contact / recipient</dt>
+          <dd>{{ entry.recipient || 'Not specified' }}</dd>
+          <dt>Sent / received</dt>
+          <dd>{{ entry.direction || 'Internal' }}</dd>
+          <dt>Category</dt>
+          <dd>{{ entry.category }}</dd>
+          <dt>Record ID</dt>
+          <dd>{{ entry.id }}</dd>
+        </dl>
+        <h3 class="audit-subheading">Details</h3>
+        <p class="portal-copy">{{ entry.detail }}</p>
+        @if (communication(); as record) {
+          <p class="portal-copy">{{ record.details }}</p>
+        }
+        <h3 class="audit-subheading">Linked items</h3>
+        <div class="portal-stack">
+          <a class="portal-link" [routerLink]="['../overview']">Service user profile →</a>
+          @if (entry.category === 'Concern') {
+            <a class="portal-link" [routerLink]="['/staff-portal/concerns', entry.entityId]"
+              >Open investigation →</a
+            >
+          } @else if (entry.category === 'Staff action') {
+            <a
+              class="portal-link"
+              routerLink="/staff-portal/tasks"
+              [queryParams]="{ task: entry.entityId }"
+              >Open task →</a
+            >
+          } @else if (entry.category === 'Journal') {
+            <a
+              class="portal-link"
+              [routerLink]="['../journal']"
+              [queryParams]="{ entry: entry.entityId }"
+              >Open journal entry →</a
+            >
+          } @else {
+            <a
+              class="portal-link"
+              [routerLink]="['../communications']"
+              [queryParams]="{ record: entry.entityId }"
+              >Professional communication records →</a
+            >
+          }
+          <a class="portal-link" [routerLink]="['/manage/clients', context.id(), 'documents']"
+            >Care documents →</a
+          >
+        </div>
+        <h3 class="audit-subheading">Audit information</h3>
+        <p class="portal-muted">
+          Recorded {{ entry.at | date: 'd MMM y, HH:mm' }} by {{ entry.actor }}. This timeline
+          includes saved journal, care and allocation events for this service user.
+        </p>
+      </div>
+    } @else {
+      <div class="portal-empty">
+        <span class="material-symbols-outlined" aria-hidden="true">touch_app</span>
+        <h3>Select a timeline entry</h3>
+        <p>View its details, linked records and audit information here.</p>
+      </div>
+    }
+  </section>
+</div>

@@ -1,0 +1,196 @@
+<div class="page-heading">
+  <div>
+    <h1>Service User Profile</h1>
+    <p>Care needs, key contacts, communications and outstanding actions at a glance.</p>
+  </div>
+  <a class="button" [routerLink]="['/manage/clients', context.id()]">Edit care profile</a>
+</div>
+<section class="portal-panel client-summary-title">
+  <div class="portal-panel-header">
+    <h2>
+      <span class="material-symbols-outlined" aria-hidden="true">forum</span>Communication summary
+    </h2>
+    <span class="portal-muted">{{ portal.today | date: 'EEEE, d MMM y' }}</span>
+  </div>
+  <div class="portal-panel-body client-summary-stats">
+    <a routerLink="/staff-portal/tasks" [queryParams]="{ client: context.id() }"
+      >Open tasks<strong>{{ openTasks().length }}</strong
+      ><small>Follow-ups and next steps</small></a
+    ><a [routerLink]="['../journal']"
+      >Journal entries<strong>{{ context.journal().length }}</strong
+      ><small>Staff and team updates</small></a
+    ><a [routerLink]="['../communications']"
+      >Professional communications<strong>{{ context.communications().length }}</strong
+      ><small>GP, nursing and care team</small></a
+    ><a routerLink="/staff-portal/concerns"
+      >Escalations & concerns<strong>{{ escalations().length }}</strong
+      ><small>Investigation and review</small></a
+    >
+  </div>
+</section>
+<div class="client-overview-columns">
+  <section class="portal-panel">
+    <div class="portal-panel-header">
+      <h2>Personal details</h2>
+      <a [routerLink]="['/manage/clients', context.id()]">Edit</a>
+    </div>
+    <div class="portal-panel-body">
+      <dl class="portal-definition">
+        <dt>Full name</dt>
+        <dd>{{ client()?.name }}</dd>
+        <dt>Date of birth</dt>
+        <dd>{{ details('dob') }}</dd>
+        <dt>NHS number</dt>
+        <dd>{{ details('nhs') }}</dd>
+        <dt>Address</dt>
+        <dd>{{ client()?.address }}<br />{{ client()?.postcode }}</dd>
+        <dt>GP</dt>
+        <dd>{{ details('gp') }}</dd>
+        <dt>Gender</dt>
+        <dd>{{ details('gender') }}</dd>
+        <dt>Ethnicity</dt>
+        <dd>{{ details('ethnicity') }}</dd>
+        <dt>Language</dt>
+        <dd>{{ details('language') }}</dd>
+      </dl>
+    </div>
+  </section>
+  <section class="portal-panel">
+    <div class="portal-panel-header">
+      <h2>Health & care summary</h2>
+      <a [routerLink]="['/manage/clients', context.id()]">Edit</a>
+    </div>
+    <div class="portal-panel-body">
+      <dl class="portal-definition">
+        <dt>Primary diagnosis</dt>
+        <dd>{{ section('diagnoses', 'primary') }}</dd>
+        <dt>Capacity status</dt>
+        <dd>
+          <span class="portal-badge" data-tone="amber">{{ section('capacity', 'status') }}</span>
+        </dd>
+        <dt>LPA</dt>
+        <dd>{{ section('capacity', 'welfareLpa') }}</dd>
+        <dt>Communication</dt>
+        <dd>{{ section('diagnoses', 'communication') }}</dd>
+        <dt>Care needs</dt>
+        <dd>{{ section('plan', 'needs') }}</dd>
+        <dt>Care support</dt>
+        <dd>{{ section('plan', 'support') }}</dd>
+        <dt>Review date</dt>
+        <dd>{{ section('plan', 'review') }}</dd>
+      </dl>
+    </div>
+  </section>
+  <div class="portal-stack">
+    <section class="portal-panel">
+      <div class="portal-panel-header">
+        <h2>Next of kin / Emergency contact</h2>
+        <a [routerLink]="['/manage/clients', context.id(), 'contacts']">Edit</a>
+      </div>
+      <div class="portal-panel-body">
+        <dl class="portal-definition">
+          <dt>Name</dt>
+          <dd>{{ kin()?.name || client()?.representative?.name || 'Not recorded' }}</dd>
+          <dt>Phone</dt>
+          <dd>{{ kin()?.phone || client()?.representative?.phone || 'Not recorded' }}</dd>
+          <dt>Email</dt>
+          <dd>{{ kin()?.email || client()?.representative?.email || 'Not recorded' }}</dd>
+          <dt>Relationship</dt>
+          <dd>
+            {{ kin()?.relationship || client()?.representative?.relationship || 'Not recorded' }}
+          </dd>
+        </dl>
+      </div>
+    </section>
+    <section class="portal-panel">
+      <div class="portal-panel-header">
+        <h2>Key professionals</h2>
+        <a [routerLink]="['../communications']">Manage</a>
+      </div>
+      <div class="portal-panel-body">
+        @for (p of context.contacts(); track p.id) {
+          <div class="professional-summary">
+            <strong>{{ p.name }}</strong
+            ><small>{{ p.relationship || p.type }}</small>
+          </div>
+        } @empty {
+          <p class="portal-muted">No professional contacts recorded yet.</p>
+        }
+      </div>
+    </section>
+  </div>
+</div>
+<div class="portal-grid">
+  <section class="portal-panel">
+    <div class="portal-panel-header">
+      <h2>Recent communications</h2>
+      <a [routerLink]="['../communications']">View all</a>
+    </div>
+    <div class="portal-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>From / with</th>
+            <th>Type</th>
+            <th>Subject / summary</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (record of context.communications().slice(0, 5); track record.id) {
+            <tr>
+              <td>{{ record.loggedBy }}</td>
+              <td>
+                <span class="portal-badge">{{ record.type }}</span>
+              </td>
+              <td>
+                <strong>{{ record.subject }}</strong
+                ><small>{{ record.details.slice(0, 90) }}</small>
+              </td>
+              <td>{{ record.at | date: 'd MMM y' }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4">
+                <div class="portal-empty">
+                  <h3>No professional communications yet</h3>
+                  <p>Record a call, note or update in the professionals workspace.</p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section class="portal-panel">
+    <div class="portal-panel-header">
+      <h2>Outstanding actions</h2>
+      <a routerLink="/staff-portal/tasks" [queryParams]="{ new: 'true', client: context.id() }"
+        >+ Add task</a
+      >
+    </div>
+    <div class="portal-activity">
+      @for (task of openTasks().slice(0, 5); track task.id) {
+        <article>
+          <span class="portal-dot"></span>
+          <div>
+            <a
+              class="portal-link"
+              routerLink="/staff-portal/tasks"
+              [queryParams]="{ task: task.id }"
+              >{{ task.title }}</a
+            >
+            <p>{{ portal.person(task.owner) }} · {{ task.due | date: 'd MMM y' }}</p>
+          </div>
+          <span class="portal-badge">{{ task.status }}</span>
+        </article>
+      } @empty {
+        <div class="portal-empty">
+          <h3>No outstanding actions</h3>
+          <p>Follow-up tasks linked to this person appear here.</p>
+        </div>
+      }
+    </div>
+  </section>
+</div>

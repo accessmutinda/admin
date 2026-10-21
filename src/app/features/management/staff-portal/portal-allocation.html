@@ -1,0 +1,289 @@
+<div class="page-heading">
+  <div>
+    <h1>Client Allocation & Follow-up</h1>
+    <p>Allocate care calls, review the rota and follow up on issues.</p>
+  </div>
+  <a class="button" [routerLink]="['/manage/clients', context.id(), 'visits']"
+    >Full visit planner</a
+  >
+</div>
+@if (error()) {
+  <div class="portal-alert error" role="alert">{{ error() }}</div>
+}
+@if (notice()) {
+  <div class="portal-alert" role="status">{{ notice() }}</div>
+}
+<div class="portal-grid">
+  <div class="portal-stack">
+    <section class="portal-panel">
+      <div class="portal-panel-header">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Care call
+          allocation
+        </h2>
+        <a [routerLink]="['/manage/clients', context.id(), 'visits']">Manage call templates</a>
+      </div>
+      <form class="portal-form" (ngSubmit)="allocate()">
+        <label
+          >Call types <span class="portal-required">*</span
+          ><mat-select
+            cvSelect
+            multiple
+            aria-label="Allocation call types"
+            name="callIds"
+            [(ngModel)]="callIds"
+            placeholder="Choose care calls"
+          >
+            @for (call of calls(); track call.id) {
+              <mat-option [value]="call.id"
+                >{{ call.name }} · {{ call.start }}–{{ call.end }}</mat-option
+              >
+            }
+          </mat-select></label
+        >
+        @if (!calls().length) {
+          <p class="portal-muted">
+            This service user has no active call templates. Create a template in the full visit
+            planner to define times, staffing and recurrence.
+          </p>
+        }
+        <div class="portal-form-pair">
+          <label
+            >Start date <span class="portal-required">*</span
+            ><input
+              type="date"
+              name="start"
+              [ngModel]="from()"
+              (ngModelChange)="from.set($event)"
+              required /></label
+          ><label
+            >End date <span class="portal-required">*</span
+            ><input
+              type="date"
+              name="end"
+              [ngModel]="to()"
+              (ngModelChange)="to.set($event)"
+              required
+          /></label>
+        </div>
+        <div class="portal-form-pair">
+          <label
+            >Carer type<mat-select
+              cvSelect
+              aria-label="Allocation carer type"
+              name="allocation"
+              [(ngModel)]="allocation"
+              ><mat-option value="Regular">Permanent / regular carer</mat-option
+              ><mat-option value="Temporary">Temporary cover</mat-option></mat-select
+            ></label
+          ><label
+            >Assigned staff<mat-select
+              cvSelect
+              multiple
+              aria-label="Allocation assigned staff"
+              name="staff"
+              [(ngModel)]="staffIds"
+              placeholder="Use regular staff from templates"
+            >
+              @for (staff of portal.store.staff(); track staff.id) {
+                <mat-option [value]="staff.id">{{ staff.name }}</mat-option>
+              }
+            </mat-select></label
+          >
+        </div>
+        <p class="portal-muted">
+          Visits follow each template’s recurrence pattern. Plan up to 31 days at a time. Existing
+          visits, availability, training and overlapping calls are checked before saving.
+        </p>
+        <div class="portal-form-actions">
+          <button type="button" class="button" (click)="reset()">Cancel</button
+          ><button class="button primary" [disabled]="!calls().length">Allocate calls</button>
+        </div>
+      </form>
+    </section>
+    <section class="portal-panel">
+      <div class="portal-panel-header">
+        <div>
+          <h2>Monthly allocation preview</h2>
+          <p class="portal-muted">{{ visits().length }} visits in this month</p>
+        </div>
+        <input
+          class="month-input"
+          type="month"
+          aria-label="Allocation preview month"
+          [ngModel]="month()"
+          (ngModelChange)="month.set($event)"
+        />
+      </div>
+      <div class="allocation-calendar">
+        <div class="calendar-weekdays">
+          @for (day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; track day) {
+            <span>{{ day }}</span>
+          }
+        </div>
+        <div class="calendar-days">
+          @for (day of days(); track day) {
+            <div [class.outside]="!day.startsWith(month())">
+              <time>{{ day | date: 'd' }}</time>
+              @for (visit of onDay(day); track visit.id) {
+                <a
+                  [routerLink]="['/manage/clients', context.id(), 'visits']"
+                  [queryParams]="{ visit: visit.id }"
+                  [title]="visit.callName + ' ' + visit.start"
+                  >{{ visit.start }} {{ visit.callName }}</a
+                >
+              }
+            </div>
+          }
+        </div>
+      </div>
+      <div class="portal-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Visit / time</th>
+              <th>Staff</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (v of visits().slice(0, 14); track v.id) {
+              <tr>
+                <td>
+                  <strong>{{ v.callName }}</strong
+                  ><small>{{ v.date | date: 'd MMM' }} · {{ v.start }}–{{ v.end }}</small>
+                </td>
+                <td>
+                  @for (id of v.staffIds; track id) {
+                    <span>{{ staffName(id) }} </span>
+                  } @empty {
+                    <span class="portal-muted">Unallocated</span>
+                  }
+                </td>
+                <td>
+                  <span class="portal-badge" [attr.data-tone]="completed(v) ? 'green' : 'amber'">{{
+                    completed(v) ? 'Completed' : v.state
+                  }}</span>
+                </td>
+                <td>
+                  <button
+                    class="portal-text-button"
+                    [disabled]="v.attendance.length > 0"
+                    (click)="selected = v.id; cancelReason = ''"
+                  >
+                    Cancel visit
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="4">
+                  <div class="portal-empty">
+                    <h3>No calls allocated this month</h3>
+                    <p>Allocate care calls above to build the monthly rota.</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (selected) {
+        <form class="portal-form" (ngSubmit)="cancelVisit()">
+          <label
+            >Cancellation reason<input
+              name="cancelReason"
+              [(ngModel)]="cancelReason"
+              required
+              placeholder="Record why this visit is being cancelled"
+          /></label>
+          <div class="portal-form-actions">
+            <button type="button" class="button" (click)="selected = ''">Keep visit</button
+            ><button class="button primary">Confirm cancellation</button>
+          </div>
+        </form>
+      }
+    </section>
+    <section class="portal-panel">
+      <div class="portal-panel-header">
+        <h2>Open follow-up tasks</h2>
+        <a routerLink="/staff-portal/tasks" [queryParams]="{ new: 'true', client: context.id() }"
+          >+ Add task</a
+        >
+      </div>
+      <div class="portal-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Task</th>
+              <th>Assigned to</th>
+              <th>Due date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of openTasks(); track t.id) {
+              <tr>
+                <td>
+                  <a
+                    class="portal-link"
+                    routerLink="/staff-portal/tasks"
+                    [queryParams]="{ task: t.id }"
+                    >{{ t.title }}</a
+                  >
+                </td>
+                <td>{{ portal.person(t.owner) }}</td>
+                <td>{{ t.due | date: 'd MMM y' }}</td>
+                <td>{{ t.status }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="4">
+                  <div class="portal-empty"><h3>No open follow-up tasks</h3></div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <div class="portal-stack">
+    <section class="portal-panel">
+      <div class="portal-panel-header">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">forum</span>Journal &
+          Communication
+        </h2>
+        <a [routerLink]="['../journal']">View all</a>
+      </div>
+      <nav class="portal-filters" aria-label="Allocation journal filters">
+        @for (type of ['All', 'Journal', 'Allocation', 'Concern']; track type) {
+          <button [class.active]="journalFilter() === type" (click)="journalFilter.set(type)">
+            {{ type }}
+          </button>
+        }
+      </nav>
+      <div class="portal-activity">
+        @for (e of events(); track e.id) {
+          <article>
+            <span class="portal-dot"></span>
+            <div>
+              <h3>{{ e.action }}</h3>
+              <p>{{ e.detail.slice(0, 150) }}</p>
+              <small class="portal-muted">{{ e.actor }}</small>
+            </div>
+            <time>{{ e.at | date: 'd MMM, HH:mm' }}</time>
+          </article>
+        } @empty {
+          <div class="portal-empty">
+            <h3>No activity in this view</h3>
+            <p>Allocation changes, journal entries and care updates appear here.</p>
+          </div>
+        }
+      </div>
+    </section>
+    <cv-staff-journal [embedded]="true" [composeOnly]="true" [clientId]="context.id()" />
+  </div>
+</div>

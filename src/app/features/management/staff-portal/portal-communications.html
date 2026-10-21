@@ -1,0 +1,286 @@
+<div class="page-heading">
+  <div>
+    <h1>Professional Communications & Contacts</h1>
+    <p>Manage professional communications, notes, calls and updates for this service user.</p>
+  </div>
+  <button class="button" (click)="openContact()">+ Add professional contact</button>
+</div>
+@if (error()) {
+  <div class="portal-alert error" role="alert">{{ error() }}</div>
+}
+@if (notice()) {
+  <div class="portal-alert" role="status">{{ notice() }}</div>
+}
+@if (addingContact()) {
+  <section class="portal-panel contact-editor">
+    <div class="portal-panel-header"><h2>Professional contact</h2></div>
+    <form class="portal-form" (ngSubmit)="saveContact()">
+      <div class="portal-form-pair">
+        <label
+          >Name <span class="portal-required">*</span
+          ><input name="contactName" [(ngModel)]="contact.name" required /></label
+        ><label
+          >Role / organisation<input
+            name="relationship"
+            [(ngModel)]="contact.relationship"
+            placeholder="District nurse · community team" /></label
+        ><label>Phone<input name="phone" [(ngModel)]="contact.phone" /></label
+        ><label>Email<input type="email" name="email" [(ngModel)]="contact.email" /></label>
+      </div>
+      <label
+        >Contact type<mat-select
+          cvSelect
+          name="contactType"
+          aria-label="Contact type"
+          [(ngModel)]="contact.type"
+        >
+          @for (t of ['Professional', 'GP', 'Family', 'Emergency', 'Pharmacy']; track t) {
+            <mat-option [value]="t">{{ t }}</mat-option>
+          }
+        </mat-select></label
+      >
+      <div class="portal-form-actions">
+        <button class="button" type="button" (click)="cancelContact()">Cancel</button
+        ><button class="button primary">Save contact</button>
+      </div>
+    </form>
+  </section>
+}
+<section class="portal-panel professional-contacts">
+  <div class="portal-panel-header">
+    <h2>
+      <span class="material-symbols-outlined" aria-hidden="true">contacts</span>Key professional
+      contacts
+    </h2>
+    <span class="portal-muted">{{ context.contacts().length }} contacts</span>
+  </div>
+  <div class="contact-grid">
+    @for (person of context.contacts(); track person.id) {
+      <article class="contact-card">
+        <div class="contact-card-heading">
+          <span class="contact-icon material-symbols-outlined" aria-hidden="true">{{
+            person.type === 'GP'
+              ? 'stethoscope'
+              : person.type === 'Family'
+                ? 'family_restroom'
+                : 'medical_services'
+          }}</span>
+          <div>
+            <h3>{{ person.name }}</h3>
+            <p>{{ person.relationship || person.type }}</p>
+          </div>
+          <button
+            class="portal-text-button"
+            [attr.aria-label]="'Edit contact ' + person.name"
+            (click)="openContact(person)"
+          >
+            Edit
+          </button>
+        </div>
+        @if (person.phone) {
+          <a [href]="'tel:' + person.phone"
+            ><span class="material-symbols-outlined" aria-hidden="true">call</span
+            >{{ person.phone }}</a
+          >
+        }
+        @if (person.email) {
+          <a [href]="'mailto:' + person.email"
+            ><span class="material-symbols-outlined" aria-hidden="true">mail</span
+            >{{ person.email }}</a
+          >
+        }
+        <p>
+          <span class="material-symbols-outlined" aria-hidden="true">event</span>Last contact:
+          {{ lastContact(person.id) ? (lastContact(person.id) | date: 'd MMM y') : 'Not recorded' }}
+        </p>
+        <small
+          >Next follow-up:
+          {{
+            nextContact(person.id) ? (nextContact(person.id) | date: 'd MMM y') : 'Not scheduled'
+          }}</small
+        >
+      </article>
+    } @empty {
+      <div class="portal-empty">
+        <h3>Build the professional care network</h3>
+        <p>Add the GP, district nurse, therapist or family contacts involved in care.</p>
+        <button class="button" (click)="openContact()">Add first contact</button>
+      </div>
+    }
+  </div>
+</section>
+<div class="portal-grid">
+  <section class="portal-panel">
+    <div class="portal-panel-header">
+      <h2>
+        <span class="material-symbols-outlined" aria-hidden="true">forum</span>Communication records
+      </h2>
+      <button
+        class="portal-text-button"
+        (click)="query.set(''); type.set('All'); period.set('All time')"
+      >
+        Clear filters
+      </button>
+    </div>
+    <div class="portal-toolbar">
+      <input
+        aria-label="Search professional communications"
+        placeholder="Search communications…"
+        [ngModel]="query()"
+        (ngModelChange)="query.set($event)"
+      /><mat-select
+        cvSelect
+        aria-label="Professional communication type"
+        [ngModel]="type()"
+        (ngModelChange)="type.set($event)"
+        ><mat-option value="All">All professional types</mat-option>
+        @for (t of types; track t) {
+          <mat-option [value]="t">{{ t }}</mat-option>
+        }</mat-select
+      ><mat-select
+        cvSelect
+        aria-label="Communication time period"
+        [ngModel]="period()"
+        (ngModelChange)="period.set($event)"
+      >
+        @for (p of ['All time', 'Last 7 days', 'Last 30 days']; track p) {
+          <mat-option [value]="p">{{ p }}</mat-option>
+        }
+      </mat-select>
+    </div>
+    <div class="portal-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Date / time</th>
+            <th>Type</th>
+            <th>Subject</th>
+            <th>From / with</th>
+            <th>Logged by</th>
+            <th>Documents</th>
+            <th>Follow-up</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of records(); track r.id) {
+            <tr>
+              <td>
+                {{ r.at | date: 'd MMM y' }}<small>{{ r.at | date: 'HH:mm' }}</small>
+              </td>
+              <td>
+                <span class="portal-badge" data-tone="purple">{{ r.type }}</span>
+              </td>
+              <td>
+                <strong>{{ r.subject }}</strong
+                ><small>{{ r.status }}</small>
+              </td>
+              <td>{{ contactName(r.contactId) }}</td>
+              <td>{{ r.loggedBy }}</td>
+              <td>{{ r.attachments.length }}</td>
+              <td>{{ r.followUp ? (r.followUp | date: 'd MMM y') : '—' }}</td>
+              <td><button class="portal-text-button" (click)="edit(r)">View / edit</button></td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="8">
+                <div class="portal-empty">
+                  <span class="material-symbols-outlined" aria-hidden="true">clinical_notes</span>
+                  <h3>No communication records in this view</h3>
+                  <p>Use the form to record a professional update and set a follow-up date.</p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section class="portal-panel">
+    <div class="portal-panel-header">
+      <h2>
+        <span class="material-symbols-outlined" aria-hidden="true">add_comment</span>Communication
+        record
+      </h2>
+      <button class="portal-text-button" (click)="edit()">New record</button>
+    </div>
+    <form class="portal-form" (ngSubmit)="save()">
+      <label
+        >Type <span class="portal-required">*</span
+        ><mat-select cvSelect name="type" aria-label="Record type" [(ngModel)]="record.type">
+          @for (t of types; track t) {
+            <mat-option [value]="t">{{ t }}</mat-option>
+          }
+        </mat-select></label
+      ><label
+        >Professional contact <span class="portal-required">*</span
+        ><mat-select
+          cvSelect
+          name="contact"
+          aria-label="Professional contact"
+          [(ngModel)]="record.contactId"
+          placeholder="Select a contact"
+        >
+          @for (p of context.contacts(); track p.id) {
+            <mat-option [value]="p.id">{{ p.name }} · {{ p.relationship || p.type }}</mat-option>
+          }
+        </mat-select></label
+      ><label
+        >Subject <span class="portal-required">*</span
+        ><input
+          name="subject"
+          [(ngModel)]="record.subject"
+          required
+          maxlength="200"
+          placeholder="e.g. Wound review update" /></label
+      ><label
+        >Date / time <span class="portal-required">*</span
+        ><input type="datetime-local" name="at" [(ngModel)]="record.at" required /></label
+      ><label
+        >Details / note <span class="portal-required">*</span
+        ><textarea
+          rows="6"
+          name="details"
+          [(ngModel)]="record.details"
+          required
+          placeholder="Record the communication, outcome, actions and follow-up required…"
+        ></textarea></label
+      ><label
+        >Sent / received<mat-select
+          cvSelect
+          name="direction"
+          aria-label="Communication direction"
+          [(ngModel)]="record.direction"
+          ><mat-option value="Received">Received</mat-option
+          ><mat-option value="Sent">Sent</mat-option
+          ><mat-option value="Internal">Internal</mat-option></mat-select
+        ></label
+      >
+      <cv-portal-evidence
+        [files]="record.attachments"
+        (filesChange)="record.attachments = $event"
+        (loading)="uploading.set($event)"
+      />
+      <div class="portal-form-pair">
+        <label
+          >Follow-up date<input type="date" name="followUp" [(ngModel)]="record.followUp" /></label
+        ><label
+          >Status<mat-select
+            cvSelect
+            name="recordStatus"
+            aria-label="Record status"
+            [(ngModel)]="record.status"
+          >
+            @for (s of ['Open', 'In progress', 'Resolved']; track s) {
+              <mat-option [value]="s">{{ s }}</mat-option>
+            }
+          </mat-select></label
+        >
+      </div>
+      <div class="portal-form-actions">
+        <button type="button" class="button" (click)="edit()">Cancel</button
+        ><button class="button primary" [disabled]="uploading()">Save communication</button>
+      </div>
+    </form>
+  </section>
+</div>
