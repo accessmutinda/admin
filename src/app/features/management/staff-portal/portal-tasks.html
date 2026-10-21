@@ -1,0 +1,343 @@
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">PEOPLE & HR / STAFF</p>
+    <h1>{{ clientMode ? 'Client Tasks & Actions' : 'Staff Profile' }}</h1>
+    <p>Staff information, communications, tasks and follow-up actions.</p>
+  </div>
+  <mat-select
+    cvSelect
+    class="staff-picker"
+    aria-label="Select staff member"
+    [ngModel]="staff()"
+    (ngModelChange)="changeStaff($event)"
+  >
+    @for (p of portal.contacts(); track p.email) {
+      <mat-option [value]="p.email.toLowerCase()">{{ p.name }}</mat-option>
+    }
+  </mat-select>
+</div>
+@if (error()) {
+  <div class="portal-alert error" role="alert">{{ error() }}</div>
+}
+@if (notice()) {
+  <div class="portal-alert" role="status">{{ notice() }}</div>
+}
+@if (!clientMode) {
+  <section class="portal-panel staff-identity">
+    <div class="profile-photo">
+      @if (record()?.hr?.personal?.photo) {
+        <img [src]="record()!.hr!.personal.photo" [alt]="person()?.name ?? ''" />
+      } @else {
+        <span>{{ initials(person()?.name ?? 'Staff member') }}</span>
+      }
+    </div>
+    <div class="staff-heading">
+      <h2>
+        {{ person()?.name ?? 'Staff member' }}
+        <span class="portal-badge" data-tone="green">{{ record()?.hr?.status ?? 'Active' }}</span>
+      </h2>
+      <p>{{ person()?.role ?? 'Care team' }}</p>
+      <small
+        >Staff reference:
+        {{ record()?.hr?.reference ?? record()?.id ?? 'Workspace account' }}</small
+      ><a [href]="'mailto:' + staff()">{{ staff() }}</a>
+    </div>
+    <div class="staff-employment">
+      <strong>{{ portal.store.company()?.name }}</strong
+      ><small>{{ record()?.location ?? 'Company workspace' }}</small
+      ><strong>{{ record()?.start ? (record()?.start | date: 'd MMM y') : 'Not recorded' }}</strong
+      ><small>Start date</small
+      ><strong>{{ record()?.hr?.employment?.type ?? 'Employment details not recorded' }}</strong>
+    </div>
+    <div class="staff-supervisor">
+      <span class="material-symbols-outlined" aria-hidden="true">supervisor_account</span>
+      <div>
+        <small>Supervisor / manager</small
+        ><strong>{{ record()?.hr?.employment?.manager || 'Not assigned' }}</strong
+        ><a class="portal-link" routerLink="/staff-portal/journal">Open communication journal →</a>
+      </div>
+    </div>
+  </section>
+  <div class="metrics four portal-stat-row">
+    <div class="metric co-stat co-surface" data-tone="teal">
+      <div>
+        <h2>Outstanding tasks</h2>
+        <strong>{{ pending().length }}</strong
+        ><small>Actions to follow up</small>
+      </div>
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
+    </div>
+    <a
+      class="metric co-stat co-surface"
+      data-tone="amber"
+      routerLink="/staff-portal/concerns"
+      [queryParams]="{ staff: staff() }"
+      ><div>
+        <h2>Unresolved concerns</h2>
+        <strong>{{ unresolved().length }}</strong
+        ><small>Investigation and review</small>
+      </div>
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">warning</span></a
+    >
+    <div class="metric co-stat co-surface" data-tone="purple">
+      <div>
+        <h2>Escalated actions</h2>
+        <strong>{{ escalatedCount }}</strong
+        ><small>Need attention</small>
+      </div>
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">flag</span>
+    </div>
+    <div class="metric co-stat co-surface" data-tone="blue">
+      <div>
+        <h2>Resolved tasks</h2>
+        <strong>{{ resolved().length }}</strong
+        ><small>Completed follow-ups</small>
+      </div>
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">task_alt</span>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="Staff profile sections">
+    @for (tab of ['Overview', 'Tasks & actions', 'Notes']; track tab) {
+      <button [class.active]="profileTab() === tab" (click)="profileTab.set(tab)">{{ tab }}</button>
+    }
+    @if (record(); as staffRecord) {
+      <a [routerLink]="['/manage/people/staff', staffRecord.id, 'personal']">Personal details</a
+      ><a [routerLink]="['/manage/people/staff', staffRecord.id, 'employment']">Employment</a
+      ><a [routerLink]="['/manage/people/staff', staffRecord.id, 'compliance']">Compliance</a
+      ><a [routerLink]="['/manage/people/staff', staffRecord.id, 'training']">Training</a
+      ><a [routerLink]="['/manage/people/staff', staffRecord.id, 'documents']">Documents</a
+      ><a [routerLink]="['/manage/people/staff', staffRecord.id, 'reviews']">Supervision</a>
+    }
+  </nav>
+}
+@if (profileTab() === 'Tasks & actions') {
+  <div class="portal-grid profile-content" [class.has-task-editor]="editing()">
+    <section class="portal-panel">
+      <div class="portal-panel-header">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Tasks &
+          Actions
+        </h2>
+        <button class="button primary" (click)="edit()">+ Add task</button>
+      </div>
+      <nav class="portal-filters" aria-label="Task status filters">
+        @for (
+          status of ['All', 'Open', 'In progress', 'Awaiting response', 'Escalated', 'Resolved'];
+          track status
+        ) {
+          <button [class.active]="filter() === status" (click)="filter.set(status)">
+            {{ status }}
+          </button>
+        }
+      </nav>
+      <div class="portal-toolbar">
+        <input
+          aria-label="Search staff tasks"
+          placeholder="Search tasks…"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+        />
+      </div>
+      <div class="portal-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Task</th>
+              <th>Related client</th>
+              <th>Due date</th>
+              <th>Assigned by</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of tasks(); track t.id) {
+              <tr>
+                <td>
+                  <strong>{{ t.title }}</strong
+                  ><small>{{ (t.notes ?? '').slice(0, 90) }}</small>
+                </td>
+                <td>{{ portal.clientName(t.clientId) }}</td>
+                <td>{{ t.due | date: 'd MMM y' }}</td>
+                <td>{{ portal.person(t.assignedBy ?? t.owner) }}</td>
+                <td>
+                  <span
+                    class="portal-badge"
+                    [attr.data-tone]="t.priority === 'High' ? 'red' : 'amber'"
+                    >{{ t.priority }}</span
+                  >
+                </td>
+                <td>
+                  <span
+                    class="portal-badge"
+                    [attr.data-tone]="
+                      t.status === 'Resolved'
+                        ? 'green'
+                        : t.status === 'Escalated'
+                          ? 'red'
+                          : 'purple'
+                    "
+                    >{{ t.status }}</span
+                  >
+                </td>
+                <td><button class="portal-text-button" (click)="edit(t)">Open task</button></td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7">
+                  <div class="portal-empty">
+                    <span class="material-symbols-outlined" aria-hidden="true"
+                      >assignment_turned_in</span
+                    >
+                    <h3>No tasks in this view</h3>
+                    <p>Create a task to record your next action and follow it through.</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    @if (editing()) {
+      <section class="portal-panel">
+        <div class="portal-panel-header">
+          <h2>Task details</h2>
+          <span class="portal-badge">{{ task.status }}</span>
+        </div>
+        <form class="portal-form" (ngSubmit)="save()">
+          <label
+            >Task title <span class="portal-required">*</span
+            ><input name="taskTitle" [(ngModel)]="task.title" required maxlength="200" /></label
+          ><label
+            >Related client<mat-select
+              cvSelect
+              aria-label="Related client"
+              name="clientId"
+              [(ngModel)]="task.clientId"
+              ><mat-option value="">General / no service user</mat-option>
+              @for (c of portal.clients(); track c.id) {
+                <mat-option [value]="c.id">{{ c.name }}</mat-option>
+              }
+            </mat-select></label
+          ><label
+            >Assigned to <span class="portal-required">*</span
+            ><mat-select cvSelect aria-label="Task assignee" name="owner" [(ngModel)]="task.owner">
+              @for (c of portal.contacts(); track c.email) {
+                <mat-option [value]="c.email.toLowerCase()">{{ c.name }}</mat-option>
+              }
+            </mat-select></label
+          >
+          <div class="portal-form-pair">
+            <label
+              >Priority<mat-select
+                cvSelect
+                aria-label="Task priority"
+                name="priority"
+                [(ngModel)]="task.priority"
+              >
+                @for (priority of ['Low', 'Normal', 'Medium', 'High']; track priority) {
+                  <mat-option [value]="priority">{{ priority }}</mat-option>
+                }
+              </mat-select></label
+            ><label
+              >Due date <span class="portal-required">*</span
+              ><input type="date" name="due" [(ngModel)]="task.due" required
+            /></label>
+          </div>
+          <label
+            >Status<mat-select
+              cvSelect
+              aria-label="Task status"
+              name="status"
+              [(ngModel)]="task.status"
+            >
+              @for (
+                status of ['Open', 'In progress', 'Awaiting response', 'Escalated', 'Resolved'];
+                track status
+              ) {
+                <mat-option [value]="status">{{ status }}</mat-option>
+              }
+            </mat-select></label
+          ><label
+            >Investigation notes<textarea
+              name="notes"
+              [(ngModel)]="task.notes"
+              rows="4"
+            ></textarea></label
+          ><label
+            >Action taken<textarea
+              name="actions"
+              [(ngModel)]="task.actions"
+              rows="4"
+              placeholder="Record the actions and outcome before resolving."
+            ></textarea></label
+          ><label
+            >Follow-up date<input type="date" name="followUp" [(ngModel)]="task.followUp" /></label
+          ><cv-portal-evidence
+            [files]="task.attachments ?? []"
+            (filesChange)="task.attachments = $event"
+            (loading)="uploading.set($event)"
+          />
+          <div class="portal-form-actions">
+            <button type="button" class="button" (click)="cancel()" [disabled]="uploading()">
+              Cancel</button
+            ><button class="button" [disabled]="uploading()">Save updates</button
+            ><button
+              type="button"
+              class="button primary"
+              [disabled]="uploading()"
+              (click)="save(true)"
+            >
+              Mark as resolved
+            </button>
+          </div>
+        </form>
+      </section>
+    }
+  </div>
+} @else if (profileTab() === 'Overview') {
+  <section class="portal-panel profile-content">
+    <div class="portal-panel-header"><h2>Staff overview</h2></div>
+    <div class="portal-panel-body">
+      <dl class="portal-definition">
+        <dt>Name</dt>
+        <dd>{{ person()?.name }}</dd>
+        <dt>Role</dt>
+        <dd>{{ person()?.role }}</dd>
+        <dt>Email</dt>
+        <dd>{{ staff() }}</dd>
+        <dt>Phone</dt>
+        <dd>{{ record()?.hr?.personal?.phone || 'Not recorded' }}</dd>
+        <dt>Location</dt>
+        <dd>{{ record()?.location || 'Not recorded' }}</dd>
+        <dt>Supervisor</dt>
+        <dd>{{ record()?.hr?.employment?.manager || 'Not assigned' }}</dd>
+      </dl>
+    </div>
+  </section>
+} @else {
+  <section class="portal-panel profile-content">
+    <div class="portal-panel-header">
+      <h2>Staff notes</h2>
+      @if (record(); as staffRecord) {
+        <a [routerLink]="['/manage/people/staff', staffRecord.id, 'notes']">Manage notes</a>
+      }
+    </div>
+    <div class="portal-panel-body">
+      @for (note of record()?.hr?.notes ?? []; track note.id) {
+        <article class="portal-copy">
+          <strong>{{ note.author }}</strong>
+          <p>{{ note.text }}</p>
+          <small>{{ note.at | date: 'd MMM y, HH:mm' }}</small>
+        </article>
+      } @empty {
+        <div class="portal-empty">
+          <h3>No staff notes recorded</h3>
+          <p>Staff notes are linked to the existing employment record.</p>
+        </div>
+      }
+    </div>
+  </section>
+}

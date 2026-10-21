@@ -1,0 +1,541 @@
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">PEOPLE & HR / STAFF CONCERNS</p>
+    <h1>{{ id ? 'Staff Concern Investigation' : 'Staff Concerns' }}</h1>
+    <p>Investigate, manage and resolve concerns with a clear record of actions and outcomes.</p>
+  </div>
+  @if (!id) {
+    <button class="button primary" (click)="create()">+ Raise concern</button>
+  } @else {
+    <a class="button" routerLink="/staff-portal/concerns">Back to concerns</a>
+  }
+</div>
+@if (error()) {
+  <div class="portal-alert error" role="alert">{{ error() }}</div>
+}
+@if (notice()) {
+  <div class="portal-alert" role="status">{{ notice() }}</div>
+}
+<div class="metrics four portal-stat-row">
+  @for (
+    stat of [
+      ['Open staff concerns', portal.openConcerns().length, 'warning', 'amber'],
+      ['Under investigation', investigated(), 'clinical_notes', 'blue'],
+      ['Resolved concerns', resolved(), 'task_alt', 'teal'],
+      ['Total concerns', portal.concerns().length, 'groups', 'purple'],
+    ];
+    track stat[0]
+  ) {
+    <div class="metric co-stat co-surface" [attr.data-tone]="stat[3]">
+      <div>
+        <h2>{{ stat[0] }}</h2>
+        <strong>{{ stat[1] }}</strong
+        ><small>Current workspace</small>
+      </div>
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">{{ stat[2] }}</span>
+    </div>
+  }
+</div>
+@if (!id) {
+  <div class="portal-grid">
+    <section class="portal-panel">
+      <div class="portal-panel-header"><h2>Concern register</h2></div>
+      <div class="portal-toolbar">
+        <input
+          aria-label="Search concerns"
+          placeholder="Search concern reference, title or details…"
+          [ngModel]="query()"
+          (ngModelChange)="query.set($event)"
+        /><mat-select
+          cvSelect
+          aria-label="Filter concern status"
+          [ngModel]="status()"
+          (ngModelChange)="status.set($event)"
+          ><mat-option value="All">All statuses</mat-option>
+          @for (s of statuses; track s) {
+            <mat-option [value]="s">{{ s }}</mat-option>
+          }
+        </mat-select>
+      </div>
+      <div class="portal-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Concern</th>
+              <th>Service user</th>
+              <th>Assigned to</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of concerns(); track c.id) {
+              <tr>
+                <td>
+                  <strong>{{ c.title }}</strong
+                  ><small>{{ c.reference }} · {{ c.raisedAt | date: 'd MMM y' }}</small>
+                </td>
+                <td>{{ portal.clientName(c.clientId) }}</td>
+                <td>{{ portal.person(c.assignedTo) }}</td>
+                <td>
+                  <span class="portal-badge" data-tone="red">{{ c.priority }}</span>
+                </td>
+                <td>{{ c.status }}</td>
+                <td>
+                  <a class="portal-link" [routerLink]="['/staff-portal/concerns', c.id]"
+                    >Investigate</a
+                  >
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6">
+                  <div class="portal-empty">
+                    <span class="material-symbols-outlined" aria-hidden="true"
+                      >health_and_safety</span
+                    >
+                    <h3>No concerns in this view</h3>
+                    <p>
+                      Record a concern to start an investigation and track the actions through to an
+                      outcome.
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    @if (editing()) {
+      <section class="portal-panel">
+        <div class="portal-panel-header"><h2>Raise a staff concern</h2></div>
+        <form class="portal-form" (ngSubmit)="save()">
+          <label
+            >Title <span class="portal-required">*</span
+            ><input name="title" [(ngModel)]="draft.title" required maxlength="200" /></label
+          ><label
+            >Concern type<mat-select
+              cvSelect
+              name="type"
+              aria-label="Concern type"
+              [(ngModel)]="draft.type"
+            >
+              @for (
+                t of ['Safeguarding', 'Medication', 'Conduct', 'Care delivery', 'Other'];
+                track t
+              ) {
+                <mat-option [value]="t">{{ t }}</mat-option>
+              }
+            </mat-select></label
+          ><label
+            >Related service user<mat-select
+              cvSelect
+              name="client"
+              aria-label="Concern service user"
+              [(ngModel)]="draft.clientId"
+              ><mat-option value="">No linked service user</mat-option>
+              @for (c of portal.clients(); track c.id) {
+                <mat-option [value]="c.id">{{ c.name }}</mat-option>
+              }
+            </mat-select></label
+          ><label
+            >Staff member involved<mat-select
+              cvSelect
+              name="staff"
+              aria-label="Staff involved"
+              [(ngModel)]="draft.staffEmail"
+              ><mat-option value="">Not yet identified</mat-option>
+              @for (p of portal.contacts(); track p.email) {
+                <mat-option [value]="p.email.toLowerCase()">{{ p.name }}</mat-option>
+              }
+            </mat-select></label
+          ><label
+            >Assigned investigator<mat-select
+              cvSelect
+              name="assignee"
+              aria-label="Assigned investigator"
+              [(ngModel)]="draft.assignedTo"
+            >
+              @for (p of portal.contacts(); track p.email) {
+                <mat-option [value]="p.email.toLowerCase()">{{ p.name }}</mat-option>
+              }
+            </mat-select></label
+          >
+          <div class="portal-form-pair">
+            <label
+              >Visit date<input
+                type="date"
+                name="visit"
+                [(ngModel)]="draft.visitDate"
+                required /></label
+            ><label
+              >Priority<mat-select
+                cvSelect
+                aria-label="Concern priority"
+                name="priority"
+                [(ngModel)]="draft.priority"
+                ><mat-option value="High">High</mat-option
+                ><mat-option value="Normal">Normal</mat-option></mat-select
+              ></label
+            >
+          </div>
+          <label
+            >Description <span class="portal-required">*</span
+            ><textarea
+              rows="5"
+              name="description"
+              [(ngModel)]="draft.description"
+              required
+            ></textarea></label
+          ><cv-portal-evidence
+            [files]="draft.evidence"
+            (filesChange)="draft.evidence = $event"
+            (loading)="uploading.set($event)"
+          />
+          <div class="portal-form-actions">
+            <button type="button" class="button" (click)="cancel()">Cancel</button
+            ><button type="submit" class="button primary" [disabled]="uploading()">
+              Raise concern
+            </button>
+          </div>
+        </form>
+      </section>
+    }
+  </div>
+} @else if (current(); as concern) {
+  <div class="portal-grid">
+    <div class="portal-stack">
+      <section class="portal-panel concern-summary">
+        <div>
+          <div class="portal-actions">
+            <span class="portal-badge" data-tone="red">{{ concern.reference }}</span
+            ><span class="portal-badge" data-tone="amber">{{ concern.status }}</span>
+          </div>
+          <h2>{{ concern.title }}</h2>
+          <p>{{ concern.description }}</p>
+          <div class="concern-context">
+            <div>
+              <small>Related service user</small>
+              @if (concern.clientId) {
+                <a [routerLink]="['/staff-portal/service-users', concern.clientId]">{{
+                  portal.clientName(concern.clientId)
+                }}</a>
+              } @else {
+                <strong>Not linked</strong>
+              }
+            </div>
+            <div>
+              <small>Visit date</small><strong>{{ concern.visitDate | date: 'd MMM y' }}</strong>
+            </div>
+            <div>
+              <small>Raised by</small><strong>{{ concern.raisedBy }}</strong>
+            </div>
+          </div>
+        </div>
+        <dl class="portal-definition">
+          <dt>Concern type</dt>
+          <dd>{{ concern.type }}</dd>
+          <dt>Priority</dt>
+          <dd>
+            <span class="portal-badge" data-tone="red">{{ concern.priority }}</span>
+          </dd>
+          <dt>Assigned to</dt>
+          <dd>{{ portal.person(concern.assignedTo) }}</dd>
+          <dt>Date raised</dt>
+          <dd>{{ concern.raisedAt | date: 'd MMM y, HH:mm' }}</dd>
+        </dl>
+      </section>
+      <nav class="portal-filters concern-tabs" aria-label="Investigation sections">
+        @for (
+          t of [
+            'Investigation workflow',
+            'Details',
+            'Evidence & documents',
+            'People involved',
+            'Related items',
+            'Outcome',
+            'Audit trail',
+          ];
+          track t
+        ) {
+          <button [class.active]="tab() === t" (click)="tab.set(t)">{{ t }}</button>
+        }
+      </nav>
+      @if (tab() === 'Investigation workflow') {
+        <div class="investigation-grid">
+          <section class="portal-panel">
+            <div class="portal-panel-header">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">timeline</span
+                >Investigation timeline
+              </h2>
+            </div>
+            <ol class="investigation-stages">
+              @for (s of statuses; track s; let i = $index) {
+                <li [class.complete]="i < stage" [class.current]="i === stage">
+                  <span class="stage-icon material-symbols-outlined" aria-hidden="true">{{
+                    i < stage ? 'check_circle' : i === stage ? 'radio_button_checked' : 'schedule'
+                  }}</span>
+                  <div>
+                    <strong>{{ i + 1 }}. {{ s }}</strong
+                    ><small>{{
+                      i < stage ? 'Completed' : i === stage ? 'Current stage' : 'Pending'
+                    }}</small>
+                  </div>
+                </li>
+              }
+            </ol>
+          </section>
+          <section class="portal-panel">
+            <div class="portal-panel-header"><h2>Investigation checklist</h2></div>
+            <div class="portal-panel-body">
+              <div class="checklist-progress"><span [style.width.%]="progress"></span></div>
+              <p class="portal-muted">
+                {{ completed }} of {{ draft.checklist.length }} completed ({{ progress }}%)
+              </p>
+              @for (item of draft.checklist; track item.id) {
+                <label class="checklist-item"
+                  ><input type="checkbox" [(ngModel)]="item.done" [name]="item.id" /><span>{{
+                    item.title
+                  }}</span></label
+                >
+              }
+              <button
+                class="button primary checklist-save"
+                [disabled]="uploading()"
+                (click)="save()"
+              >
+                Save investigation
+              </button>
+            </div>
+            <div class="portal-panel-header"><h2>Key evidence & attachments</h2></div>
+            <div class="portal-panel-body">
+              <cv-portal-evidence
+                [files]="draft.evidence"
+                (filesChange)="draft.evidence = $event"
+                (loading)="uploading.set($event)"
+              />
+            </div>
+          </section>
+        </div>
+      } @else if (tab() === 'Details') {
+        <section class="portal-panel">
+          <form class="portal-form" (ngSubmit)="save()">
+            <label>Concern title<input name="title" [(ngModel)]="draft.title" required /></label
+            ><label
+              >Description<textarea
+                rows="6"
+                name="description"
+                [(ngModel)]="draft.description"
+                required
+              ></textarea>
+            </label>
+            <div class="portal-form-pair">
+              <label
+                >Visit date<input type="date" name="date" [(ngModel)]="draft.visitDate" /></label
+              ><label
+                >Priority<mat-select
+                  cvSelect
+                  name="priority"
+                  aria-label="Investigation priority"
+                  [(ngModel)]="draft.priority"
+                  ><mat-option value="Normal">Normal</mat-option
+                  ><mat-option value="High">High</mat-option></mat-select
+                ></label
+              >
+            </div>
+            <button class="button primary">Save details</button>
+          </form>
+        </section>
+      } @else if (tab() === 'Evidence & documents') {
+        <section class="portal-panel">
+          <div class="portal-panel-header"><h2>Investigation evidence</h2></div>
+          <div class="portal-panel-body">
+            <cv-portal-evidence
+              [files]="draft.evidence"
+              (filesChange)="draft.evidence = $event"
+              (loading)="uploading.set($event)"
+            /><button
+              class="button primary checklist-save"
+              [disabled]="uploading()"
+              (click)="save()"
+            >
+              Save evidence
+            </button>
+          </div>
+        </section>
+      } @else if (tab() === 'People involved') {
+        <section class="portal-panel">
+          <form class="portal-form" (ngSubmit)="save()">
+            <label
+              >Assigned investigator<mat-select
+                cvSelect
+                name="investigator"
+                aria-label="Change investigator"
+                [(ngModel)]="draft.assignedTo"
+              >
+                @for (p of portal.contacts(); track p.email) {
+                  <mat-option [value]="p.email.toLowerCase()">{{ p.name }}</mat-option>
+                }
+              </mat-select></label
+            ><label
+              >Staff member involved<mat-select
+                cvSelect
+                name="involved"
+                aria-label="Change involved staff"
+                [(ngModel)]="draft.staffEmail"
+                ><mat-option value="">Not yet identified</mat-option>
+                @for (p of portal.contacts(); track p.email) {
+                  <mat-option [value]="p.email.toLowerCase()">{{ p.name }}</mat-option>
+                }
+              </mat-select></label
+            ><label
+              >Followers / CC<mat-select
+                cvSelect
+                multiple
+                name="followers"
+                aria-label="Concern followers"
+                [(ngModel)]="draft.followers"
+              >
+                @for (p of portal.contacts(); track p.email) {
+                  <mat-option [value]="p.email.toLowerCase()">{{ p.name }}</mat-option>
+                }
+              </mat-select></label
+            ><button class="button primary">Save people</button>
+          </form>
+        </section>
+      } @else if (tab() === 'Related items') {
+        <section class="portal-panel">
+          <div class="portal-panel-header"><h2>Related records</h2></div>
+          <div class="portal-panel-body portal-actions">
+            @if (concern.clientId) {
+              <a
+                class="button"
+                [routerLink]="['/staff-portal/service-users', concern.clientId, 'overview']"
+                >Service user profile</a
+              ><a
+                class="button"
+                [routerLink]="['/staff-portal/service-users', concern.clientId, 'journal']"
+                >Client journal</a
+              ><a
+                class="button"
+                [routerLink]="['/staff-portal/service-users', concern.clientId, 'allocation']"
+                >Visit allocation</a
+              >
+            }
+            <a
+              class="button"
+              routerLink="/staff-portal/tasks"
+              [queryParams]="{ staff: concern.staffEmail || concern.assignedTo }"
+              >Staff tasks</a
+            >
+          </div>
+        </section>
+      } @else if (tab() === 'Outcome') {
+        <section class="portal-panel">
+          <form class="portal-form" (ngSubmit)="save()">
+            <label
+              >Investigation outcome<textarea
+                rows="8"
+                name="outcome"
+                [(ngModel)]="draft.outcome"
+                placeholder="Record findings, actions taken and the agreed outcome before resolving."
+              ></textarea></label
+            ><button class="button primary">Save outcome</button>
+          </form>
+        </section>
+      } @else {
+        <section class="portal-panel">
+          <div class="portal-panel-header"><h2>Investigation audit trail</h2></div>
+          <div class="portal-activity">
+            @for (e of audit(); track e.id) {
+              <article>
+                <span class="portal-dot"></span>
+                <div>
+                  <h3>{{ e.action }}</h3>
+                  <p>{{ e.detail }}</p>
+                  <small class="portal-muted">{{ e.actor }} · {{ e.status }}</small>
+                </div>
+                <time>{{ e.at | date: 'd MMM y, HH:mm' }}</time>
+              </article>
+            }
+          </div>
+        </section>
+      }
+    </div>
+    <div class="portal-stack">
+      <section class="portal-panel">
+        <div class="portal-panel-header">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">schedule</span>Status &
+            Actions
+          </h2>
+        </div>
+        <div class="portal-form">
+          <label
+            >Current status<mat-select
+              cvSelect
+              aria-label="Investigation status"
+              [(ngModel)]="draft.status"
+            >
+              @for (s of statuses; track s) {
+                <mat-option [value]="s">{{ s }}</mat-option>
+              }
+            </mat-select></label
+          ><button class="button primary" [disabled]="uploading()" (click)="save()">
+            Update status</button
+          ><small class="portal-muted"
+            >An outcome is required to resolve this concern. Resolve it before closing.</small
+          >
+        </div>
+      </section>
+      <section class="portal-panel">
+        <div class="portal-panel-header">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">forum</span>Journal &
+            Comments
+          </h2>
+          <span class="portal-muted">{{ concern.notes.length }} notes</span>
+        </div>
+        <div class="portal-activity">
+          @for (note of concern.notes.slice().reverse(); track note.id) {
+            <article>
+              <span class="portal-dot"></span>
+              <div>
+                <h3>{{ note.author }}</h3>
+                <p class="portal-copy">{{ note.text }}</p>
+                <small class="portal-muted">{{ note.at | date: 'd MMM y, HH:mm' }}</small>
+              </div>
+            </article>
+          } @empty {
+            <div class="portal-empty">
+              <h3>Keep the investigation informed</h3>
+              <p>Add notes as you gather information and agree actions.</p>
+            </div>
+          }
+        </div>
+        <form class="portal-form" (ngSubmit)="addNote()">
+          <label
+            >Comment<textarea
+              name="comment"
+              [(ngModel)]="comment"
+              rows="3"
+              required
+              placeholder="Add a comment or investigation note…"
+            ></textarea></label
+          ><button class="button primary" [disabled]="concern.status === 'Closed'">
+            Post note
+          </button>
+        </form>
+      </section>
+    </div>
+  </div>
+} @else {
+  <div class="portal-panel portal-empty">
+    <h3>Concern not found</h3>
+    <p>This record is unavailable in the current workspace.</p>
+    <a class="button" routerLink="/staff-portal/concerns">Return to concerns</a>
+  </div>
+}

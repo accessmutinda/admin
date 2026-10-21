@@ -1,0 +1,128 @@
+.portal-form {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+.portal-form label {
+  display: block;
+  font-size: 11px;
+  color: #55718c;
+  font-weight: 600;
+}
+.portal-form label > input,
+.portal-form label > textarea,
+.portal-form label > mat-select {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  font-size: 12px;
+  font-weight: 400;
+}
+.portal-form input,
+.portal-form textarea,
+.portal-toolbar input {
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #dfe8ef;
+  color: #31536f;
+  padding: 10px;
+  border-radius: 5px;
+  min-height: 40px;
+  font: inherit;
+  font-size: 12px;
+  width: 100%;
+}
+.portal-form textarea {
+  resize: vertical;
+  line-height: 1.7;
+}
+.portal-form-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.portal-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-top: 1px solid #edf2f6;
+  padding-top: 14px;
+}
+.portal-required {
+  color: #dc566a;
+}
+.portal-check {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+.portal-check input {
+  width: 16px !important;
+  min-height: 16px;
+  margin: 0 !important;
+}
+.portal-definition {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0;
+}
+.portal-definition dt {
+  color: #8092a3;
+  font-size: 11px;
+}
+.portal-definition dd {
+  margin: 0;
+  color: #31536f;
+  overflow-wrap: anywhere;
+}
+.portal-copy {
+  white-space: pre-wrap;
+  line-height: 1.9;
+  font-size: 12px;
+  color: #617c93;
+  overflow-wrap: anywhere;
+}
+.portal-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 14px;
+  border-bottom: 1px solid #edf2f6;
+}
+.portal-filters button {
+  border: 0;
+  background: transparent;
+  color: #70869a;
+  white-space: nowrap;
+  padding: 9px 12px;
+  min-height: 40px;
+  font-size: 11px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+.portal-filters button.active {
+  background: #eaf5ff;
+  color: #007ed8;
+  font-weight: 700;
+}
+.portal-form :focus-visible,
+.portal-toolbar input:focus-visible {
+  outline: 2px solid #008eff;
+  outline-offset: 2px;
+}
+@media (max-width: 639px) {
+  .portal-form {
+    padding: 12px;
+  }
+  .portal-form-pair {
+    grid-template-columns: 1fr;
+  }
+  .portal-definition {
+    grid-template-columns: 90px minmax(0, 1fr);
+  }
+}

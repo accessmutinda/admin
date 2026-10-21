@@ -1,0 +1,145 @@
+.concern-summary {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 1fr);
+  gap: 24px;
+}
+.concern-summary h2 {
+  font-size: 19px;
+  color: #174362;
+  line-height: 1.5;
+  margin: 14px 0 8px;
+}
+.concern-summary p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #768ea3;
+}
+.concern-summary dl {
+  border-left: 1px solid #e8eff5;
+  padding-left: 20px;
+}
+.concern-context {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+.concern-context small {
+  display: block;
+  color: #8a9eaf;
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+.concern-context strong,
+.concern-context a {
+  font-size: 12px;
+  color: #227ab6;
+  text-decoration: none;
+}
+.concern-tabs {
+  background: white;
+  border-radius: 8px;
+}
+.investigation-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.investigation-stages {
+  list-style: none;
+  padding: 8px 18px;
+  margin: 0;
+}
+.investigation-stages li {
+  display: flex;
+  gap: 12px;
+  padding: 15px 0;
+  position: relative;
+  min-height: 65px;
+}
+.investigation-stages li:not(:last-child):before {
+  content: '';
+  position: absolute;
+  top: 38px;
+  bottom: -10px;
+  left: 10px;
+  width: 2px;
+  background: #e5edf4;
+}
+.stage-icon {
+  font-size: 23px;
+  color: #a8b6c4;
+  position: relative;
+  background: white;
+  z-index: 1;
+  height: 24px;
+}
+.investigation-stages li.complete .stage-icon {
+  color: #24ae7d;
+}
+.investigation-stages li.current .stage-icon {
+  color: #008eff;
+}
+.investigation-stages strong {
+  font-size: 12px;
+  color: #335d7d;
+}
+.investigation-stages small {
+  display: block;
+  font-size: 10px;
+  color: #8da0b1;
+  margin-top: 5px;
+}
+.checklist-progress {
+  height: 8px;
+  background: #e9eff5;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.checklist-progress > span {
+  display: block;
+  background: #18a67a;
+  height: 100%;
+  border-radius: 6px;
+}
+.checklist-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #526f89;
+  border-bottom: 1px solid #edf2f6;
+  min-height: 52px;
+  cursor: pointer;
+}
+.checklist-item input {
+  accent-color: #16aa7b;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.checklist-save {
+  margin-top: 16px;
+}
+@media (max-width: 1250px) {
+  .concern-summary {
+    grid-template-columns: 1fr;
+  }
+  .concern-summary dl {
+    border-left: 0;
+    padding-left: 0;
+  }
+}
+@media (max-width: 639px) {
+  .concern-summary {
+    padding: 14px;
+  }
+  .investigation-grid {
+    grid-template-columns: 1fr;
+  }
+  .concern-summary h2 {
+    font-size: 17px;
+  }
+}
