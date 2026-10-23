@@ -143,6 +143,10 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           ><span class="material-symbols-outlined" aria-hidden="true">policy</span>Inspector
           Portal</a
         >
+        <a routerLink="/family-portal" (click)="menuOpen.set(false)"
+          ><span class="material-symbols-outlined" aria-hidden="true">diversity_1</span>Family
+          Portal</a
+        >
         <span class="demo-label"><span></span> Demo workspace</span
         ><a
           routerLink="/account/security"

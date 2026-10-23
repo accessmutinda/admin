@@ -161,7 +161,12 @@
           <tbody>
             @for (d of c.file?.documents ?? []; track d.id) {
               <tr>
-                <td>{{ d.name }}</td>
+                <td>
+                  {{ d.name
+                  }}<small>{{
+                    d.familyShared ? 'Approved for family sharing' : 'Care team only'
+                  }}</small>
+                </td>
                 <td>{{ d.category }} · v{{ d.version }}</td>
                 <td>
                   {{ ukStamp(d.at) }}<small>{{ d.by }}</small>
@@ -172,6 +177,9 @@
                     <button class="care-button" (click)="download(d)">Download</button>
                   }
                   @if (care.rota.can('manage')) {
+                    <button class="care-button" (click)="share(d)">
+                      {{ d.familyShared ? 'Stop family sharing' : 'Approve family sharing' }}
+                    </button>
                     <button class="care-button" (click)="remove(d)">Remove</button>
                   }
                 </td>
@@ -194,6 +202,39 @@
       checked against the signed-in email and selected workspace in this device demo. Invitations
       and external messaging are not delivered.
     </p>
+    @if (care.rota.can('manage')) {
+      <section class="care-panel">
+        <h2>Share an approved care update</h2>
+        <p class="care-note">
+          Only use this form for information approved for family sharing. Internal care notes are
+          not published automatically.
+        </p>
+        <div class="care-fields">
+          <label>Date<input type="date" [(ngModel)]="updateDate" /></label
+          ><label
+            >Category<mat-select
+              cvSelect
+              aria-label="Shared update category"
+              [(ngModel)]="updateCategory"
+            >
+              @for (category of updateCategories; track category) {
+                <mat-option [value]="category">{{ category }}</mat-option>
+              }
+            </mat-select></label
+          ><label class="care-wide"
+            >Approved update<textarea
+              rows="3"
+              maxlength="5000"
+              [ngModel]="updateText"
+              (ngModelChange)="editUpdate($event)"
+            ></textarea>
+          </label>
+        </div>
+        <button class="care-button primary" [disabled]="!updateText.trim()" (click)="shareUpdate()">
+          Share approved update
+        </button>
+      </section>
+    }
     <section class="care-panel">
       <h2>Family access & permissions</h2>
       <div class="care-scroll">

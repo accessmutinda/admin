@@ -16,6 +16,7 @@ export interface ClientFile {
   documents?: import('../care/care.models').CareDocument[];
   medications?: import('../care/care.models').Prescription[];
   administrations?: import('../care/care.models').Administration[];
+  familyUpdates?: import('../care/care.models').FamilyUpdate[];
   familyAccess?: import('../care/care.models').FamilyAccess[];
   messages?: import('../care/care.models').FamilyMessage[];
   audit?: import('../care/care.models').CareAudit[];

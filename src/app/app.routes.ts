@@ -39,6 +39,13 @@ const legacyPersonGuard = (route: import('@angular/router').ActivatedRouteSnapsh
 };
 
 export const routes: Routes = [
+  ...['family-portal', 'family-portal/:page', 'family/:clientId/:accessId/:page'].map((path) => ({
+    path,
+    canActivate: [workspaceGuard],
+    title: 'Family Portal · CareVerity',
+    loadComponent: () =>
+      import('./features/management/care/family-portal').then((m) => m.FamilyPortal),
+  })),
   {
     path: 'staff-portal',
     canActivate: [workspaceGuard],

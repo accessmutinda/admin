@@ -3,13 +3,15 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ManagementStore } from '../shared/management.store';
 import { RotaService } from '../rota/rota.service';
 import { ClientFile, emptyClientFile } from '../clients/client-file.models';
-import { londonDate, londonInstant, validTime } from '../rota/rota.models';
+import { londonDate, londonInstant, completedVisit, validTime } from '../rota/rota.models';
 import {
   Administration,
   CareContact,
   CareDocument,
   FAMILY_SCOPES,
   FamilyAccess,
+  FamilyUpdate,
+  FAMILY_UPDATE_CATEGORIES,
   Prescription,
   medicationActive,
   medicationDue,
@@ -287,6 +289,14 @@ export class CareService {
       return null;
     });
   }
+  shareDocument(id: string, workspace: string, documentId: string, shared: boolean): string | null {
+    return this.change(id, workspace, 'Document family sharing changed', documentId, (file) => {
+      const document = file.documents?.find((d) => d.id === documentId);
+      if (!document) return 'Document no longer available.';
+      document.familyShared = shared;
+      return null;
+    });
+  }
   removeDocument(id: string, workspace: string, documentId: string): string | null {
     return this.change(id, workspace, 'Document removed', documentId, (file) => {
       if (!file.documents?.some((d) => d.id === documentId)) return 'Document no longer available.';
@@ -335,15 +345,57 @@ export class CareService {
       version,
     );
   }
+  shareFamilyUpdate(
+    id: string,
+    workspace: string,
+    update: Pick<FamilyUpdate, 'date' | 'category' | 'text'>,
+  ): string | null {
+    return this.change(id, workspace, 'Approved family update shared', update.category, (file) => {
+      if (
+        !validDate(update.date) ||
+        update.date > londonDate() ||
+        !FAMILY_UPDATE_CATEGORIES.includes(update.category) ||
+        !update.text.trim() ||
+        update.text.length > 5000
+      )
+        return 'Enter a valid date up to today, a recognised category and an update of 1–5000 characters.';
+      file.familyUpdates = [
+        ...(file.familyUpdates ?? []),
+        {
+          ...update,
+          text: update.text.trim(),
+          id: crypto.randomUUID(),
+          by: this.auth.currentUser()!.name,
+          at: new Date().toISOString(),
+        },
+      ];
+      return null;
+    });
+  }
+  familyPreviewAccessId(id: string): string {
+    return `administrator-preview:${id}`;
+  }
   familyRecord(id: string, accessId: string, preview = false) {
     if (!this.rota.can('view')) return null;
     const client = this.client(id);
-    const access = client?.file?.familyAccess?.find((a) => a.id === accessId);
+    const fullPreview =
+      preview && this.rota.can('manage') && accessId === this.familyPreviewAccessId(id);
+    const access: FamilyAccess | undefined = fullPreview
+      ? {
+          id: accessId,
+          name: this.auth.currentUser()!.name,
+          email: this.auth.currentUser()!.email,
+          relationship: 'Administrator preview',
+          status: 'Active',
+          scopes: [...FAMILY_SCOPES],
+          at: '',
+        }
+      : client?.file?.familyAccess?.find((a) => a.id === accessId);
     if (
       !client ||
       !access ||
       access.status !== 'Active' ||
-      client.file?.sections['consent']?.['family'] !== 'Agreed'
+      (!fullPreview && client.file?.sections['consent']?.['family'] !== 'Agreed')
     )
       return null;
     if (
@@ -351,15 +403,29 @@ export class CareService {
       access.email.toLowerCase() !== this.auth.currentUser()?.email.toLowerCase()
     )
       return null;
-    const file = client.file!;
+    const file = client.file ?? emptyClientFile();
+    const corrections = new Set(
+      (file.administrations ?? []).map((a) => a.correctionOf).filter(Boolean),
+    );
     return {
       name: client.name,
+      profile: {
+        dob: file.details['dob'] ?? '',
+        postcode: client.postcode,
+        photo:
+          fullPreview || file.sections['consent']?.['photo'] === 'Agreed' ? (file.photo ?? '') : '',
+      },
       access,
+      photoConsent: fullPreview || file.sections['consent']?.['photo'] === 'Agreed',
       plan: access.scopes.includes('Care plan')
         ? { details: file.sections['plan'] ?? {}, goals: file.entries['plan'] ?? [] }
         : null,
       medication: access.scopes.includes('Medication')
         ? (file.medications ?? []).map((m) => ({
+            id: m.id,
+            controlled: m.controlled,
+            support: m.support,
+            frequency: m.frequency,
             name: m.name,
             strength: m.strength,
             dose: m.dose,
@@ -370,6 +436,31 @@ export class CareService {
             discontinuedAt: m.discontinuedAt,
           }))
         : null,
+      administrations: access.scopes.includes('Medication')
+        ? (file.administrations ?? [])
+            .filter(
+              (a) =>
+                !corrections.has(a.id) &&
+                (file.medications ?? []).some((m) => m.id === a.medicationId),
+            )
+            .map((a) => ({
+              id: a.id,
+              date: a.date,
+              time: a.time,
+              outcome: a.outcome,
+              by: a.by,
+              medication: file.medications!.find((m) => m.id === a.medicationId)!.name,
+            }))
+        : null,
+      allergies: access.scopes.includes('Medication')
+        ? (file.entries['allergies'] ?? []).map((a) => ({
+            id: a.id,
+            name: a.name,
+            detail: a.detail,
+            status: a.status,
+          }))
+        : null,
+      updates: access.scopes.includes('Notes') ? (file.familyUpdates ?? []) : null,
       visits: access.scopes.includes('Visits')
         ? this.rota
             .data()
@@ -380,17 +471,52 @@ export class CareService {
               start: v.start,
               end: v.end,
               callName: v.callName,
-              completed: v.attendance.length === v.carers && v.attendance.every((a) => !!a.end),
+              completed: completedVisit(v),
+              carers: v.staffIds.map(
+                (id) =>
+                  this.store.data().people.find((p) => p.id === id)?.name ?? 'Care team member',
+              ),
+              location: v.location ?? '',
+              attendance: v.attendance
+                .filter((a) => v.staffIds.includes(a.personId))
+                .map((a) => ({
+                  name:
+                    this.store.data().people.find((p) => p.id === a.personId)?.name ??
+                    'Care team member',
+                  start: a.start,
+                  end: a.end,
+                  duration:
+                    a.start &&
+                    a.end &&
+                    Number.isFinite(Date.parse(a.start)) &&
+                    Number.isFinite(Date.parse(a.end)) &&
+                    Date.parse(a.end) >= Date.parse(a.start)
+                      ? Math.round((Date.parse(a.end) - Date.parse(a.start)) / 60000)
+                      : null,
+                })),
             }))
         : null,
+      documents: access.scopes.includes('Documents')
+        ? (file.documents ?? []).filter(
+            (d) => (fullPreview || d.familyShared) && !d.mime.startsWith('image/'),
+          )
+        : null,
+      photos:
+        access.scopes.includes('Photos') &&
+        (fullPreview || file.sections['consent']?.['photo'] === 'Agreed')
+          ? (file.documents ?? []).filter(
+              (d) =>
+                (fullPreview || d.familyShared) && ['image/png', 'image/jpeg'].includes(d.mime),
+            )
+          : null,
       notes: access.scopes.includes('Notes') ? (file.sections['family']?.['approved'] ?? '') : null,
       invoices: access.scopes.includes('Invoices')
         ? (this.rota.data().ecm?.invoices ?? []).filter(
-            (i) => i.clientId === id && i.state !== 'Draft',
+            (i) => i.clientId === id && (fullPreview || i.state !== 'Draft'),
           )
         : null,
       messages: access.scopes.includes('Messages')
-        ? (file.messages ?? []).filter((m) => m.accessId === accessId)
+        ? (file.messages ?? []).filter((m) => fullPreview || m.accessId === accessId)
         : null,
     };
   }

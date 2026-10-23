@@ -59,6 +59,24 @@ describe('Care workspaces', () => {
       file: emptyClientFile(),
     });
   });
+  it('shares a dated family update only after publishing and guards an unfinished update', async () => {
+    data.next({ careSection: 'family' });
+    const fixture = TestBed.createComponent(CareRecords);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const editor = fixture.componentInstance as any;
+    editor.editUpdate('Approved update for the family');
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    expect(editor.canLeave()).toBe(false);
+    expect(care.client('client')?.file?.familyUpdates).toBeUndefined();
+    editor.shareUpdate();
+    fixture.detectChanges();
+    expect(care.client('client')?.file?.familyUpdates?.[0].text).toBe(
+      'Approved update for the family',
+    );
+    expect(editor.canLeave()).toBe(true);
+    confirm.mockRestore();
+  });
   it('opens the medication drawer, retains invalid drafts, saves and renders the MAR schedule', async () => {
     const fixture = TestBed.createComponent(Medication);
     fixture.detectChanges();

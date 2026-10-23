@@ -1,0 +1,153 @@
+.message-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr);
+  gap: 8px;
+  align-items: start;
+}
+.message-contact {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  background: #eaf5fc;
+  border-radius: 7px;
+  margin: 12px 0;
+}
+.message-contact small {
+  display: block;
+}
+.message-layout .info-banner {
+  align-items: flex-start;
+}
+.message-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 200px;
+  max-height: 500px;
+  overflow: auto;
+  padding: 8px 4px 12px;
+}
+.message {
+  align-self: flex-start;
+  max-width: 86%;
+  padding: 12px;
+  border-radius: 8px;
+  background: #edf5fb;
+  overflow-wrap: anywhere;
+}
+.message strong {
+  font-size: 12px;
+  color: #0b315c;
+}
+.message p {
+  margin: 6px 0 8px;
+}
+.message small {
+  font-size: 10px;
+}
+.message.from-family {
+  align-self: flex-end;
+  background: #e2f2fc;
+}
+.conversation form {
+  border-top: 1px solid #e5edf1;
+  padding-top: 12px;
+}
+.conversation label {
+  display: block;
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #8ab8da;
+  border-radius: 7px;
+  padding: 10px;
+  color: #123352;
+  background: #fcfeff;
+}
+.compose-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+.compose-footer small {
+  max-width: 300px;
+}
+.document-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e9eff3;
+}
+.document-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.document-row h3 {
+  overflow-wrap: anywhere;
+}
+.document-row p {
+  margin: 2px 0;
+  font-size: 12px;
+}
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 8px;
+}
+.photo-grid figure {
+  margin: 0;
+  border: 1px solid #e9eff3;
+  border-radius: 7px;
+  overflow: hidden;
+}
+.photo-grid img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  background: #eaf5fc;
+}
+.photo-grid figcaption {
+  padding: 8px;
+}
+.photo-grid strong {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.photo-grid small {
+  display: block;
+  margin-top: 4px;
+}
+@media (max-width: 1100px) {
+  .document-row {
+    flex-wrap: wrap;
+  }
+  .photo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .message-layout {
+    grid-template-columns: 1fr;
+  }
+  .message {
+    max-width: 94%;
+  }
+  .compose-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .compose-footer .button {
+    align-self: flex-end;
+  }
+  .photo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

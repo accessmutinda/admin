@@ -1,3 +1,5 @@
+import { londonDate } from '../rota/rota.models';
+import { FAMILY_UPDATE_CATEGORIES, FamilyUpdate } from './care.models';
 import { ukStamp } from './care.models';
 import { HostListener, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -67,6 +69,35 @@ export class CareRecords {
   protected access: FamilyAccess = this.blankAccess();
   protected category = 'Care plan';
   protected documentVersion = '1';
+  protected readonly updateCategories = FAMILY_UPDATE_CATEGORIES;
+  protected updateDate = londonDate();
+  protected updateCategory: FamilyUpdate['category'] = 'General';
+  protected updateText = '';
+  private updateOwner: { id: string; workspace: string } | null = null;
+  protected editUpdate(text: string): void {
+    this.updateOwner ??= { id: this.id(), workspace: this.care.store.companyId() };
+    this.updateText = text;
+  }
+  protected shareUpdate(): void {
+    const owner = this.updateOwner;
+    if (!owner || owner.id !== this.id() || owner.workspace !== this.care.store.companyId()) {
+      this.error.set('The selected service user or workspace changed. Reopen the update.');
+      return;
+    }
+    const error = this.care.shareFamilyUpdate(owner.id, owner.workspace, {
+      date: this.updateDate,
+      category: this.updateCategory,
+      text: this.updateText,
+    });
+    if (error) {
+      this.error.set(error);
+      return;
+    }
+    this.updateText = '';
+    this.updateOwner = null;
+    this.error.set('');
+    this.notice.set('Approved update shared with family accounts that have Notes permission.');
+  }
   protected messageText = '';
   protected messageAccess = '';
   private workspace = '';
@@ -100,14 +131,14 @@ export class CareRecords {
   }
   @HostListener('window:beforeunload', ['$event'])
   protected beforeUnload(event: BeforeUnloadEvent): void {
-    if (!!this.modal() || this.busy() || !!this.pendingDocument()) {
+    if (!!this.modal() || this.busy() || !!this.pendingDocument() || !!this.updateText) {
       event.preventDefault();
       event.returnValue = '';
     }
   }
   canLeave(): boolean {
     return (
-      (!this.modal() && !this.busy() && !this.pendingDocument()) ||
+      (!this.modal() && !this.busy() && !this.pendingDocument() && !this.updateText) ||
       window.confirm('Discard the unsaved care record?')
     );
   }
@@ -258,6 +289,21 @@ export class CareRecords {
     anchor.href = document.data;
     anchor.download = document.name;
     anchor.click();
+  }
+  protected share(document: CareDocument): void {
+    const error = this.care.shareDocument(
+      this.id(),
+      this.care.store.companyId(),
+      document.id,
+      !document.familyShared,
+    );
+    if (error) this.error.set(error);
+    else
+      this.notice.set(
+        document.familyShared
+          ? 'Family sharing removed.'
+          : 'Approved for family accounts with the matching document or photo permission.',
+      );
   }
   protected remove(document: CareDocument): void {
     if (!window.confirm(`Remove ${document.name}?`)) return;

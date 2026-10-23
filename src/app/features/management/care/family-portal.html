@@ -1,0 +1,1121 @@
+<a class="skip" href="#family-content">Skip to content</a>
+<header class="portal-header">
+  <button
+    class="menu-button"
+    aria-label="Open family navigation"
+    aria-controls="family-navigation"
+    [attr.aria-expanded]="menuOpen()"
+    (click)="menuOpen.set(true)"
+  >
+    <span class="material-symbols-outlined" aria-hidden="true">menu</span>
+  </button>
+  <div class="portal-title">
+    <strong>Family Portal</strong><span>Staying connected. Supporting what matters.</span>
+  </div>
+  <a
+    class="header-help"
+    [routerLink]="href('support')"
+    [queryParams]="queryParams()"
+    aria-label="Help and support"
+    ><span class="material-symbols-outlined" aria-hidden="true">help_outline</span></a
+  >
+  <a class="account" routerLink="/account/security"
+    ><span class="avatar">{{ auth.currentUser()?.initials }}</span
+    ><span
+      ><strong>Hello, {{ record()?.access?.name || auth.currentUser()?.name }}</strong
+      ><small>{{ record()?.access?.relationship || 'Your family workspace' }}</small></span
+    ><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></a
+  >
+</header>
+@if (menuOpen()) {
+  <button class="scrim" aria-label="Close navigation" (click)="menuOpen.set(false)"></button>
+}
+<aside
+  [class.open]="menuOpen()"
+  [attr.inert]="mobile()?.matches && !menuOpen() ? '' : null"
+  [cdkTrapFocus]="!!mobile()?.matches && menuOpen()"
+  [cdkTrapFocusAutoCapture]="!!mobile()?.matches && menuOpen()"
+>
+  <a class="brand" [routerLink]="href('overview')" [queryParams]="queryParams()"
+    ><img src="/brand/logo-full-reversed.png" alt="CareVerity — Secure Care Management"
+  /></a>
+  <nav id="family-navigation" aria-label="Family navigation">
+    @for (link of links; track link.path) {
+      <a
+        [routerLink]="href(link.path)"
+        [queryParams]="queryParams()"
+        [class.active]="page() === link.path"
+        [attr.aria-current]="page() === link.path ? 'page' : null"
+        (click)="menuOpen.set(false)"
+        ><span class="material-symbols-outlined" aria-hidden="true">{{ link.icon }}</span
+        >{{ link.label }}</a
+      >
+    }
+  </nav>
+  <div class="nav-bottom">
+    @if (care.rota.can('manage')) {
+      <a routerLink="/manage/companies"
+        ><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span>Admin
+        Console</a
+      >
+    }
+    <a [routerLink]="href('support')" [queryParams]="queryParams()" (click)="menuOpen.set(false)"
+      ><span class="material-symbols-outlined" aria-hidden="true">help_outline</span>Help &
+      support</a
+    >
+    <button (click)="signOut()">
+      <span class="material-symbols-outlined" aria-hidden="true">logout</span>Sign out
+    </button>
+  </div>
+</aside>
+<div class="portal-body">
+  <main id="family-content" tabindex="-1">
+    @if (record(); as r) {
+      <div class="service-heading">
+        <div>
+          <span class="eyebrow">SERVICE USER</span>
+          <h1>{{ r.name }}</h1>
+          <p>
+            @if (r.profile.dob) {
+              Born {{ r.profile.dob | date: 'd MMM yyyy' }}
+              @if (age(r.profile.dob) !== null) {
+                ({{ age(r.profile.dob) }})
+              }
+              <span class="divider">|</span>
+            }
+            {{ r.profile.postcode || 'Location not recorded' }}
+          </p>
+        </div>
+        <label class="user-selector"
+          ><span class="material-symbols-outlined" aria-hidden="true">person</span
+          ><span class="sr-only">Change service user or family access</span
+          ><mat-select
+            cvSelect
+            aria-label="Change service user or family access"
+            [ngModel]="selected()?.accessId"
+            (ngModelChange)="select($event)"
+          >
+            @for (c of choices(); track c.accessId) {
+              <mat-option [value]="c.accessId">{{ c.name }} · {{ c.contact }}</mat-option>
+            }
+          </mat-select></label
+        >
+      </div>
+      @if (preview()) {
+        <div class="preview-banner">
+          <span class="material-symbols-outlined" aria-hidden="true">visibility</span
+          ><span
+            >{{
+              fullPreview()
+                ? 'Full administrator access · All portal sections are available for this service user.'
+                : 'Administrator preview · ' + r.access.name + '’s approved access.'
+            }}
+            Messaging is disabled in preview.</span
+          ><a [routerLink]="['/manage/clients', selected()?.clientId, 'family']"
+            >Access settings <span aria-hidden="true">↗</span></a
+          >
+        </div>
+      }
+      @if (page() !== 'overview') {
+        <div class="page-heading">
+          <h2>{{ heading() }}</h2>
+          <p>
+            {{
+              page() === 'permissions'
+                ? 'Your care provider controls which information is shared with you.'
+                : 'Information shared by the care team, in one reassuring place.'
+            }}
+          </p>
+        </div>
+      }
+      @if (!allowed()) {
+        <section class="panel restricted">
+          <span class="large-icon material-symbols-outlined" aria-hidden="true">lock</span>
+          <h2>{{ heading() }} access is restricted</h2>
+          <p>
+            {{
+              page() === 'photos'
+                ? 'Photo sharing needs both permission and photography consent.'
+                : page() === 'documents'
+                  ? 'Document sharing has not been enabled for this account.'
+                  : 'Your care provider has not granted access to this information.'
+            }}
+          </p>
+          <p>Please contact the care team if you need additional access.</p>
+          <a class="button primary" [routerLink]="href('messages')" [queryParams]="queryParams()"
+            >Contact the care team <span aria-hidden="true">→</span></a
+          ><a class="text-link" [routerLink]="href('permissions')" [queryParams]="queryParams()"
+            >View my permissions</a
+          >
+        </section>
+      } @else {
+        @switch (page()) {
+          @case ('overview') {
+            <section class="panel about">
+              @if (r.profile.photo) {
+                <img class="profile-photo" [src]="r.profile.photo" [alt]="r.name" />
+              } @else {
+                <div class="profile-placeholder">
+                  <span class="material-symbols-outlined" aria-hidden="true">person</span
+                  ><span>{{ r.name }}</span>
+                </div>
+              }
+              <div>
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">person</span>About
+                  {{ r.name.split(' ')[0] }}
+                </h2>
+                <p>
+                  {{
+                    r.plan?.details?.['needs'] ||
+                      'Stay connected with the care and support shared by the care team. View upcoming visits, approved care updates and your personalised access below.'
+                  }}
+                </p>
+                <div class="chips">
+                  <span
+                    ><span class="material-symbols-outlined" aria-hidden="true">verified_user</span
+                    >Approved family access</span
+                  ><span
+                    ><span class="material-symbols-outlined" aria-hidden="true">favorite</span
+                    >Person-centred care</span
+                  >
+                </div>
+              </div>
+              <div class="reassurance">
+                <span class="material-symbols-outlined" aria-hidden="true">diversity_1</span>
+                <h3>Connected to their care</h3>
+                <p>A shared view of the moments and support that matter.</p>
+                <small>{{ care.store.company()?.name }}</small>
+              </div>
+            </section>
+            <div class="overview-grid">
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+                  >Next visit
+                </h2>
+                @if (nextVisit(); as v) {
+                  <span class="big-value">{{
+                    v.date === today ? 'Today' : (v.date | date: 'EEE, d MMM')
+                  }}</span>
+                  <p>{{ v.start }} – {{ v.end }}</p>
+                  <span class="badge">{{ v.callName }}</span>
+                } @else {
+                  <p>
+                    {{ r.visits ? 'No upcoming published visits.' : 'Visit access is restricted.' }}
+                  </p>
+                }
+                <a class="button" [routerLink]="href('visits')" [queryParams]="queryParams()"
+                  >View visit schedule <span aria-hidden="true">→</span></a
+                >
+              </section>
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined teal" aria-hidden="true">favorite</span
+                  >Latest care update
+                </h2>
+                <p class="update-text">
+                  {{
+                    r.notes === null
+                      ? 'Care updates are restricted by your provider.'
+                      : latestUpdate()?.text ||
+                        r.notes ||
+                        'No approved care update has been shared yet.'
+                  }}
+                </p>
+                <a class="text-link" [routerLink]="href('notes')" [queryParams]="queryParams()"
+                  >View daily notes →</a
+                >
+              </section>
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">pill</span>Medication
+                  overview
+                </h2>
+                @for (m of currentMedication().slice(0, 3); track m.id) {
+                  <div class="list-row">
+                    <span
+                      >{{ m.name
+                      }}<small
+                        >{{ m.dose }} · {{ m.times.join(', ') || 'As required' }}</small
+                      ></span
+                    ><span class="badge blue">Current</span>
+                  </div>
+                } @empty {
+                  <p>
+                    {{
+                      r.medication
+                        ? 'No current prescriptions recorded.'
+                        : 'Medication access is restricted.'
+                    }}
+                  </p>
+                }
+                <a class="text-link" [routerLink]="href('medication')" [queryParams]="queryParams()"
+                  >View medications →</a
+                >
+              </section>
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Care
+                  plan access
+                </h2>
+                <p>Personalised care needs, goals and support, as shared by the care team.</p>
+                <a class="button" [routerLink]="href('care-plan')" [queryParams]="queryParams()"
+                  >View care plan <span aria-hidden="true">→</span></a
+                >
+              </section>
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">forum</span>Stay in
+                  touch
+                </h2>
+                <p>Ask a question or read messages about {{ r.name.split(' ')[0] }}’s care.</p>
+                <a class="button" [routerLink]="href('messages')" [queryParams]="queryParams()"
+                  >Open messages <span aria-hidden="true">→</span></a
+                >
+              </section>
+              <section class="panel permission-summary">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">verified_user</span
+                  >Your access
+                </h2>
+                @for (l of links.slice(1, 8); track l.path) {
+                  <div class="list-row">
+                    <span>{{ l.label }}</span
+                    ><span class="badge" [class.muted]="!scopeAllowed(l.scope)">{{
+                      permissionLabel(l.scope)
+                    }}</span>
+                  </div>
+                }
+                <a
+                  class="text-link"
+                  [routerLink]="href('permissions')"
+                  [queryParams]="queryParams()"
+                  >View all permissions →</a
+                >
+              </section>
+            </div>
+          }
+          @case ('care-plan') {
+            <div class="info-banner success">
+              <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+              <div>
+                <strong>Care plan · read-only access</strong>
+                <p>
+                  This is a read-only view of the approved plan. Changes are made by the care team.
+                </p>
+              </div>
+            </div>
+            <div class="plan-grid">
+              @for (
+                field of [
+                  { key: 'name', label: 'Personalised care plan', icon: 'person' },
+                  { key: 'needs', label: 'Care needs', icon: 'favorite' },
+                  { key: 'support', label: 'How to support me', icon: 'volunteer_activism' },
+                  { key: 'review', label: 'Review date', icon: 'event' },
+                  { key: 'start', label: 'Plan start', icon: 'calendar_month' },
+                  { key: 'status', label: 'Plan status', icon: 'verified' },
+                ];
+                track field.key
+              ) {
+                <section class="panel">
+                  <h2>
+                    <span class="material-symbols-outlined" aria-hidden="true">{{
+                      field.icon
+                    }}</span
+                    >{{ field.label }}
+                  </h2>
+                  <p class="preserve">
+                    {{ r.plan?.details?.[field.key] || 'Not recorded in the shared plan.' }}
+                  </p>
+                </section>
+              }
+            </div>
+            <section class="panel">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">target</span>Goals &
+                outcomes
+              </h2>
+              @for (goal of r.plan?.goals; track goal.id) {
+                <article class="goal">
+                  <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+                  <div>
+                    <h3>{{ goal.name }}</h3>
+                    <p class="preserve">{{ goal.detail }}</p>
+                    <small
+                      >{{ goal.status }}
+                      @if (goal.date) {
+                        · {{ goal.date | date: 'd MMM yyyy' }}
+                      }
+                    </small>
+                  </div>
+                </article>
+              } @empty {
+                <p>No goals have been recorded in the shared plan.</p>
+              }
+            </section>
+          }
+          @case ('visits') {
+            <div class="info-banner success">
+              <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
+              <div>
+                <strong>Visit attendance is enabled for this user</strong>
+                <p>
+                  View published visit times and recorded attendance. All check-in and check-out
+                  times are UK local times. Planned locations do not confirm GPS verification.
+                </p>
+              </div>
+            </div>
+            <div class="toolbar panel">
+              <label class="search"
+                ><span class="material-symbols-outlined" aria-hidden="true">search</span
+                ><input
+                  type="search"
+                  [(ngModel)]="search"
+                  aria-label="Search visits"
+                  placeholder="Search visits…" /></label
+              ><label
+                >Show
+                <mat-select cvSelect aria-label="Visit period" [(ngModel)]="visitPeriod">
+                  <mat-option value="all">All published visits</mat-option>
+                  <mat-option value="upcoming">Upcoming</mat-option>
+                  <mat-option value="completed">Completed</mat-option>
+                </mat-select></label
+              ><mat-select cvSelect aria-label="Filter by carer" [(ngModel)]="carer"
+                ><mat-option value="">All carers</mat-option>
+                @for (name of carers(); track name) {
+                  <mat-option [value]="name">{{ name }}</mat-option>
+                }</mat-select
+              ><button class="button" (click)="exportVisits()">
+                <span class="material-symbols-outlined" aria-hidden="true">download</span>Export CSV
+              </button>
+            </div>
+            <section class="panel">
+              <h2>
+                Visit attendance <span class="count">{{ filteredVisits().length }}</span>
+              </h2>
+              <div
+                class="table-scroll"
+                tabindex="0"
+                role="region"
+                [attr.aria-label]="heading() + ' records'"
+              >
+                <table class="attendance-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Date</th>
+                      <th scope="col">Visit</th>
+                      <th scope="col">Planned time</th>
+                      <th scope="col">Carer / attendance</th>
+                      <th scope="col">Planned location</th>
+                      <th scope="col">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (v of filteredVisits(); track v.id) {
+                      <tr>
+                        <td>
+                          <strong>{{ v.date | date: 'EEE, d MMM yyyy' }}</strong>
+                        </td>
+                        <td>{{ v.callName }}</td>
+                        <td>{{ v.start }} – {{ v.end }}</td>
+                        <td>
+                          @for (a of v.attendance; track $index) {
+                            <div class="attendance">
+                              <strong>{{ a.name }}</strong
+                              ><small>In: {{ a.start ? ukStamp(a.start) : 'Not recorded' }}</small
+                              ><small>Out: {{ a.end ? ukStamp(a.end) : 'Not recorded' }}</small
+                              ><small
+                                >Duration:
+                                {{
+                                  a.duration === null ? 'Not recorded' : a.duration + ' min'
+                                }}</small
+                              >
+                            </div>
+                          } @empty {
+                            {{ v.carers.join(', ') || 'No carer assigned'
+                            }}<small>Attendance not recorded</small>
+                          }
+                        </td>
+                        <td>
+                          {{ v.location || 'Not recorded'
+                          }}<small>GPS verification not available</small>
+                        </td>
+                        <td>
+                          <span class="badge" [class.blue]="!v.completed">{{
+                            v.completed ? 'Completed' : 'Scheduled / awaiting completion'
+                          }}</span>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="6" class="empty">No visits match this view.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          }
+          @case ('notes') {
+            <div class="info-banner">
+              <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+              <div>
+                <strong>View-only access for family members</strong>
+                <p>
+                  Only updates explicitly shared by the care team appear here. You cannot edit or
+                  add care notes.
+                </p>
+              </div>
+            </div>
+            <div class="toolbar panel">
+              <label class="search"
+                ><span class="material-symbols-outlined" aria-hidden="true">search</span
+                ><input
+                  type="search"
+                  [(ngModel)]="search"
+                  aria-label="Search approved notes"
+                  placeholder="Search approved updates…"
+              /></label>
+              <mat-select cvSelect aria-label="Update category" [(ngModel)]="noteCategory"
+                ><mat-option value="All updates">All updates</mat-option>
+                @for (category of updateCategories; track category) {
+                  <mat-option [value]="category">{{ category }}</mat-option>
+                }
+              </mat-select>
+              <mat-select cvSelect aria-label="Update date range" [(ngModel)]="notePeriod"
+                ><mat-option value="all">All dates</mat-option
+                ><mat-option value="week">Last 7 days</mat-option
+                ><mat-option value="month">Last 30 days</mat-option></mat-select
+              >
+            </div>
+            @for (u of filteredUpdates(); track u.id) {
+              <article class="panel note-entry">
+                <div class="note-meta">
+                  <strong>{{ u.date | date: 'EEE, d MMM yyyy' }}</strong
+                  ><span>{{ u.by }}</span
+                  ><span class="badge blue">{{ u.category }}</span>
+                </div>
+                <p class="preserve note-copy">{{ u.text }}</p>
+              </article>
+            }
+            @if (legacyNoteVisible()) {
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">description</span>From
+                  the care team
+                </h2>
+                <small>Approved summary · date and author not recorded</small>
+                <p class="preserve note-copy">{{ r.notes }}</p>
+              </section>
+            }
+            @if (!filteredUpdates().length && !legacyNoteVisible()) {
+              <section class="panel empty">
+                <span class="material-symbols-outlined" aria-hidden="true">description</span>
+                <p>No approved care updates match this view.</p>
+              </section>
+            }
+          }
+          @case ('medication') {
+            <div class="info-banner success">
+              <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+              <div>
+                <strong>Medication access enabled</strong>
+                <p>
+                  Current and past prescriptions are shared for information. The recent
+                  administration history is shown below.
+                </p>
+              </div>
+            </div>
+            <div class="toolbar">
+              <div class="tabs" role="group" aria-label="Medication type">
+                <button
+                  [class.selected]="medicationTab === 'regular'"
+                  [attr.aria-pressed]="medicationTab === 'regular'"
+                  (click)="medicationTab = 'regular'"
+                >
+                  Regular medications ({{ countMedication(false) }})</button
+                ><button
+                  [class.selected]="medicationTab === 'controlled'"
+                  [attr.aria-pressed]="medicationTab === 'controlled'"
+                  (click)="medicationTab = 'controlled'"
+                >
+                  Controlled drugs ({{ countMedication(true) }})
+                </button>
+              </div>
+              <label class="search"
+                ><input
+                  type="search"
+                  aria-label="Search medication"
+                  placeholder="Search medications…"
+                  [(ngModel)]="search"
+              /></label>
+            </div>
+            <div class="content-sidebar">
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">{{
+                    medicationTab === 'regular' ? 'pill' : 'lock'
+                  }}</span
+                  >{{ medicationTab === 'regular' ? 'Regular medications' : 'Controlled drugs' }}
+                </h2>
+                <div
+                  class="table-scroll"
+                  tabindex="0"
+                  role="region"
+                  [attr.aria-label]="heading() + ' records'"
+                >
+                  <table class="medication-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Medication</th>
+                        <th scope="col">Dosage</th>
+                        <th scope="col">Route</th>
+                        <th scope="col">Support</th>
+                        <th scope="col">Schedule</th>
+                        <th scope="col">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (m of medications(); track m.id) {
+                        <tr>
+                          <td>
+                            <strong>{{ m.name }}</strong
+                            ><small>{{ m.strength }}</small>
+                          </td>
+                          <td>{{ m.dose }}</td>
+                          <td>{{ m.route }}</td>
+                          <td>
+                            <span class="badge blue">{{ m.support }}</span>
+                          </td>
+                          <td>
+                            {{ m.times.join(', ') || 'As required'
+                            }}<small>{{ m.frequency }}</small>
+                          </td>
+                          <td>
+                            {{ medicationStatus(m)
+                            }}<small
+                              >{{ m.start | date: 'd MMM yyyy' }}
+                              @if (m.end) {
+                                – {{ m.end | date: 'd MMM yyyy' }}
+                              }
+                            </small>
+                          </td>
+                        </tr>
+                      } @empty {
+                        <tr>
+                          <td colspan="6" class="empty">
+                            No
+                            {{
+                              medicationTab === 'regular'
+                                ? 'regular medications'
+                                : 'controlled drugs'
+                            }}
+                            match this view.
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">info</span>Medication
+                  key
+                </h2>
+                <div class="key-row">
+                  <span class="badge blue">Prompt</span>
+                  <p>A gentle reminder from the care team.</p>
+                </div>
+                <div class="key-row">
+                  <span class="badge purple">Support</span>
+                  <p>Help with taking medication.</p>
+                </div>
+                <div class="key-row">
+                  <span class="badge">Administer</span>
+                  <p>Administered by the care team.</p>
+                </div>
+                <p class="small">
+                  Speak with the care team about missing records or questions about a prescription.
+                </p>
+              </section>
+            </div>
+            <section class="panel">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">warning</span>Allergies &
+                sensitivities
+              </h2>
+              @for (a of r.allergies; track a.id) {
+                <div class="list-row">
+                  <div>
+                    <strong>{{ a.name }}</strong>
+                    <p class="preserve">{{ a.detail }}</p>
+                  </div>
+                  <span class="badge muted">{{ a.status }}</span>
+                </div>
+              } @empty {
+                <p>
+                  Allergy information is not recorded. This does not mean there are no known
+                  allergies.
+                </p>
+              }
+            </section>
+            <section class="panel">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+                >Medication administration record · last 7 days
+              </h2>
+              <p>
+                Recorded outcomes only. Missing entries do not establish whether medication was
+                taken. Superseded entries are excluded.
+              </p>
+              <div
+                class="table-scroll"
+                tabindex="0"
+                role="region"
+                aria-label="Recent medication administration"
+              >
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">Date</th>
+                      <th scope="col">Time</th>
+                      <th scope="col">Medication</th>
+                      <th scope="col">Outcome</th>
+                      <th scope="col">Recorded by</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (a of administrations(); track a.id) {
+                      <tr>
+                        <td>{{ a.date | date: 'd MMM yyyy' }}</td>
+                        <td>{{ a.time }}</td>
+                        <td>{{ a.medication }}</td>
+                        <td>
+                          <span class="badge" [class.muted]="a.outcome !== 'Given'">{{
+                            a.outcome
+                          }}</span>
+                        </td>
+                        <td>{{ a.by }}</td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="5" class="empty">
+                          No administration records in the last 7 days.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          }
+          @case ('messages') {
+            <div class="message-layout">
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">forum</span>Care team
+                  messages
+                </h2>
+                <p>Updates about {{ r.name }}.</p>
+                <div class="message-contact">
+                  <span class="avatar"
+                    ><span class="material-symbols-outlined" aria-hidden="true">groups</span></span
+                  >
+                  <div>
+                    <strong>{{ care.store.company()?.name }}</strong
+                    ><small>Care team · {{ r.messages?.length || 0 }} messages</small>
+                  </div>
+                </div>
+                <div class="info-banner">
+                  <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                  <p>
+                    Messages are saved on this device. External delivery and notifications are not
+                    configured.
+                  </p>
+                </div>
+              </section>
+              <section class="panel conversation">
+                <h2>Conversation</h2>
+                <div class="message-history" role="log" aria-label="Care team conversation">
+                  @for (m of r.messages; track m.id) {
+                    <article class="message" [class.from-family]="m.fromFamily">
+                      <strong>{{ m.by }}</strong>
+                      <p class="preserve">{{ m.text }}</p>
+                      <small>{{ ukStamp(m.at) }}</small>
+                    </article>
+                  } @empty {
+                    <div class="empty">
+                      <span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>
+                      <p>No messages yet. Start a conversation with the care team.</p>
+                    </div>
+                  }
+                </div>
+                <form (ngSubmit)="send()">
+                  <label for="family-message">Your message</label
+                  ><textarea
+                    id="family-message"
+                    name="message"
+                    [ngModel]="message"
+                    (ngModelChange)="updateDraft($event)"
+                    [disabled]="preview()"
+                    rows="4"
+                    placeholder="Type your message to the care team…"
+                    maxlength="5000"
+                    required
+                  ></textarea>
+                  @if (message) {
+                    <p class="small" role="status">
+                      {{
+                        draftStored()
+                          ? 'Draft saved for this browser session.'
+                          : 'Draft retained while this app stays open. Browser storage is unavailable.'
+                      }}
+                    </p>
+                  }
+                  <div class="compose-footer">
+                    <small>{{
+                      preview()
+                        ? 'Sending is disabled in administrator preview.'
+                        : 'For urgent concerns, contact your provider directly.'
+                    }}</small
+                    ><button
+                      class="button primary"
+                      type="submit"
+                      [disabled]="preview() || !message.trim()"
+                    >
+                      <span class="material-symbols-outlined" aria-hidden="true">send</span>Save
+                      message
+                    </button>
+                  </div>
+                  @if (error()) {
+                    <p class="error" role="alert">{{ error() }}</p>
+                  }
+                  @if (notice()) {
+                    <p class="saved" role="status">{{ notice() }}</p>
+                  }
+                </form>
+              </section>
+            </div>
+          }
+          @case ('documents') {
+            <div class="info-banner">
+              <span class="material-symbols-outlined" aria-hidden="true">info</span>
+              <div>
+                <strong>Document visibility is controlled by the care provider.</strong>
+                <p>
+                  {{
+                    fullPreview()
+                      ? 'Administrator preview includes all documents for this service user.'
+                      : 'Only documents explicitly approved for family sharing appear below.'
+                  }}
+                </p>
+              </div>
+            </div>
+            <div class="content-sidebar">
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">description</span
+                  >Available documents <span class="count">{{ r.documents?.length || 0 }}</span>
+                </h2>
+                @for (d of r.documents; track d.id) {
+                  <article class="document-row">
+                    <span class="material-symbols-outlined" aria-hidden="true">description</span>
+                    <div>
+                      <h3>{{ d.name }}</h3>
+                      <p>{{ d.category }} · Version {{ d.version }}</p>
+                      <small
+                        >Shared {{ d.at | date: 'd MMM yyyy' }} ·
+                        {{ (d.size / 1024).toFixed(0) }} KB</small
+                      >
+                    </div>
+                    <span class="badge">Available</span
+                    ><button class="button" (click)="downloadDocument(d.id)">
+                      <span class="material-symbols-outlined" aria-hidden="true">download</span
+                      >Download
+                    </button>
+                  </article>
+                } @empty {
+                  <div class="empty">
+                    <p>No documents have been approved for family sharing yet.</p>
+                  </div>
+                }
+              </section>
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">verified_user</span
+                  >Your document access
+                </h2>
+                <p>{{ r.documents?.length || 0 }} approved documents available.</p>
+                <p>Other care records remain with the care team.</p>
+                <a class="button" [routerLink]="href('messages')" [queryParams]="queryParams()"
+                  >Request a document →</a
+                >
+              </section>
+            </div>
+          }
+          @case ('photos') {
+            <div class="info-banner">
+              <span class="material-symbols-outlined" aria-hidden="true">photo_library</span>
+              <div>
+                <strong>Photos & wellbeing</strong>
+                <p>
+                  {{
+                    fullPreview()
+                      ? 'Administrator preview includes all uploaded photos for this service user.'
+                      : 'Moments shared by the care team. Photos require photography consent and explicit family sharing approval.'
+                  }}
+                </p>
+              </div>
+            </div>
+            <div class="plan-grid">
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined teal" aria-hidden="true">favorite</span
+                  >Latest wellbeing update
+                </h2>
+                <p class="preserve">
+                  {{
+                    wellbeingUpdate()?.text ||
+                      r.notes ||
+                      'No approved wellbeing update has been shared.'
+                  }}
+                </p>
+              </section>
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">verified_user</span
+                  >Safe and secure
+                </h2>
+                <p>
+                  {{
+                    fullPreview()
+                      ? 'Administrator preview may include photos that have not been shared with family accounts.'
+                      : 'Only approved photos appear here. Your provider manages consent and access.'
+                  }}
+                </p>
+              </section>
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">diversity_1</span
+                  >Moments that matter
+                </h2>
+                <p>A closer connection to everyday care, activities and family moments.</p>
+              </section>
+            </div>
+            <section class="panel">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">image</span>Latest photos
+                <span class="count">{{ r.photos?.length || 0 }}</span>
+              </h2>
+              <div class="photo-grid">
+                @for (p of r.photos; track p.id) {
+                  <figure>
+                    <img [src]="p.data" [alt]="p.name" loading="lazy" />
+                    <figcaption>
+                      <strong>{{ p.name }}</strong
+                      ><small>{{ p.at | date: 'd MMM yyyy' }} · {{ p.category }}</small>
+                    </figcaption>
+                  </figure>
+                }
+              </div>
+              @if (!r.photos?.length) {
+                <div class="empty">
+                  <span class="material-symbols-outlined" aria-hidden="true">photo_library</span>
+                  <p>
+                    No approved photos are available. The care team can share photos after
+                    photography consent is recorded.
+                  </p>
+                </div>
+              }
+            </section>
+          }
+          @case ('permissions') {
+            <section class="panel">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">lock</span>Access &
+                permissions
+              </h2>
+              <p>
+                {{
+                  fullPreview()
+                    ? 'You are viewing existing workspace records with administrator permissions.'
+                    : 'Your access is controlled by the care provider and requires active sharing consent.'
+                }}
+              </p>
+              <div
+                class="table-scroll"
+                tabindex="0"
+                role="region"
+                [attr.aria-label]="heading() + ' records'"
+              >
+                <table class="permissions-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Information type</th>
+                      <th scope="col">Your access</th>
+                      <th scope="col">What you can see</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (l of links.slice(1, 9); track l.path) {
+                      <tr>
+                        <td>
+                          <a [routerLink]="href(l.path)" [queryParams]="queryParams()">{{
+                            l.label
+                          }}</a>
+                        </td>
+                        <td>
+                          <span class="badge" [class.muted]="!scopeAllowed(l.scope)">{{
+                            permissionLabel(l.scope)
+                          }}</span>
+                        </td>
+                        <td>
+                          {{ permissionDetail(l.scope) }}
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+            <div class="info-banner">
+              <span class="material-symbols-outlined" aria-hidden="true">info</span>
+              <div>
+                <strong>Need a change to your access?</strong>
+                <p>
+                  Contact the care provider to request additional information or review sharing
+                  consent.
+                </p>
+              </div>
+              <a class="button" [routerLink]="href('messages')" [queryParams]="queryParams()"
+                >Message the care team</a
+              >
+            </div>
+          }
+          @case ('invoices') {
+            <section class="panel">
+              <h2>Shared invoices</h2>
+              <p>Approved invoices shared with your family account.</p>
+              @for (i of r.invoices; track i.id) {
+                <details class="invoice">
+                  <summary>
+                    <strong>{{ i.number }}</strong
+                    ><span>{{ i.date | date: 'd MMM yyyy' }}</span
+                    ><span class="badge blue">{{ i.state }}</span>
+                  </summary>
+                  <div
+                    class="table-scroll"
+                    tabindex="0"
+                    role="region"
+                    [attr.aria-label]="heading() + ' records'"
+                  >
+                    <table>
+                      <thead>
+                        <tr>
+                          <th scope="col">Date</th>
+                          <th scope="col">Visit</th>
+                          <th scope="col">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (line of i.lines; track $index) {
+                          <tr>
+                            <td>{{ line.date | date: 'd MMM yyyy' }}</td>
+                            <td>{{ line.call }}</td>
+                            <td>£{{ line.amount.toFixed(2) }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              } @empty {
+                <div class="empty"><p>No approved invoices have been shared.</p></div>
+              }
+            </section>
+          }
+          @default {
+            <section class="panel">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">support_agent</span>Here
+                to help
+              </h2>
+              <p>
+                For questions about care, access or visits, contact
+                {{ care.store.company()?.name }} through your usual care contact.
+              </p>
+              <div class="plan-grid">
+                <div>
+                  <h3>Care questions</h3>
+                  <p>Use messages to keep a device-local record of your questions and updates.</p>
+                  <a class="button" [routerLink]="href('messages')" [queryParams]="queryParams()"
+                    >Open messages →</a
+                  >
+                </div>
+                <div>
+                  <h3>Access to information</h3>
+                  <p>The care provider manages permissions and consent for each family member.</p>
+                  <a class="button" [routerLink]="href('permissions')" [queryParams]="queryParams()"
+                    >Review permissions →</a
+                  >
+                </div>
+                <div>
+                  <h3>Your account</h3>
+                  <p>Manage account security or change your current workspace.</p>
+                  <a class="button" routerLink="/account/security">Account security →</a
+                  ><a class="text-link" routerLink="/select-workspace">Switch workspace</a>
+                </div>
+              </div>
+            </section>
+          }
+        }
+      }
+    } @else {
+      <div class="page-heading">
+        <span class="eyebrow">FAMILY PORTAL</span>
+        <h1>Care, with a closer connection.</h1>
+        <p>Approved updates and support for the people who matter to you.</p>
+      </div>
+      <section class="panel restricted">
+        <span class="material-symbols-outlined large-icon" aria-hidden="true">diversity_1</span>
+        <h2>
+          {{
+            params().get('clientId')
+              ? 'Family access unavailable'
+              : care.rota.can('manage')
+                ? 'No service users in this workspace'
+                : 'No active family access'
+          }}
+        </h2>
+        <p>
+          {{
+            care.rota.can('manage')
+              ? 'Full administrator preview is available for service users in your current workspace.'
+              : 'Access needs an active family record, sharing consent and a matching account in this workspace.'
+          }}
+        </p>
+        <p>
+          {{
+            care.rota.can('manage')
+              ? 'Open Service users to add a record, or select the workspace containing the care data you want to preview.'
+              : 'Ask your care provider to set up access using your account email.'
+          }}
+        </p>
+        @if (care.rota.can('manage')) {
+          <a class="button primary" routerLink="/manage/clients">Open service users →</a>
+        }
+        <a class="text-link" routerLink="/select-workspace">Select another workspace</a>
+      </section>
+    }
+  </main>
+  <footer>
+    <span>CareVerity · {{ care.store.company()?.name }}</span
+    ><span>{{
+      care.store.storageAvailable()
+        ? 'Local workspace · saved on this device'
+        : 'Device storage unavailable'
+    }}</span>
+  </footer>
+</div>

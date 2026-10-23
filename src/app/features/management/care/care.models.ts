@@ -67,6 +67,7 @@ export interface CareContact {
   nextOfKin: boolean;
 }
 export interface CareDocument {
+  familyShared?: boolean;
   id: string;
   name: string;
   category: string;
@@ -84,6 +85,8 @@ export const FAMILY_SCOPES = [
   'Notes',
   'Invoices',
   'Messages',
+  'Documents',
+  'Photos',
 ] as const;
 export type FamilyScope = (typeof FAMILY_SCOPES)[number];
 export interface FamilyAccess {
@@ -93,6 +96,21 @@ export interface FamilyAccess {
   relationship: string;
   status: 'Pending' | 'Active' | 'Revoked';
   scopes: FamilyScope[];
+  at: string;
+}
+export const FAMILY_UPDATE_CATEGORIES = [
+  'Wellbeing',
+  'Medication',
+  'Personal care',
+  'Meals & fluids',
+  'General',
+] as const;
+export interface FamilyUpdate {
+  id: string;
+  date: string;
+  category: (typeof FAMILY_UPDATE_CATEGORIES)[number];
+  text: string;
+  by: string;
   at: string;
 }
 export interface FamilyMessage {

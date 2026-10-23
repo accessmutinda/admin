@@ -4,6 +4,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { DEMO_USER } from '../../../core/auth/fixtures';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
 import { ManagementStore } from '../shared/management.store';
+import { londonDate } from '../rota/rota.models';
 import { RotaService } from '../rota/rota.service';
 import { emptyClientFile } from '../clients/client-file.models';
 import { CareService } from './care.service';
@@ -299,6 +300,283 @@ describe('Structured care records', () => {
     );
     expect(JSON.stringify(care.familyRecord('client', 'f'))).not.toContain('SECRET-CODE');
     expect(JSON.stringify(care.familyRecord('client', 'f'))).not.toContain('Internal clinical');
+  });
+  it('shares only approved documents and keeps photo consent and scopes independent', () => {
+    const c = structuredClone(care.client('client')!);
+    c.file!.sections['consent'] = { family: 'Agreed', photo: 'Agreed' };
+    c.file!.photo = 'data:image/png;base64,cHJvZmlsZQ==';
+    c.file!.documents = [
+      {
+        id: 'private',
+        name: 'Internal report',
+        category: 'Clinical',
+        version: '1',
+        data: 'data:application/pdf;base64,cGRm',
+        mime: 'application/pdf',
+        size: 3,
+        at: '',
+        by: 'Team',
+      },
+      {
+        id: 'shared',
+        name: 'Care plan',
+        category: 'Care plan',
+        version: '1',
+        data: 'data:application/pdf;base64,cGRm',
+        mime: 'application/pdf',
+        size: 3,
+        at: '',
+        by: 'Team',
+        familyShared: true,
+      },
+      {
+        id: 'photo',
+        name: 'Garden visit',
+        category: 'Other',
+        version: '1',
+        data: 'data:image/jpeg;base64,cGhvdG8=',
+        mime: 'image/jpeg',
+        size: 5,
+        at: '',
+        by: 'Team',
+        familyShared: true,
+      },
+    ];
+    rota.saveClient(c);
+    const access: FamilyAccess = {
+      id: 'f',
+      name: 'Family',
+      email: actor().email,
+      relationship: 'Son',
+      status: 'Active',
+      scopes: ['Documents'],
+      at: '',
+    };
+    expect(care.saveAccess('client', workspace, access, version())).toBeNull();
+    expect(care.familyRecord('client', 'f')?.documents?.map((d) => d.id)).toEqual(['shared']);
+    expect(care.familyRecord('client', 'f')?.photos).toBeNull();
+    expect(
+      care.saveAccess('client', workspace, { ...access, scopes: ['Photos'] }, version()),
+    ).toBeNull();
+    expect(care.familyRecord('client', 'f')?.documents).toBeNull();
+    expect(care.familyRecord('client', 'f')?.photos?.map((d) => d.id)).toEqual(['photo']);
+    const next = structuredClone(care.client('client')!);
+    next.file!.sections['consent']['photo'] = 'Declined';
+    rota.saveClient(next);
+    expect(care.familyRecord('client', 'f')?.photos).toBeNull();
+    expect(care.familyRecord('client', 'f')?.profile.photo).toBe('');
+  });
+  it('persists document approval, revokes it immediately and rejects cross-workspace changes', () => {
+    const doc = {
+      id: 'doc',
+      name: 'Plan',
+      category: 'Care plan',
+      version: '1',
+      data: 'data:application/pdf;base64,cGRm',
+      mime: 'application/pdf',
+      size: 3,
+      at: '',
+      by: 'Team',
+    };
+    expect(care.saveDocument('client', workspace, doc)).toBeNull();
+    expect(care.shareDocument('client', 'other-workspace', 'doc', true)).toContain(
+      'workspace changed',
+    );
+    expect(care.client('client')?.file?.documents?.[0].familyShared).toBeUndefined();
+    expect(care.shareDocument('client', workspace, 'doc', true)).toBeNull();
+    expect(care.client('client')?.file?.documents?.[0].familyShared).toBe(true);
+    expect(care.shareDocument('client', workspace, 'doc', false)).toBeNull();
+    expect(care.client('client')?.file?.documents?.[0].familyShared).toBe(false);
+  });
+  it('provides full administrator preview without changing family consent or permissions', () => {
+    const client = structuredClone(care.client('client')!);
+    client.file!.sections['consent'] = { family: 'Declined', photo: 'Declined' };
+    client.file!.familyAccess = [];
+    client.file!.documents = [
+      {
+        id: 'private-doc',
+        name: 'Report',
+        category: 'Clinical',
+        version: '1',
+        data: 'data:application/pdf;base64,cGRm',
+        mime: 'application/pdf',
+        size: 3,
+        at: '',
+        by: 'Team',
+      },
+      {
+        id: 'private-photo',
+        name: 'Garden',
+        category: 'Other',
+        version: '1',
+        data: 'data:image/jpeg;base64,cGhvdG8=',
+        mime: 'image/jpeg',
+        size: 5,
+        at: '',
+        by: 'Team',
+      },
+    ];
+    rota.saveClient(client);
+    const before = structuredClone(care.client('client'));
+    const accessId = care.familyPreviewAccessId('client');
+    const view = care.familyRecord('client', accessId, true);
+    expect(view?.access.scopes).toContain('Documents');
+    expect(view?.access.scopes).toContain('Photos');
+    expect(view?.plan).not.toBeNull();
+    expect(view?.medication).not.toBeNull();
+    expect(view?.documents?.map((d) => d.id)).toEqual(['private-doc']);
+    expect(view?.photos?.map((d) => d.id)).toEqual(['private-photo']);
+    expect(care.client('client')).toEqual(before);
+    expect(care.familyRecord('client', accessId)).toBeNull();
+    expect(care.familyRecord('other-client', accessId, true)).toBeNull();
+    expect(care.message('client', workspace, accessId, 'Hello', true)).toContain('permission');
+    vi.spyOn(rota, 'can').mockImplementation((action) => action === 'view');
+    expect(care.familyRecord('client', accessId, true)).toBeNull();
+  });
+  it('publishes dated family updates explicitly and preserves the existing approved summary', () => {
+    const client = structuredClone(care.client('client')!);
+    client.file!.sections['consent'] = { family: 'Agreed' };
+    client.file!.sections['family'] = { approved: 'Existing approved summary' };
+    client.file!.sections['diagnoses'] = { communication: 'Private clinical note' };
+    rota.saveClient(client);
+    const access: FamilyAccess = {
+      id: 'f',
+      name: 'Family',
+      email: actor().email,
+      relationship: 'Son',
+      status: 'Active',
+      scopes: ['Notes'],
+      at: '',
+    };
+    care.saveAccess('client', workspace, access, version());
+    expect(
+      care.shareFamilyUpdate('client', workspace, {
+        date: londonDate(),
+        category: 'Wellbeing',
+        text: 'A shared wellbeing update',
+      }),
+    ).toBeNull();
+    const view = care.familyRecord('client', 'f');
+    expect(view?.notes).toBe('Existing approved summary');
+    expect(view?.updates?.[0].text).toBe('A shared wellbeing update');
+    expect(view?.updates?.[0].by).toBe(actor().name);
+    expect(JSON.stringify(view)).not.toContain('Private clinical note');
+    expect(
+      care.shareFamilyUpdate('client', 'wrong', {
+        date: londonDate(),
+        category: 'General',
+        text: 'Do not publish',
+      }),
+    ).toContain('workspace changed');
+    expect(
+      care.shareFamilyUpdate('client', workspace, {
+        date: '2099-01-01',
+        category: 'General',
+        text: 'Future',
+      }),
+    ).toContain('valid date');
+    care.saveAccess('client', workspace, { ...access, scopes: [] }, version());
+    expect(care.familyRecord('client', 'f')?.updates).toBeNull();
+  });
+  it('projects current MAR entries without superseded outcomes or internal administration notes', () => {
+    const client = structuredClone(care.client('client')!);
+    client.file!.sections['consent'] = { family: 'Agreed' };
+    client.file!.medications = [prescription({ id: 'm' })];
+    const original: Administration = {
+      id: 'original',
+      medicationId: 'm',
+      date: londonDate(),
+      time: '08:00',
+      outcome: 'Given',
+      doseUnits: 1,
+      reason: 'Internal reason',
+      response: 'Private response',
+      at: '',
+      by: 'Nurse',
+      userId: 'staff',
+      witness: 'Internal witness',
+    };
+    client.file!.administrations = [
+      original,
+      { ...original, id: 'correction', outcome: 'Refused', correctionOf: 'original' },
+    ];
+    rota.saveClient(client);
+    const access: FamilyAccess = {
+      id: 'f',
+      name: 'Family',
+      email: actor().email,
+      relationship: 'Son',
+      status: 'Active',
+      scopes: ['Medication'],
+      at: '',
+    };
+    care.saveAccess('client', workspace, access, version());
+    const view = care.familyRecord('client', 'f');
+    expect(view?.administrations?.map((a) => a.id)).toEqual(['correction']);
+    expect(view?.administrations?.[0].outcome).toBe('Refused');
+    expect(JSON.stringify(view)).not.toContain('Internal reason');
+    expect(JSON.stringify(view)).not.toContain('Private response');
+    care.saveAccess('client', workspace, { ...access, scopes: [] }, version());
+    expect(care.familyRecord('client', 'f')?.administrations).toBeNull();
+    expect(care.familyRecord('client', 'f')?.allergies).toBeNull();
+  });
+  it('shares assigned carer attendance without internal visit notes or GPS claims', () => {
+    const client = structuredClone(care.client('client')!);
+    client.file!.sections['consent'] = { family: 'Agreed' };
+    rota.saveClient(client);
+    const access: FamilyAccess = {
+      id: 'f',
+      name: 'Family',
+      email: actor().email,
+      relationship: 'Son',
+      status: 'Active',
+      scopes: ['Visits'],
+      at: '',
+    };
+    care.saveAccess('client', workspace, access, version());
+    const staffId = store.data().people[0].id;
+    expect(
+      store.saveWorkspace((data) => ({
+        ...data,
+        rota: {
+          ...rota.data(),
+          visits: [
+            {
+              id: 'visit',
+              callId: 'call',
+              clientId: 'client',
+              clientName: client.name,
+              address: client.address,
+              callName: 'Morning care',
+              date: '2026-01-01',
+              start: '08:00',
+              end: '09:00',
+              carers: 1,
+              skills: [],
+              tasks: 'Private task detail',
+              staffIds: [staffId],
+              allocation: 'Regular',
+              state: 'Published',
+              priority: 'Standard',
+              location: 'Home',
+              exception: 'Private exception',
+              attendance: [
+                { personId: staffId, start: '2026-01-01T08:03:00Z', end: '2026-01-01T08:58:00Z' },
+                { personId: 'unassigned', start: '', end: '' },
+              ],
+            },
+          ],
+        },
+      })),
+    ).toBe(true);
+    const visit = care.familyRecord('client', 'f')?.visits?.[0];
+    expect(visit?.completed).toBe(true);
+    expect(visit?.attendance).toHaveLength(1);
+    expect(visit?.attendance[0].duration).toBe(55);
+    expect(visit?.location).toBe('Home');
+    expect(JSON.stringify(visit)).not.toContain('Private exception');
+    expect(JSON.stringify(visit)).not.toContain('Private task detail');
+    expect(JSON.stringify(visit)).not.toContain('Verified');
   });
   it('calculates ages accurately and escapes spreadsheet formula cells', () => {
     expect(age('1936-08-14', '2026-08-13')).toBe(89);
