@@ -25,7 +25,7 @@ import { CareContact, CareDocument, FAMILY_SCOPES, FamilyAccess, csv } from './c
   ],
   host: { class: 'module-page operations-page' },
   templateUrl: './care-records.html',
-  styleUrls: ['./care-shared.css', './care-controls.css'],
+  styleUrls: ['./service-user-spacing.css', './care-shared.css', './care-controls.css'],
 })
 export class CareRecords {
   protected readonly ukStamp = ukStamp;

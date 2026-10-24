@@ -1,0 +1,129 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.certificate {
+  --certificate-primary: #008afa;
+  --certificate-secondary: #008d9f;
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  border: 2px solid var(--certificate-primary);
+  outline: 5px solid #eaf5fc;
+  outline-offset: -9px;
+  padding: 26px 20px;
+  text-align: center;
+  color: #123352;
+  min-height: 440px;
+}
+.certificate:before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 85px;
+  height: 85px;
+  background: linear-gradient(135deg, var(--certificate-primary), var(--certificate-secondary));
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+.certificate-content {
+  position: relative;
+  z-index: 1;
+}
+.background {
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+}
+.brand-logo {
+  width: 180px;
+  max-width: 65%;
+  height: 48px;
+  object-fit: contain;
+  margin-bottom: 8px;
+}
+.logo {
+  width: 180px;
+  height: 48px;
+  min-height: 0;
+  margin: 0 auto 8px;
+  background: transparent;
+}
+.issuer {
+  font-size: 11px;
+  letter-spacing: 0.4px;
+}
+h2 {
+  font:
+    700 23px/1.3 Georgia,
+    serif;
+  color: #093252;
+  margin: 12px 0;
+}
+h3 {
+  font-size: 21px;
+  margin: 10px 0;
+  color: #093252;
+}
+h4 {
+  font-size: 16px;
+  margin: 10px 0;
+}
+p {
+  font-size: 12px;
+  margin: 8px 0;
+}
+.signature {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 20px 0 12px;
+  font-size: 11px;
+}
+.signature cv-academy-image {
+  width: 150px;
+  min-height: 0;
+  height: 44px;
+  background: transparent;
+}
+.signature span,
+small {
+  display: block;
+  font-size: 10px;
+}
+.reference {
+  margin: 12px 0 5px;
+  overflow-wrap: anywhere;
+}
+.certificate[data-template='Modern'] {
+  border-width: 0 0 8px 8px;
+  outline: none;
+  background: linear-gradient(135deg, #fff, #f1f7fa);
+}
+.certificate[data-template='Minimal'] {
+  border: 1px solid #dce6ed;
+  outline: none;
+}
+.certificate[data-template='Minimal']:before {
+  display: none;
+}
+.certificate[data-template='Professional'] {
+  border: 8px double var(--certificate-primary);
+  outline: none;
+}
+.certificate[data-template='Professional'] h2 {
+  text-transform: uppercase;
+  font: 700 20px/1.4 var(--font-sans);
+}
+@media (max-width: 540px) {
+  .certificate {
+    padding: 24px 14px;
+  }
+  h2 {
+    font-size: 21px;
+  }
+  h3 {
+    font-size: 19px;
+  }
+}

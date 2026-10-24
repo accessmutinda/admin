@@ -88,7 +88,7 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           "
           (click)="menuOpen.set(false)"
           ><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Visits
-          &amp; Rota</a
+          &amp; Rostering</a
         >
         <a
           routerLink="/manage/ecm"

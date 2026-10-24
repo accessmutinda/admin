@@ -1,10 +1,17 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, signal, isDevMode } from '@angular/core';
 import { Observable, delay, of, throwError } from 'rxjs';
 import { AppUser } from './models/user';
 import { AuthSession } from './models/session';
 import { Invite } from './models/invite';
 import { RoleCode } from './models/role';
-import { DEMO_EMAIL, DEMO_MFA_CODE, DEMO_PASSWORD, DEMO_USER, INVITES } from './fixtures';
+import {
+  DEMO_EMAIL,
+  DEMO_MFA_CODE,
+  DEMO_PASSWORD,
+  DEMO_USER,
+  DEMO_PORTAL_USERS,
+  INVITES,
+} from './fixtures';
 
 const SESSION_KEY = 'cv_session';
 const TRUSTED_DEVICE_PREFIX = 'cv_trusted_device:';
@@ -25,11 +32,17 @@ export class AuthService {
   );
 
   signIn(email: string, password: string): Observable<{ requiresMfa: boolean; user: AppUser }> {
-    if (email.trim().toLowerCase() !== DEMO_EMAIL || password !== DEMO_PASSWORD) {
+    const address = email.trim().toLowerCase();
+    const user =
+      address === DEMO_EMAIL
+        ? DEMO_USER
+        : isDevMode()
+          ? DEMO_PORTAL_USERS.find((account) => account.email === address)
+          : undefined;
+    if (!user || password !== DEMO_PASSWORD) {
       return throwError(() => new Error('Incorrect email or password.')).pipe(delay(LATENCY_MS));
     }
 
-    const user = DEMO_USER;
     const trusted = this.isDeviceTrusted(user.email);
     const requiresMfa = user.mfaEnabled && !trusted;
 

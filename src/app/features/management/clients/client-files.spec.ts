@@ -88,7 +88,8 @@ describe('Client files and care records', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const page: HTMLElement = fixture.nativeElement;
-    expect(page.querySelector('h1')?.textContent).toContain('Mary Smith');
+    expect(page.querySelector('h1')?.textContent).toBe('Service User Profile');
+    expect(page.querySelector('#client-record-name')?.textContent).toContain('Mary Smith');
     expect(page.querySelectorAll('.client-nav-group')).toHaveLength(4);
     const buttons = [...page.querySelectorAll<HTMLButtonElement>('.client-section-nav button')];
     expect(buttons).toHaveLength(CLIENT_SECTIONS.length);
@@ -110,16 +111,18 @@ describe('Client files and care records', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const page: HTMLElement = fixture.nativeElement;
-    expect(page.querySelectorAll('.client-care-alerts .client-record-state')).toHaveLength(2);
-    for (const state of page.querySelectorAll('.client-care-alerts .client-record-state'))
-      expect(state.textContent?.trim()).toBe('Not recorded');
-    expect(
-      page.querySelector('[aria-labelledby="client-medication-title"]')?.textContent,
-    ).toContain('Not recorded');
-    expect(page.querySelector('[aria-labelledby="client-consent-title"]')?.textContent).toContain(
+    const overview = page.querySelector('cv-client-overview')!;
+    expect(overview.querySelector('[aria-labelledby="health-title"]')?.textContent).toContain(
       'Not recorded',
     );
-    expect(page.querySelector('.client-personal blockquote')).toBeNull();
+    expect(overview.textContent).not.toContain('No regular medication');
+    expect(overview.textContent).not.toContain('No known allergies');
+    expect(page.querySelector('.profile-signal-grid')?.textContent).toContain(
+      'Key safe: Not recorded',
+    );
+    expect(page.querySelector('.profile-signal-grid')?.textContent).toContain(
+      'Behaviour: Not recorded',
+    );
     expect(page.querySelector('.client-content')!.textContent).not.toContain('0 / 0');
   });
 
@@ -154,26 +157,17 @@ describe('Client files and care records', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const page: HTMLElement = fixture.nativeElement;
-    expect(page.querySelector('.client-personal blockquote')?.textContent).toBe(
-      file.details['about'],
+    const overview = page.querySelector('cv-client-overview')!;
+    expect(overview.querySelector('.important')?.textContent).toContain(file.details['about']);
+    expect(overview.querySelector('.record-safeguards')?.textContent).toContain('Overdue');
+    expect(overview.querySelector('.record-safeguards')?.textContent).toContain('Withdrawn');
+    expect(overview.querySelector('[aria-labelledby="health-title"]')?.textContent).toContain(
+      'Recorded medication',
     );
-    expect(page.querySelector('[aria-labelledby="client-plan-title"]')?.textContent).toContain(
-      'Overdue',
-    );
-    expect(page.querySelector('[aria-labelledby="client-consent-title"]')?.textContent).toContain(
-      'Withdrawn',
-    );
-    expect(
-      page.querySelector('[aria-labelledby="client-medication-title"]')?.textContent,
-    ).toContain('Recorded medication');
-    expect(page.querySelector('.client-care-alerts')?.textContent).toContain(
-      'Recorded mobility risk',
-    );
-    expect(page.querySelector('.client-care-alerts')?.textContent).toContain('Recorded allergen');
-    expect(page.querySelector('.client-care-alerts')?.textContent).not.toContain(
-      'Historical allergy record',
-    );
-    [...page.querySelectorAll<HTMLButtonElement>('.client-care-alerts button')]
+    expect(overview.textContent).toContain('Recorded mobility risk');
+    expect(overview.textContent).toContain('Recorded allergen');
+    expect(overview.textContent).not.toContain('Historical allergy record');
+    [...overview.querySelectorAll<HTMLButtonElement>('button')]
       .find((button) => button.textContent!.includes('View allergies'))!
       .click();
     fixture.detectChanges();

@@ -1,0 +1,94 @@
+:host {
+  --profile-section-gap: 12px;
+  --profile-column-gap: 8px;
+  --profile-panel-padding: 8px 10px;
+  --profile-surface: linear-gradient(120deg, #fff, #fcfefe);
+  --profile-border: #e9eff3;
+  --profile-shadow: 0 2px 7px #123c541f;
+}
+:host .care-panel,
+:host .profile-panel,
+:host .medication-context,
+:host .reference-profile,
+:host .reference-tabs,
+:host .visits-panel {
+  background: var(--profile-surface);
+  border: 1px solid var(--profile-border);
+  border-radius: 9px;
+  box-shadow: var(--profile-shadow);
+}
+:host .care-panel,
+:host .profile-panel,
+:host .medication-context {
+  padding: var(--profile-panel-padding);
+}
+:host .care-heading {
+  margin: 0 0 var(--profile-section-gap);
+  gap: 8px 12px;
+}
+:host .care-heading h2 {
+  font: 800 14px/1.4 var(--font-sans);
+  letter-spacing: -0.35px;
+  margin: 0;
+}
+:host .care-heading p {
+  font-size: 12px;
+  margin-top: 4px;
+}
+:host .care-toolbar {
+  margin-bottom: 4px;
+  gap: 6px 8px;
+}
+:host .care-button {
+  min-height: 36px;
+  font-size: 12px;
+  padding: 6px 10px;
+}
+:host .care-table th {
+  font-size: 10px;
+  line-height: 1.3;
+  padding: 4px 8px;
+}
+:host .care-table td {
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 6px 12px;
+}
+:host .care-table small {
+  font-size: 11px;
+  line-height: 1.5;
+}
+:host .care-fields {
+  gap: 8px;
+}
+:host .care-fields label {
+  gap: 3px;
+}
+:host .care-fields input:not([type='checkbox']),
+:host .care-fields textarea {
+  min-height: 36px;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+:host .care-fields textarea {
+  min-height: 54px;
+}
+@media (pointer: coarse) {
+  :host .care-button,
+  :host .medication-workspace .care-button,
+  :host .medication-workspace .mar-cell,
+  :host .medication-workspace .care-table td .care-button,
+  :host .medication-workspace .care-toolbar .care-actions .care-button,
+  :host .calendar-controls button,
+  :host .workspace .calendar-panel .visit,
+  :host .allocation-panel .icon-button,
+  :host .allocation-panel .check,
+  :host .profile-panel header button,
+  :host .profile-panel header a,
+  :host .profile-panel .inline-link,
+  :host .profile-panel .map-link,
+  :host .care-fields input:not([type='checkbox']),
+  :host .care-fields textarea {
+    min-height: 44px;
+  }
+}

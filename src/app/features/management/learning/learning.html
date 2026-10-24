@@ -9,6 +9,11 @@
     <p>Manage sample learning, team progress and continuing professional development.</p>
   </div>
   <div class="hr-actions">
+    @if (academy.canManage()) {
+      <a class="hr-button primary" routerLink="/manage/learning/manage">Manage Training</a>
+      <a class="hr-button" routerLink="/manage/learning/settings">Academy & Certificate Settings</a>
+    }
+    <a class="hr-button" routerLink="/staff-portal/training">My Training Portal</a>
     @if (staffReturn) {
       <a class="hr-button" [routerLink]="['/manage/people/staff', staffReturn, 'training']"
         >← Back to Staff Training</a

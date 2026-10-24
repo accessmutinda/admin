@@ -1,0 +1,310 @@
+<cv-academy-admin-nav />
+<div class="heading">
+  <div>
+    <h1>Training Academy settings</h1>
+    <p>Configure assessments, certificates, refresher rules and the learner experience.</p>
+  </div>
+  <div class="actions">
+    <a class="academy-button" routerLink="/staff-portal/training">Preview academy ↗</a
+    ><button class="academy-button primary" (click)="save()">Save changes</button>
+  </div>
+</div>
+<cv-academy-message [error]="error()" [notice]="notice()" />
+<nav class="academy-tabs" aria-label="Academy settings sections">
+  @for (item of tabs; track item) {
+    <button
+      [class.active]="tab() === item"
+      [attr.aria-pressed]="tab() === item"
+      (click)="tab.set(item)"
+    >
+      {{ item }}
+    </button>
+  }
+</nav>
+@if (fullPreview()) {
+  <div class="panel full-preview">
+    <div class="heading">
+      <h2>Certificate preview · not issued</h2>
+      <button class="academy-button" (click)="fullPreview.set(false)">Close preview</button>
+    </div>
+    <cv-academy-certificate [certificate]="preview()" />
+  </div>
+} @else if (tab() === 'General settings') {
+  <div class="columns">
+    <div>
+      <div class="grid">
+        <section class="panel">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Assessment
+            settings
+          </h2>
+          <p>Defaults apply to newly started assessments.</p>
+          <div class="field-grid">
+            <label class="field"
+              >Pass mark (%)<input
+                type="number"
+                min="1"
+                max="100"
+                [(ngModel)]="draft.passMark" /></label
+            ><label class="field"
+              >Maximum attempts<input
+                type="number"
+                min="1"
+                max="10"
+                [(ngModel)]="draft.maxAttempts" /></label
+            ><label class="field wide"
+              >Time limit (minutes)<input
+                type="number"
+                min="1"
+                max="240"
+                [(ngModel)]="draft.timeLimitMinutes"
+            /></label>
+          </div>
+          <label class="check"
+            ><input type="checkbox" [(ngModel)]="draft.shuffleQuestions" />Randomise question
+            order</label
+          ><label class="check"
+            ><input type="checkbox" [(ngModel)]="draft.shuffleOptions" />Randomise answer options
+            where enabled</label
+          >
+        </section>
+        <section class="panel">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">update</span>Expiry &
+            refresher rules
+          </h2>
+          <div class="field-grid">
+            <label class="field"
+              >Certificate validity (months)<input
+                type="number"
+                min="0"
+                max="120"
+                [(ngModel)]="draft.validityMonths"
+              /><small>Use 0 for no expiry. Courses can override this default.</small></label
+            ><label class="field"
+              >Expiry reminder (days before)<input
+                type="number"
+                min="0"
+                max="365"
+                [(ngModel)]="draft.reminderDays" /></label
+            ><label class="field"
+              >Refresher reminder (days before)<input
+                type="number"
+                min="0"
+                max="365"
+                [(ngModel)]="draft.refresherDays" /></label
+            ><label class="field"
+              >Due soon (days)<input
+                type="number"
+                min="0"
+                max="365"
+                [(ngModel)]="draft.dueSoonDays"
+            /></label>
+          </div>
+          <p>
+            Certificate validity is fixed when issued. Refresher reminders do not automatically
+            reset a completed assignment.
+          </p>
+        </section>
+      </div>
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span
+          >Certificate templates
+        </h2>
+        <div class="grid">
+          @for (template of templates; track template) {
+            <button
+              class="academy-button"
+              [class.primary]="draft.template === template"
+              [attr.aria-pressed]="draft.template === template"
+              (click)="draft.template = template"
+            >
+              {{ template }}
+              @if (draft.template === template) {
+                ✓
+              }
+            </button>
+          }
+        </div>
+        <p>Preview the selected template alongside your organisation’s branding.</p>
+      </section>
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">draw</span>Authorised signatory
+        </h2>
+        <div class="field-grid">
+          <label class="field"
+            >Signatory name<input [(ngModel)]="draft.signatureName" maxlength="100" /></label
+          ><label class="field"
+            >Role / title<input [(ngModel)]="draft.signatureRole" maxlength="100" /></label
+          ><label class="field wide"
+            >Signature image<mat-select
+              cvSelect
+              aria-label="Certificate signature image"
+              [(ngModel)]="draft.signatureId"
+              ><mat-option value="">No signature image</mat-option>
+              @for (asset of academy.state().assets; track asset.id) {
+                @if (asset.kind === 'Image') {
+                  <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
+                }
+              }</mat-select
+            ><small>Use an authorised signature uploaded to the asset library.</small></label
+          >
+        </div>
+        <label class="check"
+          ><input type="checkbox" [(ngModel)]="draft.showSignatureDate" />Show signature date</label
+        ><a routerLink="/manage/learning/assets">Upload signature or logo assets →</a>
+      </section>
+    </div>
+    <div>
+      <section class="panel preview-card">
+        <div class="heading">
+          <h2>Certificate preview</h2>
+          <button class="academy-button" (click)="fullPreview.set(true)">Full screen ↗</button>
+        </div>
+        <cv-academy-certificate [certificate]="preview()" />
+      </section>
+      <section class="panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">palette</span>Brand settings
+        </h2>
+        <div class="field-grid">
+          <label class="field"
+            >Primary colour<input type="color" [(ngModel)]="draft.primary" /></label
+          ><label class="field"
+            >Secondary colour<input type="color" [(ngModel)]="draft.secondary" /></label
+          ><label class="field wide"
+            >Issuing organisation<input
+              [(ngModel)]="draft.issuer"
+              [placeholder]="academy.store.company()?.name || 'CareVerity'" /></label
+          ><label class="field wide"
+            >Logo<mat-select cvSelect aria-label="Certificate logo" [(ngModel)]="draft.logoId"
+              ><mat-option value="">CareVerity logo</mat-option>
+              @for (asset of academy.state().assets; track asset.id) {
+                @if (asset.kind === 'Image') {
+                  <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
+                }
+              }
+            </mat-select></label
+          ><label class="field wide"
+            >Background<mat-select
+              cvSelect
+              aria-label="Certificate background"
+              [(ngModel)]="draft.backgroundId"
+              ><mat-option value="">Template background</mat-option>
+              @for (asset of academy.state().assets; track asset.id) {
+                @if (asset.kind === 'Image') {
+                  <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
+                }
+              }
+            </mat-select></label
+          >
+        </div>
+      </section>
+    </div>
+  </div>
+} @else if (tab() === 'Learner experience') {
+  <section class="panel">
+    <h2>Learner controls</h2>
+    <label class="check"
+      ><input type="checkbox" [(ngModel)]="draft.sequentialLessons" />Complete lessons in
+      order</label
+    ><label class="check"
+      ><input type="checkbox" [(ngModel)]="draft.allowSelfEnrolment" />Allow staff to enrol
+      themselves on published optional courses</label
+    ><label class="check"
+      ><input type="checkbox" [(ngModel)]="draft.showFeedback" />Show question explanations after
+      assessment submission</label
+    >
+    <p>
+      Assessment answers and video positions are saved on this device. Timers continue while an
+      assessment is closed. Learners can enlarge question text and use keyboard navigation.
+    </p>
+  </section>
+} @else if (tab() === 'Compliance rules') {
+  <div class="grid">
+    <section class="panel">
+      <h2>Roles with academy administration access</h2>
+      @for (role of roles; track role.code) {
+        <label class="check"
+          ><input
+            type="checkbox"
+            [checked]="['PO', 'CA'].includes(role.code) || draft.adminRoles.includes(role.code)"
+            [disabled]="['PO', 'CA'].includes(role.code)"
+            (change)="toggleRole(role.code)"
+          />{{ role.label }}</label
+        >
+      }
+      <p>
+        Platform owners and company administrators retain access. Existing module permissions still
+        apply to other roles.
+      </p>
+    </section>
+    <section class="panel">
+      <h2>Mandatory training & completion</h2>
+      <p>
+        Mandatory courses are configured in the course editor. Completion requires every lesson and
+        a passing assessment. Legacy sample progress is retained separately; a certificate is never
+        issued merely because an old progress field says 100%.
+      </p>
+      <p>Verified staff competency records are not overwritten by academy completion.</p>
+      <a class="academy-button" routerLink="/manage/learning/courses"
+        >Manage course requirements →</a
+      >
+    </section>
+  </div>
+} @else if (tab() === 'Integrations') {
+  <section class="panel">
+    <h2>Storage & integrations</h2>
+    <p>
+      Course records, assignments, assessments and certificates use the current workspace’s saved
+      data. Uploaded video and other binary assets use this browser’s media storage.
+    </p>
+    <div class="notice">
+      External learning providers, email delivery, remote uploads and background scheduling are not
+      configured. Media stored on this device is unavailable in another browser until uploaded
+      there.
+    </div>
+    <a class="academy-button" routerLink="/manage/learning/reports">Export academy records →</a>
+  </section>
+} @else {
+  <div class="grid">
+    <section class="panel">
+      <h2>Email / portal notification templates</h2>
+      <p>
+        Templates are used for portal records. Email delivery is not configured. Available fields:
+        <code>{{ '{{course}}' }}</code> and <code>{{ '{{due}}' }}</code>.
+      </p>
+      @for (key of notificationKeys; track key) {
+        <label class="field"
+          >{{ key
+          }}<textarea
+            rows="3"
+            maxlength="2000"
+            [(ngModel)]="draft.notificationTemplates[key]"
+          ></textarea>
+        </label>
+      }
+    </section>
+    <section class="panel">
+      <h2>Reminder schedules</h2>
+      <label class="check"
+        ><input type="checkbox" [(ngModel)]="draft.portalNotifications" />Record portal
+        notifications</label
+      ><label class="field"
+        >Overdue reminder window (days)<input
+          type="number"
+          min="0"
+          max="365"
+          [(ngModel)]="draft.overdueDays"
+      /></label>
+      <p>
+        Save changes first. Run the reminder check while this app is open; duplicate reminders for
+        the same assignment and day are suppressed.
+      </p>
+      <button class="academy-button" (click)="reminders()">Generate due reminders now</button
+      ><a class="academy-button" routerLink="/manage/learning/reports">View audit log →</a>
+    </section>
+  </div>
+}

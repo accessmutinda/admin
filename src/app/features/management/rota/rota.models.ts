@@ -42,7 +42,18 @@ export interface RotaClient {
   priority: 'Standard' | 'High';
   active: boolean;
 }
+export interface RecurringAllocationOptions {
+  weekdays: number[];
+  start?: string;
+  durationMinutes: number;
+  carers: number;
+  backupStaffId: string;
+  medicationSupport: boolean;
+  notes: string;
+  travelMinutes: number;
+}
 export interface VisitRequirements {
+  travelMinutes?: number;
   timeSensitive?: boolean;
   toleranceMinutes?: number;
   flexible?: boolean;

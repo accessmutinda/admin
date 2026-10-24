@@ -1,0 +1,249 @@
+<cv-academy-admin-nav />
+<div class="heading">
+  <div>
+    <h1>Training compliance & reporting</h1>
+    <p>Monitor assigned learning, completion, assessment outcomes and certificate validity.</p>
+  </div>
+  <button class="academy-button" (click)="export('compliance')">Export report ↓</button>
+</div>
+<cv-academy-message [error]="error()" [notice]="notice()" />
+<section class="panel toolbar">
+  <label class="field">Activity from<input type="date" [(ngModel)]="from" /></label
+  ><label class="field">Activity to<input type="date" [(ngModel)]="to" /></label
+  ><label class="field"
+    >Branch<mat-select cvSelect aria-label="Report branch" [(ngModel)]="branch"
+      ><mat-option value="All">All branches</mat-option>
+      @for (item of branches(); track item) {
+        <mat-option [value]="item">{{ item }}</mat-option>
+      }
+    </mat-select></label
+  ><label class="field"
+    >Role<mat-select cvSelect aria-label="Report role" [(ngModel)]="role"
+      ><mat-option value="All">All roles</mat-option>
+      @for (item of roles(); track item) {
+        <mat-option [value]="item">{{ item }}</mat-option>
+      }
+    </mat-select></label
+  >
+</section>
+<div class="stats">
+  @for (stat of stats(); track stat.label) {
+    <div class="stat">
+      <span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span
+      ><small>{{ stat.label }}</small
+      ><strong>{{ stat.value }}</strong
+      ><small>{{ stat.caption }}</small>
+    </div>
+  }
+</div>
+<div class="notice">
+  Completion measures assigned academy learning and unexpired certificates. Unassigned staff are not
+  counted as compliant. Sample courses and internal completion do not establish verified competency
+  or external accreditation.
+</div>
+<div class="grid">
+  <section class="panel">
+    <h2>Assessment pass rate · last 6 months</h2>
+    <p>Derived from submitted attempts, independently of the activity date filter.</p>
+    @for (month of months(); track month.month) {
+      <div class="bar-row">
+        <span
+          >{{ month.month }}<small> · {{ month.count }} attempts</small></span
+        ><progress
+          max="100"
+          [value]="month.percent || 0"
+          [attr.aria-label]="month.month + ' pass rate'"
+        >
+          {{ month.percent }}%</progress
+        ><strong>{{ month.percent === null ? '—' : month.percent + '%' }}</strong>
+      </div>
+    }
+  </section>
+  <section class="panel">
+    <h2>Mandatory completion by branch</h2>
+    @for (group of breakdown('location'); track group.name) {
+      <div class="bar-row">
+        <span
+          >{{ group.name }}<small> · {{ group.assigned }} assignments</small></span
+        ><progress
+          max="100"
+          [value]="group.percent || 0"
+          [attr.aria-label]="group.name + ' completion'"
+        >
+          {{ group.percent }}%</progress
+        ><strong>{{ group.percent === null ? '—' : group.percent + '%' }}</strong>
+      </div>
+    } @empty {
+      <p>No assigned training in this scope.</p>
+    }
+  </section>
+  <section class="panel">
+    <h2>Mandatory completion by role</h2>
+    @for (group of breakdown('role'); track group.name) {
+      <div class="bar-row">
+        <span>{{ group.name }}</span
+        ><progress
+          max="100"
+          [value]="group.percent || 0"
+          [attr.aria-label]="group.name + ' completion'"
+        >
+          {{ group.percent }}%</progress
+        ><strong>{{ group.percent === null ? '—' : group.percent + '%' }}</strong>
+      </div>
+    }
+  </section>
+  <section class="panel">
+    <h2>Staff needing attention</h2>
+    <div class="scroll" tabindex="0" role="region" aria-label="Overdue staff learning">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Staff member</th>
+            <th scope="col">Role / branch</th>
+            <th scope="col">Overdue or expired</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of risk(); track item.person.id) {
+            <tr>
+              <td>
+                <a routerLink="/staff-portal/training" [queryParams]="{ person: item.person.id }">{{
+                  item.person.name
+                }}</a>
+              </td>
+              <td>
+                {{ item.person.role }}<small>{{ item.person.location }}</small>
+              </td>
+              <td>
+                <span class="badge bad">{{ item.overdue }} assignments</span>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="3">No overdue or expired assignments.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+<section class="panel">
+  <h2>Mandatory training completion heatmap</h2>
+  <p>
+    Current completed and unexpired assignments. A dash means no assignment; percentages show actual
+    assigned-learning completion.
+  </p>
+  <div class="scroll" tabindex="0" role="region" aria-label="Mandatory completion heatmap">
+    <table class="heatmap">
+      <thead>
+        <tr>
+          <th scope="col">Course</th>
+          @for (branch of branches(); track branch) {
+            <th scope="col">{{ branch }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (course of heatmapCourses(); track course.id) {
+          <tr>
+            <th scope="row">{{ course.title }}</th>
+            @for (branch of branches(); track branch) {
+              <td
+                [class.good]="(cell(course.id, branch) ?? -1) >= 90"
+                [class.warn]="
+                  (cell(course.id, branch) ?? -1) >= 70 && (cell(course.id, branch) ?? 100) < 90
+                "
+                [class.bad]="
+                  cell(course.id, branch) !== null && (cell(course.id, branch) ?? 100) < 70
+                "
+              >
+                {{ cell(course.id, branch) === null ? '—' : cell(course.id, branch) + '%' }}
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="pagination">
+    <small>Page {{ heatmapPage }} of {{ heatmapPages() }}</small
+    ><button
+      class="academy-button"
+      [disabled]="heatmapPage <= 1"
+      (click)="heatmapPage = heatmapPage - 1"
+    >
+      Previous</button
+    ><button
+      class="academy-button"
+      [disabled]="heatmapPage >= heatmapPages()"
+      (click)="heatmapPage = heatmapPage + 1"
+    >
+      Next
+    </button>
+  </div>
+</section>
+<div class="grid">
+  <section class="panel">
+    <h2>Inspection evidence exports</h2>
+    <p>
+      Prepare records for internal review or inspection. These exports report saved evidence rather
+      than certifying regulatory compliance.
+    </p>
+    <div class="grid">
+      <button class="academy-button" (click)="export('compliance')">
+        Training completion report</button
+      ><button class="academy-button" (click)="export('certificates')">
+        Staff certificate register</button
+      ><button class="academy-button" (click)="export('matrix')">Mandatory training matrix</button
+      ><button class="academy-button" (click)="export('evidence-pack')">
+        Inspection evidence pack (JSON)
+      </button>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Audit trail & activity log</h2>
+    <div class="scroll" tabindex="0" role="region" aria-label="Training audit events">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Date / time</th>
+            <th scope="col">User</th>
+            <th scope="col">Action</th>
+            <th scope="col">Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (event of eventRows(); track event.id) {
+            <tr>
+              <td>{{ event.at | ukDate: 'd MMM yyyy, HH:mm' : 'Europe/London' }}</td>
+              <td>{{ event.actor }}</td>
+              <td>{{ event.action }}</td>
+              <td>{{ event.detail }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4">No recorded activity in this period.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <small>{{ events().length }} events</small
+      ><button
+        class="academy-button"
+        [disabled]="auditPage <= 1"
+        (click)="auditPage = auditPage - 1"
+      >
+        Previous</button
+      ><button
+        class="academy-button"
+        [disabled]="auditPage >= auditPages()"
+        (click)="auditPage = auditPage + 1"
+      >
+        Next
+      </button>
+    </div>
+  </section>
+</div>

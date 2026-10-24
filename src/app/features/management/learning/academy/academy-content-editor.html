@@ -1,0 +1,245 @@
+<cv-academy-admin-nav />
+<div class="heading">
+  <div>
+    <h1>Edit video & lesson content</h1>
+    <p>Upload training media, add accessible transcripts and place learning resources.</p>
+  </div>
+  <div class="actions">
+    @if (course) {
+      <a class="academy-button" [routerLink]="['/manage/learning/courses', course.id]"
+        >Back to course</a
+      >
+    }
+    <button class="academy-button" [disabled]="!lesson || busy()" (click)="save(false)">
+      Save draft</button
+    ><button class="academy-button primary" [disabled]="!lesson || busy()" (click)="save(true)">
+      Publish update
+    </button>
+  </div>
+</div>
+<cv-academy-message [error]="error()" [notice]="notice()" />
+@if (lesson && course) {
+  <section class="panel course-hero">
+    <cv-academy-image
+      [id]="lesson.thumbnailId || course.thumbnailId"
+      [alt]="lesson.title"
+      icon="movie"
+    />
+    <div>
+      <h2>{{ lesson.title }}</h2>
+      <p>{{ course.title }} · Version {{ course.version }}</p>
+      <span class="badge">{{ course.status }}</span>
+      <p>{{ metadata() || 'Video duration and resolution appear after the file loads.' }}</p>
+    </div>
+  </section>
+  <div class="columns">
+    <div>
+      <div class="grid">
+        <section class="panel">
+          <h2>Video upload & file details</h2>
+          <p>MP4 or WebM. Files stay in this browser and are subject to its storage capacity.</p>
+          <label class="field"
+            >{{ busy() ? 'Uploading…' : 'Upload or replace video'
+            }}<input
+              type="file"
+              accept="video/mp4,video/webm"
+              [disabled]="busy()"
+              (change)="upload($event)" /></label
+          ><label class="field"
+            >Saved video<mat-select
+              cvSelect
+              aria-label="Lesson video"
+              [(ngModel)]="lesson.videoId"
+              (ngModelChange)="loadMedia()"
+              ><mat-option value="">No video</mat-option>
+              @for (asset of academy.state().assets; track asset.id) {
+                @if (asset.kind === 'Video') {
+                  <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
+                }
+              }
+            </mat-select></label
+          >
+          @if (lesson.videoId) {
+            <button class="academy-button" (click)="download(lesson.videoId)">
+              Download original file</button
+            ><button class="academy-button danger" (click)="lesson.videoId = ''; loadMedia()">
+              Remove from lesson
+            </button>
+          }
+        </section>
+        <section class="panel">
+          <h2>Video preview</h2>
+          @if (videoUrl()) {
+            <video
+              class="lesson-video"
+              [src]="videoUrl()"
+              controls
+              (loadedmetadata)="videoMetadata($event)"
+            >
+              @if (captionUrl()) {
+                <track kind="subtitles" [src]="captionUrl()" label="English" srclang="en" default />
+              }
+            </video>
+          } @else {
+            <div class="empty">
+              <span class="material-symbols-outlined" aria-hidden="true">movie</span>
+              <p>Choose a saved video or upload a file to preview it.</p>
+            </div>
+          }
+        </section>
+      </div>
+      <nav class="academy-tabs" aria-label="Lesson content sections">
+        @for (
+          item of ['Details', 'Captions & transcript', 'Placement & resources', 'Version history'];
+          track item
+        ) {
+          <button
+            [class.active]="tab() === item"
+            [attr.aria-pressed]="tab() === item"
+            (click)="tab.set(item)"
+          >
+            {{ item }}
+          </button>
+        }
+      </nav>
+      @if (tab() === 'Details') {
+        <section class="panel">
+          <h2>Lesson metadata</h2>
+          <div class="field-grid">
+            <label class="field wide">Title<input [(ngModel)]="lesson.title" /></label
+            ><label class="field"
+              >Estimated duration (minutes)<input
+                type="number"
+                min="1"
+                max="480"
+                [(ngModel)]="lesson.minutes" /></label
+            ><label class="field"
+              >Thumbnail<mat-select
+                cvSelect
+                aria-label="Lesson thumbnail"
+                [(ngModel)]="lesson.thumbnailId"
+                ><mat-option value="">Course thumbnail</mat-option>
+                @for (asset of academy.state().assets; track asset.id) {
+                  @if (asset.kind === 'Image') {
+                    <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
+                  }
+                }
+              </mat-select></label
+            ><label class="field wide"
+              >Lesson details<textarea rows="7" [(ngModel)]="lesson.content"></textarea>
+            </label>
+          </div>
+        </section>
+      } @else if (tab() === 'Captions & transcript') {
+        <section class="panel">
+          <h2>Captions & transcript</h2>
+          <label class="field"
+            >WebVTT captions<mat-select
+              cvSelect
+              aria-label="Lesson captions"
+              [(ngModel)]="lesson.captionId"
+              (ngModelChange)="loadMedia()"
+              ><mat-option value="">No captions</mat-option>
+              @for (asset of academy.state().assets; track asset.id) {
+                @if (asset.kind === 'Captions') {
+                  <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
+                }
+              }
+            </mat-select></label
+          ><label class="field"
+            >Transcript<textarea rows="12" [(ngModel)]="lesson.transcript"></textarea>
+          </label>
+          <p>
+            Enter an approved transcript or upload WebVTT from the asset library. Automatic
+            transcription is not configured.
+          </p>
+          <button
+            class="academy-button"
+            [disabled]="!lesson.transcript"
+            (click)="transcriptDownload()"
+          >
+            Download transcript
+          </button>
+        </section>
+      } @else if (tab() === 'Placement & resources') {
+        <section class="panel">
+          <h2>Placement & handouts</h2>
+          <p>
+            This video belongs to {{ course.title }} → {{ lesson.title }}. Reorder lessons from the
+            course editor.
+          </p>
+          <label class="field"
+            >PDF handouts<mat-select
+              cvSelect
+              aria-label="Lesson handouts"
+              multiple
+              [(ngModel)]="lesson.handoutIds"
+            >
+              @for (asset of academy.state().assets; track asset.id) {
+                @if (asset.kind === 'Document') {
+                  <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
+                }
+              }
+            </mat-select></label
+          >
+        </section>
+      } @else {
+        <section class="panel">
+          <h2>Saved changes</h2>
+          @for (event of academy.state().events; track event.id) {
+            @if (event.action === 'Course saved' && event.detail.startsWith(course.id + ' ·')) {
+              <article class="history-item">
+                <strong>{{ event.action }}</strong>
+                <p>{{ event.actor }} · {{ event.at }}</p>
+              </article>
+            }
+          }
+          <p>
+            Current saved version: {{ course.version }}. Existing assessment attempts retain their
+            original question snapshot.
+          </p>
+        </section>
+      }
+    </div>
+    <aside>
+      <section class="panel">
+        <div class="heading">
+          <h2>Asset library</h2>
+          <a class="academy-button" routerLink="/manage/learning/assets">Upload asset</a>
+        </div>
+        <label class="field">Search assets<input type="search" [(ngModel)]="assetSearch" /></label>
+        @for (asset of assetList(); track asset.id) {
+          <div class="list-item">
+            <span class="material-symbols-outlined" aria-hidden="true">{{
+              asset.kind === 'Video' ? 'movie' : 'description'
+            }}</span>
+            <div>
+              <strong>{{ asset.name }}</strong
+              ><small>{{ asset.kind }} · {{ (asset.size / 1024 / 1024).toFixed(2) }} MB</small>
+            </div>
+            @if (asset.kind === 'Video') {
+              <button class="academy-button" (click)="useVideo(asset.id)">Use</button>
+            }
+          </div>
+        } @empty {
+          <p>No assets saved.</p>
+        }
+      </section>
+      <section class="panel">
+        <h2>Publishing</h2>
+        <p>
+          Save draft preserves live content. Publish update replaces the course version available to
+          learners.
+        </p>
+        <a class="academy-button" [routerLink]="['/staff-portal/training/courses', course.id]"
+          >Preview in staff portal →</a
+        >
+      </section>
+    </aside>
+  </div>
+} @else {
+  <section class="panel empty">
+    <h2>Lesson unavailable</h2>
+    <p>Save the course and its lesson before opening the content editor.</p>
+  </section>
+}

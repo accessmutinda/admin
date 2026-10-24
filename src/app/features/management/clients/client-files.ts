@@ -1,12 +1,13 @@
 import { ServiceUserDirectory } from '../care/service-user-directory';
-import { ClinicalSummary } from '../care/clinical-summary';
+import { ClientOverview } from './client-overview';
+import { CareHeader } from '../care/care-header';
 import { age } from '../care/care.models';
 import { ModuleDesign } from '../shared/module-design';
-import { HostListener, Component, computed, inject, signal } from '@angular/core';
+import { HostListener, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { ToastService } from '../../../shared/ui/toast.service';
@@ -27,7 +28,8 @@ import {
   imports: [
     ModuleDesign,
     ServiceUserDirectory,
-    ClinicalSummary,
+    ClientOverview,
+    CareHeader,
     DatePipe,
     FormsModule,
     RouterLink,
@@ -53,6 +55,19 @@ export class ClientFiles {
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
   });
+  private readonly destroyRef = inject(DestroyRef);
+  ngOnInit(): void {
+    this.route.queryParamMap?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      if (!this.editing())
+        this.sectionKey.set(params.get('section') === 'plan' ? 'plan' : 'overview');
+    });
+    if (
+      this.route.snapshot.queryParamMap.get('edit') === 'profile' &&
+      this.client() &&
+      this.service.can('manage')
+    )
+      this.startProfile();
+  }
   protected readonly id = computed(() => this.params().get('id'));
   protected readonly client = computed(() =>
     this.service.data().clients.find((c) => c.id === this.id()),
@@ -85,14 +100,6 @@ export class ClientFiles {
             ),
         ).length,
   );
-  protected readonly workspaceTabs = [
-    { label: 'Medication & MAR', path: 'medication' },
-    { label: 'Visits & Allocation', path: 'visits' },
-    { label: 'Contacts', path: 'contacts' },
-    { label: 'Documents', path: 'documents' },
-    { label: 'Family Portal', path: 'family' },
-    { label: 'Audit Trail', path: 'audit' },
-  ];
   @HostListener('window:beforeunload', ['$event'])
   protected beforeUnload(event: BeforeUnloadEvent): void {
     if (this.editing() || this.photoLoading()) {
@@ -107,6 +114,10 @@ export class ClientFiles {
     );
   }
   protected editOverviewSection(key: string): void {
+    if (key === 'details') {
+      this.startProfile();
+      return;
+    }
     this.setSection(key);
     this.editSection();
   }
@@ -155,22 +166,6 @@ export class ClientFiles {
       this.photoLoading.set(false);
     }
   }
-  protected readonly headerFlags = computed(() => {
-    const file = this.file();
-    const calls = this.service.data().calls.filter((c) => c.clientId === this.id() && c.active);
-    const kin =
-      file.contacts?.find((c) => c.nextOfKin)?.name ?? this.client()?.representative?.name;
-    return [
-      file.sections['capacity']?.['status']
-        ? 'Capacity: ' + file.sections['capacity']['status']
-        : '',
-      file.sections['capacity']?.['welfareLpa'] ? 'LPA: Health & Welfare' : '',
-      file.sections['capacity']?.['financeLpa'] ? 'LPA: Property & Finance' : '',
-      calls.some((c) => c.timeSensitive) ? 'Time-sensitive calls' : '',
-      file.sections['access']?.['location'] ? 'Key safe recorded' : '',
-      kin ? 'Next of kin: ' + kin : '',
-    ].filter(Boolean);
-  });
   protected readonly sections = CLIENT_SECTIONS;
   protected readonly sectionGroups = CLIENT_SECTION_GROUPS.map((group) => ({
     label: group.label,
@@ -214,7 +209,9 @@ export class ClientFiles {
   }
   protected readonly personalFields = PERSONAL_FIELDS;
   protected readonly riskFlags = RISK_FLAGS;
-  protected readonly sectionKey = signal('overview');
+  protected readonly sectionKey = signal(
+    this.route.snapshot.queryParamMap.get('section') === 'plan' ? 'plan' : 'overview',
+  );
   protected readonly section = computed(() =>
     this.sections.find((s) => s.key === this.sectionKey())!,
   );
@@ -307,6 +304,15 @@ export class ClientFiles {
   }
   protected value(key: string): string {
     return this.file().sections[this.sectionKey()]?.[key] ?? '';
+  }
+  protected selectWorkspaceSection(key: string): void {
+    if (this.editing()) return;
+    this.setSection(key);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { section: key === 'plan' ? 'plan' : null, edit: null },
+      queryParamsHandling: 'merge',
+    });
   }
   protected setSection(key: string): void {
     this.sectionKey.set(key);

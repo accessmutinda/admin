@@ -1,4 +1,4 @@
-import { Injectable, computed, inject } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ROLES } from '../../../core/auth/models/role';
@@ -31,6 +31,18 @@ export class HrService {
       !!this.auth.currentUser() &&
       !!this.store.company()?.modules.includes('People & HR') &&
       (!flags || (!!flags[0] && !!flags[{ view: 0, create: 1, edit: 2, export: 4 }[action]]))
+    );
+  }
+  readonly sampleError = signal('');
+  async loadSampleData(): Promise<void> {
+    if (!this.can('create') || this.store.data().hrDemoVersion === 1) return;
+    const workspace = this.store.companyId();
+    const { seedHrDemo } = await import('./hr-demo-data');
+    if (workspace !== this.store.companyId() || !this.can('create')) return;
+    this.sampleError.set(
+      this.store.saveWorkspace((data) => seedHrDemo(data))
+        ? ''
+        : 'Sample HR records could not be saved on this device. Free some storage and try again.',
     );
   }
   canPay(edit = false): boolean {
@@ -308,5 +320,11 @@ export class HrService {
     );
   }
 }
-export const hrGuard: CanActivateFn = () =>
-  inject(HrService).can('view') || inject(Router).createUrlTree(['/manage/companies']);
+export const hrGuard: CanActivateFn = async () => {
+  const hr = inject(HrService),
+    router = inject(Router);
+  if (!hr.can('view')) return router.createUrlTree(['/manage/companies']);
+  if (hr.store.companyId() === 'lqcs' && hr.store.data().hrDemoVersion !== 1)
+    await hr.loadSampleData();
+  return true;
+};

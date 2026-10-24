@@ -20,8 +20,10 @@ export const VISITS_ROUTES: Routes = [
   },
   {
     path: 'overview',
-    title: 'Visits & Rota · CareVerity',
-    loadComponent: () => import('./visits-workspace').then((m) => m.VisitsLanding),
+    title: 'Visits & Rostering · CareVerity',
+    data: { module: 'Care delivery', visitsWorkspace: true },
+    canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+    loadComponent: () => import('../care/visit-planner').then((m) => m.VisitPlanner),
   },
   {
     path: 'live',
@@ -38,7 +40,7 @@ export const VISITS_ROUTES: Routes = [
   ...['call-packages', 'publishing', 'history'].map((section) => ({
     path: section,
     data: { module: 'Care delivery', rotaSection: section, visitsWorkspace: true },
-    title: 'Visits & Rota · CareVerity',
+    title: 'Visits & Rostering · CareVerity',
     canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
     loadComponent: () => import('./rota').then((m) => m.Rota),
   })),

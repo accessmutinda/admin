@@ -1,9 +1,9 @@
 <cv-module-design />
 @if (client(); as c) {
-  <cv-care-header [client]="c" />
+  <cv-care-header [client]="c" [active]="section()" />
   <div class="care-heading">
     <div>
-      <h1>{{ title() }}</h1>
+      <h2>{{ title() }}</h2>
       <p>{{ c.name }} · Connected care records and sharing preferences.</p>
     </div>
     <div class="care-actions">

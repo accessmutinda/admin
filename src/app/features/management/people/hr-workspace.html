@@ -19,6 +19,9 @@
     </p>
   </div>
   <div class="hr-actions">
+    @if (hr.can('create') && hr.store.data().hrDemoVersion !== 1) {
+      <button class="hr-button" (click)="hr.loadSampleData()">Load sample HR data</button>
+    }
     @if (hr.can('create')) {
       <a class="hr-button primary" routerLink="/manage/people/staff/new"
         ><span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add Staff
@@ -32,6 +35,15 @@
     }
   </div>
 </div>
+@if (hr.sampleError()) {
+  <p role="alert">{{ hr.sampleError() }}</p>
+}
+@if (hr.store.data().hrDemoVersion === 1) {
+  <p class="hr-sample-notice">
+    Includes fictional sample staff and documents, saved on this device. Existing records are
+    preserved.
+  </p>
+}
 @if (mode === 'overview') {
   @if (hr.store.company(); as company) {
     <section class="co-summary co-surface" aria-label="Current company workforce overview">

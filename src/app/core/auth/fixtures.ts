@@ -22,6 +22,65 @@ export const DEMO_USER: AppUser = {
   workspaceIds: ['lqcs', 'riverside', 'sunrise', 'meadowview', 'oakwood'],
 };
 
+export const DEMO_PORTAL_USERS: AppUser[] = [
+  {
+    ...DEMO_USER,
+    id: 'demo-admin',
+    name: 'Alex Morgan',
+    initials: 'AM',
+    email: 'admin@example.test',
+    roleCode: 'CA',
+  },
+  {
+    ...DEMO_USER,
+    id: 'demo-manager',
+    name: 'Demo Registered Manager',
+    initials: 'RM',
+    email: 'manager@example.test',
+    roleCode: 'RM',
+  },
+  {
+    ...DEMO_USER,
+    id: 'demo-inspector',
+    name: 'Demo Inspector',
+    initials: 'DI',
+    email: 'inspector@example.test',
+    roleCode: 'IN',
+  },
+  {
+    ...DEMO_USER,
+    id: 'demo-finance',
+    name: 'Demo Finance Officer',
+    initials: 'DF',
+    email: 'finance@example.test',
+    roleCode: 'FN',
+  },
+  {
+    ...DEMO_USER,
+    id: 'demo-hr',
+    name: 'Demo HR Officer',
+    initials: 'HR',
+    email: 'hr@example.test',
+    roleCode: 'HR',
+  },
+  {
+    ...DEMO_USER,
+    id: 'demo-training',
+    name: 'Demo Training Manager',
+    initials: 'TM',
+    email: 'training@example.test',
+    roleCode: 'TM',
+  },
+  {
+    ...DEMO_USER,
+    id: 'demo-family',
+    name: 'Emma Bennett',
+    initials: 'EB',
+    email: 'family.0@example.test',
+    roleCode: 'CW',
+  },
+];
+
 export const WORKSPACES: Workspace[] = [
   {
     id: 'lqcs',

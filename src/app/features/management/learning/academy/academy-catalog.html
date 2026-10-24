@@ -1,0 +1,187 @@
+<cv-academy-admin-nav />
+<div class="heading">
+  <div>
+    <h1>
+      {{
+        view === 'courses'
+          ? 'Courses & learning content'
+          : view === 'questions'
+            ? 'Assessment question bank'
+            : 'Training asset library'
+      }}
+    </h1>
+    <p>
+      {{
+        view === 'assets'
+          ? 'Upload and reuse device-local video, images, documents and caption files.'
+          : 'Create, review and publish the content used by staff learning and assessments.'
+      }}
+    </p>
+  </div>
+  <div class="actions">
+    @if (view === 'courses') {
+      <a class="academy-button primary" routerLink="/manage/learning/courses/new">Create course</a>
+    } @else if (view === 'questions') {
+      <a class="academy-button primary" routerLink="/manage/learning/questions/new"
+        >Create question</a
+      >
+    } @else {
+      <label class="academy-button primary"
+        >{{ busy() ? 'Uploading…' : 'Upload asset'
+        }}<input
+          class="asset-input"
+          type="file"
+          accept="video/mp4,video/webm,image/png,image/jpeg,image/webp,application/pdf,.vtt"
+          [disabled]="busy()"
+          (change)="upload($event)"
+      /></label>
+    }
+  </div>
+</div>
+<cv-academy-message [error]="error()" [notice]="notice()" />
+@if (view === 'assets') {
+  <div class="notice">
+    Video supports MP4/WebM up to 2 GB; images, PDF and WebVTT up to 10 MB. Files stay in this
+    browser. Available browser storage may impose a smaller limit.
+  </div>
+}
+<section class="panel toolbar">
+  <label class="field"
+    >Search<input
+      type="search"
+      [(ngModel)]="search"
+      (ngModelChange)="page = 1"
+      placeholder="Search…" /></label
+  ><label class="field"
+    >{{ view === 'assets' ? 'Asset type' : 'Publication status'
+    }}<mat-select
+      cvSelect
+      aria-label="Catalog filter"
+      [(ngModel)]="filter"
+      (ngModelChange)="page = 1"
+    >
+      @for (
+        option of view === 'assets'
+          ? ['All', 'Video', 'Image', 'Document', 'Captions']
+          : ['All', 'Draft', 'Published', 'Archived'];
+        track option
+      ) {
+        <mat-option [value]="option">{{ option }}</mat-option>
+      }
+    </mat-select></label
+  >
+</section>
+@if (view === 'courses') {
+  <section class="panel">
+    <div class="course-grid">
+      @for (c of rows(); track c.id) {
+        <article class="course-card">
+          <cv-academy-image [id]="c.thumbnailId" [alt]="c.title" />
+          <div class="course-card-content">
+            <div class="row">
+              <span class="badge">{{ c.status }}</span>
+              @if (c.sample) {
+                <span class="badge warn">Sample</span>
+              }
+            </div>
+            <h2>{{ c.title }}</h2>
+            <p>{{ c.description }}</p>
+            <small
+              >{{ c.lessons.length }} lessons · {{ c.cpdHours }} CPD hours · Version
+              {{ c.version }}</small
+            ><a class="academy-button" [routerLink]="['/manage/learning/courses', c.id]"
+              >Manage course →</a
+            >
+          </div>
+        </article>
+      } @empty {
+        <div class="empty"><p>No courses match this view.</p></div>
+      }
+    </div>
+  </section>
+} @else if (view === 'questions') {
+  <section class="panel">
+    <div class="scroll" tabindex="0" role="region" aria-label="Question bank">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Question</th>
+            <th scope="col">Course / lesson</th>
+            <th scope="col">Type</th>
+            <th scope="col">Status</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (q of rows(); track q.id) {
+            <tr>
+              <td>
+                <strong>{{ q.text }}</strong
+                ><small>{{ q.category }} · {{ q.difficulty }} · {{ q.weight }} marks</small>
+              </td>
+              <td>
+                {{ academy.course(q.courseId)?.title }}<small>Version {{ q.version }}</small>
+              </td>
+              <td>{{ q.type }}</td>
+              <td>
+                <span class="badge">{{ q.status }}</span>
+              </td>
+              <td>
+                <a class="academy-button" [routerLink]="['/manage/learning/questions', q.id]"
+                  >Edit question</a
+                >
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="empty">No questions match this view.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+} @else {
+  @if (previewVideo()) {
+    <section class="panel">
+      <h2>Video preview</h2>
+      <video class="lesson-video" [src]="previewVideo()" controls></video
+      ><button class="academy-button" (click)="closeVideo()">Close preview</button>
+    </section>
+  }
+  <section class="panel">
+    <div class="asset-grid">
+      @for (asset of rows(); track asset.id) {
+        <article class="asset">
+          @if (asset.kind === 'Image') {
+            <cv-academy-image [id]="asset.id" [alt]="asset.name" />
+          } @else {
+            <span class="material-symbols-outlined" aria-hidden="true">{{
+              asset.kind === 'Video' ? 'movie' : 'description'
+            }}</span>
+          }
+          <h3>{{ asset.name }}</h3>
+          <span class="badge">{{ asset.kind }}</span
+          ><small>{{ (asset.size / 1024 / 1024).toFixed(2) }} MB</small
+          ><small>Uploaded by {{ asset.by }}</small>
+          <div class="actions">
+            @if (asset.kind === 'Video') {
+              <button class="academy-button" (click)="video(asset.id)">Preview</button>
+            }
+            <button class="academy-button" (click)="download(asset.id)">Download</button
+            ><button class="academy-button danger" (click)="remove(asset.id)">Remove</button>
+          </div>
+        </article>
+      } @empty {
+        <p class="empty">No saved assets match this view.</p>
+      }
+    </div>
+  </section>
+}
+<div class="pagination">
+  <span>{{ filtered().length }} records · Page {{ page }} of {{ pages() }}</span
+  ><button class="academy-button" [disabled]="page <= 1" (click)="page = page - 1">Previous</button
+  ><button class="academy-button" [disabled]="page >= pages()" (click)="page = page + 1">
+    Next
+  </button>
+</div>

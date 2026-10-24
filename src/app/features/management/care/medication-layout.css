@@ -1,0 +1,183 @@
+.medication-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  align-items: start;
+  gap: var(--profile-section-gap) var(--profile-column-gap);
+}
+.medication-main,
+.medication-workspace aside {
+  min-width: 0;
+  display: grid;
+  gap: var(--profile-section-gap);
+  align-content: start;
+}
+.medication-workspace {
+  margin-bottom: var(--profile-section-gap);
+}
+.medication-main .care-table {
+  min-width: 820px;
+}
+.medication-main .mar-table {
+  min-width: 760px;
+}
+.medication-workspace .care-table th {
+  padding: 4px 8px;
+  font-size: 10px;
+  line-height: 1.3;
+}
+.medication-workspace .care-table td {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.medication-workspace .care-panel {
+  margin: 0;
+}
+.medication-workspace .care-panel h2 {
+  font-size: 14px;
+}
+.medication-workspace .care-table td small {
+  font-size: 11px;
+}
+.medication-workspace .care-table td .care-button {
+  font-size: 12px;
+  min-height: 32px;
+  padding: 4px 8px;
+}
+.medication-workspace aside h3 {
+  margin: 8px 0 4px;
+  font-size: 11px;
+}
+.medication-workspace aside .care-dl {
+  font-size: 11px;
+}
+.medication-workspace aside .care-dl > div {
+  padding: 4px 0;
+}
+.medication-sheet-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #dfe8ee;
+  margin-bottom: var(--profile-section-gap);
+  padding-bottom: 0;
+}
+.medication-sheet-tabs .care-button {
+  border-radius: 5px 5px 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #eff6fb;
+  color: #06376b;
+  min-height: 36px;
+}
+.medication-sheet-tabs .selected {
+  background: #007caa;
+  border-color: #007caa;
+  color: #fff;
+}
+.medication-sheet-tabs .material-symbols-outlined {
+  font-size: 21px;
+}
+.medication-workspace .mar-cell {
+  min-width: 65px;
+  min-height: 36px;
+  font-size: 12px;
+}
+.medication-workspace .mar-cell small {
+  display: block;
+  font-size: 11px;
+}
+.medication-workspace .mar-table th:first-child,
+.medication-workspace .mar-table td:first-child {
+  min-width: 130px;
+}
+.medication-workspace .care-toolbar .care-actions {
+  gap: 4px;
+  font-size: 12px;
+}
+.medication-workspace .care-toolbar .care-actions label {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.medication-workspace .care-toolbar input {
+  max-width: 125px;
+}
+.medication-workspace .care-toolbar .care-actions .care-button {
+  min-height: 36px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.medication-workspace .medication-legend {
+  font-size: 12px;
+}
+.medication-workspace .care-toolbar mat-select {
+  max-width: 160px;
+}
+.medication-workspace aside .care-table {
+  min-width: 340px;
+}
+.medication-workspace aside .care-scroll {
+  overflow: auto;
+}
+.care-heading {
+  margin-top: 0;
+}
+:host #medication-workspace-title {
+  font-size: 21px;
+  line-height: 1.25;
+  color: #06376b;
+  margin: 0;
+}
+.medication-main > .care-panel {
+  margin-bottom: 0;
+}
+@media (max-width: 1100px) {
+  .medication-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .medication-workspace aside {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 8px;
+  }
+  .medication-workspace aside > .care-panel:last-child {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 760px) {
+  .medication-workspace aside {
+    grid-template-columns: 1fr;
+  }
+  .medication-workspace aside > .care-panel:last-child {
+    grid-column: auto;
+  }
+  .medication-sheet-tabs .care-button {
+    min-height: 44px;
+    flex: 1;
+  }
+  .medication-workspace .care-toolbar .care-actions .care-button,
+  .medication-workspace .care-table td .care-button {
+    min-height: 36px;
+  }
+  .medication-context p {
+    font-size: 12px;
+  }
+}
+@media print {
+  cv-care-header,
+  .medication-information,
+  .medication-context,
+  .medication-sheet-tabs {
+    display: none;
+  }
+  .medication-workspace {
+    display: block;
+  }
+  .medication-workspace aside {
+    display: none;
+  }
+  .mar-table {
+    font-size: 11px;
+  }
+}

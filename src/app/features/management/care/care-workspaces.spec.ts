@@ -9,6 +9,7 @@ import { emptyClientFile } from '../clients/client-file.models';
 import { CareService } from './care.service';
 import { Medication } from './medication';
 import { CareRecords } from './care-records';
+import { ProfileVisits } from './profile-visits';
 import { VisitPlanner } from './visit-planner';
 import { ServiceUserDirectory } from './service-user-directory';
 import { FamilyPortal } from './family-portal';
@@ -110,6 +111,53 @@ describe('Care workspaces', () => {
       28,
     );
   });
+  it('keeps standard and controlled registers aligned with the selected MAR sheet and preselects a PRN draft', async () => {
+    const fixture = TestBed.createComponent(Medication);
+    fixture.detectChanges();
+    const editor = fixture.componentInstance as any;
+    for (const controlled of [false, true]) {
+      editor.open('medication');
+      editor.draft = {
+        ...blankPrescription(),
+        name: controlled ? 'Controlled fixture' : 'Standard fixture',
+        strength: '1mg',
+        dose: '1 tablet',
+        prescriber: 'Test prescriber',
+        pharmacy: 'Test pharmacy',
+        indication: 'Test indication',
+        controlled,
+      };
+      editor.timeText = '08:00';
+      editor.save();
+    }
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const page: HTMLElement = fixture.nativeElement;
+    expect(page.querySelector('[aria-label="Medication register"]')!.textContent).toContain(
+      'Standard fixture',
+    );
+    expect(page.querySelector('[aria-label="Medication register"]')!.textContent).not.toContain(
+      'Controlled fixture',
+    );
+    [...page.querySelectorAll<HTMLButtonElement>('.medication-sheet-tabs button')]
+      .find((b) => b.textContent!.includes('Controlled'))!
+      .click();
+    fixture.detectChanges();
+    expect(page.querySelector('[aria-label="Medication register"]')!.textContent).toContain(
+      'Controlled fixture',
+    );
+    expect(page.querySelector('[aria-label="Medication register"]')!.textContent).not.toContain(
+      'Standard fixture',
+    );
+    expect(page.querySelector('.mar-table')!.textContent).toContain('Controlled fixture');
+    expect(page.querySelector('.mar-table')!.textContent).not.toContain('Standard fixture');
+    editor.addPrn();
+    fixture.detectChanges();
+    expect(editor.draft.frequency).toBe('PRN');
+    expect(editor.draft.controlled).toBe(true);
+    expect(editor.timeText).toBe('');
+    expect(page.querySelector('[role="dialog"]')).not.toBeNull();
+  });
   it('shows contacts, documents, sharing permissions and audit without a second client record', async () => {
     const fixture = TestBed.createComponent(CareRecords);
     for (const section of ['contacts', 'documents', 'family', 'audit']) {
@@ -170,6 +218,74 @@ describe('Care workspaces', () => {
     expect(fixture.nativeElement.querySelector('[role="dialog"]').textContent).toContain(
       'Plan recurring visits',
     );
+  });
+  it('applies roster filter drafts together and clears specialist training requirements', () => {
+    const fixture = TestBed.createComponent(VisitPlanner);
+    const planner = fixture.componentInstance as any;
+    planner.filterDraft.client = 'client';
+    planner.filterDraft.medication = 'Yes';
+    planner.filterDraft.handling = 'No';
+    planner.filterDraft.unallocated = true;
+    expect(planner.clientFilter()).toBe('');
+    expect(planner.trainingFilters()).toEqual({});
+    planner.applyFilters();
+    expect(planner.clientFilter()).toBe('client');
+    expect(planner.trainingFilters()).toMatchObject({ medication: 'Yes', handling: 'No' });
+    expect(planner.allocationFilter()).toBe('Unallocated');
+    planner.clear();
+    expect(planner.trainingFilters()).toEqual({});
+    expect(planner.allocationFilter()).toBe('All');
+    expect(planner.filterDraft.medication).toBe('');
+  });
+  it('renders complete calendar weeks and keeps List view scoped to the displayed month', () => {
+    const fixture = TestBed.createComponent(ProfileVisits);
+    fixture.componentRef.setInput('client', rota.data().clients[0]);
+    fixture.detectChanges();
+    const profile = fixture.componentInstance as any;
+    profile.anchor.set('2026-08-15');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.day')).toHaveLength(42);
+    profile.anchor.set('2027-02-15');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.day')).toHaveLength(28);
+    profile.view.set('List');
+    expect(profile.start()).toBe('2027-02-01');
+    expect(profile.end()).toBe('2027-02-28');
+    profile.move(1);
+    expect(profile.start()).toBe('2027-03-01');
+    profile.move(-1);
+    profile.view.set('Week');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.day')).toHaveLength(7);
+  });
+  it('guards an unfinished inline allocation and validates two distinct double-up carers', () => {
+    const fixture = TestBed.createComponent(ProfileVisits);
+    fixture.componentRef.setInput('client', rota.data().clients[0]);
+    fixture.detectChanges();
+    const profile = fixture.componentInstance as any;
+    profile.dirty.set(true);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    expect(profile.canLeave()).toBe(false);
+    profile.form.primary = store.staff()[0].id;
+    profile.form.doubleUp = true;
+    profile.form.second = profile.form.primary;
+    profile.save();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain(
+      'different second carer',
+    );
+    expect(rota.data().visits).toHaveLength(0);
+    profile.reset();
+    expect(profile.canLeave()).toBe(true);
+    confirm.mockRestore();
+  });
+  it('keeps the inline allocation form hidden when managing visits is denied', () => {
+    vi.spyOn(rota, 'can').mockImplementation((action) => action === 'view');
+    const fixture = TestBed.createComponent(ProfileVisits);
+    fixture.componentRef.setInput('client', rota.data().clients[0]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.allocation-panel')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.calendar-panel')).not.toBeNull();
   });
   it('does not render denied clinical data or allow a nonmatching family account', () => {
     vi.spyOn(rota, 'can').mockReturnValue(false);
@@ -263,6 +379,30 @@ describe('Nested service-user routes', () => {
       await harness.navigateByUrl('/clients/client' + (section ? '/' + section : ''));
       expect(harness.routeNativeElement!.textContent).toContain('Nested route person');
       expect(harness.routeNativeElement!.textContent).not.toContain('Service user unavailable');
+      const page = harness.routeNativeElement!;
+      expect(page.querySelectorAll('cv-care-header')).toHaveLength(1);
+      expect(page.querySelectorAll('nav[aria-label="Service user workspace"]')).toHaveLength(1);
+      expect(page.querySelector('#client-record-name')?.textContent).toContain(
+        'Nested route person',
+      );
+      expect(
+        page.querySelector('nav[aria-label="Service user workspace"] [aria-current="page"]')
+          ?.textContent,
+      ).toContain(
+        section === ''
+          ? 'Overview'
+          : (
+              {
+                medication: 'Medication & MAR',
+                visits: 'Visits & Allocation',
+                contacts: 'Contacts',
+                documents: 'Documents',
+                family: 'Family Portal',
+                audit: 'Audit Trail',
+              } as Record<string, string>
+            )[section],
+      );
+      expect(page.querySelectorAll('.client-section-nav')).toHaveLength(section ? 0 : 1);
     }
   });
 });

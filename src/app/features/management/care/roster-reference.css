@@ -1,0 +1,182 @@
+:host {
+  font-size: 12px;
+}
+.care-heading {
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: nowrap;
+}
+.care-heading h1 {
+  font-size: 27px;
+  line-height: 1.15;
+  gap: 10px;
+}
+.care-heading h1 > span {
+  font-size: 26px;
+}
+.care-heading p {
+  font-size: 13px;
+  margin-top: 3px;
+}
+.care-heading > .care-actions {
+  flex-shrink: 0;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+.care-heading .care-button {
+  min-height: 38px;
+  padding: 7px 14px;
+  border-radius: 5px;
+  color: #0a3156;
+}
+.care-heading .primary,
+.roster-apply {
+  background: linear-gradient(#08538c, #063a68) !important;
+  color: white !important;
+  border-color: #08497b !important;
+}
+.planner-period {
+  position: relative;
+  min-height: 38px;
+  padding: 6px 12px;
+  border: 1px solid #dce6ed;
+  border-radius: 5px;
+  background: #fbfdff;
+}
+.planner-period > .material-symbols-outlined {
+  font-size: 19px;
+  color: #0c3c69;
+}
+:host .planner-period-navigation .planner-period > input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+:host .planner-date-range {
+  font-size: 13px;
+}
+.roster-view-select {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #dce6ed;
+  padding: 0 10px;
+  min-height: 38px;
+  border-radius: 5px;
+  background: #fff;
+}
+.roster-view-select select {
+  width: 62px;
+  font-size: 12px;
+}
+:host .care-stats {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px;
+}
+:host .care-stats .roster-stat {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  min-height: 80px;
+  padding: 10px 12px;
+  border: 1px solid #e1e9ef;
+  border-radius: 4px;
+  box-shadow: none;
+  background: linear-gradient(110deg, #fff, #f8fcff);
+}
+:host .care-stats .roster-stat-icon {
+  position: static;
+  order: 0;
+  width: 31px;
+  height: 32px;
+  padding: 0;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: #0783d7;
+  background: transparent;
+  font-size: 26px;
+  border-radius: 0;
+}
+:host .care-stats .roster-stat > div {
+  position: relative;
+  order: 1;
+  flex: 1;
+  padding: 0;
+  min-width: 0;
+}
+:host .care-stats .roster-stat h2 {
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+  line-height: 1.3;
+  color: #284765;
+  margin: 0 0 4px;
+}
+:host .care-stats .roster-stat strong {
+  font-size: 22px;
+  line-height: 1.1;
+  margin: 0;
+}
+:host .care-stats .roster-stat small {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: #738396;
+}
+:host .care-stats [data-tone='green'] .roster-stat-icon {
+  color: #1ab2bb;
+}
+:host .care-stats [data-tone='red'] .roster-stat-icon {
+  color: #f04b5d;
+}
+:host .care-stats [data-tone='purple'] .roster-stat-icon {
+  color: #7951db;
+}
+:host .care-stats .roster-stat:last-child {
+  background: linear-gradient(110deg, #fff8f8, #fff3f5);
+}
+.roster-stat-ring {
+  order: 2;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: conic-gradient(#5cbe98 var(--progress), #dceae5 0);
+  mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 0);
+}
+[data-tone='red'] .roster-stat-ring {
+  background: conic-gradient(#ff7889 var(--progress), #f6dfe3 0);
+}
+[data-tone='purple'] .roster-stat-ring {
+  background: conic-gradient(#a783e7 var(--progress), #e9dcf7 0);
+}
+
+:host .care-heading h1 {
+  font-size: 28px !important;
+}
+.roster-view-select select {
+  border: 0;
+  background: transparent;
+  color: #14334f;
+  font: inherit;
+  width: 70px;
+  padding: 0;
+}
+
+:host .care-stats .roster-stat strong,
+:host .care-stats .roster-stat small {
+  display: block;
+}
+:host .care-heading {
+  margin-bottom: 8px;
+}
+:host .care-stats {
+  margin-bottom: 8px;
+}

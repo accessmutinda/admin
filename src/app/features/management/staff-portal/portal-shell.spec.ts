@@ -30,6 +30,10 @@ describe('Standalone staff portal', () => {
     const links = Array.from(root.querySelectorAll('nav[aria-label="Staff portal navigation"] a'));
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/staff-portal/dashboard',
+      '/staff-portal/training/dashboard',
+      '/staff-portal/training/courses',
+      '/staff-portal/training/assessments',
+      '/staff-portal/training/certificates',
       '/staff-portal/journal',
       '/staff-portal/tasks',
       '/staff-portal/concerns',

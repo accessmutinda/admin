@@ -2,7 +2,7 @@ import { ukStamp } from './care.models';
 import { HostListener, Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatSelectModule } from '@angular/material/select';
@@ -24,10 +24,26 @@ import {
 import { addDays, londonDate } from '../rota/rota.models';
 @Component({
   selector: 'cv-medication',
-  imports: [ModuleDesign, CareHeader, DatePipe, FormsModule, A11yModule, MatSelectModule, CvSelect],
+  imports: [
+    ModuleDesign,
+    CareHeader,
+    RouterLink,
+    DatePipe,
+    FormsModule,
+    A11yModule,
+    MatSelectModule,
+    CvSelect,
+  ],
   host: { class: 'module-page operations-page' },
   templateUrl: './medication.html',
-  styleUrls: ['./care-shared.css', './care-controls.css', './medication.css'],
+  styleUrls: [
+    './service-user-spacing.css',
+    './care-shared.css',
+    './care-controls.css',
+    './medication.css',
+    './medication-layout.css',
+    './medication-information.css',
+  ],
 })
 export class Medication {
   protected readonly ukStamp = ukStamp;
@@ -46,12 +62,50 @@ export class Medication {
   protected readonly medicines = computed(() =>
     this.prescriptions().filter(
       (m) =>
-        this.filter() === 'All' ||
-        (this.filter() === 'Active'
-          ? medicationActive(m, londonDate()) && !m.discontinuedAt
-          : !!m.discontinuedAt),
+        (this.sheet() === 'Controlled' ? m.controlled : !m.controlled) &&
+        (this.filter() === 'All' ||
+          (this.filter() === 'Active'
+            ? medicationActive(m, londonDate()) && !m.discontinuedAt
+            : !!m.discontinuedAt)),
     ),
   );
+  protected readonly allergies = computed(() =>
+    (this.client()?.file?.entries?.['allergies'] ?? []).filter((a) => a.status === 'Active'),
+  );
+  protected readonly pharmacies = computed(() =>
+    [
+      ...new Set(
+        this.active()
+          .map((m) => m.pharmacy)
+          .filter(Boolean),
+      ),
+    ].join('\n'),
+  );
+  protected readonly supportSummary = computed(() =>
+    [...new Set(this.active().map((m) => m.support))].join(' · '),
+  );
+  protected readonly covert = computed(() => this.active().filter((m) => m.covert));
+  protected addPrn(): void {
+    this.open('medication');
+    this.draft.frequency = 'PRN';
+    this.timeText = '';
+    this.draft.controlled = this.sheet() === 'Controlled';
+  }
+  protected routeIcon(route: string): string {
+    return (
+      (
+        {
+          Oral: 'pill',
+          Topical: 'sanitizer',
+          Inhaler: 'air',
+          'Eye drops': 'water_drop',
+          Injection: 'syringe',
+          Patch: 'healing',
+          Other: 'medication',
+        } as Record<string, string>
+      )[route] || 'medication'
+    );
+  }
   protected readonly prn = computed(() => this.active().filter((m) => m.frequency === 'PRN'));
   protected readonly controlled = computed(() => this.active().filter((m) => m.controlled));
   protected readonly lowStock = computed(() =>
@@ -92,6 +146,21 @@ export class Medication {
   protected readonly history = computed(() =>
     [...(this.client()?.file?.administrations ?? [])].reverse(),
   );
+  protected recorderInitials(name: string): string {
+    return name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((n) => n[0])
+      .join('');
+  }
+  protected outcomeCode(outcome: string | undefined): string {
+    return (
+      ({ Given: 'G', Refused: 'R', Omitted: 'O', Absent: 'A' } as Record<string, string>)[
+        outcome ?? ''
+      ] || ''
+    );
+  }
   protected medicationName(id: string): string {
     const m = this.prescriptions().find((m) => m.id === id);
     return m ? m.name + ' ' + m.strength : 'Historical prescription';

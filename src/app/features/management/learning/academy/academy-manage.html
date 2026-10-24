@@ -1,0 +1,296 @@
+<cv-academy-admin-nav />
+<div class="heading">
+  <div>
+    <h1>Manage training</h1>
+    <p>Assign, track and manage staff learning in the current company.</p>
+  </div>
+  <a class="academy-button" routerLink="/manage/learning/reports">View training reports →</a>
+</div>
+<cv-academy-message [error]="error()" [notice]="notice()" />
+<div class="stats">
+  @for (stat of stats(); track stat.label) {
+    <div class="stat">
+      <span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span
+      ><small>{{ stat.label }}</small
+      ><strong>{{ stat.value }}</strong
+      ><small>Current assignments</small>
+    </div>
+  }
+</div>
+<section class="panel">
+  <div class="heading">
+    <h2>Filters</h2>
+    <button class="academy-button" (click)="clear()">Clear filters</button>
+  </div>
+  <div class="field-grid">
+    <label class="field"
+      >Search staff<input type="search" [(ngModel)]="search" (ngModelChange)="page = 1" /></label
+    ><label class="field"
+      >Branch<mat-select
+        cvSelect
+        aria-label="Training branch"
+        [(ngModel)]="branch"
+        (ngModelChange)="page = 1"
+        ><mat-option value="All">All branches</mat-option>
+        @for (item of branches(); track item) {
+          <mat-option [value]="item">{{ item }}</mat-option>
+        }
+      </mat-select></label
+    ><label class="field"
+      >Role<mat-select
+        cvSelect
+        aria-label="Training role"
+        [(ngModel)]="role"
+        (ngModelChange)="page = 1"
+        ><mat-option value="All">All roles</mat-option>
+        @for (item of roles(); track item) {
+          <mat-option [value]="item">{{ item }}</mat-option>
+        }
+      </mat-select></label
+    ><label class="field"
+      >Staff group<mat-select
+        cvSelect
+        aria-label="Training staff group"
+        [(ngModel)]="group"
+        (ngModelChange)="page = 1"
+        ><mat-option value="All">All staff groups</mat-option>
+        @for (item of groups(); track item) {
+          <mat-option [value]="item">{{ item }}</mat-option>
+        }
+      </mat-select></label
+    ><label class="field"
+      >Training type<mat-select
+        cvSelect
+        aria-label="Training type"
+        [(ngModel)]="type"
+        (ngModelChange)="page = 1"
+      >
+        @for (item of ['All', 'Mandatory', 'Optional']; track item) {
+          <mat-option [value]="item">{{ item }}</mat-option>
+        }
+      </mat-select></label
+    ><label class="field"
+      >Compliance status<mat-select
+        cvSelect
+        aria-label="Training compliance status"
+        [(ngModel)]="status"
+        (ngModelChange)="page = 1"
+      >
+        @for (
+          item of [
+            'All',
+            'Overdue',
+            'Expired',
+            'Due soon',
+            'Expiring soon',
+            'In progress',
+            'Not started',
+            'Completed',
+            'No assignments',
+          ];
+          track item
+        ) {
+          <mat-option [value]="item">{{ item }}</mat-option>
+        }
+      </mat-select></label
+    ><label class="field"
+      >Recurrence<mat-select
+        cvSelect
+        aria-label="Training recurrence"
+        [(ngModel)]="recurrence"
+        (ngModelChange)="page = 1"
+      >
+        @for (item of ['All', 'Recurring', 'One-off']; track item) {
+          <mat-option [value]="item">{{ item }}</mat-option>
+        }
+      </mat-select></label
+    >
+  </div>
+</section>
+<section class="panel">
+  <div class="heading">
+    <h2>{{ selectedStaff().length }} staff selected</h2>
+    <div class="actions">
+      <button
+        class="academy-button primary"
+        [disabled]="!selectedStaff().length"
+        (click)="open('assign')"
+      >
+        Assign training</button
+      ><button class="academy-button" [disabled]="!selectedStaff().length" (click)="remind()">
+        Record reminder</button
+      ><button class="academy-button" [disabled]="!selectedStaff().length" (click)="open('extend')">
+        Extend deadline</button
+      ><button
+        class="academy-button"
+        [disabled]="!selectedStaff().length"
+        (click)="open('mandatory')"
+      >
+        Assign mandatory programme
+      </button>
+    </div>
+  </div>
+  <div class="scroll" tabindex="0" role="region" aria-label="Staff training register">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">
+            <input
+              type="checkbox"
+              aria-label="Select visible staff"
+              [checked]="allSelected()"
+              (change)="selectPage($any($event.target).checked)"
+            />
+          </th>
+          <th scope="col">Staff member</th>
+          <th scope="col">Role / branch</th>
+          <th scope="col">Assigned courses</th>
+          <th scope="col">Next due date</th>
+          <th scope="col">Status</th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (person of rows(); track person.id) {
+          <tr>
+            <td>
+              <input
+                type="checkbox"
+                [attr.aria-label]="'Select ' + person.name"
+                [checked]="selected.has(person.id)"
+                (change)="toggle(person.id)"
+              />
+            </td>
+            <td>
+              <strong>{{ person.name }}</strong
+              ><small>{{ person.email }}</small>
+            </td>
+            <td>
+              {{ person.role }}<small>{{ person.location }}</small>
+            </td>
+            <td>
+              <div class="tag-list">
+                @for (assignment of assignments(person.id).slice(0, 2); track assignment.id) {
+                  <span class="badge">{{ academy.course(assignment.courseId)?.title }}</span>
+                }
+                @if (assignments(person.id).length > 2) {
+                  <small>+{{ assignments(person.id).length - 2 }}</small>
+                }
+              </div>
+            </td>
+            <td>{{ nextDue(person.id) || 'Not set' }}</td>
+            <td>
+              <span
+                class="badge"
+                [class.bad]="['Overdue', 'Expired'].includes(personStatus(person.id))"
+                [class.good]="personStatus(person.id) === 'Completed'"
+                >{{ personStatus(person.id) }}</span
+              >
+            </td>
+            <td>
+              <a
+                class="academy-button"
+                routerLink="/staff-portal/training"
+                [queryParams]="{ person: person.id }"
+                >Preview learning</a
+              >
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7" class="empty">No staff match these filters.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="pagination">
+    <span>{{ filtered().length }} staff · Page {{ page }} of {{ pages() }}</span
+    ><button class="academy-button" [disabled]="page <= 1" (click)="page = page - 1">
+      Previous</button
+    ><button class="academy-button" [disabled]="page >= pages()" (click)="page = page + 1">
+      Next
+    </button>
+  </div>
+</section>
+@if (drawer()) {
+  <div class="drawer-backdrop" (click)="close()"></div>
+  <section
+    class="drawer"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="assignment-heading"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+    (keydown.escape)="close()"
+  >
+    <div class="heading">
+      <h2 id="assignment-heading">
+        {{ drawer() === 'extend' ? 'Extend training deadlines' : 'Assign training' }}
+      </h2>
+      <button class="academy-button" aria-label="Close assignment" (click)="close()">×</button>
+    </div>
+    <p>{{ selectedStaff().length }} staff selected.</p>
+    <details>
+      <summary>View selected staff</summary>
+      @for (person of selectedStaff(); track person.id) {
+        <p>{{ person.name }} · {{ person.role }}</p>
+      }
+    </details>
+    <cv-academy-message [error]="error()" />
+    @if (drawer() !== 'extend') {
+      <h2>Courses to assign</h2>
+      <label class="field">Search courses<input type="search" [(ngModel)]="courseSearch" /></label>
+      @for (course of courses(); track course.id) {
+        <label class="check"
+          ><input
+            type="checkbox"
+            [checked]="courseIds.has(course.id)"
+            (change)="toggleCourse(course.id)"
+          /><span
+            >{{ course.title
+            }}<small
+              >{{ course.cpdHours }} CPD hours · {{ course.mandatory ? 'Mandatory' : 'Optional'
+              }}{{ course.sample ? ' · Sample' : '' }}</small
+            ></span
+          ></label
+        >
+      }
+      <label class="field"
+        >Recurrence<mat-select
+          cvSelect
+          aria-label="Assignment recurrence"
+          [(ngModel)]="recurrenceMonths"
+        >
+          @for (months of [0, 6, 12, 24]; track months) {
+            <mat-option [value]="months">{{
+              months ? 'Every ' + months + ' months' : 'No recurrence'
+            }}</mat-option>
+          }
+        </mat-select></label
+      ><label class="check"
+        ><input type="checkbox" [(ngModel)]="renew" />Start a new learning cycle and archive any
+        current assignment</label
+      ><label class="check"
+        ><input type="checkbox" [(ngModel)]="notify" />Record a portal notification for staff</label
+      ><label class="field"
+        >Message (optional)<textarea rows="3" [(ngModel)]="message"></textarea>
+      </label>
+    }
+    <label class="field">Due date<input type="date" [(ngModel)]="due" /></label>
+    <div class="notice">
+      Notifications are stored in this device’s portal. Recurrence is recorded for refresher
+      planning; it does not silently create a new course cycle.
+    </div>
+    <div class="footer actions">
+      <button class="academy-button" (click)="close()">Cancel</button
+      ><button class="academy-button primary" (click)="submit()">
+        {{
+          drawer() === 'extend'
+            ? 'Extend deadlines'
+            : 'Assign to ' + selectedStaff().length + ' staff'
+        }}
+      </button>
+    </div>
+  </section>
+}

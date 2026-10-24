@@ -1,0 +1,279 @@
+<section class="profile-panel services-panel">
+  <header>
+    <h2>
+      <span class="material-symbols-outlined" aria-hidden="true">settings</span>Services Required
+    </h2>
+    <a routerLink="/manage/rota/call-packages" [queryParams]="{ client: client().id }"
+      ><span class="material-symbols-outlined" aria-hidden="true">settings</span>Manage Services</a
+    >
+  </header>
+  <div class="service-strip">
+    @for (call of calls(); track call.id) {
+      <a class="service-tile" [routerLink]="['/manage/clients', client().id, 'visits']"
+        ><span
+          class="material-symbols-outlined"
+          [attr.data-kind]="callIcon(call.name)"
+          aria-hidden="true"
+          >{{ callIcon(call.name) }}</span
+        >
+        <div>
+          <strong>{{ call.name }}</strong
+          ><small>{{ frequency(call.weekdays) }} · {{ call.start }}</small>
+        </div></a
+      >
+    } @empty {
+      <p class="empty">No services recorded. Add a call package to set up care services.</p>
+    }
+  </div>
+</section>
+<div class="profile-columns">
+  <div class="profile-column">
+    <section class="profile-panel" aria-labelledby="personal-title">
+      <header>
+        <h2 id="personal-title">
+          <span class="material-symbols-outlined" aria-hidden="true">person</span>Personal Details
+        </h2>
+        @if (rota.can('manage')) {
+          <button (click)="edit.emit('details')">
+            <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
+          </button>
+        }
+      </header>
+      <dl>
+        <div>
+          <dt>Full name</dt>
+          <dd>{{ client().name }}</dd>
+        </div>
+        <div>
+          <dt>Date of birth</dt>
+          <dd>
+            @if (file()?.details?.['dob']) {
+              {{ file()!.details['dob'] | date: 'dd MMMM yyyy' }} ({{ age(file()!.details['dob']) }}
+              years)
+            } @else {
+              Not recorded
+            }
+          </dd>
+        </div>
+        @for (row of personal(); track row.label) {
+          <div>
+            <dt>{{ row.label }}</dt>
+            <dd>
+              {{ row.value }}
+              @if (row.section) {
+                <button class="inline-link" (click)="open.emit(row.section)">View details</button>
+              }
+            </dd>
+          </div>
+        }
+      </dl>
+      <a
+        class="map-link"
+        [href]="'https://www.google.com/maps/search/?api=1&query=' + client().postcode"
+        target="_blank"
+        rel="noopener noreferrer"
+        ><span class="material-symbols-outlined" aria-hidden="true">location_on</span>View on map</a
+      >
+    </section>
+    <section class="profile-panel">
+      <header>
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">group</span>Next of Kin /
+          Emergency Contact
+        </h2>
+        @if (rota.can('manage')) {
+          <a [routerLink]="['/manage/clients', client().id, 'contacts']"
+            ><span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit</a
+          >
+        }
+      </header>
+      <dl>
+        <div>
+          <dt>Name</dt>
+          <dd>{{ contact()?.name || 'Not recorded' }}</dd>
+        </div>
+        <div>
+          <dt>Relationship</dt>
+          <dd>{{ contact()?.relationship || 'Not recorded' }}</dd>
+        </div>
+        <div>
+          <dt>Phone</dt>
+          <dd>
+            @if (contact()?.phone) {
+              <a [href]="'tel:' + contact()!.phone">{{ contact()!.phone }}</a>
+            } @else {
+              Not recorded
+            }
+          </dd>
+        </div>
+        <div>
+          <dt>Email</dt>
+          <dd>
+            @if (contact()?.email) {
+              <a [href]="'mailto:' + contact()!.email">{{ contact()!.email }}</a>
+            } @else {
+              Not recorded
+            }
+          </dd>
+        </div>
+        <div>
+          <dt>Other contacts</dt>
+          <dd>
+            <a [routerLink]="['/manage/clients', client().id, 'contacts']">View all contacts</a>
+          </dd>
+        </div>
+      </dl>
+    </section>
+  </div>
+  <div class="profile-column">
+    <section class="profile-panel" aria-labelledby="health-title">
+      <header>
+        <h2 id="health-title">
+          <span class="material-symbols-outlined" aria-hidden="true">cardiology</span>Health
+          Conditions
+        </h2>
+        @if (rota.can('manage')) {
+          <button (click)="edit.emit('diagnoses')">
+            <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
+          </button>
+        }
+      </header>
+      <dl>
+        @for (row of health(); track row.label) {
+          <div>
+            <dt>{{ row.label }}</dt>
+            <dd>
+              <span
+                [class]="
+                  row.value === 'Not recorded'
+                    ? 'unrecorded'
+                    : row.tone
+                      ? 'fact-status ' + row.tone
+                      : ''
+                "
+                >{{ row.value }}</span
+              >
+              @if (row.section) {
+                @if (row.section === 'medication') {
+                  <a
+                    class="inline-link"
+                    [routerLink]="['/manage/clients', client().id, 'medication']"
+                    >View MAR</a
+                  >
+                } @else {
+                  <button class="inline-link" (click)="open.emit(row.section)">
+                    View {{ row.section }}
+                  </button>
+                }
+              }
+            </dd>
+          </div>
+        }
+      </dl>
+    </section>
+    <section class="profile-panel">
+      <header>
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">volunteer_activism</span
+          >Support Needs
+        </h2>
+        @if (rota.can('manage')) {
+          <button (click)="edit.emit('support')">
+            <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
+          </button>
+        }
+      </header>
+      <dl class="support-facts">
+        @for (row of support(); track row.label) {
+          <div>
+            <dt>{{ row.label }}</dt>
+            <dd>{{ row.value }}</dd>
+          </div>
+        }
+      </dl>
+    </section>
+  </div>
+  <div class="profile-column">
+    <section class="profile-panel">
+      <header>
+        <h2><span class="material-symbols-outlined" aria-hidden="true">chat</span>Communication</h2>
+        @if (rota.can('manage')) {
+          <button (click)="edit.emit('diagnoses')">
+            <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
+          </button>
+        }
+      </header>
+      <dl>
+        @for (row of communication(); track row.label) {
+          <div>
+            <dt>{{ row.label }}</dt>
+            <dd>{{ row.value }}</dd>
+          </div>
+        }
+      </dl>
+    </section>
+    <section class="profile-panel preferences-panel">
+      <header>
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">sentiment_satisfied</span
+          >Likes, Dislikes & Personal Information
+        </h2>
+        @if (rota.can('manage')) {
+          <button (click)="edit.emit('details')">
+            <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
+          </button>
+        }
+      </header>
+      <div class="preferences">
+        <div class="likes">
+          <h3><span class="material-symbols-outlined" aria-hidden="true">favorite</span>Likes</h3>
+          <p>{{ details('likes') }}</p>
+        </div>
+        <div class="dislikes">
+          <h3><span class="material-symbols-outlined" aria-hidden="true">cancel</span>Dislikes</h3>
+          <p>{{ details('dislikes') }}</p>
+        </div>
+      </div>
+      <div class="important">
+        <span class="material-symbols-outlined" aria-hidden="true">info</span>
+        <div>
+          <h3>Important Notes · What matters to me</h3>
+          <p>{{ details('about') }}</p>
+        </div>
+      </div>
+    </section>
+    <section class="profile-panel record-safeguards">
+      <header>
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Care Record &
+          Review
+        </h2>
+      </header>
+      <dl>
+        <div>
+          <dt>Care plan</dt>
+          <dd>
+            <button class="inline-link" (click)="open.emit('plan')">
+              {{ section('plan', 'name') }}</button
+            ><span class="secondary">{{ review() }}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Consent</dt>
+          <dd>
+            <button class="inline-link" (click)="open.emit('consent')">
+              {{ section('consent', 'status') }}
+            </button>
+          </dd>
+        </div>
+        <div>
+          <dt>Risk assessments</dt>
+          <dd>
+            {{ entries('risks')
+            }}<button class="inline-link" (click)="open.emit('risks')">View risks</button>
+          </dd>
+        </div>
+      </dl>
+    </section>
+  </div>
+</div>

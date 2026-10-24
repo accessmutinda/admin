@@ -10,8 +10,8 @@
           clientFiles
             ? 'Service users & client files'
             : section
-              ? 'Visits & Rota · ' + sectionTitle
-              : 'Visits & Rota'
+              ? 'Visits & Allocation · ' + sectionTitle
+              : 'Visits & Allocation'
         }}
       </h1>
       <p>
@@ -42,7 +42,7 @@
     feature="Rota"
     module="Care delivery"
     viewPermission="View rota"
-    permissionsTitle="Visits & Rota access"
+    permissionsTitle="Visits & Allocation access"
   />
 } @else {
   @if (!clientFiles) {

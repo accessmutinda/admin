@@ -45,9 +45,9 @@ import { ModuleDesign } from '../shared/module-design';
           class="staff-navigation"
           aria-label="Staff portal navigation"
         >
-          @for (item of links; track item.path) {
+          @for (item of visibleLinks(); track item.path) {
             <a
-              [routerLink]="['/staff-portal', item.path]"
+              [routerLink]="portalLink(item.path)"
               routerLinkActive="active"
               ariaCurrentWhenActive="page"
               (click)="menuOpen.set(false)"
@@ -151,12 +151,26 @@ export class PortalShell {
   );
   protected readonly links = [
     { path: 'dashboard', label: 'My dashboard', icon: 'space_dashboard' },
+    { path: 'training/dashboard', label: 'My training', icon: 'school' },
+    { path: 'training/courses', label: 'Course library', icon: 'menu_book' },
+    { path: 'training/assessments', label: 'Assessments', icon: 'assignment' },
+    { path: 'training/certificates', label: 'Certificates', icon: 'workspace_premium' },
     { path: 'journal', label: 'Journal & messages', icon: 'forum' },
     { path: 'tasks', label: 'Staff & tasks', icon: 'assignment' },
     { path: 'concerns', label: 'Concerns', icon: 'health_and_safety' },
     { path: 'service-users', label: 'Service users', icon: 'groups' },
     { path: 'oversight', label: 'Manager oversight', icon: 'monitoring' },
   ];
+  protected portalLink(path: string): string[] {
+    return ['/staff-portal', ...path.split('/')];
+  }
+  protected visibleLinks() {
+    return this.links.filter(
+      (item) =>
+        !item.path.startsWith('training/') ||
+        this.store.company()?.modules.includes('Training academy'),
+    );
+  }
   protected search(event: Event, term: string): void {
     event.preventDefault();
     void this.router.navigate(['/staff-portal/service-users'], {

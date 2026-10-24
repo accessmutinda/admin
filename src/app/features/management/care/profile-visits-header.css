@@ -1,0 +1,162 @@
+:host {
+  display: block;
+  min-width: 0;
+  color: #123352;
+  font-size: 12px;
+}
+* {
+  box-sizing: border-box;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+h1,
+h2,
+h3 {
+  color: #06376b;
+}
+h1 {
+  font-size: 21px;
+  line-height: 1.25;
+}
+h2 {
+  font-size: 14px;
+  line-height: 1.3;
+}
+h3 {
+  font-size: 11px;
+}
+p {
+  color: #657184;
+  line-height: 1.4;
+}
+a {
+  color: #0759ae;
+  text-decoration: none;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+button,
+select,
+input,
+textarea,
+.period {
+  border: 1px solid #dfe8ee;
+  border-radius: 4px;
+  background: #fff;
+}
+button {
+  padding: 8px 12px;
+  min-height: 36px;
+}
+button:hover {
+  background: #eff7ff;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #008afa;
+  outline-offset: 2px;
+}
+.material-symbols-outlined {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.breadcrumb {
+  display: flex;
+  gap: 7px;
+  font-size: 10px;
+  margin-bottom: 5px;
+}
+.visits-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: var(--profile-section-gap);
+}
+.visits-heading p {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.period {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-weight: 600;
+  color: #06376b;
+}
+.primary {
+  background: #063b64;
+  color: #fff;
+  border-color: #063b64;
+  font-weight: 600;
+}
+.primary:hover {
+  background: #075486;
+}
+.view-picker select {
+  height: 36px;
+  padding: 0 8px;
+}
+.visits-panel {
+  border: 1px solid #e0eaf1;
+  border-radius: 6px;
+  background: linear-gradient(120deg, #fff, #fcfeff);
+  min-width: 0;
+}
+[data-tone='red'] {
+  color: #d42950;
+  background: #fdeef1;
+}
+[data-tone='amber'] {
+  color: #ab660c;
+  background: #fff9eb;
+}
+[data-tone='green'] {
+  color: #078569;
+  background: #e9faf3;
+}
+[data-tone='blue'] {
+  color: #0759ae;
+  background: #edf3ff;
+}
+[data-tone='purple'] {
+  color: #a14ce3;
+}
+[data-tone='muted'] {
+  color: #6f8191;
+  background: #f2f6f9;
+}
+
+:host header.visits-heading div h1 {
+  font: 800 26px/1.2 var(--font-sans);
+  color: #06376b;
+}
+.visits-panel {
+  box-shadow: 0 1px 4px #123c5412;
+}

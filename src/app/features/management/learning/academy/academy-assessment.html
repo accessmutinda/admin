@@ -1,0 +1,379 @@
+<cv-academy-message [error]="error()" [notice]="notice()" />
+@if (attempt(); as a) {
+  @if (!academy.owns(a.personId)) {
+    <div class="notice">
+      Administrator preview · Assessment answers and submission are read-only.
+    </div>
+  }
+  @if (result() && a.submittedAt) {
+    <a [routerLink]="['/staff-portal/training/courses', a.courseId]" [queryParams]="context()"
+      >← Back to course</a
+    >
+    <div class="heading">
+      <div>
+        <h1>Assessment result</h1>
+        <p>{{ a.courseTitle }} · Course version {{ a.courseVersion }}</p>
+      </div>
+      <a
+        class="academy-button"
+        routerLink="/staff-portal/training/assessments"
+        [queryParams]="context()"
+        >All assessments →</a
+      >
+    </div>
+    <div class="columns">
+      <div>
+        <section class="result-banner" [class.failed]="!a.passed">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">{{
+              a.passed ? 'check_circle' : 'error'
+            }}</span
+            >{{ a.passed ? 'Well done! Assessment passed.' : 'Result: Failed' }}
+          </h2>
+          <p>
+            {{
+              a.passed
+                ? 'Your result has been recorded. Your course completion certificate is available below.'
+                : 'Review your feedback and the recommended topics, then try again when you are ready.'
+            }}
+          </p>
+          <div class="grid">
+            <div>
+              <small>Your score</small>
+              <div class="score">{{ a.score }}%</div>
+              <p>{{ correctCount() }} of {{ a.questions.length }} questions correct</p>
+            </div>
+            <div>
+              <small>Pass mark</small>
+              <div class="score">{{ a.passMark }}%</div>
+              <p>Weighted marks are used when questions carry different marks.</p>
+            </div>
+          </div>
+          <div class="actions">
+            @if (a.passed && certificate(); as c) {
+              <a
+                class="academy-button"
+                [routerLink]="['/staff-portal/training/certificates', c.id]"
+                [queryParams]="context()"
+                >View certificate ↗</a
+              ><button class="academy-button primary" (click)="download()">
+                Download certificate PDF ↓
+              </button>
+            } @else {
+              <button
+                class="academy-button primary"
+                [disabled]="!remaining() || !academy.owns(a.personId)"
+                (click)="retry()"
+              >
+                Retry assessment</button
+              ><button
+                class="academy-button"
+                [disabled]="!a.showFeedback"
+                (click)="review.set(!review())"
+              >
+                {{ review() ? 'Hide answer review' : 'Review answers' }}</button
+              ><button
+                class="academy-button"
+                [disabled]="!academy.owns(a.personId)"
+                (click)="notifyManager()"
+              >
+                Notify my training manager
+              </button>
+            }
+          </div>
+        </section>
+        <section class="panel">
+          <h2>{{ a.passed ? 'Your strengths by topic' : 'Your performance by topic' }}</h2>
+          @for (topic of topics(); track topic.topic) {
+            <div class="topic">
+              <span>{{ topic.topic }}</span
+              ><progress
+                max="100"
+                [value]="topic.score"
+                [attr.aria-label]="topic.topic + ' result'"
+              >
+                {{ topic.score }}%</progress
+              ><strong>{{ topic.score }}%</strong>
+            </div>
+          }
+        </section>
+        @if (!a.passed) {
+          <section class="panel">
+            <h2>Key areas to review</h2>
+            @for (topic of topics(); track topic.topic) {
+              @if (topic.score < a.passMark) {
+                <div class="list-item">
+                  <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+                  <div>
+                    <strong>{{ topic.topic }}</strong
+                    ><small
+                      >Review the lesson content and question explanations for this topic.</small
+                    >
+                  </div>
+                  <a
+                    class="academy-button"
+                    [routerLink]="['/staff-portal/training/courses', a.courseId]"
+                    [queryParams]="context()"
+                    >Review course</a
+                  >
+                </div>
+              }
+            }
+          </section>
+        }
+        @if (review() && a.showFeedback) {
+          <section class="panel">
+            <h2>Answer review</h2>
+            @for (q of a.questions; track q.id) {
+              <article class="panel">
+                <h3>{{ q.text }}</h3>
+                <span
+                  class="badge"
+                  [class.good]="questionCorrect(q, a.answers[q.id] || [])"
+                  [class.bad]="!questionCorrect(q, a.answers[q.id] || [])"
+                  >{{
+                    questionCorrect(q, a.answers[q.id] || []) ? 'Correct' : 'Incorrect / unanswered'
+                  }}</span
+                >
+                @for (option of q.options; track option.id) {
+                  <p>
+                    <strong>{{
+                      q.correctIds.includes(option.id) ? '✓ Correct answer: ' : ''
+                    }}</strong
+                    >{{ option.text
+                    }}{{ a.answers[q.id]?.includes(option.id) ? ' · Your answer' : '' }}
+                  </p>
+                }
+                <p class="preserve">{{ q.explanation }}</p>
+                <p class="preserve">
+                  {{
+                    questionCorrect(q, a.answers[q.id] || [])
+                      ? q.correctFeedback
+                      : q.incorrectFeedback
+                  }}
+                </p>
+              </article>
+            }
+          </section>
+        }
+        <a
+          class="academy-button"
+          routerLink="/staff-portal/training/courses"
+          [queryParams]="context()"
+          >Continue learning →</a
+        >
+      </div>
+      <aside>
+        <section class="panel">
+          <h2>Attempt summary</h2>
+          <div class="list-item">
+            <strong>Attempt</strong><span>{{ attemptNumber() }}</span>
+          </div>
+          <p>Submitted {{ a.submittedAt | ukDate: 'd MMM yyyy, HH:mm' : 'Europe/London' }}</p>
+          <p>{{ minutesTaken() }} minutes taken · {{ a.questions.length }} questions</p>
+          <p>
+            {{ correctCount() }} correct · {{ a.questions.length - correctCount() }} incorrect /
+            unanswered
+          </p>
+          <p>{{ remaining() }} attempts remaining for this assignment.</p>
+          @if (certificate(); as c) {
+            <p>
+              <strong>{{ c.cpdHours }} CPD hours</strong> recorded with this course completion.
+            </p>
+          }
+        </section>
+        <section class="panel">
+          <h2>Progress history</h2>
+          @for (attempt of history(); track attempt.id; let i = $index) {
+            <article class="history-item">
+              <strong
+                >Attempt {{ i + 1 }} ·
+                {{ attempt.submittedAt ? attempt.score + '%' : 'In progress' }}</strong
+              ><small>{{
+                attempt.startedAt | ukDate: 'd MMM yyyy, HH:mm' : 'Europe/London'
+              }}</small>
+              <p>
+                {{ attempt.submittedAt ? (attempt.passed ? 'Passed' : 'Failed') : 'In progress' }}
+              </p>
+            </article>
+          }
+        </section>
+        <section class="panel">
+          <h2>What happens next?</h2>
+          <p>
+            {{
+              a.passed
+                ? 'Your result and certificate are saved in your learning record. This does not overwrite verified practical competency records.'
+                : remaining()
+                  ? 'Revisit the course, review your answers if feedback is enabled, then use an available attempt.'
+                  : 'No attempts remain. Ask your training manager to review your learning plan.'
+            }}
+          </p>
+        </section>
+      </aside>
+    </div>
+  } @else if (!a.submittedAt) {
+    <div [class.large-text]="largeText" [class.high-contrast]="highContrast">
+      <div class="heading">
+        <div>
+          <a [routerLink]="['/staff-portal/training/courses', a.courseId]" [queryParams]="context()"
+            >← Back to course</a
+          >
+          <h1>{{ a.courseTitle }} assessment</h1>
+          <p>
+            Answer each required question. Responses are saved on this device and the timer
+            continues after exit.
+          </p>
+        </div>
+        <a
+          class="academy-button"
+          routerLink="/staff-portal/training/assessments"
+          [queryParams]="context()"
+          >Exit assessment</a
+        >
+      </div>
+      <section class="panel actions">
+        <label class="check"
+          ><input type="checkbox" [(ngModel)]="largeText" />Larger question text</label
+        ><label class="check"
+          ><input type="checkbox" [(ngModel)]="highContrast" />High contrast answer borders</label
+        >
+      </section>
+      <div class="columns">
+        <section class="panel">
+          <div class="heading">
+            <strong>Question {{ index() + 1 }} of {{ a.questions.length }}</strong
+            ><span>{{ answered() }} answered</span>
+          </div>
+          <progress
+            max="100"
+            [value]="a.questions.length ? (answered() / a.questions.length) * 100 : 0"
+            aria-label="Assessment answered progress"
+          ></progress>
+          <div class="notice heading">
+            <div>
+              <small>Time remaining</small>
+              <div class="timer" role="timer" aria-label="Time remaining">{{ timer() }}</div>
+            </div>
+            <div>
+              <small>Pass mark</small><strong>{{ a.passMark }}%</strong>
+            </div>
+            <button class="academy-button" [disabled]="!canEdit()" (click)="flag()">
+              {{
+                a.flags.includes(question()?.id || '') ? 'Unflag question' : 'Flag this question'
+              }}
+            </button>
+          </div>
+          @if (question(); as q) {
+            @if (q.scenario) {
+              <div class="scenario preserve question-copy">{{ q.scenario }}</div>
+            }
+            <h2 class="question-copy">{{ q.text }}</h2>
+            <p>
+              {{
+                q.type === 'Multiple choice' ? 'Select every correct answer.' : 'Select one answer.'
+              }}
+              · {{ q.weight }} marks{{ q.required ? ' · Required' : '' }}
+            </p>
+            @if (q.imageId) {
+              <cv-academy-image
+                class="question-image"
+                [id]="q.imageId"
+                alt="Question illustration"
+              />
+            }
+            <div role="group" [attr.aria-label]="q.text">
+              @for (option of q.options; track option.id) {
+                <label
+                  class="question-option"
+                  [class.selected]="a.answers[q.id]?.includes(option.id)"
+                  ><input
+                    [type]="q.type === 'Multiple choice' ? 'checkbox' : 'radio'"
+                    [name]="q.id"
+                    [checked]="a.answers[q.id]?.includes(option.id)"
+                    [disabled]="!canEdit()"
+                    (change)="choose(option.id, $event)"
+                  /><span class="question-copy">{{ option.text }}</span></label
+                >
+              }
+            </div>
+          }
+          <div class="heading">
+            <button
+              class="academy-button"
+              [disabled]="index() === 0"
+              (click)="index.set(index() - 1)"
+            >
+              ← Previous
+            </button>
+            @if (index() < a.questions.length - 1) {
+              <button class="academy-button primary" (click)="index.set(index() + 1)">
+                Next question →
+              </button>
+            } @else {
+              <button
+                class="academy-button primary"
+                [disabled]="!academy.owns(a.personId)"
+                (click)="submit()"
+              >
+                Submit assessment
+              </button>
+            }
+          </div>
+        </section>
+        <aside>
+          <section class="panel">
+            <h2>Question navigation</h2>
+            <p>✓ Answered · Outline: current · ⚑ Flagged</p>
+            <div class="question-nav">
+              @for (q of a.questions; track q.id; let i = $index) {
+                <button
+                  [class.current]="index() === i"
+                  [class.answered]="!!a.answers[q.id]?.length"
+                  [class.flagged]="a.flags.includes(q.id)"
+                  [attr.aria-label]="
+                    'Question ' +
+                    (i + 1) +
+                    (a.answers[q.id]?.length ? ', answered' : ', unanswered') +
+                    (a.flags.includes(q.id) ? ', flagged' : '')
+                  "
+                  [attr.aria-current]="index() === i ? 'step' : null"
+                  (click)="index.set(i)"
+                >
+                  {{ i + 1 }}
+                </button>
+              }
+            </div>
+          </section>
+          <section class="panel">
+            <h2>Assessment summary</h2>
+            <p>Total questions: {{ a.questions.length }}</p>
+            <p>Answered: {{ answered() }}</p>
+            <p>Unanswered: {{ a.questions.length - answered() }}</p>
+            <p>Required score: {{ a.passMark }}%</p>
+            <div class="notice">
+              Answers and question order are saved for this attempt. Exiting does not pause the time
+              limit.
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  } @else {
+    <section class="panel">
+      <h1>This assessment is already submitted</h1>
+      <a
+        class="academy-button"
+        [routerLink]="['/staff-portal/training/results', a.id]"
+        [queryParams]="context()"
+        >View result →</a
+      >
+    </section>
+  }
+} @else {
+  <section class="panel empty">
+    <h1>Assessment unavailable</h1>
+    <p>This assessment is not available to your account in the current workspace.</p>
+    <a class="academy-button" routerLink="/staff-portal/training">Return to my training</a>
+  </section>
+}

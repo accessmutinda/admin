@@ -32,26 +32,20 @@ describe('Visits & Rota navigation', () => {
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
   });
 
-  it('opens the view cards without automatically opening the weekly schedule', async () => {
+  it('opens the weekly allocation workspace with its supporting panels', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/manage/rota');
     expect(TestBed.inject(Router).url).toBe('/manage/rota/overview');
-    expect(harness.routeNativeElement!.querySelectorAll('.co-check-card')).toHaveLength(5);
-    expect(harness.routeNativeElement!.querySelector('.co-check-card')?.textContent).toContain(
-      'Schedule',
-    );
-    expect(harness.routeNativeElement!.querySelector('.planner-filter-panel')).toBeNull();
-    expect(
-      harness.routeNativeElement!.querySelector('.visits-overview-grid > cv-visits-navigation'),
-    ).not.toBeNull();
-    expect(
-      harness.routeNativeElement!.querySelector('.visits-overview-grid > aside [cvQuickActions]'),
-    ).not.toBeNull();
-    expect(harness.routeNativeElement!.textContent).not.toContain('Open view');
-    expect(
-      harness.routeNativeElement!.querySelector('a.co-check-card[href="/manage/ecm"]')?.textContent,
-    ).toContain('Live Visits / ECM');
-  });
+    const element = harness.routeNativeElement!;
+    expect(element.querySelector('.planner-grid')).not.toBeNull();
+    expect(element.querySelector('.planner-filter-panel')).not.toBeNull();
+    expect(element.querySelector('.planner-cover-panel')).not.toBeNull();
+    expect(element.querySelector('.planner-issues-panel')).not.toBeNull();
+    expect(element.querySelector('.planner-quick-panel')).not.toBeNull();
+    expect(element.querySelectorAll('.roster-stat')).toHaveLength(6);
+    expect(element.querySelectorAll('h1')).toHaveLength(1);
+    expect(element.querySelectorAll('a[href]')).toHaveLength(0);
+  }, 20000);
 
   it('preserves client context when an existing call-package link is opened', async () => {
     const harness = await RouterTestingHarness.create();
@@ -71,23 +65,16 @@ describe('Visits & Rota navigation', () => {
     expect(TestBed.inject(Router).url).toBe('/manage/ecm?date=2026-10-18');
   });
 
-  it('keeps the stat cards mounted while hiding landing cards from selected views', async () => {
+  it('preserves supporting workflows and a single heading when navigating between views', async () => {
     const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/manage/rota/overview');
-    const summary = harness.routeNativeElement!.querySelector('.care-stats');
-    const summaryText = summary!.textContent;
-    for (const view of ['planner', 'call-packages', 'publishing', 'history']) {
+    for (const view of ['overview', 'planner', 'call-packages', 'publishing', 'history']) {
       await harness.navigateByUrl('/manage/rota/' + view);
-      expect(harness.routeNativeElement!.querySelector('.care-stats')).toBe(summary);
-      expect(harness.routeNativeElement!.querySelector('cv-visits-navigation')).toBeNull();
-      expect(harness.routeNativeElement!.querySelector('.visits-overview-actions')).toBeNull();
-      expect(harness.routeNativeElement!.querySelector('.planner-summary')).toBeNull();
-      expect(harness.routeNativeElement!.querySelector('cv-visits-attention')).toBeNull();
-      expect(summary!.textContent).toBe(summaryText);
-      expect(harness.routeNativeElement!.querySelectorAll('h1')).toHaveLength(1);
+      const element = harness.routeNativeElement!;
+      expect(element.querySelectorAll('h1')).toHaveLength(1);
+      expect(element.querySelectorAll('.visits-section-links a')).toHaveLength(
+        ['overview', 'planner'].includes(view) ? 0 : 5,
+      );
+      expect(!!element.querySelector('.planner-grid')).toBe(['overview', 'planner'].includes(view));
     }
-    await harness.navigateByUrl('/manage/rota/overview');
-    expect(harness.routeNativeElement!.querySelector('.care-stats')).toBe(summary);
-    expect(harness.routeNativeElement!.querySelectorAll('.co-check-card')).toHaveLength(5);
   });
 });

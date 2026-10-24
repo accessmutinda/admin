@@ -69,6 +69,102 @@ describe('Rota allocation and publishing', () => {
     expect(service.saveClient(client())).toBeNull();
     expect(service.saveCall(call())).toBeNull();
   });
+  it('plans selected weekdays and requirements without changing existing visit snapshots', () => {
+    expect(service.generate('client', ['call'], '2026-10-05', '2026-10-05', ['james'])).toBeNull();
+    const original = structuredClone(service.data().visits[0]);
+    expect(
+      service.generate('client', ['call'], '2026-10-05', '2026-10-11', ['james'], 'Regular', {
+        weekdays: [1, 3, 5],
+        start: '09:00',
+        durationMinutes: 30,
+        carers: 1,
+        backupStaffId: 'maria',
+        medicationSupport: false,
+        notes: 'Continuity instructions',
+        travelMinutes: 30,
+      }),
+    ).toBeNull();
+    expect(service.data().visits).toHaveLength(3);
+    expect(service.data().visits[0]).toEqual(original);
+    expect(service.data().visits[1]).toMatchObject({
+      date: '2026-10-07',
+      start: '09:00',
+      end: '09:30',
+      backupStaffId: 'maria',
+      travelMinutes: 30,
+      tasks: 'Continuity instructions',
+    });
+    expect(service.data().calls[0]).toMatchObject({
+      start: '09:00',
+      weekdays: [1, 3, 5],
+      regularStaffIds: ['james'],
+    });
+  });
+  it('keeps temporary allocation settings separate from permanent call packages', () => {
+    const original = structuredClone(service.data().calls[0]);
+    expect(
+      service.generate(
+        'client',
+        ['call'],
+        '2026-10-06',
+        '2026-10-06',
+        ['james', 'maria'],
+        'Temporary',
+        {
+          weekdays: [2],
+          start: '10:00',
+          durationMinutes: 45,
+          carers: 2,
+          backupStaffId: '',
+          medicationSupport: false,
+          notes: 'Temporary double-up',
+          travelMinutes: 20,
+        },
+      ),
+    ).toBeNull();
+    expect(service.data().calls[0]).toEqual(original);
+    expect(service.data().visits[0]).toMatchObject({
+      carers: 2,
+      staffIds: ['james', 'maria'],
+      allocation: 'Temporary',
+      start: '10:00',
+    });
+  });
+  it('rejects invalid recurrence settings before saving calls or visits', () => {
+    const before = structuredClone(service.data());
+    expect(
+      service.generate('client', ['call'], '2026-10-06', '2026-10-06', ['james'], 'Regular', {
+        weekdays: [],
+        durationMinutes: 30,
+        carers: 1,
+        backupStaffId: '',
+        medicationSupport: false,
+        notes: '',
+        travelMinutes: 15,
+      }),
+    ).toContain('weekdays');
+    expect(service.data()).toEqual(before);
+  });
+  it('uses the allocated travel buffer when checking another service user', () => {
+    service.saveClient(client('other'));
+    service.saveCall(call('other-call', 'other', '09:00', '09:30'));
+    expect(
+      service.generate('client', ['call'], '2026-10-06', '2026-10-06', ['james'], 'Temporary', {
+        weekdays: [2],
+        start: '08:00',
+        durationMinutes: 45,
+        carers: 1,
+        backupStaffId: '',
+        medicationSupport: false,
+        notes: '',
+        travelMinutes: 30,
+      }),
+    ).toBeNull();
+    expect(
+      service.generate('other', ['other-call'], '2026-10-06', '2026-10-06', ['james']),
+    ).toContain('travel');
+    expect(service.data().visits).toHaveLength(1);
+  });
   it('suggests suitable carers without mutating visits and rechecks stale previews', () => {
     expect(service.generate('client', ['call'], '2026-10-06', '2026-10-06')).toBeNull();
     const visit = service.data().visits[0];

@@ -8,11 +8,11 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
     <section class="co-surface visits-views" aria-labelledby="visits-views-title">
       <div class="co-section-header">
         <h2 id="visits-views-title">
-          <span class="material-symbols-outlined" aria-hidden="true">dashboard</span>Visits & Rota
+          <span class="material-symbols-outlined" aria-hidden="true">dashboard</span>Visits & Allocation
           views
         </h2>
       </div>
-      <nav class="co-check-grid" aria-label="Visits & Rota views">
+      <nav class="co-check-grid" aria-label="Visits & Allocation views">
         @for (item of items; track item.path) {
           <a
             class="co-check-card"

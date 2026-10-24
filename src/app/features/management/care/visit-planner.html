@@ -2,465 +2,689 @@
 @if (service.can('view')) {
   @if (clientId()) {
     @if (client(); as c) {
-      <cv-care-header [client]="c" />
+      <cv-profile-visits [client]="c" (visitSelected)="edit($event)" />
     } @else {
       <p class="care-error">Service user unavailable.</p>
     }
   }
   @if (!clientId() || client()) {
-    @if (!workspaceView) {
-      <div class="care-heading">
-        <div>
-          <h1>{{ clientId() ? 'Visits & Allocation' : 'Visits & Rota' }}</h1>
-          <p>
-            {{
-              clientId()
-                ? 'Schedules, recurring calls and care continuity.'
-                : 'Plan visits, allocate staff and review workforce coverage.'
-            }}
-          </p>
-        </div>
-        <div class="care-actions">
-          <div class="planner-period-navigation" role="group" aria-label="Schedule period">
-            <button class="care-button" (click)="move(-1)" aria-label="Previous period">‹</button>
-            <label class="planner-period"
-              >Period<input type="date" [ngModel]="anchor()" (ngModelChange)="changeDate($event)"
-            /></label>
-            <button class="care-button" (click)="move(1)" aria-label="Next period">›</button>
+    @if (!clientId()) {
+      @if (!clientId()) {
+        <div class="care-heading">
+          <div>
+            <h1>
+              <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+              Roster & Allocations
+            </h1>
+            <p>
+              {{
+                clientId()
+                  ? 'Schedules, recurring calls and care continuity.'
+                  : 'Manage weekly visits, allocate staff and ensure safe, high-quality care delivery.'
+              }}
+            </p>
           </div>
-          <button class="care-button" (click)="anchor.set(today)">Today</button>
-          @if (service.can('manage')) {
-            <button class="care-button primary" (click)="create()">+ Add / plan visits</button>
-          }
-        </div>
-      </div>
-    }
-    @if (error() && !modal()) {
-      <p class="care-error" role="alert">{{ error() }}</p>
-    }
-    @if (notice()) {
-      <p role="status" class="care-note">{{ notice() }}</p>
-    }
-    @if (!workspaceView) {
-      <div class="care-stats">
-        @for (
-          stat of [
-            {
-              label: 'Scheduled visits',
-              value: visits().length,
-              icon: 'calendar_month',
-              tone: 'blue',
-            },
-            { label: 'Allocated', value: allocated().length, icon: 'person_check', tone: 'green' },
-            {
-              label: 'Unallocated',
-              value: unallocated().length,
-              icon: 'person_alert',
-              tone: 'red',
-            },
-            { label: 'Double-up visits', value: doubleUps().length, icon: 'group', tone: 'blue' },
-            { label: 'Staff on rota', value: staffOnRota(), icon: 'groups', tone: 'blue' },
-            { label: 'Late / at risk', value: late().length, icon: 'warning', tone: 'red' },
-          ];
-          track stat.label
-        ) {
-          <section class="metric co-stat co-surface" [attr.data-tone]="stat.tone">
-            <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">{{
-              stat.icon
-            }}</span>
-            <div>
-              <h2>{{ stat.label }}</h2>
-              <strong>{{ stat.value }}</strong
-              ><small>{{ start() | date: 'dd MMM' }} – {{ end() | date: 'dd MMM' }}</small>
-            </div>
-          </section>
-        }
-      </div>
-    }
-    @if (workspaceView) {
-      <div class="care-toolbar" aria-label="Schedule controls">
-        <h2>Schedule</h2>
-        <div class="care-actions">
-          <div class="planner-period-navigation" role="group" aria-label="Schedule period">
-            <button class="care-button" (click)="move(-1)" aria-label="Previous period">‹</button>
-            <label class="planner-period"
-              >Period<input type="date" [ngModel]="anchor()" (ngModelChange)="changeDate($event)"
-            /></label>
-            <button class="care-button" (click)="move(1)" aria-label="Next period">›</button>
-          </div>
-          <button class="care-button" (click)="anchor.set(today)">Today</button>
-        </div>
-      </div>
-    }
-    <section class="care-panel planner-filter-panel" aria-label="Search and filter visits">
-      <div class="care-fields planner-filters">
-        <label
-          >Search<input
-            [ngModel]="query()"
-            (ngModelChange)="query.set($event)"
-            placeholder="Name, call or address"
-        /></label>
-        @if (!clientId()) {
-          <label
-            >Service user<mat-select
-              cvSelect
-              aria-label="Filter service user"
-              [ngModel]="clientFilter()"
-              (ngModelChange)="clientFilter.set($event)"
-              ><mat-option value="">All service users</mat-option>
-              @for (c of service.data().clients; track c.id) {
-                <mat-option [value]="c.id">{{ c.name }}</mat-option>
-              }
-            </mat-select></label
-          >
-        }
-        <label
-          >Carer<mat-select
-            cvSelect
-            aria-label="Filter carer"
-            [ngModel]="staffFilter()"
-            (ngModelChange)="staffFilter.set($event); staffPage.set(1)"
-            ><mat-option value="">All staff</mat-option>
-            @for (p of store.staff(); track p.id) {
-              <mat-option [value]="p.id">{{ p.name }}</mat-option>
-            }
-          </mat-select></label
-        ><label
-          >Location / area<input
-            [ngModel]="locationFilter()"
-            (ngModelChange)="locationFilter.set($event)" /></label
-        ><label
-          >Required training<mat-select
-            cvSelect
-            aria-label="Required training filter"
-            [ngModel]="skillFilter()"
-            (ngModelChange)="skillFilter.set($event); staffPage.set(1)"
-            ><mat-option value="">Any skill</mat-option>
-            @for (course of courses; track course.id) {
-              <mat-option [value]="course.id">{{ course.title }}</mat-option>
-            }
-          </mat-select></label
-        ><label
-          >Carer gender<mat-select
-            cvSelect
-            aria-label="Carer gender filter"
-            [ngModel]="genderFilter()"
-            (ngModelChange)="genderFilter.set($event); staffPage.set(1)"
-            ><mat-option value="">Any</mat-option><mat-option value="Female">Female</mat-option
-            ><mat-option value="Male">Male</mat-option></mat-select
-          ></label
-        ><label
-          >Driver<mat-select
-            cvSelect
-            aria-label="Driver filter"
-            [ngModel]="driverFilter()"
-            (ngModelChange)="driverFilter.set($event); staffPage.set(1)"
-            ><mat-option value="">Any</mat-option><mat-option value="Yes">Yes</mat-option
-            ><mat-option value="No">No</mat-option></mat-select
-          ></label
-        ><label
-          >Allocation<mat-select
-            cvSelect
-            aria-label="Allocation filter"
-            [ngModel]="allocationFilter()"
-            (ngModelChange)="allocationFilter.set($event)"
-          >
-            @for (s of ['All', 'Allocated', 'Unallocated']; track s) {
-              <mat-option [value]="s">{{ s }}</mat-option>
-            }
-          </mat-select></label
-        >
-        <div class="planner-filter-actions">
-          <label
-            ><input
-              type="checkbox"
-              [ngModel]="showUnallocated()"
-              (ngModelChange)="showUnallocated.set($event)"
-            />
-            Show unallocated visits</label
-          ><button class="care-button" (click)="clear()">Clear filters</button>
-        </div>
-      </div>
-    </section>
-    <div class="care-grid planner-schedule-only">
-      <section class="care-panel">
-        <div class="care-toolbar">
-          <h2>{{ view() }} schedule</h2>
           <div class="care-actions">
-            @for (v of ['Week', 'Month', 'List', 'Staff', 'Service user']; track v) {
-              <button
-                class="care-button"
-                [attr.aria-pressed]="view() === v"
-                (click)="view.set(v); selected.set([])"
+            <div class="planner-period-navigation" role="group" aria-label="Schedule period">
+              <button class="care-button" (click)="move(-1)" aria-label="Previous period">‹</button>
+              <label class="planner-period">
+                <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+                ><span class="planner-date-range"
+                  >{{ start() | date: 'EEE d MMM' }} – {{ end() | date: 'EEE d MMM yyyy' }}</span
+                ><input
+                  aria-label="Choose schedule date"
+                  type="date"
+                  [ngModel]="anchor()"
+                  (ngModelChange)="changeDate($event)"
+              /></label>
+              <button class="care-button" (click)="move(1)" aria-label="Next period">›</button>
+            </div>
+            <button class="care-button" (click)="anchor.set(today)">Today</button>
+            <label class="roster-view-select"
+              >View
+              <select
+                aria-label="Calendar period"
+                [ngModel]="view() === 'Month' ? 'Month' : 'Week'"
+                (ngModelChange)="view.set($event)"
               >
-                {{ v }}
+                <option value="Week">Week</option>
+                <option value="Month">Month</option>
+              </select>
+            </label>
+            @if (service.can('manage')) {
+              <button class="care-button primary" (click)="create()">
+                <span class="material-symbols-outlined" aria-hidden="true">add</span>Add Visit
               </button>
             }
           </div>
         </div>
-        <p class="care-note">
-          UK time · {{ totalHours().toFixed(1) }} care hours ·
-          {{ service.data().travelMinutes }} minute minimum travel buffer
-        </p>
-        @if (view() === 'List') {
-          <div class="care-scroll" tabindex="0" role="region" aria-label="Visit schedule">
-            <table class="care-table planner-list">
-              <thead>
-                <tr>
-                  <th>
-                    <input
-                      type="checkbox"
-                      aria-label="Select all visits"
-                      [checked]="!!visits().length && selected().length === visits().length"
-                      (change)="selectAll()"
-                    />
-                  </th>
-                  <th>Date / time</th>
-                  <th>Service user / call</th>
-                  <th>Carers</th>
-                  <th>Care type</th>
-                  <th>Time sensitive</th>
-                  <th>Flexible</th>
-                  <th>Location / task</th>
-                  <th>Mileage</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (v of visits(); track v.id) {
-                  <tr>
-                    <td>
-                      <input
-                        type="checkbox"
-                        [attr.aria-label]="'Select ' + v.clientName + ' ' + v.date + ' ' + v.start"
-                        [checked]="selected().includes(v.id)"
-                        (change)="toggle(v.id)"
-                      />
-                    </td>
-                    <td>
-                      {{ v.date | date: 'EEE dd MMM'
-                      }}<small>{{ v.start }} – {{ v.end }} · {{ duration(v) }}m</small>
-                    </td>
-                    <td>
-                      {{ v.clientName }}<small>{{ v.callName }}</small>
-                    </td>
-                    <td>
-                      @for (id of v.staffIds; track id) {
-                        <span>{{ name(id) }}<br /></span>
-                      }
-                      @if (v.staffIds.length < v.carers) {
-                        <span class="care-tag" data-tone="red"
-                          >Needs {{ v.carers - v.staffIds.length }} carer(s)</span
-                        >
-                      }
-                    </td>
-                    <td>
-                      {{ v.carers === 2 ? 'Double' : 'Single' }}<small>{{ v.allocation }}</small>
-                    </td>
-                    <td>
-                      {{ v.timeSensitive ? 'Yes · ±' + (v.toleranceMinutes ?? 30) + 'm' : 'No' }}
-                    </td>
-                    <td>{{ v.flexible ? 'Yes' : 'No' }}</td>
-                    <td>
-                      {{ v.location || 'Home' }}<small>{{ v.taskType || v.tasks }}</small>
-                    </td>
-                    <td>{{ v.mileage ?? '—' }}</td>
-                    <td>
-                      <span
-                        class="care-tag"
-                        [attr.data-tone]="v.staffIds.length < v.carers ? 'red' : 'green'"
-                        >{{ status(v) }}</span
-                      >
-                    </td>
-                    <td>
-                      @if (service.can('manage')) {
-                        <button class="care-button" (click)="edit(v)">View / Allocate</button>
-                      }
-                    </td>
-                  </tr>
-                } @empty {
-                  <tr>
-                    <td colspan="11" class="care-empty">
-                      No visits match these dates and filters.
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        } @else if (view() === 'Month') {
-          <div
-            class="planner-scroll"
-            tabindex="0"
-            role="region"
-            aria-label="Monthly visit calendar"
-          >
-            <div class="planner-month">
-              @for (day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; track day) {
-                <strong>{{ day }}</strong>
+      }
+      @if (error() && !modal()) {
+        <p class="care-error" role="alert">{{ error() }}</p>
+      }
+      @if (notice()) {
+        <p role="status" class="care-note">{{ notice() }}</p>
+      }
+      @if (!clientId()) {
+        <div class="care-stats">
+          @for (stat of rosterStats(); track stat.label) {
+            <section class="roster-stat" [attr.data-tone]="stat.tone">
+              <span class="roster-stat-icon material-symbols-outlined" aria-hidden="true">{{
+                stat.icon
+              }}</span>
+              <div>
+                <h2>{{ stat.label }}</h2>
+                <strong>{{ stat.value }}</strong
+                ><small>{{ stat.detail }}</small>
+              </div>
+              @if (stat.ring >= 0) {
+                <span
+                  class="roster-stat-ring"
+                  [style.--progress]="stat.ring + '%'"
+                  aria-hidden="true"
+                ></span>
               }
-              @for (date of monthDays(); track date) {
-                <div [class.planner-muted]="date.slice(0, 7) !== anchor().slice(0, 7)">
-                  <strong>{{ date | date: 'd MMM' }}</strong>
-                  @for (v of dayVisits(date); track v.id) {
+            </section>
+          }
+        </div>
+      }
+      <div class="planner-workspace">
+        <div class="planner-main">
+          <section class="care-panel planner-filter-panel" aria-label="Search and filter visits">
+            <div class="care-fields planner-filters">
+              <label
+                >Carer / Staff<mat-select
+                  cvSelect
+                  aria-label="Filter carer"
+                  [(ngModel)]="filterDraft.staff"
+                >
+                  <mat-option value="">All staff</mat-option>
+                  @for (p of store.staff(); track p.id) {
+                    <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                  }
+                </mat-select></label
+              >
+              <label
+                >Service User<mat-select
+                  cvSelect
+                  aria-label="Filter service user"
+                  [(ngModel)]="filterDraft.client"
+                >
+                  <mat-option value="">All service users</mat-option>
+                  @for (c of service.data().clients; track c.id) {
+                    <mat-option [value]="c.id">{{ c.name }}</mat-option>
+                  }
+                </mat-select></label
+              >
+              <label
+                >Location / Area<mat-select
+                  cvSelect
+                  aria-label="Filter location"
+                  [(ngModel)]="filterDraft.location"
+                >
+                  <mat-option value="">All locations</mat-option>
+                  @for (location of locations(); track location) {
+                    <mat-option [value]="location">{{ location }}</mat-option>
+                  }
+                </mat-select></label
+              >
+              <label
+                >Skills / Training<mat-select
+                  cvSelect
+                  aria-label="Required training filter"
+                  [(ngModel)]="filterDraft.skill"
+                >
+                  <mat-option value="">Any</mat-option>
+                  @for (course of courses; track course.id) {
+                    <mat-option [value]="course.id">{{ course.title }}</mat-option>
+                  }
+                </mat-select></label
+              >
+              <label
+                >Medication Trained<mat-select
+                  cvSelect
+                  aria-label="Medication trained filter"
+                  [(ngModel)]="filterDraft.medication"
+                >
+                  <mat-option value="">All</mat-option><mat-option value="Yes">Yes</mat-option
+                  ><mat-option value="No">No</mat-option>
+                </mat-select></label
+              >
+              <label
+                >Driver<mat-select
+                  cvSelect
+                  aria-label="Driver filter"
+                  [(ngModel)]="filterDraft.driver"
+                >
+                  <mat-option value="">Any</mat-option><mat-option value="Yes">Yes</mat-option
+                  ><mat-option value="No">No</mat-option>
+                </mat-select></label
+              >
+              <label
+                >Gender Preference<mat-select
+                  cvSelect
+                  aria-label="Carer gender filter"
+                  [(ngModel)]="filterDraft.gender"
+                >
+                  <mat-option value="">Any</mat-option><mat-option value="Female">Female</mat-option
+                  ><mat-option value="Male">Male</mat-option>
+                </mat-select></label
+              >
+            </div>
+            <div class="care-fields roster-secondary-filters">
+              @for (filter of specialistFilters; track filter.key) {
+                <label
+                  >{{ filter.label
+                  }}<mat-select
+                    cvSelect
+                    [attr.aria-label]="filter.label + ' filter'"
+                    [(ngModel)]="filterDraft[filter.key]"
+                  >
+                    <mat-option value="">Any</mat-option><mat-option value="Yes">Yes</mat-option
+                    ><mat-option value="No">No</mat-option>
+                  </mat-select></label
+                >
+              }
+              <label
+                >Availability<mat-select
+                  cvSelect
+                  aria-label="Availability filter"
+                  [(ngModel)]="filterDraft.availability"
+                >
+                  <mat-option value="">All</mat-option
+                  ><mat-option value="Available">Available this week</mat-option>
+                </mat-select></label
+              >
+              <label class="roster-unallocated-only"
+                ><input type="checkbox" [(ngModel)]="filterDraft.unallocated" />Show unallocated
+                only</label
+              >
+              <button
+                class="care-button roster-more-filters"
+                (click)="moreFilters.set(!moreFilters())"
+                [attr.aria-expanded]="moreFilters()"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>More
+                filters
+              </button>
+              <button class="care-button primary roster-apply" (click)="applyFilters()">
+                <span class="material-symbols-outlined" aria-hidden="true">search</span>Apply
+                Filters
+              </button>
+            </div>
+            @if (moreFilters()) {
+              <div class="roster-extra-filters">
+                <label
+                  >Search<input
+                    [ngModel]="query()"
+                    (ngModelChange)="query.set($event)"
+                    placeholder="Name, call or address"
+                /></label>
+                <label
+                  >Allocation<mat-select
+                    cvSelect
+                    aria-label="Allocation filter"
+                    [ngModel]="allocationFilter()"
+                    (ngModelChange)="allocationFilter.set($event)"
+                  >
+                    @for (status of ['All', 'Allocated', 'Unallocated']; track status) {
+                      <mat-option [value]="status">{{ status }}</mat-option>
+                    }
+                  </mat-select></label
+                >
+                <button class="care-button" (click)="clear()">Clear filters</button>
+              </div>
+            }
+          </section>
+          <div class="care-grid planner-schedule-only">
+            <section class="care-panel">
+              <div class="care-toolbar roster-calendar-toolbar">
+                <div class="care-actions">
+                  @for (v of ['Week', 'List', 'Staff', 'Service user']; track v) {
                     <button
-                      class="visit-card"
-                      [class.needs-cover]="v.staffIds.length < v.carers"
-                      [style.background]="background(v)"
-                      (click)="edit(v)"
+                      class="care-button"
+                      [attr.aria-pressed]="view() === v"
+                      (click)="view.set(v); selected.set([])"
                     >
-                      <strong>{{ v.start }} {{ v.callName }}</strong
-                      ><small>{{ v.clientName }}</small
-                      ><small>{{
-                        v.staffIds.length ? preferredNames(v.staffIds.join(',')) : 'Needs cover'
-                      }}</small>
+                      @if (v === 'Week') {
+                        <span class="material-symbols-outlined" aria-hidden="true">event</span>
+                      }
+                      {{ viewLabel(v) }}
                     </button>
                   }
                 </div>
-              }
-            </div>
-          </div>
-        } @else {
-          <div
-            class="planner-scroll"
-            tabindex="0"
-            role="region"
-            aria-label="Weekly staff and service user calendar"
-          >
-            <div class="planner-grid">
-              <div class="planner-day">
-                {{ view() === 'Service user' ? 'Service user' : 'Carer / staff' }}
+                <div class="roster-calendar-key">
+                  <label
+                    ><input
+                      type="checkbox"
+                      [ngModel]="showUnallocated()"
+                      (ngModelChange)="showUnallocated.set($event)"
+                    />Show unallocated visits</label
+                  >
+                  <div class="planner-legend" aria-label="Visit colour key">
+                    @for (style of referenceCareTypes; track style.name) {
+                      <span
+                        ><i [style.background]="style.background" aria-hidden="true"></i
+                        >{{ style.name }}</span
+                      >
+                    }
+                  </div>
+                </div>
               </div>
-              @for (date of days(); track date) {
-                <div class="planner-day">{{ date | date: 'EEE dd MMM' }}</div>
-              }
-              @if (view() === 'Service user') {
-                @for (c of clientRows(); track c.id) {
-                  <div class="planner-person">
-                    <strong>{{ c.name }}</strong
-                    ><small>{{ c.postcode }}</small
-                    ><a [routerLink]="['/manage/clients', c.id, 'visits']">Open schedule</a>
-                  </div>
-                  @for (date of days(); track date) {
-                    <div>
-                      @for (v of dayVisits(date, '', c.id); track v.id) {
-                        <button
-                          class="visit-card"
-                          [class.needs-cover]="v.staffIds.length < v.carers"
-                          [style.background]="background(v)"
-                          (click)="edit(v)"
-                        >
-                          <strong>{{ v.start }} – {{ v.end }}</strong
-                          ><small>{{ v.callName }}</small
-                          ><small>{{ status(v) }}</small>
-                        </button>
-                      }
-                    </div>
-                  }
-                }
-              } @else {
-                @for (p of pageStaff(); track p.id) {
-                  <div class="planner-person">
-                    <strong>{{ p.name }}</strong
-                    ><small>{{ p.role }}</small
-                    ><small
-                      >{{ hours(p.id).toFixed(1) }}h / {{ p.hr?.employment?.hours ?? '—' }}h</small
-                    >
-                  </div>
-                  @for (date of days(); track date) {
-                    <div>
-                      @for (v of dayVisits(date, p.id); track v.id) {
-                        <button
-                          class="visit-card"
-                          [style.background]="background(v)"
-                          (click)="edit(v)"
-                        >
-                          <strong>{{ v.start }} – {{ v.end }}</strong
-                          ><small>{{ v.clientName }}</small
-                          ><small>{{ v.callName }} · {{ status(v) }}</small>
-                        </button>
+              @if (view() === 'List') {
+                <div class="care-scroll" tabindex="0" role="region" aria-label="Visit schedule">
+                  <table class="care-table planner-list">
+                    <thead>
+                      <tr>
+                        <th>
+                          <input
+                            type="checkbox"
+                            aria-label="Select all visits"
+                            [checked]="!!visits().length && selected().length === visits().length"
+                            (change)="selectAll()"
+                          />
+                        </th>
+                        <th>Date / time</th>
+                        <th>Service user / call</th>
+                        <th>Carers</th>
+                        <th>Care type</th>
+                        <th>Time sensitive</th>
+                        <th>Flexible</th>
+                        <th>Location / task</th>
+                        <th>Mileage</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (v of visits(); track v.id) {
+                        <tr>
+                          <td>
+                            <input
+                              type="checkbox"
+                              [attr.aria-label]="
+                                'Select ' + v.clientName + ' ' + v.date + ' ' + v.start
+                              "
+                              [checked]="selected().includes(v.id)"
+                              (change)="toggle(v.id)"
+                            />
+                          </td>
+                          <td>
+                            {{ v.date | date: 'EEE dd MMM'
+                            }}<small>{{ v.start }} – {{ v.end }} · {{ duration(v) }}m</small>
+                          </td>
+                          <td>
+                            {{ v.clientName }}<small>{{ v.callName }}</small>
+                          </td>
+                          <td>
+                            @for (id of v.staffIds; track id) {
+                              <span>{{ name(id) }}<br /></span>
+                            }
+                            @if (v.staffIds.length < v.carers) {
+                              <span class="care-tag" data-tone="red"
+                                >Needs {{ v.carers - v.staffIds.length }} carer(s)</span
+                              >
+                            }
+                          </td>
+                          <td>
+                            {{ v.carers === 2 ? 'Double' : 'Single'
+                            }}<small>{{ v.allocation }}</small>
+                          </td>
+                          <td>
+                            {{
+                              v.timeSensitive ? 'Yes · ±' + (v.toleranceMinutes ?? 30) + 'm' : 'No'
+                            }}
+                          </td>
+                          <td>{{ v.flexible ? 'Yes' : 'No' }}</td>
+                          <td>
+                            {{ v.location || 'Home' }}<small>{{ v.taskType || v.tasks }}</small>
+                          </td>
+                          <td>{{ v.mileage ?? '—' }}</td>
+                          <td>
+                            <span
+                              class="care-tag"
+                              [attr.data-tone]="v.staffIds.length < v.carers ? 'red' : 'green'"
+                              >{{ status(v) }}</span
+                            >
+                          </td>
+                          <td>
+                            @if (service.can('manage')) {
+                              <button class="care-button" (click)="edit(v)">View / Allocate</button>
+                            }
+                          </td>
+                        </tr>
                       } @empty {
-                        <span class="care-note">{{
-                          store.data().leaves.some(leaveFor(p.id, date))
-                            ? 'Leave / unavailable'
-                            : '—'
-                        }}</span>
+                        <tr>
+                          <td colspan="11" class="care-empty">
+                            No visits match these dates and filters.
+                          </td>
+                        </tr>
                       }
+                    </tbody>
+                  </table>
+                </div>
+              } @else if (view() === 'Month') {
+                <div
+                  class="planner-scroll"
+                  tabindex="0"
+                  role="region"
+                  aria-label="Monthly visit calendar"
+                >
+                  <div class="planner-month">
+                    @for (day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; track day) {
+                      <strong>{{ day }}</strong>
+                    }
+                    @for (date of monthDays(); track date) {
+                      <div [class.planner-muted]="date.slice(0, 7) !== anchor().slice(0, 7)">
+                        <strong>{{ date | date: 'd MMM' }}</strong>
+                        @for (v of dayVisits(date); track v.id) {
+                          <button
+                            class="visit-card"
+                            [class.needs-cover]="v.staffIds.length < v.carers"
+                            [style.background]="background(v)"
+                            (click)="edit(v)"
+                          >
+                            <strong>{{ v.start }} {{ v.callName }}</strong
+                            ><small>{{ v.clientName }}</small
+                            ><small>{{
+                              v.staffIds.length
+                                ? preferredNames(v.staffIds.join(','))
+                                : 'Needs cover'
+                            }}</small>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              } @else {
+                <div
+                  class="planner-scroll"
+                  tabindex="0"
+                  role="region"
+                  aria-label="Weekly staff and service user calendar"
+                >
+                  <div class="planner-grid">
+                    <div class="planner-day">
+                      {{
+                        view() === 'Service user'
+                          ? 'Service user'
+                          : 'Carers (' + pageStaff().length + ' of ' + staff().length + ')'
+                      }}
                     </div>
-                  }
-                }
-              }
-              @if (showUnallocated()) {
-                <div class="planner-person planner-alert">Unallocated</div>
-                @for (date of days(); track date) {
-                  <div>
-                    @for (v of dayVisits(date); track v.id) {
-                      @if (v.staffIds.length < v.carers) {
-                        <button class="visit-card needs-cover" (click)="edit(v)">
-                          <strong>{{ v.start }} {{ v.clientName }}</strong
-                          ><small>{{ v.callName }} · Needs staff</small>
-                        </button>
+                    @for (date of days(); track date) {
+                      <div class="planner-day">{{ date | date: 'EEE dd MMM' }}</div>
+                    }
+                    @if (view() === 'Service user') {
+                      @for (c of clientRows(); track c.id) {
+                        <div class="planner-person">
+                          <strong>{{ c.name }}</strong
+                          ><small>{{ c.postcode }}</small
+                          ><button
+                            class="planner-text-button"
+                            (click)="clientFilter.set(c.id); view.set('Week')"
+                          >
+                            Open schedule
+                          </button>
+                        </div>
+                        @for (date of days(); track date) {
+                          <div>
+                            @for (v of dayVisits(date, '', c.id); track v.id) {
+                              <button
+                                class="visit-card"
+                                [class.needs-cover]="v.staffIds.length < v.carers"
+                                [style.background]="background(v)"
+                                (click)="edit(v)"
+                              >
+                                <strong>{{ v.start }} – {{ v.end }}</strong
+                                ><small>{{ v.callName }}</small
+                                ><small>{{ status(v) }}</small>
+                              </button>
+                            }
+                          </div>
+                        }
+                      }
+                    } @else {
+                      @for (p of pageStaff(); track p.id) {
+                        <div class="planner-person">
+                          <span
+                            class="planner-avatar"
+                            [style.background]="avatarColour($index)"
+                            aria-hidden="true"
+                            >{{ initials(p.name) }}</span
+                          >
+                          <div>
+                            <strong>{{ p.name }}</strong
+                            ><small>{{ p.role }}</small
+                            ><small
+                              >{{ hours(p.id).toFixed(1) }}h /
+                              {{ p.hr?.employment?.hours ?? '—' }}h</small
+                            >
+                          </div>
+                        </div>
+                        @for (date of days(); track date) {
+                          <div
+                            [class.roster-leave-cell]="
+                              store.data().leaves.some(leaveFor(p.id, date))
+                            "
+                          >
+                            @for (v of dayVisits(date, p.id); track v.id) {
+                              <button
+                                class="visit-card"
+                                [style.background]="background(v)"
+                                (click)="edit(v)"
+                              >
+                                <span
+                                  class="material-symbols-outlined visit-kind-icon"
+                                  [style.color]="careColour(v)"
+                                  aria-hidden="true"
+                                  >{{ v.staffIds.length < v.carers ? 'warning' : 'group' }}</span
+                                >
+                                <strong class="visit-time">{{ v.start }} – {{ v.end }}</strong
+                                ><small class="visit-client">{{ v.clientName }}</small
+                                ><small>{{ v.callName }}</small
+                                ><small>{{ v.address }}</small>
+                                <span class="sr-only">{{ status(v) }}</span>
+                              </button>
+                            } @empty {
+                              <span class="care-note">{{
+                                store.data().leaves.some(leaveFor(p.id, date))
+                                  ? 'Annual Leave'
+                                  : '—'
+                              }}</span>
+                            }
+                          </div>
+                        }
+                      }
+                    }
+                    @if (showUnallocated()) {
+                      <div class="planner-person planner-alert">Unallocated</div>
+                      @for (date of days(); track date) {
+                        <div>
+                          @for (v of dayVisits(date); track v.id) {
+                            @if (v.staffIds.length < v.carers) {
+                              <button class="visit-card needs-cover" (click)="edit(v)">
+                                <strong>{{ v.start }} {{ v.clientName }}</strong
+                                ><small>{{ v.callName }} · Needs staff</small>
+                              </button>
+                            }
+                          }
+                        </div>
                       }
                     }
                   </div>
-                }
+                </div>
+                <div class="care-footer">
+                  <small>{{ staff().length }} matching carers</small>
+                  <div class="care-actions">
+                    <button
+                      class="care-button"
+                      [disabled]="staffPage() <= 1"
+                      (click)="staffPage.update(previousPage)"
+                    >
+                      Previous staff</button
+                    ><span>Page {{ staffPage() }}</span
+                    ><button
+                      class="care-button"
+                      [disabled]="staffPage() * 8 >= staff().length"
+                      (click)="staffPage.update(nextPage)"
+                    >
+                      Next staff
+                    </button>
+                  </div>
+                </div>
               }
-            </div>
-          </div>
-          <div class="care-footer">
-            <small>{{ staff().length }} matching carers</small>
-            <div class="care-actions">
-              <button
-                class="care-button"
-                [disabled]="staffPage() <= 1"
-                (click)="staffPage.update(previousPage)"
-              >
-                Previous staff</button
-              ><span>Page {{ staffPage() }}</span
-              ><button
-                class="care-button"
-                [disabled]="staffPage() * 8 >= staff().length"
-                (click)="staffPage.update(nextPage)"
-              >
-                Next staff
-              </button>
-            </div>
-          </div>
-        }
-        <div class="care-footer">
-          <span>{{ visits().length }} matching visits · {{ selected().length }} selected</span>
-          <div class="care-actions">
-            <button class="care-button" (click)="findAvailable()">Find Available Staff</button>
-            @if (service.can('manage')) {
-              <button
-                class="care-button"
-                (click)="prepareAuto()"
-                [disabled]="!unallocated().length"
-              >
-                Auto Allocate</button
-              ><button class="care-button" (click)="prepareBulk()" [disabled]="!selected().length">
-                Bulk Allocate
-              </button>
-            }
-            @if (service.can('publish')) {
-              <a class="care-button" routerLink="/manage/rota/publishing"
-                >Review &amp; publish drafts</a
-              >
-            }
-            @if (service.can('export')) {
-              <button class="care-button" (click)="exportExcel()">Export Excel</button>
-              <button class="care-button" (click)="export()">Export CSV</button
-              ><button class="care-button" (click)="print()">Print / Save PDF</button>
-            }
+              <details class="roster-schedule-tools">
+                <summary>Schedule tools & exports</summary>
+
+                <div class="care-footer">
+                  <span
+                    >{{ visits().length }} matching visits · {{ selected().length }} selected</span
+                  >
+                  <div class="care-actions">
+                    <button class="care-button" (click)="findAvailable()">
+                      Find Available Staff
+                    </button>
+                    @if (service.can('manage')) {
+                      <button
+                        class="care-button"
+                        (click)="prepareAuto()"
+                        [disabled]="!unallocated().length"
+                      >
+                        Auto Allocate</button
+                      ><button
+                        class="care-button"
+                        (click)="prepareBulk()"
+                        [disabled]="!selected().length"
+                      >
+                        Bulk Allocate
+                      </button>
+                    }
+
+                    @if (service.can('export')) {
+                      <button class="care-button" (click)="exportExcel()">Export Excel</button>
+                      <button class="care-button" (click)="export()">Export CSV</button
+                      ><button class="care-button" (click)="print()">Print / Save PDF</button>
+                    }
+                  </div>
+                </div>
+                <p class="care-note">
+                  Allocate multiple visits for bulk actions. Automatic suggestions require review
+                  before saving.
+                </p>
+              </details>
+            </section>
           </div>
         </div>
-        <p class="care-note">
-          Select visits in List view for bulk actions. Automatic suggestions require review before
-          saving.
-        </p>
-      </section>
-    </div>
+        <aside class="planner-summary" aria-label="Allocation support">
+          <section class="care-panel planner-cover-panel">
+            <div class="care-toolbar">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">person_alert</span>
+                Unallocated Visits ({{ unallocated().length }})
+              </h2>
+              <button
+                class="planner-text-button"
+                (click)="allocationFilter.set('Unallocated'); view.set('List')"
+              >
+                View all
+              </button>
+            </div>
+            @for (v of unallocated().slice(0, 4); track v.id) {
+              <div class="planner-cover-row" [class.time-sensitive]="v.timeSensitive">
+                <span class="material-symbols-outlined" aria-hidden="true">warning</span>
+                <div>
+                  <small>{{ v.date | date: 'EEE d MMM' }} · {{ v.start }}–{{ v.end }}</small>
+                  <strong>{{ v.clientName }}</strong
+                  ><small>{{ v.callName }} · {{ v.address }}</small>
+                </div>
+                <button class="care-button" (click)="edit(v)">
+                  {{ service.can('manage') ? 'Assign Staff' : 'Review' }}
+                </button>
+                <button
+                  class="roster-visit-menu"
+                  [attr.aria-label]="'Visit options for ' + v.clientName"
+                  (click)="edit(v)"
+                >
+                  ⋮
+                </button>
+              </div>
+            } @empty {
+              <p class="planner-empty">
+                <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>All
+                matching visits have staff allocated.
+              </p>
+            }
+          </section>
+          <section class="care-panel planner-issues-panel">
+            <div class="care-toolbar">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">assignment_late</span>
+                Alerts & Issues
+              </h2>
+              <button class="planner-text-button" (click)="view.set('List')">View All</button>
+            </div>
+            @for (alert of alerts(); track alert.label) {
+              <button
+                class="planner-issue"
+                (click)="reviewAlert(alert.kind)"
+                [disabled]="!alert.count"
+              >
+                <span
+                  class="material-symbols-outlined"
+                  [attr.data-tone]="alert.tone"
+                  aria-hidden="true"
+                  >{{ alert.icon }}</span
+                >
+                <span
+                  ><strong>{{ alert.label }}</strong
+                  ><small>{{ alert.description }}</small></span
+                >
+                <b [attr.data-tone]="alert.tone">{{ alert.count }}</b>
+              </button>
+            }
+          </section>
+          <section class="care-panel planner-quick-panel">
+            <div class="care-toolbar">
+              <h2>
+                <span class="material-symbols-outlined" aria-hidden="true">bolt</span> Quick Actions
+              </h2>
+            </div>
+            <div class="planner-quick-grid">
+              @if (service.can('manage')) {
+                <button
+                  class="planner-quick"
+                  data-tone="blue"
+                  (click)="prepareAuto()"
+                  [disabled]="!unallocated().length"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">group_add</span
+                  ><span><strong>Auto Allocate</strong><small>Suggest best matches</small></span>
+                </button>
+                <button class="planner-quick" data-tone="purple" (click)="view.set('List')">
+                  <span class="material-symbols-outlined" aria-hidden="true">date_range</span
+                  ><span
+                    ><strong>Bulk Allocate</strong><small>Allocate multiple visits</small></span
+                  >
+                </button>
+              }
+              <button class="planner-quick" data-tone="green" (click)="findAvailable()">
+                <span class="material-symbols-outlined" aria-hidden="true">person_search</span
+                ><span
+                  ><strong>Find Available Staff</strong><small>View staff availability</small></span
+                >
+              </button>
+              @if (service.can('export')) {
+                <button class="planner-quick" (click)="exportExcel()">
+                  <span class="material-symbols-outlined" aria-hidden="true">download</span
+                  ><span><strong>Export Rota</strong><small>PDF or Excel</small></span>
+                </button>
+              }
+            </div>
+          </section>
+        </aside>
+      </div>
+    }
     @if (modal()) {
       <div class="care-overlay" (click)="close()">
         <section
@@ -673,12 +897,6 @@
                   Select up to 31 days. Package weekdays, double-up count, training, travel and
                   availability rules apply. Existing visits are retained.
                 </p>
-                <a
-                  class="care-wide"
-                  routerLink="/manage/rota/call-packages"
-                  [queryParams]="{ client: plan.clientId }"
-                  >Manage recurring call times, weekdays and backup carers</a
-                >
               } @else {
                 @if (modal() === 'auto') {
                   <p class="care-wide">

@@ -72,7 +72,9 @@ export const CLIENT_SECTIONS: ClientSection[] = [
       { key: 'diet', label: 'Dietary needs', type: 'textarea' },
       { key: 'ongoing', label: 'Ongoing healthcare', type: 'textarea' },
       { key: 'communication', label: 'How to communicate with me', type: 'textarea' },
-      { key: 'sensory', label: 'Hearing, sight and other support', type: 'textarea' },
+      { key: 'hearing', label: 'Hearing needs and aids', type: 'textarea' },
+      { key: 'vision', label: 'Vision needs and aids', type: 'textarea' },
+      { key: 'sensory', label: 'Other sensory support / existing notes', type: 'textarea' },
     ],
   },
   {

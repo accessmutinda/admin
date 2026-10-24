@@ -1,3 +1,4 @@
+import { RecurringAllocationOptions } from './rota.models';
 import { readiness, availabilityCovers } from '../people/hr.models';
 import { Injectable, computed, inject } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -19,6 +20,7 @@ import {
   emptyRota,
   londonInstant,
   validTime,
+  minutes,
   visitWindow,
   RISK_FLAGS,
 } from './rota.models';
@@ -266,6 +268,7 @@ export class RotaService {
       mileage: call.mileage,
       driverRequired: call.driverRequired ?? false,
       backupStaffId: call.backupStaffId,
+      travelMinutes: call.travelMinutes,
     };
   }
   private skillConflicts(visit: RotaVisit, id: string): string[] {
@@ -363,7 +366,13 @@ export class RotaService {
           other.staffIds.includes(id) &&
           (() => {
             const [a, b] = visitWindow(other);
-            const buffer = other.clientId === visit.clientId ? 0 : this.data().travelMinutes;
+            const buffer =
+              other.clientId === visit.clientId
+                ? 0
+                : Math.max(
+                    visit.travelMinutes ?? this.data().travelMinutes,
+                    other.travelMinutes ?? this.data().travelMinutes,
+                  );
             return start < b + buffer && end + buffer > a;
           })(),
       );
@@ -393,6 +402,7 @@ export class RotaService {
     to: string,
     staffIds: string[] | null = null,
     allocation: RotaVisit['allocation'] = 'Regular',
+    options?: RecurringAllocationOptions,
   ): string | null {
     if (this.denied('manage')) return this.denied('manage');
     if (!validVacancyDate(from) || !validVacancyDate(to) || to < from || to > addDays(from, 30))
@@ -403,11 +413,49 @@ export class RotaService {
     );
     if (!client || !calls.length || calls.length !== new Set(callIds).size)
       return 'Choose an active service user and at least one active call.';
+    if (
+      options &&
+      (!options.weekdays.length ||
+        options.weekdays.some((d) => !Number.isInteger(d) || d < 0 || d > 6) ||
+        ![1, 2].includes(options.carers) ||
+        !Number.isInteger(options.durationMinutes) ||
+        options.durationMinutes < 15 ||
+        options.durationMinutes > 240 ||
+        !Number.isInteger(options.travelMinutes) ||
+        options.travelMinutes < 0 ||
+        options.travelMinutes > 120 ||
+        (options.start !== undefined &&
+          (calls.length !== 1 || !/^([01]\d|2[0-3]):[0-5]\d$/.test(options.start))) ||
+        (options.backupStaffId &&
+          !this.store.staff().some((p) => p.id === options.backupStaffId)) ||
+        (options.backupStaffId && staffIds?.includes(options.backupStaffId)))
+    )
+      return 'Choose valid weekdays, call times, duration, travel time and a separate backup carer.';
+    const templates = calls.map((call) => {
+      if (!options) return call;
+      const start = options.start ?? call.start;
+      const endMinutes = (minutes(start) + options.durationMinutes) % 1440;
+      return {
+        ...call,
+        start,
+        end: `${Math.floor(endMinutes / 60)
+          .toString()
+          .padStart(2, '0')}:${(endMinutes % 60).toString().padStart(2, '0')}`,
+        weekdays: [...options.weekdays],
+        carers: options.carers,
+        backupStaffId: options.backupStaffId || undefined,
+        travelMinutes: options.travelMinutes,
+        skills: [
+          ...new Set([...call.skills, ...(options.medicationSupport ? ['medication'] : [])]),
+        ],
+        tasks: options.notes.trim() || call.tasks,
+      };
+    });
     const existing = this.data().visits.filter((v) => v.state !== 'Cancelled');
     const added: RotaVisit[] = [];
     for (let date = from; date <= to; date = addDays(date, 1)) {
       const weekday = new Date(date + 'T12:00:00Z').getUTCDay();
-      for (const call of calls.filter((c) => c.weekdays.includes(weekday))) {
+      for (const call of templates.filter((c) => c.weekdays.includes(weekday))) {
         if (existing.some((v) => v.callId === call.id && v.date === date)) continue;
         const visit = this.makeVisit(call, date, staffIds ?? call.regularStaffIds, allocation);
         const issues = this.conflicts(visit, [...existing, ...added]);
@@ -421,7 +469,7 @@ export class RotaService {
       staffIds && allocation === 'Regular'
         ? this.data().calls.map((c) =>
             callIds.includes(c.id) && c.clientId === clientId
-              ? { ...c, regularStaffIds: [...staffIds] }
+              ? { ...(templates.find((t) => t.id === c.id) ?? c), regularStaffIds: [...staffIds] }
               : c,
           )
         : this.data().calls;

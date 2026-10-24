@@ -1,6 +1,8 @@
+import { ACADEMY_STAFF_ROUTES } from '../learning/academy/academy.routes';
 import { Routes } from '@angular/router';
 const leave = (c: { canLeave: () => boolean }) => c.canLeave();
 export const PORTAL_ROUTES: Routes = [
+  ...ACADEMY_STAFF_ROUTES,
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
   ...['dashboard', 'oversight'].map((view) => ({
     path: view,

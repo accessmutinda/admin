@@ -1,0 +1,574 @@
+@if (academy.canManage()) {
+  <section class="panel toolbar">
+    <label class="field"
+      >Learning record preview<mat-select
+        cvSelect
+        aria-label="Preview staff learning"
+        [ngModel]="person()?.id"
+        (ngModelChange)="changePerson($event)"
+      >
+        @for (p of academy.store.staff(); track p.id) {
+          <mat-option [value]="p.id">{{ p.name }} · {{ p.role }}</mat-option>
+        }
+      </mat-select></label
+    ><a class="academy-button" routerLink="/manage/learning/manage">Manage training ↗</a>
+  </section>
+}
+@if (preview()) {
+  <div class="notice">
+    Administrator preview · {{ person()?.name }}. Learning actions and assessment submission are
+    available only to the staff member’s own linked account.
+  </div>
+}
+@if (!person()) {
+  <div class="notice">
+    Your account is not linked to a current staff record in this company. Ask your administrator to
+    link the staff record using your account email. You can browse the published course library.
+  </div>
+}
+<cv-academy-message [error]="error()" [notice]="notice()" />
+@switch (view()) {
+  @case ('dashboard') {
+    <div class="heading">
+      <div>
+        <h1>Hello, {{ person()?.name || academy.auth.currentUser()?.name }}</h1>
+        <p>
+          Welcome to your Training Academy. Continue learning and keep track of your achievements.
+        </p>
+      </div>
+      <a
+        class="academy-button"
+        routerLink="/staff-portal/training/courses"
+        [queryParams]="context()"
+        >View all courses →</a
+      >
+    </div>
+    <div class="stats">
+      @for (stat of stats(); track stat.label) {
+        <div class="stat">
+          <span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span
+          ><small>{{ stat.label }}</small
+          ><strong>{{ stat.value }}</strong
+          ><small>Your saved learning record</small>
+        </div>
+      }
+    </div>
+    <section class="panel">
+      <h2>My assigned courses</h2>
+      <div class="course-grid">
+        @for (course of assignedCourses().slice(0, 6); track course.id) {
+          <article class="course-card">
+            <cv-academy-image [id]="course.thumbnailId" [alt]="course.title" />
+            <div class="course-card-content">
+              <div class="row">
+                <span class="badge">{{ course.mandatory ? 'Mandatory' : 'Optional' }}</span>
+                @if (course.sample) {
+                  <span class="badge warn">Sample</span>
+                }
+              </div>
+              <h2>{{ course.title }}</h2>
+              <small>{{ course.cpdHours }} CPD hours · {{ course.lessons.length }} lessons</small
+              ><progress
+                max="100"
+                [value]="progress(course.id)"
+                [attr.aria-label]="course.title + ' lesson progress'"
+              >
+                {{ progress(course.id) }}%</progress
+              ><small>{{ progress(course.id) }}% of lessons · {{ status(course.id) }}</small
+              ><a
+                class="academy-button"
+                [routerLink]="['/staff-portal/training/courses', course.id]"
+                [queryParams]="context()"
+                >{{ progress(course.id) ? 'Continue / review course' : 'Start course' }} →</a
+              >
+            </div>
+          </article>
+        } @empty {
+          <p class="empty">No academy courses are assigned to this learning record yet.</p>
+        }
+      </div>
+    </section>
+    <div class="grid">
+      <section class="panel">
+        <h2>Upcoming deadlines</h2>
+        @for (a of deadlines(); track a.id) {
+          <div class="list-item">
+            <span class="material-symbols-outlined" aria-hidden="true">event</span>
+            <div>
+              <a
+                [routerLink]="['/staff-portal/training/courses', a.courseId]"
+                [queryParams]="context()"
+                >{{ academy.course(a.courseId)?.title }}</a
+              ><small>{{ a.due | ukDate: 'd MMM yyyy' }}</small>
+            </div>
+            <span class="badge" [class.bad]="academy.status(a) === 'Overdue'">{{
+              academy.status(a)
+            }}</span>
+          </div>
+        } @empty {
+          <p>No upcoming course deadlines are recorded.</p>
+        }
+      </section>
+      <section class="panel">
+        <h2>Latest certificate</h2>
+        @if (certificates()[0]; as c) {
+          <div class="list-item">
+            <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span>
+            <div>
+              <h3>{{ c.courseTitle }}</h3>
+              <small>{{ c.issuedAt | ukDate: 'd MMM yyyy' }} · Score {{ c.score }}%</small>
+            </div>
+          </div>
+          <a
+            class="academy-button"
+            [routerLink]="['/staff-portal/training/certificates', c.id]"
+            [queryParams]="context()"
+            >View certificate →</a
+          >
+        } @else {
+          <p>Complete a course and pass its assessment to earn a certificate.</p>
+        }
+      </section>
+      <section class="panel">
+        <h2>Recent assessment results</h2>
+        @for (a of attempts().slice(0, 5); track a.id) {
+          <div class="list-item">
+            <div>
+              <a
+                [routerLink]="[
+                  '/staff-portal/training',
+                  a.submittedAt ? 'results' : 'assessment',
+                  a.id,
+                ]"
+                [queryParams]="context()"
+                >{{ a.courseTitle }}</a
+              ><small>{{ a.startedAt | ukDate: 'd MMM yyyy, HH:mm' : 'Europe/London' }}</small>
+            </div>
+            <span class="badge" [class.good]="a.passed">{{
+              a.submittedAt ? a.score + '% · ' + (a.passed ? 'Passed' : 'Failed') : 'In progress'
+            }}</span>
+          </div>
+        } @empty {
+          <p>No assessments attempted yet.</p>
+        }
+      </section>
+      <section class="panel">
+        <h2>Training messages & reminders</h2>
+        @for (n of notices(); track n.id) {
+          <article class="list-item">
+            <div>
+              <h3>{{ n.title }}</h3>
+              <p class="preserve">{{ n.text }}</p>
+              <small>{{ n.at | ukDate: 'd MMM yyyy, HH:mm' : 'Europe/London' }}</small>
+            </div>
+          </article>
+        } @empty {
+          <p>No training notifications.</p>
+        }
+        <small>These are device-local portal records.</small>
+      </section>
+    </div>
+  }
+  @case ('courses') {
+    <div class="heading">
+      <div>
+        <h1>Course library</h1>
+        <p>Discover published courses and continue your assigned learning.</p>
+      </div>
+    </div>
+    <section class="panel toolbar">
+      <label class="field"
+        >Search courses<input
+          type="search"
+          [(ngModel)]="search"
+          placeholder="Search courses, topics or keywords…" /></label
+      ><label class="field"
+        >Category<mat-select cvSelect aria-label="Course category" [(ngModel)]="category">
+          @for (item of categories(); track item) {
+            <mat-option [value]="item">{{ item }}</mat-option>
+          }
+        </mat-select></label
+      >
+    </section>
+    <div class="course-grid">
+      @for (c of courses(); track c.id) {
+        <article class="course-card">
+          <cv-academy-image [id]="c.thumbnailId" [alt]="c.title" />
+          <div class="course-card-content">
+            <h2>{{ c.title }}</h2>
+            <p>{{ c.description }}</p>
+            <small
+              >{{ c.cpdHours }} CPD hours · {{ c.lessons.length }} lessons{{
+                c.sample ? ' · Sample course' : ''
+              }}</small
+            ><span class="badge">{{ status(c.id) }}</span
+            ><a
+              class="academy-button"
+              [routerLink]="['/staff-portal/training/courses', c.id]"
+              [queryParams]="context()"
+              >View course →</a
+            >
+          </div>
+        </article>
+      } @empty {
+        <p class="empty">No published courses match this search.</p>
+      }
+    </div>
+  }
+  @case ('assessments') {
+    <div class="heading">
+      <div>
+        <h1>My assessments</h1>
+        <p>Complete your lessons, take an assessment or review previous results.</p>
+      </div>
+    </div>
+    <section class="panel">
+      @for (a of assignments(); track a.id) {
+        <article class="list-item">
+          <span class="material-symbols-outlined" aria-hidden="true">assignment</span>
+          <div>
+            <h2>{{ academy.course(a.courseId)?.title }}</h2>
+            <small
+              >{{ status(a.courseId) }} · {{ progress(a.courseId) }}% of lessons complete</small
+            >
+          </div>
+          <a
+            class="academy-button"
+            [routerLink]="['/staff-portal/training/courses', a.courseId]"
+            [queryParams]="context()"
+            >Open course</a
+          >
+        </article>
+      } @empty {
+        <p>No courses are assigned.</p>
+      }
+    </section>
+    <section class="panel">
+      <h2>Attempt history</h2>
+      @for (a of attempts(); track a.id) {
+        <div class="list-item">
+          <div>
+            <strong>{{ a.courseTitle }}</strong
+            ><small>{{ a.startedAt | ukDate: 'd MMM yyyy, HH:mm' : 'Europe/London' }}</small>
+          </div>
+          <span class="badge" [class.good]="a.passed">{{
+            a.submittedAt ? a.score + '% · ' + (a.passed ? 'Passed' : 'Failed') : 'In progress'
+          }}</span
+          ><a
+            class="academy-button"
+            [routerLink]="[
+              '/staff-portal/training',
+              a.submittedAt ? 'results' : 'assessment',
+              a.id,
+            ]"
+            [queryParams]="context()"
+            >{{ a.submittedAt ? 'View result' : 'Resume assessment' }}</a
+          >
+        </div>
+      } @empty {
+        <p>No assessment attempts yet.</p>
+      }
+    </section>
+  }
+  @case ('certificates') {
+    <div class="heading">
+      <div>
+        <h1>My certificates</h1>
+        <p>Download completion certificates earned through passing assessments.</p>
+      </div>
+    </div>
+    <section class="panel">
+      @for (c of certificates(); track c.id) {
+        <article class="list-item">
+          <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span>
+          <div>
+            <h2>{{ c.courseTitle }}</h2>
+            <small
+              >Issued {{ c.issuedAt | ukDate: 'd MMM yyyy' }} · {{ c.cpdHours }} CPD hours</small
+            ><small
+              >{{ c.sample ? 'Sample learning' : 'Internal learning'
+              }}{{ c.expires ? ' · Valid until ' + c.expires : ' · No expiry recorded' }}</small
+            >
+          </div>
+          <a
+            class="academy-button"
+            [routerLink]="['/staff-portal/training/certificates', c.id]"
+            [queryParams]="context()"
+            >View</a
+          ><button class="academy-button" (click)="downloadCertificate(c)">Download PDF</button>
+        </article>
+      } @empty {
+        <div class="empty">
+          <h2>No certificates yet</h2>
+          <p>Finish every lesson and pass the assessment for a course to earn its certificate.</p>
+          <a class="academy-button" routerLink="/staff-portal/training/courses">Browse courses →</a>
+        </div>
+      }
+    </section>
+  }
+  @case ('certificate') {
+    @if (certificate(); as c) {
+      <div class="heading">
+        <div>
+          <h1>Certificate of completion</h1>
+          <p>{{ c.courseTitle }} · {{ c.learner }}</p>
+        </div>
+        <div class="actions">
+          <a
+            class="academy-button"
+            routerLink="/staff-portal/training/certificates"
+            [queryParams]="context()"
+            >All certificates</a
+          ><button class="academy-button primary" (click)="downloadCertificate(c)">
+            Download certificate PDF ↓
+          </button>
+        </div>
+      </div>
+      <div class="certificate-wrapper"><cv-academy-certificate [certificate]="c" /></div>
+    } @else {
+      <section class="panel empty">
+        <h1>Certificate unavailable</h1>
+        <p>This certificate is not available to your account in the current workspace.</p>
+      </section>
+    }
+  }
+  @default {
+    @if (course(); as c) {
+      <a routerLink="/staff-portal/training/courses" [queryParams]="context()">← Back to courses</a>
+      <div class="heading">
+        <div>
+          <h1>{{ c.title }}</h1>
+          <p>{{ c.description }}</p>
+        </div>
+        <span class="badge"
+          >{{ c.mandatory ? 'Mandatory' : 'Optional'
+          }}{{ c.sample ? ' · Sample content' : '' }}</span
+        >
+      </div>
+      @if (assignment()?.completedAt && completedVersion() && completedVersion() !== c.version) {
+        <div class="notice">
+          Your certificate records completion of course version {{ completedVersion() }}. You are
+          reviewing current course version {{ c.version }}. Ask your training manager for a new
+          learning cycle if an updated assessment is required.
+        </div>
+      }
+      @if (c.sample) {
+        <div class="notice">
+          This course uses sample learning content. Completion is not an accredited qualification or
+          a practical competency assessment.
+        </div>
+      }
+      <div class="columns">
+        <div>
+          @if (view() === 'lesson' && !lesson()) {
+            <div class="notice">
+              This lesson is locked or unavailable. Complete earlier lessons or ask your manager to
+              assign the course.
+            </div>
+          }
+          @if (view() === 'lesson' && lesson(); as l) {
+            <section class="panel">
+              <h2>{{ l.title }}</h2>
+              @if (videoUrl()) {
+                <video
+                  class="lesson-video"
+                  [src]="videoUrl()"
+                  controls
+                  (loadedmetadata)="resume($event)"
+                  (timeupdate)="position($event)"
+                >
+                  @if (captionUrl()) {
+                    <track
+                      kind="subtitles"
+                      [src]="captionUrl()"
+                      label="English"
+                      srclang="en"
+                      default
+                    />
+                  }
+                </video>
+              } @else {
+                <cv-academy-image [id]="l.thumbnailId || c.thumbnailId" [alt]="l.title" />
+              }
+              <nav class="academy-tabs" aria-label="Lesson resource tabs">
+                @for (item of ['Lesson details', 'Transcript', 'Handouts']; track item) {
+                  <button
+                    [class.active]="tab === item"
+                    [attr.aria-pressed]="tab === item"
+                    (click)="tab = item"
+                  >
+                    {{ item }}
+                  </button>
+                }
+              </nav>
+              @if (tab === 'Lesson details') {
+                <h2>{{ l.title }}</h2>
+                <p class="preserve lesson-copy">{{ l.content }}</p>
+                <p>{{ l.minutes }} minutes · {{ c.cpdHours }} CPD hours for the full course</p>
+              } @else if (tab === 'Transcript') {
+                <p class="preserve">
+                  {{ l.transcript || 'A transcript has not been provided for this lesson.' }}
+                </p>
+              } @else {
+                @for (id of l.handoutIds; track id) {
+                  <button class="academy-button" (click)="download(id)">
+                    Download {{ assetName(id) }}
+                  </button>
+                } @empty {
+                  <p>No handouts are attached to this lesson.</p>
+                }
+              }
+              <button
+                class="academy-button primary"
+                [disabled]="preview() || !assignment()"
+                (click)="complete()"
+              >
+                {{
+                  assignment()?.completedLessonIds?.includes(l.id)
+                    ? 'Lesson completed ✓'
+                    : 'Mark as complete'
+                }}
+              </button>
+            </section>
+            <section class="panel">
+              <h2>My notes</h2>
+              <textarea
+                rows="4"
+                maxlength="1000"
+                [ngModel]="note"
+                (ngModelChange)="editNote($event)"
+                (blur)="flushNote()"
+                [disabled]="preview() || !assignment()"
+                aria-label="My lesson notes"
+                placeholder="Write your learning notes here…"
+              ></textarea>
+              <div class="heading">
+                <small>{{
+                  notePending()
+                    ? 'Unsaved changes · browser-session draft retained where available'
+                    : 'Notes saved on this device'
+                }}</small
+                ><small>{{ note.length }}/1000</small
+                ><button
+                  class="academy-button"
+                  [disabled]="!notePending() || preview()"
+                  (click)="flushNote()"
+                >
+                  Save notes
+                </button>
+              </div>
+            </section>
+          } @else {
+            <section class="panel">
+              <cv-academy-image [id]="c.thumbnailId" [alt]="c.title" />
+              <h2>About this course</h2>
+              <p class="preserve">{{ c.description }}</p>
+              <p>
+                {{ c.lessons.length }} lessons · {{ c.cpdHours }} CPD hours · Required assessment
+                score {{ c.passMark ?? academy.state().settings.passMark }}%
+              </p>
+              @if (nextLesson(c.id); as next) {
+                <a
+                  class="academy-button primary"
+                  [routerLink]="['/staff-portal/training/courses', c.id, 'lessons', next.id]"
+                  [queryParams]="context()"
+                  >{{ progress(c.id) ? 'Continue lesson' : 'Start lesson' }} →</a
+                >
+              }
+              @if (
+                !assignment() &&
+                academy.state().settings.allowSelfEnrolment &&
+                !c.mandatory &&
+                !preview()
+              ) {
+                <button class="academy-button" (click)="enrol()">
+                  Enrol on this optional course
+                </button>
+              }
+              @if (!assignment()) {
+                <p>Ask your manager to assign this course before recording learning progress.</p>
+              }
+            </section>
+          }
+        </div>
+        <aside>
+          <section class="panel">
+            <div class="heading">
+              <h2>Course progress</h2>
+              <strong>{{ progress(c.id) }}%</strong>
+            </div>
+            <progress max="100" [value]="progress(c.id)" aria-label="Course lesson progress">
+              {{ progress(c.id) }}%
+            </progress>
+            <p>{{ completedLessons(c.id) }} of {{ c.lessons.length }} lessons completed</p>
+            @for (l of c.lessons; track l.id; let i = $index) {
+              <div class="list-item" [class.active]="lesson()?.id === l.id">
+                <span class="material-symbols-outlined" aria-hidden="true">{{
+                  assignment()?.completedLessonIds?.includes(l.id)
+                    ? 'check_circle'
+                    : locked(i)
+                      ? 'lock'
+                      : 'play_circle'
+                }}</span>
+                <div>
+                  @if (!locked(i) || preview()) {
+                    <a
+                      [routerLink]="['/staff-portal/training/courses', c.id, 'lessons', l.id]"
+                      [queryParams]="context()"
+                      >{{ i + 1 }}. {{ l.title }}</a
+                    >
+                  } @else {
+                    <strong>{{ i + 1 }}. {{ l.title }}</strong>
+                  }
+                  <small
+                    >{{ l.minutes }} min ·
+                    {{
+                      assignment()?.completedLessonIds?.includes(l.id)
+                        ? 'Completed'
+                        : locked(i)
+                          ? 'Locked'
+                          : 'Available'
+                    }}</small
+                  >
+                </div>
+              </div>
+            }
+            @if (assignment(); as a) {
+              <button
+                class="academy-button primary"
+                [disabled]="!unlocked() || preview() || !!a.completedAt"
+                (click)="start(a.id)"
+              >
+                Start / resume assessment →
+              </button>
+            }
+            <p>
+              {{
+                preview()
+                  ? 'Assessment actions are disabled in administrator preview.'
+                  : unlocked()
+                    ? 'Your assessment is unlocked.'
+                    : 'Complete all lessons to unlock the assessment.'
+              }}
+            </p>
+          </section>
+          <section class="panel">
+            <h2>Questions about this learning?</h2>
+            <p>
+              Discuss clinical or practical questions with your supervisor through your
+              organisation’s usual procedure.
+            </p>
+            <a class="academy-button" routerLink="/staff-portal/journal"
+              >Open staff communications →</a
+            >
+          </section>
+        </aside>
+      </div>
+    } @else {
+      <section class="panel empty">
+        <h1>Course unavailable</h1>
+        <p>The course is not published or no longer belongs to this workspace.</p>
+      </section>
+    }
+  }
+}

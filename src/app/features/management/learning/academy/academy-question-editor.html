@@ -1,0 +1,194 @@
+<cv-academy-admin-nav />
+<div class="heading">
+  <div>
+    <a routerLink="/manage/learning/questions">← Back to question bank</a>
+    <h1>Question builder</h1>
+    <p>Create assessment questions and preview how learners will see them.</p>
+  </div>
+  <div class="actions">
+    <span class="badge">{{ draft.status }} · v{{ draft.version }}</span
+    ><button class="academy-button" [disabled]="unavailable" (click)="save(false)">
+      Save as draft</button
+    ><button class="academy-button primary" [disabled]="unavailable" (click)="save(true)">
+      Publish question
+    </button>
+  </div>
+</div>
+<cv-academy-message [error]="error()" [notice]="notice()" />
+@if (unavailable) {
+  <section class="panel empty">
+    <h2>Question unavailable</h2>
+    <p>Choose a question in the current workspace.</p>
+  </section>
+} @else {
+  <div class="columns">
+    <section class="panel">
+      <h2>Question details</h2>
+      <small>Question ID: {{ draft.id }}</small>
+      <div class="field-grid">
+        <label class="field"
+          >Course *<mat-select
+            cvSelect
+            aria-label="Question course"
+            [(ngModel)]="draft.courseId"
+            (ngModelChange)="changeCourse()"
+          >
+            @for (c of academy.editableCourses(); track c.id) {
+              <mat-option [value]="c.id">{{ c.title }}</mat-option>
+            }
+          </mat-select></label
+        ><label class="field"
+          >Module / lesson *<mat-select
+            cvSelect
+            aria-label="Question lesson"
+            [(ngModel)]="draft.lessonId"
+          >
+            @for (lesson of lessons(); track lesson.id) {
+              <mat-option [value]="lesson.id">{{ lesson.title }}</mat-option>
+            }
+          </mat-select></label
+        ><label class="field"
+          >Question type *<mat-select
+            cvSelect
+            aria-label="Question type"
+            [(ngModel)]="draft.type"
+            (ngModelChange)="changeType()"
+          >
+            @for (type of ['Single choice', 'Multiple choice', 'True / false']; track type) {
+              <mat-option [value]="type">{{ type }}</mat-option>
+            }
+          </mat-select></label
+        ><label class="field"
+          >Difficulty<mat-select
+            cvSelect
+            aria-label="Question difficulty"
+            [(ngModel)]="draft.difficulty"
+          >
+            @for (level of ['Easy', 'Medium', 'Hard']; track level) {
+              <mat-option [value]="level">{{ level }}</mat-option>
+            }
+          </mat-select></label
+        ><label class="field">Category / topic *<input [(ngModel)]="draft.category" /></label
+        ><label class="field"
+          >Marks<input type="number" min="1" max="10" [(ngModel)]="draft.weight" /></label
+        ><label class="field wide"
+          >Scenario (optional)<textarea rows="3" [(ngModel)]="draft.scenario"></textarea></label
+        ><label class="field wide"
+          >Question text *<textarea rows="4" maxlength="2000" [(ngModel)]="draft.text"></textarea
+          ><small>{{ draft.text.length }}/2000 characters</small></label
+        ><label class="field wide"
+          >Image (optional)<mat-select
+            cvSelect
+            aria-label="Question image"
+            [(ngModel)]="draft.imageId"
+            ><mat-option value="">No image</mat-option>
+            @for (asset of academy.state().assets; track asset.id) {
+              @if (asset.kind === 'Image') {
+                <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
+              }
+            }</mat-select
+          ><a routerLink="/manage/learning/assets">Upload an image →</a></label
+        >
+      </div>
+      <h2>Answer options</h2>
+      <p>
+        Select every correct option for a multiple-choice question. All correct options are required
+        to earn its marks.
+      </p>
+      @for (option of draft.options; track option.id; let i = $index) {
+        <div class="option-editor">
+          <label class="check"
+            ><input
+              [type]="draft.type === 'Multiple choice' ? 'checkbox' : 'radio'"
+              name="correct-answer"
+              [checked]="draft.correctIds.includes(option.id)"
+              (change)="toggleCorrect(option.id)"
+              [attr.aria-label]="'Correct answer ' + (i + 1)" /></label
+          ><input [(ngModel)]="option.text" [attr.aria-label]="'Answer option ' + (i + 1)" /><button
+            class="academy-button danger"
+            [disabled]="draft.options.length <= 2 || draft.type === 'True / false'"
+            (click)="removeOption(option.id)"
+            [attr.aria-label]="'Remove option ' + (i + 1)"
+          >
+            ×
+          </button>
+        </div>
+      }
+      <button
+        class="academy-button"
+        [disabled]="draft.options.length >= 8 || draft.type === 'True / false'"
+        (click)="addOption()"
+      >
+        Add option</button
+      ><label class="check"
+        ><input type="checkbox" [(ngModel)]="draft.required" />Required question</label
+      ><label class="check"
+        ><input type="checkbox" [(ngModel)]="draft.shuffle" />Allow answer option
+        randomisation</label
+      ><label class="field">Tags (comma separated)<input [(ngModel)]="tags" /></label>
+    </section>
+    <aside>
+      <section
+        class="panel preview-question"
+        [style.max-width]="mobilePreview() ? '390px' : 'none'"
+      >
+        <div class="heading">
+          <h2>Question preview</h2>
+          <button class="academy-button" (click)="mobilePreview.set(!mobilePreview())">
+            {{ mobilePreview() ? 'Desktop' : 'Mobile' }} preview
+          </button>
+        </div>
+        @if (draft.scenario) {
+          <div class="scenario preserve">{{ draft.scenario }}</div>
+        }
+        <h2>{{ draft.text || 'Your question will appear here.' }}</h2>
+        @if (draft.imageId) {
+          <cv-academy-image
+            class="question-image"
+            [id]="draft.imageId"
+            alt="Question illustration"
+          />
+        }
+        @for (option of draft.options; track option.id) {
+          <div class="question-option" [class.selected]="draft.correctIds.includes(option.id)">
+            <span class="material-symbols-outlined" aria-hidden="true">{{
+              draft.correctIds.includes(option.id) ? 'check_circle' : 'radio_button_unchecked'
+            }}</span
+            >{{ option.text || 'Answer option' }}
+          </div>
+        }
+        <div class="notice">
+          <strong>Explanation · shown after submission if enabled</strong>
+          <p class="preserve">{{ draft.explanation || 'Add an explanation for learners.' }}</p>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>Feedback & explanation</h2>
+        <label class="field"
+          >Explanation *<textarea rows="4" [(ngModel)]="draft.explanation"></textarea></label
+        ><label class="field"
+          >Correct answer feedback<textarea
+            rows="3"
+            [(ngModel)]="draft.correctFeedback"
+          ></textarea></label
+        ><label class="field"
+          >Incorrect answer feedback<textarea
+            rows="3"
+            [(ngModel)]="draft.incorrectFeedback"
+          ></textarea>
+        </label>
+      </section>
+      <section class="panel">
+        <h2>Saved version history</h2>
+        @for (event of history(); track event.id) {
+          <article class="history-item">
+            <strong>{{ event.action }}</strong
+            ><small>{{ event.actor }} · {{ event.at }}</small>
+          </article>
+        } @empty {
+          <p>No saved revisions yet.</p>
+        }
+      </section>
+    </aside>
+  </div>
+}

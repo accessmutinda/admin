@@ -1,0 +1,132 @@
+@if (breadcrumb()) {
+  <nav class="co-breadcrumb" aria-label="Breadcrumb">
+    <a routerLink="/manage/clients">Service Users</a><span>›</span
+    ><a [routerLink]="['/manage/clients', client().id]">{{ client().name }}</a>
+  </nav>
+}
+@let c = client();
+<div class="profile-page-heading">
+  <div>
+    <h1 id="service-user-profile-title">Service User Profile</h1>
+    <p>View and manage all information, care needs, plans and activity for this service user.</p>
+  </div>
+  <div class="profile-page-actions">
+    @if (service.can('manage')) {
+      <button class="button" [disabled]="disabled()" (click)="editProfile()">
+        <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit Profile
+      </button>
+    }
+    @if (service.can('export')) {
+      <button class="button" (click)="printProfile()">
+        <span class="material-symbols-outlined" aria-hidden="true">print</span>Print
+      </button>
+    }
+    <details class="profile-more">
+      <summary aria-label="More profile actions">
+        <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+      </summary>
+      <div>
+        <a [routerLink]="['/manage/clients', c.id, 'audit']">View audit trail</a
+        ><a [routerLink]="['/manage/clients', c.id, 'family']">Family access settings</a
+        ><a routerLink="/manage/rota/call-packages" [queryParams]="{ client: c.id }"
+          >Manage services</a
+        >
+      </div>
+    </details>
+  </div>
+</div>
+<section
+  class="panel client-profile client-record-header reference-profile"
+  aria-labelledby="client-record-name"
+>
+  <button
+    class="profile-photo-button"
+    [disabled]="!service.can('manage') || disabled()"
+    (click)="editProfile()"
+    aria-label="Edit profile photo"
+  >
+    @if (c.file?.photo) {
+      <img class="client-profile-photo" [src]="c.file!.photo" [alt]="c.name" />
+    } @else {
+      <span class="client-avatar client-avatar-large" aria-hidden="true">{{
+        initials(c.name)
+      }}</span>
+    }
+    @if (service.can('manage')) {
+      <span class="profile-camera material-symbols-outlined" aria-hidden="true">photo_camera</span>
+    }
+  </button>
+  <div class="client-profile-info">
+    <div class="row">
+      <h2 id="client-record-name">{{ c.name }}</h2>
+      <span class="badge" [class.success]="c.active">{{ c.active ? 'Active' : 'Inactive' }}</span>
+    </div>
+    <div class="profile-demographics">
+      <span>{{ file().details['gender'] || 'Gender not recorded' }}</span
+      ><span>
+        @if (file().details['dob']) {
+          {{ age(file().details['dob']) }} years ({{ file().details['dob'] | date: 'dd MMM yyyy' }})
+        } @else {
+          Date of birth not recorded
+        }</span
+      ><span>NHS: {{ file().details['nhs'] || 'Not recorded' }}</span>
+    </div>
+    <div class="profile-address">
+      <span
+        ><span class="material-symbols-outlined" aria-hidden="true">location_on</span
+        >{{ c.address }}, {{ c.postcode }}</span
+      ><span
+        ><span class="material-symbols-outlined" aria-hidden="true">home</span
+        >{{ file().details['living'] || 'Living arrangement not recorded' }}</span
+      >
+    </div>
+    <small class="profile-reference"
+      >{{ c.reference }} · Care priority: {{ c.priority }} · Funding: {{ c.funding }}</small
+    >
+  </div>
+  <div class="profile-signal-grid" aria-label="Clinical and contact summary">
+    @for (flag of profileSignals(); track $index) {
+      <div class="profile-signal" [attr.data-tone]="flag.tone">
+        <span class="material-symbols-outlined" aria-hidden="true">{{ flag.icon }}</span
+        ><span>{{ flag.label }}</span>
+      </div>
+    }
+  </div>
+</section>
+<nav class="client-workspace-tabs reference-tabs" aria-label="Service user workspace">
+  <button
+    [class.selected]="active() === 'overview'"
+    [attr.aria-current]="active() === 'overview' ? 'page' : null"
+    [disabled]="disabled()"
+    (click)="select('overview')"
+  >
+    <span class="material-symbols-outlined" aria-hidden="true">home</span>Overview
+  </button>
+  <button
+    [class.selected]="active() === 'plan'"
+    [attr.aria-current]="active() === 'plan' ? 'page' : null"
+    [disabled]="disabled()"
+    (click)="select('plan')"
+  >
+    <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Care Plan
+  </button>
+  @for (tab of tabs; track tab.path) {
+    <a
+      [class.selected]="active() === tab.path"
+      [attr.aria-current]="active() === tab.path ? 'page' : null"
+      [routerLink]="['/manage/clients', c.id, tab.path]"
+      ><span class="material-symbols-outlined" aria-hidden="true">{{
+        tab.path === 'medication'
+          ? 'pill'
+          : tab.path === 'visits'
+            ? 'calendar_month'
+            : tab.path === 'documents'
+              ? 'description'
+              : tab.path === 'audit'
+                ? 'history'
+                : 'group'
+      }}</span
+      >{{ tab.label }}</a
+    >
+  }
+</nav>

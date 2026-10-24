@@ -1,3 +1,4 @@
+import { AcademyService } from './academy/academy.service';
 import { QuickActions } from '../shared/quick-actions';
 import { WorkspaceCards } from '../shared/workspace-cards';
 import { MatSelectModule } from '@angular/material/select';
@@ -39,6 +40,7 @@ import { AcademyCpd } from './cpd/academy-cpd';
   ],
 })
 export class Learning {
+  protected readonly academy = inject(AcademyService);
   protected readonly store = inject(ManagementStore);
   private readonly route = inject(ActivatedRoute);
   protected readonly staffReturn = this.route.snapshot.queryParamMap.get('person');

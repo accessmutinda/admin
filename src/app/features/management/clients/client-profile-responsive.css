@@ -1,0 +1,92 @@
+@media (max-width: 1100px) {
+  :host .reference-profile {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+  .profile-signal-grid {
+    grid-column: 1/-1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .profile-page-heading {
+    flex-wrap: wrap;
+  }
+  :host #service-user-profile-title {
+    font-size: 21px;
+  }
+  .profile-page-actions {
+    width: 100%;
+  }
+  .profile-page-actions .button {
+    min-height: 44px;
+  }
+  :host .reference-profile {
+    grid-template-columns: 72px minmax(0, 1fr);
+    padding: var(--profile-panel-padding);
+    gap: 10px;
+  }
+  .profile-photo-button,
+  :host .reference-profile .client-profile-photo,
+  :host .reference-profile .client-avatar-large {
+    width: 72px;
+    height: 78px;
+  }
+  :host #client-record-name {
+    font-size: 21px;
+  }
+  .profile-demographics {
+    font-size: 11px;
+    gap: 6px;
+  }
+  .profile-demographics > span {
+    padding: 0;
+    border: 0;
+  }
+  .profile-address {
+    margin-top: 8px;
+    gap: 6px;
+  }
+  .profile-signal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .profile-signal {
+    min-height: 32px;
+  }
+  :host .reference-tabs a,
+  :host .reference-tabs button {
+    flex-basis: 40%;
+    justify-content: flex-start;
+  }
+  .profile-reference {
+    line-height: 1.5;
+  }
+}
+@media print {
+  .profile-page-actions,
+  .profile-camera,
+  .reference-tabs {
+    display: none !important;
+  }
+  :host .reference-profile {
+    grid-template-columns: 80px 1fr;
+  }
+  .profile-signal-grid {
+    grid-column: 1/-1;
+  }
+  .profile-photo-button,
+  :host .reference-profile .client-profile-photo,
+  :host .reference-profile .client-avatar-large {
+    width: 72px;
+    height: 80px;
+  }
+}
+
+@media (pointer: coarse) {
+  :host .reference-tabs a,
+  :host .reference-tabs button,
+  .profile-page-actions .button,
+  .profile-photo-button,
+  .profile-more summary {
+    min-height: 44px;
+  }
+}

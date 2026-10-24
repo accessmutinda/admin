@@ -1,0 +1,162 @@
+<cv-academy-admin-nav />
+<div class="heading">
+  <div>
+    <h1>{{ draft.title || 'Create course' }}</h1>
+    <p>Define the course, lessons, assessment and certificate requirements.</p>
+  </div>
+  <div class="actions">
+    <a class="academy-button" routerLink="/manage/learning/courses">Back to courses</a
+    ><button class="academy-button" [disabled]="unavailable" (click)="save(false)">
+      Save as draft</button
+    ><button class="academy-button primary" [disabled]="unavailable" (click)="save(true)">
+      Publish course
+    </button>
+  </div>
+</div>
+<cv-academy-message [error]="error()" [notice]="notice()" />
+@if (unavailable) {
+  <section class="panel empty">
+    <h2>Course unavailable</h2>
+    <p>This course is no longer in the current workspace.</p>
+  </section>
+} @else {
+  <div class="columns">
+    <div>
+      <section class="panel">
+        <h2>Course details</h2>
+        <div class="field-grid">
+          <label class="field wide"
+            >Course title<input [(ngModel)]="draft.title" maxlength="180" /></label
+          ><label class="field wide"
+            >Description<textarea rows="4" [(ngModel)]="draft.description"></textarea></label
+          ><label class="field">Category<input [(ngModel)]="draft.category" /></label
+          ><label class="field"
+            >CPD hours<input
+              type="number"
+              min="0"
+              max="100"
+              step="0.25"
+              [(ngModel)]="draft.cpdHours" /></label
+          ><label class="field"
+            >Pass mark override (%)<input
+              type="number"
+              min="1"
+              max="100"
+              [(ngModel)]="draft.passMark"
+              placeholder="Use academy default" /></label
+          ><label class="field"
+            >Validity override (months)<input
+              type="number"
+              min="0"
+              max="120"
+              [(ngModel)]="draft.validityMonths"
+              placeholder="Use academy default" /></label
+          ><label class="field wide"
+            >Thumbnail<mat-select
+              cvSelect
+              aria-label="Course thumbnail"
+              [(ngModel)]="draft.thumbnailId"
+              ><mat-option value="">Category placeholder</mat-option>
+              @for (asset of academy.state().assets; track asset.id) {
+                @if (asset.kind === 'Image') {
+                  <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
+                }
+              }
+            </mat-select></label
+          >
+        </div>
+        <label class="check"
+          ><input type="checkbox" [(ngModel)]="draft.mandatory" />Mandatory course</label
+        ><label class="check"
+          ><input type="checkbox" [(ngModel)]="draft.sample" />Sample learning content</label
+        ><label class="field"
+          >Publication state<mat-select
+            cvSelect
+            aria-label="Course publication state"
+            [(ngModel)]="draft.status"
+          >
+            @for (status of ['Draft', 'Published', 'Archived']; track status) {
+              <mat-option [value]="status">{{ status }}</mat-option>
+            }
+          </mat-select></label
+        >
+      </section>
+      <section class="panel">
+        <div class="heading">
+          <h2>Lessons & modules</h2>
+          <button class="academy-button" (click)="addLesson()">Add lesson</button>
+        </div>
+        @for (lesson of draft.lessons; track lesson.id; let index = $index) {
+          <article class="panel">
+            <div class="field-grid">
+              <label class="field"
+                >Lesson {{ index + 1 }} title<input [(ngModel)]="lesson.title" /></label
+              ><label class="field"
+                >Duration (minutes)<input
+                  type="number"
+                  min="1"
+                  max="480"
+                  [(ngModel)]="lesson.minutes" /></label
+              ><label class="field wide"
+                >Lesson details<textarea rows="4" [(ngModel)]="lesson.content"></textarea>
+              </label>
+            </div>
+            <div class="actions">
+              <button
+                class="academy-button"
+                [disabled]="index === 0"
+                (click)="move(index, -1)"
+                aria-label="Move lesson up"
+              >
+                ↑</button
+              ><button
+                class="academy-button"
+                [disabled]="index === draft.lessons.length - 1"
+                (click)="move(index, 1)"
+                aria-label="Move lesson down"
+              >
+                ↓</button
+              ><button class="academy-button danger" (click)="remove(lesson)">Remove lesson</button>
+              @if (lessonSaved(lesson.id)) {
+                <a
+                  class="academy-button"
+                  [routerLink]="['/manage/learning/content', draft.id, lesson.id]"
+                  >Edit video & resources →</a
+                >
+              }
+            </div>
+          </article>
+        } @empty {
+          <p>Add at least one lesson before publishing.</p>
+        }
+      </section>
+    </div>
+    <aside>
+      <section class="panel">
+        <cv-academy-image [id]="draft.thumbnailId" [alt]="draft.title" />
+        <h2>{{ draft.title || 'Course preview' }}</h2>
+        <p>{{ draft.description || 'Add a description to introduce this course.' }}</p>
+        <span class="badge">{{ draft.status }}</span>
+        <p>{{ draft.lessons.length }} lessons · {{ draft.cpdHours }} CPD hours</p>
+        <small>Version {{ draft.version }}</small>
+      </section>
+      <section class="panel">
+        <h2>Assessment questions</h2>
+        <p>
+          Save the draft course and lessons first, then create and publish its questions. A
+          published course needs at least one published question.
+        </p>
+        <a
+          class="academy-button"
+          routerLink="/manage/learning/questions/new"
+          [queryParams]="{ course: draft.id }"
+          >Create question →</a
+        ><a class="academy-button" routerLink="/manage/learning/questions">Question bank →</a>
+      </section>
+      <div class="notice">
+        Course completion records learning activity. It does not establish practical competency or
+        external accreditation.
+      </div>
+    </aside>
+  </div>
+}

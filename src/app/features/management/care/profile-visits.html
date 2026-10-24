@@ -1,0 +1,402 @@
+<cv-care-header [client]="client()" active="visits" />
+<header class="visits-heading">
+  <div>
+    <h2>Visits &amp; Allocation</h2>
+    <p>Weekly schedule, staff allocation and visit management for this service user.</p>
+  </div>
+  <div class="actions">
+    <button type="button" (click)="move(-1)" aria-label="Previous period">‹</button
+    ><span class="period"
+      ><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+      >{{ start() | date: 'EEE d MMM' }} – {{ end() | date: 'EEE d MMM yyyy' }}</span
+    ><button type="button" (click)="move(1)" aria-label="Next period">›</button
+    ><button type="button" (click)="anchor.set(today)">Today</button
+    ><label class="view-picker"
+      ><span class="sr-only">Schedule view</span
+      ><select [ngModel]="view()" (ngModelChange)="view.set($event)">
+        @for (v of ['Month', 'Week', 'List']; track v) {
+          <option>{{ v }}</option>
+        }
+      </select></label
+    >
+    @if (service.can('manage')) {
+      <button type="button" class="primary" (click)="formOpen.set(true)">
+        <span aria-hidden="true">＋</span> Allocate Carer
+      </button>
+    }
+  </div>
+</header>
+
+@if (notice()) {
+  <p class="notice" role="status">{{ notice() }}</p>
+}
+<div class="workspace" [class.form-closed]="!formOpen() || !service.can('manage')">
+  <section class="visits-panel calendar-panel" aria-label="Visits calendar">
+    <div class="calendar-heading">
+      <div class="section-title">
+        <span class="material-symbols-outlined title-icon" aria-hidden="true">calendar_month</span>
+        <div>
+          <h2>
+            {{ view() === 'Month' ? 'Monthly' : view() === 'Week' ? 'Weekly' : 'Scheduled' }} Visits
+            &amp; Allocation
+          </h2>
+          <p>All scheduled visits and allocated carers for {{ client().name }}.</p>
+        </div>
+      </div>
+      <div class="actions calendar-controls">
+        <button type="button" (click)="move(-1)" aria-label="Previous calendar period">‹</button
+        ><strong>{{ anchor() | date: 'MMMM yyyy' }}</strong
+        ><button type="button" (click)="move(1)" aria-label="Next calendar period">›</button
+        ><button type="button" (click)="anchor.set(today)">Today</button>
+        <div class="segmented" aria-label="Calendar view">
+          @for (v of ['Month', 'Week', 'List']; track v) {
+            <button
+              type="button"
+              [class.selected]="view() === v"
+              [attr.aria-pressed]="view() === v"
+              (click)="view.set(v)"
+            >
+              {{ v }}
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      @for (
+        item of [
+          { label: 'Morning Call', tone: 'morning' },
+          { label: 'Lunch Call', tone: 'lunch' },
+          { label: 'Tea Call', tone: 'tea' },
+          { label: 'Bed Call', tone: 'bed' },
+          { label: 'Double-up', tone: 'double' },
+          { label: 'Temporary', tone: 'temporary' },
+          { label: 'Needs Cover', tone: 'cover' },
+        ];
+        track item.label
+      ) {
+        <span><i [class]="item.tone"></i>{{ item.label }}</span>
+      }
+    </div>
+    <div class="calendar-scroll" tabindex="0" role="region" aria-label="Visit schedule">
+      @if (view() === 'List') {
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Call</th>
+              <th>Carer(s)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (v of visits(); track v.id) {
+              <tr>
+                <td>{{ v.date | date: 'dd MMM' }}<br />{{ v.start }}</td>
+                <td>
+                  <button type="button" class="text-button" (click)="visitSelected.emit(v)">
+                    {{ v.callName }}
+                  </button>
+                </td>
+                <td>
+                  @for (id of v.staffIds; track id) {
+                    <span class="list-carer">{{ name(id) }}</span>
+                  } @empty {
+                    Needs cover
+                  }
+                </td>
+                <td>{{ v.allocation }} · {{ v.state }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="4" class="empty">No visits scheduled for this period.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <div class="calendar-grid" [class.week-view]="view() === 'Week'">
+          @for (day of weekdays; track day.value) {
+            <div class="weekday">{{ day.label }}</div>
+          }
+          @for (day of days(); track day) {
+            <div
+              class="day"
+              [class.outside]="day < start() || day > end()"
+              [class.today]="day === today"
+            >
+              <time [attr.datetime]="day">{{ day | date: 'd MMM' }}</time>
+              @for (v of dayVisits(day); track v.id) {
+                <button
+                  type="button"
+                  class="visit"
+                  [class]="'visit ' + tone(v)"
+                  [class.cover]="v.staffIds.length < v.carers"
+                  [class.temporary-visit]="v.allocation === 'Temporary'"
+                  [attr.aria-label]="
+                    v.date +
+                    ' ' +
+                    v.start +
+                    ' ' +
+                    v.callName +
+                    ', ' +
+                    (v.staffIds.length ? name(v.staffIds[0]) : 'needs cover')
+                  "
+                  [title]="v.callName + ' · ' + v.start + '–' + v.end + ' · ' + v.state"
+                  (click)="visitSelected.emit(v)"
+                >
+                  <span class="visit-time">{{ v.start }}</span
+                  ><span class="carer-avatar">{{
+                    v.staffIds.length ? initials(name(v.staffIds[0])) : '!'
+                  }}</span
+                  ><span class="carer-name">{{
+                    v.staffIds.length ? name(v.staffIds[0]) : 'Needs cover'
+                  }}</span>
+                  @if (v.carers === 2) {
+                    <span class="double-mark" title="Two carers required">+1</span>
+                  }
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+    @if (!visits().length && view() !== 'List') {
+      <div class="empty">
+        <span class="material-symbols-outlined" aria-hidden="true">event_available</span
+        ><strong>No visits scheduled for this period</strong
+        ><span>Choose call types and dates to create an allocation.</span>
+      </div>
+    }
+    <footer class="calendar-footer">
+      <span>{{ visits().length }} scheduled visits · UK time</span>
+      @if (service.can('publish')) {
+        <a routerLink="/manage/rota/publishing"
+          >Review &amp; publish drafts <span aria-hidden="true">↗</span></a
+        >
+      }
+    </footer>
+  </section>
+  @if (formOpen() && service.can('manage')) {
+    <section class="visits-panel allocation-panel" aria-labelledby="allocation-title">
+      <div class="form-heading">
+        <div>
+          <h2 id="allocation-title">Allocate Carer(s)</h2>
+          <p>Create recurring allocations for {{ client().name }}.</p>
+        </div>
+        <button
+          type="button"
+          class="icon-button"
+          aria-label="Close allocation form"
+          (click)="closeForm()"
+        >
+          ×
+        </button>
+      </div>
+      <form (ngSubmit)="save()" (input)="dirty.set(true)" (change)="dirty.set(true)">
+        <label
+          >Service User<input
+            [value]="
+              client().name + ' (NHS: ' + (client().file?.details?.['nhs'] || 'Not recorded') + ')'
+            "
+            readonly
+        /></label>
+        <fieldset>
+          <legend>Call Types</legend>
+          <div class="call-options">
+            @for (call of calls(); track call.id) {
+              <label class="check"
+                ><input
+                  type="checkbox"
+                  [checked]="form.callIds.includes(call.id)"
+                  (change)="toggleCall(call.id)"
+                />{{ call.name }} ({{ call.start }})</label
+              >
+            } @empty {
+              <p>
+                No active call types.
+                <a routerLink="/manage/rota/call-packages" [queryParams]="{ client: client().id }"
+                  >Set up call packages</a
+                >
+                to allocate visits.
+              </p>
+            }
+          </div>
+        </fieldset>
+        <div class="form-row">
+          <label>Start Date<input type="date" name="from" [(ngModel)]="form.from" required /></label
+          ><label
+            >End Date<input type="date" name="to" [(ngModel)]="form.to" [min]="form.from" required
+          /></label>
+        </div>
+        <fieldset>
+          <legend>Repeat On</legend>
+          <div class="repeat">
+            @for (day of weekdays; track day.value) {
+              <label class="check"
+                ><input
+                  type="checkbox"
+                  [checked]="form.weekdays.includes(day.value)"
+                  (change)="toggleDay(day.value)"
+                />{{ day.label }}</label
+              >
+            }
+          </div>
+        </fieldset>
+        <div class="form-row three">
+          <label
+            >{{ form.callIds.length > 1 ? 'Package Times' : 'Call Time'
+            }}<input
+              type="time"
+              name="time"
+              [(ngModel)]="form.time"
+              [disabled]="form.callIds.length > 1"
+              required /></label
+          ><label
+            >Duration<select name="duration" [(ngModel)]="form.duration">
+              @for (n of [15, 30, 45, 60, 90, 120, 180, 240]; track n) {
+                <option [ngValue]="n">{{ n }} mins</option>
+              }
+            </select></label
+          ><label
+            >Travel Time<select name="travel" [(ngModel)]="form.travel">
+              @for (n of [0, 5, 10, 15, 20, 30, 45, 60, 90, 120]; track n) {
+                <option [ngValue]="n">{{ n }} mins</option>
+              }
+            </select></label
+          >
+        </div>
+        <div class="form-row">
+          <label
+            >Primary Carer<select name="primary" [(ngModel)]="form.primary" required>
+              <option value="">Select carer</option>
+              @for (p of store.staff(); track p.id) {
+                <option [value]="p.id">{{ p.name }} ({{ initials(p.name) }})</option>
+              }
+            </select></label
+          ><label
+            >Backup Carer<select name="backup" [(ngModel)]="form.backup">
+              <option value="">No backup carer</option>
+              @for (p of store.staff(); track p.id) {
+                <option [value]="p.id">{{ p.name }} ({{ initials(p.name) }})</option>
+              }
+            </select></label
+          >
+        </div>
+        <div class="form-row allocation-type">
+          <label class="switch"
+            ><input
+              type="radio"
+              name="allocation"
+              [value]="false"
+              [(ngModel)]="form.temporary"
+            /><span></span>Permanent carer</label
+          ><label class="switch"
+            ><input
+              type="radio"
+              name="allocation"
+              [value]="true"
+              [(ngModel)]="form.temporary"
+            /><span></span>Temporary allocation</label
+          >
+        </div>
+        <label class="switch"
+          ><input type="checkbox" name="doubleUp" [(ngModel)]="form.doubleUp" /><span></span
+          >Double-up care (two carers)</label
+        >
+        @if (form.doubleUp) {
+          <label
+            >Second Carer<select name="second" [(ngModel)]="form.second" required>
+              <option value="">Select second carer</option>
+              @for (p of store.staff(); track p.id) {
+                <option [value]="p.id">{{ p.name }}</option>
+              }
+            </select></label
+          >
+        }
+        <label class="switch"
+          ><input type="checkbox" name="medication" [(ngModel)]="form.medication" /><span></span
+          >Medication support required</label
+        >
+        <label class="notes"
+          >Notes<textarea
+            name="notes"
+            [(ngModel)]="form.notes"
+            maxlength="500"
+            rows="3"
+            placeholder="Call instructions and continuity notes"
+          ></textarea
+          ><small>{{ form.notes.length }}/500</small></label
+        >
+        @if (error()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
+        <div class="form-actions">
+          <button type="button" (click)="closeForm()">Cancel</button
+          ><button class="confirm" type="submit" [disabled]="!calls().length">
+            Confirm Allocation
+          </button>
+        </div>
+        <p class="form-hint">Allocate up to 31 days. Existing visits are retained.</p>
+      </form>
+    </section>
+  }
+  <aside class="sidebar">
+    <section class="visits-panel rules-panel">
+      <div class="section-title">
+        <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+        <h2>Allocation Rules &amp; Preferences</h2>
+        @if (service.can('manage')) {
+          <a
+            class="edit"
+            routerLink="/manage/rota/call-packages"
+            [queryParams]="{ client: client().id }"
+            ><span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit</a
+          >
+        }
+      </div>
+      @for (rule of rules(); track rule.label) {
+        <div class="rule">
+          <span class="material-symbols-outlined" [attr.data-tone]="rule.tone" aria-hidden="true">{{
+            rule.icon
+          }}</span>
+          <div>
+            <h3>{{ rule.label }}</h3>
+            @if (rule.value) {
+              <strong>{{ rule.value }}</strong>
+            }
+            <p>{{ rule.note }}</p>
+          </div>
+        </div>
+      }
+    </section>
+    <section class="visits-panel summary-panel">
+      <div class="section-title">
+        <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+        <div>
+          <h2>Current {{ view() === 'Month' ? 'Month' : 'Period' }} Summary</h2>
+          <p>{{ start() | date: 'MMMM yyyy' }}</p>
+        </div>
+      </div>
+      @for (stat of summary(); track stat.label) {
+        <div class="summary-row">
+          <span class="material-symbols-outlined" [attr.data-tone]="stat.tone" aria-hidden="true">{{
+            stat.icon
+          }}</span
+          ><span>{{ stat.label }}</span
+          ><strong
+            >{{ stat.count }}
+            @if (stat.label !== 'Total Scheduled Visits') {
+              <span
+                >({{
+                  visits().length ? ((stat.count / visits().length) * 100).toFixed(0) : 0
+                }}%)</span
+              >
+            }
+          </strong>
+        </div>
+      }
+    </section>
+  </aside>
+</div>

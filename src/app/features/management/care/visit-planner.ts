@@ -1,8 +1,10 @@
+import { ProfileVisits } from './profile-visits';
+import { ViewChild } from '@angular/core';
 import { downloadWorkbook } from './workbook';
 import { HostListener, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatSelectModule } from '@angular/material/select';
@@ -19,25 +21,31 @@ import {
   completedVisit,
 } from '../rota/rota.models';
 import { liveVisit, emptyEcm } from '../ecm/ecm.models';
-import { CareHeader } from './care-header';
 import { csv, validDate, weekDates } from './care.models';
 @Component({
   selector: 'cv-visit-planner',
   imports: [
     ModuleDesign,
-    CareHeader,
+    ProfileVisits,
     DatePipe,
     FormsModule,
-    RouterLink,
     A11yModule,
     MatSelectModule,
     CvSelect,
   ],
   host: { class: 'module-page operations-page' },
   templateUrl: './visit-planner.html',
-  styleUrls: ['./care-shared.css', './care-controls.css', './visit-planner.css'],
+  styleUrls: [
+    './care-shared.css',
+    './care-controls.css',
+    './visit-planner.css',
+    './visit-allocation.css',
+    './roster-reference.css',
+    './roster-calendar.css',
+  ],
 })
 export class VisitPlanner {
+  @ViewChild(ProfileVisits) private profileVisits?: ProfileVisits;
   protected readonly now = signal(Date.now());
   constructor() {
     const timer = setInterval(() => this.now.set(Date.now()), 60000);
@@ -46,10 +54,17 @@ export class VisitPlanner {
   ngOnInit(): void {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       if (this.modal()) return;
-      if (params.get('client')) this.clientFilter.set(params.get('client')!);
-      if (params.get('staff')) this.staffFilter.set(params.get('staff')!);
+      if (params.get('client')) {
+        this.clientFilter.set(params.get('client')!);
+        this.filterDraft.client = params.get('client')!;
+      }
+      if (params.get('staff')) {
+        this.staffFilter.set(params.get('staff')!);
+        this.filterDraft.staff = params.get('staff')!;
+      }
       if (params.get('allocation') === 'Unallocated') {
         this.allocationFilter.set('Unallocated');
+        this.filterDraft.unallocated = true;
         this.view.set('List');
       }
       if (validDate(params.get('from') ?? '')) this.anchor.set(params.get('from')!);
@@ -99,6 +114,121 @@ export class VisitPlanner {
   protected readonly driverFilter = signal('');
   protected readonly allocationFilter = signal('All');
   protected readonly showUnallocated = signal(true);
+  protected readonly referenceCareTypes = [
+    { name: 'Personal care', background: '#cce8fc', color: '#208ed1' },
+    { name: 'Medication', background: '#d1f2df', color: '#21a876' },
+    { name: 'Domestic', background: '#fff0c8', color: '#e4a724' },
+    { name: 'Social', background: '#e7d8fa', color: '#8e68d1' },
+    { name: 'Other', background: '#e6edf2', color: '#8c9daa' },
+  ];
+  protected readonly locations = computed(() =>
+    [
+      ...new Set(
+        this.service
+          .data()
+          .clients.map((client) => client.address)
+          .filter(Boolean),
+      ),
+    ].sort(),
+  );
+  protected careColour(visit: RotaVisit): string {
+    return (
+      this.referenceCareTypes.find((type) =>
+        visit.callName.toLowerCase().includes(type.name.toLowerCase()),
+      )?.color ?? '#208ed1'
+    );
+  }
+  protected readonly moreFilters = signal(false);
+  protected readonly trainingFilters = signal<Record<string, string>>({});
+  protected readonly availabilityFilter = signal('');
+  protected filterDraft = {
+    staff: '',
+    client: '',
+    location: '',
+    skill: '',
+    gender: '',
+    driver: '',
+    medication: '',
+    handling: '',
+    dementia: '',
+    challenging: '',
+    availability: '',
+    unallocated: false,
+  };
+  protected readonly specialistFilters = [
+    { key: 'handling', label: 'Moving & Handling' },
+    { key: 'dementia', label: 'Dementia Experience' },
+    { key: 'challenging', label: 'Challenging Behaviour' },
+  ] as const;
+  protected applyFilters(): void {
+    const filter = this.filterDraft;
+    this.staffFilter.set(filter.staff);
+    this.clientFilter.set(filter.client);
+    this.locationFilter.set(filter.location);
+    this.skillFilter.set(filter.skill);
+    this.genderFilter.set(filter.gender);
+    this.driverFilter.set(filter.driver);
+    this.allocationFilter.set(filter.unallocated ? 'Unallocated' : 'All');
+    if (filter.unallocated) this.showUnallocated.set(true);
+    this.availabilityFilter.set(filter.availability);
+    this.trainingFilters.set({
+      medication: filter.medication,
+      handling: filter.handling,
+      dementia: filter.dementia,
+      challenging: filter.challenging,
+    });
+    this.staffPage.set(1);
+  }
+  private trained(person: ReturnType<ManagementStore['staff']>[number], course: string): boolean {
+    return person.hr
+      ? person.hr.training.some(
+          (training) =>
+            training.courseId === course &&
+            !!training.completed &&
+            (!training.expiry || training.expiry >= this.end()),
+        )
+      : (person.progress[course] ?? 0) >= 100;
+  }
+  protected readonly periodVisits = computed(() =>
+    this.service
+      .data()
+      .visits.filter(
+        (v) => v.state !== 'Cancelled' && v.date >= this.start() && v.date <= this.end(),
+      ),
+  );
+  protected readonly previousWeekVisits = computed(
+    () =>
+      this.service
+        .data()
+        .visits.filter(
+          (v) =>
+            v.state !== 'Cancelled' && v.date >= addDays(this.start(), -7) && v.date < this.start(),
+        ).length,
+  );
+  protected percentage(value: number): number {
+    return this.visits().length ? Math.round((value / this.visits().length) * 100) : 0;
+  }
+  protected weeklyChange(): string {
+    const previous = this.previousWeekVisits();
+    return previous
+      ? Math.round(((this.periodVisits().length - previous) / previous) * 100) + '% vs last week'
+      : 'No visits last week';
+  }
+  protected readonly staffOnLeave = computed(
+    () =>
+      new Set(
+        this.store
+          .data()
+          .leaves.filter(
+            (leave) =>
+              leave.start <= this.end() &&
+              leave.end >= this.start() &&
+              (!leave.status || leave.status === 'Approved') &&
+              /annual/i.test(leave.type),
+          )
+          .map((leave) => leave.personId ?? leave.person),
+      ).size,
+  );
   protected readonly courses = COURSES;
   protected readonly start = computed(() => {
     const date = this.anchor();
@@ -123,6 +253,13 @@ export class VisitPlanner {
       .filter(
         (p) =>
           (!this.staffFilter() || p.id === this.staffFilter()) &&
+          Object.entries(this.trainingFilters()).every(
+            ([course, required]) => !required || this.trained(p, course) === (required === 'Yes'),
+          ) &&
+          (!this.availabilityFilter() ||
+            this.days().some(
+              (date) => !this.store.data().leaves.some(this.leaveFor(p.id, date)),
+            )) &&
           (!this.genderFilter() || p.hr?.personal.gender === this.genderFilter()) &&
           (!this.driverFilter() || !!p.hr?.personal.driver === (this.driverFilter() === 'Yes')) &&
           (!this.skillFilter() ||
@@ -155,7 +292,12 @@ export class VisitPlanner {
                   ? v.staffIds.length < v.carers
                   : v.staffIds.length === v.carers)) &&
               (!this.skillFilter() || v.skills.includes(this.skillFilter())) &&
-              (!(this.genderFilter() || this.driverFilter()) ||
+              (!(
+                this.genderFilter() ||
+                this.driverFilter() ||
+                Object.values(this.trainingFilters()).some(Boolean) ||
+                this.availabilityFilter()
+              ) ||
                 v.staffIds.some((id) => this.staff().some((p) => p.id === id))) &&
               `${v.clientName} ${v.callName} ${v.address} ${v.staffIds.map((id) => this.name(id)).join(' ')}`
                 .toLowerCase()
@@ -171,6 +313,56 @@ export class VisitPlanner {
     this.visits().filter((v) => v.staffIds.length === v.carers),
   );
   protected readonly doubleUps = computed(() => this.visits().filter((v) => v.carers === 2));
+  protected readonly rosterStats = computed(() => [
+    {
+      label: 'Total Weekly Visits',
+      value: this.visits().length,
+      icon: 'calendar_month',
+      tone: 'blue',
+      detail: this.weeklyChange(),
+      ring: -1,
+    },
+    {
+      label: 'Allocated Visits',
+      value: this.allocated().length,
+      icon: 'group',
+      tone: 'green',
+      detail: this.percentage(this.allocated().length) + '% of total',
+      ring: this.percentage(this.allocated().length),
+    },
+    {
+      label: 'Unallocated Visits',
+      value: this.unallocated().length,
+      icon: 'warning',
+      tone: 'red',
+      detail: this.percentage(this.unallocated().length) + '% of total',
+      ring: this.percentage(this.unallocated().length),
+    },
+    {
+      label: 'Double-up Visits',
+      value: this.doubleUps().length,
+      icon: 'groups',
+      tone: 'purple',
+      detail: this.percentage(this.doubleUps().length) + '% of visits',
+      ring: this.percentage(this.doubleUps().length),
+    },
+    {
+      label: 'Staff on Rota',
+      value: this.staffOnRota(),
+      icon: 'person',
+      tone: 'blue',
+      detail: this.staffOnLeave() + ' on annual leave',
+      ring: -1,
+    },
+    {
+      label: 'Late / At Risk Visits',
+      value: this.late().length,
+      icon: 'warning',
+      tone: 'red',
+      detail: this.percentage(this.late().length) + '% of visits',
+      ring: this.percentage(this.late().length),
+    },
+  ]);
   protected readonly totalHours = computed(() =>
     this.visits().reduce((sum, v) => sum + this.duration(v) / 60, 0),
   );
@@ -208,6 +400,93 @@ export class VisitPlanner {
       );
     }),
   );
+  protected readonly careTypes = computed(() => {
+    const names = [...new Set(this.visits().map((visit) => visit.callName))];
+    return (
+      names.length ? names : Object.keys(this.service.data().ecm?.styles ?? emptyEcm().styles)
+    ).map((name) => ({ name, background: this.callBackground(name) }));
+  });
+  protected readonly alerts = computed(() => [
+    {
+      kind: 'conflicts',
+      label: 'Rota conflicts',
+      count: this.conflicts().length,
+      description: 'Assignments requiring review',
+      icon: 'event_busy',
+      tone: 'red',
+    },
+    {
+      kind: 'late',
+      label: 'Late / at risk visits',
+      count: this.late().length,
+      description: 'Published visits at risk of delay',
+      icon: 'warning',
+      tone: 'red',
+    },
+    {
+      kind: 'skills',
+      label: 'Missing required skills',
+      count: this.conflicts().filter((row) => row.issue.includes('has not completed')).length,
+      description: 'Assigned carers requiring training',
+      icon: 'health_and_safety',
+      tone: 'red',
+    },
+    {
+      kind: 'travel',
+      label: 'Large travel gaps',
+      count: this.travelGaps().length,
+      description: 'Carers with gaps over 60 minutes',
+      icon: 'commute',
+      tone: 'amber',
+    },
+    {
+      kind: 'overtime',
+      label: 'Overtime risk',
+      count: this.overtime().length,
+      description: 'Staff exceeding contracted hours',
+      icon: 'schedule',
+      tone: 'amber',
+    },
+  ]);
+  protected viewLabel(view: string): string {
+    return (
+      (
+        {
+          Week: 'Calendar View',
+          Month: 'Month View',
+          List: 'List View',
+          Staff: 'Staff View',
+          'Service user': 'Service User View',
+        } as Record<string, string>
+      )[view] ?? view
+    );
+  }
+  protected initials(name: string): string {
+    return name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('');
+  }
+  protected avatarColour(index: number): string {
+    return ['#5badd7', '#6392d8', '#aa79dc', '#4bbd91', '#e9b54e', '#db84b3'][index % 6];
+  }
+  protected reviewAlert(kind: string): void {
+    const visit =
+      kind === 'skills'
+        ? this.conflicts().find((row) => row.issue.includes('has not completed'))?.visit
+        : kind === 'conflicts'
+          ? this.conflicts()[0]?.visit
+          : kind === 'late'
+            ? this.late()[0]
+            : this.visits().find((v) =>
+                v.staffIds.includes(
+                  (kind === 'travel' ? this.travelGaps() : this.overtime())[0]?.id ?? '',
+                ),
+              );
+    if (visit) this.edit(visit);
+  }
   protected readonly clientRows = computed(() =>
     this.service.data().clients.filter((c) => this.visits().some((v) => v.clientId === c.id)),
   );
@@ -320,7 +599,16 @@ export class VisitPlanner {
           : liveVisit(v, this.now(), this.service.data().ecm ?? emptyEcm()).status;
   }
   protected background(v: RotaVisit): string {
-    return this.service.data().ecm?.styles[v.callName]?.background ?? '#eaf5fc';
+    return this.callBackground(v.callName);
+  }
+  private callBackground(name: string): string {
+    const configured = (this.service.data().ecm?.styles ?? emptyEcm().styles)[name]?.background;
+    if (configured) return configured;
+    const category = name.toLowerCase();
+    if (category.includes('medication')) return '#d7f4e3';
+    if (category.includes('domestic')) return '#fff0c7';
+    if (category.includes('social')) return '#eadcfb';
+    return '#dcefff';
   }
   protected toggle(id: string): void {
     this.selected.update((ids) => (ids.includes(id) ? ids.filter((v) => v !== id) : [...ids, id]));
@@ -331,6 +619,22 @@ export class VisitPlanner {
     );
   }
   protected clear(): void {
+    this.filterDraft = {
+      staff: '',
+      client: '',
+      location: '',
+      skill: '',
+      gender: '',
+      driver: '',
+      medication: '',
+      handling: '',
+      dementia: '',
+      challenging: '',
+      availability: '',
+      unallocated: false,
+    };
+    this.trainingFilters.set({});
+    this.availabilityFilter.set('');
     this.query.set('');
     this.clientFilter.set('');
     this.staffFilter.set('');
@@ -351,7 +655,10 @@ export class VisitPlanner {
   }
   canLeave(): boolean {
     return (
-      !this.modal() || this.modal() === 'view' || window.confirm('Discard the unsaved allocation?')
+      (this.profileVisits?.canLeave() ?? true) &&
+      (!this.modal() ||
+        this.modal() === 'view' ||
+        window.confirm('Discard the unsaved allocation?'))
     );
   }
   protected close(): void {

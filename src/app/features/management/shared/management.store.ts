@@ -267,6 +267,11 @@ const seedPerson = (
   progress: stage === 'Hired' ? { safeguarding: 100, handling: 40 } : {},
 });
 export interface WorkspaceData {
+  systemDemoVersion?: number;
+  hrDemoVersion?: number;
+  careDemoVersion?: number;
+  careDemoImagesVersion?: number;
+  academy?: import('../learning/academy/academy.models').AcademyData;
   staffPortal?: import('../staff-portal/portal.models').PortalData;
   journal?: import('../journal/journal.models').JournalData;
   inspection?: import('../../inspector/inspector.models').InspectorData;
