@@ -313,7 +313,7 @@
               @if (section.link) {
                 <a [routerLink]="section.link">{{ section.title }}</a>
               } @else if (section.fragment) {
-                <a [href]="'#' + section.fragment">{{ section.title }}</a>
+                <a routerLink="." [fragment]="section.fragment">{{ section.title }}</a>
               } @else {
                 <span>{{ section.title }}</span>
               }
