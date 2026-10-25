@@ -3,7 +3,7 @@ import { A11yModule } from '@angular/cdk/a11y';
 import { MAT_SELECT_CONFIG } from '@angular/material/select';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ViewEncapsulation, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ROLES } from '../../../core/auth/models/role';
 import { ManagementRole } from '../shared/role-pill';
@@ -14,6 +14,8 @@ import { WallboardLauncher } from '../ecm/wallboard-launcher';
 import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
 @Component({
   selector: 'cv-management-layout',
+  encapsulation: ViewEncapsulation.None,
+  styleUrls: ['../people/hr-shell.css', '../companies/company-directory.css'],
   providers: [{ provide: MAT_SELECT_CONFIG, useValue: { overlayPanelClass: 'cv-select-overlay' } }],
   imports: [
     ManagementRole,

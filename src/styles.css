@@ -6,12 +6,10 @@
 @import './app/features/management/shared/admin-refinements.css';
 @import './app/features/management/shared/module-template.css';
 @import './app/features/management/companies/companies.css';
-@import './app/features/management/people/hr-shell.css';
 @import './app/features/management/companies/company-profile.css';
 @import './app/features/management/companies/company-contacts.css';
 @import './app/features/management/companies/company-branding.css';
 @import './app/features/management/companies/company-modules.css';
-@import './app/features/management/companies/company-directory.css';
 @import './app/features/management/companies/company-compliance.css';
 @import './app/features/management/companies/company-create.css';
 @import './app/features/management/locations/locations.css';
