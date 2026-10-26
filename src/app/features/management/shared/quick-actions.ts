@@ -90,7 +90,7 @@ import { Component, ViewEncapsulation, input } from '@angular/core';
         .cv-quick-actions
         .co-action-list
         > :is(a, button)
-        > .material-symbols-outlined:last-child {
+        > .material-symbols-outlined:last-child:not(:first-child) {
         margin-left: auto;
         font-size: 18px;
       }
