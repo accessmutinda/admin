@@ -1,4 +1,4 @@
-import { Injectable, computed, signal, isDevMode } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { Observable, delay, of, throwError } from 'rxjs';
 import { AppUser } from './models/user';
 import { AuthSession } from './models/session';
@@ -36,9 +36,7 @@ export class AuthService {
     const user =
       address === DEMO_EMAIL
         ? DEMO_USER
-        : isDevMode()
-          ? DEMO_PORTAL_USERS.find((account) => account.email === address)
-          : undefined;
+        : DEMO_PORTAL_USERS.find((account) => account.email === address);
     if (!user || password !== DEMO_PASSWORD) {
       return throwError(() => new Error('Incorrect email or password.')).pipe(delay(LATENCY_MS));
     }

@@ -347,7 +347,7 @@
                         : 'Details incomplete'
                   }}</small>
                 </div>
-                <a [href]="'#address-' + card.key">View</a>
+                <a routerLink="." [fragment]="'address-' + card.key">View</a>
               </li>
             }
           </ul>
