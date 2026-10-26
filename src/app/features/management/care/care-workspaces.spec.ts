@@ -78,7 +78,7 @@ describe('Care workspaces', () => {
     expect(editor.canLeave()).toBe(true);
     confirm.mockRestore();
   });
-  it('opens the medication drawer, retains invalid drafts, saves and renders the MAR schedule', async () => {
+  it('opens the medication drawer, retains invalid drafts, saves and renders the medication register', async () => {
     const fixture = TestBed.createComponent(Medication);
     fixture.detectChanges();
     const editor = fixture.componentInstance as any;
@@ -101,15 +101,18 @@ describe('Care workspaces', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.mar-table').textContent).toContain(
-      'Test prescription',
-    );
-    expect(fixture.nativeElement.querySelector('.mar-table').textContent).toContain('18:00');
-    editor.period.set('Month');
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('.mar-table thead th').length).toBeGreaterThan(
-      28,
-    );
+    expect(
+      fixture.nativeElement.querySelector('[aria-label="Medication register"]').textContent,
+    ).toContain('Test prescription');
+    expect(fixture.nativeElement.querySelector('.mar-table')).toBeNull();
+    const preview = fixture.nativeElement.querySelector('.mar-settings-preview');
+    expect(preview.textContent).toContain('Test prescription');
+    expect(preview.textContent).toContain('08:00');
+    expect(preview.textContent).toContain('18:00');
+    expect(preview.querySelectorAll('[aria-label="Scheduled dose"]')).toHaveLength(8);
+    expect(fixture.nativeElement.textContent).not.toContain('Administration history & corrections');
+    expect(fixture.nativeElement.textContent).not.toContain('Additional Information');
+    expect(fixture.nativeElement.querySelector('.medication-audit-panel')).not.toBeNull();
   });
   it('keeps standard and controlled registers aligned with the selected MAR sheet and preselects a PRN draft', async () => {
     const fixture = TestBed.createComponent(Medication);
@@ -139,8 +142,13 @@ describe('Care workspaces', () => {
     expect(page.querySelector('[aria-label="Medication register"]')!.textContent).not.toContain(
       'Controlled fixture',
     );
-    [...page.querySelectorAll<HTMLButtonElement>('.medication-sheet-tabs button')]
-      .find((b) => b.textContent!.includes('Controlled'))!
+    page
+      .querySelector<HTMLElement>('[aria-label="MAR sheet type"] .mat-mdc-select-trigger')!
+      .click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    [...document.querySelectorAll<HTMLElement>('mat-option')]
+      .find((option) => option.textContent!.includes('Controlled drugs'))!
       .click();
     fixture.detectChanges();
     expect(page.querySelector('[aria-label="Medication register"]')!.textContent).toContain(
@@ -149,10 +157,18 @@ describe('Care workspaces', () => {
     expect(page.querySelector('[aria-label="Medication register"]')!.textContent).not.toContain(
       'Standard fixture',
     );
-    expect(page.querySelector('.mar-table')!.textContent).toContain('Controlled fixture');
-    expect(page.querySelector('.mar-table')!.textContent).not.toContain('Standard fixture');
+    expect(page.querySelector('.mar-table')).toBeNull();
+    expect(page.querySelector('.mar-preview-table')!.textContent).toContain('Controlled fixture');
+    expect(page.querySelector('.mar-preview-table')!.textContent).not.toContain('Standard fixture');
     editor.addPrn();
     fixture.detectChanges();
+    expect(page.querySelector('[aria-label="Medication record summary"]')!.textContent).toContain(
+      'Current medicines',
+    );
+    editor.modal.set('');
+    editor.open('medication');
+    expect(editor.draft.controlled).toBe(true);
+    editor.addPrn();
     expect(editor.draft.frequency).toBe('PRN');
     expect(editor.draft.controlled).toBe(true);
     expect(editor.timeText).toBe('');
@@ -355,6 +371,7 @@ describe('Nested service-user routes', () => {
     });
     TestBed.inject(AuthService).signInWithMicrosoft();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
+    TestBed.inject(ManagementStore).saveWorkspace((data) => ({ ...data, systemDemoVersion: 1 }));
     TestBed.inject(RotaService).saveClient({
       id: 'client',
       name: 'Nested route person',
@@ -369,6 +386,8 @@ describe('Nested service-user routes', () => {
     const harness = await RouterTestingHarness.create();
     for (const section of [
       '',
+      'journal',
+      'communications',
       'medication',
       'visits',
       'contacts',
@@ -393,6 +412,8 @@ describe('Nested service-user routes', () => {
           ? 'Overview'
           : (
               {
+                journal: 'Client Journal',
+                communications: 'Professional Communications',
                 medication: 'Medication & MAR',
                 visits: 'Visits & Allocation',
                 contacts: 'Contacts',
@@ -402,6 +423,22 @@ describe('Nested service-user routes', () => {
               } as Record<string, string>
             )[section],
       );
+      if (section === 'journal') expect(page.querySelector('cv-staff-journal')).not.toBeNull();
+      if (section === 'communications') {
+        expect(page.querySelector('cv-portal-communications')).not.toBeNull();
+        const editor = page.querySelector<HTMLInputElement>('input[name=subject]')!;
+        editor.value = 'Unsaved professional update';
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+        const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+        await harness.navigateByUrl('/clients/client/medication');
+        expect(
+          harness.routeNativeElement!.querySelector('cv-portal-communications'),
+        ).not.toBeNull();
+        expect(confirm).toHaveBeenCalled();
+        confirm.mockReturnValue(true);
+        await harness.navigateByUrl('/clients/client/medication');
+        confirm.mockRestore();
+      }
       expect(page.querySelectorAll('.client-section-nav')).toHaveLength(section ? 0 : 1);
     }
   });

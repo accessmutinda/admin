@@ -110,28 +110,25 @@
   >
     <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Care Plan
   </button>
-  <a [routerLink]="['/staff-portal/service-users', c.id, 'journal']"
-    ><span class="material-symbols-outlined" aria-hidden="true">forum</span>Client Journal ↗</a
-  >
-  <a [routerLink]="['/staff-portal/service-users', c.id, 'communications']"
-    ><span class="material-symbols-outlined" aria-hidden="true">groups</span>Professional
-    Communications ↗</a
-  >
   @for (tab of tabs; track tab.path) {
     <a
       [class.selected]="active() === tab.path"
       [attr.aria-current]="active() === tab.path ? 'page' : null"
       [routerLink]="['/manage/clients', c.id, tab.path]"
       ><span class="material-symbols-outlined" aria-hidden="true">{{
-        tab.path === 'medication'
-          ? 'pill'
-          : tab.path === 'visits'
-            ? 'calendar_month'
-            : tab.path === 'documents'
-              ? 'description'
-              : tab.path === 'audit'
-                ? 'history'
-                : 'group'
+        tab.path === 'journal'
+          ? 'forum'
+          : tab.path === 'communications'
+            ? 'groups'
+            : tab.path === 'medication'
+              ? 'pill'
+              : tab.path === 'visits'
+                ? 'calendar_month'
+                : tab.path === 'documents'
+                  ? 'description'
+                  : tab.path === 'audit'
+                    ? 'history'
+                    : 'group'
       }}</span
       >{{ tab.label }}</a
     >

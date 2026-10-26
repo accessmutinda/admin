@@ -60,6 +60,8 @@ export class CareHeader {
       });
   }
   protected readonly tabs = [
+    { label: 'Client Journal', path: 'journal' },
+    { label: 'Professional Communications', path: 'communications' },
     { label: 'Medication & MAR', path: 'medication' },
     { label: 'Visits & Allocation', path: 'visits' },
     { label: 'Documents', path: 'documents' },
