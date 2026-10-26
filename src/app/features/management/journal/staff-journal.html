@@ -40,12 +40,14 @@
     <button
       class="metric co-stat co-surface"
       data-tone="amber"
-      (click)="changeView('Journal'); openFolder('Follow up'); filter.set('All messages')"
+      (click)="
+        changeView('Journal'); openFolder('Awaiting My Response'); filter.set('All messages')
+      "
     >
       <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">flag</span>
       <div>
-        <h2>Follow-ups</h2>
-        <strong>{{ followUps() }}</strong
+        <h2>Awaiting My Response</h2>
+        <strong>{{ awaiting().length }}</strong
         ><small>Messages needing your attention</small>
       </div>
     </button>
@@ -56,8 +58,8 @@
     >
       <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
       <div>
-        <h2>Outstanding tasks</h2>
-        <strong>{{ openTasks().length }}</strong
+        <h2>Tasks Mentioned</h2>
+        <strong>{{ linkedTasks().length }}</strong
         ><small>Assigned to you</small>
       </div>
     </button>
@@ -74,16 +76,18 @@
       </div>
     </button>
   </div>
-  <nav class="tabs journal-tabs" aria-label="Staff workspace views">
-    @for (tab of ['Journal', 'Tasks & actions', 'Activity timeline']; track tab) {
-      <button
-        [class.active]="view() === tab"
-        [attr.aria-current]="view() === tab ? 'page' : null"
-        (click)="changeView(tab)"
-      >
-        {{ tab }}
+  <nav class="tabs journal-tabs" aria-label="Journal folders">
+    @for (tab of ['Inbox', 'Sent', 'Drafts', 'Mentions', 'Archived']; track tab) {
+      <button [class.active]="folder() === tab" (click)="changeView('Journal'); openFolder(tab)">
+        {{ tab }} ({{ folderEntries(tab).length }})
       </button>
     }
+    <button
+      [class.active]="view() === 'Activity timeline'"
+      (click)="changeView('Activity timeline')"
+    >
+      Activity timeline
+    </button>
   </nav>
 }
 @if (view() === 'Journal') {
@@ -103,11 +107,25 @@
                 (click)="openFolder(item.name)"
               >
                 <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span
-                ><span>{{ clientId() && item.name === 'Inbox' ? 'All journal' : item.name }}</span
+                ><span>{{ folderLabel(item.name) }}</span
                 ><small>{{ folderEntries(item.name).length }}</small>
               </button>
             }
           </nav>
+          <div class="journal-labels">
+            <h2>Labels</h2>
+            @for (category of categories; track category; let i = $index) {
+              <button
+                [class.active]="label() === category"
+                (click)="label.set(label() === category ? '' : category)"
+              >
+                <i
+                  [style.background]="['#008eff', '#ff496b', '#00867a', '#933de0', '#f6ae19'][i]"
+                ></i
+                >{{ category }}
+              </button>
+            }
+          </div>
           <div class="mailbox-note">
             <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>
             <p>Your journal history stays with this workspace.</p>
@@ -136,47 +154,77 @@
               }
             </mat-select>
           </div>
+          <div class="journal-bulk">
+            <span>{{ checked().length }} selected</span>
+            @if (checked().length) {
+              <button (click)="bulk('archivedBy')">Archive</button
+              ><button (click)="bulk('deletedBy')">Move to Trash</button>
+            }
+            <mat-select
+              cvSelect
+              aria-label="Journal sort order"
+              [ngModel]="order()"
+              (ngModelChange)="order.set($event)"
+              ><mat-option value="Newest first">Newest first</mat-option
+              ><mat-option value="Oldest first">Oldest first</mat-option></mat-select
+            >
+          </div>
           <div class="list-heading">
             <h2>{{ clientId() && folder() === 'Inbox' ? 'All journal' : folder() }}</h2>
             <span>{{ messages().length }} entries</span>
           </div>
-          @for (entry of messages(); track entry.id) {
-            <button
-              class="message-row"
-              [class.selected]="selected()?.id === entry.id"
-              [class.unread]="entry.state === 'Sent' && !entry.readBy.includes(service.email())"
-              (click)="open(entry)"
-            >
-              <span class="journal-avatar">{{ initials(entry.author) }}</span
-              ><span class="message-content"
-                ><span class="message-meta"
-                  ><strong>{{
-                    entry.authorEmail === service.email() ? 'You' : entry.author
-                  }}</strong
-                  ><time>{{ entry.createdAt | date: 'd MMM, HH:mm' }}</time></span
-                ><strong class="message-subject">{{ entry.subject }}</strong
-                ><span class="message-preview">{{
-                  entry.body || 'Draft — continue writing your message'
-                }}</span
-                ><span class="message-tags"
-                  ><span>{{ entry.category }}</span>
-                  @if (entry.clientId) {
-                    <span>{{ client(entry.clientId) }}</span>
-                  }
-                  @if (entry.priority === 'High') {
-                    <span class="high">High priority</span>
-                  }
-                  @if (entry.attachments.length) {
-                    <span class="material-symbols-outlined" aria-label="Has attachments"
-                      >attach_file</span
-                    >
-                  }
-                </span></span
+          @for (entry of pageEntries(); track entry.id) {
+            <div class="journal-message">
+              <input
+                type="checkbox"
+                [attr.aria-label]="'Select ' + entry.subject"
+                [checked]="checked().includes(entry.id)"
+                (change)="toggle(entry.id)"
+              /><button
+                class="message-row"
+                [class.selected]="selected()?.id === entry.id"
+                [class.unread]="entry.state === 'Sent' && !entry.readBy.includes(service.email())"
+                (click)="open(entry)"
               >
-              @if (entry.state === 'Sent' && !entry.readBy.includes(service.email())) {
-                <span class="unread-dot" aria-label="Unread"></span>
-              }
-            </button>
+                <span class="journal-avatar">
+                  @if (photo(entry.authorEmail)) {
+                    <img [src]="photo(entry.authorEmail)" [alt]="entry.author" />
+                  } @else {
+                    {{ initials(entry.author) }}
+                  }</span
+                ><span class="message-content"
+                  ><span class="message-meta"
+                    ><strong>{{
+                      entry.authorEmail === service.email() ? 'You' : entry.author
+                    }}</strong
+                    ><time>{{ entry.createdAt | date: 'd MMM, HH:mm' }}</time></span
+                  ><strong class="message-subject">{{ entry.subject }}</strong
+                  ><span class="message-preview">{{
+                    entry.body || 'Draft — continue writing your message'
+                  }}</span
+                  ><span class="message-tags"
+                    ><span>{{ entry.category }}</span>
+                    @if (entry.clientId) {
+                      <span>{{ client(entry.clientId) }}</span>
+                    }
+                    @if (clientId()) {
+                      <span class="visit-tag">{{ visitName(entry.visitId) }}</span>
+                    }
+                    @if (entry.priority === 'High') {
+                      <span class="high">High priority</span>
+                    }
+                    @if (entry.attachments.length) {
+                      <span class="material-symbols-outlined" aria-label="Has attachments"
+                        >attach_file</span
+                      >
+                    }
+                  </span></span
+                >
+                @if (entry.state === 'Sent' && !entry.readBy.includes(service.email())) {
+                  <span class="unread-dot" aria-label="Unread"></span>
+                }
+              </button>
+            </div>
           } @empty {
             <div class="journal-empty">
               <span class="material-symbols-outlined" aria-hidden="true">mark_email_read</span>
@@ -197,6 +245,15 @@
               <button class="button" (click)="newMessage()">Write a journal entry</button>
             </div>
           }
+          <div class="journal-bulk">
+            <span
+              >Page {{ activePage() }} of {{ pageCount() }} · {{ messages().length }} entries</span
+            ><button [disabled]="activePage() === 1" (click)="page.set(activePage() - 1)">
+              Previous</button
+            ><button [disabled]="activePage() === pageCount()" (click)="page.set(activePage() + 1)">
+              Next
+            </button>
+          </div>
         </div>
       </section>
     }
@@ -261,12 +318,40 @@
               name="client"
               aria-label="Related service user"
               [(ngModel)]="draft.clientId"
+              [disabled]="!!clientId()"
+              (ngModelChange)="changeClient()"
               ><mat-option value="">General / no service user</mat-option>
               @for (client of service.clients(); track client.id) {
                 <mat-option [value]="client.id">{{ client.name }}</mat-option>
               }
             </mat-select></label
           >
+          @if (draft.clientId) {
+            <label
+              >Related Visit<mat-select
+                cvSelect
+                name="visitId"
+                aria-label="Related visit"
+                [(ngModel)]="draft.visitId"
+                ><mat-option value="">No visit linked</mat-option>
+                @for (visit of visits(); track visit.id) {
+                  <mat-option [value]="visit.id"
+                    >{{ visit.date }} · {{ visit.callName }} {{ visit.start }}</mat-option
+                  >
+                }
+              </mat-select></label
+            >
+            <label
+              >Entry type<mat-select
+                cvSelect
+                name="entryKind"
+                aria-label="Entry type"
+                [(ngModel)]="draft.kind"
+                ><mat-option value="Message">Message</mat-option
+                ><mat-option value="Internal note">Internal note</mat-option></mat-select
+              ></label
+            >
+          }
           <div class="form-pair">
             <label
               >Priority<mat-select
@@ -290,17 +375,43 @@
               </mat-select></label
             >
           </div>
-          <label
-            >Message <span class="required">*</span
-            ><textarea
-              name="body"
-              [(ngModel)]="draft.body"
-              required
-              [rows]="composeOnly() ? 4 : 10"
-              placeholder="Share your observations, actions taken and any follow-up needed…"
-            ></textarea>
-          </label>
-          <label class="attach-zone"
+          <div class="rich-message">
+            <label id="journal-message-label">Message <span class="required">*</span></label>
+            <div class="rich-toolbar" role="toolbar" aria-label="Message formatting">
+              @for (
+                tool of [
+                  ['bold', 'B'],
+                  ['italic', 'I'],
+                  ['underline', 'U'],
+                  ['insertUnorderedList', '• List'],
+                  ['insertOrderedList', '1. List'],
+                ];
+                track tool[0]
+              ) {
+                <button
+                  type="button"
+                  [attr.aria-label]="tool[0]"
+                  (mousedown)="format(tool[0], $event)"
+                >
+                  {{ tool[1] }}
+                </button>
+              }
+            </div>
+            <div
+              class="rich-editor"
+              contenteditable="true"
+              role="textbox"
+              aria-multiline="true"
+              aria-labelledby="journal-message-label"
+              [innerHTML]="editorHtml"
+              (input)="bodyChanged($event)"
+            ></div>
+          </div>
+          <label class="response-check"
+            ><input type="checkbox" name="responseRequired" [(ngModel)]="draft.responseRequired" />
+            Response required</label
+          >
+          <label class="attach-zone" (dragover)="$event.preventDefault()" (drop)="drop($event)"
             ><span class="material-symbols-outlined" aria-hidden="true">attach_file</span
             ><strong>{{ uploading() ? 'Reading attachments…' : 'Attach files' }}</strong
             ><small>Up to 5 MB total</small
@@ -371,7 +482,13 @@
             <dt>Service user</dt>
             <dd>{{ client(entry.clientId) }}</dd>
           </dl>
-          <p class="entry-body">{{ entry.body }}</p>
+          <div class="entry-body" [innerHTML]="entry.bodyHtml || entry.body"></div>
+          <p class="detail-category">
+            {{ visitName(entry.visitId) }}
+            @if (entry.responseRequired) {
+              · {{ entry.responseStatus || 'Awaiting response' }}
+            }
+          </p>
           @for (file of entry.attachments; track file.id) {
             <button class="attachment download" (click)="download(file.id)">
               <span class="material-symbols-outlined" aria-hidden="true">download</span
@@ -379,6 +496,20 @@
             </button>
           }
           <div class="detail-actions">
+            <a
+              class="button"
+              routerLink="/staff-portal/tasks"
+              [queryParams]="{
+                new: 'true',
+                client: entry.clientId,
+                journal: entry.id,
+                visit: entry.visitId,
+              }"
+              >Create task</a
+            >
+            <button class="button" (click)="mark('deletedBy')">
+              {{ has('deletedBy') ? 'Restore from Trash' : 'Move to Trash' }}
+            </button>
             <button class="button primary" (click)="newMessage(true)">Reply</button
             ><button class="button" (click)="mark('followUpBy')">
               {{ has('followUpBy') ? 'Clear follow-up' : 'Flag follow-up' }}</button
@@ -395,126 +526,10 @@
     }
   </div>
 } @else if (view() === 'Tasks & actions') {
-  <div class="task-workspace">
-    <section class="journal-panel">
-      <div class="panel-heading">
-        <h2>
-          <span class="material-symbols-outlined" aria-hidden="true">assignment</span>My tasks &
-          actions
-        </h2>
-        <button class="button primary" (click)="editTask()">Add task</button>
-      </div>
-      <div class="task-search">
-        <input
-          aria-label="Search tasks"
-          placeholder="Search tasks, service users or status…"
-          [ngModel]="search()"
-          (ngModelChange)="search.set($event)"
-        />
-      </div>
-      <div class="table-scroll" tabindex="0" role="region" aria-label="Journal tasks">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Task</th>
-              <th scope="col">Related service user</th>
-              <th scope="col">Due date</th>
-              <th scope="col">Status</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (task of tasks(); track task.id) {
-              <tr>
-                <td>
-                  <strong>{{ task.title }}</strong
-                  ><small>{{ task.priority }} priority</small>
-                </td>
-                <td>{{ client(task.clientId) }}</td>
-                <td>{{ task.due | date: 'd MMM y' }}</td>
-                <td>
-                  <span class="task-status" [class.resolved]="task.status === 'Resolved'">{{
-                    task.status
-                  }}</span>
-                </td>
-                <td><button class="text-action" (click)="editTask(task)">Edit</button></td>
-              </tr>
-            } @empty {
-              <tr>
-                <td colspan="5">
-                  <div class="journal-empty">
-                    <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
-                    <h3>{{ search() ? 'No matching tasks' : 'Keep track of your next steps' }}</h3>
-                    <p>Add follow-up tasks and update their progress here.</p>
-                  </div>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </section>
-    @if (editingTask()) {
-      <section class="journal-panel composer">
-        <div class="panel-heading"><h2>Task details</h2></div>
-        <form (ngSubmit)="saveTask()">
-          <label
-            >Task <span class="required">*</span
-            ><input
-              name="title"
-              [(ngModel)]="task.title"
-              required
-              maxlength="200"
-              placeholder="What needs to happen?" /></label
-          ><label
-            >Related service user<mat-select
-              cvSelect
-              name="taskClient"
-              aria-label="Task service user"
-              [(ngModel)]="task.clientId"
-              ><mat-option value="">General / no service user</mat-option>
-              @for (client of service.clients(); track client.id) {
-                <mat-option [value]="client.id">{{ client.name }}</mat-option>
-              }
-            </mat-select></label
-          ><label
-            >Due date <span class="required">*</span
-            ><input name="due" type="date" [(ngModel)]="task.due" required
-          /></label>
-          <div class="form-pair">
-            <label
-              >Priority<mat-select
-                cvSelect
-                name="taskPriority"
-                aria-label="Task priority"
-                [(ngModel)]="task.priority"
-                ><mat-option value="Normal">Normal</mat-option
-                ><mat-option value="High">High</mat-option></mat-select
-              ></label
-            ><label
-              >Status<mat-select
-                cvSelect
-                name="taskStatus"
-                aria-label="Task status"
-                [(ngModel)]="task.status"
-              >
-                @for (
-                  status of ['Open', 'In progress', 'Awaiting response', 'Escalated', 'Resolved'];
-                  track status
-                ) {
-                  <mat-option [value]="status">{{ status }}</mat-option>
-                }
-              </mat-select></label
-            >
-          </div>
-          <div class="form-actions">
-            <button type="button" class="button" (click)="cancelTask()">Cancel</button
-            ><button class="button primary" type="submit">Save task</button>
-          </div>
-        </form>
-      </section>
-    }
-  </div>
+  <section class="journal-panel panel-heading">
+    <h2>Tasks & Actions</h2>
+    <a class="button primary" routerLink="/staff-portal/tasks">Open tasks & actions</a>
+  </section>
 } @else {
   <section class="journal-panel">
     <div class="panel-heading">

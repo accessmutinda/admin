@@ -1,7 +1,7 @@
 import { Injectable, computed, inject } from '@angular/core';
 import { ManagementStore, WorkspaceData } from '../shared/management.store';
 import { JournalService } from '../journal/journal.service';
-import { JournalTask } from '../journal/journal.models';
+import { JournalAttachment, JournalTask } from '../journal/journal.models';
 import { CareService } from '../care/care.service';
 import { validDate } from '../care/care.models';
 import {
@@ -27,6 +27,31 @@ export class PortalService {
   readonly clients = this.care.clients;
   readonly contacts = this.journal.contacts;
   readonly today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+  readonly awaitingResponses = computed(() =>
+    this.journal
+      .entries()
+      .filter(
+        (e) =>
+          e.state === 'Sent' &&
+          e.responseRequired &&
+          e.responseStatus !== 'Responded' &&
+          e.authorEmail === this.journal.email() &&
+          !(e.deletedBy ?? []).includes(this.journal.email()),
+      ),
+  );
+  readonly professionalAwaiting = computed(() =>
+    this.communications().filter(
+      (c) => c.responseRequired && c.responseStatus !== 'Responded' && c.status !== 'Resolved',
+    ),
+  );
+  readonly weekStart = new Date(
+    new Date(this.today + 'T12:00:00Z').setUTCDate(
+      new Date(this.today + 'T12:00:00Z').getUTCDate() -
+        ((new Date(this.today + 'T12:00:00Z').getUTCDay() + 6) % 7),
+    ),
+  )
+    .toISOString()
+    .slice(0, 10);
   readonly me = computed(() => this.journal.auth.currentUser()?.name ?? 'Staff member');
   readonly openTasks = computed(() => this.tasks().filter((t) => t.status !== 'Resolved'));
   readonly openConcerns = computed(() =>
@@ -38,10 +63,30 @@ export class PortalService {
   readonly timeline = computed<PortalEvent[]>(() =>
     [
       ...this.events(),
+      ...this.journal
+        .entries()
+        .filter(
+          (e) =>
+            e.state === 'Sent' && !this.journal.events().some((event) => event.entityId === e.id),
+        )
+        .map((e) => ({
+          id: 'journal-' + e.id,
+          entityId: e.id,
+          clientId: e.clientId,
+          actor: e.author,
+          action: e.subject,
+          detail: e.body,
+          at: e.createdAt,
+          category: 'Journal',
+          status:
+            e.responseRequired && e.responseStatus !== 'Responded'
+              ? 'Awaiting response'
+              : 'Recorded',
+        })),
       ...this.journal.events().map((e) => ({
         id: e.id,
-        entityId: e.id,
-        clientId: '',
+        entityId: e.entityId ?? e.id,
+        clientId: e.clientId ?? '',
         actor: e.actor,
         action: e.action,
         detail: e.subject,
@@ -137,9 +182,33 @@ export class PortalService {
       return 'Evidence must total 5 MB or less.';
     if (input.status === 'Resolved' && !(input.actions ?? '').trim())
       return 'Record the action taken before resolving this task.';
+    if ([input.dueTime, input.followUpTime].some((t) => t && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)))
+      return 'Choose valid task times.';
+    if (
+      input.visitId &&
+      !this.care.rota
+        .data()
+        .visits.some((v) => v.id === input.visitId && v.clientId === input.clientId)
+    )
+      return 'Choose a visit belonging to this service user.';
+    if (
+      input.journalId &&
+      !this.journal.entries().some((e) => e.id === input.journalId && e.clientId === input.clientId)
+    )
+      return 'Choose a journal entry belonging to this service user.';
+    if (
+      input.concernId &&
+      !this.concerns().some((c) => c.id === input.concernId && c.clientId === input.clientId)
+    )
+      return 'Choose a concern belonging to this service user.';
     const task = {
       ...structuredClone(input),
       title: input.title.trim(),
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
+      resolvedAt:
+        input.status === 'Resolved'
+          ? (existing?.resolvedAt ?? new Date().toISOString())
+          : undefined,
       shared: existing ? !!existing.shared : true,
       assignedBy: existing?.assignedBy ?? this.journal.email(),
     };
@@ -209,8 +278,26 @@ export class PortalService {
       return 'Resolve the concern before closing it.';
     if (input.evidence.reduce((s, f) => s + f.size, 0) > 5 * 1024 * 1024)
       return 'Evidence must total 5 MB or less.';
+    if (input.checklist.some((item) => item.due && !validDate(item.due)))
+      return 'Choose valid checklist due dates.';
+    if (
+      input.visitId &&
+      !this.care.rota
+        .data()
+        .visits.some((v) => v.id === input.visitId && v.clientId === input.clientId)
+    )
+      return 'Choose a visit belonging to this service user.';
+    const history = existing?.history ?? input.history ?? [];
     const concern = {
       ...structuredClone(input),
+      history:
+        existing?.status === input.status
+          ? history
+          : [...history, { status: input.status, at: new Date().toISOString(), actor: this.me() }],
+      checklist: input.checklist.map((item) => ({
+        ...item,
+        completedAt: item.done ? (item.completedAt ?? new Date().toISOString()) : undefined,
+      })),
       title: input.title.trim(),
       notes: existing?.notes ?? [],
       reference:
@@ -239,11 +326,15 @@ export class PortalService {
       }),
     );
   }
-  addNote(id: string, text: string): string | null {
+  addNote(id: string, text: string, attachments: JournalAttachment[] = []): string | null {
     const concern = this.concerns().find((c) => c.id === id);
     if (!concern || !text.trim()) return 'Enter a comment for the investigation.';
     if (concern.status === 'Closed') return 'Reopen the concern before adding comments.';
+    if (attachments.reduce((sum, f) => sum + f.size, 0) > 5 * 1024 * 1024)
+      return 'Evidence must total 5 MB or less.';
     const note = {
+      kind: 'Note' as const,
+      attachments: structuredClone(attachments),
       id: crypto.randomUUID(),
       author: this.me(),
       text: text.trim(),
@@ -306,6 +397,9 @@ export class PortalService {
     const existing = this.communications().find((c) => c.id === input.id);
     const record = {
       ...structuredClone(input),
+      createdAt: existing?.createdAt ?? existing?.at ?? new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      updatedBy: this.me(),
       at: new Date(input.at).toISOString(),
       loggedBy: existing?.loggedBy ?? this.me(),
       loggedByEmail: existing?.loggedByEmail ?? this.journal.email(),
@@ -318,6 +412,9 @@ export class PortalService {
       record.type,
       record.status,
     );
+    event.createdAt = record.createdAt;
+    event.updatedAt = record.updatedAt;
+    event.updatedBy = record.updatedBy;
     event.direction = record.direction ?? 'Internal';
     event.recipient = client.file?.contacts?.find((c) => c.id === record.contactId)?.name;
     return this.commit(event, (d) => ({
@@ -352,7 +449,7 @@ export class PortalService {
         .map((e) => ({
           id: e.id,
           actor: e.author,
-          action: 'Journal entry',
+          action: e.subject,
           direction: 'Internal',
           recipient: [...e.to, ...e.cc]
             .map(
@@ -361,7 +458,7 @@ export class PortalService {
                   ?.name ?? email,
             )
             .join(', '),
-          detail: e.subject,
+          detail: e.body,
           at: e.createdAt,
           clientId,
           entityId: e.id,

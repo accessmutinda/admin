@@ -10,6 +10,9 @@
 :host .staff-portal-shell .app-body {
   margin-left: 272px;
 }
+.staff-portal-shell .sidebar-logo {
+  padding-bottom: 8px;
+}
 .staff-portal-shell .nav-label {
   margin: 14px 12px 6px;
   letter-spacing: 1px;

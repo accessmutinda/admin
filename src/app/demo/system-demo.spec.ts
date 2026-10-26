@@ -29,8 +29,8 @@ describe('Connected system demonstration', () => {
     ).toBe(true);
     expect(data.journal!.tasks.some((task) => task.owner === DEMO_EMAIL)).toBe(true);
     expect(data.journal!.entries.some((entry) => entry.to.includes(DEMO_EMAIL))).toBe(true);
-    expect(data.staffPortal!.concerns.length).toBe(6);
-    expect(data.staffPortal!.communications.length).toBe(6);
+    expect(data.staffPortal!.concerns.length).toBeGreaterThan(6);
+    expect(data.staffPortal!.communications.length).toBeGreaterThan(6);
     expect(data.academy!.assignments.some((assignment) => assignment.personId === jane.id)).toBe(
       true,
     );
@@ -49,6 +49,37 @@ describe('Connected system demonstration', () => {
     expect(data.rota!.ecm!.evidence.length).toBeGreaterThan(0);
   });
 
+  it('seeds portal conversations with valid visit, journal and concern links and preserves edits on upgrade', () => {
+    const data = seedSystemDemo(blank(), today, now);
+    for (const task of data.journal!.tasks) {
+      if (task.visitId)
+        expect(
+          data.rota!.visits.some((v) => v.id === task.visitId && v.clientId === task.clientId),
+        ).toBe(true);
+      if (task.journalId)
+        expect(
+          data.journal!.entries.some(
+            (e) => e.id === task.journalId && e.clientId === task.clientId,
+          ),
+        ).toBe(true);
+      if (task.concernId)
+        expect(
+          data.staffPortal!.concerns.some(
+            (c) => c.id === task.concernId && c.clientId === task.clientId,
+          ),
+        ).toBe(true);
+    }
+    const task = data.journal!.tasks.find((t) => t.id.startsWith('system-demo-portal-'))!;
+    task.title = 'Preserved user edit';
+    data.systemDemoVersion = 1;
+    const upgraded = seedSystemDemo(data, today, now);
+    expect(upgraded.journal!.tasks.find((t) => t.id === task.id)?.title).toBe(
+      'Preserved user edit',
+    );
+    expect(new Set(upgraded.journal!.entries.map((e) => e.id)).size).toBe(
+      upgraded.journal!.entries.length,
+    );
+  });
   it('keeps financial records tied to completed visits and reconciles payroll lines', () => {
     const data = seedSystemDemo(blank(), today, now),
       rota = data.rota!,

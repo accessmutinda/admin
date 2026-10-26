@@ -199,4 +199,45 @@ describe('Staff portal workflows', () => {
     expect(portal.saveCommunication(record)).toContain('permission');
     expect(portal.communications()).toHaveLength(0);
   });
+  it('records actual investigation transitions without inventing escalation', () => {
+    const concern = portal.newConcern();
+    concern.title = 'Review care concern';
+    concern.description = 'Review the visit report.';
+    expect(portal.saveConcern(concern)).toBeNull();
+    concern.status = 'Under investigation';
+    expect(portal.saveConcern(concern)).toBeNull();
+    concern.status = 'Resolved';
+    concern.outcome = 'Review complete and family updated.';
+    expect(portal.saveConcern(concern)).toBeNull();
+    expect(portal.concerns()[0].history?.map((h) => h.status)).toEqual([
+      'Raised',
+      'Under investigation',
+      'Resolved',
+    ]);
+    expect(portal.concerns()[0].history?.every((h) => h.actor === DEMO_USER.name && !!h.at)).toBe(
+      true,
+    );
+  });
+  it('rejects a visit link for another client and invalid task times', () => {
+    const task = portal.newTask('client');
+    task.title = 'Review visit';
+    task.visitId = 'another-client-visit';
+    expect(portal.saveTask(task)).toContain('belonging');
+    task.visitId = '';
+    task.dueTime = '25:00';
+    expect(portal.saveTask(task)).toContain('times');
+    task.dueTime = '10:00';
+    expect(portal.saveTask(task)).toBeNull();
+  });
+  it('records resolution time and clears it when a task is reopened', () => {
+    const task = portal.newTask('client');
+    task.title = 'Care review';
+    task.status = 'Resolved';
+    task.actions = 'Reviewed and confirmed.';
+    expect(portal.saveTask(task)).toBeNull();
+    expect(portal.tasks()[0].resolvedAt).toBeTruthy();
+    const reopened = { ...portal.tasks()[0], status: 'Open' as const };
+    expect(portal.saveTask(reopened)).toBeNull();
+    expect(portal.tasks()[0].resolvedAt).toBeUndefined();
+  });
 });

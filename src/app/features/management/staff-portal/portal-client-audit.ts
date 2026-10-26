@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, effect } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -18,6 +18,19 @@ export class PortalClientAudit {
   protected readonly direction = signal('All');
   protected readonly query = signal('');
   protected readonly type = signal('All');
+  protected readonly category = signal('All');
+  protected readonly pageSize = signal(12);
+  protected group(type: string): string {
+    return ['Journal', 'Staff action', 'Concern', 'Allocation', 'Care record'].includes(type)
+      ? type
+      : 'Professional';
+  }
+  protected readonly groups = computed(() => [
+    ...new Set(this.context.audit().map((e) => this.group(e.category))),
+  ]);
+  protected readonly pageNumbers = computed(() =>
+    Array.from({ length: this.pages() }, (_, i) => i + 1),
+  );
   protected readonly user = signal('All');
   protected readonly status = signal('All');
   protected readonly from = signal('');
@@ -41,6 +54,7 @@ export class PortalClientAudit {
               v.toLowerCase().includes(this.query().toLowerCase()),
             )) &&
           (this.type() === 'All' || e.category === this.type()) &&
+          (this.category() === 'All' || this.group(e.category) === this.category()) &&
           (this.direction() === 'All' || (e.direction ?? 'Internal') === this.direction()) &&
           (this.user() === 'All' || e.actor === this.user()) &&
           (this.status() === 'All' || e.status === this.status()) &&
@@ -48,10 +62,15 @@ export class PortalClientAudit {
           (!this.to() || e.at.slice(0, 10) <= this.to()),
       ),
   );
-  protected readonly pages = computed(() => Math.max(1, Math.ceil(this.records().length / 12)));
+  protected readonly pages = computed(() =>
+    Math.max(1, Math.ceil(this.records().length / this.pageSize())),
+  );
   protected readonly activePage = computed(() => Math.min(this.page(), this.pages()));
   protected readonly visible = computed(() =>
-    this.records().slice((this.activePage() - 1) * 12, this.activePage() * 12),
+    this.records().slice(
+      (this.activePage() - 1) * this.pageSize(),
+      this.activePage() * this.pageSize(),
+    ),
   );
   protected readonly summary = computed(() => [
     { name: 'Total records', count: this.context.audit().length, icon: 'receipt_long' },
@@ -72,7 +91,19 @@ export class PortalClientAudit {
   protected readonly communication = computed(() =>
     this.context.communications().find((c) => c.id === this.selected()?.entityId),
   );
+  private openedInitial = false;
+  constructor() {
+    effect(() => {
+      const records = this.records();
+      const selected = this.selected();
+      if (!this.openedInitial && records.length) {
+        this.openedInitial = true;
+        this.selected.set(records[0]);
+      } else if (selected && !records.some((e) => e.id === selected.id)) this.selected.set(null);
+    });
+  }
   protected reset(): void {
+    this.category.set('All');
     this.direction.set('All');
     this.query.set('');
     this.type.set('All');

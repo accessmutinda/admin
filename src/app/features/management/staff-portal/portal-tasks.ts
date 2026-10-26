@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { JournalTask } from '../journal/journal.models';
+import { addDays } from '../rota/rota.models';
 import { PortalService } from './portal.service';
 import { PortalEvidence } from './portal-evidence';
 @Component({
@@ -72,8 +73,42 @@ export class PortalTasks {
     return this.ownTasks().filter((t) => t.status === 'Escalated').length;
   }
   protected readonly resolved = computed(() =>
-    this.ownTasks().filter((t) => t.status === 'Resolved'),
+    this.ownTasks().filter(
+      (t) => t.status === 'Resolved' && (t.resolvedAt ?? '').slice(0, 10) >= this.portal.weekStart,
+    ),
   );
+  protected readonly awaitingReplies = computed(
+    () =>
+      this.portal.journal
+        .entries()
+        .filter(
+          (e) =>
+            e.authorEmail === this.staff() &&
+            e.state === 'Sent' &&
+            e.responseRequired &&
+            e.responseStatus !== 'Responded',
+        ).length,
+  );
+  protected readonly overdueCount = computed(
+    () => this.pending().filter((t) => t.due < this.portal.today).length,
+  );
+  protected readonly dueWeek = computed(
+    () =>
+      this.pending().filter(
+        (t) => t.due >= this.portal.weekStart && t.due <= addDays(this.portal.weekStart, 6),
+      ).length,
+  );
+  protected count(status: string): number {
+    return this.ownTasks().filter((t) => status === 'All' || t.status === status).length;
+  }
+  protected visits() {
+    return this.portal.care.rota.data().visits.filter((v) => v.clientId === this.task.clientId);
+  }
+  protected clientChanged(): void {
+    this.task.visitId = '';
+    this.task.journalId = '';
+    this.task.concernId = '';
+  }
   constructor() {
     const id = this.route.snapshot.queryParamMap.get('task');
     const task = this.portal.tasks().find((t) => t.id === id);
@@ -81,6 +116,7 @@ export class PortalTasks {
       this.staff.set(task.owner);
       this.edit(task);
     } else if (this.route.snapshot.queryParamMap.get('new')) this.edit();
+    else if (this.tasks()[0]) this.edit(this.tasks()[0]);
   }
   protected changeStaff(email: string): void {
     if (!this.canLeave()) return;
@@ -92,6 +128,11 @@ export class PortalTasks {
     this.task = task
       ? structuredClone(task)
       : this.portal.newTask(this.route.snapshot.queryParamMap.get('client') ?? '', this.staff());
+    if (!task) {
+      this.task.journalId = this.route.snapshot.queryParamMap.get('journal') ?? '';
+      this.task.concernId = this.route.snapshot.queryParamMap.get('concern') ?? '';
+      this.task.visitId = this.route.snapshot.queryParamMap.get('visit') ?? '';
+    }
     this.clean = JSON.stringify(this.task);
     this.editing.set(true);
     this.error.set('');

@@ -403,6 +403,7 @@ export class RotaService {
     staffIds: string[] | null = null,
     allocation: RotaVisit['allocation'] = 'Regular',
     options?: RecurringAllocationOptions,
+    weekdays?: number[],
   ): string | null {
     if (this.denied('manage')) return this.denied('manage');
     if (!validVacancyDate(from) || !validVacancyDate(to) || to < from || to > addDays(from, 30))
@@ -431,8 +432,13 @@ export class RotaService {
         (options.backupStaffId && staffIds?.includes(options.backupStaffId)))
     )
       return 'Choose valid weekdays, call times, duration, travel time and a separate backup carer.';
+    if (
+      weekdays &&
+      (!weekdays.length || weekdays.some((d) => !Number.isInteger(d) || d < 0 || d > 6))
+    )
+      return 'Choose valid recurrence weekdays.';
     const templates = calls.map((call) => {
-      if (!options) return call;
+      if (!options) return weekdays ? { ...call, weekdays } : call;
       const start = options.start ?? call.start;
       const endMinutes = (minutes(start) + options.durationMinutes) % 1440;
       return {
@@ -521,6 +527,27 @@ export class RotaService {
       },
       'Rota published',
       `${visits.length} visits made visible in the published rota and expected-visit board. No external notification sent.`,
+    );
+  }
+  cancelAllocation(ids: string[], reason: string): string | null {
+    if (this.denied('manage')) return this.denied('manage');
+    const visits = this.data().visits.filter((v) => ids.includes(v.id));
+    if (!reason.trim() || !visits.length)
+      return 'Select an allocation and enter a cancellation reason.';
+    if (
+      visits.length !== new Set(ids).size ||
+      visits.some((v) => v.state === 'Cancelled' || v.attendance.length)
+    )
+      return 'Only visits without attendance can be cancelled. Review the allocation.';
+    return this.commit(
+      {
+        ...this.data(),
+        visits: this.data().visits.map((v) =>
+          ids.includes(v.id) ? { ...v, state: 'Cancelled' as const, exception: reason.trim() } : v,
+        ),
+      },
+      'Allocation cancelled',
+      `${visits[0].clientName} · ${visits.length} visits · ${reason.trim()}`,
     );
   }
   cancel(id: string, reason: string): string | null {

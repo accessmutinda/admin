@@ -1,0 +1,192 @@
+/* Staff task layouts share the compact management component contract. */
+.staff-portal-shell #staff-content {
+  .metric.co-stat {
+    min-height: 0;
+  }
+  .metric.co-stat .co-stat-icon {
+    box-shadow: inset 0 0 9px #ffffff29;
+  }
+  .metrics,
+  .oversight-mini-grid {
+    row-gap: 10px;
+  }
+  .portal-panel-header,
+  .composer .panel-heading {
+    padding: 6px 10px;
+    min-height: 30px;
+  }
+  .portal-panel-header h2,
+  .panel-heading h2 {
+    font-size: 14px;
+  }
+  .portal-panel-body,
+  .portal-form,
+  .composer form {
+    padding: 8px 10px;
+  }
+  .portal-form,
+  .composer form {
+    gap: 8px;
+  }
+  .portal-form-pair,
+  .composer .form-pair {
+    gap: 8px;
+  }
+  .portal-form label > :is(input:not([type='checkbox'], [type='radio'], [type='file']), mat-select),
+  .composer label > :is(input:not([type='checkbox'], [type='radio'], [type='file']), mat-select) {
+    min-height: 44px;
+    margin-top: 3px;
+    padding: 5px 8px;
+  }
+  .portal-form label > textarea,
+  .composer label > textarea {
+    margin-top: 3px;
+    padding: 6px 8px;
+    line-height: 1.5;
+  }
+  .portal-definition {
+    gap: 6px 8px;
+    line-height: 1.5;
+  }
+  .portal-form-actions,
+  .composer .form-actions {
+    padding-top: 8px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .portal-filters {
+    padding: 4px 10px;
+    gap: 6px;
+  }
+  .portal-filters button {
+    min-height: 36px;
+    padding: 6px 8px;
+    border-radius: 0;
+  }
+  .portal-filters button.active,
+  .journal-tabs button.active {
+    background: transparent;
+    border-bottom: 3px solid #008afa;
+    color: #0066ac;
+  }
+  .portal-activity {
+    padding: 4px 10px;
+  }
+  .portal-activity article {
+    padding: 8px 0;
+  }
+  .portal-activity p {
+    margin: 3px 0;
+  }
+  .portal-activity time {
+    max-width: 86px;
+    white-space: normal;
+    font-size: 11px;
+  }
+  .portal-person small,
+  td small,
+  .portal-badge {
+    font-size: 11px;
+  }
+  .composer .attach-zone {
+    padding: 8px 10px;
+  }
+  .composer .rich-message > label {
+    padding: 6px 8px;
+  }
+  .rich-editor {
+    padding: 8px 10px;
+    min-height: 180px;
+    line-height: 1.5;
+  }
+  .compose-only .rich-editor {
+    min-height: 90px;
+  }
+  .composer .response-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: normal;
+  }
+  .composer .response-check input {
+    width: 16px;
+    height: 16px;
+    min-height: 0;
+    margin: 0;
+    flex: none;
+  }
+  .detail-content,
+  .activity-list {
+    padding: 8px 10px;
+  }
+  .activity-list article {
+    padding: 8px 0;
+    gap: 8px;
+  }
+  .activity-list h3 {
+    font-size: 12px;
+  }
+  .detail-content > h2 {
+    font-size: 14px;
+    margin: 6px 0;
+  }
+  .sender,
+  .entry-body,
+  .detail-actions {
+    margin-top: 12px;
+    margin-bottom: 12px;
+  }
+  .entry-body {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .detail-content dl {
+    padding: 8px 0;
+    gap: 6px 8px;
+  }
+}
+@media (pointer: coarse), (max-width: 760px) {
+  .staff-portal-shell #staff-content {
+    .button,
+    .portal-filters button,
+    .text-action,
+    .portal-text-button,
+    .journal-tabs button,
+    .folders nav button,
+    .journal-labels button,
+    .rich-toolbar button,
+    .attachment button {
+      min-height: 44px;
+    }
+    .rich-toolbar button,
+    .attachment button {
+      min-width: 44px;
+    }
+    .rich-toolbar {
+      flex-wrap: wrap;
+    }
+    .portal-form
+      label
+      > :is(input:not([type='checkbox'], [type='radio'], [type='file']), mat-select),
+    .composer label > :is(input:not([type='checkbox'], [type='radio'], [type='file']), mat-select),
+    .portal-toolbar mat-select,
+    .message-tools mat-select {
+      min-height: 44px;
+    }
+    .response-check,
+    .portal-check,
+    .attach-zone {
+      min-height: 44px;
+    }
+  }
+}
+@media print {
+  .cv-management.staff-portal-shell .app-sidebar,
+  .cv-management.staff-portal-shell .app-header,
+  .cv-management.staff-portal-shell .app-footer {
+    display: none;
+  }
+  .cv-management.staff-portal-shell .app-body {
+    margin: 0 !important;
+  }
+}

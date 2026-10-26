@@ -5,6 +5,13 @@ export interface JournalAttachment {
   content: string;
 }
 export interface JournalEntry {
+  visitId?: string;
+  kind?: 'Message' | 'Internal note';
+  bodyHtml?: string;
+  responseRequired?: boolean;
+  responseStatus?: 'Awaiting response' | 'Responded';
+  replyToId?: string;
+  deletedBy?: string[];
   id: string;
   author: string;
   authorEmail: string;
@@ -24,6 +31,13 @@ export interface JournalEntry {
   followUpBy: string[];
 }
 export interface JournalTask {
+  createdAt?: string;
+  dueTime?: string;
+  followUpTime?: string;
+  visitId?: string;
+  journalId?: string;
+  concernId?: string;
+  resolvedAt?: string;
   shared?: boolean;
   assignedBy?: string;
   notes?: string;
@@ -39,6 +53,8 @@ export interface JournalTask {
   status: 'Open' | 'In progress' | 'Awaiting response' | 'Escalated' | 'Resolved';
 }
 export interface JournalEvent {
+  entityId?: string;
+  clientId?: string;
   id: string;
   actor: string;
   audience: string[];

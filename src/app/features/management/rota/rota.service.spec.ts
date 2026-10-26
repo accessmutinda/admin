@@ -580,4 +580,35 @@ describe('Rota allocation and publishing', () => {
     expect(service.sendToPayroll('2026-10-06')).toContain('Could not save');
     expect(store.data()).toEqual(original);
   });
+  it('applies portal recurrence without changing template times or care requirements', () => {
+    expect(
+      service.generate(
+        'client',
+        ['call'],
+        '2026-10-05',
+        '2026-10-11',
+        ['james'],
+        'Regular',
+        undefined,
+        [1, 3, 5],
+      ),
+    ).toBeNull();
+    expect(service.data().visits.map((v) => v.date)).toEqual([
+      '2026-10-05',
+      '2026-10-07',
+      '2026-10-09',
+    ]);
+    expect(service.data().visits.every((v) => v.start === '08:00' && v.end === '08:45')).toBe(true);
+  });
+  it('cancels a selected allocation atomically and retains its audit history', () => {
+    expect(service.generate('client', ['call'], '2026-10-05', '2026-10-06', ['james'])).toBeNull();
+    const ids = service.data().visits.map((v) => v.id);
+    expect(service.cancelAllocation([...ids, 'missing'], 'Change of care package')).toContain(
+      'Review',
+    );
+    expect(service.data().visits.every((v) => v.state === 'Draft')).toBe(true);
+    expect(service.cancelAllocation(ids, 'Change of care package')).toBeNull();
+    expect(service.data().visits.every((v) => v.state === 'Cancelled')).toBe(true);
+    expect(service.data().audit.at(-1)?.action).toBe('Allocation cancelled');
+  });
 });

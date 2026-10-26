@@ -4,11 +4,14 @@ const leave = (c: { canLeave: () => boolean }) => c.canLeave();
 export const PORTAL_ROUTES: Routes = [
   ...ACADEMY_STAFF_ROUTES,
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
-  ...['dashboard', 'oversight'].map((view) => ({
+  ...['dashboard', 'dashboard-2', 'oversight'].map((view) => ({
     path: view,
     title:
-      (view === 'dashboard' ? 'Staff dashboard' : 'Manager communication oversight') +
-      ' · CareVerity',
+      (view === 'oversight'
+        ? 'Manager communication oversight'
+        : view === 'dashboard-2'
+          ? 'Staff dashboard 2'
+          : 'Staff dashboard') + ' · CareVerity',
     data: { portalView: view },
     canDeactivate: [leave],
     loadComponent: () => import('./portal-dashboard').then((m) => m.PortalDashboard),

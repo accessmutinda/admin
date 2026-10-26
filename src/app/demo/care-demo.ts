@@ -349,7 +349,11 @@ export function seedCareDemo(data: WorkspaceData, today = londonDate()): Workspa
   return seedCareProfiles(seeded, today);
 }
 
+const careInstallations = new WeakSet<Injector>();
+
 export function installCareDemo(injector: Injector): void {
+  if (careInstallations.has(injector)) return;
+  careInstallations.add(injector);
   installDemoImages(injector);
   const store = injector.get(ManagementStore);
   effect(

@@ -194,6 +194,9 @@
     </div>
   }
   <nav class="hr-tabs" aria-label="Staff profile sections">
+    <a routerLink="/staff-portal/tasks" [queryParams]="{ staff: p.email.toLowerCase() }"
+      >Tasks & Actions ↗</a
+    >
     @for (t of tabs; track t.key) {
       <a
         [routerLink]="['/manage/people/staff', id, t.key]"
@@ -224,6 +227,7 @@
     </div>
   } @else {
     @if (section === 'overview') {
+      <cv-portal-record-summary [staffId]="id" />
       <div class="hr-overview-layout">
         <div class="hr-overview-main">
           <div class="hr-overview-primary">
@@ -2210,6 +2214,7 @@
       </section>
     }
     @if (section === 'audit') {
+      <cv-portal-record-summary [staffId]="id" />
       <section class="hr-panel">
         <div class="hr-panel-head"><h2>Record History</h2></div>
         <div class="hr-panel-body">

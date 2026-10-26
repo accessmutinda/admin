@@ -4,7 +4,7 @@ import { JournalAttachment } from '../journal/journal.models';
   selector: 'cv-portal-evidence',
   template: `<div class="evidence">
     @if (!readonly()) {
-      <label class="evidence-upload"
+      <label class="evidence-upload" (dragover)="$event.preventDefault()" (drop)="drop($event)"
         ><span class="material-symbols-outlined" aria-hidden="true">attach_file</span
         >{{ busy() ? 'Reading files…' : 'Attach evidence' }}<small>Up to 5 MB total</small
         ><input
@@ -121,6 +121,14 @@ export class PortalEvidence {
     const input = event.target as HTMLInputElement;
     const selected = Array.from(input.files ?? []);
     input.value = '';
+    await this.addFiles(selected);
+  }
+  protected async drop(event: DragEvent): Promise<void> {
+    event.preventDefault();
+    await this.addFiles(Array.from(event.dataTransfer?.files ?? []));
+  }
+  private async addFiles(selected: File[]): Promise<void> {
+    if (!selected.length || this.busy() || this.readonly()) return;
     if (
       selected.reduce(
         (s, f) => s + f.size,

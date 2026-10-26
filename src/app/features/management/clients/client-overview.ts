@@ -1,3 +1,4 @@
+import { PortalRecordSummary } from '../staff-portal/portal-record-summary';
 import { Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
@@ -13,7 +14,7 @@ interface ProfileRow {
 }
 @Component({
   selector: 'cv-client-overview',
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, PortalRecordSummary],
   templateUrl: './client-overview.html',
   styleUrls: ['../care/service-user-spacing.css', './client-overview.css'],
 })

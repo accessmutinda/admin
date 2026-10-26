@@ -40,7 +40,7 @@
 }
 .portal-panel-header h2 .material-symbols-outlined {
   font-size: 20px;
-  color: #008eff;
+  color: #00528c;
 }
 .portal-panel-header > a,
 .portal-link {
@@ -49,7 +49,7 @@
   text-decoration: none;
 }
 .portal-panel-body {
-  padding: 8px;
+  padding: 8px 10px;
 }
 .portal-muted {
   color: #657184;
@@ -75,7 +75,7 @@
 .portal-person small {
   display: block;
   color: #657184;
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 4px;
 }
 .portal-toolbar {
@@ -132,7 +132,7 @@ td strong {
 td small {
   display: block;
   color: #657184;
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 4px;
   line-height: 1.5;
 }
@@ -280,14 +280,14 @@ a:focus-visible {
 }
 @media (max-width: 639px) {
   .portal-panel-header {
-    padding: 12px;
+    padding: 6px 10px;
     flex-wrap: wrap;
   }
   .portal-panel-body {
-    padding: 12px;
+    padding: 8px 10px;
   }
   .portal-toolbar {
-    padding: 12px;
+    padding: 8px 10px;
   }
   .portal-toolbar mat-select {
     width: 100%;
@@ -309,4 +309,30 @@ a:focus-visible {
 .portal-scroll:focus-visible {
   outline: 2px solid #008bd9;
   outline-offset: -2px;
+}
+.portal-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.overdue-text {
+  color: #df3156;
+}
+.portal-filters button.active {
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 3px solid #0068ff;
+  color: #005adb;
+}
+@media print {
+  .portal-form,
+  .portal-toolbar,
+  .portal-filters,
+  .button {
+    display: none !important;
+  }
+  .portal-grid {
+    display: block;
+  }
 }

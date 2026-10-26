@@ -1,78 +1,125 @@
 <div class="page-heading">
   <div>
-    <p class="eyebrow">{{ manager ? 'COMMUNICATION OVERSIGHT' : 'YOUR WORKSPACE' }}</p>
+    <p class="eyebrow">{{ manager ? 'MANAGER / COMMUNICATION OVERSIGHT' : 'STAFF / DASHBOARD' }}</p>
     <h1>
       {{
         manager
           ? 'Manager Dashboard – Communication Oversight'
-          : 'Staff Dashboard – Communication & Tasks'
+          : dashboardTwo
+            ? 'Staff Dashboard 2 – Communication & Tasks'
+            : 'Staff Dashboard – Communication & Tasks'
       }}
     </h1>
     <p>
       {{
         manager
-          ? 'Monitor care communications, outstanding actions and follow-ups across your service.'
-          : 'Manage your communications, journal entries and outstanding actions in one place.'
+          ? 'Monitor staff and client communications, outstanding actions and follow-ups across all services.'
+          : 'Manage your communications, journal entries and outstanding actions all in one place.'
       }}
     </p>
   </div>
-  <span class="portal-date"
-    ><span class="material-symbols-outlined" aria-hidden="true">calendar_today</span
-    >{{ portal.today | date: 'EEEE, d MMM y' }}</span
-  >
+  <div class="dashboard-heading-actions">
+    @if (!manager) {
+      <nav class="dashboard-options" aria-label="Dashboard designs">
+        <a
+          class="button"
+          [class.primary]="!dashboardTwo"
+          [attr.aria-current]="!dashboardTwo ? 'page' : null"
+          routerLink="/staff-portal/dashboard"
+          >Dashboard 1</a
+        >
+        <a
+          class="button"
+          [class.primary]="dashboardTwo"
+          [attr.aria-current]="dashboardTwo ? 'page' : null"
+          routerLink="/staff-portal/dashboard-2"
+          >Dashboard 2</a
+        >
+      </nav>
+    }
+    <span class="portal-date"
+      ><span class="material-symbols-outlined">calendar_today</span
+      >{{ portal.today | date: 'EEEE, d MMM y' }}</span
+    >
+  </div>
 </div>
 <div class="metrics four portal-stat-row">
-  <a class="metric co-stat co-surface" data-tone="teal" routerLink="/staff-portal/tasks"
-    ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
+  <a class="metric co-stat co-surface" data-tone="green" routerLink="/staff-portal/tasks"
+    ><span class="co-stat-icon material-symbols-outlined">assignment</span>
     <div>
-      <h2>{{ manager ? 'Open staff tasks' : 'Outstanding tasks' }}</h2>
+      <h2>{{ manager ? 'Open Staff Tasks' : 'Outstanding Tasks' }}</h2>
       <strong>{{ openTasks().length }}</strong
-      ><small>{{ overdue().length }} overdue</small>
+      ><small>{{ overdue().length }} overdue · {{ dueThisWeek() }} due this week</small>
     </div></a
   >
-  <a class="metric co-stat co-surface" data-tone="amber" routerLink="/staff-portal/concerns"
-    ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">warning</span>
+  <a class="metric co-stat co-surface" data-tone="red" routerLink="/staff-portal/concerns"
+    ><span class="co-stat-icon material-symbols-outlined">warning</span>
     <div>
-      <h2>Unresolved concerns</h2>
+      <h2>{{ manager ? 'Unresolved Client Concerns' : 'Unresolved Concerns' }}</h2>
       <strong>{{ portal.openConcerns().length }}</strong
-      ><small>Follow every concern through</small>
+      ><small>Investigation and review</small>
     </div></a
   >
-  <a class="metric co-stat co-surface" data-tone="blue" routerLink="/staff-portal/service-users"
-    ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">calendar_month</span>
+  <a
+    class="metric co-stat co-surface"
+    [attr.data-tone]="manager ? 'purple' : 'blue'"
+    [routerLink]="manager ? '/staff-portal/service-users' : '/staff-portal/service-users'"
+    ><span class="co-stat-icon material-symbols-outlined">{{
+      manager ? 'mail' : 'calendar_month'
+    }}</span>
     <div>
-      <h2>{{ manager ? 'Service users' : 'Today’s visits' }}</h2>
-      <strong>{{ manager ? portal.clients().length : visits().length }}</strong
-      ><small>{{ manager ? 'Care and communications' : 'Planned care calls today' }}</small>
+      <h2>
+        {{
+          manager
+            ? 'Awaiting Response from Professionals'
+            : teamVisits()
+              ? 'Today’s Team Visits'
+              : 'Today’s Visits'
+        }}
+      </h2>
+      <strong>{{ manager ? professionalAwaiting().length : visits().length }}</strong
+      ><small>{{
+        manager
+          ? 'GP, district nurse and care partners'
+          : completedVisits() + ' completed · ' + (visits().length - completedVisits()) + ' pending'
+      }}</small>
     </div></a
   >
-  <a class="metric co-stat co-surface" data-tone="purple" routerLink="/staff-portal/journal"
-    ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">mail</span>
+  <a
+    class="metric co-stat co-surface"
+    [attr.data-tone]="manager ? 'blue' : 'purple'"
+    [routerLink]="manager ? '/staff-portal/service-users' : '/staff-portal/journal'"
+    ><span class="co-stat-icon material-symbols-outlined">{{
+      manager ? 'event_busy' : 'mail'
+    }}</span>
     <div>
-      <h2>Unread communications</h2>
-      <strong>{{ unread().length }}</strong
-      ><small>Updates in your inbox</small>
+      <h2>{{ manager ? 'Overdue Follow-ups' : 'Awaiting Response' }}</h2>
+      <strong>{{ manager ? overdueFollowUps() : awaiting().length }}</strong
+      ><small>{{
+        manager
+          ? 'Professional follow-ups past their due date'
+          : 'Replies requested from your recipients'
+      }}</small>
     </div></a
   >
 </div>
 @if (manager) {
-  <div class="metrics four oversight-mini-grid">
-    @for (
-      stat of [
-        ['Client journal entries', clientJournalEntries().length, 'forum'],
-        ['Actions awaiting review', openTasks().length, 'groups'],
-        ['Professional records', portal.communications().length, 'clinical_notes'],
-        ['Concerns resolved', portal.concerns().length - portal.openConcerns().length, 'verified'],
-      ];
-      track stat[0]
-    ) {
-      <div class="metric co-stat co-surface mini-stat" data-tone="blue">
-        <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">{{ stat[2] }}</span>
+  <div class="oversight-mini-grid">
+    @for (stat of miniStats(); track stat.name) {
+      <a
+        class="metric co-stat co-surface mini-stat"
+        [attr.data-tone]="stat.tone"
+        [routerLink]="
+          stat.name.includes('Staff') || stat.name.includes('Resolved')
+            ? '/staff-portal/tasks'
+            : '/staff-portal/service-users'
+        "
+        ><span class="co-stat-icon material-symbols-outlined">{{ stat.icon }}</span>
         <div>
-          <h2>{{ stat[0] }}</h2>
-          <strong>{{ stat[1] }}</strong>
-        </div>
-      </div>
+          <h2>{{ stat.name }}</h2>
+          <strong>{{ stat.count }}</strong>
+        </div></a
+      >
     }
   </div>
 }
@@ -81,106 +128,142 @@
     <section class="portal-panel">
       <div class="portal-panel-header">
         <h2>
-          <span class="material-symbols-outlined" aria-hidden="true">assignment</span
+          <span class="material-symbols-outlined">assignment</span
           >{{ manager ? 'Top Priority Communications & Actions' : 'Tasks & Actions' }}
         </h2>
-        <a class="button" routerLink="/staff-portal/tasks" [queryParams]="{ new: 'true' }"
-          >+ Add task</a
+        <a class="button primary" routerLink="/staff-portal/tasks" [queryParams]="{ new: 'true' }"
+          >+ {{ manager ? 'Add Action' : 'Add Task' }}</a
         >
       </div>
-      <nav class="portal-filters" aria-label="Priority filters">
-        @for (tab of ['All', 'Overdue', 'High priority', 'Client concerns']; track tab) {
-          <button [class.active]="scope() === tab" (click)="scope.set(tab)">{{ tab }}</button>
-        }
-      </nav>
-      <div class="portal-toolbar">
-        <input
-          aria-label="Search priority items"
-          placeholder="Search tasks, communications or people…"
-          [ngModel]="query()"
-          (ngModelChange)="query.set($event)"
-        />
-      </div>
-      <div
-        class="portal-scroll"
-        tabindex="0"
-        role="region"
-        aria-label="Priority communications and actions"
-      >
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Type</th>
-              <th scope="col">Subject / description</th>
-              <th scope="col">Related to</th>
-              <th scope="col">Due date</th>
-              <th scope="col">Status</th>
-              <th scope="col">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of queue().slice(0, 8); track row.id) {
+      @if (manager) {
+        <nav class="portal-filters" aria-label="Priority filters">
+          @for (
+            tab of ['All', 'Overdue', 'High priority', 'Client concerns', 'Professional'];
+            track tab
+          ) {
+            <button [class.active]="scope() === tab" (click)="scope.set(tab)">{{ tab }}</button>
+          }
+        </nav>
+        <div class="portal-toolbar">
+          <input
+            aria-label="Search priority items"
+            placeholder="Search items…"
+            [ngModel]="query()"
+            (ngModelChange)="query.set($event)"
+          />
+        </div>
+        <div class="portal-scroll">
+          <table>
+            <thead>
               <tr>
-                <td>
-                  <span class="portal-badge">{{ row.type }}</span>
-                </td>
-                <td>
-                  <strong>{{ row.subject }}</strong
-                  ><small>{{ row.detail.slice(0, 65) }}</small>
-                </td>
-                <td>
-                  {{ portal.clientName(row.clientId)
-                  }}<small>{{ portal.person(row.person) }}</small>
-                </td>
-                <td>{{ row.due | date: 'd MMM y' }}</td>
-                <td>
-                  <span
-                    class="portal-badge"
-                    [attr.data-tone]="
-                      row.status === 'Resolved' ? 'green' : row.high ? 'red' : 'amber'
-                    "
-                    >{{ row.status }}</span
-                  >
-                </td>
-                <td>
-                  <a class="portal-link" [routerLink]="row.path" [queryParams]="row.query">View</a>
-                </td>
+                <th>Type</th>
+                <th>Subject / Description</th>
+                <th>Client / Person</th>
+                <th>Assigned To</th>
+                <th>Due Date</th>
+                <th>Status</th>
               </tr>
-            } @empty {
+            </thead>
+            <tbody>
+              @for (row of queue().slice(0, 6); track row.id) {
+                <tr>
+                  <td>
+                    <span class="portal-badge">{{ row.type }}</span>
+                  </td>
+                  <td>
+                    <a class="portal-link" [routerLink]="row.path" [queryParams]="row.query"
+                      ><strong>{{ row.subject }}</strong></a
+                    ><small>{{ row.detail.slice(0, 65) }}</small>
+                  </td>
+                  <td>{{ portal.clientName(row.clientId) }}</td>
+                  <td>{{ portal.person(row.person) }}</td>
+                  <td [class.overdue-text]="row.due < portal.today && row.status !== 'Resolved'">
+                    {{ row.due | date: 'd MMM y' }}
+                  </td>
+                  <td>
+                    <span
+                      class="portal-badge"
+                      [attr.data-tone]="
+                        row.status === 'Resolved' ? 'green' : row.high ? 'red' : 'purple'
+                      "
+                      >{{ row.status }}</span
+                    >
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="portal-empty">No items match these filters.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <nav class="portal-filters" aria-label="Staff task filters">
+          @for (tab of ['My Tasks', 'All Team Tasks', 'Escalated']; track tab) {
+            <button [class.active]="taskScope() === tab" (click)="taskScope.set(tab)">
+              {{ tab }}
+            </button>
+          }
+        </nav>
+        <div class="portal-scroll">
+          <table>
+            <thead>
               <tr>
-                <td colspan="6">
-                  <div class="portal-empty">
-                    <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
-                    <h3>
-                      {{ applied() ? 'No items match your filters' : 'You’re ready for the day' }}
-                    </h3>
-                    <p>
-                      {{
-                        applied()
-                          ? 'Adjust your drill-down filters to see more items.'
-                          : 'Create a task or record a concern to begin tracking your team’s actions.'
-                      }}
-                    </p>
-                  </div>
-                </td>
+                <th>Task</th>
+                <th>Related Client</th>
+                <th>Assigned To</th>
+                <th>Due Date</th>
+                <th>Status</th>
               </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-      <p class="portal-register-count">
-        Showing {{ queue().length > 8 ? 8 : queue().length }} of {{ queue().length }} priority items
-      </p>
+            </thead>
+            <tbody>
+              @for (task of staffTasks().slice(0, 5); track task.id) {
+                <tr>
+                  <td>
+                    <a
+                      class="portal-link"
+                      routerLink="/staff-portal/tasks"
+                      [queryParams]="{ task: task.id }"
+                      ><strong>{{ task.title }}</strong></a
+                    ><small>{{ (task.notes || '').slice(0, 65) }}</small>
+                  </td>
+                  <td>{{ portal.clientName(task.clientId) }}</td>
+                  <td>{{ portal.person(task.owner) }}</td>
+                  <td [class.overdue-text]="task.due < portal.today">
+                    {{ task.due | date: 'd MMM y' }}<small>{{ task.dueTime }}</small>
+                  </td>
+                  <td>
+                    <span
+                      class="portal-badge"
+                      [attr.data-tone]="
+                        task.due < portal.today
+                          ? 'red'
+                          : task.status === 'Open'
+                            ? 'amber'
+                            : 'purple'
+                      "
+                      >{{ task.due < portal.today ? 'Overdue' : task.status }}</span
+                    >
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="portal-empty">No outstanding tasks in this view.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     </section>
     @if (manager) {
       <div class="dashboard-charts">
         <section class="portal-panel">
-          <div class="portal-panel-header"><h2>Communication summary</h2></div>
-          <nav class="portal-filters" aria-label="Summary period">
-            @for (days of [7, 14, 30, 60]; track days) {
-              <button [class.active]="period() === days" (click)="period.set(days)">
-                Last {{ days }} days
-              </button>
+          <div class="portal-panel-header"><h2>Communication Summary</h2></div>
+          <nav class="portal-filters">
+            @for (tab of ['This Week', 'Last Week', 'This Month', 'Last Month']; track tab) {
+              <button [class.active]="period() === tab" (click)="period.set(tab)">{{ tab }}</button>
             }
           </nav>
           <div class="bar-chart">
@@ -197,56 +280,96 @@
           </div>
         </section>
         <section class="portal-panel">
-          <div class="portal-panel-header"><h2>Tasks by status</h2></div>
-          <div class="status-total">
-            <strong>{{ tasks().length }}</strong
-            ><span>Total tasks</span>
-          </div>
-          <div class="status-legend">
-            @for (status of statuses(); track status.name) {
+          <div class="portal-panel-header"><h2>By Status</h2></div>
+          <div class="status-chart">
+            <div
+              class="status-doughnut"
+              [style.background]="doughnut()"
+              role="img"
+              [attr.aria-label]="tasks().length + ' total tasks; status breakdown alongside'"
+            >
               <div>
-                <span [style.background]="status.color"></span>{{ status.name
-                }}<strong>{{ status.count }}</strong>
+                <strong>{{ tasks().length }}</strong
+                ><small>Total Items</small>
               </div>
-            }
+            </div>
+            <div class="status-legend">
+              @for (status of statuses(); track status.name) {
+                <div>
+                  <span [style.background]="status.color"></span>{{ status.name
+                  }}<strong>{{ status.count }} ({{ percent(status.count) }}%)</strong>
+                </div>
+              }
+            </div>
           </div>
         </section>
       </div>
     } @else {
       <section class="portal-panel">
         <div class="portal-panel-header">
-          <h2>
-            <span class="material-symbols-outlined" aria-hidden="true">mail</span>Communication &
-            Journal Inbox
-          </h2>
-          <a routerLink="/staff-portal/journal">View all</a>
+          <h2><span class="material-symbols-outlined">mail</span>Communication & Journal Inbox</h2>
+          <a class="button primary" routerLink="/staff-portal/journal">New Message</a>
         </div>
-        <div class="portal-activity">
-          @for (entry of inbox().slice(0, 5); track entry.id) {
-            <article>
-              <span class="portal-avatar">{{ initials(entry.author) }}</span>
-              <div>
-                <h3>{{ entry.subject }}</h3>
-                <p>{{ entry.body.slice(0, 90) }}</p>
-                <small class="portal-muted"
-                  >{{ entry.author }} · {{ portal.clientName(entry.clientId) }}</small
-                >
-              </div>
-              <a
-                class="portal-link"
-                routerLink="/staff-portal/journal"
-                [queryParams]="{ entry: entry.id }"
-                >Open</a
-              >
-            </article>
-          } @empty {
-            <div class="portal-empty">
-              <span class="material-symbols-outlined" aria-hidden="true">inbox</span>
-              <h3>Your conversations start here</h3>
-              <p>Send a journal entry to share an update with your team.</p>
-              <a class="button" routerLink="/staff-portal/journal">Open journal</a>
-            </div>
+        <div class="portal-toolbar">
+          <input
+            aria-label="Search inbox messages"
+            placeholder="Search messages…"
+            [ngModel]="inboxQuery()"
+            (ngModelChange)="inboxQuery.set($event)"
+          />
+        </div>
+        <nav class="portal-filters">
+          @for (tab of ['All', 'Unread', 'From Professionals', 'Mentions']; track tab) {
+            <button [class.active]="inboxScope() === tab" (click)="inboxScope.set(tab)">
+              {{ tab }}
+            </button>
           }
+        </nav>
+        <div class="portal-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>From</th>
+                <th>Subject</th>
+                <th>Related Client</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (entry of visibleInbox().slice(0, 5); track entry.id) {
+                <tr>
+                  <td>
+                    <div class="portal-person">
+                      <span class="portal-avatar">
+                        @if (photo(entry.authorEmail)) {
+                          <img [src]="photo(entry.authorEmail)" [alt]="entry.author" />
+                        } @else {
+                          {{ initials(entry.author) }}
+                        }</span
+                      ><strong>{{ entry.author }}</strong>
+                    </div>
+                  </td>
+                  <td>
+                    <a
+                      class="portal-link"
+                      routerLink="/staff-portal/journal"
+                      [queryParams]="{ entry: entry.id }"
+                      ><strong>{{ entry.subject }}</strong></a
+                    ><small>{{ entry.body.slice(0, 70) }}</small>
+                  </td>
+                  <td>{{ portal.clientName(entry.clientId) }}</td>
+                  <td>
+                    {{ entry.createdAt | date: 'd MMM y'
+                    }}<small>{{ entry.createdAt | date: 'HH:mm' }}</small>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4" class="portal-empty">No messages in this view.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
       </section>
     }
@@ -255,86 +378,62 @@
     @if (manager) {
       <section class="portal-panel">
         <div class="portal-panel-header">
-          <h2>
-            <span class="material-symbols-outlined" aria-hidden="true">filter_alt</span>Quick
-            drill-down
-          </h2>
+          <h2><span class="material-symbols-outlined">filter_alt</span>Quick Drill-Down</h2>
         </div>
         <form class="portal-form" (ngSubmit)="applied.set(true)">
           <label
-            >Service user<mat-select
+            >Client<mat-select
               cvSelect
+              name="client"
               aria-label="Drill-down service user"
-              name="drillClient"
-              [ngModel]="drillClient()"
-              (ngModelChange)="drillClient.set($event)"
+              [(ngModel)]="drillClient"
               ><mat-option value="">All service users</mat-option>
               @for (c of portal.clients(); track c.id) {
                 <mat-option [value]="c.id">{{ c.name }}</mat-option>
               }
             </mat-select></label
           ><label
-            >Staff member<mat-select
+            >Staff Member<mat-select
               cvSelect
+              name="staff"
               aria-label="Drill-down staff"
-              name="drillStaff"
-              [ngModel]="drillStaff()"
-              (ngModelChange)="drillStaff.set($event)"
+              [(ngModel)]="drillStaff"
               ><mat-option value="">All staff</mat-option>
               @for (c of portal.contacts(); track c.email) {
                 <mat-option [value]="c.email.toLowerCase()">{{ c.name }}</mat-option>
               }
             </mat-select></label
+          ><label
+            >Communication Type<mat-select
+              cvSelect
+              name="type"
+              aria-label="Drill-down type"
+              [(ngModel)]="drillType"
+            >
+              @for (t of ['All', 'Tasks', 'Concerns', 'Professional']; track t) {
+                <mat-option [value]="t">{{ t }}</mat-option>
+              }
+            </mat-select></label
+          ><label
+            >Status<mat-select
+              cvSelect
+              name="status"
+              aria-label="Drill-down status"
+              [(ngModel)]="drillStatus"
+            >
+              @for (
+                t of ['All', 'Open', 'In progress', 'Escalated', 'Under investigation', 'Resolved'];
+                track t
+              ) {
+                <mat-option [value]="t">{{ t }}</mat-option>
+              }
+            </mat-select></label
           >
           <div class="portal-form-pair">
-            <label
-              >Type<mat-select
-                cvSelect
-                aria-label="Drill-down type"
-                name="drillType"
-                [ngModel]="drillType()"
-                (ngModelChange)="drillType.set($event)"
-              >
-                @for (type of ['All', 'Tasks', 'Concerns', 'Professional']; track type) {
-                  <mat-option [value]="type">{{ type }}</mat-option>
-                }
-              </mat-select></label
-            ><label
-              >Status<mat-select
-                cvSelect
-                aria-label="Drill-down status"
-                name="drillStatus"
-                [ngModel]="drillStatus()"
-                (ngModelChange)="drillStatus.set($event)"
-              >
-                @for (
-                  status of [
-                    'All',
-                    'Open',
-                    'In progress',
-                    'Escalated',
-                    'Under investigation',
-                    'Resolved',
-                  ];
-                  track status
-                ) {
-                  <mat-option [value]="status">{{ status }}</mat-option>
-                }
-              </mat-select></label
-            >
+            <label>From<input type="date" name="from" [(ngModel)]="from" /></label
+            ><label>To<input type="date" name="to" [(ngModel)]="to" /></label>
           </div>
-          <div class="portal-form-pair">
-            <label
-              >From<input
-                type="date"
-                name="from"
-                [ngModel]="from()"
-                (ngModelChange)="from.set($event)" /></label
-            ><label
-              >To<input type="date" name="to" [ngModel]="to()" (ngModelChange)="to.set($event)"
-            /></label>
-          </div>
-          <button class="button primary" type="submit">View communications & actions</button
+          <button class="button primary">View Communications</button
           ><button
             class="portal-text-button"
             type="button"
@@ -350,8 +449,8 @@
     <section class="portal-panel">
       <div class="portal-panel-header">
         <h2>
-          <span class="material-symbols-outlined" aria-hidden="true">history</span
-          >{{ manager ? 'Recent communications activity' : 'Audit Trail / Activity Timeline' }}
+          <span class="material-symbols-outlined">history</span
+          >{{ manager ? 'Recent Communications Activity' : 'Audit Trail / Activity Timeline' }}
         </h2>
         <a routerLink="/staff-portal/journal" [queryParams]="{ view: 'Activity timeline' }"
           >View all</a
@@ -369,10 +468,7 @@
             <time>{{ event.at | date: 'd MMM, HH:mm' }}</time>
           </article>
         } @empty {
-          <div class="portal-empty">
-            <h3>A clear record of your work</h3>
-            <p>Your team’s actions and communication updates will appear here.</p>
-          </div>
+          <div class="portal-empty">Your team’s activity will appear here.</div>
         }
       </div>
     </section>

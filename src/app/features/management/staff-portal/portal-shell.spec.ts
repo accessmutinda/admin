@@ -30,6 +30,7 @@ describe('Standalone staff portal', () => {
     const links = Array.from(root.querySelectorAll('nav[aria-label="Staff portal navigation"] a'));
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/staff-portal/dashboard',
+      '/staff-portal/dashboard-2',
       '/staff-portal/training/dashboard',
       '/staff-portal/training/courses',
       '/staff-portal/training/assessments',
@@ -42,6 +43,28 @@ describe('Standalone staff portal', () => {
     ]);
     expect(root.querySelector('.staff-console')?.textContent).toContain('Staff Portal');
     expect(root.querySelector('.portal-nav')).toBeNull();
+  });
+  it('opens the alternate dashboard and restores the current design when leaving it', async () => {
+    const harness = await RouterTestingHarness.create('/staff-portal/dashboard-2');
+    const root = harness.fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('cv-portal-dashboard.dashboard-two')).not.toBeNull();
+    expect(root.querySelector('h1')?.textContent).toContain('Staff Dashboard 2');
+    expect(
+      root
+        .querySelector('nav[aria-label="Dashboard designs"] a[aria-current="page"]')
+        ?.getAttribute('href'),
+    ).toBe('/staff-portal/dashboard-2');
+    await harness.navigateByUrl('/staff-portal/dashboard');
+    expect(root.querySelector('cv-portal-dashboard.dashboard-two')).toBeNull();
+    expect(
+      root
+        .querySelector('nav[aria-label="Dashboard designs"] a[aria-current="page"]')
+        ?.getAttribute('href'),
+    ).toBe('/staff-portal/dashboard');
+    await harness.navigateByUrl('/staff-portal/oversight');
+    expect(root.querySelector('cv-portal-dashboard.dashboard-two')).toBeNull();
+    expect(root.querySelector('h1')?.textContent).toContain('Manager Dashboard');
+    expect(root.querySelector('nav[aria-label="Dashboard designs"]')).toBeNull();
   });
   it('redirects previous portal URLs while preserving the destination and query', async () => {
     const harness = await RouterTestingHarness.create('/manage/staff-portal/tasks?new=true');

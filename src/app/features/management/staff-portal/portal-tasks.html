@@ -41,6 +41,9 @@
         >Staff reference:
         {{ record()?.hr?.reference ?? record()?.id ?? 'Workspace account' }}</small
       ><a [href]="'mailto:' + staff()">{{ staff() }}</a>
+      @if (record()?.hr?.personal?.phone) {
+        <a [href]="'tel:' + record()!.hr!.personal.phone">{{ record()!.hr!.personal.phone }}</a>
+      }
     </div>
     <div class="staff-employment">
       <strong>{{ portal.store.company()?.name }}</strong
@@ -64,7 +67,7 @@
       <div>
         <h2>Outstanding tasks</h2>
         <strong>{{ pending().length }}</strong
-        ><small>Actions to follow up</small>
+        ><small>{{ overdueCount() }} overdue · {{ dueWeek() }} due this week</small>
       </div>
     </div>
     <a
@@ -82,15 +85,15 @@
     <div class="metric co-stat co-surface" data-tone="purple">
       <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">flag</span>
       <div>
-        <h2>Escalated actions</h2>
-        <strong>{{ escalatedCount }}</strong
+        <h2>Awaiting Replies</h2>
+        <strong>{{ awaitingReplies() }}</strong
         ><small>Need attention</small>
       </div>
     </div>
     <div class="metric co-stat co-surface" data-tone="blue">
       <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">task_alt</span>
       <div>
-        <h2>Resolved tasks</h2>
+        <h2>Resolved This Week</h2>
         <strong>{{ resolved().length }}</strong
         ><small>Completed follow-ups</small>
       </div>
@@ -126,7 +129,7 @@
           track status
         ) {
           <button [class.active]="filter() === status" (click)="filter.set(status)">
-            {{ status }}
+            {{ status }} ({{ count(status) }})
           </button>
         }
       </nav>
@@ -153,13 +156,15 @@
           </thead>
           <tbody>
             @for (t of tasks(); track t.id) {
-              <tr>
+              <tr [class.task-selected]="editing() && task.id === t.id">
                 <td>
                   <strong>{{ t.title }}</strong
                   ><small>{{ (t.notes ?? '').slice(0, 90) }}</small>
                 </td>
                 <td>{{ portal.clientName(t.clientId) }}</td>
-                <td>{{ t.due | date: 'd MMM y' }}</td>
+                <td [class.overdue-text]="t.due < portal.today && t.status !== 'Resolved'">
+                  {{ t.due | date: 'd MMM y' }}<small>{{ t.dueTime }}</small>
+                </td>
                 <td>{{ portal.person(t.assignedBy ?? t.owner) }}</td>
                 <td>
                   <span
@@ -219,6 +224,7 @@
               aria-label="Related client"
               name="clientId"
               [(ngModel)]="task.clientId"
+              (ngModelChange)="clientChanged()"
               ><mat-option value="">General / no service user</mat-option>
               @for (c of portal.clients(); track c.id) {
                 <mat-option [value]="c.id">{{ c.name }}</mat-option>
@@ -249,6 +255,39 @@
               ><input type="date" name="due" [(ngModel)]="task.due" required
             /></label>
           </div>
+          <div class="portal-form-pair">
+            <label>Due time<input type="time" name="dueTime" [(ngModel)]="task.dueTime" /></label
+            ><label
+              >Follow-up time<input type="time" name="followUpTime" [(ngModel)]="task.followUpTime"
+            /></label>
+          </div>
+          <label
+            >Related Visit<mat-select
+              cvSelect
+              name="visit"
+              aria-label="Task related visit"
+              [(ngModel)]="task.visitId"
+              ><mat-option value="">No visit linked</mat-option>
+              @for (v of visits(); track v.id) {
+                <mat-option [value]="v.id"
+                  >{{ v.date }} · {{ v.callName }} {{ v.start }}</mat-option
+                >
+              }
+            </mat-select></label
+          >
+          @if (task.journalId) {
+            <a
+              class="portal-link"
+              routerLink="/staff-portal/journal"
+              [queryParams]="{ entry: task.journalId }"
+              >View linked journal entry</a
+            >
+          }
+          @if (task.concernId) {
+            <a class="portal-link" [routerLink]="['/staff-portal/concerns', task.concernId]"
+              >View linked investigation</a
+            >
+          }
           <label
             >Status<mat-select
               cvSelect
@@ -267,13 +306,13 @@
             >Investigation notes<textarea
               name="notes"
               [(ngModel)]="task.notes"
-              rows="4"
+              rows="3"
             ></textarea></label
           ><label
             >Action taken<textarea
               name="actions"
               [(ngModel)]="task.actions"
-              rows="4"
+              rows="3"
               placeholder="Record the actions and outcome before resolving."
             ></textarea></label
           ><label

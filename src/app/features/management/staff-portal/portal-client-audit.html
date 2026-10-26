@@ -44,6 +44,17 @@
           }
         </mat-select></label
       ><label
+        >Category<mat-select
+          cvSelect
+          aria-label="Audit category"
+          [ngModel]="category()"
+          (ngModelChange)="category.set($event); page.set(1)"
+          ><mat-option value="All">All categories</mat-option>
+          @for (group of groups(); track group) {
+            <mat-option [value]="group">{{ group }}</mat-option>
+          }
+        </mat-select></label
+      ><label
         >User<mat-select
           cvSelect
           aria-label="Audit user"
@@ -124,7 +135,11 @@
                 ><small>{{ e.detail.slice(0, 85) }}</small>
               </td>
               <td>{{ e.actor }}</td>
-              <td>{{ e.recipient || '—' }}</td>
+              <td>
+                <span class="audit-recipient" [title]="e.recipient || ''">{{
+                  e.recipient || '—'
+                }}</span>
+              </td>
               <td>
                 <span
                   class="portal-badge"
@@ -165,6 +180,25 @@
         >
           Next
         </button>
+        @for (number of pageNumbers(); track number) {
+          <button
+            class="button"
+            [class.primary]="activePage() === number"
+            (click)="page.set(number)"
+            [attr.aria-label]="'Page ' + number"
+          >
+            {{ number }}
+          </button>
+        }
+        <select
+          aria-label="Records per page"
+          [ngModel]="pageSize()"
+          (ngModelChange)="pageSize.set(+$event); page.set(1)"
+        >
+          <option [value]="12">12 per page</option>
+          <option [value]="24">24 per page</option>
+          <option [value]="48">48 per page</option>
+        </select>
       </div>
     </div>
   </section>
@@ -223,7 +257,11 @@
               [queryParams]="{ entry: entry.entityId }"
               >Open journal entry →</a
             >
-          } @else {
+          } @else if (entry.category === 'Allocation') {
+            <a class="portal-link" [routerLink]="['../allocation']"
+              >Open allocation & follow-up →</a
+            >
+          } @else if (entry.category !== 'Care record') {
             <a
               class="portal-link"
               [routerLink]="['../communications']"
@@ -236,10 +274,19 @@
           >
         </div>
         <h3 class="audit-subheading">Audit information</h3>
-        <p class="portal-muted">
-          Recorded {{ entry.at | date: 'd MMM y, HH:mm' }} by {{ entry.actor }}. This timeline
-          includes saved journal, care and allocation events for this service user.
-        </p>
+        <dl class="portal-definition">
+          <dt>Created</dt>
+          <dd>
+            {{ communication()?.createdAt || entry.createdAt || entry.at | date: 'd MMM y, HH:mm' }}
+          </dd>
+          <dt>Last Modified</dt>
+          <dd>
+            {{ communication()?.updatedAt || entry.updatedAt || entry.at | date: 'd MMM y, HH:mm' }}
+            · {{ communication()?.updatedBy || entry.updatedBy || entry.actor }}
+          </dd>
+          <dt>Record ID</dt>
+          <dd>{{ entry.entityId }}</dd>
+        </dl>
       </div>
     } @else {
       <div class="portal-empty">

@@ -127,4 +127,30 @@ describe('Staff communication journal', () => {
     expect(service.tasks()).toHaveLength(0);
     expect(service.saveTask({ ...task, owner: service.email() })).toContain('own tasks');
   });
+  it('tracks a requested reply separately from unread state and completes it when the recipient replies', () => {
+    const original = { ...message(), responseRequired: true };
+    expect(service.save(original, true)).toBeNull();
+    const recipient = original.to[0];
+    actor.set({ ...DEMO_USER, email: recipient });
+    expect(service.mark(original.id, 'readBy', true)).toBeNull();
+    expect(service.entries()[0].responseStatus).toBe('Awaiting response');
+    const reply = service.newEntry();
+    reply.to = [original.authorEmail];
+    reply.subject = 'Re: ' + original.subject;
+    reply.body = 'Follow-up confirmed.';
+    reply.replyToId = original.id;
+    expect(service.save(reply, true)).toBeNull();
+    expect(service.data().entries.find((e) => e.id === original.id)?.responseStatus).toBe(
+      'Responded',
+    );
+  });
+  it('keeps Trash personal and retains the sent record for other recipients', () => {
+    const entry = message();
+    expect(service.save(entry, true)).toBeNull();
+    expect(service.mark(entry.id, 'deletedBy', true)).toBeNull();
+    expect(service.entries()[0].deletedBy).toContain(DEMO_USER.email);
+    actor.set({ ...DEMO_USER, email: entry.to[0] });
+    expect(service.entries()[0].deletedBy).not.toContain(entry.to[0]);
+    expect(service.data().entries).toHaveLength(1);
+  });
 });

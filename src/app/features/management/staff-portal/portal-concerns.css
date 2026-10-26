@@ -2,7 +2,7 @@
   padding: 8px 10px;
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(220px, 1fr);
-  gap: 24px;
+  gap: 12px 8px;
 }
 .concern-summary h2 {
   font-size: 19px;
@@ -23,12 +23,12 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  margin-top: 22px;
+  margin-top: 12px;
 }
 .concern-context small {
   display: block;
   color: #8a9eaf;
-  font-size: 10px;
+  font-size: 11px;
   margin-bottom: 6px;
 }
 .concern-context strong,
@@ -42,19 +42,20 @@
   border-radius: 8px;
 }
 .investigation-grid {
+  align-items: start;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 12px 8px;
 }
 .investigation-stages {
   list-style: none;
-  padding: 8px 18px;
+  padding: 8px 10px;
   margin: 0;
 }
 .investigation-stages li {
   display: flex;
   gap: 12px;
-  padding: 15px 0;
+  padding: 8px 0;
   position: relative;
   min-height: 65px;
 }
@@ -87,7 +88,7 @@
 }
 .investigation-stages small {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   color: #8da0b1;
   margin-top: 5px;
 }
@@ -134,7 +135,7 @@
 }
 @media (max-width: 639px) {
   .concern-summary {
-    padding: 14px;
+    padding: 8px 10px;
   }
   .investigation-grid {
     grid-template-columns: 1fr;
@@ -142,4 +143,26 @@
   .concern-summary h2 {
     font-size: 17px;
   }
+}
+.checklist-detail {
+  padding: 8px 0;
+  border-bottom: 1px solid #edf2f5;
+}
+.checklist-detail .checklist-item {
+  padding: 3px 0 7px;
+}
+.checklist-detail input[type='date'] {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid #e1eaf1;
+  padding: 5px;
+  color: #315a7b;
+  font-size: 11px;
+  box-sizing: border-box;
+}
+.investigation-stages time {
+  display: block;
+  font-size: 11px;
+  color: #6883a0;
+  margin-top: 4px;
 }

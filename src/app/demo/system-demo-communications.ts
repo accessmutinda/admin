@@ -26,7 +26,7 @@ export function seedSystemCommunications(data: WorkspaceData, today: string): Wo
       'Weekly team briefing',
     ][index % 4],
     clientId: clients[index % clients.length].id,
-    category: ['Care update', 'Medication', 'Family communication', 'Team update'][index % 4],
+    category: ['Care update', 'Safeguarding', 'General', 'Meetings'][index % 4],
     priority: index === 1 ? 'High' : 'Normal',
     body: 'Fictional demo communication: review the linked care record, complete the agreed follow-up and keep the team informed.',
     attachments: [],
@@ -46,7 +46,8 @@ export function seedSystemCommunications(data: WorkspaceData, today: string): Wo
   ];
   const tasks: JournalTask[] = Array.from({ length: 10 }, (_, index) => ({
     id: demoId('task-' + index),
-    owner: index < 6 ? DEMO_EMAIL : staff[index % staff.length].email,
+    owner:
+      index < 6 ? DEMO_EMAIL : index < 9 ? 'admin@example.test' : staff[index % staff.length].email,
     title: [
       'Confirm updated care preferences',
       'Review medication cupboard stock',

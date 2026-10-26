@@ -3,7 +3,16 @@
     <h2>
       <span class="material-symbols-outlined" aria-hidden="true">forum</span>Communication summary
     </h2>
-    <span class="portal-muted">{{ portal.today | date: 'EEEE, d MMM y' }}</span>
+    <span class="portal-muted">{{ portal.today | date: 'EEEE, d MMM y' }}</span
+    ><select
+      aria-label="Communication summary period"
+      [ngModel]="period()"
+      (ngModelChange)="period.set(+$event)"
+    >
+      <option [value]="30">Last 30 days</option>
+      <option [value]="7">Last 7 days</option>
+      <option [value]="0">All time</option>
+    </select>
   </div>
   <div class="metrics four client-summary-stats">
     <a
@@ -15,14 +24,14 @@
       <div>
         <h2>Open tasks</h2>
         <strong>{{ openTasks().length }}</strong
-        ><small>Follow-ups and next steps</small>
+        ><small>{{ overdue() }} overdue · {{ openTasks().length - overdue() }} upcoming</small>
       </div></a
     >
     <a class="metric co-stat co-surface" data-tone="purple" [routerLink]="['../journal']"
       ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">menu_book</span>
       <div>
         <h2>Journal entries</h2>
-        <strong>{{ context.journal().length }}</strong
+        <strong>{{ journalCount() }}</strong
         ><small>Staff and team updates</small>
       </div></a
     >
@@ -30,7 +39,7 @@
       ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">groups</span>
       <div>
         <h2>Professional communications</h2>
-        <strong>{{ context.communications().length }}</strong
+        <strong>{{ recentCommunications().length }}</strong
         ><small>GP, nursing and care team</small>
       </div></a
     >
@@ -66,6 +75,8 @@
         <dd>{{ details('gender') }}</dd>
         <dt>Ethnicity</dt>
         <dd>{{ details('ethnicity') }}</dd>
+        <dt>Key safe</dt>
+        <dd>{{ section('access', 'location') }}</dd>
         <dt>Language</dt>
         <dd>{{ details('language') }}</dd>
       </dl>
@@ -86,6 +97,14 @@
         </dd>
         <dt>LPA</dt>
         <dd>{{ section('capacity', 'welfareLpa') }}</dd>
+        <dt>Other conditions</dt>
+        <dd>{{ section('diagnoses', 'ongoing') }}</dd>
+        <dt>Behaviour</dt>
+        <dd>{{ section('support', 'behaviour') }}</dd>
+        <dt>Allergies</dt>
+        <dd>{{ allergies() }}</dd>
+        <dt>Time-sensitive Calls</dt>
+        <dd>{{ timeSensitive() ? 'Yes' : 'No' }}</dd>
         <dt>Communication</dt>
         <dd>{{ section('diagnoses', 'communication') }}</dd>
         <dt>Care needs</dt>
@@ -111,6 +130,8 @@
           <dd>{{ kin()?.phone || client()?.representative?.phone || 'Not recorded' }}</dd>
           <dt>Email</dt>
           <dd>{{ kin()?.email || client()?.representative?.email || 'Not recorded' }}</dd>
+          <dt>Permission to Share</dt>
+          <dd>{{ section('consent', 'family') }}</dd>
           <dt>Relationship</dt>
           <dd>
             {{ kin()?.relationship || client()?.representative?.relationship || 'Not recorded' }}
@@ -124,7 +145,7 @@
         <a [routerLink]="['../communications']">Manage</a>
       </div>
       <div class="portal-panel-body">
-        @for (p of context.contacts(); track p.id) {
+        @for (p of context.keyContacts(); track p.id) {
           <div class="professional-summary">
             <strong>{{ p.name }}</strong
             ><small>{{ p.relationship || p.type }}</small>
@@ -150,12 +171,14 @@
             <th scope="col">Type</th>
             <th scope="col">Subject / summary</th>
             <th scope="col">Date</th>
+            <th scope="col">Related To</th>
+            <th scope="col">Actions</th>
           </tr>
         </thead>
         <tbody>
-          @for (record of context.communications().slice(0, 5); track record.id) {
+          @for (record of recentCommunications().slice(0, 5); track record.id) {
             <tr>
-              <td>{{ record.loggedBy }}</td>
+              <td>{{ contact(record.contactId) }}</td>
               <td>
                 <span class="portal-badge">{{ record.type }}</span>
               </td>
@@ -164,10 +187,21 @@
                 ><small>{{ record.details.slice(0, 90) }}</small>
               </td>
               <td>{{ record.at | date: 'd MMM y' }}</td>
+              <td>
+                <span class="portal-badge">{{ record.type }}</span>
+              </td>
+              <td>
+                <a
+                  class="portal-link"
+                  [routerLink]="['../communications']"
+                  [queryParams]="{ record: record.id }"
+                  >View</a
+                >
+              </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="4">
+              <td colspan="6">
                 <div class="portal-empty">
                   <h3>No professional communications yet</h3>
                   <p>Record a call, note or update in the professionals workspace.</p>
@@ -179,8 +213,8 @@
       </table>
     </div>
     <p class="portal-register-count">
-      Showing {{ context.communications().length > 5 ? 5 : context.communications().length }} of
-      {{ context.communications().length }} communications
+      Showing {{ recentCommunications().length > 5 ? 5 : recentCommunications().length }} of
+      {{ recentCommunications().length }} communications
     </p>
   </section>
   <section class="portal-panel">

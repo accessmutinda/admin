@@ -6,6 +6,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { PortalService } from './portal.service';
 import { CONCERN_STATUSES, PortalConcern } from './portal.models';
+import { JournalAttachment } from '../journal/journal.models';
 import { PortalEvidence } from './portal-evidence';
 @Component({
   selector: 'cv-portal-concerns',
@@ -30,6 +31,41 @@ export class PortalConcerns {
   protected draft = this.current() ? structuredClone(this.current()!) : this.portal.newConcern();
   private clean = JSON.stringify(this.draft);
   protected comment = '';
+  protected commentFiles: JournalAttachment[] = [];
+  protected readonly commentFilter = signal('All');
+  protected readonly comments = computed(() => {
+    const c = this.current();
+    if (!c) return [];
+    const updates = (c.history ?? []).map((h, i) => ({
+      id: 'stage-' + i,
+      author: h.actor,
+      text: 'Status changed to ' + h.status,
+      at: h.at,
+      kind: 'Update' as const,
+      attachments: [] as JournalAttachment[],
+    }));
+    return [...c.notes, ...updates]
+      .filter(
+        (n) =>
+          this.commentFilter() === 'All' ||
+          (n.kind ?? 'Note') === (this.commentFilter() === 'Notes' ? 'Note' : 'Update'),
+      )
+      .sort((a, b) => b.at.localeCompare(a.at));
+  });
+  protected stageRecord(status: string) {
+    return this.current()?.history?.find((h) => h.status === status);
+  }
+  protected stageComplete(status: string): boolean {
+    return !!this.stageRecord(status);
+  }
+  protected stageText(status: string): string {
+    return status === 'Escalated' && !this.stageRecord(status) ? 'Not escalated' : 'Pending';
+  }
+  protected readonly reviewCount = computed(
+    () =>
+      this.portal.openConcerns().filter((c) => c.assignedTo === this.portal.journal.email()).length,
+  );
+
   protected readonly concerns = computed(() =>
     this.portal
       .concerns()
@@ -48,7 +84,16 @@ export class PortalConcerns {
     () => this.portal.concerns().filter((c) => c.status === 'Under investigation').length,
   );
   protected readonly resolved = computed(
-    () => this.portal.concerns().filter((c) => ['Resolved', 'Closed'].includes(c.status)).length,
+    () =>
+      this.portal
+        .concerns()
+        .filter(
+          (c) =>
+            ['Resolved', 'Closed'].includes(c.status) &&
+            (c.history?.find((h) => h.status === 'Resolved')?.at ?? c.raisedAt).startsWith(
+              this.portal.today.slice(0, 7),
+            ),
+        ).length,
   );
   protected get completed(): number {
     return this.draft.checklist.filter((c) => c.done).length;
@@ -86,10 +131,12 @@ export class PortalConcerns {
     }
   }
   protected addNote(): void {
-    const error = this.portal.addNote(this.id, this.comment);
+    if (this.uploading()) return;
+    const error = this.portal.addNote(this.id, this.comment, this.commentFiles);
     this.error.set(error ?? '');
     if (!error) {
       this.comment = '';
+      this.commentFiles = [];
       this.draft.notes = structuredClone(this.current()?.notes ?? []);
       const clean = JSON.parse(this.clean);
       clean.notes = this.draft.notes;
@@ -104,7 +151,8 @@ export class PortalConcerns {
     return (
       (!this.uploading() &&
         (!this.editing() || JSON.stringify(this.draft) === this.clean) &&
-        !this.comment.trim()) ||
+        !this.comment.trim() &&
+        !this.commentFiles.length) ||
       window.confirm('Discard unsaved investigation changes?')
     );
   }

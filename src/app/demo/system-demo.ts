@@ -10,6 +10,7 @@ import { seedCareDemo } from './care-demo';
 import { seedSystemOperations } from './system-demo-operations';
 import { seedSystemFinance } from './system-demo-finance';
 import { seedSystemQuality } from './system-demo-quality';
+import { seedStaffPortal } from './staff-portal-demo';
 import { seedSystemCommunications } from './system-demo-communications';
 import { seedSystemAcademy } from './system-demo-academy';
 import { seedSystemCompany } from './system-demo-company';
@@ -34,7 +35,7 @@ export function seedSystemDemo(
   next = seedSystemOperations(next, today, now);
   next = seedSystemFinance(next, today);
   next = seedSystemQuality(next, today);
-  next = seedSystemCommunications(next, today);
+  next = seedStaffPortal(seedSystemCommunications(next, today), today);
   next = seedSystemAcademy(next, today);
   const vacancies: Vacancy[] = [
     'Community Care Worker',
@@ -215,7 +216,11 @@ export function seedSystemDemo(
   };
 }
 
+const demoInstallations = new WeakSet<Injector>();
+
 export function installSystemDemo(injector: Injector): void {
+  if (demoInstallations.has(injector)) return;
+  demoInstallations.add(injector);
   const store = injector.get(ManagementStore);
   const workspace = injector.get(WorkspaceService);
   effect(

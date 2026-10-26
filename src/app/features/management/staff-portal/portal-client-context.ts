@@ -22,5 +22,8 @@ export class PortalClientContext {
     this.portal.journal.entries().filter((e) => e.clientId === this.id()),
   );
   readonly contacts = computed(() => this.client()?.file?.contacts ?? []);
+  readonly keyContacts = computed(() =>
+    this.contacts().filter((c) => !['Pharmacy', 'Emergency'].includes(c.type)),
+  );
   readonly audit = computed(() => this.portal.clientTimeline(this.id()));
 }

@@ -1,3 +1,4 @@
+import { PortalRecordSummary } from '../staff-portal/portal-record-summary';
 import { StaffAvailability } from './staff-availability';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
@@ -23,6 +24,7 @@ import { COURSES } from '../shared/management.store';
     '[class.hr-profile-editing]': 'editing()',
   },
   imports: [
+    PortalRecordSummary,
     StaffAvailability,
     MatSelectModule,
     CvSelect,

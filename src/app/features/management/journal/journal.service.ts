@@ -74,6 +74,8 @@ export class JournalService {
       cc: [],
       subject: '',
       clientId: '',
+      visitId: '',
+      kind: 'Message',
       category: 'Care update',
       priority: 'Normal',
       body: '',
@@ -91,6 +93,8 @@ export class JournalService {
     subject: string,
     audience: string[],
     change: (data: JournalData) => JournalData,
+    entityId = '',
+    clientId = '',
   ): string | null {
     if (!this.email()) return 'Sign in to use the staff journal.';
     const saved = this.store.saveWorkspace((d) => {
@@ -105,6 +109,8 @@ export class JournalService {
               actor: this.auth.currentUser()!.name,
               audience: [...new Set([this.email(), ...audience])],
               action,
+              entityId,
+              clientId,
               subject,
               at: new Date().toISOString(),
             },
@@ -133,7 +139,10 @@ export class JournalService {
       (e) => !entry.to.includes(e),
     );
     if (!entry.subject) return 'Enter a subject before saving.';
-    if (send && (!entry.to.length || !entry.body)) return 'Choose a recipient and enter a message.';
+    if (entry.kind === 'Internal note' && !entry.clientId)
+      return 'Choose a service user for an internal note.';
+    if (send && ((entry.kind !== 'Internal note' && !entry.to.length) || !entry.body))
+      return 'Choose a recipient and enter a message.';
     if (
       [...entry.to, ...entry.cc].some(
         (email) => !this.recipients(entry.clientId).some((c) => c.email.toLowerCase() === email),
@@ -143,6 +152,22 @@ export class JournalService {
     if (entry.clientId && !this.clients().some((c) => c.id === entry.clientId))
       return 'Choose a current service user.';
     if (
+      entry.visitId &&
+      !this.rota.data().visits.some((v) => v.id === entry.visitId && v.clientId === entry.clientId)
+    )
+      return 'Choose a visit for this service user.';
+    if (
+      entry.replyToId &&
+      !this.entries().some(
+        (e) =>
+          e.id === entry.replyToId &&
+          e.state === 'Sent' &&
+          e.clientId === entry.clientId &&
+          [...entry.to, ...entry.cc].includes(e.authorEmail),
+      )
+    )
+      return 'Reply to the original sender within the same client conversation.';
+    if (
       !['Normal', 'High'].includes(entry.priority) ||
       !['Care update', 'Safeguarding', 'Training', 'General', 'Meetings'].includes(entry.category)
     )
@@ -150,41 +175,62 @@ export class JournalService {
     if (entry.attachments.reduce((sum, a) => sum + a.size, 0) > 5 * 1024 * 1024)
       return 'Attachments must total 5 MB or less.';
     entry.state = send ? 'Sent' : 'Draft';
+    entry.responseStatus = entry.responseRequired ? 'Awaiting response' : undefined;
     entry.createdAt = new Date().toISOString();
     entry.readBy = [this.email()];
     return this.commit(
       send ? 'Journal entry sent' : 'Draft saved',
       entry.subject,
       send ? [...entry.to, ...entry.cc] : [],
-      (d) => ({ ...d, entries: [entry, ...d.entries.filter((e) => e.id !== entry.id)] }),
+      (d) => ({
+        ...d,
+        entries: [
+          entry,
+          ...d.entries
+            .filter((e) => e.id !== entry.id)
+            .map((e) =>
+              send && entry.replyToId === e.id ? { ...e, responseStatus: 'Responded' as const } : e,
+            ),
+        ],
+      }),
+      entry.id,
+      entry.clientId,
     );
   }
   mark(
     id: string,
-    field: 'readBy' | 'archivedBy' | 'starredBy' | 'followUpBy',
+    field: 'readBy' | 'archivedBy' | 'starredBy' | 'followUpBy' | 'deletedBy',
     enabled: boolean,
   ): string | null {
     const entry = this.entries().find((e) => e.id === id);
     if (!entry) return 'This entry is unavailable.';
     const action = {
+      deletedBy: enabled ? 'Entry moved to trash' : 'Entry restored from trash',
       readBy: enabled ? 'Entry read' : 'Marked unread',
       archivedBy: enabled ? 'Entry archived' : 'Entry restored',
       starredBy: enabled ? 'Entry starred' : 'Star removed',
       followUpBy: enabled ? 'Follow-up flagged' : 'Follow-up cleared',
     }[field];
-    return this.commit(action, entry.subject, [], (d) => ({
-      ...d,
-      entries: d.entries.map((e) =>
-        e.id === id
-          ? {
-              ...e,
-              [field]: enabled
-                ? [...new Set([...e[field], this.email()])]
-                : e[field].filter((email) => email !== this.email()),
-            }
-          : e,
-      ),
-    }));
+    return this.commit(
+      action,
+      entry.subject,
+      [],
+      (d) => ({
+        ...d,
+        entries: d.entries.map((e) =>
+          e.id === id
+            ? {
+                ...e,
+                [field]: enabled
+                  ? [...new Set([...(e[field] ?? []), this.email()])]
+                  : (e[field] ?? []).filter((email) => email !== this.email()),
+              }
+            : e,
+        ),
+      }),
+      entry.id,
+      entry.clientId,
+    );
   }
   saveTask(input: JournalTask): string | null {
     const existing = this.data().tasks.find((t) => t.id === input.id);

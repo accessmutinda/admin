@@ -1,0 +1,83 @@
+@if (connection(); as c) {
+  <section class="connection-panel" aria-label="Connected staff portal records">
+    <header>
+      <div>
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">forum</span>Communication &
+          Follow-up
+        </h2>
+        <p>All-time records for {{ c.name }} in this company.</p>
+      </div>
+      <a [routerLink]="c.path" [queryParams]="c.query"
+        >Open in Staff Portal <span aria-hidden="true">→</span></a
+      >
+    </header>
+    <div class="connection-metrics">
+      <div data-tone="green">
+        <span class="material-symbols-outlined" aria-hidden="true">assignment</span>
+        <div>
+          <span>Open tasks</span><strong>{{ c.tasks }}</strong>
+        </div>
+      </div>
+      <div data-tone="purple">
+        <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+        <div>
+          <span>Journal entries</span><strong>{{ c.journals }}</strong>
+        </div>
+      </div>
+      <div data-tone="blue">
+        <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+        <div>
+          <span>Professional communications</span><strong>{{ c.communications }}</strong>
+        </div>
+      </div>
+      <div data-tone="red">
+        <span class="material-symbols-outlined" aria-hidden="true">warning</span>
+        <div>
+          <span>Unresolved concerns</span><strong>{{ c.concerns }}</strong>
+        </div>
+      </div>
+    </div>
+    <div
+      class="connection-scroll"
+      tabindex="0"
+      role="region"
+      aria-label="Connected communications and tasks"
+    >
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Subject / action</th>
+            <th>Date / due date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (record of c.records.slice(0, 6); track record.id) {
+            <tr>
+              <td>{{ record.kind }}</td>
+              <td>
+                <a [routerLink]="record.path" [queryParams]="record.query">{{ record.title }}</a>
+              </td>
+              <td>{{ record.date | date: 'd MMM y' }}</td>
+              <td>
+                <span class="connection-status">{{ record.status }}</span>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4" class="connection-empty">
+                No linked communications or follow-up actions yet.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="connection-count">
+      Showing {{ c.records.length > 6 ? 6 : c.records.length }} of {{ c.records.length }} linked
+      records available to your account.
+    </p>
+  </section>
+}

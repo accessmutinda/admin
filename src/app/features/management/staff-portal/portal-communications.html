@@ -3,7 +3,10 @@
     <h1>Professional Communications & Contacts</h1>
     <p>Manage professional communications, notes, calls and updates for this service user.</p>
   </div>
-  <button class="button" (click)="openContact()">+ Add professional contact</button>
+  <div class="portal-actions">
+    <button class="button" (click)="print()">Print</button
+    ><button class="button" (click)="openContact()">+ Add professional contact</button>
+  </div>
 </div>
 @if (error()) {
   <div class="portal-alert error" role="alert">{{ error() }}</div>
@@ -52,11 +55,11 @@
       <span class="material-symbols-outlined" aria-hidden="true">contacts</span>Key professional
       contacts
     </h2>
-    <span class="portal-muted">{{ context.contacts().length }} contacts</span>
+    <span class="portal-muted">{{ context.keyContacts().length }} key contacts</span>
   </div>
   <div class="contact-grid">
-    @for (person of context.contacts(); track person.id) {
-      <article class="contact-card">
+    @for (person of context.keyContacts(); track person.id) {
+      <article class="contact-card" [attr.data-tone]="tone(person.relationship || person.type)">
         <div class="contact-card-heading">
           <span class="contact-icon material-symbols-outlined" aria-hidden="true">{{
             person.type === 'GP'
@@ -174,7 +177,7 @@
                 {{ r.at | date: 'd MMM y' }}<small>{{ r.at | date: 'HH:mm' }}</small>
               </td>
               <td>
-                <span class="portal-badge" data-tone="purple">{{ r.type }}</span>
+                <span class="portal-badge" [attr.data-tone]="tone(r.type)">{{ r.type }}</span>
               </td>
               <td>
                 <strong>{{ r.subject }}</strong
@@ -285,6 +288,22 @@
           </mat-select></label
         >
       </div>
+      <label class="portal-check"
+        ><input type="checkbox" name="responseRequired" [(ngModel)]="record.responseRequired" />
+        Response required</label
+      >
+      @if (record.responseRequired) {
+        <label
+          >Response status<mat-select
+            cvSelect
+            name="responseStatus"
+            aria-label="Professional response status"
+            [(ngModel)]="record.responseStatus"
+            ><mat-option value="Awaiting response">Awaiting response</mat-option
+            ><mat-option value="Responded">Responded</mat-option></mat-select
+          ></label
+        >
+      }
       <div class="portal-form-actions">
         <button type="button" class="button" (click)="edit()">Cancel</button
         ><button class="button primary" [disabled]="uploading()">Save communication</button>

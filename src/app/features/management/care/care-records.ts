@@ -9,6 +9,7 @@ import { A11yModule } from '@angular/cdk/a11y';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { ModuleDesign } from '../shared/module-design';
+import { PortalService } from '../staff-portal/portal.service';
 import { CareHeader } from './care-header';
 import { CareService } from './care.service';
 import { CareContact, CareDocument, FAMILY_SCOPES, FamilyAccess, csv } from './care.models';
@@ -29,6 +30,7 @@ import { CareContact, CareDocument, FAMILY_SCOPES, FamilyAccess, csv } from './c
 })
 export class CareRecords {
   protected readonly ukStamp = ukStamp;
+  private readonly portal = inject(PortalService);
   protected readonly care = inject(CareService);
   private readonly route = inject(ActivatedRoute);
   private readonly params = toSignal(this.route.paramMap, {
@@ -59,8 +61,9 @@ export class CareRecords {
   private uploadClient = '';
   protected readonly query = signal('');
   protected readonly audit = computed(() =>
-    [...(this.client()?.file?.audit ?? [])]
-      .reverse()
+    this.portal
+      .clientTimeline(this.id())
+      .map((a) => ({ id: a.id, at: a.at, by: a.actor, action: a.action, detail: a.detail }))
       .filter((a) =>
         `${a.by} ${a.action} ${a.detail}`.toLowerCase().includes(this.query().toLowerCase()),
       ),

@@ -10,6 +10,10 @@ export const CONCERN_STATUSES = [
   'Closed',
 ] as const;
 export interface PortalConcern {
+  visitId?: string;
+  visitTime?: string;
+  location?: string;
+  history?: { status: string; at: string; actor: string }[];
   id: string;
   reference: string;
   title: string;
@@ -24,12 +28,31 @@ export interface PortalConcern {
   raisedBy: string;
   raisedAt: string;
   status: (typeof CONCERN_STATUSES)[number];
-  checklist: { id: string; title: string; done: boolean }[];
-  notes: { id: string; author: string; text: string; at: string }[];
+  checklist: {
+    id: string;
+    title: string;
+    done: boolean;
+    assignedTo?: string;
+    due?: string;
+    completedAt?: string;
+  }[];
+  notes: {
+    id: string;
+    author: string;
+    text: string;
+    at: string;
+    kind?: 'Note' | 'Update';
+    attachments?: JournalAttachment[];
+  }[];
   evidence: JournalAttachment[];
   outcome: string;
 }
 export interface ProfessionalRecord {
+  createdAt?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+  responseRequired?: boolean;
+  responseStatus?: 'Awaiting response' | 'Responded';
   direction?: 'Sent' | 'Received' | 'Internal';
   id: string;
   clientId: string;
@@ -45,6 +68,9 @@ export interface ProfessionalRecord {
   attachments: JournalAttachment[];
 }
 export interface PortalEvent {
+  createdAt?: string;
+  updatedAt?: string;
+  updatedBy?: string;
   direction?: string;
   recipient?: string;
   audience?: string[];

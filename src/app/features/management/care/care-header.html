@@ -110,6 +110,13 @@
   >
     <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Care Plan
   </button>
+  <a [routerLink]="['/staff-portal/service-users', c.id, 'journal']"
+    ><span class="material-symbols-outlined" aria-hidden="true">forum</span>Client Journal ↗</a
+  >
+  <a [routerLink]="['/staff-portal/service-users', c.id, 'communications']"
+    ><span class="material-symbols-outlined" aria-hidden="true">groups</span>Professional
+    Communications ↗</a
+  >
   @for (tab of tabs; track tab.path) {
     <a
       [class.selected]="active() === tab.path"

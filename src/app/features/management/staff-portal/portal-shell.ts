@@ -6,6 +6,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { MAT_SELECT_CONFIG } from '@angular/material/select';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ROLES } from '../../../core/auth/models/role';
+import { PortalDemo } from './portal-demo.service';
 import { Logo } from '../../../shared/ui/logo';
 import { ManagementStore } from '../shared/management.store';
 import { ModuleDesign } from '../shared/module-design';
@@ -129,7 +130,12 @@ import { ModuleDesign } from '../shared/module-design';
           </a>
         </header>
         <main id="staff-content" class="page-content" tabindex="-1">
-          <section class="module-page operations-page portal-content"><router-outlet /></section>
+          <section class="module-page operations-page portal-content">
+            @if (demo.error()) {
+              <p role="alert">{{ demo.error() }}</p>
+            }
+            <router-outlet />
+          </section>
         </main>
         <footer class="app-footer">
           <span>CareVerity · {{ store.company()?.name }}</span
@@ -141,6 +147,7 @@ import { ModuleDesign } from '../shared/module-design';
     </div>`,
 })
 export class PortalShell {
+  protected readonly demo = inject(PortalDemo);
   protected readonly auth = inject(AuthService);
   protected readonly store = inject(ManagementStore);
   private readonly router = inject(Router);
@@ -151,6 +158,7 @@ export class PortalShell {
   );
   protected readonly links = [
     { path: 'dashboard', label: 'My dashboard', icon: 'space_dashboard' },
+    { path: 'dashboard-2', label: 'Dashboard 2', icon: 'dashboard_customize' },
     { path: 'training/dashboard', label: 'My training', icon: 'school' },
     { path: 'training/courses', label: 'Course library', icon: 'menu_book' },
     { path: 'training/assessments', label: 'Assessments', icon: 'assignment' },

@@ -61,7 +61,18 @@ import { age } from '../care/care.models';
             >LPA: {{ client.file?.sections?.['capacity']?.['welfareLpa'] || 'Not recorded' }}</span
           ><span class="portal-badge"
             >Next of kin: {{ client.representative?.name || nextOfKin() }}</span
-          ><span class="portal-badge" data-tone="green">{{
+          ><span class="portal-badge" data-tone="green"
+            >LPA Property & Finance:
+            {{ client.file?.sections?.['capacity']?.['financeLpa'] || 'Not recorded' }}</span
+          >
+          <span class="portal-badge" data-tone="red"
+            >Time-sensitive calls: {{ timeSensitive() ? 'Yes' : 'No' }}</span
+          >
+          <span class="portal-badge" data-tone="green"
+            >Key safe:
+            {{ client.file?.sections?.['access']?.['location'] ? 'Yes' : 'Not recorded' }}</span
+          >
+          <span class="portal-badge" data-tone="green">{{
             client.file?.details?.['living'] || 'Living arrangements not recorded'
           }}</span>
         </div>
@@ -109,6 +120,11 @@ export class PortalClientShell {
     { path: 'journal', label: 'Client journal', icon: 'forum' },
     { path: 'audit', label: 'Audit trail', icon: 'history' },
   ];
+  protected timeSensitive(): boolean {
+    return this.context.portal.care.rota
+      .data()
+      .calls.some((c) => c.clientId === this.context.id() && c.active && c.timeSensitive);
+  }
   protected initials(name: string): string {
     return name
       .split(' ')

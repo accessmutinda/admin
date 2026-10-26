@@ -54,7 +54,7 @@
               type="date"
               name="start"
               [ngModel]="from()"
-              (ngModelChange)="from.set($event)"
+              (ngModelChange)="from.set($event); changeDuration()"
               required /></label
           ><label
             >End date <span class="portal-required">*</span
@@ -66,6 +66,43 @@
               required
           /></label>
         </div>
+        <div class="portal-form-pair">
+          <label
+            >Duration<mat-select
+              cvSelect
+              name="duration"
+              aria-label="Allocation duration"
+              [(ngModel)]="duration"
+              (ngModelChange)="changeDuration()"
+            >
+              @for (d of ['1 week', '2 weeks', '1 month']; track d) {
+                <mat-option [value]="d">{{ d }}</mat-option>
+              }
+            </mat-select></label
+          ><label
+            >Recurrence Pattern<mat-select
+              cvSelect
+              name="recurrence"
+              aria-label="Allocation recurrence"
+              [(ngModel)]="recurrence"
+            >
+              @for (
+                r of ['Daily (every day)', 'Weekdays', 'Weekends', 'Use template recurrence'];
+                track r
+              ) {
+                <mat-option [value]="r">{{ r }}</mat-option>
+              }
+            </mat-select></label
+          >
+        </div>
+        <label class="portal-check"
+          ><input
+            type="checkbox"
+            name="individual"
+            [(ngModel)]="individual"
+            (ngModelChange)="changeDuration()"
+          />Create individual visits for one date</label
+        >
         <div class="portal-form-pair">
           <label
             >Carer type<mat-select
@@ -92,8 +129,8 @@
           >
         </div>
         <p class="portal-muted">
-          Visits follow each template’s recurrence pattern. Plan up to 31 days at a time. Existing
-          visits, availability, training and overlapping calls are checked before saving.
+          Choose a recurrence pattern or retain the templates. Plan up to 31 days at a time.
+          Existing visits, availability, training and overlapping calls are checked before saving.
         </p>
         <div class="portal-form-actions">
           <button type="button" class="button" (click)="reset()">Cancel</button
@@ -107,6 +144,17 @@
           <h2>Monthly allocation preview</h2>
           <p class="portal-muted">{{ visits().length }} visits in this month</p>
         </div>
+        <div class="portal-actions">
+          <button class="button" (click)="editAllocation()" [disabled]="!cancellable().length">
+            Edit Allocation</button
+          ><button
+            class="button"
+            (click)="cancelAllocationMode = true; selected = 'allocation'; cancelReason = ''"
+            [disabled]="!cancellable().length"
+          >
+            Cancel Allocation
+          </button>
+        </div>
         <input
           class="month-input"
           type="month"
@@ -115,7 +163,12 @@
           (ngModelChange)="month.set($event)"
         />
       </div>
-      <div class="allocation-calendar">
+      <div
+        class="allocation-calendar"
+        tabindex="0"
+        role="region"
+        aria-label="Monthly allocation calendar"
+      >
         <div class="calendar-weekdays">
           @for (day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; track day) {
             <span>{{ day }}</span>
@@ -126,69 +179,85 @@
             <div [class.outside]="!day.startsWith(month())">
               <time>{{ day | date: 'd' }}</time>
               @for (visit of onDay(day); track visit.id) {
-                <a
-                  [routerLink]="['/manage/clients', context.id(), 'visits']"
-                  [queryParams]="{ visit: visit.id }"
+                <button
+                  type="button"
+                  (click)="openVisit(visit)"
+                  [disabled]="visit.attendance.length > 0"
                   [title]="visit.callName + ' ' + visit.start"
-                  >{{ visit.start }} {{ visit.callName }}</a
+                  [attr.aria-label]="visit.callName + ' at ' + visit.start + ' on ' + day"
                 >
+                  <span class="material-symbols-outlined">{{ icon(visit.callName) }}</span
+                  ><span class="call-time">{{ visit.start }}</span>
+                </button>
               }
             </div>
           }
         </div>
       </div>
-      <div class="portal-scroll" tabindex="0" role="region" aria-label="Allocated visits">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Visit / time</th>
-              <th scope="col">Staff</th>
-              <th scope="col">Status</th>
-              <th scope="col">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (v of visits().slice(0, 14); track v.id) {
+      <details class="allocation-visit-list">
+        <summary>View individual visits ({{ visits().length }})</summary>
+        <div class="portal-scroll" tabindex="0" role="region" aria-label="Allocated visits">
+          <table>
+            <thead>
               <tr>
-                <td>
-                  <strong>{{ v.callName }}</strong
-                  ><small>{{ v.date | date: 'd MMM' }} · {{ v.start }}–{{ v.end }}</small>
-                </td>
-                <td>
-                  @for (id of v.staffIds; track id) {
-                    <span>{{ staffName(id) }} </span>
-                  } @empty {
-                    <span class="portal-muted">Unallocated</span>
-                  }
-                </td>
-                <td>
-                  <span class="portal-badge" [attr.data-tone]="completed(v) ? 'green' : 'amber'">{{
-                    completed(v) ? 'Completed' : v.state
-                  }}</span>
-                </td>
-                <td>
-                  <button
-                    class="portal-text-button"
-                    [disabled]="v.attendance.length > 0"
-                    (click)="selected = v.id; cancelReason = ''"
-                  >
-                    Cancel visit
-                  </button>
-                </td>
+                <th scope="col">Visit / time</th>
+                <th scope="col">Staff</th>
+                <th scope="col">Status</th>
+                <th scope="col">Action</th>
               </tr>
-            } @empty {
-              <tr>
-                <td colspan="4">
-                  <div class="portal-empty">
-                    <h3>No calls allocated this month</h3>
-                    <p>Allocate care calls above to build the monthly rota.</p>
-                  </div>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              @for (v of visits().slice(0, 14); track v.id) {
+                <tr>
+                  <td>
+                    <strong>{{ v.callName }}</strong
+                    ><small>{{ v.date | date: 'd MMM' }} · {{ v.start }}–{{ v.end }}</small>
+                  </td>
+                  <td>
+                    @for (id of v.staffIds; track id) {
+                      <span>{{ staffName(id) }} </span>
+                    } @empty {
+                      <span class="portal-muted">Unallocated</span>
+                    }
+                  </td>
+                  <td>
+                    <span
+                      class="portal-badge"
+                      [attr.data-tone]="completed(v) ? 'green' : 'amber'"
+                      >{{ completed(v) ? 'Completed' : v.state }}</span
+                    >
+                  </td>
+                  <td>
+                    <button
+                      class="portal-text-button"
+                      [disabled]="v.attendance.length > 0"
+                      (click)="openVisit(v)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      class="portal-text-button"
+                      [disabled]="v.attendance.length > 0"
+                      (click)="selected = v.id; cancelReason = ''"
+                    >
+                      Cancel visit
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4">
+                    <div class="portal-empty">
+                      <h3>No calls allocated this month</h3>
+                      <p>Allocate care calls above to build the monthly rota.</p>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </details>
       @if (selected) {
         <form class="portal-form" (ngSubmit)="cancelVisit()">
           <label
@@ -205,6 +274,36 @@
         </form>
       }
     </section>
+    @if (editVisit; as visit) {
+      <section class="portal-panel">
+        <div class="portal-panel-header"><h2>Edit Visit Allocation</h2></div>
+        <form class="portal-form" (ngSubmit)="saveVisit()">
+          <label>Date<input type="date" name="editDate" [(ngModel)]="visit.date" required /></label>
+          <div class="portal-form-pair">
+            <label
+              >Start<input type="time" name="editStart" [(ngModel)]="visit.start" required /></label
+            ><label>End<input type="time" name="editEnd" [(ngModel)]="visit.end" required /></label>
+          </div>
+          <label
+            >Staff<mat-select
+              cvSelect
+              multiple
+              name="editStaff"
+              aria-label="Edit visit staff"
+              [(ngModel)]="visit.staffIds"
+            >
+              @for (staff of portal.store.staff(); track staff.id) {
+                <mat-option [value]="staff.id">{{ staff.name }}</mat-option>
+              }
+            </mat-select></label
+          ><label>Reason<input name="editReason" [(ngModel)]="editReason" required /></label>
+          <div class="portal-form-actions">
+            <button type="button" class="button" (click)="editVisit = null">Cancel</button
+            ><button class="button primary">Save allocation</button>
+          </div>
+        </form>
+      </section>
+    }
     <section class="portal-panel">
       <div class="portal-panel-header">
         <h2>Open follow-up tasks</h2>
@@ -217,8 +316,10 @@
           <thead>
             <tr>
               <th scope="col">Task</th>
+              <th scope="col">Related Visit / Date</th>
               <th scope="col">Assigned to</th>
               <th scope="col">Due date</th>
+              <th scope="col">Priority</th>
               <th scope="col">Status</th>
             </tr>
           </thead>
@@ -233,8 +334,16 @@
                     >{{ t.title }}</a
                   >
                 </td>
+                <td>{{ t.visitId ? 'Linked visit' : 'Monthly allocation' }}</td>
                 <td>{{ portal.person(t.owner) }}</td>
                 <td>{{ t.due | date: 'd MMM y' }}</td>
+                <td>
+                  <span
+                    class="portal-badge"
+                    [attr.data-tone]="t.priority === 'High' ? 'red' : 'blue'"
+                    >{{ t.priority }}</span
+                  >
+                </td>
                 <td>{{ t.status }}</td>
               </tr>
             } @empty {
@@ -259,14 +368,33 @@
         <a [routerLink]="['../journal']">View all</a>
       </div>
       <nav class="portal-filters" aria-label="Allocation journal filters">
-        @for (type of ['All', 'Journal', 'Allocation', 'Concern']; track type) {
+        @for (type of ['All', 'Notes', 'Allocation', 'Missed Calls']; track type) {
           <button [class.active]="journalFilter() === type" (click)="journalFilter.set(type)">
             {{ type }}
           </button>
         }
       </nav>
       <div class="portal-activity">
-        @for (e of events(); track e.id) {
+        @if (journalFilter() === 'Missed Calls') {
+          @for (v of missed().slice(0, 6); track v.id) {
+            <article>
+              <span class="portal-dot"></span>
+              <div>
+                <h3>Missed call – {{ v.callName }}</h3>
+                <p>{{ v.date }} {{ v.start }} · No attendance recorded</p>
+                <a
+                  class="portal-link"
+                  routerLink="/staff-portal/tasks"
+                  [queryParams]="{ new: 'true', client: context.id(), visit: v.id }"
+                  >Create follow-up task</a
+                >
+              </div>
+            </article>
+          } @empty {
+            <p class="portal-muted">No missed calls recorded this month.</p>
+          }
+        }
+        @for (e of journalFilter() === 'Missed Calls' ? [] : events(); track e.id) {
           <article>
             <span class="portal-dot"></span>
             <div>

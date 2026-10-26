@@ -40,7 +40,7 @@
   display: block;
   margin-bottom: 6px;
 }
-.calendar-days a {
+.calendar-days :is(a, button) {
   display: block;
   background: #eaf7f1;
   color: #268b68;
@@ -66,11 +66,93 @@
     padding: 4px;
     min-height: 68px;
   }
-  .calendar-days a {
+  .calendar-days :is(a, button) {
     font-size: 8px;
     padding: 1px;
   }
   .month-input {
     max-width: 145px;
+  }
+}
+.calendar-days > div {
+  min-height: 42px;
+  padding: 4px;
+}
+.calendar-days > div :is(a, button) {
+  display: inline-flex;
+  padding: 2px;
+  margin: 1px;
+  align-items: center;
+  gap: 2px;
+}
+.calendar-days :is(a, button) .material-symbols-outlined {
+  font-size: 17px;
+}
+.calendar-days :is(a, button) .call-time {
+  font-size: 8px;
+}
+.calendar-days :is(a, button):nth-of-type(even) {
+  background: #ecf4ff;
+  color: #0076de;
+}
+.allocation-calendar {
+  padding: 8px;
+}
+.calendar-days time {
+  margin-bottom: 2px;
+}
+.portal-panel-header {
+  flex-wrap: wrap;
+}
+@media (max-width: 639px) {
+  .calendar-days .call-time {
+    display: none;
+  }
+  .calendar-days > div :is(a, button) {
+    padding: 1px;
+  }
+  .calendar-days :is(a, button) .material-symbols-outlined {
+    font-size: 12px;
+  }
+}
+
+.calendar-days button {
+  border: 0;
+  cursor: pointer;
+}
+.allocation-visit-list summary {
+  padding: 9px 12px;
+  color: #0068d5;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* Preserve readable times and touch targets inside a keyboard reachable calendar. */
+.allocation-calendar {
+  overflow-x: auto;
+  padding: 8px 10px;
+}
+.calendar-weekdays,
+.calendar-days {
+  min-width: 490px;
+}
+.calendar-days :is(a, button) .call-time {
+  font-size: 11px;
+}
+.allocation-calendar:focus-visible {
+  outline: 2px solid #008bd9;
+  outline-offset: -2px;
+}
+@media (pointer: coarse), (max-width: 760px) {
+  .calendar-days button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .calendar-days .call-time {
+    display: inline;
+  }
+  .allocation-visit-list summary,
+  .month-input {
+    min-height: 44px;
   }
 }

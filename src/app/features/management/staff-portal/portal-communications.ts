@@ -75,6 +75,22 @@ export class PortalCommunications {
       nextOfKin: false,
     };
   }
+  protected print(): void {
+    window.print();
+  }
+  protected tone(type: string): string {
+    return type.includes('GP')
+      ? 'purple'
+      : type.includes('District')
+        ? 'red'
+        : type.includes('OT')
+          ? 'green'
+          : type.includes('Social')
+            ? 'amber'
+            : type.includes('Family')
+              ? 'red'
+              : 'blue';
+  }
   protected contactName(id: string): string {
     return this.context.contacts().find((c) => c.id === id)?.name ?? 'Contact unavailable';
   }

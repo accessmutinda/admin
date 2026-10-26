@@ -21,8 +21,8 @@
     stat of [
       ['Open staff concerns', portal.openConcerns().length, 'warning', 'amber'],
       ['Under investigation', investigated(), 'clinical_notes', 'blue'],
-      ['Resolved concerns', resolved(), 'task_alt', 'teal'],
-      ['Total concerns', portal.concerns().length, 'groups', 'purple'],
+      ['Resolved This Month', resolved(), 'task_alt', 'teal'],
+      ['Awaiting My Review', reviewCount(), 'groups', 'purple'],
     ];
     track stat[0]
   ) {
@@ -230,10 +230,12 @@
               }
             </div>
             <div>
-              <small>Visit date</small><strong>{{ concern.visitDate | date: 'd MMM y' }}</strong>
+              <small>Visit date</small><strong>{{ concern.visitDate | date: 'd MMM y' }}</strong
+              ><small>{{ concern.visitTime }}</small>
             </div>
             <div>
-              <small>Raised by</small><strong>{{ concern.raisedBy }}</strong>
+              <small>Service location</small
+              ><strong>{{ concern.location || portal.store.company()?.name }}</strong>
             </div>
           </div>
         </div>
@@ -243,6 +245,14 @@
           <dt>Priority</dt>
           <dd>
             <span class="portal-badge" data-tone="red">{{ concern.priority }}</span>
+          </dd>
+          <dt>Raised by</dt>
+          <dd>{{ concern.raisedBy }}</dd>
+          <dt>CC / Followers</dt>
+          <dd>
+            @for (email of concern.followers; track email) {
+              <span class="portal-badge">{{ portal.person(email) }}</span>
+            }
           </dd>
           <dt>Assigned to</dt>
           <dd>{{ portal.person(concern.assignedTo) }}</dd>
@@ -277,15 +287,20 @@
             </div>
             <ol class="investigation-stages">
               @for (s of statuses; track s; let i = $index) {
-                <li [class.complete]="i < stage" [class.current]="i === stage">
+                <li [class.complete]="stageComplete(s)" [class.current]="i === stage">
                   <span class="stage-icon material-symbols-outlined" aria-hidden="true">{{
-                    i < stage ? 'check_circle' : i === stage ? 'radio_button_checked' : 'schedule'
+                    stageComplete(s)
+                      ? 'check_circle'
+                      : i === stage
+                        ? 'radio_button_checked'
+                        : 'schedule'
                   }}</span>
                   <div>
                     <strong>{{ i + 1 }}. {{ s }}</strong
-                    ><small>{{
-                      i < stage ? 'Completed' : i === stage ? 'Current stage' : 'Pending'
-                    }}</small>
+                    ><small>{{ stageRecord(s) ? stageRecord(s)!.actor : stageText(s) }}</small>
+                    @if (stageRecord(s); as record) {
+                      <time>{{ record.at | date: 'd MMM y, HH:mm' }}</time>
+                    }
                   </div>
                 </li>
               }
@@ -299,11 +314,32 @@
                 {{ completed }} of {{ draft.checklist.length }} completed ({{ progress }}%)
               </p>
               @for (item of draft.checklist; track item.id) {
-                <label class="checklist-item"
-                  ><input type="checkbox" [(ngModel)]="item.done" [name]="item.id" /><span>{{
-                    item.title
-                  }}</span></label
-                >
+                <div class="checklist-detail">
+                  <label class="checklist-item"
+                    ><input type="checkbox" [(ngModel)]="item.done" [name]="item.id" /><span>{{
+                      item.title
+                    }}</span></label
+                  >
+                  <div class="portal-form-pair">
+                    <mat-select
+                      cvSelect
+                      [attr.aria-label]="'Assignee for ' + item.title"
+                      [(ngModel)]="item.assignedTo"
+                      [name]="item.id + '-owner'"
+                      ><mat-option value="">Unassigned</mat-option>
+                      @for (person of portal.contacts(); track person.email) {
+                        <mat-option [value]="person.email.toLowerCase()">{{
+                          person.name
+                        }}</mat-option>
+                      }</mat-select
+                    ><input
+                      type="date"
+                      [attr.aria-label]="'Due date for ' + item.title"
+                      [(ngModel)]="item.due"
+                      [name]="item.id + '-due'"
+                    />
+                  </div>
+                </div>
               }
               <button
                 class="button primary checklist-save"
@@ -326,6 +362,15 @@
       } @else if (tab() === 'Details') {
         <section class="portal-panel">
           <form class="portal-form" (ngSubmit)="save()">
+            <div class="portal-form-pair">
+              <label
+                >Visit time<input
+                  type="text"
+                  name="visitTime"
+                  [(ngModel)]="draft.visitTime"
+                  placeholder="14:00 – 15:00" /></label
+              ><label>Service location<input name="location" [(ngModel)]="draft.location" /></label>
+            </div>
             <label>Concern title<input name="title" [(ngModel)]="draft.title" required /></label
             ><label
               >Description<textarea
@@ -502,13 +547,29 @@
           </h2>
           <span class="portal-muted">{{ concern.notes.length }} notes</span>
         </div>
+        <nav class="portal-filters" aria-label="Investigation comments">
+          <button [class.active]="commentFilter() === 'All'" (click)="commentFilter.set('All')">
+            All</button
+          ><button
+            [class.active]="commentFilter() === 'Notes'"
+            (click)="commentFilter.set('Notes')"
+          >
+            Notes ({{ concern.notes.length }})</button
+          ><button
+            [class.active]="commentFilter() === 'Updates'"
+            (click)="commentFilter.set('Updates')"
+          >
+            Updates ({{ concern.history?.length || 0 }})
+          </button>
+        </nav>
         <div class="portal-activity">
-          @for (note of concern.notes.slice().reverse(); track note.id) {
+          @for (note of comments(); track note.id) {
             <article>
               <span class="portal-dot"></span>
               <div>
                 <h3>{{ note.author }}</h3>
                 <p class="portal-copy">{{ note.text }}</p>
+                <cv-portal-evidence [files]="note.attachments ?? []" [readonly]="true" />
                 <small class="portal-muted">{{ note.at | date: 'd MMM y, HH:mm' }}</small>
               </div>
             </article>
@@ -528,7 +589,11 @@
               required
               placeholder="Add a comment or investigation note…"
             ></textarea></label
-          ><button class="button primary" [disabled]="concern.status === 'Closed'">
+          ><cv-portal-evidence
+            [files]="commentFiles"
+            (filesChange)="commentFiles = $event"
+            (loading)="uploading.set($event)"
+          /><button class="button primary" [disabled]="concern.status === 'Closed' || uploading()">
             Post note
           </button>
         </form>
