@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { of } from 'rxjs';
 import { routes } from '../../../app.routes';
@@ -30,7 +30,6 @@ describe('Standalone staff portal', () => {
     const links = Array.from(root.querySelectorAll('nav[aria-label="Staff portal navigation"] a'));
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/staff-portal/dashboard',
-      '/staff-portal/dashboard-2',
       '/staff-portal/training/dashboard',
       '/staff-portal/training/courses',
       '/staff-portal/training/assessments',
@@ -44,25 +43,20 @@ describe('Standalone staff portal', () => {
     expect(root.querySelector('.staff-console')?.textContent).toContain('Staff Portal');
     expect(root.querySelector('.portal-nav')).toBeNull();
   });
-  it('opens the alternate dashboard and restores the current design when leaving it', async () => {
-    const harness = await RouterTestingHarness.create('/staff-portal/dashboard-2');
+  it('redirects the removed dashboard to the main dashboard and removes its navigation', async () => {
+    const harness = await RouterTestingHarness.create(
+      '/staff-portal/dashboard-2?source=bookmark#tasks',
+    );
     const root = harness.fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('cv-portal-dashboard.dashboard-two')).not.toBeNull();
-    expect(root.querySelector('h1')?.textContent).toContain('Staff Dashboard 2');
-    expect(
-      root
-        .querySelector('nav[aria-label="Dashboard designs"] a[aria-current="page"]')
-        ?.getAttribute('href'),
-    ).toBe('/staff-portal/dashboard-2');
-    await harness.navigateByUrl('/staff-portal/dashboard');
+    expect(TestBed.inject(Router).url).toBe('/staff-portal/dashboard?source=bookmark#tasks');
+    expect(root.querySelector('h1')?.textContent).toContain(
+      'Staff Dashboard – Communication & Tasks',
+    );
     expect(root.querySelector('cv-portal-dashboard.dashboard-two')).toBeNull();
-    expect(
-      root
-        .querySelector('nav[aria-label="Dashboard designs"] a[aria-current="page"]')
-        ?.getAttribute('href'),
-    ).toBe('/staff-portal/dashboard');
+    expect(root.querySelector('a[href="/staff-portal/dashboard-2"]')).toBeNull();
+    expect(root.querySelector('nav[aria-label="Dashboard designs"]')).toBeNull();
+    expect(root.querySelectorAll('.portal-stat-row .metric')).toHaveLength(4);
     await harness.navigateByUrl('/staff-portal/oversight');
-    expect(root.querySelector('cv-portal-dashboard.dashboard-two')).toBeNull();
     expect(root.querySelector('h1')?.textContent).toContain('Manager Dashboard');
     expect(root.querySelector('nav[aria-label="Dashboard designs"]')).toBeNull();
   });

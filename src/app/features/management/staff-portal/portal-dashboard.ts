@@ -9,7 +9,6 @@ import { addDays, completedVisit } from '../rota/rota.models';
 import { PortalService } from './portal.service';
 @Component({
   selector: 'cv-portal-dashboard',
-  host: { '[class.dashboard-two]': 'dashboardTwo' },
   imports: [DatePipe, FormsModule, RouterLink, MatSelectModule, CvSelect, StaffJournal],
   templateUrl: './portal-dashboard.html',
   styleUrls: ['./portal-ui.css', './portal-forms.css', './portal-dashboard.css'],
@@ -20,8 +19,6 @@ export class PortalDashboard {
     this.portal.journal.entries().filter((e) => !!e.clientId && e.state === 'Sent'),
   );
   protected readonly manager = inject(ActivatedRoute).snapshot.data['portalView'] === 'oversight';
-  protected readonly dashboardTwo =
-    inject(ActivatedRoute).snapshot.data['portalView'] === 'dashboard-2';
   protected readonly query = signal('');
   protected readonly scope = signal('All');
   protected readonly period = signal('This Week');

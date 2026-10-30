@@ -1,17 +1,24 @@
 import { ACADEMY_STAFF_ROUTES } from '../learning/academy/academy.routes';
-import { Routes } from '@angular/router';
+import { Routes, Router } from '@angular/router';
+import { inject } from '@angular/core';
 const leave = (c: { canLeave: () => boolean }) => c.canLeave();
 export const PORTAL_ROUTES: Routes = [
   ...ACADEMY_STAFF_ROUTES,
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
-  ...['dashboard', 'dashboard-2', 'oversight'].map((view) => ({
+  {
+    path: 'dashboard-2',
+    pathMatch: 'full',
+    redirectTo: ({ queryParams, fragment }) =>
+      inject(Router).createUrlTree(['/staff-portal/dashboard'], {
+        queryParams,
+        fragment: fragment ?? undefined,
+      }),
+  },
+  ...['dashboard', 'oversight'].map((view) => ({
     path: view,
     title:
-      (view === 'oversight'
-        ? 'Manager communication oversight'
-        : view === 'dashboard-2'
-          ? 'Staff dashboard 2'
-          : 'Staff dashboard') + ' · CareVerity',
+      (view === 'oversight' ? 'Manager communication oversight' : 'Staff dashboard') +
+      ' · CareVerity',
     data: { portalView: view },
     canDeactivate: [leave],
     loadComponent: () => import('./portal-dashboard').then((m) => m.PortalDashboard),

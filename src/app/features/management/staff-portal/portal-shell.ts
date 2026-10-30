@@ -158,7 +158,6 @@ export class PortalShell {
   );
   protected readonly links = [
     { path: 'dashboard', label: 'My dashboard', icon: 'space_dashboard' },
-    { path: 'dashboard-2', label: 'Dashboard 2', icon: 'dashboard_customize' },
     { path: 'training/dashboard', label: 'My training', icon: 'school' },
     { path: 'training/courses', label: 'Course library', icon: 'menu_book' },
     { path: 'training/assessments', label: 'Assessments', icon: 'assignment' },

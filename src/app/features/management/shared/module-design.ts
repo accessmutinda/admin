@@ -11,7 +11,6 @@ import { Component, ViewEncapsulation } from '@angular/core';
     './module-layouts.css',
     './module-workspaces.css',
     '../staff-portal/portal-reference-theme.css',
-    '../staff-portal/portal-dashboard-two.css',
   ],
 })
 export class ModuleDesign {}

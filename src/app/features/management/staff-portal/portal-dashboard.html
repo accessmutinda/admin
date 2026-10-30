@@ -5,9 +5,7 @@
       {{
         manager
           ? 'Manager Dashboard – Communication Oversight'
-          : dashboardTwo
-            ? 'Staff Dashboard 2 – Communication & Tasks'
-            : 'Staff Dashboard – Communication & Tasks'
+          : 'Staff Dashboard – Communication & Tasks'
       }}
     </h1>
     <p>
@@ -19,24 +17,6 @@
     </p>
   </div>
   <div class="dashboard-heading-actions">
-    @if (!manager) {
-      <nav class="dashboard-options" aria-label="Dashboard designs">
-        <a
-          class="button"
-          [class.primary]="!dashboardTwo"
-          [attr.aria-current]="!dashboardTwo ? 'page' : null"
-          routerLink="/staff-portal/dashboard"
-          >Dashboard 1</a
-        >
-        <a
-          class="button"
-          [class.primary]="dashboardTwo"
-          [attr.aria-current]="dashboardTwo ? 'page' : null"
-          routerLink="/staff-portal/dashboard-2"
-          >Dashboard 2</a
-        >
-      </nav>
-    }
     <span class="portal-date"
       ><span class="material-symbols-outlined">calendar_today</span
       >{{ portal.today | date: 'EEEE, d MMM y' }}</span
