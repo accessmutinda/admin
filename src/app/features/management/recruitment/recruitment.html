@@ -243,6 +243,7 @@
         type="button"
         class="hr-stat"
         [style.--stat-color]="stat.color"
+        [attr.data-card-tone]="stat.color | cardTone"
         (click)="openView(stat.view, stat.stage, stat.vacancyState)"
       >
         <span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>

@@ -31,21 +31,21 @@
   </div>
 </section>
 <div class="hr-stats academy-stats">
-  <div class="hr-stat" style="--stat-color: #008afa">
+  <div class="hr-stat" style="--stat-color: #008afa" [attr.data-card-tone]="'#008afa' | cardTone">
     <span class="material-symbols-outlined" aria-hidden="true">groups</span>
     <div>
       <small>Team Members</small><strong>{{ store.staff().length }}</strong
       ><small>In this workspace</small>
     </div>
   </div>
-  <div class="hr-stat" style="--stat-color: #03a6c1">
+  <div class="hr-stat" style="--stat-color: #03a6c1" [attr.data-card-tone]="'#03a6c1' | cardTone">
     <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
     <div>
       <small>Course Assignments</small><strong>{{ assignedCount() }}</strong
       ><small>Across staff learning plans</small>
     </div>
   </div>
-  <div class="hr-stat" style="--stat-color: #00a34e">
+  <div class="hr-stat" style="--stat-color: #00a34e" [attr.data-card-tone]="'#00a34e' | cardTone">
     <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
     <div>
       <small>Completed Assignments</small><strong>{{ completedCount() }}</strong

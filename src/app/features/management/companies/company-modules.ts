@@ -1,3 +1,4 @@
+import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import {
   Component,
   HostListener,
@@ -41,6 +42,7 @@ import {
     '[attr.data-section]': 'section()',
   },
   imports: [
+    CardTonePipe,
     FormsModule,
     RouterLink,
     CurrencyPipe,

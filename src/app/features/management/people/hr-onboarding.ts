@@ -1,3 +1,4 @@
+import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -11,7 +12,7 @@ import { staffRecord } from './hr.models';
 @Component({
   selector: 'cv-hr-onboarding',
   host: { class: 'module-page people-page hr-workspace-page' },
-  imports: [FormsModule, RouterLink, MatSelectModule, CvSelect],
+  imports: [CardTonePipe, FormsModule, RouterLink, MatSelectModule, CvSelect],
   templateUrl: './hr-onboarding.html',
   styleUrls: ['./hr.css', './hr-directory.css', './hr-tables.css', './hr-queues.css'],
 })

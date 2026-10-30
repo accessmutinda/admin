@@ -1,3 +1,4 @@
+import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -24,6 +25,7 @@ type LocationSort =
   selector: 'cv-locations',
   host: { class: 'module-page companies-page locations-page' },
   imports: [
+    CardTonePipe,
     FormsModule,
     RouterLink,
     MatDialogModule,

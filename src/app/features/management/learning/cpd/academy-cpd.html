@@ -1,20 +1,20 @@
 @if (active()) {
   <div class="hr-stats academy-stats">
-    <div class="hr-stat" style="--stat-color: #03a6c1">
+    <div class="hr-stat" style="--stat-color: #03a6c1" [attr.data-card-tone]="'#03a6c1' | cardTone">
       <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
       <div>
         <small>Development Hours</small><strong>{{ totalHours() }}</strong
         ><small>Recorded for this staff member</small>
       </div>
     </div>
-    <div class="hr-stat" style="--stat-color: #008afa">
+    <div class="hr-stat" style="--stat-color: #008afa" [attr.data-card-tone]="'#008afa' | cardTone">
       <span class="material-symbols-outlined" aria-hidden="true">event_note</span>
       <div>
         <small>Learning Activities</small><strong>{{ cpdEntries().length }}</strong
         ><small>With personal reflections</small>
       </div>
     </div>
-    <div class="hr-stat" style="--stat-color: #9553dc">
+    <div class="hr-stat" style="--stat-color: #9553dc" [attr.data-card-tone]="'#9553dc' | cardTone">
       <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
       <div>
         <small>Latest Activity</small

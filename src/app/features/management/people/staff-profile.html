@@ -177,6 +177,7 @@
         <a
           class="hr-stat"
           [style.--stat-color]="stat.color"
+          [attr.data-card-tone]="stat.color | cardTone"
           [routerLink]="['/manage/people/staff', id, stat.section]"
           queryParamsHandling="merge"
           [queryParams]="{ edit: null }"
@@ -1920,7 +1921,11 @@
       </div>
       <div class="hr-stats hr-performance-kpis">
         @for (kpi of performanceKpis(); track kpi.title) {
-          <section class="hr-stat" [style.--stat-color]="kpi.color">
+          <section
+            class="hr-stat"
+            [style.--stat-color]="kpi.color"
+            [attr.data-card-tone]="kpi.color | cardTone"
+          >
             <span class="material-symbols-outlined" aria-hidden="true">{{ kpi.icon }}</span>
             <div>
               <small>{{ kpi.title }}</small

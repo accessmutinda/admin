@@ -1,3 +1,4 @@
+import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import { Component, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -10,7 +11,7 @@ import { complianceRows } from './hr-queues.models';
 @Component({
   selector: 'cv-hr-compliance',
   host: { class: 'module-page people-page hr-workspace-page' },
-  imports: [FormsModule, RouterLink, MatSelectModule, CvSelect],
+  imports: [CardTonePipe, FormsModule, RouterLink, MatSelectModule, CvSelect],
   templateUrl: './hr-compliance.html',
   styleUrls: ['./hr.css', './hr-directory.css', './hr-tables.css', './hr-queues.css'],
 })

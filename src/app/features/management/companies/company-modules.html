@@ -433,7 +433,7 @@
                 ];
                 track stat.label
               ) {
-                <section class="cm-stat">
+                <section class="cm-stat" [attr.data-card-tone]="stat.color | cardTone">
                   <div>
                     <h3>{{ stat.label }}</h3>
                     <strong>{{ stat.value }}</strong
@@ -994,7 +994,7 @@
   <ng-template #tabStats>
     <div class="cm-stats" aria-label="Section summary">
       @for (stat of sectionStats(); track stat.label) {
-        <section class="cm-stat">
+        <section class="cm-stat" [attr.data-card-tone]="stat.color | cardTone">
           <div>
             <h3>{{ stat.label }}</h3>
             <strong>

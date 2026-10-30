@@ -28,11 +28,13 @@
 </section>
 <div class="stats">
   @for (stat of stats(); track stat.label) {
-    <div class="stat">
-      <span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span
-      ><small>{{ stat.label }}</small
-      ><strong>{{ stat.value }}</strong
-      ><small>{{ stat.caption }}</small>
+    <div class="stat cv-metric">
+      <span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>
+      <div>
+        <small>{{ stat.label }}</small
+        ><strong>{{ stat.value }}</strong
+        ><small>{{ stat.caption }}</small>
+      </div>
     </div>
   }
 </div>

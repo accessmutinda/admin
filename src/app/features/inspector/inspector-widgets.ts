@@ -1,3 +1,4 @@
+import { CardTonePipe } from '../../shared/ui/card-tone.pipe';
 import { Component, input } from '@angular/core';
 import { QUESTIONS, InspectionDraft, InspectorDocument } from './inspector.models';
 export interface InspectionMetric {
@@ -9,16 +10,16 @@ export interface InspectionMetric {
   progress?: number;
 }
 @Component({
+  imports: [CardTonePipe],
   selector: 'cv-inspection-metrics',
   template: `<div class="metrics">
     @for (metric of items(); track metric.label) {
-      <article>
-        <span
-          class="material-symbols-outlined"
-          aria-hidden="true"
-          [style.color]="metric.color || '#008afa'"
-          >{{ metric.icon }}</span
-        >
+      <article
+        class="cv-metric"
+        [style.--stat-color]="metric.color || '#008afa'"
+        [attr.data-card-tone]="metric.color | cardTone"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">{{ metric.icon }}</span>
         <div>
           <h3>{{ metric.label }}</h3>
           <strong>{{ metric.value }}</strong>
@@ -118,10 +119,11 @@ export class InspectionMetrics {
   readonly items = input<InspectionMetric[]>([]);
 }
 @Component({
+  imports: [CardTonePipe],
   selector: 'cv-inspection-questions',
   template: `<div class="questions">
     @for (question of questions; track question.key) {
-      <article>
+      <article class="cv-tinted-card" [attr.data-card-tone]="question.color | cardTone">
         <div>
           <span
             class="material-symbols-outlined"

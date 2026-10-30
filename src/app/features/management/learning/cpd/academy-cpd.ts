@@ -1,3 +1,4 @@
+import { CardTonePipe } from '../../../../shared/ui/card-tone.pipe';
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { A11yModule } from '@angular/cdk/a11y';
@@ -7,7 +8,7 @@ import { ManagementStore } from '../../shared/management.store';
 import { ToastService } from '../../../../shared/ui/toast.service';
 @Component({
   selector: 'cv-academy-cpd',
-  imports: [DatePipe, A11yModule, FormsModule, RouterLink],
+  imports: [CardTonePipe, DatePipe, A11yModule, FormsModule, RouterLink],
   host: { '(document:keydown.escape)': 'cpdModal.set(false)' },
   templateUrl: './academy-cpd.html',
   styleUrls: [

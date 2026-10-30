@@ -281,23 +281,41 @@
       ><a class="button" routerLink="/manage/payroll">Open payroll</a>
     </div>
     <div class="workflow-kpis">
-      <div>
-        <span>Expected visits</span><strong>{{ kpis().expected }}</strong>
+      <div class="cv-metric" data-card-tone="blue">
+        <span class="cv-metric-icon material-symbols-outlined" aria-hidden="true">event_note</span>
+        <div>
+          <span>Expected visits</span><strong>{{ kpis().expected }}</strong>
+        </div>
       </div>
-      <div>
-        <span>Completed</span><strong>{{ kpis().completion }}%</strong>
+      <div class="cv-metric" data-card-tone="green">
+        <span class="cv-metric-icon material-symbols-outlined" aria-hidden="true">task_alt</span>
+        <div>
+          <span>Completed</span><strong>{{ kpis().completion }}%</strong>
+        </div>
       </div>
-      <div>
-        <span>Allocation coverage</span><strong>{{ kpis().coverage }}%</strong>
+      <div class="cv-metric" data-card-tone="teal">
+        <span class="cv-metric-icon material-symbols-outlined" aria-hidden="true">groups</span>
+        <div>
+          <span>Allocation coverage</span><strong>{{ kpis().coverage }}%</strong>
+        </div>
       </div>
-      <div>
-        <span>Late arrivals</span><strong>{{ kpis().late }}</strong>
+      <div class="cv-metric" data-card-tone="orange">
+        <span class="cv-metric-icon material-symbols-outlined" aria-hidden="true">schedule</span>
+        <div>
+          <span>Late arrivals</span><strong>{{ kpis().late }}</strong>
+        </div>
       </div>
-      <div>
-        <span>Missed visits</span><strong>{{ kpis().missed }}</strong>
+      <div class="cv-metric" data-card-tone="pink">
+        <span class="cv-metric-icon material-symbols-outlined" aria-hidden="true">event_busy</span>
+        <div>
+          <span>Missed visits</span><strong>{{ kpis().missed }}</strong>
+        </div>
       </div>
-      <div>
-        <span>Actual carer hours</span><strong>{{ kpis().hours }}</strong>
+      <div class="cv-metric" data-card-tone="purple">
+        <span class="cv-metric-icon material-symbols-outlined" aria-hidden="true">timer</span>
+        <div>
+          <span>Actual carer hours</span><strong>{{ kpis().hours }}</strong>
+        </div>
       </div>
     </div>
     <div class="workflow-grid">

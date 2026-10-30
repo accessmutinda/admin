@@ -23,6 +23,7 @@
     <a
       class="hr-stat"
       [style.--stat-color]="stat.color"
+      [attr.data-card-tone]="stat.color | cardTone"
       routerLink="/manage/people/compliance"
       [queryParams]="{ check: stat.status }"
       ><span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>

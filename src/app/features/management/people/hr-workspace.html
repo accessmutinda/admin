@@ -113,6 +113,10 @@
       [style.--stat-color]="
         ['#008afa', '#00a34e', '#03a6c1', '#ff8a00', '#ff3047', '#9553dc', '#008d9f', '#008afa'][i]
       "
+      [attr.data-card-tone]="
+        ['#008afa', '#00a34e', '#03a6c1', '#ff8a00', '#ff3047', '#9553dc', '#008d9f', '#008afa'][i]
+          | cardTone
+      "
       [routerLink]="stat.link"
       [queryParams]="stat.query"
       ><span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>

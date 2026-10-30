@@ -48,7 +48,7 @@
 }
 <div class="cd-overview-grid" role="region" aria-label="Company overview">
   @for (stat of stats(); track stat.label) {
-    <section class="co-stat co-surface">
+    <section class="co-stat co-surface" [attr.data-card-tone]="stat.color | cardTone">
       <span
         class="co-stat-icon material-symbols-outlined"
         [style.background]="stat.color"

@@ -1,3 +1,4 @@
+import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import { QuickActions } from '../shared/quick-actions';
 import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
@@ -13,7 +14,15 @@ import { checkState, staffRecord, today, DAYS } from './hr.models';
 @Component({
   selector: 'cv-hr-workspace',
   host: { class: 'module-page people-page hr-workspace-page' },
-  imports: [QuickActions, MatSelectModule, MatMenuModule, CvSelect, FormsModule, RouterLink],
+  imports: [
+    CardTonePipe,
+    QuickActions,
+    MatSelectModule,
+    MatMenuModule,
+    CvSelect,
+    FormsModule,
+    RouterLink,
+  ],
   templateUrl: './hr-workspace.html',
   styleUrls: ['./hr.css', './hr-directory.css', './hr-tables.css'],
 })

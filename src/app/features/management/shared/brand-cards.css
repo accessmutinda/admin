@@ -1,0 +1,679 @@
+/* Shared metric geometry and category surfaces for all application workspaces. */
+:root {
+  --cv-card-start: #f0faff;
+  --cv-card-end: #ebf7fe;
+  --cv-card-border: #e4f2fb;
+  --cv-card-accent: #087cf0;
+  --cv-card-fill: #eff9ff;
+  --cv-metric-padding: 8px 9px 7px 13px;
+  --cv-metric-gap: 14px;
+  --cv-metric-icon: 34px;
+  --cv-metric-glyph: 23px;
+}
+:root app-root :is([data-tone='blue'], [data-card-tone='blue']) {
+  --cv-card-start: #f0faff;
+  --cv-card-end: #ebf7fe;
+  --cv-card-border: #e4f2fb;
+  --cv-card-accent: #087cf0;
+  --cv-card-fill: #eff9ff;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(.co-stat, .hr-stat, .co-check-card):has(> :is(.blue, [data-tone='blue'])) {
+  --cv-card-start: #f0faff;
+  --cv-card-end: #ebf7fe;
+  --cv-card-border: #e4f2fb;
+  --cv-card-accent: #087cf0;
+  --cv-card-fill: #eff9ff;
+}
+:root
+  app-root
+  :is(
+    [data-tone='green'],
+    [data-card-tone='green'],
+    [data-tone='success'],
+    [data-card-tone='success']
+  ) {
+  --cv-card-start: #effcf7;
+  --cv-card-end: #ecfcf6;
+  --cv-card-border: #e5f6ef;
+  --cv-card-accent: #0ca67d;
+  --cv-card-fill: #effbf6;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(.co-stat, .hr-stat, .co-check-card):has(
+    > :is(.green, [data-tone='green'], .success, [data-tone='success'])
+  ) {
+  --cv-card-start: #effcf7;
+  --cv-card-end: #ecfcf6;
+  --cv-card-border: #e5f6ef;
+  --cv-card-accent: #0ca67d;
+  --cv-card-fill: #effbf6;
+}
+:root
+  app-root
+  :is([data-tone='teal'], [data-card-tone='teal'], [data-tone='cyan'], [data-card-tone='cyan']) {
+  --cv-card-start: #ecfcfb;
+  --cv-card-end: #e7fbfa;
+  --cv-card-border: #e5f6ef;
+  --cv-card-accent: #009bad;
+  --cv-card-fill: #e7fbfa;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(.co-stat, .hr-stat, .co-check-card):has(
+    > :is(.teal, [data-tone='teal'], .cyan, [data-tone='cyan'])
+  ) {
+  --cv-card-start: #ecfcfb;
+  --cv-card-end: #e7fbfa;
+  --cv-card-border: #e5f6ef;
+  --cv-card-accent: #009bad;
+  --cv-card-fill: #e7fbfa;
+}
+:root app-root :is([data-tone='purple'], [data-card-tone='purple']) {
+  --cv-card-start: #f6f1ff;
+  --cv-card-end: #f4f0fd;
+  --cv-card-border: #f0eafb;
+  --cv-card-accent: #9434ed;
+  --cv-card-fill: #f5f0ff;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(.co-stat, .hr-stat, .co-check-card):has(> :is(.purple, [data-tone='purple'])) {
+  --cv-card-start: #f6f1ff;
+  --cv-card-end: #f4f0fd;
+  --cv-card-border: #f0eafb;
+  --cv-card-accent: #9434ed;
+  --cv-card-fill: #f5f0ff;
+}
+:root
+  app-root
+  :is(
+    [data-tone='pink'],
+    [data-card-tone='pink'],
+    [data-tone='red'],
+    [data-card-tone='red'],
+    [data-tone='danger'],
+    [data-card-tone='danger']
+  ) {
+  --cv-card-start: #fff1f6;
+  --cv-card-end: #fdf0f6;
+  --cv-card-border: #fae9f0;
+  --cv-card-accent: #f0077b;
+  --cv-card-fill: #fff1f7;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(.co-stat, .hr-stat, .co-check-card):has(
+    > :is(.pink, [data-tone='pink'], .red, [data-tone='red'], .danger, [data-tone='danger'])
+  ) {
+  --cv-card-start: #fff1f6;
+  --cv-card-end: #fdf0f6;
+  --cv-card-border: #fae9f0;
+  --cv-card-accent: #f0077b;
+  --cv-card-fill: #fff1f7;
+}
+:root
+  app-root
+  :is(
+    [data-tone='orange'],
+    [data-card-tone='orange'],
+    [data-tone='amber'],
+    [data-card-tone='amber'],
+    [data-tone='yellow'],
+    [data-card-tone='yellow']
+  ) {
+  --cv-card-start: #fff9ef;
+  --cv-card-end: #fdf7f0;
+  --cv-card-border: #fcf1e3;
+  --cv-card-accent: #f59216;
+  --cv-card-fill: #fff8e9;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(.co-stat, .hr-stat, .co-check-card):has(
+    > :is(.orange, [data-tone='orange'], .amber, [data-tone='amber'], .yellow, [data-tone='yellow'])
+  ) {
+  --cv-card-start: #fff9ef;
+  --cv-card-end: #fdf7f0;
+  --cv-card-border: #fcf1e3;
+  --cv-card-accent: #f59216;
+  --cv-card-fill: #fff8e9;
+}
+
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .metrics,
+    .co-metrics,
+    .hr-stats,
+    .qd-metrics,
+    .finance-metrics,
+    .cm-stats,
+    .connection-metrics,
+    .oversight-mini-grid,
+    .workflow-kpis,
+    .care-stats,
+    .stats:has(> .cv-metric)
+  ) {
+  gap: 10px 8px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .metric.co-stat,
+    .co-stat.co-surface,
+    .hr-stat,
+    .qd-metric,
+    .roster-stat,
+    .cm-stat,
+    .connection-metrics > div,
+    .cv-metric
+  ) {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--cv-metric-gap);
+  padding: var(--cv-metric-padding);
+  height: auto;
+  min-height: 0;
+  min-width: 0;
+  text-align: left;
+  border: 1px solid var(--cv-card-border);
+  border-radius: 9px;
+  background: linear-gradient(115deg, var(--cv-card-start), var(--cv-card-end));
+  box-shadow: 0 1px 3px #123c540b;
+  font-family: var(--font-sans);
+  box-sizing: border-box;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  .cm-stat {
+  flex-direction: row;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .metric.co-stat,
+    .co-stat.co-surface,
+    .hr-stat,
+    .qd-metric,
+    .roster-stat,
+    .cm-stat,
+    .connection-metrics > div,
+    .cv-metric
+  )
+  > :is(div, .cv-metric-copy) {
+  display: block;
+  flex: 1 1 0%;
+  min-width: 0;
+  width: auto;
+  padding: 0;
+  order: 0;
+  overflow-wrap: normal;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .metric.co-stat,
+    .co-stat.co-surface,
+    .hr-stat,
+    .qd-metric,
+    .roster-stat,
+    .cm-stat,
+    .connection-metrics > div,
+    .cv-metric
+  )
+  > :is(
+    .co-stat-icon,
+    .roster-stat-icon,
+    .qd-metric-icon,
+    .cm-tile,
+    .material-symbols-outlined,
+    .cv-metric-icon
+  ) {
+  position: static;
+  order: 0;
+  display: grid;
+  place-items: center;
+  flex: 0 0 var(--cv-metric-icon);
+  align-self: flex-start;
+  width: var(--cv-metric-icon);
+  height: var(--cv-metric-icon);
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 7px;
+  font-size: var(--cv-metric-glyph);
+  line-height: 1;
+  color: #fff;
+  background: var(--stat-color, var(--tone, var(--cv-card-accent)));
+  box-shadow: inset 0 0 9px #ffffff29;
+  box-sizing: border-box;
+  font-variation-settings: 'FILL' 1;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .metric.co-stat,
+    .co-stat.co-surface,
+    .hr-stat,
+    .qd-metric,
+    .roster-stat,
+    .cm-stat,
+    .connection-metrics > div,
+    .cv-metric
+  )
+  :is(h2, h3),
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .metric.co-stat,
+    .co-stat.co-surface,
+    .hr-stat,
+    .qd-metric,
+    .roster-stat,
+    .cm-stat,
+    .connection-metrics > div,
+    .cv-metric
+  )
+  > div
+  > :is(small, span):first-child,
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .metric.co-stat,
+    .co-stat.co-surface,
+    .hr-stat,
+    .qd-metric,
+    .roster-stat,
+    .cm-stat,
+    .connection-metrics > div,
+    .cv-metric
+  )
+  .cv-metric-label {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.15px;
+  margin: 0;
+  white-space: normal;
+  overflow-wrap: normal;
+  color: #052b67;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .metric.co-stat,
+    .co-stat.co-surface,
+    .hr-stat,
+    .qd-metric,
+    .roster-stat,
+    .cm-stat,
+    .connection-metrics > div,
+    .cv-metric
+  )
+  strong:not(.hr-stat-status) {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: normal;
+  margin: 2px 0;
+  white-space: normal;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .metric.co-stat,
+    .co-stat.co-surface,
+    .hr-stat,
+    .qd-metric,
+    .roster-stat,
+    .cm-stat,
+    .connection-metrics > div,
+    .cv-metric
+  )
+  :is(p, small):not(:first-child):not([data-tone]),
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .metric.co-stat,
+    .co-stat.co-surface,
+    .hr-stat,
+    .qd-metric,
+    .roster-stat,
+    .cm-stat,
+    .connection-metrics > div,
+    .cv-metric
+  )
+  > div
+  > small:last-child:not([data-tone]) {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  margin: 0;
+  white-space: normal;
+  color: #6c7587;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .metric.co-stat,
+    .co-stat.co-surface,
+    .hr-stat,
+    .qd-metric,
+    .roster-stat,
+    .cm-stat,
+    .connection-metrics > div,
+    .cv-metric
+  )
+  progress {
+  height: 6px;
+  margin-top: 4px;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  .roster-stat-ring {
+  margin-top: 4px;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .co-check-card,
+    .hr-destination,
+    .op-destination,
+    .service-tile,
+    .cm-capacity-card,
+    .course-card,
+    .cv-tinted-card,
+    .overview-grid > .panel:not(.permission-summary)
+  ) {
+  background: var(--cv-card-fill);
+  border-color: var(--cv-card-border);
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(.co-check-card, .hr-destination, .op-destination) {
+  padding: 8px;
+  gap: 8px;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(.co-check-card, .hr-destination, .op-destination)
+  > .material-symbols-outlined {
+  font-size: 25px;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(.co-check-card, .hr-destination, .op-destination)
+  h3 {
+  font: 700 12px/1.35 var(--font-sans);
+  margin: 0;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(.co-check-card, .hr-destination, .op-destination)
+  p {
+  font: 400 11px/1.5 var(--font-sans);
+  margin: 2px 0 4px;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(.co-check-card, .hr-destination, .op-destination):hover {
+  background: linear-gradient(115deg, var(--cv-card-start), var(--cv-card-end));
+  border-color: var(--cv-card-accent);
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .co-check-card,
+    .hr-destination,
+    .op-destination,
+    .service-tile,
+    .cm-capacity-card,
+    .course-card,
+    .cv-tinted-card,
+    .overview-grid > .panel:not(.permission-summary)
+  ):nth-child(6n + 1):not([data-card-tone]):not([data-tone]):not(:has(> [data-tone])) {
+  --cv-card-start: #f0faff;
+  --cv-card-end: #ebf7fe;
+  --cv-card-border: #e4f2fb;
+  --cv-card-accent: #087cf0;
+  --cv-card-fill: #eff9ff;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .co-check-card,
+    .hr-destination,
+    .op-destination,
+    .service-tile,
+    .cm-capacity-card,
+    .course-card,
+    .cv-tinted-card,
+    .overview-grid > .panel:not(.permission-summary)
+  ):nth-child(6n + 2):not([data-card-tone]):not([data-tone]):not(:has(> [data-tone])) {
+  --cv-card-start: #effcf7;
+  --cv-card-end: #ecfcf6;
+  --cv-card-border: #e5f6ef;
+  --cv-card-accent: #0ca67d;
+  --cv-card-fill: #effbf6;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .co-check-card,
+    .hr-destination,
+    .op-destination,
+    .service-tile,
+    .cm-capacity-card,
+    .course-card,
+    .cv-tinted-card,
+    .overview-grid > .panel:not(.permission-summary)
+  ):nth-child(6n + 3):not([data-card-tone]):not([data-tone]):not(:has(> [data-tone])) {
+  --cv-card-start: #ecfcfb;
+  --cv-card-end: #e7fbfa;
+  --cv-card-border: #e5f6ef;
+  --cv-card-accent: #009bad;
+  --cv-card-fill: #e7fbfa;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .co-check-card,
+    .hr-destination,
+    .op-destination,
+    .service-tile,
+    .cm-capacity-card,
+    .course-card,
+    .cv-tinted-card,
+    .overview-grid > .panel:not(.permission-summary)
+  ):nth-child(6n + 4):not([data-card-tone]):not([data-tone]):not(:has(> [data-tone])) {
+  --cv-card-start: #fff9ef;
+  --cv-card-end: #fdf7f0;
+  --cv-card-border: #fcf1e3;
+  --cv-card-accent: #f59216;
+  --cv-card-fill: #fff8e9;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .co-check-card,
+    .hr-destination,
+    .op-destination,
+    .service-tile,
+    .cm-capacity-card,
+    .course-card,
+    .cv-tinted-card,
+    .overview-grid > .panel:not(.permission-summary)
+  ):nth-child(6n + 5):not([data-card-tone]):not([data-tone]):not(:has(> [data-tone])) {
+  --cv-card-start: #f6f1ff;
+  --cv-card-end: #f4f0fd;
+  --cv-card-border: #f0eafb;
+  --cv-card-accent: #9434ed;
+  --cv-card-fill: #f5f0ff;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(
+    .co-check-card,
+    .hr-destination,
+    .op-destination,
+    .service-tile,
+    .cm-capacity-card,
+    .course-card,
+    .cv-tinted-card,
+    .overview-grid > .panel:not(.permission-summary)
+  ):nth-child(6n + 6):not([data-card-tone]):not([data-tone]):not(:has(> [data-tone])) {
+  --cv-card-start: #fff1f6;
+  --cv-card-end: #fdf0f6;
+  --cv-card-border: #fae9f0;
+  --cv-card-accent: #f0077b;
+  --cv-card-fill: #fff1f7;
+}
+
+@media (max-width: 1250px) {
+  :root {
+    --cv-metric-padding: 7px 7px 7px 11px;
+    --cv-metric-gap: 11px;
+    --cv-metric-icon: 30px;
+    --cv-metric-glyph: 21px;
+  }
+}
+@media (max-width: 760px) {
+  :root
+    app-root
+    :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+    :is(
+      .metrics,
+      .co-metrics,
+      .hr-stats,
+      .qd-metrics,
+      .finance-metrics,
+      .cm-stats,
+      .connection-metrics,
+      .oversight-mini-grid,
+      .workflow-kpis,
+      .care-stats,
+      .stats:has(> .cv-metric)
+    ) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  :root
+    app-root
+    :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+    :is(
+      .metrics,
+      .co-metrics,
+      .hr-stats,
+      .finance-metrics,
+      .cm-stats,
+      .connection-metrics,
+      .oversight-mini-grid,
+      .workflow-kpis,
+      .care-stats,
+      .stats
+    )
+    > :is(
+      .metric.co-stat,
+      .co-stat.co-surface,
+      .hr-stat,
+      .qd-metric,
+      .roster-stat,
+      .cm-stat,
+      .connection-metrics > div,
+      .cv-metric
+    ):last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  :is(.co-check-card, .hr-destination, .op-destination):is(
+    .selected,
+    .active,
+    [aria-current='page']
+  ) {
+  border-color: var(--cv-card-accent);
+  outline: 2px solid var(--cv-card-accent);
+  outline-offset: -2px;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  .tv
+  .tv-metric {
+  background: linear-gradient(115deg, var(--cv-card-start), var(--cv-card-end));
+  border-color: var(--cv-card-border);
+  color: #123352;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  .tv
+  .tv-metric
+  > small {
+  color: #536781;
+}
+:root
+  app-root
+  :is(#main-content, #staff-content, #inspector-content, #family-content, main)
+  .tv
+  .tv-metric
+  > span
+  .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  font-size: 30px;
+  line-height: 1;
+  border-radius: 7px;
+  background: var(--cv-card-accent);
+  color: white;
+}

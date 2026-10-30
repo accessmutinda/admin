@@ -76,14 +76,14 @@
                 <h2>{{ stat.label }}</h2>
                 <strong>{{ stat.value }}</strong
                 ><small>{{ stat.detail }}</small>
+                @if (stat.ring >= 0) {
+                  <span
+                    class="roster-stat-ring"
+                    [style.--progress]="stat.ring + '%'"
+                    aria-hidden="true"
+                  ></span>
+                }
               </div>
-              @if (stat.ring >= 0) {
-                <span
-                  class="roster-stat-ring"
-                  [style.--progress]="stat.ring + '%'"
-                  aria-hidden="true"
-                ></span>
-              }
             </section>
           }
         </div>

@@ -1,3 +1,4 @@
+import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import { PortalRecordSummary } from '../staff-portal/portal-record-summary';
 import { StaffAvailability } from './staff-availability';
 import { MatSelectModule } from '@angular/material/select';
@@ -24,6 +25,7 @@ import { COURSES } from '../shared/management.store';
     '[class.hr-profile-editing]': 'editing()',
   },
   imports: [
+    CardTonePipe,
     PortalRecordSummary,
     StaffAvailability,
     MatSelectModule,

@@ -1,3 +1,4 @@
+import { CardTonePipe } from '../../../../shared/ui/card-tone.pipe';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
@@ -6,7 +7,7 @@ import { ManagementStore, Person } from '../../shared/management.store';
 import { RouterLink } from '@angular/router';
 @Component({
   selector: 'cv-academy-progress',
-  imports: [FormsModule, MatSelectModule, CvSelect, RouterLink],
+  imports: [CardTonePipe, FormsModule, MatSelectModule, CvSelect, RouterLink],
   templateUrl: './academy-progress.html',
   styleUrls: [
     '../../people/hr.css',

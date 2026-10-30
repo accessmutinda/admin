@@ -1,3 +1,4 @@
+import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -17,7 +18,15 @@ type FilterKey = 'status' | 'region' | 'service' | 'plan' | 'completion' | 'upda
 @Component({
   selector: 'cv-company-directory',
   host: { class: 'module-page companies-page company-directory-page' },
-  imports: [FormsModule, RouterLink, MatSelectModule, MatMenuModule, MatTooltipModule, CvSelect],
+  imports: [
+    CardTonePipe,
+    FormsModule,
+    RouterLink,
+    MatSelectModule,
+    MatMenuModule,
+    MatTooltipModule,
+    CvSelect,
+  ],
   templateUrl: './company-directory.html',
 })
 export class CompanyDirectory {

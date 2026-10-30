@@ -1,3 +1,4 @@
+import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import { AcademyService } from './academy/academy.service';
 import { QuickActions } from '../shared/quick-actions';
 import { WorkspaceCards } from '../shared/workspace-cards';
@@ -15,6 +16,7 @@ import { AcademyCpd } from './cpd/academy-cpd';
 @Component({
   selector: 'cv-learning',
   imports: [
+    CardTonePipe,
     QuickActions,
     WorkspaceCards,
     MatSelectModule,

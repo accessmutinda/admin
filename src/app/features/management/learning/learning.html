@@ -28,6 +28,9 @@
       <button
         class="hr-stat"
         [style.--stat-color]="['#008afa', '#00a34e', '#03a6c1', '#ff8a00', '#9553dc'][i]"
+        [attr.data-card-tone]="
+          ['#008afa', '#00a34e', '#03a6c1', '#ff8a00', '#9553dc'][i] | cardTone
+        "
         (click)="tab.set(stat.view)"
       >
         <span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>
