@@ -1,3 +1,4 @@
+import { SYSTEM_DEMO_VERSION } from '../../../demo/system-demo-utils';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
@@ -371,7 +372,10 @@ describe('Nested service-user routes', () => {
     });
     TestBed.inject(AuthService).signInWithMicrosoft();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    TestBed.inject(ManagementStore).saveWorkspace((data) => ({ ...data, systemDemoVersion: 1 }));
+    TestBed.inject(ManagementStore).saveWorkspace((data) => ({
+      ...data,
+      systemDemoVersion: SYSTEM_DEMO_VERSION,
+    }));
     TestBed.inject(RotaService).saveClient({
       id: 'client',
       name: 'Nested route person',
