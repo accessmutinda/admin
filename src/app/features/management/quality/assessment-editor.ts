@@ -150,7 +150,7 @@ export class AssessmentEditor {
     this.record = JSON.parse(this.baseline);
     this.error.set('');
     if (!this.record.revision)
-      this.router.navigate(['/manage/quality'], { queryParams: { tab: 'Assessment library' } });
+      this.router.navigate(['/manage/quality/workspace'], { queryParams: { tab: 'Assessment library' } });
   }
   protected reload(): void {
     const a = this.current();

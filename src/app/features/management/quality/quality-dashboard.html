@@ -1,0 +1,281 @@
+@if (!service.can('view')) {
+  <cv-access-required
+    feature="Quality & Compliance"
+    module="Quality & compliance"
+    viewPermission="View"
+    permissionsTitle="Quality & compliance"
+  />
+} @else {
+  @if (dashboard(); as page) {
+    <nav class="qd-breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manage/quality">Quality & Compliance</a>
+      @if (page.slug) {
+        <span aria-hidden="true">/</span><span>{{ page.title }}</span>
+      } @else {
+        <span aria-hidden="true">/</span><span>Executive overview</span>
+      }
+    </nav>
+    <div class="qd-heading">
+      <div class="qd-heading-copy">
+        <span class="material-symbols-outlined" aria-hidden="true">{{ page.icon }}</span>
+        <div>
+          <h1>{{ page.title }}</h1>
+          <p>{{ page.subtitle }}</p>
+        </div>
+      </div>
+      <div class="qd-filters">
+        <div class="qd-month">
+          <button (click)="moveMonth(-1)" aria-label="Previous report month">
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span></button
+          ><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+          ><time aria-live="polite">{{ month() + 'T12:00:00Z' | date: 'MMMM y' : 'UTC' }}</time
+          ><button (click)="moveMonth(1)" aria-label="Next report month">
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+          </button>
+        </div>
+        <label class="qd-location"
+          ><span class="qd-sr-only">Filter branch records by location</span
+          ><select [ngModel]="location()" (ngModelChange)="location.set($event)">
+            @for (place of locations; track place) {
+              <option>{{ place }}</option>
+            }
+          </select></label
+        >
+      </div>
+    </div>
+    @if (isSnapshot()) {
+      <div
+        class="qd-metrics"
+        [class.executive]="!page.slug"
+        [class.six-columns]="
+          page.metrics.length === 12 && ['cqc-scorecard', 'workforce-quality'].includes(page.slug)
+        "
+        [class.four-columns]="
+          page.metrics.length === 12 &&
+          ['caring-experience', 'responsive-service'].includes(page.slug)
+        "
+      >
+        @for (metric of page.metrics; track metric.label; let i = $index) {
+          <article
+            class="qd-metric"
+            [attr.data-tone]="metric.tone"
+            [class.compact]="!page.slug && i >= 10"
+          >
+            <span class="qd-metric-icon material-symbols-outlined" aria-hidden="true">{{
+              metric.icon
+            }}</span>
+            <div>
+              <h2>{{ metric.label }}</h2>
+              <div class="qd-metric-value">
+                <strong>{{ metric.value }}</strong
+                ><span
+                  [class.risk]="
+                    metric.tone === 'pink' &&
+                    metric.change.startsWith('↑') &&
+                    ![
+                      'Caring Score',
+                      'Compliments Received',
+                      'Extra Mile Stories Logged',
+                      'Communication Preferences Recorded',
+                      'Family Involvement',
+                    ].includes(metric.label)
+                  "
+                  >{{ metric.change }}</span
+                >
+              </div>
+              <small>{{ metric.note }}</small>
+            </div>
+          </article>
+        }
+      </div>
+      @if (location() !== 'All Locations') {
+        <p class="qd-scope" role="status">
+          Showing {{ location() }} branch records. Headline scores and other panels show the
+          all-location reference snapshot.
+        </p>
+      }
+      @if (page.slug === 'cqc-scorecard') {
+        <div class="qd-panel-grid scorecard">
+          <div class="qd-scorecard-primary">
+            @for (
+              indices of [
+                [0, 5],
+                [1, 3],
+              ];
+              track $index
+            ) {
+              <div class="qd-scorecard-stack">
+                @for (index of indices; track index) {
+                  <ng-container
+                    [ngTemplateOutlet]="dashboardPanel"
+                    [ngTemplateOutletContext]="{ $implicit: panels()[index] }"
+                  />
+                }
+              </div>
+            }
+          </div>
+          <div class="qd-scorecard-secondary">
+            @for (index of [2, 4, 6]; track index) {
+              <ng-container
+                [ngTemplateOutlet]="dashboardPanel"
+                [ngTemplateOutletContext]="{ $implicit: panels()[index] }"
+              />
+            }
+          </div>
+        </div>
+      } @else {
+        <div class="qd-panel-grid">
+          @for (panel of panels(); track panel.title) {
+            <ng-container
+              [ngTemplateOutlet]="dashboardPanel"
+              [ngTemplateOutletContext]="{ $implicit: panel }"
+            />
+          }
+        </div>
+      }
+      <ng-template #dashboardPanel let-panel>
+        <cv-quality-panel
+          [panel]="panel"
+          [location]="location()"
+          [canCreate]="service.can('create')"
+          [class.wide]="panel.wide"
+          [class.tall]="panel.tall"
+          (view)="openDetail($event)"
+          (addEvidence)="openEvidence()"
+        />
+      </ng-template>
+    } @else {
+      <section class="qd-empty">
+        <span class="material-symbols-outlined" aria-hidden="true">event_note</span>
+        <h2>No report snapshot for {{ month() + 'T12:00:00Z' | date: 'MMMM y' : 'UTC' }}</h2>
+        <p>The reference dashboards contain the April 2025 sample report.</p>
+        <button (click)="month.set('2025-04-01')">Return to April 2025</button
+        ><a routerLink="/manage/quality/workspace" [queryParams]="{ tab: 'Reports' }"
+          >View saved quality reports →</a
+        >
+      </section>
+    }
+    <footer class="qd-footer">
+      <span
+        >Reference data · April 2025 <span aria-hidden="true">•</span> Location filters apply to
+        branch records</span
+      ><a routerLink="/manage/quality/workspace"
+        >Assessment & action workspace <span aria-hidden="true">→</span></a
+      >
+    </footer>
+  } @else {
+    <section class="qd-empty">
+      <h1>Quality page not found</h1>
+      <a routerLink="/manage/quality">Return to Quality & Compliance</a>
+    </section>
+  }
+}
+@if (service.can('view') && detail(); as panel) {
+  <div class="qd-backdrop" (click)="detail.set(null)">
+    <section
+      class="qd-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="qd-detail-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="detail.set(null)"
+    >
+      <header class="qd-dialog-header">
+        <div>
+          <small>{{ dashboard()?.title }}</small>
+          <h2 id="qd-detail-title">{{ panel.title }}</h2>
+        </div>
+        <button class="qd-close" aria-label="Close details" (click)="detail.set(null)">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </header>
+      <div class="qd-dialog-tools">
+        <label
+          ><span class="material-symbols-outlined" aria-hidden="true">search</span
+          ><input
+            type="search"
+            placeholder="Search these records…"
+            aria-label="Search records"
+            [ngModel]="query()"
+            (ngModelChange)="query.set($event)"
+        /></label>
+        @if (service.can('export')) {
+          <button (click)="exportPanel()">
+            <span class="material-symbols-outlined" aria-hidden="true">download</span>Export CSV
+          </button>
+        }
+      </div>
+      <cv-quality-panel
+        [panel]="panel"
+        [expanded]="true"
+        [query]="query()"
+        [location]="location()"
+        [canCreate]="service.can('create')"
+        (addEvidence)="openEvidence()"
+      />
+      <p class="qd-detail-note">April 2025 reference snapshot · {{ location() }}</p>
+    </section>
+  </div>
+}
+@if (service.can('view') && evidenceOpen()) {
+  <div class="qd-backdrop" (click)="evidenceOpen.set(false)">
+    <section
+      class="qd-dialog qd-evidence-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="qd-evidence-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="evidenceOpen.set(false); $event.stopPropagation()"
+    >
+      <header class="qd-dialog-header">
+        <h2 id="qd-evidence-title">Add Evidence</h2>
+        <button class="qd-close" aria-label="Close evidence form" (click)="evidenceOpen.set(false)">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </header>
+      <p>
+        Register an evidence item and link it to a CQC quality statement. New records await review.
+      </p>
+      <form (ngSubmit)="saveEvidence()">
+        <label
+          >Evidence title<input
+            name="title"
+            [(ngModel)]="evidenceTitle"
+            required
+            maxlength="160" /></label
+        ><label
+          >CQC key area<select name="area" [(ngModel)]="evidenceArea">
+            @for (area of ['Safe', 'Effective', 'Caring', 'Responsive', 'Well-led']; track area) {
+              <option>{{ area }}</option>
+            }
+          </select></label
+        ><label
+          >Quality statement<textarea
+            name="statement"
+            [(ngModel)]="evidenceStatement"
+            required
+            rows="3"
+            maxlength="500"
+          ></textarea></label
+        ><label
+          >Owner<input name="owner" [(ngModel)]="evidenceOwner" required maxlength="100"
+        /></label>
+        @if (evidenceError()) {
+          <p class="qd-form-error" role="alert">{{ evidenceError() }}</p>
+        }
+        <p class="qd-detail-note">
+          Evidence records are saved in this browser for the current company. Use the assessment
+          workspace to attach files.
+        </p>
+        <footer>
+          <button type="button" (click)="evidenceOpen.set(false)">Cancel</button
+          ><button class="qd-primary" type="submit">Save for review</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}

@@ -1,5 +1,5 @@
 <cv-module-design />
-<a class="text-link" routerLink="/manage/quality" [queryParams]="{ tab: 'Assessments' }"
+<a class="text-link" routerLink="/manage/quality/workspace" [queryParams]="{ tab: 'Assessments' }"
   ><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to
   assessments</a
 >
@@ -14,7 +14,7 @@
   <section class="panel empty-state">
     <h1>Assessment not found</h1>
     <p>This record is unavailable in the current workspace. Choose a form from the library.</p>
-    <a class="button" routerLink="/manage/quality" [queryParams]="{ tab: 'Assessment library' }"
+    <a class="button" routerLink="/manage/quality/workspace" [queryParams]="{ tab: 'Assessment library' }"
       >Assessment library</a
     >
   </section>
@@ -358,7 +358,7 @@
         }
         <a
           class="text-link"
-          routerLink="/manage/quality"
+          routerLink="/manage/quality/workspace"
           [queryParams]="{ tab: 'Corrective actions' }"
           >Open corrective actions<span class="material-symbols-outlined" aria-hidden="true"
             >arrow_forward</span

@@ -11,11 +11,16 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { Logo } from '../../../shared/ui/logo';
 import { ManagementStore } from '../shared/management.store';
 import { WallboardLauncher } from '../ecm/wallboard-launcher';
+import { QUALITY_LINKS } from '../quality/quality-navigation';
 import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
 @Component({
   selector: 'cv-management-layout',
   encapsulation: ViewEncapsulation.None,
-  styleUrls: ['../people/hr-shell.css', '../companies/company-directory.css'],
+  styleUrls: [
+    '../people/hr-shell.css',
+    '../companies/company-directory.css',
+    './quality-submenu.css',
+  ],
   providers: [{ provide: MAT_SELECT_CONFIG, useValue: { overlayPanelClass: 'cv-select-overlay' } }],
   imports: [
     ManagementRole,
@@ -107,9 +112,53 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           ><span class="material-symbols-outlined" aria-hidden="true">supervisor_account</span
           >Supervisor dashboard</a
         >
-        <a routerLink="/manage/quality" routerLinkActive="active" (click)="menuOpen.set(false)"
-          ><span class="material-symbols-outlined" aria-hidden="true">verified</span>Quality & QA</a
+        <button
+          type="button"
+          class="quality-submenu-toggle"
+          #richKpiMenu
+          [class.active]="routerUrl().startsWith('/manage/quality')"
+          (click)="qualityExpanded.set(!qualityExpanded())"
+          [attr.aria-expanded]="qualityExpanded()"
+          aria-controls="quality-submenu"
         >
+          <span class="material-symbols-outlined" aria-hidden="true">monitoring</span>
+          <span class="quality-menu-label">Rich KPI</span>
+          <span class="material-symbols-outlined quality-menu-chevron" aria-hidden="true">{{
+            qualityExpanded() ? 'expand_less' : 'expand_more'
+          }}</span>
+        </button>
+        @if (qualityExpanded()) {
+          <nav
+            class="quality-submenu"
+            id="quality-submenu"
+            aria-label="Rich KPI pages"
+            (keydown.escape)="
+              qualityExpanded.set(false); richKpiMenu.focus(); $event.stopPropagation()
+            "
+          >
+            @for (item of qualityLinks; track item.slug) {
+              <a
+                [routerLink]="item.slug ? ['/manage/quality', item.slug] : ['/manage/quality']"
+                routerLinkActive="selected"
+                [routerLinkActiveOptions]="{ exact: true }"
+                ariaCurrentWhenActive="page"
+                (click)="menuOpen.set(false)"
+                [title]="item.slug ? item.label : 'Executive KPI Command Centre'"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span
+                ><span>{{ item.slug ? item.label : 'Executive KPI Command Centre' }}</span>
+              </a>
+            }
+            <a
+              routerLink="/manage/quality/workspace"
+              routerLinkActive="selected"
+              ariaCurrentWhenActive="page"
+              (click)="menuOpen.set(false)"
+              ><span class="material-symbols-outlined" aria-hidden="true">assignment</span
+              ><span>Assessment & action workspace</span></a
+            >
+          </nav>
+        }
       }
       @if (store.company()?.modules.includes('Finance')) {
         <p class="nav-label">FINANCE</p>
@@ -236,6 +285,8 @@ export class ManagementLayout {
   protected readonly mobile = toSignal(inject(BreakpointObserver).observe('(max-width: 1023px)'));
   protected readonly menuOpen = signal(false);
   protected readonly finance = FINANCE_AREAS;
+  protected readonly qualityLinks = QUALITY_LINKS;
+  protected readonly qualityExpanded = signal(this.router.url.startsWith('/manage/quality'));
   protected readonly organisation = [
     { path: '/manage/companies', label: 'Companies', icon: 'domain' },
     { path: '/manage/workflows', label: 'Approval workflows', icon: 'account_tree' },

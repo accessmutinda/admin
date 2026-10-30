@@ -1,0 +1,333 @@
+<section class="qd-panel" [class.expanded]="expanded()">
+  <header class="qd-panel-header">
+    <h2>
+      <span class="material-symbols-outlined" aria-hidden="true">{{ panel().icon }}</span
+      >{{ panel().title }}
+    </h2>
+    @if (panel().kind === 'chart') {
+      <select
+        aria-label="Chart period"
+        [value]="months()"
+        (change)="months.set(+$any($event.target).value)"
+      >
+        @if (panel().forecast) {
+          <option value="12">Next 6 months</option>
+        } @else {
+          <option value="12">Last 12 months</option>
+          <option value="6">Last 6 months</option>
+        }
+      </select>
+    } @else if (!expanded()) {
+      <button class="qd-view" (click)="view.emit(panel())">
+        View all <span aria-hidden="true">→</span>
+      </button>
+    }
+    @if (panel().title === 'Evidence Library' && canCreate()) {
+      <button class="qd-add" (click)="addEvidence.emit()">
+        <span aria-hidden="true">＋</span> Add Evidence
+      </button>
+    }
+  </header>
+  @if (panel().kind === 'table' || panel().kind === 'heatmap') {
+    <div class="qd-table-scroll" tabindex="0" role="region" [attr.aria-label]="panel().title">
+      <table [class.heatmap]="panel().kind === 'heatmap'">
+        <thead>
+          <tr>
+            @for (column of panel().columns; track $index) {
+              <th scope="col">{{ column }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of visibleRows(); track $index) {
+            <tr>
+              @for (cell of row; track $index; let i = $index) {
+                <td [class]="heat(cell, i)">
+                  @if (areaIcon(cell)) {
+                    <span
+                      class="qd-area-icon material-symbols-outlined"
+                      [attr.data-area]="cell"
+                      aria-hidden="true"
+                      >{{ areaIcon(cell) }}</span
+                    >
+                  }
+                  <span
+                    [class]="
+                      tone(cell)
+                        ? 'qd-badge ' + tone(cell)
+                        : cell.startsWith('↑') || cell.startsWith('↓')
+                          ? 'qd-change'
+                          : ''
+                    "
+                    >{{ cell }}</span
+                  >
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr>
+              <td [attr.colspan]="panel().columns?.length">
+                No records match the selected filters.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+  @if (panel().kind === 'chart') {
+    <div class="qd-chart">
+      <svg
+        viewBox="0 0 455 208"
+        role="img"
+        [attr.aria-label]="
+          panel().title +
+          '. ' +
+          (panel().forecast ? 'Illustrative six-month forecast.' : 'May 2024 to April 2025.')
+        "
+      >
+        @for (tick of ticks(); track tick) {
+          <line x1="42" x2="432" [attr.y1]="y(tick)" [attr.y2]="y(tick)" stroke="#e5edf1" />
+          <text x="34" [attr.y]="y(tick) + 4" text-anchor="end">
+            {{ tick }}{{ panel().max === 50 ? '' : '%' }}
+          </text>
+        }
+        @for (label of labels(); track $index; let i = $index) {
+          <line
+            [attr.x1]="x(i, labels().length)"
+            [attr.x2]="x(i, labels().length)"
+            y1="24"
+            y2="174"
+            stroke="#f0f4f7"
+          />
+          <text [attr.x]="x(i, labels().length)" y="197" text-anchor="middle">{{ label }}</text>
+        }
+        @for (series of chartSeries(); track series.label; let s = $index) {
+          @if (panel().forecast && s === 0) {
+            <polygon [attr.points]="band(series.values)" [attr.fill]="series.color" opacity=".12" />
+          }
+          <polyline
+            [attr.points]="points(series.values)"
+            fill="none"
+            [attr.stroke]="series.color"
+            stroke-width="2.3"
+            [attr.stroke-dasharray]="panel().forecast && s === 1 ? '7 4' : null"
+          />
+          @for (value of series.values; track $index; let i = $index) {
+            @if (!panel().forecast || s === 0) {
+              <circle
+                [attr.cx]="x(i, series.values.length)"
+                [attr.cy]="y(value)"
+                r="3.4"
+                [attr.fill]="series.color"
+              >
+                <title>{{ labels()[i] }} · {{ series.label }}: {{ value }}</title>
+              </circle>
+            }
+          }
+        }
+      </svg>
+      <div class="qd-legend">
+        @for (series of chartSeries(); track series.label) {
+          <span><i [style.background]="series.color"></i>{{ series.label }}</span>
+        }
+        @if (panel().forecast) {
+          <span><i class="confidence"></i>Confidence range</span>
+        }
+      </div>
+    </div>
+  }
+  @if (panel().kind === 'radar') {
+    <svg
+      class="qd-radar"
+      viewBox="0 0 320 300"
+      role="img"
+      aria-label="Comparison: Safe 94%, Effective 89%, Caring 96%, Responsive 90%, Well-led 88%"
+    >
+      @for (level of [25, 50, 75, 100]; track level) {
+        <polygon
+          [attr.points]="radar([level, level, level, level, level])"
+          fill="none"
+          stroke="#e5edf1"
+        />
+        <text x="165" [attr.y]="140 - level * 1.1" class="radar-percent">{{ level }}%</text>
+      }
+      @for (s of panel().series; track s.label; let i = $index) {
+        <polygon
+          [attr.points]="radar(s.values)"
+          [attr.stroke]="s.color"
+          [attr.fill]="i === 0 ? '#087cf009' : 'none'"
+          stroke-width="2"
+          [attr.stroke-dasharray]="i === 1 ? '4 3' : null"
+        />
+      }
+      <text x="160" y="18" text-anchor="middle">Safe</text>
+      <text x="278" y="107">Effective</text>
+      <text x="230" y="257">Caring</text>
+      <text x="39" y="257">Responsive</text>
+      <text x="6" y="107">Well-led</text>
+    </svg>
+    <div class="qd-legend">
+      @for (s of panel().series; track s.label) {
+        <span><i [style.background]="s.color"></i>{{ s.label }}</span>
+      }
+    </div>
+  }
+  @if (panel().kind === 'donut') {
+    <div class="qd-donut-layout">
+      <div
+        class="qd-donut"
+        [style.background]="donut()"
+        role="img"
+        [attr.aria-label]="panel().title + ': ' + rows()[0]?.[2]"
+      >
+        <div>
+          <strong>{{ panel().title === 'CAPA Dashboard' ? '124' : '97%' }}</strong
+          ><span>{{ panel().title === 'CAPA Dashboard' ? 'CAPAs' : 'On time today' }}</span
+          ><small>{{
+            panel().title === 'CAPA Dashboard' ? '82% completed' : '683 of 703 calls'
+          }}</small>
+        </div>
+      </div>
+      <div class="qd-donut-key">
+        @for (row of rows(); track $index; let i = $index) {
+          <div>
+            <i [style.background]="colors[i % 4]"></i><span>{{ row[0] }}</span
+            ><strong>{{ row[1] }}</strong
+            ><small>{{ row[2] }}</small>
+          </div>
+        }
+      </div>
+    </div>
+  }
+  @if (panel().kind === 'gallery') {
+    <div
+      class="qd-gallery"
+      [class.quotes]="panel().title.includes('feedback') || panel().title.includes('testimonials')"
+    >
+      @for (row of rows(); track $index) {
+        <article>
+          <div class="qd-story-top">
+            <span class="qd-stars" aria-label="5 stars">★★★★★</span>
+            @if (row[4]) {
+              <span class="qd-badge info">{{ row[4] }}</span>
+            }
+          </div>
+          <h3>{{ row[0] }}</h3>
+          <p>“{{ row[1] }}”</p>
+          <footer>
+            <span>{{ row[2] }}</span
+            ><time>{{ row[3] }}</time>
+          </footer>
+        </article>
+      }
+    </div>
+  }
+  @if (panel().kind === 'tiles') {
+    <div class="qd-tiles">
+      @for (row of rows(); track $index; let i = $index) {
+        <div [attr.data-tone]="['green', 'pink', 'blue', 'purple', 'green', 'orange'][i % 6]">
+          <span class="qd-tile-icon material-symbols-outlined" aria-hidden="true">{{
+            row[3]
+          }}</span>
+          <section>
+            <h3>{{ row[0] }}</h3>
+            <strong>{{ row[1] }}</strong
+            ><small>{{ row[2] }}</small>
+          </section>
+        </div>
+      }
+    </div>
+  }
+  @if (panel().kind === 'progress') {
+    <div class="qd-progress-list">
+      @for (row of rows(); track $index; let i = $index) {
+        <div class="qd-progress-row">
+          <span
+            class="qd-area-icon material-symbols-outlined"
+            [attr.data-area]="row[0]"
+            aria-hidden="true"
+            >{{ areaIcon(row[0]) || 'bar_chart' }}</span
+          >
+          <div class="qd-progress-copy">
+            <strong>{{ row[0] }}</strong>
+            @if (row[4]) {
+              <small
+                >{{ row[2] }} · {{ row[3] }}
+                <span [class]="'qd-badge ' + tone(row[4])">{{ row[4] }}</span></small
+              >
+            }
+          </div>
+          <div class="qd-progress-track">
+            <span
+              [style.width.%]="percent(row[1])"
+              [style.background]="
+                row[4] === 'At risk'
+                  ? '#ffb32c'
+                  : ['#1198f4', '#278efa', '#f2078a', '#9653ef', '#0bab7c'][i % 5]
+              "
+            ></span>
+          </div>
+          <b>{{ row[1] }}</b>
+          @if (!row[4]) {
+            <small>{{ row[2] }}</small>
+          }
+        </div>
+      }
+    </div>
+  }
+  @if (panel().kind === 'timeline') {
+    <div class="qd-timeline">
+      @for (row of rows(); track $index; let i = $index) {
+        <div>
+          <span
+            class="qd-timeline-dot"
+            [class.done]="row[3] === 'Complete' || row[3] === 'Approved'"
+            ><span class="material-symbols-outlined" aria-hidden="true">{{
+              row[3] === 'Complete' || row[3] === 'Approved' ? 'check' : 'assignment'
+            }}</span></span
+          >
+          <section>
+            <h3>{{ row[0] }}</h3>
+            <p>{{ row[1] }}</p>
+          </section>
+          <small>{{ row[2] }}</small
+          ><span [class]="'qd-badge ' + tone(row[3])">{{ row[3] }}</span>
+        </div>
+      }
+    </div>
+  }
+  @if (panel().kind === 'funnel') {
+    <div class="qd-funnel">
+      @for (row of rows(); track $index; let i = $index) {
+        <div
+          [style.width.%]="95 - i * 12"
+          [style.background]="['#0786f5', '#25b5e3', '#38d29d', '#ffdc65', '#fa8faf'][i]"
+        >
+          <span>{{ row[0] }}</span
+          ><strong>{{ row[1] }}</strong>
+        </div>
+      }
+    </div>
+  }
+  @if (panel().kind === 'checklist') {
+    <div class="qd-checklist">
+      @for (row of rows(); track $index) {
+        <div>
+          @if (row[0] === '87%' || row[0] === 'Good overall') {
+            <section class="qd-inspection-result">
+              <strong>{{ row[0] }}</strong
+              ><small>{{ row[1] }}</small>
+            </section>
+          } @else {
+            <span class="material-symbols-outlined" aria-hidden="true">{{ row[1] }}</span
+            ><span>{{ row[0] }}</span>
+          }
+        </div>
+      }
+    </div>
+  }
+  @if (panel().note) {
+    <p class="qd-panel-note">{{ panel().note }}</p>
+  }
+</section>

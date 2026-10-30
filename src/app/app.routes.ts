@@ -395,7 +395,25 @@ export const routes: Routes = [
       {
         path: 'quality',
         data: { module: 'Quality & compliance' },
-        title: 'Quality & QA · CareVerity',
+        pathMatch: 'full',
+        canActivate: [
+          (route) =>
+            route.queryParamMap.has('tab')
+              ? inject(Router).createUrlTree(['/manage/quality/workspace'], {
+                  queryParams: route.queryParams,
+                })
+              : true,
+        ],
+        title: 'Quality & Compliance · CareVerity',
+        loadComponent: () =>
+          import('./features/management/quality/quality-dashboard').then(
+            (m) => m.QualityDashboardPage,
+          ),
+      },
+      {
+        path: 'quality/workspace',
+        data: { module: 'Quality & compliance' },
+        title: 'Quality assessment workspace · CareVerity',
         loadComponent: () => import('./features/management/quality/quality').then((m) => m.Quality),
       },
       ...['new/:type', 'assessments/:id'].map((path) => ({
@@ -410,6 +428,15 @@ export const routes: Routes = [
             window.confirm('Leave this assessment and discard unsaved changes?'),
         ],
       })),
+      {
+        path: 'quality/:dashboard',
+        data: { module: 'Quality & compliance' },
+        title: 'Quality & Compliance · CareVerity',
+        loadComponent: () =>
+          import('./features/management/quality/quality-dashboard').then(
+            (m) => m.QualityDashboardPage,
+          ),
+      },
       {
         path: 'payroll',
         pathMatch: 'full',

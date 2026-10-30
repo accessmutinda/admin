@@ -486,3 +486,12 @@ input:-webkit-autofill:focus {
     margin-top: 16px;
   }
 }
+
+.cv-management .app-body main.page-content:has(> cv-quality-dashboard) {
+  padding: 10px 14px;
+}
+@media (max-width: 760px) {
+  .cv-management .app-body main.page-content:has(> cv-quality-dashboard) {
+    padding: 12px;
+  }
+}
