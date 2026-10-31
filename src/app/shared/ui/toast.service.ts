@@ -1,5 +1,7 @@
 import { Component, Injectable, inject } from '@angular/core';
-import { MAT_SNACK_BAR_DATA, MatSnackBar } from '@angular/material/snack-bar';
+import { MAT_SNACK_BAR_DATA, MatSnackBar, MatSnackBarConfig } from '@angular/material/snack-bar';
+
+type ToastOptions = Pick<MatSnackBarConfig, 'duration' | 'horizontalPosition' | 'verticalPosition'>;
 
 interface ToastData {
   message: string;
@@ -23,8 +25,8 @@ class ToastContent {
 export class ToastService {
   private readonly snackBar = inject(MatSnackBar);
 
-  success(message: string): void {
-    this.show(message, 'check_circle', 'cv-toast-success');
+  success(message: string, options?: ToastOptions): void {
+    this.show(message, 'check_circle', 'cv-toast-success', options);
   }
 
   info(message: string): void {
@@ -35,8 +37,9 @@ export class ToastService {
     this.show(message, 'error', 'cv-toast-error');
   }
 
-  private show(message: string, icon: string, tone: string): void {
+  private show(message: string, icon: string, tone: string, options?: ToastOptions): void {
     this.snackBar.openFromComponent(ToastContent, {
+      ...options,
       data: { message, icon } satisfies ToastData,
       panelClass: ['cv-toast', tone],
     });

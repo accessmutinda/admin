@@ -11,9 +11,11 @@ export interface ClientFile {
   details: Record<string, string>;
   sections: Record<string, Record<string, string>>;
   entries: Record<string, ClientEntry[]>;
+  visitNotes?: import('../care/visit-notes.models').VisitNote[];
   photo?: string;
   contacts?: import('../care/care.models').CareContact[];
   documents?: import('../care/care.models').CareDocument[];
+  documentArchive?: import('../care/care.models').CareDocument[];
   medications?: import('../care/care.models').Prescription[];
   administrations?: import('../care/care.models').Administration[];
   familyUpdates?: import('../care/care.models').FamilyUpdate[];

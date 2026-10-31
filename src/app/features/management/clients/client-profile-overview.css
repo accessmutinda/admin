@@ -179,6 +179,17 @@
   text-decoration: none;
   cursor: pointer;
 }
+@media screen {
+  :host .reference-tabs.is-wrapped {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr));
+  }
+  :host .reference-tabs.is-wrapped a,
+  :host .reference-tabs.is-wrapped button {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
 :host .reference-tabs .selected {
   background: #e5f3ff;
   box-shadow: inset 0 -3px #008afa;

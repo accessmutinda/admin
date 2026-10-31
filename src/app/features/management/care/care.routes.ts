@@ -18,6 +18,12 @@ export const CARE_ROUTES: Routes = [
     canDeactivate: [(c: { canLeave: () => boolean }) => c.canLeave()],
     loadComponent: () => import('./visit-planner').then((m) => m.VisitPlanner),
   },
+  {
+    path: 'visit-notes',
+    title: 'Care Visit Notes · CareVerity',
+    canDeactivate: [(c: { canLeave: () => boolean }) => c.canLeave()],
+    loadComponent: () => import('./visit-notes').then((m) => m.VisitNotes),
+  },
   ...['journal', 'communications'].map((careSection) => ({
     path: careSection,
     data: { careSection },
@@ -27,7 +33,13 @@ export const CARE_ROUTES: Routes = [
     canDeactivate: [(c: { canLeave: () => boolean }) => c.canLeave()],
     loadComponent: () => import('./care-communications').then((m) => m.CareCommunications),
   })),
-  ...['contacts', 'documents', 'family', 'audit'].map((careSection) => ({
+  {
+    path: 'documents',
+    title: 'Documents · CareVerity',
+    canDeactivate: [(c: { canLeave: () => boolean }) => c.canLeave()],
+    loadComponent: () => import('./care-documents').then((m) => m.CareDocuments),
+  },
+  ...['contacts', 'family', 'audit'].map((careSection) => ({
     path: careSection,
     data: { careSection },
     title: 'Service user record · CareVerity',

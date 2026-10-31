@@ -224,6 +224,20 @@ export class FamilyPortal {
       )
       .sort((a, b) => (b.date + b.at).localeCompare(a.date + a.at));
   }
+  protected filteredVisitNotes() {
+    const from =
+      this.notePeriod === 'all' ? '' : addDays(this.today, this.notePeriod === 'week' ? -6 : -29);
+    return (this.record()?.visitNotes ?? [])
+      .filter(
+        (note) =>
+          ['All updates', 'Visit notes'].includes(this.noteCategory) &&
+          (!from || (note.date >= from && note.date <= this.today)) &&
+          `${note.body} ${note.carer} ${note.visitType}`
+            .toLowerCase()
+            .includes(this.search.toLowerCase()),
+      )
+      .sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start));
+  }
   protected legacyNoteVisible(): boolean {
     const note = this.record()?.notes;
     return (

@@ -1,3 +1,4 @@
+import { documentVisibility } from '../management/care/care-documents.models';
 import { Injectable, computed, inject } from '@angular/core';
 import { ManagementStore, COURSES } from '../management/shared/management.store';
 import { AuthService } from '../../core/auth/auth.service';
@@ -27,6 +28,27 @@ export class InspectorService {
   readonly quality = computed(() => this.store.data().quality ?? { assessments: [], actions: [] });
   readonly visits = computed(() =>
     (this.store.data().rota?.visits ?? []).filter((v) => v.state === 'Published'),
+  );
+  readonly visitNotes = computed(() =>
+    this.clients()
+      .flatMap((client) =>
+        (client.file?.visitNotes ?? [])
+          .filter((note) => note.visibility.inspector)
+          .map((note) => ({
+            id: note.id,
+            clientId: client.id,
+            client: client.name,
+            date: note.date,
+            start: note.start,
+            end: note.end,
+            visitType: note.visitType,
+            body: note.body,
+            status: note.status,
+            carer:
+              this.staff().find((person) => person.id === note.carerId)?.name ?? 'Care team member',
+          })),
+      )
+      .sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start)),
   );
   readonly prescriptions = computed(() =>
     this.clients().flatMap((c) =>
@@ -108,19 +130,21 @@ export class InspectorService {
       })),
     );
     const care = this.clients().flatMap((c) =>
-      (c.file?.documents ?? []).map((d) => ({
-        id: 'care:' + c.id + ':' + d.id,
-        name: d.name,
-        category: CATEGORIES.includes(d.category) ? d.category : 'Care Plan Samples',
-        questions: ['Caring'] as Question[],
-        owner: d.by,
-        updated: d.at,
-        version: d.version,
-        expiry: '',
-        status: 'Recorded',
-        content: d.data,
-        source: 'Care record',
-      })),
+      (c.file?.documents ?? [])
+        .filter((d) => documentVisibility(d).inspector)
+        .map((d) => ({
+          id: 'care:' + c.id + ':' + d.id,
+          name: d.name,
+          category: CATEGORIES.includes(d.category) ? d.category : 'Care Plan Samples',
+          questions: ['Caring'] as Question[],
+          owner: d.by,
+          updated: d.at,
+          version: d.version,
+          expiry: '',
+          status: 'Recorded',
+          content: d.data,
+          source: 'Care record',
+        })),
     );
     const quality = this.quality().assessments.flatMap((a) =>
       a.evidence.map((d) => ({

@@ -325,6 +325,9 @@ describe('Care workspaces', () => {
     expect(care.client('client')!.file!.medications).toBeUndefined();
   });
   it('retains document bytes after a failed save and retries without rereading the file', async () => {
+    const auth = TestBed.inject(AuthService);
+    const user = auth.currentUser()!;
+    vi.spyOn(auth, 'currentUser').mockReturnValue({ ...user, roleCode: 'CA' });
     const fixture = TestBed.createComponent(CareRecords);
     data.next({ careSection: 'documents' });
     fixture.detectChanges();

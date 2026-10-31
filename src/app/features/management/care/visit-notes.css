@@ -1,0 +1,554 @@
+:host {
+  display: block;
+  min-width: 0;
+  font-family: var(--font-sans);
+  color: #123352;
+}
+.notes-heading {
+  margin-bottom: 12px;
+  align-items: start;
+}
+.notes-heading h1 {
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.7px;
+}
+.notes-heading p {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #677488;
+}
+.notes-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: 12px;
+  align-items: start;
+}
+.notes-layout.details-closed {
+  grid-template-columns: minmax(0, 1fr);
+}
+.notes-register {
+  min-width: 0;
+}
+.note-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+  margin-bottom: 12px;
+  padding: 10px;
+}
+.note-filters label,
+.note-editor > label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 11px;
+}
+.note-filters label {
+  flex: 1 1 120px;
+}
+.note-filters input,
+.note-filters mat-select,
+.note-editor input:not([type='checkbox']),
+.note-editor mat-select,
+.note-editor textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  min-height: 32px;
+  padding: 6px 8px;
+  font: 12px var(--font-sans);
+  background: white;
+  color: #123352;
+}
+.note-editor textarea {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.5;
+}
+.care-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  font: 600 11px var(--font-sans);
+  white-space: nowrap;
+}
+.care-button.primary {
+  background: #008afa;
+  border-color: #008afa;
+  color: white;
+}
+.care-button.primary:hover:not(:disabled) {
+  background: #0079dc;
+}
+.care-button .material-symbols-outlined {
+  font-size: 20px;
+}
+.note-table-panel {
+  padding: 0;
+  overflow: visible;
+}
+.note-table {
+  min-width: 790px;
+  width: 100%;
+}
+.note-table th {
+  background: #f0f8fc;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.3;
+  padding: 7px 8px;
+  border-bottom: 1px solid #e5edf1;
+}
+.note-table td {
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  border-bottom: 1px solid #edf2f5;
+  vertical-align: middle;
+}
+.note-table .visibility-heading,
+.visibility-cell {
+  text-align: center;
+}
+.note-row {
+  cursor: pointer;
+}
+.note-row:hover,
+.note-row.selected {
+  background: #f3faff;
+}
+.note-row.selected td:first-child {
+  box-shadow: inset 2px 0 #008afa;
+}
+.note-row:focus-visible {
+  outline: 2px solid #008bd9;
+  outline-offset: -2px;
+}
+.note-date {
+  white-space: nowrap;
+}
+.note-carer {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 105px;
+}
+.note-avatar {
+  flex: 0 0 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eaf5fc;
+  color: #0066ac;
+  font-size: 10px;
+  font-weight: 700;
+}
+.note-summary {
+  margin: 0;
+  min-width: 135px;
+  max-width: 220px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.note-type,
+.note-badge {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 10px;
+  background: #eaf5fc;
+  color: #0066ac;
+}
+.note-type[data-type='Evening Care'] {
+  background: #f1ebff;
+  color: #6935af;
+}
+.note-type[data-type='Domestic Support'] {
+  background: #fff6df;
+  color: #936300;
+}
+.note-type[data-type='Medication'] {
+  background: #fff0f5;
+  color: #b42350;
+}
+.note-type[data-type='Observation'],
+.note-badge {
+  background: #e9faf2;
+  color: #087550;
+}
+.note-badge.flagged,
+.note-status.flagged {
+  background: #fff6df;
+  color: #936300;
+}
+.note-switch {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 32px;
+  height: 18px;
+  padding: 2px;
+  border: 0;
+  border-radius: 20px;
+  background: #c9d2db;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.note-switch span {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px #12335220;
+}
+.note-switch[aria-checked='true'] {
+  background: #009c65;
+}
+.note-switch[aria-checked='true'] span {
+  transform: translateX(14px);
+}
+.note-switch:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+.note-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  min-height: 30px;
+  padding: 3px;
+  border: 0;
+  background: transparent;
+  color: #06376b;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.note-icon-button .material-symbols-outlined {
+  font-size: 20px;
+}
+.note-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  color: #657184;
+  font-size: 10px;
+}
+.note-pagination nav,
+.note-pagination label {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.note-pagination .care-button {
+  min-width: 28px;
+  padding: 5px 8px;
+}
+.note-pagination mat-select {
+  min-width: 96px;
+  border: 1px solid #dfe6eb;
+  border-radius: 4px;
+  padding: 6px;
+  background: white;
+  font-size: 11px;
+}
+.note-details {
+  min-width: 0;
+  padding: 10px;
+}
+.note-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.note-panel-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: -0.35px;
+}
+.note-panel-heading h2 .material-symbols-outlined {
+  color: #008afa;
+  font-size: 20px;
+}
+.note-details h3 {
+  margin: 12px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.note-subheading {
+  margin-top: 12px;
+  margin-bottom: 6px;
+}
+.note-subheading h3,
+.note-visibility h3 {
+  margin: 0;
+}
+.note-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: #e9faf2;
+  color: #087550;
+  font-size: 12px;
+}
+.note-status .material-symbols-outlined {
+  font-size: 18px;
+}
+.note-facts {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 6px 10px;
+  margin: 12px 0;
+  font-size: 11px;
+}
+.note-facts dt {
+  color: #657184;
+}
+.note-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.note-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid #e9eff3;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.note-attachments {
+  display: grid;
+  gap: 6px;
+}
+.note-attachment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #e9eff3;
+  border-radius: 5px;
+  color: #123352;
+  background: white;
+  cursor: pointer;
+  text-align: left;
+  font: 11px var(--font-sans);
+}
+.note-attachment img {
+  width: 48px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 3px;
+}
+.note-attachment > span:not(.material-symbols-outlined) {
+  flex: 1;
+  min-width: 0;
+}
+.note-attachment strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.note-attachment small {
+  display: block;
+  margin-top: 3px;
+  color: #657184;
+  font-size: 10px;
+}
+.note-attachment .material-symbols-outlined {
+  font-size: 20px;
+  color: #008afa;
+}
+.note-visibility {
+  margin-top: 12px;
+  border-top: 1px solid #edf2f5;
+  padding-top: 10px;
+}
+.note-visibility h3 small {
+  display: block;
+  font-size: 10px;
+  color: #657184;
+  font-weight: 400;
+  margin-top: 2px;
+}
+.note-lock {
+  color: #bd8700;
+  font-size: 18px;
+}
+.note-visibility-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+.note-visibility-row > .material-symbols-outlined {
+  color: #008afa;
+  font-size: 20px;
+}
+.note-visibility-row > div {
+  flex: 1;
+}
+.note-visibility-row strong {
+  font-size: 11px;
+}
+.note-visibility-row p {
+  font-size: 10px;
+  color: #657184;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+.note-info {
+  display: flex;
+  align-items: start;
+  gap: 5px;
+  padding: 7px;
+  border: 1px solid #dcecf7;
+  background: #eff9ff;
+  color: #0066ac;
+  font-size: 10px;
+  border-radius: 4px;
+}
+.note-info .material-symbols-outlined {
+  font-size: 16px;
+}
+.note-muted {
+  color: #657184;
+  font-size: 11px;
+}
+.note-notice {
+  color: #087550;
+  padding: 7px 10px;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+.note-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: #08283f66;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.note-dialog {
+  width: min(650px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 12px;
+  box-sizing: border-box;
+}
+.note-editor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+.full-width {
+  grid-column: 1 / -1;
+}
+.note-editor small {
+  font-size: 10px;
+  color: #657184;
+}
+.note-draft-attachment,
+.note-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.note-draft-attachment {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.note-editor-footer {
+  justify-content: flex-end;
+  border-top: 1px solid #edf2f5;
+  padding-top: 10px;
+}
+.note-draft-sharing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px;
+  border: 1px solid #e9eff3;
+  border-radius: 5px;
+}
+.note-draft-sharing legend {
+  font-size: 12px;
+  font-weight: 700;
+}
+.note-draft-sharing label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+}
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #008bd9;
+  outline-offset: 2px;
+}
+@media (max-width: 1100px) {
+  .notes-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .note-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .note-filters label {
+    flex-basis: calc(50% - 8px);
+  }
+  .notes-heading {
+    flex-wrap: wrap;
+  }
+}
+@media (pointer: coarse), (max-width: 760px) {
+  .care-button,
+  .note-icon-button,
+  .note-filters input,
+  .note-filters mat-select,
+  .note-editor input:not([type='checkbox']),
+  .note-editor mat-select {
+    min-height: 44px;
+  }
+  .visibility-cell {
+    height: 44px;
+  }
+  .note-switch {
+    position: relative;
+  }
+  .note-switch::before {
+    content: '';
+    position: absolute;
+    inset: -13px -6px;
+  }
+}

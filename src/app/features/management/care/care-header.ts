@@ -1,3 +1,4 @@
+import { AlignedWorkspaceTabs } from './workspace-tabs.directive';
 import { Component, computed, inject, input, output } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
@@ -7,7 +8,7 @@ import { age } from './care.models';
 import { emptyClientFile } from '../clients/client-file.models';
 @Component({
   selector: 'cv-care-header',
-  imports: [DatePipe, RouterLink],
+  imports: [DatePipe, RouterLink, AlignedWorkspaceTabs],
   templateUrl: './care-header.html',
   styleUrls: [
     './service-user-spacing.css',
@@ -64,6 +65,7 @@ export class CareHeader {
     { label: 'Professional Communications', path: 'communications' },
     { label: 'Medication & MAR', path: 'medication' },
     { label: 'Visits & Allocation', path: 'visits' },
+    { label: 'Visit Notes', path: 'visit-notes' },
     { label: 'Documents', path: 'documents' },
     { label: 'Contacts', path: 'contacts' },
     { label: 'Family Portal', path: 'family' },

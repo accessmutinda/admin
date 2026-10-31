@@ -1,0 +1,508 @@
+<cv-module-design />
+@if (client(); as c) {
+  <cv-care-header [client]="c" active="visit-notes" />
+  <div class="care-heading notes-heading">
+    <div>
+      <h1>Care Visit Notes</h1>
+      <p>View, add and manage visit notes for this service user with visibility control.</p>
+    </div>
+    @if (care.canWriteVisitNotes()) {
+      <button class="care-button primary" (click)="open()">
+        <span class="material-symbols-outlined" aria-hidden="true">add</span>Add Visit Note
+      </button>
+    }
+  </div>
+  @if (notice()) {
+    <p class="note-notice" role="status">{{ notice() }}</p>
+  }
+  @if (error() && !editing()) {
+    <p class="care-error" role="alert">{{ error() }}</p>
+  }
+  <div class="notes-layout" [class.details-closed]="!selected()">
+    <section class="notes-register" aria-label="Visit notes register">
+      <form class="care-panel note-filters" (ngSubmit)="search()">
+        <label>From<input type="date" name="from" [(ngModel)]="filters.from" /></label>
+        <label
+          >To<input type="date" name="to" [(ngModel)]="filters.to" [min]="filters.from"
+        /></label>
+        <label
+          ><span class="sr-only">Carer</span
+          ><mat-select
+            cvSelect
+            name="carer"
+            aria-label="Filter by carer"
+            [(ngModel)]="filters.carer"
+            ><mat-option value="">All Carers</mat-option>
+            @for (carer of carers(); track carer.id) {
+              <mat-option [value]="carer.id">{{ carer.name }}</mat-option>
+            }
+          </mat-select></label
+        >
+        <label
+          ><span class="sr-only">Visit type</span
+          ><mat-select
+            cvSelect
+            name="type"
+            aria-label="Filter by visit type"
+            [(ngModel)]="filters.type"
+            ><mat-option value="">All Visit Types</mat-option>
+            @for (type of types(); track type) {
+              <mat-option [value]="type">{{ type }}</mat-option>
+            }
+          </mat-select></label
+        >
+        <button class="care-button primary" type="submit">
+          <span class="material-symbols-outlined" aria-hidden="true">search</span>Search
+        </button>
+        <button class="care-button" type="button" (click)="reset()">Reset</button>
+      </form>
+      <div class="care-panel note-table-panel">
+        <div class="care-scroll" tabindex="0" role="region" aria-label="Visit notes table">
+          <table class="care-table note-table">
+            <thead>
+              <tr>
+                <th rowspan="2" scope="col">Date &amp; Time</th>
+                <th rowspan="2" scope="col">Carer</th>
+                <th rowspan="2" scope="col">Visit Type</th>
+                <th rowspan="2" scope="col">Summary</th>
+                <th rowspan="2" scope="col">Status</th>
+                <th colspan="3" scope="colgroup" class="visibility-heading">Visibility Settings</th>
+                <th rowspan="2" scope="col">Actions</th>
+              </tr>
+              <tr>
+                @for (audience of audiences; track audience) {
+                  <th scope="col" class="visibility-heading">
+                    {{
+                      audience === 'staff'
+                        ? 'Staff'
+                        : audience === 'family'
+                          ? 'Family'
+                          : 'Inspector'
+                    }}
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (note of rows(); track note.id) {
+                <tr
+                  class="note-row"
+                  [class.selected]="selected()?.id === note.id"
+                  tabindex="0"
+                  [attr.aria-label]="
+                    'View visit note for ' +
+                    (note.date | date: 'dd MMM yyyy') +
+                    ' by ' +
+                    carerName(note.carerId)
+                  "
+                  (click)="select(note, $event)"
+                  (keydown.enter)="select(note, $event)"
+                >
+                  <td class="note-date">
+                    {{ note.date | date: 'dd/MM/yyyy'
+                    }}<small>{{ note.start }} – {{ note.end }}</small>
+                  </td>
+                  <td>
+                    <div class="note-carer">
+                      <span class="note-avatar" aria-hidden="true">{{
+                        initials(note.carerId)
+                      }}</span
+                      ><span>{{ carerName(note.carerId) }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="note-type" [attr.data-type]="note.visitType">{{
+                      note.visitType
+                    }}</span>
+                  </td>
+                  <td>
+                    <p class="note-summary">{{ note.body }}</p>
+                  </td>
+                  <td>
+                    <span class="note-badge" [class.flagged]="note.status === 'Flagged'">{{
+                      note.status
+                    }}</span>
+                  </td>
+                  @for (audience of audiences; track audience) {
+                    <td class="visibility-cell">
+                      <button
+                        type="button"
+                        class="note-switch"
+                        role="switch"
+                        [attr.aria-checked]="note.visibility[audience]"
+                        [attr.aria-label]="
+                          'Share ' + (note.date | date: 'dd MMM yyyy') + ' note with ' + audience
+                        "
+                        [disabled]="!care.canManageNoteVisibility()"
+                        (click)="toggle(note, audience)"
+                      >
+                        <span></span>
+                      </button>
+                    </td>
+                  }
+                  <td>
+                    <button
+                      class="note-icon-button"
+                      type="button"
+                      [attr.aria-label]="'Actions for note on ' + (note.date | date: 'dd MMM yyyy')"
+                      [matMenuTriggerFor]="noteActions"
+                    >
+                      <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+                    </button>
+                    <mat-menu #noteActions="matMenu"
+                      ><button mat-menu-item (click)="select(note)">View details</button>
+                      @if (care.canEditVisitNote(note)) {
+                        <button mat-menu-item (click)="open(note)">Edit note</button>
+                      }
+                    </mat-menu>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="9" class="care-empty">
+                    {{
+                      notes().length
+                        ? 'No visit notes match these filters.'
+                        : 'No visit notes have been recorded for this service user.'
+                    }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="note-pagination">
+          <span
+            >Showing {{ filtered().length ? (currentPage() - 1) * pageSize() + 1 : 0 }} to
+            {{
+              currentPage() * pageSize() < filtered().length
+                ? currentPage() * pageSize()
+                : filtered().length
+            }}
+            of {{ filtered().length }} notes</span
+          >
+          <nav aria-label="Visit notes pages">
+            <button
+              type="button"
+              class="care-button"
+              aria-label="Previous page"
+              [disabled]="currentPage() === 1"
+              (click)="page.set(currentPage() - 1)"
+            >
+              ‹
+            </button>
+            @for (n of pageNumbers(); track n) {
+              <button
+                type="button"
+                class="care-button"
+                [class.primary]="n === currentPage()"
+                [attr.aria-current]="n === currentPage() ? 'page' : null"
+                (click)="page.set(n)"
+              >
+                {{ n }}
+              </button>
+            }
+            <button
+              type="button"
+              class="care-button"
+              aria-label="Next page"
+              [disabled]="currentPage() === pageCount()"
+              (click)="page.set(currentPage() + 1)"
+            >
+              ›
+            </button>
+          </nav>
+          <label
+            >Show<mat-select
+              cvSelect
+              aria-label="Notes per page"
+              [ngModel]="pageSize()"
+              (ngModelChange)="pageSize.set($event); page.set(1)"
+            >
+              @for (size of [8, 16, 24]; track size) {
+                <mat-option [value]="size">{{ size }} per page</mat-option>
+              }
+            </mat-select></label
+          >
+        </div>
+      </div>
+    </section>
+    @if (selected(); as note) {
+      <aside class="care-panel note-details" aria-labelledby="note-details-title">
+        <div class="note-panel-heading">
+          <h2 id="note-details-title">
+            <span class="material-symbols-outlined" aria-hidden="true">clinical_notes</span>Visit
+            Note Details
+          </h2>
+          <button
+            class="note-icon-button"
+            type="button"
+            aria-label="Close visit note details"
+            (click)="panelOpen.set(false)"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
+        </div>
+        <div class="note-status" [class.flagged]="note.status === 'Flagged'">
+          <span class="material-symbols-outlined" aria-hidden="true">{{
+            note.status === 'Flagged' ? 'flag' : 'check_circle'
+          }}</span
+          >{{ note.status === 'Flagged' ? 'Flagged Visit' : 'Completed Visit' }}
+        </div>
+        <dl class="note-facts">
+          <dt>Date &amp; Time</dt>
+          <dd>{{ note.date | date: 'dd/MM/yyyy' }} · {{ note.start }} – {{ note.end }}</dd>
+          <dt>Carer</dt>
+          <dd>{{ carerName(note.carerId) }}</dd>
+          <dt>Visit Type</dt>
+          <dd>{{ note.visitType }}</dd>
+          <dt>Duration</dt>
+          <dd>{{ duration(note) }}</dd>
+          <dt>Created</dt>
+          <dd>{{ ukStamp(note.createdAt) }}</dd>
+          <dt>Last Updated</dt>
+          <dd>{{ ukStamp(note.updatedAt) }}</dd>
+        </dl>
+        <div class="note-panel-heading note-subheading">
+          <h3>Visit Note</h3>
+          @if (care.canEditVisitNote(note)) {
+            <button class="care-button" (click)="open(note)">
+              <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
+            </button>
+          }
+        </div>
+        <p class="note-body">{{ note.body }}</p>
+        <h3>Attachments ({{ note.attachments.length }})</h3>
+        <div class="note-attachments">
+          @for (attachment of note.attachments; track attachment.id) {
+            <button
+              type="button"
+              class="note-attachment"
+              [disabled]="!care.rota.can('export')"
+              (click)="download(note, attachment)"
+              [attr.aria-label]="'Download ' + attachment.name"
+            >
+              @if (attachment.mime.startsWith('image/')) {
+                <img [src]="attachment.data" alt="" />
+              } @else {
+                <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>
+              }
+              <span
+                ><strong>{{ attachment.name }}</strong
+                ><small
+                  >{{ attachment.uploadedAt || note.createdAt | date: 'dd/MM/yyyy' }} ·
+                  {{ size(attachment.size) }}</small
+                ></span
+              ><span class="material-symbols-outlined" aria-hidden="true">download</span>
+            </button>
+          } @empty {
+            <p class="note-muted">No attachments added.</p>
+          }
+        </div>
+        <section class="note-visibility" aria-labelledby="note-visibility-title">
+          <div class="note-panel-heading">
+            <h3 id="note-visibility-title">
+              Visibility Settings <small>(Care management access)</small>
+            </h3>
+            <span class="material-symbols-outlined note-lock" aria-hidden="true">lock</span>
+          </div>
+          @for (audience of audiences; track audience) {
+            <div class="note-visibility-row">
+              <span class="material-symbols-outlined" aria-hidden="true">{{
+                audience === 'staff' ? 'person' : audience === 'family' ? 'groups' : 'shield_person'
+              }}</span>
+              <div>
+                <strong>{{
+                  audience === 'staff'
+                    ? 'Show to Staff (Carers)'
+                    : audience === 'family'
+                      ? 'Show to Family Portal'
+                      : 'Show to Inspector Portal'
+                }}</strong>
+                <p>
+                  {{
+                    audience === 'staff'
+                      ? 'Allow carers to view this visit note.'
+                      : audience === 'family'
+                        ? 'Allow authorised family members with Notes access to view this note.'
+                        : 'Allow authorised inspectors to view this note.'
+                  }}
+                </p>
+              </div>
+              <button
+                type="button"
+                class="note-switch"
+                role="switch"
+                [attr.aria-checked]="note.visibility[audience]"
+                [attr.aria-label]="'Share this note with ' + audience"
+                [disabled]="!care.canManageNoteVisibility()"
+                (click)="toggle(note, audience)"
+              >
+                <span></span>
+              </button>
+            </div>
+          }
+          <p class="note-info">
+            <span class="material-symbols-outlined" aria-hidden="true">info</span>Only users with
+            care management access can change visibility settings.
+          </p>
+        </section>
+      </aside>
+    }
+  </div>
+} @else {
+  <p class="care-empty">Service user unavailable or access restricted.</p>
+}
+@if (editing()) {
+  <div class="note-dialog-backdrop" (click)="close()">
+    <section
+      class="care-panel note-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="note-editor-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="close()"
+    >
+      <div class="note-panel-heading">
+        <h2 id="note-editor-title">
+          {{ isEditingExisting() ? 'Edit Visit Note' : 'Add Visit Note' }}
+        </h2>
+        <button class="note-icon-button" aria-label="Close note editor" (click)="close()">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <form (ngSubmit)="save()" class="note-editor">
+        <label class="full-width"
+          >Link to a visit<mat-select
+            cvSelect
+            name="visit"
+            aria-label="Linked visit"
+            [(ngModel)]="draft.visitId"
+            (ngModelChange)="chooseVisit()"
+            ><mat-option value="">Record visit details manually</mat-option>
+            @for (visit of visits(); track visit.id) {
+              <mat-option [value]="visit.id"
+                >{{ visit.date | date: 'dd MMM yyyy' }} · {{ visit.start }} ·
+                {{ visit.callName }}</mat-option
+              >
+            }
+          </mat-select></label
+        >
+        <label
+          >Date<input
+            type="date"
+            name="date"
+            [(ngModel)]="draft.date"
+            [max]="today"
+            required /></label
+        ><label
+          >Carer<mat-select
+            cvSelect
+            name="carer"
+            aria-label="Visit note carer"
+            [(ngModel)]="draft.carerId"
+            required
+            ><mat-option value="">Select carer</mat-option>
+            @for (person of staff(); track person.id) {
+              <mat-option [value]="person.id">{{ person.name }}</mat-option>
+            }
+          </mat-select></label
+        >
+        <label
+          >Start time (UK)<input
+            type="time"
+            name="start"
+            [(ngModel)]="draft.start"
+            required /></label
+        ><label
+          >End time (UK)<input type="time" name="end" [(ngModel)]="draft.end" required
+        /></label>
+        <label
+          >Visit Type<mat-select
+            cvSelect
+            name="type"
+            aria-label="Visit note type"
+            [(ngModel)]="draft.visitType"
+            required
+          >
+            @for (type of types(); track type) {
+              <mat-option [value]="type">{{ type }}</mat-option>
+            }
+          </mat-select></label
+        ><label
+          >Status<mat-select
+            cvSelect
+            name="status"
+            aria-label="Visit note status"
+            [(ngModel)]="draft.status"
+            ><mat-option value="Completed">Completed</mat-option
+            ><mat-option value="Flagged">Flagged</mat-option></mat-select
+          ></label
+        >
+        <label class="full-width"
+          >Visit Note<textarea
+            name="body"
+            [(ngModel)]="draft.body"
+            rows="6"
+            maxlength="10000"
+            required
+            placeholder="Record care provided, observations, outcomes and any concerns."
+          ></textarea
+          ><small>{{ draft.body.length }}/10,000 characters</small></label
+        >
+        <label class="full-width"
+          >Attachments · PNG, JPEG or PDF, up to 5 MB combined<input
+            type="file"
+            accept="image/png,image/jpeg,application/pdf"
+            multiple
+            [disabled]="busy()"
+            (change)="upload($event)"
+        /></label>
+        @if (busy()) {
+          <p class="full-width" role="status">Reading attachments…</p>
+        }
+        @for (attachment of draft.attachments; track attachment.id) {
+          <div class="note-draft-attachment full-width">
+            <span>{{ attachment.name }} · {{ size(attachment.size) }}</span>
+            @if (!isSavedAttachment(attachment.id)) {
+              <button class="care-button" type="button" (click)="removeAttachment(attachment.id)">
+                Remove
+              </button>
+            }
+          </div>
+        }
+        @if (care.canManageNoteVisibility()) {
+          <fieldset class="full-width note-draft-sharing">
+            <legend>Visibility Settings</legend>
+            @for (audience of audiences; track audience) {
+              <label
+                ><input
+                  type="checkbox"
+                  [name]="'share-' + audience"
+                  [(ngModel)]="draft.visibility[audience]"
+                />{{
+                  audience === 'staff'
+                    ? 'Staff (Carers)'
+                    : audience === 'family'
+                      ? 'Family Portal'
+                      : 'Inspector Portal'
+                }}</label
+              >
+            }
+          </fieldset>
+        }
+        @if (error()) {
+          <p class="care-error full-width" role="alert">{{ error() }}</p>
+        }
+        <div class="note-editor-footer full-width">
+          <button class="care-button" type="button" (click)="close()">Cancel</button
+          ><button class="care-button primary" type="submit" [disabled]="busy()">
+            Save Visit Note
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+}

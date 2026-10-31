@@ -93,7 +93,11 @@
     }
   </div>
 </section>
-<nav class="client-workspace-tabs reference-tabs" aria-label="Service user workspace">
+<nav
+  cvAlignedWorkspaceTabs
+  class="client-workspace-tabs reference-tabs"
+  aria-label="Service user workspace"
+>
   <button
     [class.selected]="active() === 'overview'"
     [attr.aria-current]="active() === 'overview' ? 'page' : null"
@@ -101,14 +105,6 @@
     (click)="select('overview')"
   >
     <span class="material-symbols-outlined" aria-hidden="true">home</span>Overview
-  </button>
-  <button
-    [class.selected]="active() === 'plan'"
-    [attr.aria-current]="active() === 'plan' ? 'page' : null"
-    [disabled]="disabled()"
-    (click)="select('plan')"
-  >
-    <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Care Plan
   </button>
   @for (tab of tabs; track tab.path) {
     <a
@@ -124,11 +120,13 @@
               ? 'pill'
               : tab.path === 'visits'
                 ? 'calendar_month'
-                : tab.path === 'documents'
-                  ? 'description'
-                  : tab.path === 'audit'
-                    ? 'history'
-                    : 'group'
+                : tab.path === 'visit-notes'
+                  ? 'clinical_notes'
+                  : tab.path === 'documents'
+                    ? 'description'
+                    : tab.path === 'audit'
+                      ? 'history'
+                      : 'group'
       }}</span
       >{{ tab.label }}</a
     >

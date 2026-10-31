@@ -478,7 +478,8 @@
                   placeholder="Search approved updates…"
               /></label>
               <mat-select cvSelect aria-label="Update category" [(ngModel)]="noteCategory"
-                ><mat-option value="All updates">All updates</mat-option>
+                ><mat-option value="All updates">All updates</mat-option
+                ><mat-option value="Visit notes">Visit notes</mat-option>
                 @for (category of updateCategories; track category) {
                   <mat-option [value]="category">{{ category }}</mat-option>
                 }
@@ -499,6 +500,19 @@
                 <p class="preserve note-copy">{{ u.text }}</p>
               </article>
             }
+            @for (note of filteredVisitNotes(); track note.id) {
+              <article class="panel note-entry">
+                <div class="note-meta">
+                  <strong
+                    >{{ note.date | date: 'EEE, d MMM yyyy' }} · {{ note.start }} –
+                    {{ note.end }}</strong
+                  ><span>{{ note.carer }}</span
+                  ><span class="badge blue">{{ note.visitType }}</span
+                  ><span class="badge">{{ note.status }}</span>
+                </div>
+                <p class="preserve note-copy">{{ note.body }}</p>
+              </article>
+            }
             @if (legacyNoteVisible()) {
               <section class="panel">
                 <h2>
@@ -509,7 +523,9 @@
                 <p class="preserve note-copy">{{ r.notes }}</p>
               </section>
             }
-            @if (!filteredUpdates().length && !legacyNoteVisible()) {
+            @if (
+              !filteredUpdates().length && !filteredVisitNotes().length && !legacyNoteVisible()
+            ) {
               <section class="panel empty">
                 <span class="material-symbols-outlined" aria-hidden="true">description</span>
                 <p>No approved care updates match this view.</p>

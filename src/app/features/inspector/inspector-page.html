@@ -648,6 +648,27 @@
     </div>
   }
 
+  @if (page().path === 'visits') {
+    <section class="panel" aria-labelledby="inspector-visit-notes-title">
+      <h2 id="inspector-visit-notes-title">
+        <span class="material-symbols-outlined" aria-hidden="true">clinical_notes</span>Shared Visit
+        Notes
+      </h2>
+      @for (note of data.visitNotes(); track note.id) {
+        <article class="panel">
+          <h3>{{ note.client }} · {{ note.visitType }}</h3>
+          <p class="muted">
+            {{ date(note.date) }} · {{ note.start }} – {{ note.end }} · {{ note.carer }} ·
+            {{ note.status }}
+          </p>
+          <p class="report-prose">{{ note.body }}</p>
+        </article>
+      } @empty {
+        <p class="empty">No visit notes have been shared with inspectors.</p>
+      }
+    </section>
+  }
+
   @if (page().path === 'documents') {
     <div class="main-grid documents-layout">
       <div>

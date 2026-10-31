@@ -52,9 +52,15 @@
   .profile-signal {
     min-height: 32px;
   }
+  :host .reference-tabs,
+  :host .reference-tabs.is-wrapped {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   :host .reference-tabs a,
   :host .reference-tabs button {
-    flex-basis: 40%;
+    min-width: 0;
+    overflow-wrap: anywhere;
     justify-content: flex-start;
   }
   .profile-reference {

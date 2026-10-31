@@ -1,3 +1,18 @@
+import {
+  DocumentMetadata,
+  documentMetadata,
+  documentMetadataError,
+  documentVisibility,
+  documentRevision,
+  sharedDocument,
+} from './care-documents.models';
+import {
+  VisitNote,
+  VisitNoteDraft,
+  VisitNoteAudience,
+  visitNoteRevision,
+  validVisitNoteAttachment,
+} from './visit-notes.models';
 import { Injectable, computed, inject } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ManagementStore } from '../shared/management.store';
@@ -27,6 +42,260 @@ export class CareService {
   readonly clients = computed(() => (this.rota.can('view') ? this.rota.data().clients : []));
   client(id: string) {
     return this.clients().find((c) => c.id === id);
+  }
+  readonly canManageNoteVisibility = computed(
+    () => this.canWriteVisitNotes() && this.rota.can('manage'),
+  );
+  private hasVisitNoteStaffIdentity(): boolean {
+    const user = this.auth.currentUser();
+    return (
+      !!user &&
+      (user.roleCode !== 'CW' ||
+        this.store
+          .staff()
+          .some((person) => person.email.toLowerCase() === user.email.toLowerCase()))
+    );
+  }
+  canWriteVisitNotes(): boolean {
+    return (
+      ['PO', 'CA', 'RM', 'CC', 'CW', 'FS'].includes(this.auth.currentUser()?.roleCode ?? '') &&
+      this.hasVisitNoteStaffIdentity() &&
+      (this.rota.can('attendance') || this.rota.can('manage'))
+    );
+  }
+  canEditVisitNote(note: VisitNote): boolean {
+    return (
+      this.canWriteVisitNotes() &&
+      (note.createdById === this.auth.currentUser()?.id ||
+        (['PO', 'CA', 'RM', 'CC', 'FS'].includes(this.auth.currentUser()?.roleCode ?? '') &&
+          this.rota.can('manage')))
+    );
+  }
+  visitNotes(id: string): VisitNote[] {
+    if (!this.hasVisitNoteStaffIdentity()) return [];
+    const notes = this.client(id)?.file?.visitNotes ?? [];
+    if (this.canManageNoteVisibility()) return notes;
+    const audience = this.auth.currentUser()?.roleCode === 'IN' ? 'inspector' : 'staff';
+    return notes.filter((note) => note.visibility[audience]);
+  }
+  saveVisitNote(
+    id: string,
+    workspace: string,
+    draft: VisitNoteDraft,
+    version?: number,
+  ): string | null {
+    if (!this.canWriteVisitNotes()) return 'You do not have permission to write visit notes.';
+    return this.change(
+      id,
+      workspace,
+      version ? 'Visit note updated' : 'Visit note added',
+      draft.date,
+      (file) => {
+        const previous = file.visitNotes?.find((note) => note.id === draft.id);
+        if ((previous && previous.version !== version) || (!previous && version !== undefined))
+          return 'This note changed. Reopen it before editing.';
+        if (
+          previous &&
+          (!this.canEditVisitNote(previous) ||
+            !this.visitNotes(id).some((n) => n.id === previous.id))
+        )
+          return 'You cannot edit this note.';
+        if (!draft.id.trim()) return 'A visit note reference is required.';
+        if (
+          !validDate(draft.date) ||
+          !validTime(draft.start) ||
+          !validTime(draft.end) ||
+          draft.start === draft.end
+        )
+          return 'Enter a valid visit date and different start and end times.';
+        const start = londonInstant(draft.date, draft.start);
+        const endDate =
+          draft.end < draft.start
+            ? new Date(Date.parse(draft.date + 'T12:00:00Z') + 86400000).toISOString().slice(0, 10)
+            : draft.date;
+        const end = londonInstant(endDate, draft.end);
+        if (!start || !end || Date.parse(end) > Date.now() || Date.parse(end) <= Date.parse(start))
+          return 'Notes require a past visit with unambiguous UK start and end times.';
+        const carer = this.store.staff().find((p) => p.id === draft.carerId);
+        if (
+          !carer ||
+          !draft.visitType.trim() ||
+          draft.visitType.length > 100 ||
+          !draft.body.trim() ||
+          draft.body.length > 10000 ||
+          !['Completed', 'Flagged'].includes(draft.status)
+        )
+          return 'Choose a carer and visit type, and enter a note of up to 10,000 characters.';
+        if (
+          this.auth.currentUser()?.roleCode === 'CW' &&
+          carer.email.toLowerCase() !== this.auth.currentUser()?.email.toLowerCase()
+        )
+          return 'Care workers can record notes only for their own care visits.';
+        if (draft.visitId) {
+          const visit = this.rota
+            .data()
+            .visits.find(
+              (v) => v.id === draft.visitId && v.clientId === id && v.state !== 'Cancelled',
+            );
+          if (!visit || !visit.staffIds.includes(draft.carerId))
+            return 'Choose a current visit and one of its allocated carers.';
+        }
+        const audiences: VisitNoteAudience[] = ['staff', 'family', 'inspector'];
+        if (audiences.some((key) => typeof draft.visibility?.[key] !== 'boolean'))
+          return 'Choose valid visibility settings.';
+        const allowed = previous?.visibility ?? { staff: true, family: false, inspector: false };
+        if (
+          !this.canManageNoteVisibility() &&
+          audiences.some((key) => draft.visibility[key] !== allowed[key])
+        )
+          return 'Care management permission is required to change visibility settings.';
+        if (
+          draft.attachments.length > 10 ||
+          new Set(draft.attachments.map((a) => a.id)).size !== draft.attachments.length ||
+          draft.attachments.reduce((sum, a) => sum + a.size, 0) > 5 * 1024 * 1024
+        )
+          return 'Use up to 10 attachments with a combined size no larger than 5 MB.';
+        if (draft.attachments.some((a) => !validVisitNoteAttachment(a)))
+          return 'Use valid PNG, JPEG or PDF attachments.';
+        if (
+          previous?.attachments.some(
+            (a) =>
+              !draft.attachments.some(
+                (b) => b.id === a.id && JSON.stringify(a) === JSON.stringify(b),
+              ),
+          )
+        )
+          return 'Saved attachments are retained. Add a new attachment instead of replacing one.';
+        const actor = this.auth.currentUser()!;
+        const at = new Date().toISOString();
+        const note: VisitNote = {
+          ...structuredClone(draft),
+          attachments: draft.attachments.map(
+            (attachment) =>
+              previous?.attachments.find((a) => a.id === attachment.id) ?? {
+                ...structuredClone(attachment),
+                uploadedAt: at,
+                uploadedBy: actor.name,
+              },
+          ),
+          body: draft.body.trim(),
+          visitType: draft.visitType.trim(),
+          version: (previous?.version ?? 0) + 1,
+          createdAt: previous?.createdAt ?? at,
+          createdById: previous?.createdById ?? actor.id,
+          createdBy: previous?.createdBy ?? actor.name,
+          updatedAt: at,
+          updatedBy: actor.name,
+          revisions: previous ? [...previous.revisions, visitNoteRevision(previous)] : [],
+        };
+        file.visitNotes = [...(file.visitNotes ?? []).filter((n) => n.id !== note.id), note];
+        return null;
+      },
+      this.rota.can('manage') ? 'manage' : 'attendance',
+    );
+  }
+  setVisitNoteVisibility(
+    id: string,
+    workspace: string,
+    noteId: string,
+    audience: VisitNoteAudience,
+    value: boolean,
+    version: number,
+  ): string | null {
+    if (!this.canManageNoteVisibility())
+      return 'Care management permission is required to change visibility settings.';
+    return this.change(
+      id,
+      workspace,
+      'Visit note visibility changed',
+      `${audience}: ${value ? 'shared' : 'restricted'}`,
+      (file) => {
+        const note = file.visitNotes?.find((n) => n.id === noteId);
+        if (!note || note.version !== version)
+          return 'This note changed. Refresh it and try again.';
+        if (!['staff', 'family', 'inspector'].includes(audience) || typeof value !== 'boolean')
+          return 'Choose a valid audience.';
+        note.revisions.push(visitNoteRevision(note));
+        note.visibility[audience] = value;
+        note.version++;
+        note.updatedAt = new Date().toISOString();
+        note.updatedBy = this.auth.currentUser()!.name;
+        return null;
+      },
+    );
+  }
+  readonly canManageDocuments = computed(
+    () =>
+      this.rota.can('manage') &&
+      this.auth.currentUser()?.roleCode !== 'IN' &&
+      this.hasVisitNoteStaffIdentity(),
+  );
+  documents(id: string): CareDocument[] {
+    if (!this.hasVisitNoteStaffIdentity()) return [];
+    const documents = this.client(id)?.file?.documents ?? [];
+    if (this.canManageDocuments()) return documents;
+    const audience = this.auth.currentUser()?.roleCode === 'IN' ? 'inspector' : 'staff';
+    return documents
+      .filter((document) => documentVisibility(document)[audience])
+      .map(sharedDocument);
+  }
+  updateDocument(
+    id: string,
+    workspace: string,
+    documentId: string,
+    metadata: DocumentMetadata,
+    revision: number,
+  ): string | null {
+    if (!this.canManageDocuments())
+      return 'Care management permission is required to edit documents.';
+    return this.change(id, workspace, 'Document information updated', metadata.name, (file) => {
+      const document = file.documents?.find((d) => d.id === documentId);
+      if (!document || (document.revision ?? 1) !== revision)
+        return 'This document changed. Reopen it before editing.';
+      const error = documentMetadataError(metadata);
+      if (error) return error;
+      document.revisions = [...(document.revisions ?? []), documentRevision(document)];
+      Object.assign(document, structuredClone(metadata), {
+        name: metadata.name.trim(),
+        category: metadata.category.trim(),
+        version: metadata.version.trim().replace(/^v/i, ''),
+        revision: (document.revision ?? 1) + 1,
+        updatedAt: new Date().toISOString(),
+        updatedBy: this.auth.currentUser()!.name,
+      });
+      return null;
+    });
+  }
+  setDocumentVisibility(
+    id: string,
+    workspace: string,
+    documentId: string,
+    audience: VisitNoteAudience,
+    value: boolean,
+    revision?: number,
+  ): string | null {
+    if (!this.canManageDocuments())
+      return 'Care management permission is required to change visibility settings.';
+    return this.change(
+      id,
+      workspace,
+      'Document visibility changed',
+      `${documentId} · ${audience}: ${value ? 'shared' : 'restricted'}`,
+      (file) => {
+        const document = file.documents?.find((d) => d.id === documentId);
+        if (!document || (revision !== undefined && (document.revision ?? 1) !== revision))
+          return 'This document changed. Refresh it and try again.';
+        if (!['staff', 'family', 'inspector'].includes(audience) || typeof value !== 'boolean')
+          return 'Choose a valid audience.';
+        document.revisions = [...(document.revisions ?? []), documentRevision(document)];
+        document.visibility = { ...documentVisibility(document), [audience]: value };
+        document.familyShared = document.visibility.family;
+        document.revision = (document.revision ?? 1) + 1;
+        document.updatedAt = new Date().toISOString();
+        document.updatedBy = this.auth.currentUser()!.name;
+        return null;
+      },
+    );
   }
   private change(
     id: string,
@@ -277,6 +546,8 @@ export class CareService {
     );
   }
   saveDocument(id: string, workspace: string, document: CareDocument): string | null {
+    if (!this.canManageDocuments())
+      return 'Care management permission is required to upload documents.';
     return this.change(id, workspace, 'Document uploaded', document.name, (file) => {
       if (
         !document.name.trim() ||
@@ -285,22 +556,61 @@ export class CareService {
         document.size > 5 * 1024 * 1024
       )
         return 'Choose a nonempty document up to 5 MB.';
-      file.documents = [...(file.documents ?? []), document];
+      const error = documentMetadataError(documentMetadata(document));
+      if (error) return error;
+      if (
+        file.documents?.some((d) => d.id === document.id) ||
+        file.documentArchive?.some((d) => d.id === document.id)
+      )
+        return 'This document reference already exists.';
+      if (
+        document.visibility &&
+        ['staff', 'family', 'inspector'].some(
+          (key) => typeof document.visibility?.[key as VisitNoteAudience] !== 'boolean',
+        )
+      )
+        return 'Choose valid visibility settings.';
+      const at = new Date().toISOString(),
+        by = this.auth.currentUser()!.name;
+      file.documents = [
+        ...(file.documents ?? []),
+        {
+          ...structuredClone(document),
+          at,
+          by,
+          revision: 1,
+          updatedAt: at,
+          updatedBy: by,
+          ...(document.visibility ? { familyShared: document.visibility.family } : {}),
+        },
+      ];
       return null;
     });
   }
   shareDocument(id: string, workspace: string, documentId: string, shared: boolean): string | null {
-    return this.change(id, workspace, 'Document family sharing changed', documentId, (file) => {
-      const document = file.documents?.find((d) => d.id === documentId);
-      if (!document) return 'Document no longer available.';
-      document.familyShared = shared;
-      return null;
-    });
+    return this.setDocumentVisibility(id, workspace, documentId, 'family', shared);
   }
-  removeDocument(id: string, workspace: string, documentId: string): string | null {
-    return this.change(id, workspace, 'Document removed', documentId, (file) => {
-      if (!file.documents?.some((d) => d.id === documentId)) return 'Document no longer available.';
-      file.documents = file.documents.filter((d) => d.id !== documentId);
+  removeDocument(
+    id: string,
+    workspace: string,
+    documentId: string,
+    revision?: number,
+  ): string | null {
+    if (!this.canManageDocuments())
+      return 'Care management permission is required to delete documents.';
+    return this.change(id, workspace, 'Document deleted from active list', documentId, (file) => {
+      const document = file.documents?.find((d) => d.id === documentId);
+      if (!document || (revision !== undefined && (document.revision ?? 1) !== revision))
+        return 'This document changed. Refresh it and try again.';
+      file.documentArchive = [
+        ...(file.documentArchive ?? []),
+        {
+          ...structuredClone(document),
+          deletedAt: new Date().toISOString(),
+          deletedBy: this.auth.currentUser()!.name,
+        },
+      ];
+      file.documents = file.documents!.filter((d) => d.id !== documentId);
       return null;
     });
   }
@@ -461,6 +771,22 @@ export class CareService {
           }))
         : null,
       updates: access.scopes.includes('Notes') ? (file.familyUpdates ?? []) : null,
+      visitNotes: access.scopes.includes('Notes')
+        ? (file.visitNotes ?? [])
+            .filter((note) => note.visibility.family)
+            .map((note) => ({
+              id: note.id,
+              date: note.date,
+              start: note.start,
+              end: note.end,
+              visitType: note.visitType,
+              body: note.body,
+              status: note.status,
+              carer:
+                this.store.data().people.find((p) => p.id === note.carerId)?.name ??
+                'Care team member',
+            }))
+        : null,
       visits: access.scopes.includes('Visits')
         ? this.rota
             .data()
@@ -497,17 +823,22 @@ export class CareService {
             }))
         : null,
       documents: access.scopes.includes('Documents')
-        ? (file.documents ?? []).filter(
-            (d) => (fullPreview || d.familyShared) && !d.mime.startsWith('image/'),
-          )
+        ? (file.documents ?? [])
+            .filter(
+              (d) => (fullPreview || documentVisibility(d).family) && !d.mime.startsWith('image/'),
+            )
+            .map(sharedDocument)
         : null,
       photos:
         access.scopes.includes('Photos') &&
         (fullPreview || file.sections['consent']?.['photo'] === 'Agreed')
-          ? (file.documents ?? []).filter(
-              (d) =>
-                (fullPreview || d.familyShared) && ['image/png', 'image/jpeg'].includes(d.mime),
-            )
+          ? (file.documents ?? [])
+              .filter(
+                (d) =>
+                  (fullPreview || documentVisibility(d).family) &&
+                  ['image/png', 'image/jpeg'].includes(d.mime),
+              )
+              .map(sharedDocument)
           : null,
       notes: access.scopes.includes('Notes') ? (file.sections['family']?.['approved'] ?? '') : null,
       invoices: access.scopes.includes('Invoices')
