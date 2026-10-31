@@ -90,3 +90,14 @@
     padding-bottom: 11px;
   }
 }
+
+.directory-row {
+  cursor: pointer;
+}
+.directory-row:hover {
+  background: #f0faff;
+}
+.directory-row:focus-visible {
+  outline: 2px solid #007caa;
+  outline-offset: -2px;
+}

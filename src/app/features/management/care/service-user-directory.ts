@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { CareService } from './care.service';
@@ -41,6 +41,7 @@ import { RotaClient, londonDate } from '../rota/rota.models';
 })
 export class ServiceUserDirectory {
   protected readonly care = inject(CareService);
+  private readonly router = inject(Router);
   protected readonly query = signal('');
   protected readonly status = signal('Active');
   protected readonly funding = signal('');
@@ -49,7 +50,6 @@ export class ServiceUserDirectory {
   protected readonly view = signal('Table');
   protected readonly page = signal(1);
   protected readonly pageSize = 8;
-  protected readonly selected = signal<string[]>([]);
   protected readonly sort = signal('name');
   protected readonly needs = computed(() =>
     [...new Set(this.care.clients().flatMap((c) => this.primaryNeeds(c)))].sort(),
@@ -142,16 +142,15 @@ export class ServiceUserDirectory {
       .map((n) => n[0])
       .join('');
   }
-  protected toggle(id: string): void {
-    this.selected.update((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]));
-  }
-  protected selectAll(): void {
-    const ids = this.rows().map((c) => c.id);
-    this.selected.update((selected) =>
-      ids.every((id) => selected.includes(id))
-        ? selected.filter((id) => !ids.includes(id))
-        : [...new Set([...selected, ...ids])],
-    );
+  protected openRecord(event: Event, id: string): void {
+    if (
+      event.defaultPrevented ||
+      (event.target instanceof Element &&
+        event.target.closest('a, button, input, select, textarea'))
+    )
+      return;
+    event.preventDefault();
+    void this.router.navigate(['/manage/clients', id]);
   }
   protected clear(): void {
     this.query.set('');
@@ -160,13 +159,10 @@ export class ServiceUserDirectory {
     this.need.set('');
     this.packageFilter.set('');
     this.page.set(1);
-    this.selected.set([]);
   }
   protected export(): void {
     if (!this.care.rota.can('export')) return;
-    const rows = this.clients().filter(
-      (c) => !this.selected().length || this.selected().includes(c.id),
-    );
+    const rows = this.clients();
     this.care.store.download(
       'service-users.csv',
       csv([

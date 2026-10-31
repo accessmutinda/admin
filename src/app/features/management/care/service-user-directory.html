@@ -68,9 +68,7 @@
         ></label
       >
       @if (care.rota.can('export')) {
-        <button class="care-button" (click)="export()">
-          Export {{ selected().length ? 'selected' : 'results' }}
-        </button>
+        <button class="care-button" (click)="export()">Export results</button>
       }
       <button
         class="care-button"
@@ -92,9 +90,6 @@
       <table class="care-table">
         <thead>
           <tr>
-            <th>
-              <input type="checkbox" aria-label="Select current page" (change)="selectAll()" />
-            </th>
             <th>Service user</th>
             <th>Age / DOB</th>
             <th>Primary needs</th>
@@ -109,15 +104,13 @@
         </thead>
         <tbody>
           @for (c of rows(); track c.id) {
-            <tr>
-              <td>
-                <input
-                  type="checkbox"
-                  [attr.aria-label]="'Select ' + c.name"
-                  [checked]="selected().includes(c.id)"
-                  (change)="toggle(c.id)"
-                />
-              </td>
+            <tr
+              class="directory-row"
+              tabindex="0"
+              [attr.aria-label]="'Open record for ' + c.name"
+              (click)="openRecord($event, c.id)"
+              (keydown.enter)="openRecord($event, c.id)"
+            >
               <td>
                 <div class="directory-identity">
                   @if (c.file?.photo) {
@@ -181,7 +174,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="11" class="care-empty">No service users match these filters.</td>
+              <td colspan="10" class="care-empty">No service users match these filters.</td>
             </tr>
           }
         </tbody>
@@ -209,14 +202,7 @@
             <span class="care-tag" data-tone="amber">{{ alert }}</span>
           }
           <div class="care-footer">
-            <a [routerLink]="['/manage/clients', c.id, 'visits']">Visits & Allocation</a
-            ><label
-              ><input
-                type="checkbox"
-                [checked]="selected().includes(c.id)"
-                (change)="toggle(c.id)"
-              />Select {{ c.name }}</label
-            >
+            <a [routerLink]="['/manage/clients', c.id, 'visits']">Visits & Allocation</a>
           </div>
         </article>
       } @empty {
