@@ -45,3 +45,6 @@ Thumbs.db
 
 # Local design reference
 /BRANDING-DESIGN-GUIDE.md
+
+# Local backend specification
+/backend.md
