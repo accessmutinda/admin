@@ -2,8 +2,9 @@
   display: inline-block;
   width: 100%;
   min-width: 0;
-  min-height: 44px;
-  padding: 11px 13px;
+  box-sizing: border-box;
+  min-height: 32px;
+  padding: 5px 10px;
   border: 1px solid #dce4ec;
   border-radius: 9px;
   background: #fff;
@@ -26,7 +27,7 @@
   box-shadow: 0 0 0 3px #087f7612;
 }
 .cv-select .mat-mdc-select-arrow-wrapper {
-  margin-left: 12px;
+  margin-left: 8px;
 }
 .cv-select.mat-mdc-select-disabled {
   background: #f8fafc;
@@ -39,8 +40,8 @@
   max-width: calc(100vw - 32px) !important;
 }
 .cv-select-panel.mat-mdc-select-panel {
-  padding: 6px;
-  margin-top: 6px;
+  padding: 4px;
+  margin-top: 4px;
   max-height: min(360px, 60vh);
   border: 1px solid #dde6ee;
   border-radius: 12px;
@@ -58,10 +59,10 @@
   --mat-pseudo-checkbox-minimal-selected-checkmark-color: #087f76;
 }
 .cv-select-panel .mat-mdc-option {
-  min-height: 44px;
-  padding: 10px 12px;
+  min-height: 32px;
+  padding: 5px 10px;
   border-radius: 7px;
-  margin: 2px 0;
+  margin: 0;
 }
 .cv-select-panel .mdc-list-item__primary-text {
   white-space: normal;
@@ -70,7 +71,7 @@
 }
 .cv-select-panel .role-option {
   display: grid;
-  gap: 5px;
+  gap: 3px;
 }
 .cv-select-panel .role-option small {
   display: block;
@@ -110,5 +111,27 @@
 @media (prefers-reduced-motion: reduce) {
   .cv-select.mat-mdc-select {
     transition: none;
+  }
+}
+
+.cdk-overlay-container .mat-mdc-menu-content {
+  padding-block: 4px;
+}
+.cdk-overlay-container .mat-mdc-menu-item {
+  min-height: 32px;
+  padding: 4px 12px;
+}
+@media (pointer: coarse), (max-width: 760px) {
+  .cv-select.mat-mdc-select {
+    min-height: 44px;
+    padding-block: 11px;
+  }
+  .cv-select-panel .mat-mdc-option {
+    min-height: 44px;
+    padding-block: 10px;
+  }
+  .cdk-overlay-container .mat-mdc-menu-item {
+    min-height: 44px;
+    padding-block: 10px;
   }
 }
