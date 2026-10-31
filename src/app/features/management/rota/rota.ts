@@ -62,9 +62,11 @@ export class Rota {
         : [];
   protected readonly clientFiles = !!this.route.snapshot.data['clientFiles'];
   protected readonly riskFlags = RISK_FLAGS;
-  protected readonly callTypes = computed(() =>
-    Object.keys(this.service.data().ecm?.styles ?? emptyEcm().styles),
-  );
+  private readonly callStyles = computed(() => ({
+    ...emptyEcm().styles,
+    ...this.service.data().ecm?.styles,
+  }));
+  protected readonly callTypes = computed(() => Object.keys(this.callStyles()));
   protected readonly tab = signal('Overview');
   protected readonly tabs = [
     'Overview',
@@ -313,7 +315,7 @@ export class Rota {
     return this.service.data().clients.find((c) => c.id === this.packageClient());
   }
   protected callDefaults(): void {
-    const defaults = (this.service.data().ecm?.styles ?? emptyEcm().styles)[this.call.name];
+    const defaults = this.callStyles()[this.call.name];
     if (!defaults) return;
     const end = (minutes(this.call.start) + (defaults.duration ?? 45)) % 1440;
     this.call.end = `${Math.floor(end / 60)
