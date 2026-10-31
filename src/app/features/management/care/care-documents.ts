@@ -109,6 +109,33 @@ export class CareDocuments {
         ]),
       ) as Record<VisitNoteAudience, number>,
   );
+  protected readonly visibilitySegments = computed(() => {
+    const documents = this.documents();
+    const counts = [0, 0, 0];
+    for (const document of documents) {
+      const visibility = documentVisibility(document);
+      const shared = this.audiences.filter((a) => visibility[a]).length;
+      counts[shared === 3 ? 0 : shared > 0 ? 1 : 2]++;
+    }
+    let offset = 0;
+    return [
+      { label: 'All audiences', color: '#009c65' },
+      { label: 'Selected audiences', color: '#008afa' },
+      { label: 'Not shared', color: '#c9d2db' },
+    ].map((segment, i) => {
+      const portion = documents.length ? (counts[i] / documents.length) * 100 : 0;
+      const result = { ...segment, count: counts[i], portion, offset };
+      offset += portion;
+      return result;
+    });
+  });
+  protected readonly visibilityChartLabel = computed(() =>
+    this.documents().length
+      ? `Document visibility. ${this.visibilitySegments()
+          .map((s) => `${s.label}: ${s.count}`)
+          .join('. ')}.`
+      : 'Document visibility: no documents.',
+  );
   protected readonly error = signal('');
   protected readonly notice = signal('');
   protected readonly editing = signal(false);
@@ -424,9 +451,6 @@ export class CareDocuments {
     return bytes < 1024 * 1024
       ? `${Math.ceil(bytes / 1024)} KB`
       : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-  protected ring(a: VisitNoteAudience): number {
-    return this.documents().length ? (this.counts()[a] / this.documents().length) * 100 : 0;
   }
   @HostListener('document:keydown.escape')
   onEscape(): void {

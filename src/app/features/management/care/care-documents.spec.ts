@@ -112,6 +112,45 @@ describe('Service-user Documents', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('cv-care-header')).toHaveLength(1);
   });
+  it('counts each document once in the doughnut and updates segments after visibility changes', async () => {
+    care.saveDocument('client', 'lqcs', {
+      ...doc('partial'),
+      visibility: { staff: true, family: false, inspector: false },
+    });
+    care.saveDocument('client', 'lqcs', {
+      ...doc('private'),
+      visibility: { staff: false, family: false, inspector: false },
+    });
+    const fixture = TestBed.createComponent(CareDocuments);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const page = fixture.componentInstance as any;
+    expect(page.visibilitySegments().map((s: { count: number }) => s.count)).toEqual([1, 1, 1]);
+    expect(
+      page.visibilitySegments().reduce((sum: number, s: { portion: number }) => sum + s.portion, 0),
+    ).toBeCloseTo(100);
+    const chart = fixture.nativeElement.querySelector('.document-donut svg') as SVGElement;
+    expect(chart.getAttribute('aria-label')).toContain('All audiences: 1');
+    expect(chart.querySelectorAll('circle[stroke-width="18"]')).toHaveLength(4);
+    care.setDocumentVisibility('client', 'lqcs', 'doc', 'staff', false, 1);
+    fixture.detectChanges();
+    expect(page.visibilitySegments().map((s: { count: number }) => s.count)).toEqual([0, 2, 1]);
+    page.chooseAudience('staff');
+    expect(page.visibilitySegments().map((s: { count: number }) => s.count)).toEqual([0, 2, 1]);
+    store.saveWorkspace((data) => ({
+      ...data,
+      rota: {
+        ...data.rota!,
+        clients: data.rota!.clients.map((c) =>
+          c.id === 'client' ? { ...c, file: { ...c.file!, documents: [] } } : c,
+        ),
+      },
+    }));
+    fixture.detectChanges();
+    expect(page.visibilitySegments().every((s: { portion: number }) => s.portion === 0)).toBe(true);
+    expect(chart.getAttribute('aria-label')).toBe('Document visibility: no documents.');
+    expect(chart.querySelectorAll('circle')).toHaveLength(1);
+  });
   it('preserves prior metadata and rejects stale revisions and invalid dates', () => {
     const d = care.documents('client')[0];
     const metadata = {

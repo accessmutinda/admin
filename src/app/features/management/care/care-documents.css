@@ -171,15 +171,19 @@
   align-items: center;
 }
 .document-donut {
+  flex-shrink: 0;
+  justify-self: center;
   position: relative;
   width: 120px;
   height: 120px;
 }
 .document-donut svg {
+  display: block;
   width: 100%;
   height: 100%;
 }
 .document-donut > div {
+  pointer-events: none;
   position: absolute;
   inset: 0;
   display: flex;
@@ -212,11 +216,30 @@
 .document-link .material-symbols-outlined {
   font-size: 16px;
 }
-.document-summary-hint {
+.document-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  list-style: none;
+  padding: 0;
   margin: 8px 0 0;
   color: #657184;
-  font-size: 10px;
-  line-height: 1.4;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.document-chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.document-chart-legend strong {
+  color: #123352;
+}
+.document-chart-key {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
 }
 .document-filter {
   display: flex;
