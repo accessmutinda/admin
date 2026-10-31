@@ -6,6 +6,8 @@ import { WORKSPACES } from '../core/auth/fixtures';
 import { ManagementStore } from '../features/management/shared/management.store';
 import { installSystemDemo } from './system-demo';
 import { SYSTEM_DEMO_VERSION } from './system-demo-utils';
+import { RotaService } from '../features/management/rota/rota.service';
+import { CareService } from '../features/management/care/care.service';
 
 describe('Portal demo installation', () => {
   beforeEach(() => {
@@ -44,5 +46,41 @@ describe('Portal demo installation', () => {
     TestBed.tick();
     expect(store.data()).toEqual(before);
     expect(store.data().systemDemoVersion).toBeUndefined();
+  });
+  it('includes a publish-ready draft and a deliberately blocked draft in the real workspace', () => {
+    installSystemDemo(TestBed.inject(EnvironmentInjector));
+    TestBed.tick();
+    const rota = TestBed.inject(RotaService);
+    const ready = rota.data().visits.find((v) => v.id === 'system-demo-workspace-publishing-0')!;
+    expect(ready).toBeDefined();
+    expect(rota.conflicts(ready)).toEqual([]);
+    const blocked = rota.data().visits.find((v) => v.id === 'system-demo-workspace-conflict-0')!;
+    expect(rota.conflicts(blocked).length).toBeGreaterThan(0);
+    const care = TestBed.inject(CareService);
+    const client = rota.data().clients.find((c) => c.file?.visitNotes?.length)!;
+    const note = care.visitNotes(client.id)[0];
+    expect(care.canManageNoteVisibility()).toBe(true);
+    expect(
+      care.setVisitNoteVisibility(
+        client.id,
+        'lqcs',
+        note.id,
+        'family',
+        !note.visibility.family,
+        note.version,
+      ),
+    ).toBeNull();
+    expect(care.visitNotes(client.id).find((n) => n.id === note.id)!.visibility.family).toBe(
+      !note.visibility.family,
+    );
+  });
+  it('does not downgrade or repeatedly save a newer seed version', () => {
+    const store = TestBed.inject(ManagementStore);
+    store.saveWorkspace((data) => ({ ...data, systemDemoVersion: SYSTEM_DEMO_VERSION + 1 }));
+    const save = vi.spyOn(store, 'saveWorkspace');
+    installSystemDemo(TestBed.inject(EnvironmentInjector));
+    TestBed.tick();
+    expect(save).not.toHaveBeenCalled();
+    expect(store.data().systemDemoVersion).toBe(SYSTEM_DEMO_VERSION + 1);
   });
 });

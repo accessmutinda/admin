@@ -142,6 +142,8 @@ export function seedSystemQuality(data: WorkspaceData, today: string): Workspace
   return {
     ...data,
     quality: {
+      ...quality,
+      demoReferenceMonth: quality.demoReferenceMonth ?? today.slice(0, 7) + '-01',
       assessments: appendDemo(quality.assessments, assessments),
       actions: appendDemo(quality.actions, actions),
     },

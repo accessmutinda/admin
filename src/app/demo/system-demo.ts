@@ -1,3 +1,5 @@
+import { seedDocumentExamples } from './system-demo-documents';
+import { seedCareWorkspaces } from './system-demo-care-workspaces';
 import { effect, Injector, untracked } from '@angular/core';
 import {
   ManagementStore,
@@ -30,13 +32,28 @@ export function seedSystemDemo(
   today = londonDate(),
   now = Date.now(),
 ): WorkspaceData {
-  if (data.systemDemoVersion === SYSTEM_DEMO_VERSION) return data;
+  if ((data.systemDemoVersion ?? 0) >= SYSTEM_DEMO_VERSION) return data;
+  if (data.systemDemoVersion === 3 || data.systemDemoVersion === 4) {
+    const upgraded = seedDocumentExamples(
+      data.systemDemoVersion === 3 ? seedCareWorkspaces(data, today) : data,
+      today,
+    );
+    return {
+      ...upgraded,
+      systemDemoVersion: SYSTEM_DEMO_VERSION,
+      quality: {
+        ...(upgraded.quality ?? { assessments: [], actions: [] }),
+        demoReferenceMonth: upgraded.quality?.demoReferenceMonth ?? today.slice(0, 7) + '-01',
+      },
+    };
+  }
   let next = seedHrDemo(seedCareDemo(data, today), today);
   next = seedSystemOperations(next, today, now);
   next = seedSystemFinance(next, today);
   next = seedSystemQuality(next, today);
   next = seedStaffPortal(seedSystemCommunications(next, today), today);
   next = seedSystemAcademy(next, today);
+  next = seedDocumentExamples(seedCareWorkspaces(next, today), today);
   const vacancies: Vacancy[] = [
     'Community Care Worker',
     'Senior Care Worker',
@@ -227,7 +244,8 @@ export function installSystemDemo(injector: Injector): void {
     () => {
       const id = store.companyId(),
         data = store.data();
-      if (!DEMO_WORKSPACES.includes(id) || data.systemDemoVersion === SYSTEM_DEMO_VERSION) return;
+      if (!DEMO_WORKSPACES.includes(id) || (data.systemDemoVersion ?? 0) >= SYSTEM_DEMO_VERSION)
+        return;
       untracked(() => {
         const seeded = seedSystemDemo(data);
         const fixture = WORKSPACES.find((provider) => provider.id === id)!;

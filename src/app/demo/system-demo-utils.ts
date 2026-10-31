@@ -1,5 +1,5 @@
 import { addDays } from '../features/management/rota/rota.models';
-export const SYSTEM_DEMO_VERSION = 3;
+export const SYSTEM_DEMO_VERSION = 5;
 export const DEMO_WORKSPACES = ['lqcs', 'riverside', 'sunrise', 'meadowview', 'oakwood'];
 export const demoId = (name: string) => 'system-demo-' + name;
 export const appendDemo = <T extends { id: string }>(saved: T[] = [], added: T[]): T[] => [

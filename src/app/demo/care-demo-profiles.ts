@@ -24,7 +24,7 @@ function fill(
     ...Object.fromEntries(Object.entries(saved).filter(([, value]) => value !== '')),
   };
 }
-function document(
+export function demoCareDocument(
   id: string,
   name: string,
   category: string,
@@ -362,9 +362,14 @@ function profile(file: ClientFile, index: number, name: string, today: string): 
       },
     ]),
     documents: append(file.documents, [
-      document(prefix + 'care-plan', 'Demo care plan.pdf', 'Care plan', today, true),
-      document(prefix + 'risk-assessment', 'Demo risk assessment.pdf', 'Risk assessment', today),
-      document(prefix + 'consent', 'Demo consent record.pdf', 'Consent', today),
+      demoCareDocument(prefix + 'care-plan', 'Demo care plan.pdf', 'Care plan', today, true),
+      demoCareDocument(
+        prefix + 'risk-assessment',
+        'Demo risk assessment.pdf',
+        'Risk assessment',
+        today,
+      ),
+      demoCareDocument(prefix + 'consent', 'Demo consent record.pdf', 'Consent', today),
     ]),
     familyAccess: append(file.familyAccess, [
       {
