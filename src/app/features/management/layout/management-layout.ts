@@ -83,20 +83,43 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           users</a
         >
 
-        <a
-          routerLink="/manage/rota"
-          [class.active]="
-            routerUrl().startsWith('/manage/rota') && !routerUrl().startsWith('/manage/rota/live')
-          "
-          [attr.aria-current]="
-            routerUrl().startsWith('/manage/rota') && !routerUrl().startsWith('/manage/rota/live')
-              ? 'page'
-              : null
-          "
-          (click)="menuOpen.set(false)"
-          ><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Visits
-          &amp; Rostering</a
+        <button
+          type="button"
+          class="visits-submenu-toggle"
+          #visitsMenu
+          [class.active]="routerUrl().startsWith('/manage/rota')"
+          [attr.aria-expanded]="visitsExpanded()"
+          aria-controls="visits-submenu"
+          (click)="visitsExpanded.set(!visitsExpanded())"
         >
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+          <span class="visits-menu-label">Visits &amp; Rostering</span>
+          <span class="material-symbols-outlined visits-menu-chevron" aria-hidden="true">{{
+            visitsExpanded() ? 'expand_less' : 'expand_more'
+          }}</span>
+        </button>
+        @if (visitsExpanded()) {
+          <nav
+            class="visits-submenu"
+            id="visits-submenu"
+            aria-label="Visits & Rostering pages"
+            (keydown.escape)="
+              visitsExpanded.set(false); visitsMenu.focus(); $event.stopPropagation()
+            "
+          >
+            @for (item of visitsLinks; track item.path) {
+              <a
+                [routerLink]="item.path"
+                [class.selected]="isVisitSection(item.path)"
+                [attr.aria-current]="isVisitSection(item.path) ? 'page' : null"
+                (click)="menuOpen.set(false)"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
+                <span>{{ item.label }}</span>
+              </a>
+            }
+          </nav>
+        }
         <a
           routerLink="/manage/ecm"
           routerLinkActive="active"
@@ -285,6 +308,17 @@ export class ManagementLayout {
   protected readonly mobile = toSignal(inject(BreakpointObserver).observe('(max-width: 1023px)'));
   protected readonly menuOpen = signal(false);
   protected readonly finance = FINANCE_AREAS;
+  protected readonly visitsExpanded = signal(this.router.url.startsWith('/manage/rota'));
+  protected readonly visitsLinks = [
+    { path: '/manage/rota/overview', label: 'Overview', icon: 'dashboard' },
+    { path: '/manage/rota/call-packages', label: 'Call packages', icon: 'event_repeat' },
+    { path: '/manage/rota/publishing', label: 'Publishing', icon: 'publish' },
+    { path: '/manage/rota/history', label: 'History & audit', icon: 'history' },
+  ];
+  protected isVisitSection(path: string): boolean {
+    const current = this.router.url.split(/[?#]/)[0];
+    return current === path || (path.endsWith('/overview') && current === '/manage/rota/planner');
+  }
   protected readonly qualityLinks = QUALITY_LINKS;
   protected readonly qualityExpanded = signal(this.router.url.startsWith('/manage/quality'));
   protected readonly organisation = [

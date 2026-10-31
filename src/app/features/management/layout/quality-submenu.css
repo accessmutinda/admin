@@ -4,18 +4,25 @@
   font-family: var(--font-sans);
 }
 .cv-management .app-sidebar > a.active,
-.cv-management .app-sidebar .quality-submenu-toggle.active,
-.cv-management .app-sidebar .quality-submenu a.selected {
+.cv-management .app-sidebar :is(.quality-submenu-toggle, .visits-submenu-toggle).active,
+.cv-management .app-sidebar :is(.quality-submenu, .visits-submenu) a.selected {
   background: #007caa;
   box-shadow: inset 3px 0 #17c5de;
   color: #fff;
 }
 .cv-management .app-sidebar > a.active .material-symbols-outlined,
-.cv-management .app-sidebar .quality-submenu-toggle.active .material-symbols-outlined,
-.cv-management .app-sidebar .quality-submenu a.selected .material-symbols-outlined {
+.cv-management
+  .app-sidebar
+  :is(.quality-submenu-toggle, .visits-submenu-toggle).active
+  .material-symbols-outlined,
+.cv-management
+  .app-sidebar
+  :is(.quality-submenu, .visits-submenu)
+  a.selected
+  .material-symbols-outlined {
   color: #fff;
 }
-.cv-management .app-sidebar .quality-submenu-toggle {
+.cv-management .app-sidebar :is(.quality-submenu-toggle, .visits-submenu-toggle) {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -34,24 +41,27 @@
   cursor: pointer;
   text-align: left;
 }
-.cv-management .app-sidebar .quality-submenu-toggle:hover {
+.cv-management .app-sidebar :is(.quality-submenu-toggle, .visits-submenu-toggle):hover {
   background: #ffffff08;
   color: #fff;
 }
-.cv-management .app-sidebar .quality-submenu-toggle.active,
-.cv-management .app-sidebar .quality-submenu-toggle.active:hover {
+.cv-management .app-sidebar :is(.quality-submenu-toggle, .visits-submenu-toggle).active,
+.cv-management .app-sidebar :is(.quality-submenu-toggle, .visits-submenu-toggle).active:hover {
   background: #007caa;
   color: #fff;
 }
-.cv-management .app-sidebar .quality-menu-label {
+.cv-management .app-sidebar :is(.quality-menu-label, .visits-menu-label) {
   flex: 1;
   min-width: 0;
 }
-.cv-management .app-sidebar .quality-submenu-toggle > .material-symbols-outlined {
+.cv-management
+  .app-sidebar
+  :is(.quality-submenu-toggle, .visits-submenu-toggle)
+  > .material-symbols-outlined {
   font-size: 18px;
   flex-shrink: 0;
 }
-.cv-management .app-sidebar .quality-submenu {
+.cv-management .app-sidebar :is(.quality-submenu, .visits-submenu) {
   display: flex;
   flex-direction: column;
   margin: 6px 0 12px 12px;
@@ -60,7 +70,7 @@
   gap: 2px;
   min-width: 0;
 }
-.cv-management .app-sidebar .quality-submenu a {
+.cv-management .app-sidebar :is(.quality-submenu, .visits-submenu) a {
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -75,20 +85,20 @@
   letter-spacing: normal;
   text-decoration: none;
 }
-.cv-management .app-sidebar .quality-submenu a > .material-symbols-outlined {
+.cv-management .app-sidebar :is(.quality-submenu, .visits-submenu) a > .material-symbols-outlined {
   font-size: 18px;
   flex-shrink: 0;
 }
-.cv-management .app-sidebar .quality-submenu a > span:last-child {
+.cv-management .app-sidebar :is(.quality-submenu, .visits-submenu) a > span:last-child {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.cv-management .app-sidebar .quality-submenu a:hover {
+.cv-management .app-sidebar :is(.quality-submenu, .visits-submenu) a:hover {
   background: #ffffff08;
   color: #fff;
 }
-.cv-management .app-sidebar .quality-submenu a.selected,
-.cv-management .app-sidebar .quality-submenu a.selected:hover {
+.cv-management .app-sidebar :is(.quality-submenu, .visits-submenu) a.selected,
+.cv-management .app-sidebar :is(.quality-submenu, .visits-submenu) a.selected:hover {
   background: #007caa;
   color: #fff;
 }
@@ -122,8 +132,8 @@
   }
 }
 @media (max-width: 767px), (pointer: coarse) {
-  .cv-management .app-sidebar .quality-submenu-toggle,
-  .cv-management .app-sidebar .quality-submenu a {
+  .cv-management .app-sidebar :is(.quality-submenu-toggle, .visits-submenu-toggle),
+  .cv-management .app-sidebar :is(.quality-submenu, .visits-submenu) a {
     min-height: 44px;
     align-items: center;
   }

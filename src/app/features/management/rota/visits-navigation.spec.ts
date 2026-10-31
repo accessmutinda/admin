@@ -5,6 +5,8 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from '../../../app.routes';
 import { AuthService } from '../../../core/auth/auth.service';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
+import { ManagementLayout } from '../layout/management-layout';
+import { RotaService } from './rota.service';
 
 @Component({ template: '' })
 class Destination {}
@@ -65,16 +67,77 @@ describe('Visits & Rota navigation', () => {
     expect(TestBed.inject(Router).url).toBe('/manage/ecm?date=2026-10-18');
   });
 
-  it('preserves supporting workflows and a single heading when navigating between views', async () => {
+  it('opens standalone pages with one heading and page-specific statistics', async () => {
     const harness = await RouterTestingHarness.create();
     for (const view of ['overview', 'planner', 'call-packages', 'publishing', 'history']) {
       await harness.navigateByUrl('/manage/rota/' + view);
       const element = harness.routeNativeElement!;
       expect(element.querySelectorAll('h1')).toHaveLength(1);
-      expect(element.querySelectorAll('.visits-section-links a')).toHaveLength(
-        ['overview', 'planner'].includes(view) ? 0 : 5,
+      expect(element.querySelector('.visits-section-links')).toBeNull();
+      expect(element.querySelector('.rota-navigation')).toBeNull();
+      expect(element.querySelectorAll('.roster-stat, .metrics .metric')).toHaveLength(
+        ['overview', 'planner'].includes(view) ? 6 : 4,
       );
       expect(!!element.querySelector('.planner-grid')).toBe(['overview', 'planner'].includes(view));
     }
+  });
+
+  it('expands the sidebar menu in the requested order and closes it with Escape', () => {
+    const fixture = TestBed.createComponent(ManagementLayout);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const toggle = element.querySelector<HTMLButtonElement>('.visits-submenu-toggle')!;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    toggle.click();
+    fixture.detectChanges();
+    const menu = element.querySelector('.visits-submenu')!;
+    const links = Array.from(menu.querySelectorAll('a'));
+    expect(links.map((link) => link.querySelector('span:last-child')?.textContent?.trim())).toEqual(
+      ['Overview', 'Call packages', 'Publishing', 'History & audit'],
+    );
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/manage/rota/overview',
+      '/manage/rota/call-packages',
+      '/manage/rota/publishing',
+      '/manage/rota/history',
+    ]);
+    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(element.querySelector('.visits-submenu')).toBeNull();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('updates call-package statistics from saved packages', async () => {
+    const harness = await RouterTestingHarness.create('/manage/rota/call-packages');
+    const service = TestBed.inject(RotaService);
+    const count = service.data().calls.filter((call) => call.active).length;
+    service.saveClient({
+      id: 'stat-client',
+      name: 'Statistics client',
+      reference: 'ST1',
+      address: '1 Road',
+      postcode: 'HA1 1AA',
+      funding: 'Private',
+      priority: 'Standard',
+      active: true,
+    });
+    service.saveCall({
+      id: 'stat-call',
+      clientId: 'stat-client',
+      name: 'Lunch call',
+      start: '12:00',
+      end: '12:30',
+      weekdays: [1],
+      carers: 1,
+      skills: [],
+      regularStaffIds: [],
+      tasks: 'Prepare lunch',
+      active: true,
+    });
+    harness.detectChanges();
+    const metric = Array.from(harness.routeNativeElement!.querySelectorAll('.metric')).find(
+      (item) => item.querySelector('h2')?.textContent === 'Active call packages',
+    )!;
+    expect(metric.querySelector('strong')?.textContent).toBe(String(count + 1));
   });
 });

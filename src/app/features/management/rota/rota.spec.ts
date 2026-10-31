@@ -44,7 +44,13 @@ describe('Rota screens', () => {
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     expect(element.textContent).toContain('History visits');
-    expect(element.querySelector('.rota-navigation')?.textContent).toContain('Audit');
+    expect(element.querySelector('.rota-navigation')).toBeNull();
+    const audit = Array.from(
+      element.querySelectorAll<HTMLButtonElement>('.page-heading button'),
+    ).find((button) => button.textContent?.includes('Audit log'))!;
+    audit.click();
+    fixture.detectChanges();
+    expect(element.querySelector('.rota-audit')).not.toBeNull();
     expect(element.querySelector('.rota-package-grid')).toBeNull();
   });
   it('renders all starting workflows before any visits have been created', async () => {

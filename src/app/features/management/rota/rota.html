@@ -1,5 +1,5 @@
 <cv-module-design />
-@if (!workspaceView) {
+@if (!workspaceView || section) {
   <nav class="co-breadcrumb" aria-label="Breadcrumb">
     <a routerLink="/manage/rota">Care Delivery</a>
   </nav>
@@ -10,7 +10,7 @@
           clientFiles
             ? 'Service users & client files'
             : section
-              ? 'Visits & Allocation · ' + sectionTitle
+              ? sectionTitle
               : 'Visits & Allocation'
         }}
       </h1>
@@ -28,6 +28,37 @@
     </div>
     @if (service.can('view')) {
       <div class="row">
+        @if (section === 'publishing') {
+          <button
+            class="button"
+            [class.primary]="tab() === 'Allocations'"
+            (click)="choose('Allocations')"
+          >
+            Draft review
+          </button>
+          <button
+            class="button"
+            [class.primary]="tab() === 'Published'"
+            (click)="choose('Published')"
+          >
+            Published visits
+          </button>
+          <button
+            class="button"
+            [class.primary]="tab() === 'Planning'"
+            (click)="choose('Planning')"
+          >
+            Rules &amp; copy week
+          </button>
+        }
+        @if (section === 'history') {
+          <button class="button" [class.primary]="tab() === 'History'" (click)="choose('History')">
+            Visit history
+          </button>
+          <button class="button" [class.primary]="tab() === 'Audit'" (click)="choose('Audit')">
+            Audit log
+          </button>
+        }
         @if (service.can('manage')) {
           <button class="button primary" (click)="open('allocation')">
             <span class="material-symbols-outlined" aria-hidden="true">add</span>Plan visits
@@ -45,6 +76,22 @@
     permissionsTitle="Visits & Allocation access"
   />
 } @else {
+  @if (section) {
+    <div class="metrics four" aria-label="Page statistics">
+      @for (stat of sectionStats(); track stat.label) {
+        <article class="metric co-stat co-surface" [attr.data-tone]="stat.tone">
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">{{
+            stat.icon
+          }}</span>
+          <div>
+            <h2>{{ stat.label }}</h2>
+            <strong>{{ stat.value }}</strong
+            ><small>{{ stat.detail }}</small>
+          </div>
+        </article>
+      }
+    </div>
+  }
   @if (!clientFiles) {
     @if (!section) {
       <div class="metrics four">
@@ -100,22 +147,16 @@
         </button>
       </div>
     }
-    @if (!section || sectionTabs.length) {
+    @if (!section) {
       <section class="panel rota-navigation">
         <nav class="tabs" aria-label="Rota sections">
-          @for (item of section ? sectionTabs : tabs; track item) {
+          @for (item of tabs; track item) {
             <button
               [class.active]="tab() === item"
               [attr.aria-pressed]="tab() === item"
               (click)="choose(item)"
             >
-              {{
-                section && item === 'Allocations'
-                  ? 'Draft review'
-                  : section && item === 'Planning'
-                    ? 'Rules & copy week'
-                    : item
-              }}
+              {{ item }}
             </button>
           }
         </nav>

@@ -37,6 +37,7 @@ import {
     AccessRequired,
   ],
   host: { class: 'module-page operations-page rota-page' },
+  styles: ['.page-heading, .page-heading > .row { flex-wrap: wrap; }'],
   templateUrl: './rota.html',
 })
 export class Rota {
@@ -54,12 +55,6 @@ export class Rota {
       : this.section === 'history'
         ? 'History & audit'
         : 'Publishing';
-  protected readonly sectionTabs =
-    this.section === 'publishing'
-      ? ['Allocations', 'Published', 'Planning']
-      : this.section === 'history'
-        ? ['History', 'Audit']
-        : [];
   protected readonly clientFiles = !!this.route.snapshot.data['clientFiles'];
   protected readonly riskFlags = RISK_FLAGS;
   private readonly callStyles = computed(() => ({
@@ -187,6 +182,106 @@ export class Rota {
           .flatMap((c) => c.regularStaffIds),
       ).size,
   );
+  protected readonly sectionStats = computed(() => {
+    const data = this.service.data();
+    if (this.section === 'call-packages') {
+      const calls = data.calls.filter((call) => call.active);
+      return [
+        {
+          label: 'Active service users',
+          value: data.clients.filter((c) => c.active).length,
+          icon: 'groups',
+          tone: 'blue',
+          detail: 'Current care records',
+        },
+        {
+          label: 'Active call packages',
+          value: calls.length,
+          icon: 'event_repeat',
+          tone: 'teal',
+          detail: 'Recurring care calls',
+        },
+        {
+          label: 'Regular carers',
+          value: new Set(calls.flatMap((c) => c.regularStaffIds)).size,
+          icon: 'person_check',
+          tone: 'green',
+          detail: 'Assigned to active packages',
+        },
+        {
+          label: 'High-priority packages',
+          value: calls.filter((c) => c.priority === 'High').length,
+          icon: 'priority_high',
+          tone: 'orange',
+          detail: 'Active priority calls',
+        },
+      ];
+    }
+    if (this.section === 'publishing') {
+      const drafts = data.visits.filter((v) => v.state === 'Draft' && v.date >= this.today);
+      return [
+        {
+          label: 'Draft visits',
+          value: drafts.length,
+          icon: 'edit_calendar',
+          tone: 'blue',
+          detail: 'Today and future drafts',
+        },
+        {
+          label: 'Drafts needing carers',
+          value: drafts.filter((v) => v.staffIds.length < v.carers).length,
+          icon: 'person_alert',
+          tone: 'orange',
+          detail: 'Missing required carer places',
+        },
+        {
+          label: 'Drafts with conflicts',
+          value: drafts.filter((v) => this.service.conflicts(v).length > 0).length,
+          icon: 'warning',
+          tone: 'pink',
+          detail: 'Review before publishing',
+        },
+        {
+          label: 'Published visits',
+          value: data.visits.filter((v) => v.state === 'Published' && v.date >= this.today).length,
+          icon: 'event_available',
+          tone: 'green',
+          detail: 'Today and future allocations',
+        },
+      ];
+    }
+    const history = data.visits.filter((v) => v.date <= this.today);
+    return [
+      {
+        label: 'Visit history',
+        value: history.length,
+        icon: 'history',
+        tone: 'blue',
+        detail: 'Visits through today',
+      },
+      {
+        label: 'Completed visits',
+        value: history.filter((v) => v.state !== 'Cancelled' && completedVisit(v)).length,
+        icon: 'task_alt',
+        tone: 'green',
+        detail: 'Recorded attendance complete',
+      },
+      {
+        label: 'Cancelled visits',
+        value: history.filter((v) => v.state === 'Cancelled').length,
+        icon: 'event_busy',
+        tone: 'orange',
+        detail: 'Retained historical records',
+      },
+      {
+        label: 'Audit events',
+        value: data.audit.length,
+        icon: 'manage_search',
+        tone: 'purple',
+        detail: 'Recorded rota changes',
+      },
+    ];
+  });
   protected readonly visit = computed(() =>
     this.service.data().visits.find((v) => v.id === this.selected()),
   );
