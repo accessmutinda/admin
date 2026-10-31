@@ -43,6 +43,13 @@
         >
       </div>
     </div>
+    @if (isDemo()) {
+      <p class="qd-scope" role="status">
+        Fictional demonstration data ·
+        {{ referenceMonth() + 'T12:00:00Z' | date: 'MMMM y' : 'UTC' }}. Headline figures illustrate
+        the reference design and are not live clinical or regulatory scores.
+      </p>
+    }
     @if (isSnapshot()) {
       <div
         class="qd-metrics"
@@ -148,8 +155,12 @@
       <section class="qd-empty">
         <span class="material-symbols-outlined" aria-hidden="true">event_note</span>
         <h2>No report snapshot for {{ month() + 'T12:00:00Z' | date: 'MMMM y' : 'UTC' }}</h2>
-        <p>The reference dashboards contain the April 2025 sample report.</p>
-        <button (click)="month.set('2025-04-01')">Return to April 2025</button
+        <p>
+          The reference dashboards contain the
+          {{ referenceMonth() + 'T12:00:00Z' | date: 'MMMM y' : 'UTC' }} sample report.
+        </p>
+        <button (click)="month.set(referenceMonth())">
+          Return to {{ referenceMonth() + 'T12:00:00Z' | date: 'MMMM y' : 'UTC' }}</button
         ><a routerLink="/manage/quality/workspace" [queryParams]="{ tab: 'Reports' }"
           >View saved quality reports →</a
         >
@@ -157,8 +168,8 @@
     }
     <footer class="qd-footer">
       <span
-        >Reference data · April 2025 <span aria-hidden="true">•</span> Location filters apply to
-        branch records</span
+        >Reference data · {{ referenceMonth() + 'T12:00:00Z' | date: 'MMMM y' : 'UTC' }}
+        <span aria-hidden="true">•</span> Location filters apply to branch records</span
       ><a routerLink="/manage/quality/workspace"
         >Assessment & action workspace <span aria-hidden="true">→</span></a
       >
@@ -215,7 +226,10 @@
         [canCreate]="service.can('create')"
         (addEvidence)="openEvidence()"
       />
-      <p class="qd-detail-note">April 2025 reference snapshot · {{ location() }}</p>
+      <p class="qd-detail-note">
+        {{ referenceMonth() + 'T12:00:00Z' | date: 'MMMM y' : 'UTC' }} reference snapshot ·
+        {{ location() }}
+      </p>
     </section>
   </div>
 }

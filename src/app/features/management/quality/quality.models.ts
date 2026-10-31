@@ -236,6 +236,7 @@ export interface CorrectiveAction {
   audit: QualityAudit[];
 }
 export interface QualityData {
+  demoReferenceMonth?: string;
   assessments: Assessment[];
   actions: CorrectiveAction[];
 }

@@ -34,9 +34,11 @@ export class QualityDashboardPanel {
     this.expanded() || this.panel().tall ? this.rows() : this.rows().slice(0, 10),
   );
   readonly labels = computed(() =>
-    (this.panel().forecast
-      ? ['Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep']
-      : ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr']
+    (
+      this.panel().labels ??
+      (this.panel().forecast
+        ? ['Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep']
+        : ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'])
     ).slice(this.months() === 6 && !this.panel().forecast ? -6 : 0),
   );
   readonly ticks = computed(() =>

@@ -83,7 +83,12 @@
         [attr.aria-label]="
           panel().title +
           '. ' +
-          (panel().forecast ? 'Illustrative six-month forecast.' : 'May 2024 to April 2025.')
+          (panel().forecast ? 'Illustrative forecast' : 'Illustrative trend') +
+          ' from ' +
+          labels()[0] +
+          ' to ' +
+          labels()[labels().length - 1] +
+          '.'
         "
       >
         @for (tick of ticks(); track tick) {

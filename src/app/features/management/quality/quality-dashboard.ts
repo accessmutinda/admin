@@ -1,3 +1,4 @@
+import { demoReferenceDashboard } from './quality-reference-data';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -34,10 +35,17 @@ export class QualityDashboardPage {
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
   });
-  protected readonly dashboard = computed(() =>
-    QUALITY_DASHBOARDS.find((p) => p.slug === (this.params().get('dashboard') ?? '')),
+  protected readonly referenceMonth = computed(
+    () => this.service.data().demoReferenceMonth ?? '2025-04-01',
   );
-  protected readonly month = signal('2025-04-01');
+  protected readonly isDemo = computed(() => !!this.service.data().demoReferenceMonth);
+  protected readonly dashboard = computed(() => {
+    const template = QUALITY_DASHBOARDS.find(
+      (p) => p.slug === (this.params().get('dashboard') ?? ''),
+    );
+    return template ? demoReferenceDashboard(template, this.referenceMonth()) : undefined;
+  });
+  protected readonly month = signal(this.referenceMonth());
   protected readonly location = signal('All Locations');
   protected readonly locations = [
     'All Locations',
@@ -61,7 +69,7 @@ export class QualityDashboardPage {
   protected evidenceArea = 'Safe';
   protected evidenceStatement = '';
   protected evidenceOwner = '';
-  protected readonly isSnapshot = computed(() => this.month() === '2025-04-01');
+  protected readonly isSnapshot = computed(() => this.month() === this.referenceMonth());
   protected readonly panels = computed(() =>
     (this.dashboard()?.panels ?? []).map((p) =>
       p.title === 'Evidence Library'
@@ -70,6 +78,10 @@ export class QualityDashboardPage {
     ),
   );
   constructor() {
+    effect(() => {
+      this.service.store.companyId();
+      this.month.set(this.referenceMonth());
+    });
     effect(() => {
       this.title.setTitle((this.dashboard()?.title ?? 'Quality & Compliance') + ' · CareVerity');
       this.params();
