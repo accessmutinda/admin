@@ -327,6 +327,20 @@ export const routes: Routes = [
         redirectTo: 'companies/integrations',
       },
       {
+        path: 'care-plans/:id',
+        data: { module: 'Care delivery', carePlanWorkspace: true },
+        title: 'Care plan workspace · CareVerity',
+        canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+        loadComponent: () => import('./features/management/care/care-plan').then((m) => m.CarePlan),
+      },
+      {
+        path: 'care-plans',
+        data: { module: 'Care delivery' },
+        title: 'Care plan management · CareVerity',
+        loadComponent: () =>
+          import('./features/management/care/care-plan-register').then((m) => m.CarePlanRegister),
+      },
+      {
         path: 'clients',
         canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
         data: { module: 'Care delivery' },

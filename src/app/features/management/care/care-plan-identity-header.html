@@ -1,0 +1,106 @@
+<section class="care-plan-identity" aria-label="Care-plan service user summary">
+  <button type="button" class="header-back" (click)="action.emit('back')">
+    <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back
+  </button>
+  <div class="identity-grid">
+    <div class="care-plan-person">
+      @if (photo()) {
+        <img class="care-plan-photo" [src]="photo()" [alt]="client().name" />
+      } @else {
+        <span class="care-plan-initials" aria-hidden="true">{{ initials }}</span>
+      }
+      <div class="person-details">
+        <div class="care-plan-person-title">
+          <h1>{{ client().name }}</h1>
+          <span class="identity-status" [class.inactive]="!client().active">{{
+            client().active ? 'Active' : 'Inactive'
+          }}</span>
+        </div>
+        <p class="identity-facts">
+          <span
+            >DOB:
+            {{
+              client().file?.details?.['dob']
+                ? (client().file!.details['dob'] | date: 'dd/MM/yyyy')
+                : 'Not recorded'
+            }}</span
+          ><span>NHS No: {{ client().file?.details?.['nhs'] || 'Not recorded' }}</span
+          ><span class="client-reference">Client ID: {{ client().reference }}</span>
+        </p>
+        <p class="care-plan-address">
+          <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+          ><span
+            >{{ client().address }}{{ client().postcode ? ', ' + client().postcode : '' }}</span
+          >
+        </p>
+      </div>
+    </div>
+    <div class="care-plan-header-actions" aria-label="Care-plan actions">
+      <button (click)="action.emit('print')">
+        <span class="material-symbols-outlined" aria-hidden="true">print</span>Print</button
+      ><button (click)="action.emit('share')">
+        <span class="material-symbols-outlined" aria-hidden="true">share</span>Share
+      </button>
+      <details #moreMenu class="header-more" (keydown.escape)="moreMenu.open = false">
+        <summary>
+          <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>More
+        </summary>
+        <div class="more-actions">
+          <button
+            [disabled]="!plan() || !canExport()"
+            (click)="action.emit('pdf'); moreMenu.open = false"
+          >
+            View PDF</button
+          ><button
+            [disabled]="!plan() || !canManage()"
+            (click)="action.emit('versions'); moreMenu.open = false"
+          >
+            Compare Versions</button
+          ><button [disabled]="!canSave()" (click)="action.emit('save'); moreMenu.open = false">
+            Save Draft</button
+          ><button
+            [disabled]="!canManage()"
+            (click)="action.emit(plan() ? 'review' : 'create'); moreMenu.open = false"
+          >
+            {{
+              !plan()
+                ? 'Create Care Plan'
+                : hasWorkingReview()
+                  ? 'Continue Review'
+                  : 'Start New Review'
+            }}
+          </button>
+        </div>
+      </details>
+    </div>
+    <section class="care-plan-version" aria-label="Current Care Plan">
+      <h2>
+        <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Current Care
+        Plan
+      </h2>
+      <div class="version-identity">
+        <span class="version-icon material-symbols-outlined" aria-hidden="true">description</span
+        ><strong>{{ plan() ? 'Version ' + plan()!.version : 'No current plan' }}</strong>
+        @if (plan(); as current) {
+          <span class="plan-status" [attr.data-status]="current.status">{{ current.status }}</span>
+        }
+      </div>
+      <dl>
+        <div>
+          <dt>Last review:</dt>
+          <dd>
+            {{
+              plan()
+                ? (plan()!.approvedAt || plan()!.createdAt | date: 'dd MMM yyyy')
+                : 'Not recorded'
+            }}
+          </dd>
+        </div>
+        <div>
+          <dt>Next review:</dt>
+          <dd>{{ plan()?.review ? (plan()!.review | date: 'dd MMM yyyy') : 'Not recorded' }}</dd>
+        </div>
+      </dl>
+    </section>
+  </div>
+</section>

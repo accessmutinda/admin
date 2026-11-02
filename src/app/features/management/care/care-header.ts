@@ -1,7 +1,7 @@
 import { AlignedWorkspaceTabs } from './workspace-tabs.directive';
 import { Component, computed, inject, input, output } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { RotaClient } from '../rota/rota.models';
 import { RotaService } from '../rota/rota.service';
 import { age } from './care.models';
@@ -20,6 +20,8 @@ import { emptyClientFile } from '../clients/client-file.models';
   ],
 })
 export class CareHeader {
+  protected readonly embeddedInCarePlan =
+    inject(ActivatedRoute).snapshot.data?.['carePlanWorkspace'] === true;
   readonly client = input.required<RotaClient>();
   readonly active = input('overview');
   readonly breadcrumb = input(true);
@@ -54,6 +56,10 @@ export class CareHeader {
   }
   protected select(section: string): void {
     if (this.disabled()) return;
+    if (section === 'plan') {
+      void this.router.navigate(['/manage/care-plans', this.client().id]);
+      return;
+    }
     if (this.local()) this.sectionChange.emit(section);
     else
       void this.router.navigate(['/manage/clients', this.client().id], {
@@ -67,6 +73,8 @@ export class CareHeader {
     { label: 'Visits & Allocation', path: 'visits' },
     { label: 'Visit Notes', path: 'visit-notes' },
     { label: 'Documents', path: 'documents' },
+    { label: 'Incidents & Complaints', path: 'incidents' },
+    { label: 'Reviews & Feedback', path: 'feedback' },
     { label: 'Contacts', path: 'contacts' },
     { label: 'Family Portal', path: 'family' },
     { label: 'Audit Trail', path: 'audit' },

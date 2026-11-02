@@ -1,0 +1,168 @@
+:host {
+  display: block;
+  font: 12px var(--font-sans, Lato, sans-serif);
+  color: #10285b;
+}
+.edit-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid #dfe9f6;
+  border-radius: 5px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  background: white;
+  margin-bottom: 10px;
+}
+.edit-stepper button {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: none;
+  color: #10285b;
+  padding: 0;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.edit-stepper button > span {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border: 1px solid #193777;
+  border-radius: 50%;
+  font-size: 12px;
+}
+.edit-stepper button.active {
+  color: #0057ff;
+}
+.edit-stepper button.active > span,
+.step-number {
+  background: #0057ff;
+  color: white;
+  border-color: #0057ff;
+}
+.edit-stepper button.confirmed:not(.active) > span {
+  background: #dcfbe9;
+  color: #008a51;
+  border-color: #9edbbf;
+}
+.connector {
+  height: 2px;
+  min-width: 24px;
+  flex: 1;
+  background: #d2e0f5;
+}
+.edit-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 4px 12px;
+}
+.step-number {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.edit-heading > div:nth-child(2) {
+  flex: 1;
+}
+h2 {
+  font-size: 21px;
+  line-height: 1.25;
+  letter-spacing: -0.7px;
+  margin: 0 0 4px;
+  font-weight: 800;
+}
+p {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #40567c;
+  margin: 0;
+}
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+  min-height: 30px;
+  border: 1px solid #bdd0f4;
+  border-radius: 4px;
+  background: #fff;
+  color: #0057ff;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+button.primary {
+  background: #0057ff;
+  color: white;
+  border-color: #0057ff;
+}
+button.confirm {
+  background: #e5ffef;
+  color: #008842;
+  border-color: #8ce1ab;
+}
+.material-symbols-outlined {
+  font-size: 16px;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+button:focus-visible {
+  outline: 2px solid #0057ff;
+  outline-offset: 2px;
+}
+.edit-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 4px;
+  border-top: 1px solid #e0e9f5;
+  margin-top: 10px;
+}
+.edit-footer span {
+  font-size: 11px;
+  color: #40567c;
+}
+@media (max-width: 800px) {
+  .edit-heading {
+    flex-wrap: wrap;
+  }
+  .edit-actions {
+    width: 100%;
+    padding-left: 40px;
+  }
+  .edit-stepper {
+    gap: 6px;
+  }
+  .connector {
+    min-width: 12px;
+  }
+}
+@media (max-width: 500px) {
+  .edit-actions {
+    padding: 0;
+  }
+  .edit-actions button {
+    flex: 1;
+  }
+  .edit-footer {
+    flex-wrap: wrap;
+  }
+}

@@ -495,3 +495,16 @@ input:-webkit-autofill:focus {
     padding: 12px;
   }
 }
+
+@media print {
+  body:has(.dedicated-care-plan) .app-sidebar,
+  body:has(.dedicated-care-plan) .app-header,
+  body:has(.dedicated-care-plan) .care-plan-breadcrumb,
+  body:has(.dedicated-care-plan) .care-plan-header-actions,
+  body:has(.dedicated-care-plan) cv-scrolling-tabs,
+  body:has(.dedicated-care-plan) .save-bar,
+  body:has(.dedicated-care-plan) .app-footer { display: none !important; }
+  body:has(.dedicated-care-plan) .app-body,
+  body:has(.dedicated-care-plan) .page-content { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+  body:has(.dedicated-care-plan) .care-plan-sticky-shell { position: static !important; }
+}

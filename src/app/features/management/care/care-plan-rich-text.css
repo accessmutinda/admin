@@ -1,0 +1,106 @@
+:host {
+  display: block;
+  min-width: 0;
+  font-family: var(--font-sans, Lato, sans-serif);
+}
+.rich-editor {
+  border: 1px solid #dce5f4;
+  border-radius: 5px;
+  background: #fff;
+  overflow: hidden;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 29px;
+  padding: 2px 5px;
+  background: linear-gradient(#fcfdff, #f3f6fb);
+  border-bottom: 1px solid #e5ebf5;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.toolbar select {
+  flex: 0 0 65px;
+  max-width: 65px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+  color: #172750;
+  margin-right: 3px;
+  min-height: 23px;
+}
+.toolbar button {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 22px;
+  border: 0;
+  background: transparent;
+  color: #172750;
+  padding: 0;
+  cursor: pointer;
+}
+.toolbar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.toolbar .material-symbols-outlined {
+  font-size: 15px;
+}
+.toolbar .tool-end {
+  margin-left: auto;
+  color: #0057ff;
+}
+.toolbar button:focus-visible,
+.toolbar select:focus-visible {
+  outline: 2px solid #0057ff;
+  outline-offset: -2px;
+}
+.editor-content {
+  min-height: 105px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  resize: vertical;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #26397a;
+  font-weight: 400;
+  white-space: pre-wrap;
+  outline-offset: -2px;
+}
+.editor-content:focus-visible {
+  outline: 2px solid #0057ff;
+}
+.read-only .editor-content {
+  background: #fbfcfe;
+}
+.editor-guidance,
+.copy-status {
+  display: block;
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 5px 0 0;
+  color: #40578d;
+}
+:host ::ng-deep .editor-content ul {
+  list-style: disc;
+  margin-left: 18px;
+}
+:host ::ng-deep .editor-content ol {
+  list-style: decimal;
+  margin-left: 18px;
+}
+:host ::ng-deep .editor-content h3 {
+  font-size: 14px;
+  font-weight: 700;
+}
+:host ::ng-deep .editor-content p {
+  margin: 0 0 4px;
+}
+:host ::ng-deep .editor-content u {
+  text-decoration: underline;
+}

@@ -88,7 +88,7 @@ import { age } from '../care/care.models';
             >{{ tab.label }}</a
           >
         }
-        <a [routerLink]="['/manage/clients', context.id()]"
+        <a [routerLink]="['/manage/care-plans', context.id()]"
           ><span class="material-symbols-outlined" aria-hidden="true">assignment</span>Care plan</a
         ><a [routerLink]="['/manage/clients', context.id(), 'documents']"
           ><span class="material-symbols-outlined" aria-hidden="true">description</span>Documents</a

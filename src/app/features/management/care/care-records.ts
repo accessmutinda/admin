@@ -1,7 +1,15 @@
 import { londonDate } from '../rota/rota.models';
 import { FAMILY_UPDATE_CATEGORIES, FamilyUpdate } from './care.models';
 import { ukStamp } from './care.models';
-import { HostListener, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import {
+  HostListener,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -29,6 +37,7 @@ import { CareContact, CareDocument, FAMILY_SCOPES, FamilyAccess, csv } from './c
   styleUrls: ['./service-user-spacing.css', './care-shared.css', './care-controls.css'],
 })
 export class CareRecords {
+  readonly sectionOverride = input<string>();
   protected readonly ukStamp = ukStamp;
   private readonly portal = inject(PortalService);
   protected readonly care = inject(CareService);
@@ -40,7 +49,9 @@ export class CareRecords {
     initialValue: this.route.snapshot.data,
   });
   protected readonly id = computed(() => this.params().get('id') ?? '');
-  protected readonly section = computed(() => this.routeData()['careSection'] as string);
+  protected readonly section = computed(
+    () => this.sectionOverride() || (this.routeData()['careSection'] as string),
+  );
   protected readonly client = computed(() => this.care.client(this.id()));
   protected readonly title = computed(
     () =>

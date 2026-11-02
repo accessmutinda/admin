@@ -1,0 +1,351 @@
+<div class="about-layout">
+  <main>
+    <section class="panel personal-details-card" aria-label="Personal Details">
+      <header class="about-heading">
+        <span class="heading-icon material-symbols-outlined" aria-hidden="true">person</span>
+        <div>
+          <h2>About Me (Personal Information)</h2>
+          <p>
+            Capture personal details, background, preferences and what is important to the service
+            user.
+          </p>
+        </div>
+        <div class="heading-actions">
+          @if (editable()) {
+            <button class="primary" (click)="action.emit('edit')">
+              <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit About Me
+            </button>
+          }
+          <button class="primary" [disabled]="!editable()" (click)="action.emit('voice')">
+            <span class="material-symbols-outlined">mic</span>Record by Voice</button
+          ><button class="primary" [disabled]="!editable()" (click)="action.emit('improve')">
+            <span class="material-symbols-outlined">auto_awesome</span>AI Improve</button
+          ><button (click)="togglePanel('guidance')">
+            <span class="material-symbols-outlined">help</span>Section Guidance
+          </button>
+        </div>
+      </header>
+      @if (panel() === 'guidance') {
+        <section class="panel">
+          <h3>Section Guidance</h3>
+          <p>
+            Ask the person how they describe themselves, who matters to them, their background,
+            beliefs and interests. Record their own words and confirm their preferred contact
+            details. Review changes with the person before marking this section complete.
+          </p>
+          <button (click)="panel.set('')">Close guidance</button>
+        </section>
+      }
+      <div class="personal-layout personal-information">
+        <div class="personal-fields">
+          <h3>Personal Details</h3>
+          <div class="details-grid">
+            @for (field of details; track field[0]) {
+              <label [class]="'field-' + field[0]"
+                >{{ field[1] }}
+                @if (field[3]) {
+                  <span class="required">*</span>
+                }
+                <input
+                  [type]="field[2]"
+                  [required]="!!field[3]"
+                  [ngModel]="value(field[0])"
+                  (ngModelChange)="change(field[0], $event)"
+                  [disabled]="!editable()"
+              /></label>
+            }
+            <label class="field-language"
+              >Preferred language<select
+                [ngModel]="value('language')"
+                (ngModelChange)="change('language', $event)"
+                [disabled]="!editable()"
+              >
+                <option value="">Select language</option>
+                @for (
+                  language of [
+                    'English',
+                    'Somali',
+                    'Arabic',
+                    'Bengali',
+                    'Gujarati',
+                    'Hindi',
+                    'Polish',
+                    'Punjabi',
+                    'Urdu',
+                    'Welsh',
+                  ];
+                  track language
+                ) {
+                  <option>{{ language }}</option>
+                }
+                @if (
+                  value('language') &&
+                  ![
+                    'English',
+                    'Somali',
+                    'Arabic',
+                    'Bengali',
+                    'Gujarati',
+                    'Hindi',
+                    'Polish',
+                    'Punjabi',
+                    'Urdu',
+                    'Welsh',
+                  ].includes(value('language'))
+                ) {
+                  <option>{{ value('language') }}</option>
+                }
+              </select></label
+            >
+          </div>
+        </div>
+        <div class="photo-panel">
+          <h3>Photo</h3>
+          @if (photo) {
+            <img [src]="photo" [alt]="value('name')" />
+          } @else {
+            <div class="photo-empty">
+              <span class="material-symbols-outlined">person</span><small>No photo</small>
+            </div>
+          }
+          <input
+            #photoInput
+            hidden
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            (change)="upload($event)"
+          /><button [disabled]="!editable()" (click)="photoInput.click()">
+            <span class="material-symbols-outlined">photo_camera</span>Upload Photo</button
+          ><button
+            class="danger"
+            [disabled]="!editable() || !photo"
+            (click)="change('aboutPhoto', '')"
+          >
+            <span class="material-symbols-outlined">delete</span>Remove
+          </button>
+          @if (photoError()) {
+            <p role="alert">{{ photoError() }}</p>
+          }
+        </div>
+      </div>
+      <section class="information-section about-information">
+        <h3>About Me</h3>
+        <div class="story-grid">
+          @for (story of stories; track story[0]) {
+            <label
+              >{{ story[1] }}
+              @if (story[0] === 'situation') {
+                <div class="editor">
+                  <div
+                    class="editor-tools"
+                    role="toolbar"
+                    aria-label="Personal introduction formatting"
+                  >
+                    @for (tool of tools; track tool[0]) {
+                      <button
+                        [attr.aria-label]="tool[1]"
+                        [title]="tool[1]"
+                        [disabled]="!editable()"
+                        (mousedown)="$event.preventDefault()"
+                        (click)="format(introduction, tool[0])"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">{{
+                          tool[2]
+                        }}</span>
+                      </button>
+                    }
+                  </div>
+                  <div
+                    #introduction
+                    class="rich-introduction"
+                    role="textbox"
+                    aria-label="Tell us about yourself"
+                    aria-multiline="true"
+                    [attr.aria-readonly]="!editable()"
+                    [attr.contenteditable]="editable()"
+                    [innerHTML]="introductionHtml"
+                    (focus)="startIntroduction()"
+                    (blur)="finishIntroduction()"
+                    (input)="updateIntroduction(introduction)"
+                  ></div>
+                </div>
+              } @else {
+                <textarea
+                  rows="5"
+                  [ngModel]="section.fields[story[0]]"
+                  (ngModelChange)="storyChange(story[0], $event)"
+                  [disabled]="!editable()"
+                ></textarea>
+              }
+            </label>
+          }
+        </div>
+      </section>
+      <section class="information-section key-information">
+        <h3>Key Information <small>(pre-filled from existing records)</small></h3>
+        <div class="contacts-grid">
+          @for (contact of contacts; track contact.title) {
+            <article class="contact">
+              <span class="contact-icon material-symbols-outlined" aria-hidden="true">{{
+                contact.icon
+              }}</span>
+              <div>
+                <strong>{{ contact.title }}</strong
+                ><span>{{ contact.record?.name || 'Not recorded' }}</span>
+                @if (contact.record?.phone) {
+                  <span>{{ contact.record?.phone }}</span>
+                }
+              </div>
+              <button (click)="action.emit('contacts')">
+                {{ contact.record ? 'View / Edit' : 'Add Details' }}
+              </button>
+            </article>
+          }
+        </div>
+      </section>
+    </section>
+    <details class="panel support-details">
+      <summary>Care instructions, strengths, outcomes and risks</summary>
+      <p>Complete the supporting care instructions before marking this area complete.</p>
+      <div class="story-grid">
+        @for (field of supportFields; track field[0]) {
+          <label
+            >{{ field[1]
+            }}<textarea
+              rows="3"
+              [ngModel]="section.fields[field[0]]"
+              (ngModelChange)="storyChange(field[0], $event)"
+              [disabled]="!editable()"
+            ></textarea>
+          </label>
+        }
+      </div>
+    </details>
+  </main>
+  <aside aria-label="About Me section controls">
+    <section class="panel">
+      <h3 class="status-title">
+        Section Status
+        <span class="status" [class.complete]="section.complete">{{
+          section.complete ? 'Completed' : 'Review required'
+        }}</span>
+      </h3>
+      <dl>
+        <div>
+          <dt>Last updated</dt>
+          <dd>{{ updated?.at || plan().createdAt | date: 'dd/MM/yyyy HH:mm' }}</dd>
+        </div>
+        <div>
+          <dt>Updated by</dt>
+          <dd>{{ updated?.by || plan().author }}</dd>
+        </div>
+        <div>
+          <dt>Review due</dt>
+          <dd>
+            <input
+              aria-label="Section review due"
+              type="date"
+              [(ngModel)]="section.review"
+              (ngModelChange)="section.complete = false"
+              [disabled]="!editable()"
+            />
+          </dd>
+        </div>
+        <div>
+          <dt>Changes since<br />last review</dt>
+          <dd>{{ section.fields['changes'] || 'No change recorded' }}</dd>
+        </div>
+        <div>
+          <dt>Section approved by</dt>
+          <dd>
+            {{ plan().approver || 'Awaiting approval' }}<br />{{
+              plan().approvedAt | date: 'dd/MM/yyyy'
+            }}
+          </dd>
+        </div>
+      </dl>
+    </section>
+    <section class="panel quick">
+      <h3>Quick Actions</h3>
+      <button class="copy" [disabled]="!editable() || !canCopy()" (click)="action.emit('copy')">
+        <span class="material-symbols-outlined">content_copy</span>Copy from Previous</button
+      ><button class="ai" [disabled]="!editable()" (click)="action.emit('improve')">
+        <span class="material-symbols-outlined">auto_awesome</span>Use AI to Suggest Updates</button
+      ><button class="history" (click)="togglePanel('history')">
+        <span class="material-symbols-outlined">history</span>View Section History</button
+      ><button class="print" (click)="printSection()">
+        <span class="material-symbols-outlined">print</span>Print Section</button
+      ><button class="note" [disabled]="!editable()" (click)="togglePanel('note')">
+        <span class="material-symbols-outlined">edit_note</span>Add Internal Note
+      </button>
+    </section>
+    <section class="panel">
+      <h3 class="visibility-title">
+        Visibility Settings <small>(Manager Only)</small
+        ><span class="material-symbols-outlined">lock</span>
+      </h3>
+      @for (item of visibility; track item.key) {
+        <label class="visibility"
+          ><span class="material-symbols-outlined">{{ item.icon }}</span
+          ><span
+            ><strong>{{ item.label }}</strong
+            ><small>{{ item.hint }}</small></span
+          ><input
+            type="checkbox"
+            role="switch"
+            [attr.aria-label]="item.label"
+            [(ngModel)]="section.visibility[item.key]"
+            [disabled]="!editable() || !manager()"
+        /></label>
+      }
+    </section>
+  </aside>
+  @if (panel() === 'history' || panel() === 'note') {
+    <section class="panel expanded">
+      <div class="expanded-title">
+        <h3>
+          {{ panel() === 'history' ? 'About Me · Section History' : 'About Me · Internal Notes' }}
+        </h3>
+        <button (click)="panel.set('')">Close</button>
+      </div>
+      @if (panel() === 'history') {
+        @for (event of history; track $index) {
+          <article>
+            <strong>{{ event.action }} · {{ event.by }}</strong>
+            <p>{{ event.at | date: 'medium' }}</p>
+            <pre>{{ event.detail }}</pre>
+          </article>
+        } @empty {
+          <p>No changes recorded for this version.</p>
+        }
+      } @else {
+        <pre>{{ section.fields['internalNotes'] || 'No internal notes recorded.' }}</pre>
+        <label
+          >Internal note<textarea
+            rows="3"
+            [(ngModel)]="note"
+            [disabled]="!editable()"
+          ></textarea></label
+        ><button class="primary" [disabled]="!editable() || !note.trim()" (click)="addNote()">
+          Save internal note
+        </button>
+      }
+    </section>
+  }
+</div>
+<footer class="about-footer">
+  <button (click)="action.emit('previous')">
+    <span class="material-symbols-outlined">arrow_back</span>Previous Section
+  </button>
+  <div class="completion">
+    <span>Section 1 of 17</span><progress [value]="completed()" max="17"></progress
+    ><span>{{ ((completed() / 17) * 100).toFixed(0) }}% completed</span>
+  </div>
+  @if (editable()) {
+    <button (click)="action.emit('save')">Save draft</button
+    ><button (click)="action.emit('complete')">Mark complete</button>
+  }
+  <button class="primary" (click)="action.emit('next')">
+    Next: Personal Care<span class="material-symbols-outlined">arrow_forward</span>
+  </button>
+</footer>

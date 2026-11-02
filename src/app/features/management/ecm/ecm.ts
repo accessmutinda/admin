@@ -1,3 +1,4 @@
+import { ApprovedCareInstructions } from '../care/approved-care-instructions';
 import { ModuleDesign } from '../shared/module-design';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -27,6 +28,7 @@ import {
 @Component({
   selector: 'cv-ecm',
   imports: [
+    ApprovedCareInstructions,
     ModuleDesign,
     FormsModule,
     MatSelectModule,

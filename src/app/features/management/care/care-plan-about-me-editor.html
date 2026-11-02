@@ -1,0 +1,250 @@
+<cv-care-plan-edit-layout
+  [steps]="steps"
+  [step]="step()"
+  [confirmed]="confirmed()"
+  [dirty]="dirty"
+  (stepChange)="switchStep($event)"
+  (confirm)="confirmAll()"
+  (save)="save()"
+  (cancel)="cancel()"
+  description="Confirm and update the service user's About Me information. This is pre-filled from the current care plan."
+>
+  @if (error()) {
+    <p class="edit-error" role="alert">{{ error() }}</p>
+  }
+  @switch (step()) {
+    @case (0) {
+      <div class="edit-grid">
+        <section class="panel personal-card">
+          <div class="edit-card-title">
+            <h3><span class="material-symbols-outlined">person</span>Personal Information</h3>
+            <button (click)="edit('personal')">
+              {{ active() === 'personal' ? 'Done' : 'Edit' }}
+            </button>
+          </div>
+          <fieldset [disabled]="active() !== 'personal'">
+            <div class="details-grid">
+              @for (field of details; track field[0]) {
+                <label [class]="'field-' + field[0]"
+                  >{{ field[1] }}
+                  @if (field[3]) {
+                    <span class="required"> *</span>
+                  }
+                  <input
+                    [type]="field[2]"
+                    [required]="!!field[3]"
+                    [(ngModel)]="draft.details[field[0]]"
+                    (ngModelChange)="changed()"
+                /></label>
+              }
+              <label class="field-language"
+                >Preferred language<input
+                  list="about-edit-languages"
+                  [(ngModel)]="draft.details['language']"
+                  (ngModelChange)="changed()" /><datalist id="about-edit-languages">
+                  @for (
+                    language of [
+                      'English',
+                      'Somali',
+                      'Arabic',
+                      'Bengali',
+                      'Gujarati',
+                      'Hindi',
+                      'Polish',
+                      'Punjabi',
+                      'Urdu',
+                      'Welsh',
+                    ];
+                    track language
+                  ) {
+                    <option [value]="language"></option>
+                  }</datalist
+              ></label>
+            </div>
+          </fieldset>
+        </section>
+        <section class="panel photo-edit-card">
+          <div class="edit-card-title">
+            <h3><span class="material-symbols-outlined">person</span>Photo</h3>
+            <button (click)="edit('photo')">{{ active() === 'photo' ? 'Done' : 'Edit' }}</button>
+          </div>
+          <div class="edit-photo-row">
+            @if (photo) {
+              <img [src]="photo" [alt]="draft.details['name']" />
+            } @else {
+              <div class="empty-photo">
+                <span class="material-symbols-outlined">person</span>No photo
+              </div>
+            }
+            <div>
+              <input
+                #photoInput
+                hidden
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                (change)="upload($event)"
+              /><button [disabled]="active() !== 'photo'" (click)="photoInput.click()">
+                <span class="material-symbols-outlined">photo_camera</span>Change Photo</button
+              ><button
+                class="danger"
+                [disabled]="active() !== 'photo' || !photo"
+                (click)="removePhoto()"
+              >
+                <span class="material-symbols-outlined">delete</span>Remove
+              </button>
+              <p>The photo is stored with this care-plan version.</p>
+            </div>
+          </div>
+          <div class="photo-facts">
+            <label
+              >Known as<input
+                [value]="draft.details['preferred'] || draft.details['name']"
+                readonly /></label
+            ><label>Client ID<input [value]="draft.details['clientId']" readonly /></label>
+          </div>
+        </section>
+        <section class="panel contacts-card">
+          <div class="edit-card-title">
+            <h3>
+              <span class="material-symbols-outlined">groups</span>Key Information
+              <small>(pre-filled from existing records)</small>
+            </h3>
+            <button (click)="sourceContacts.emit()">View All ↗</button>
+          </div>
+          <div class="contact-edit-grid">
+            @for (contact of contacts; track contact.title) {
+              <article>
+                <div class="edit-card-title">
+                  <h4>{{ contact.title }}</h4>
+                  <button (click)="sourceContacts.emit()">
+                    {{ contact.record ? 'View / Edit' : 'Add Details' }} ↗
+                  </button>
+                </div>
+                <div class="contact-fields">
+                  <label
+                    >Name<input [value]="contact.record?.name || 'Not recorded'" readonly /></label
+                  ><label>Telephone<input [value]="contact.record?.phone || ''" readonly /></label
+                  ><label
+                    >Relationship<input
+                      [value]="contact.record?.relationship || ''"
+                      readonly /></label
+                  ><label>Email<input [value]="contact.record?.email || ''" readonly /></label>
+                </div>
+              </article>
+            }
+          </div>
+          <p>Contact details are maintained in Service Users.</p>
+        </section>
+      </div>
+    }
+    @case (1) {
+      <div class="narrative-edit-grid">
+        @for (story of stories; track story[0]) {
+          <section class="panel">
+            <div class="edit-card-title">
+              <h3>{{ story[1] }}</h3>
+              <button (click)="edit(story[0])">
+                {{ active() === story[0] ? 'Done' : 'Edit' }}
+              </button>
+            </div>
+            <label
+              ><span class="sr-only">{{ story[1] }}</span
+              ><textarea
+                rows="6"
+                [disabled]="active() !== story[0]"
+                [(ngModel)]="section.fields[story[0]]"
+                (ngModelChange)="changed()"
+              ></textarea>
+            </label>
+          </section>
+        }
+      </div>
+      <details class="panel">
+        <summary>Care instructions, strengths, outcomes and risks</summary>
+        <div class="edit-card-title">
+          <p>Supporting information already held in About Me.</p>
+          <button (click)="edit('support')">{{ active() === 'support' ? 'Done' : 'Edit' }}</button>
+        </div>
+        <fieldset [disabled]="active() !== 'support'">
+          <div class="narrative-edit-grid">
+            @for (field of supportFields; track field[0]) {
+              <label
+                >{{ field[1]
+                }}<textarea
+                  rows="3"
+                  [(ngModel)]="section.fields[field[0]]"
+                  (ngModelChange)="changed()"
+                ></textarea>
+              </label>
+            }
+          </div>
+        </fieldset>
+      </details>
+    }
+    @case (2) {
+      <div class="edit-grid">
+        <section class="panel">
+          <div class="edit-card-title">
+            <h3>
+              <span class="material-symbols-outlined">verified_user</span>Visibility Settings
+              <small>(Manager Only)</small>
+            </h3>
+            <button [disabled]="!manager()" (click)="edit('visibility')">
+              {{ active() === 'visibility' ? 'Done' : 'Edit' }}
+            </button>
+          </div>
+          @for (audience of audiences; track audience.key) {
+            <label class="visibility"
+              ><span>{{ audience.label }}</span
+              ><input
+                type="checkbox"
+                role="switch"
+                [attr.aria-label]="audience.label"
+                [disabled]="!manager() || active() !== 'visibility'"
+                [(ngModel)]="section.visibility[audience.key]"
+                (ngModelChange)="changed()"
+            /></label>
+          }
+          <p>Only approved instructions are shared with the selected audiences.</p>
+        </section>
+        <section class="panel">
+          <div class="edit-card-title">
+            <h3><span class="material-symbols-outlined">event</span>Section Review</h3>
+            <button (click)="edit('review')">{{ active() === 'review' ? 'Done' : 'Edit' }}</button>
+          </div>
+          <fieldset [disabled]="active() !== 'review'">
+            <label
+              >Review due<input
+                type="date"
+                [(ngModel)]="section.review"
+                (ngModelChange)="changed()" /></label
+            ><label
+              >Changes since last review<textarea
+                rows="3"
+                [(ngModel)]="section.fields['changes']"
+                (ngModelChange)="changed()"
+              ></textarea>
+            </label>
+          </fieldset>
+        </section>
+        <section class="panel review-summary">
+          <h3>About Me · Review summary</h3>
+          <dl>
+            <div>
+              <dt>Full name</dt>
+              <dd>{{ draft.details['name'] }}</dd>
+            </div>
+            <div>
+              <dt>Address</dt>
+              <dd>{{ draft.details['address'] }} {{ draft.details['postcode'] }}</dd>
+            </div>
+          </dl>
+          @for (story of stories; track story[0]) {
+            <h4>{{ story[1] }}</h4>
+            <p>{{ section.fields[story[0]] || 'Not recorded' }}</p>
+          }
+        </section>
+      </div>
+    }
+  }
+</cv-care-plan-edit-layout>

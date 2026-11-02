@@ -1,3 +1,4 @@
+import { approvedInstructions } from '../management/care/care-plan.models';
 import { documentVisibility } from '../management/care/care-documents.models';
 import { Injectable, computed, inject } from '@angular/core';
 import { ManagementStore, COURSES } from '../management/shared/management.store';
@@ -24,6 +25,11 @@ export class InspectorService {
   readonly today = londonDate();
   readonly state = computed(() => this.store.data().inspection ?? emptyInspection());
   readonly clients = computed(() => this.store.data().rota?.clients ?? []);
+  readonly careInstructions = computed(() =>
+    this.clients().flatMap((c) =>
+      approvedInstructions(c, 'inspector').map((s) => ({ ...s, client: c.name })),
+    ),
+  );
   readonly staff = this.store.staff;
   readonly quality = computed(() => this.store.data().quality ?? { assessments: [], actions: [] });
   readonly visits = computed(() =>

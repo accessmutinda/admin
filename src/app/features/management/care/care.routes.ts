@@ -1,5 +1,19 @@
-import { Routes } from '@angular/router';
+import { Routes, Router } from '@angular/router';
+import { inject } from '@angular/core';
 export const CARE_ROUTES: Routes = [
+  ...(['incidents', 'feedback'] as const).map((careEventSection) => ({
+    path: careEventSection,
+    data: { careEventSection },
+    title: 'Service User records · CareVerity',
+    canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+    loadComponent: () => import('./care-events').then((m) => m.CareEvents),
+  })),
+
+  {
+    path: 'care-plan',
+    redirectTo: ({ params, queryParams }) =>
+      inject(Router).createUrlTree(['/manage/care-plans', params['id']], { queryParams }),
+  },
   {
     path: '',
     title: 'Service user profile · CareVerity',

@@ -1071,6 +1071,23 @@
     </div>
   }
 
+  @if (page().path === 'service-users') {
+    <section class="panel">
+      <h2>Approved care instructions shared with inspectors</h2>
+      @for (section of data.careInstructions(); track $index) {
+        <details>
+          <summary>{{ section.client }} · {{ section.name }}</summary>
+          <p>{{ section.instructions }}</p>
+          <p>{{ section.actions }}</p>
+          <p><strong>Outcome:</strong> {{ section.outcome }}</p>
+          <p><strong>Escalation:</strong> {{ section.escalation }}</p>
+        </details>
+      } @empty {
+        <p>No approved care instructions have been shared.</p>
+      }
+    </section>
+  }
+
   @if (!['documents', 'provider', 'reports', 'notes'].includes(page().path)) {
     <section class="panel filters" aria-label="Register filters">
       <div class="filter-row">

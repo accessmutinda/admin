@@ -1,0 +1,1169 @@
+@if (client(); as c) {
+  <div
+    class="dedicated-care-plan"
+    [class.overview-dashboard-page]="workspaceView === 'overview'"
+    [class.mobility-dashboard-page]="mobilityView"
+  >
+    <div #carePlanShell class="care-plan-sticky-shell">
+      <cv-care-plan-identity-header
+        [client]="c"
+        [plan]="approvedPlan || (service.canEdit() ? plan : undefined)"
+        [photo]="
+          (service.canEdit()
+            ? plan?.details?.['aboutPhoto']
+            : approvedPlan?.details?.['aboutPhoto']) ??
+          c.file?.photo ??
+          ''
+        "
+        [canManage]="service.canEdit()"
+        [canExport]="service.canEdit() && service.care.rota.can('export')"
+        [canSave]="editable() && !editingAboutMe"
+        [hasWorkingReview]="!!workingPlan"
+        (action)="identityHeaderAction($event)"
+      />
+      @if (service.canEdit()) {
+        <cv-scrolling-tabs
+          [tabs]="modules"
+          appearance="underline"
+          [selected]="workspaceView"
+          label="Care-plan modules"
+          prefix="care-module"
+          (selectedChange)="openWorkspace($event)"
+        />
+        @if (workspaceView === 'care-plan' && !editingAboutMe) {
+          @if (tab !== 'Care sections') {
+            <cv-scrolling-tabs
+              [tabs]="workflowSteps"
+              [selected]="tab"
+              label="Care-plan review steps"
+              prefix="care-step"
+              (selectedChange)="openWorkflowTab($event)"
+            />
+          }
+        }
+      }
+    </div>
+
+    @if (!service.canEdit()) {
+      <cv-approved-care-instructions [clientId]="id" />
+    } @else {
+      <section class="plan-workspace module-page">
+        @if (error()) {
+          <p class="message error" role="alert">{{ error() }}</p>
+        }
+        @if (notice()) {
+          <p class="message success" role="status">{{ notice() }}</p>
+        }
+        @if (plan; as p) {
+          <div
+            class="plan-layout"
+            [class.with-section-nav]="
+              workspaceView === 'care-plan' && tab === 'Care sections' && !editingAboutMe
+            "
+            [class.with-context]="
+              workspaceView === 'care-plan' && !editingAboutMe && tab !== 'Care sections'
+            "
+          >
+            @if (workspaceView === 'care-plan' && tab === 'Care sections' && !editingAboutMe) {
+              <cv-care-plan-section-nav
+                [tabs]="careAreas"
+                [selected]="'area-' + index"
+                [stickyHeader]="carePlanShell"
+                (selectedChange)="selectArea($event)"
+              />
+            }
+            <aside
+              class="plan-side"
+              [hidden]="editingAboutMe || workspaceView !== 'care-plan' || tab === 'Care sections'"
+            >
+              <section class="plan-card">
+                <h2>Current care plan</h2>
+                <strong class="progress-number">{{ completed }}/17</strong>
+                <p>care areas reviewed</p>
+                <progress [value]="completed" max="17">{{ completed }} of 17</progress>
+                <dl>
+                  <dt>Author</dt>
+                  <dd>{{ p.author }}</dd>
+                  <dt>Review due</dt>
+                  <dd>{{ p.review | date: 'dd MMM yyyy' }}</dd>
+                  <dt>Approver</dt>
+                  <dd>{{ p.approver || 'Awaiting approval' }}</dd>
+                </dl>
+                <label
+                  >Plan review date<input
+                    type="date"
+                    [(ngModel)]="p.review"
+                    [disabled]="!editable()"
+                /></label>
+              </section>
+              <section class="plan-card">
+                <h2>Section guidance</h2>
+                <p class="workspace-guidance">
+                  Ask what matters to the person, record their strengths and choices, and make the
+                  care instructions clear. Confirm relevant risks, equipment, outcomes and the
+                  review date.
+                </p>
+                <div class="overview-stack-actions">
+                  <button class="button" (click)="openWorkspace('assessments')">
+                    Linked assessments</button
+                  ><button class="button" (click)="openWorkspace('documents')">
+                    Supporting documents</button
+                  ><button class="button" (click)="openWorkspace('quality')">Quality review</button>
+                </div>
+              </section>
+            </aside>
+            <main
+              class="plan-content"
+              id="care-plan-content"
+              role="tabpanel"
+              [attr.aria-labelledby]="
+                editingAboutMe
+                  ? 'care-plan-edit-title'
+                  : workspaceView === 'care-plan' && tab === 'Care sections'
+                    ? 'care-area-area-' + index
+                    : 'care-module-' + workspaceView
+              "
+            >
+              @if (editingAboutMe) {
+                <cv-care-plan-about-me-editor
+                  [plan]="p"
+                  [client]="c"
+                  [manager]="service.canApprove()"
+                  (dirtyChange)="aboutEditDirty = $event"
+                  (saved)="saveAboutEdit($event)"
+                  (cancelled)="cancelAboutEdit()"
+                  (sourceContacts)="openServiceUserRecord('contacts')"
+                />
+              } @else {
+                @switch (tab) {
+                  @case ('Overview') {
+                    <cv-care-plan-overview
+                      [client]="c"
+                      [plan]="p"
+                      [approved]="approvedPlan"
+                      [hasWorkingReview]="!!workingPlan"
+                      [calls]="calls()"
+                      [canExport]="service.care.rota.can('export')"
+                      (action)="overviewAction($event)"
+                      (area)="goSection($event)"
+                    />
+                  }
+                  @case ('Contacts') {
+                    <section class="plan-card">
+                      <h2>Contacts brought forward for this review</h2>
+                      <p>
+                        Contact details are maintained in Service Users. Confirm the people involved
+                        in the care-plan review here.
+                      </p>
+                      @for (contact of contacts; track contact.id) {
+                        <article class="record-row">
+                          <div>
+                            <strong>{{ contact.name }}</strong>
+                            <p>
+                              {{ contact.type }} · {{ contact.relationship }} · {{ contact.phone }}
+                            </p>
+                          </div>
+                        </article>
+                      } @empty {
+                        <p>No contacts recorded.</p>
+                      }
+                      <button class="button" (click)="openServiceUserRecord('contacts')">
+                        Open Service User contacts
+                      </button>
+                    </section>
+                  }
+                  @case ('Client details') {
+                    <section class="plan-card">
+                      <h2>Confirm information already held</h2>
+                      <p>
+                        These values were brought forward from the service-user record. Corrections
+                        are retained in this version and its audit history; update the source
+                        profile separately where required.
+                      </p>
+                      <fieldset [disabled]="!editable()">
+                        <div class="form-grid">
+                          @for (f of detailFields; track f[0]) {
+                            <label
+                              >{{ f[1]
+                              }}<textarea
+                                rows="2"
+                                [(ngModel)]="p.details[f[0]]"
+                                (ngModelChange)="p.confirmed = false"
+                              ></textarea>
+                            </label>
+                          }
+                        </div>
+                        <label class="check"
+                          ><input type="checkbox" [(ngModel)]="p.confirmed" /> I have confirmed or
+                          corrected this information with the participant.</label
+                        >
+                      </fieldset>
+                    </section>
+                  }
+                  @case ('Participation') {
+                    <section class="plan-card">
+                      <h2>Who is providing the information?</h2>
+                      <p>Record participation and the basis for any representation.</p>
+                      <fieldset [disabled]="!editable()">
+                        <div class="form-grid">
+                          <label
+                            >Information provided by<select [(ngModel)]="p.participation['source']">
+                              @for (s of sources; track s) {
+                                <option>{{ s }}</option>
+                              }
+                            </select></label
+                          ><label
+                            >Service-user participation<select
+                              [(ngModel)]="p.participation['involvement']"
+                            >
+                              <option>Fully</option>
+                              <option>Partially</option>
+                              <option>Not participating</option>
+                            </select></label
+                          >
+                          @if (p.participation['source'] !== 'Service user') {
+                            <label
+                              >Representative name<input
+                                [(ngModel)]="p.participation['name']" /></label
+                            ><label
+                              >Relationship / role<input
+                                [(ngModel)]="p.participation['relationship']" /></label
+                            ><label
+                              >Reason for involvement<textarea
+                                [(ngModel)]="p.participation['reason']"
+                              ></textarea></label
+                            ><label
+                              >Authority / basis for acting<textarea
+                                [(ngModel)]="p.participation['authority']"
+                              ></textarea>
+                            </label>
+                          }
+                        </div>
+                      </fieldset>
+                    </section>
+                  }
+                  @case ('Capacity') {
+                    <section class="plan-card">
+                      <h2>Capacity and decision making</h2>
+                      <p class="message">
+                        Capacity is specific to a decision and time. Changes to this section are
+                        highlighted in the approval history for management review.
+                      </p>
+                      <fieldset [disabled]="!editable()">
+                        <label
+                          >Known concerns regarding capacity<select
+                            [(ngModel)]="p.capacity['concerns']"
+                          >
+                            <option>Not recorded</option>
+                            <option>No</option>
+                            <option>Yes</option>
+                          </select></label
+                        >
+                        <div class="form-grid">
+                          @for (f of capacityFields; track f[0]) {
+                            <label
+                              >{{ f[1]
+                              }}<textarea rows="3" [(ngModel)]="p.capacity[f[0]]"></textarea>
+                            </label>
+                          }
+                        </div>
+                      </fieldset>
+                    </section>
+                  }
+                  @case ('Call package') {
+                    <section class="plan-card">
+                      <div class="card-heading">
+                        <div>
+                          <h2>Current care package</h2>
+                          <p>
+                            Live call patterns from Visits & Allocation. Recommendations follow
+                            approval before any rota update.
+                          </p>
+                        </div>
+                        <a
+                          class="button"
+                          routerLink="/manage/rota/call-packages"
+                          [queryParams]="{ client: id }"
+                          >Open live package</a
+                        >
+                      </div>
+                      <div class="table-scroll">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Day</th>
+                              <th>Call type</th>
+                              <th>Time</th>
+                              <th>Duration</th>
+                              <th>Staffing</th>
+                              <th>Allocation / status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (call of calls(); track call.id) {
+                              <tr>
+                                <td>{{ weekdays(call.weekdays) }}</td>
+                                <td>{{ call.name }}</td>
+                                <td>{{ call.start }}–{{ call.end }}</td>
+                                <td>{{ duration(call.start, call.end) }} min</td>
+                                <td>{{ call.carers > 1 ? 'Double-up' : 'Single' }}</td>
+                                <td>{{ call.regularStaffIds.length }} regular carers · Active</td>
+                              </tr>
+                            } @empty {
+                              <tr>
+                                <td colspan="6">No active call package recorded.</td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                      <fieldset [disabled]="!editable()">
+                        <label
+                          >Supervisor recommendation<select [(ngModel)]="p.packageDecision">
+                            <option>Not reviewed</option>
+                            <option>No change</option>
+                            <option>Change required</option>
+                          </select></label
+                        >
+                        @if (p.packageDecision === 'Change required') {
+                          <label
+                            >Proposed change and reason<textarea
+                              rows="4"
+                              [(ngModel)]="p.packageProposal"
+                            ></textarea>
+                          </label>
+                        }
+                      </fieldset>
+                      <p><strong>Package approval:</strong> {{ p.packageStatus }}</p>
+                      @if (service.canApprove() && p.packageDecision === 'Change required') {
+                        <button class="button" [disabled]="dirty()" (click)="save('package')">
+                          Authorise recommendation
+                        </button>
+                      }
+                      <p class="muted">
+                        Authorisation records the recommendation only. A rota manager must review
+                        and update the live package through Visits & Allocation.
+                      </p>
+                    </section>
+                  }
+                  @case ('Care sections') {
+                    @if (index === 0) {
+                      <cv-care-plan-about-me
+                        [plan]="p"
+                        [client]="c"
+                        [editable]="editable()"
+                        [manager]="service.canApprove()"
+                        [canCopy]="!!previousSection"
+                        [completed]="completed"
+                        [actor]="service.care.auth.currentUser()?.name || p.author"
+                        (action)="aboutAction($event)"
+                      />
+                    } @else if (index === 1) {
+                      <cv-care-plan-personal-care
+                        [client]="c"
+                        [plan]="p"
+                        [approved]="approvedPlan"
+                        [previous]="previousSection"
+                        [editable]="editable()"
+                        [manager]="service.canApprove()"
+                        [completed]="completed"
+                        [actor]="service.care.auth.currentUser()?.name || p.author"
+                        (action)="personalCareAction($event)"
+                      />
+                    } @else if (index === 2) {
+                      <cv-care-plan-mobility
+                        [canAddDocuments]="service.care.canManageDocuments()"
+                        [plan]="p"
+                        [client]="c"
+                        [approved]="approvedPlan"
+                        [previous]="previousSection"
+                        [editable]="editable()"
+                        [manager]="service.canApprove()"
+                        [actor]="service.care.auth.currentUser()?.name || p.author"
+                        [documents]="service.care.documents(id)"
+                        (action)="mobilityAction($event)"
+                        (linked)="openMobilityRecord($event)"
+                        (documentView)="viewMobilityDocument($event)"
+                      />
+                    } @else {
+                      <section
+                        class="plan-card section-coming-soon"
+                        aria-labelledby="coming-soon-title"
+                      >
+                        <div class="coming-soon-context">
+                          <p class="eyebrow">CARE AREA {{ index + 1 }} OF 17</p>
+                          <span class="coming-soon-badge">In development</span>
+                        </div>
+                        <div class="coming-soon-body">
+                          <span
+                            class="coming-soon-icon material-symbols-outlined"
+                            aria-hidden="true"
+                            >{{ careAreas[index].icon }}</span
+                          >
+                          <p class="coming-soon-label">Coming soon</p>
+                          <h2 id="coming-soon-title">{{ section.name }}</h2>
+                          <p>
+                            We’re preparing a dedicated space for {{ section.name.toLowerCase() }}.
+                            This section will be available in a future update.
+                          </p>
+                          <div class="coming-soon-note">
+                            <span class="material-symbols-outlined" aria-hidden="true"
+                              >verified_user</span
+                            >
+                            <span>Your existing care plan information is safely retained.</span>
+                          </div>
+                        </div>
+                        <footer class="coming-soon-navigation">
+                          <button type="button" class="button" (click)="goSection(index - 1)">
+                            <span class="material-symbols-outlined" aria-hidden="true"
+                              >arrow_back</span
+                            >Previous section
+                          </button>
+                          <span>{{ index + 1 }} of 17 sections</span>
+                          <button
+                            type="button"
+                            class="button"
+                            [disabled]="index === 16"
+                            (click)="goSection(index + 1)"
+                          >
+                            Next section<span class="material-symbols-outlined" aria-hidden="true"
+                              >arrow_forward</span
+                            >
+                          </button>
+                        </footer>
+                      </section>
+                    }
+                    <section
+                      id="care-plan-voice-panel"
+                      class="plan-card voice-card"
+                      [hidden]="
+                        index >= 3 ||
+                        index === 1 ||
+                        ((index === 0 || index === 2) && !aboutVoiceOpen)
+                      "
+                    >
+                      <div class="card-heading">
+                        <div>
+                          <h2>AI voice-assisted care-plan draft</h2>
+                          <p>
+                            Review every word before accepting. A suggestion never publishes itself.
+                          </p>
+                        </div>
+                        <button class="button" [disabled]="!editable()" (click)="recordVoice()">
+                          <span class="material-symbols-outlined">mic</span
+                          >{{ listening ? 'Stop recording' : 'Record by voice' }}
+                        </button>
+                      </div>
+                      <p class="message">
+                        Demo mode · Seeded AI responses for frontend evaluation. No live AI request
+                        is sent. Existing wording changes only after you accept a suggestion.
+                      </p>
+                      <div class="form-grid">
+                        <label
+                          >Demo scenario<select
+                            [(ngModel)]="wordingScenario"
+                            [disabled]="!editable()"
+                            (ngModelChange)="loadWordingExample()"
+                          >
+                            @for (scenario of wordingScenarios; track scenario) {
+                              <option>{{ scenario }}</option>
+                            }
+                          </select></label
+                        >
+                        <div class="scenario-actions">
+                          <span class="pill" role="status">{{ wordingStatus }}</span
+                          ><button
+                            class="button"
+                            [disabled]="!editable()"
+                            (click)="loadWordingExample()"
+                          >
+                            Load seeded transcript
+                          </button>
+                        </div>
+                      </div>
+                      <label
+                        >Field to update<select
+                          [(ngModel)]="voiceField"
+                          (ngModelChange)="voiceFieldChanged()"
+                          [disabled]="listening"
+                        >
+                          @for (f of fields; track f[0]) {
+                            <option [value]="f[0]">{{ f[1] }}</option>
+                          }
+                        </select></label
+                      >
+                      <div class="voice-grid">
+                        <div>
+                          <h3>Existing wording</h3>
+                          <p class="preserve">
+                            {{ section.fields[voiceField] || 'No wording recorded.' }}
+                          </p>
+                        </div>
+                        <label
+                          >Voice transcript<textarea
+                            rows="5"
+                            [(ngModel)]="transcript"
+                            (ngModelChange)="transcriptChanged()"
+                            [disabled]="!editable()"
+                          ></textarea></label
+                        ><label
+                          >AI suggested wording · edit before accepting<textarea
+                            rows="5"
+                            [(ngModel)]="suggestion"
+                            [disabled]="!editable()"
+                          ></textarea>
+                        </label>
+                      </div>
+                      <p class="muted">
+                        Browser speech recognition depends on microphone permission and browser
+                        support. Load a seeded transcript to explore structured AI suggestions, or
+                        type your own transcript to preview a single-field draft. All responses in
+                        this demo are prepared locally.
+                      </p>
+                      <div class="actions">
+                        <button class="button" [disabled]="!editable()" (click)="suggest()">
+                          Generate AI wording</button
+                        ><button
+                          class="button primary"
+                          [disabled]="!editable() || !suggestion"
+                          (click)="acceptSuggestion()"
+                        >
+                          Accept edited wording</button
+                        ><button
+                          class="button"
+                          [disabled]="!suggestion"
+                          (click)="rejectSuggestion()"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                      @if (wordingProposals.length) {
+                        <div class="card-heading">
+                          <div>
+                            <h3>Structured care-plan suggestions</h3>
+                            <p>Compare each field, edit the wording and accept or reject it.</p>
+                          </div>
+                          <button
+                            class="button primary"
+                            [disabled]="!editable()"
+                            (click)="acceptAllWording()"
+                          >
+                            Accept all pending suggestions
+                          </button>
+                        </div>
+                        <div class="proposal-grid">
+                          @for (proposal of wordingProposals; track proposal.field) {
+                            <article class="proposal-card">
+                              <div class="card-heading">
+                                <h3>{{ proposal.label }}</h3>
+                                <span class="pill">{{ proposal.decision }}</span>
+                              </div>
+                              <details>
+                                <summary>Existing wording</summary>
+                                <p class="preserve">{{ proposal.existing || 'Not recorded' }}</p>
+                              </details>
+                              <label
+                                >AI suggested wording<textarea
+                                  rows="4"
+                                  [(ngModel)]="proposal.suggested"
+                                  [disabled]="!editable() || proposal.decision !== 'Pending'"
+                                ></textarea>
+                              </label>
+                              <p class="muted">{{ proposal.reason }}</p>
+                              <div class="actions">
+                                <button
+                                  class="button primary"
+                                  [disabled]="!editable() || proposal.decision !== 'Pending'"
+                                  (click)="decideWording(proposal, 'Accepted')"
+                                >
+                                  Accept / save edit</button
+                                ><button
+                                  class="button"
+                                  [disabled]="!editable() || proposal.decision !== 'Pending'"
+                                  (click)="decideWording(proposal, 'Rejected')"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </article>
+                          }
+                        </div>
+                      }
+                    </section>
+                  }
+                  @case ('Body chart') {
+                    <section class="plan-card">
+                      <h2>LQCS body chart</h2>
+                      <p>
+                        Select a location, then record the observation. Previous observations and
+                        changes remain in the record.
+                      </p>
+                      <div class="body-layout">
+                        <div>
+                          <div class="actions">
+                            <button
+                              class="button"
+                              [class.primary]="view === 'Front'"
+                              (click)="view = 'Front'"
+                            >
+                              Front</button
+                            ><button
+                              class="button"
+                              [class.primary]="view === 'Back'"
+                              (click)="view = 'Back'"
+                            >
+                              Back
+                            </button>
+                          </div>
+                          <div
+                            class="body-map"
+                            (click)="selectBody($event)"
+                            role="img"
+                            [attr.aria-label]="
+                              view +
+                              ' body chart. Enter location in the form as a keyboard alternative.'
+                            "
+                          >
+                            <svg viewBox="0 0 200 440" aria-hidden="true">
+                              <circle cx="100" cy="35" r="25" />
+                              <path
+                                d="M85 60 L83 78 Q56 78 48 106 L21 204 Q17 217 27 220 Q35 220 40 207 L67 130 L72 212 L60 397 Q59 416 72 416 Q82 416 84 400 L100 257 L116 400 Q118 416 128 416 Q141 416 140 397 L128 212 L133 130 L160 207 Q165 220 173 220 Q183 217 179 204 L152 106 Q144 78 117 78 L115 60 Z"
+                              />
+                              <path
+                                class="body-detail"
+                                [attr.d]="
+                                  view === 'Front'
+                                    ? 'M100 80 L100 208 M78 132 Q100 145 122 132 M82 202 Q100 212 118 202'
+                                    : 'M100 80 L100 218 M74 110 Q100 125 126 110'
+                                "
+                              />
+                            </svg>
+                            @for (b of p.body; track b.id) {
+                              @if (b.view === view) {
+                                <button
+                                  class="body-marker"
+                                  [style.left.%]="b.x"
+                                  [style.top.%]="b.y"
+                                  [attr.aria-label]="b.location + ': ' + b.status"
+                                  (click)="$event.stopPropagation(); editObservation(b)"
+                                >
+                                  {{ $index + 1 }}
+                                </button>
+                              }
+                            }
+                            <span class="body-caption">{{ view }} view</span>
+                          </div>
+                        </div>
+                        <fieldset [disabled]="!editable()">
+                          <label class="check"
+                            ><input type="checkbox" [(ngModel)]="photoConsent" /> Consent for
+                            care-record photography confirmed</label
+                          >
+                          <div class="form-grid">
+                            <label>Location<input [(ngModel)]="observation.location" /></label
+                            ><label
+                              >Type of injury / observation<input
+                                [(ngModel)]="observation.type" /></label
+                            ><label
+                              >Description<textarea
+                                [(ngModel)]="observation.description"
+                              ></textarea></label
+                            ><label>Size<input [(ngModel)]="observation.size" /></label
+                            ><label>Pain / score<input [(ngModel)]="observation.pain" /></label
+                            ><label
+                              >Date identified<input
+                                type="date"
+                                [(ngModel)]="observation.date" /></label
+                            ><label
+                              >Existing / new issue<select [(ngModel)]="observation.issue">
+                                <option>New</option>
+                                <option>Existing</option>
+                              </select></label
+                            ><label
+                              >Status<select [(ngModel)]="observation.status">
+                                <option>Open</option>
+                                <option>Monitoring</option>
+                                <option>Resolved</option>
+                              </select></label
+                            ><label
+                              >Action taken<textarea
+                                [(ngModel)]="observation.action"
+                              ></textarea></label
+                            ><label
+                              >Professional informed<input
+                                [(ngModel)]="observation.professional" /></label
+                            ><label
+                              >Related incident / risk assessment<input
+                                [(ngModel)]="observation.related" /></label
+                            ><label
+                              >Photograph · PNG / JPEG under 350 KB<input
+                                type="file"
+                                accept="image/png,image/jpeg"
+                                (change)="attachPhoto($event)"
+                            /></label>
+                          </div>
+                          @if (observation.photo) {
+                            <img
+                              class="observation-photo"
+                              [src]="observation.photo"
+                              alt="Attached body observation"
+                            />
+                          }
+                          <button class="button primary" (click)="saveObservation()">
+                            {{ observation.id ? 'Save observation update' : 'Add observation' }}
+                          </button>
+                        </fieldset>
+                      </div>
+                    </section>
+                    <section class="plan-card">
+                      <h2>Observation history</h2>
+                      @for (b of p.body; track b.id) {
+                        <article class="record-row">
+                          <div>
+                            <strong>{{ b.location }} · {{ b.type }}</strong>
+                            <p>{{ b.date }} · {{ b.status }} · {{ b.description }}</p>
+                            <details>
+                              <summary>{{ b.history.length }} history entries</summary>
+                              @for (h of b.history; track $index) {
+                                <p>{{ h.at | date: 'medium' }} · {{ h.by }}</p>
+                                <pre>{{ h.detail }}</pre>
+                              }
+                            </details>
+                          </div>
+                          <button class="button" (click)="editObservation(b)">View / update</button>
+                        </article>
+                      } @empty {
+                        <p>No body observations recorded.</p>
+                      }
+                    </section>
+                  }
+                  @case ('Assessments') {
+                    <section class="plan-card">
+                      <div class="card-heading">
+                        <div>
+                          <h2>Linked assessments</h2>
+                          <p>
+                            Recommend assessments where needs are identified. Completed findings
+                            feed into the linked care area.
+                          </p>
+                        </div>
+                        <button class="button" [disabled]="!editable()" (click)="recommend()">
+                          Recommend from needs
+                        </button>
+                      </div>
+                      @for (a of p.assessments; track a.id) {
+                        <article class="record-row">
+                          <div>
+                            <strong>{{ a.name }}</strong>
+                            <p>
+                              {{ a.section }} · {{ a.status }} · Review {{ a.review || 'not set' }}
+                            </p>
+                            <p>{{ a.findings }}</p>
+                          </div>
+                          <button class="button" (click)="editAssessment(a)">
+                            Open assessment
+                          </button>
+                        </article>
+                      } @empty {
+                        <p>
+                          No linked assessments. Recommend from recorded needs or add an assessment
+                          below.
+                        </p>
+                      }
+                    </section>
+                    <section class="plan-card">
+                      <div class="card-heading">
+                        <h2>{{ assessment.id ? 'Update assessment' : 'Add assessment' }}</h2>
+                        @if (id.startsWith('care-demo-')) {
+                          <button
+                            class="button"
+                            [disabled]="!editable()"
+                            (click)="loadAssessmentExample()"
+                          >
+                            Load seeded assessment example
+                          </button>
+                        }
+                      </div>
+                      <fieldset [disabled]="!editable()">
+                        <div class="form-grid">
+                          <label
+                            >Assessment<select
+                              [(ngModel)]="assessment.name"
+                              (ngModelChange)="assessmentTypeChanged()"
+                            >
+                              @for (name of assessmentNames; track name) {
+                                <option>{{ name }}</option>
+                              }
+                            </select></label
+                          ><label
+                            >Linked care area<select [(ngModel)]="assessment.section">
+                              @for (s of p.sections; track s.name) {
+                                <option>{{ s.name }}</option>
+                              }
+                            </select></label
+                          ><label
+                            >Findings<textarea [(ngModel)]="assessment.findings"></textarea></label
+                          ><label
+                            >Actions / escalation<textarea
+                              [(ngModel)]="assessment.action"
+                            ></textarea></label
+                          ><label
+                            >Review date<input type="date" [(ngModel)]="assessment.review" /></label
+                          ><label
+                            >Status<select [(ngModel)]="assessment.status">
+                              <option>Recommended</option>
+                              <option>In progress</option>
+                              <option>Completed</option>
+                            </select></label
+                          >
+                        </div>
+                        <h3>{{ assessment.name }} · structured assessment</h3>
+                        <div class="form-grid">
+                          @for (field of assessmentFields; track field[0]) {
+                            <label
+                              >{{ field[1]
+                              }}<textarea
+                                rows="3"
+                                [(ngModel)]="$any(assessment.fields)[field[0]]"
+                              ></textarea>
+                            </label>
+                          }
+                        </div>
+                        <button class="button primary" (click)="saveAssessment()">
+                          Save assessment and update care area
+                        </button>
+                      </fieldset>
+                    </section>
+                  }
+                  @case ('Quality review') {
+                    <section class="plan-card review-banner">
+                      <div class="card-heading">
+                        <div>
+                          <p class="eyebrow">AI REVIEW • FRONTEND DEMO</p>
+                          <h2>AI care-plan review and quality checking</h2>
+                          <p>
+                            Explore evidence selection, discrepancies and human review decisions.
+                          </p>
+                        </div>
+                        <button class="button primary" (click)="runReview()">Run AI review</button>
+                      </div>
+                      <p class="message">
+                        AI suggestion – management/supervisor review required. These are clearly
+                        identified fictional examples; no live AI request is sent.
+                      </p>
+                      <div class="review-metrics">
+                        <div>
+                          <strong>{{ reviewCount('Pending') }}</strong
+                          ><span>Awaiting review</span>
+                        </div>
+                        <div>
+                          <strong>{{ reviewCount('Accepted') }}</strong
+                          ><span>Accepted</span>
+                        </div>
+                        <div>
+                          <strong>{{ reviewCount('Rejected') }}</strong
+                          ><span>Rejected</span>
+                        </div>
+                        <div>
+                          <strong>{{ report.sources.length }}</strong
+                          ><span>Evidence records</span>
+                        </div>
+                      </div>
+                      <p class="muted" role="status">
+                        {{ reviewStatus }} · {{ report.generatedAt | date: 'medium' }}
+                      </p>
+                    </section>
+                    <section class="plan-card">
+                      <h2>Permitted linked evidence · seeded examples</h2>
+                      <p>
+                        Choose the evidence categories included in this demo review. Turning a
+                        category off excludes findings that depend on it.
+                      </p>
+                      <div class="evidence-options">
+                        @for (category of sourceCategories; track category) {
+                          <label class="check"
+                            ><input
+                              type="checkbox"
+                              [ngModel]="categoryEnabled(category)"
+                              (ngModelChange)="toggleSourceCategory(category, $event)"
+                            />{{ category }}</label
+                          >
+                        }
+                      </div>
+                      <details>
+                        <summary>Browse the fictional evidence records</summary>
+                        <div class="evidence-list">
+                          @for (source of report.sources; track source.id) {
+                            <button
+                              class="text-button"
+                              [disabled]="!source.enabled"
+                              (click)="openSource(source.id)"
+                            >
+                              {{ source.title }} · {{ source.date | date: 'dd MMM yyyy' }}
+                            </button>
+                          }
+                        </div>
+                      </details>
+                      @if (selectedSource; as source) {
+                        <article
+                          id="care-plan-source-preview"
+                          class="source-preview"
+                          aria-live="polite"
+                        >
+                          <div class="card-heading">
+                            <h3>{{ source.title }}</h3>
+                            <button class="text-button" (click)="selectedSource = undefined">
+                              Close evidence
+                            </button>
+                          </div>
+                          <p>
+                            {{ source.category }} · {{ source.date | date: 'dd MMM yyyy' }} ·
+                            {{ source.author }}
+                          </p>
+                          <p>{{ source.detail }}</p>
+                          <span class="pill">Fictional demo evidence</span>
+                        </article>
+                      }
+                    </section>
+                    <section class="plan-card">
+                      <div class="card-heading">
+                        <div>
+                          <h2>AI findings and proposed care-plan changes</h2>
+                          <p>
+                            Accepting applies edited wording to the draft only. Rejecting retains
+                            the current wording.
+                          </p>
+                        </div>
+                      </div>
+                      <div class="form-grid">
+                        <label
+                          >Severity<select [(ngModel)]="reviewSeverity">
+                            <option>All</option>
+                            <option>High</option>
+                            <option>Medium</option>
+                            <option>Low</option>
+                          </select></label
+                        ><label
+                          >Review status<select [(ngModel)]="reviewDecision">
+                            <option>All</option>
+                            <option>Pending</option>
+                            <option>Accepted</option>
+                            <option>Rejected</option>
+                          </select></label
+                        >
+                      </div>
+                      @for (finding of filteredFindings(); track finding.id) {
+                        <article class="finding-card" [attr.data-severity]="finding.severity">
+                          <div class="card-heading">
+                            <div>
+                              <span class="eyebrow">{{ finding.category }}</span>
+                              <h3>{{ finding.title }}</h3>
+                            </div>
+                            <div class="actions">
+                              <span class="pill">{{ finding.severity }}</span
+                              ><span class="pill">{{ finding.decision }}</span>
+                            </div>
+                          </div>
+                          <p>{{ finding.detail }}</p>
+                          <div class="actions">
+                            @for (sourceId of finding.sourceIds; track sourceId) {
+                              <button class="source-link" (click)="openSource(sourceId)">
+                                {{ sourceId }}
+                              </button>
+                            }
+                            <button class="text-button" (click)="openFindingArea(finding.section)">
+                              Open {{ finding.section }} →
+                            </button>
+                          </div>
+                          <div class="form-grid">
+                            <label
+                              >Suggested {{ finding.section }} wording<textarea
+                                rows="4"
+                                [(ngModel)]="finding.suggested"
+                                [disabled]="!editable() || finding.decision !== 'Pending'"
+                              ></textarea></label
+                            ><label
+                              >Reviewer rationale<textarea
+                                rows="4"
+                                [(ngModel)]="finding.rationale"
+                                [disabled]="!editable() || finding.decision !== 'Pending'"
+                                placeholder="Record why you accept, edit or reject this suggestion"
+                              ></textarea>
+                            </label>
+                          </div>
+                          <div class="actions">
+                            <button
+                              class="button primary"
+                              [disabled]="!editable() || finding.decision !== 'Pending'"
+                              (click)="decideFinding(finding, 'Accepted')"
+                            >
+                              Accept / apply edited suggestion</button
+                            ><button
+                              class="button"
+                              [disabled]="!editable() || finding.decision !== 'Pending'"
+                              (click)="decideFinding(finding, 'Rejected')"
+                            >
+                              Reject suggestion
+                            </button>
+                          </div>
+                        </article>
+                      } @empty {
+                        <p class="message">
+                          No demo findings match the selected evidence and filters. This does not
+                          establish clinical completeness.
+                        </p>
+                      }
+                    </section>
+                    <section class="plan-card">
+                      <h2>Checks against your current saved record</h2>
+                      <p class="message">AI suggestion – management/supervisor review required.</p>
+                      <p>
+                        Local checks compare care wording with linked incidents, risks and
+                        medication refusals, and flag missing fields, overdue reviews, incomplete
+                        assessments and actions. Professional judgement is required.
+                      </p>
+                      <ul class="findings">
+                        @for (issue of issues(); track $index) {
+                          <li><span class="material-symbols-outlined">warning</span>{{ issue }}</li>
+                        } @empty {
+                          <li>
+                            No issues found by the available checks. Confirm the linked evidence
+                            before submitting.
+                          </li>
+                        }
+                      </ul>
+                      <label
+                        >Review rationale / resolution of findings<textarea
+                          rows="5"
+                          [(ngModel)]="p.qualityReview"
+                          [disabled]="!editable()"
+                        ></textarea>
+                      </label>
+                      <p class="muted">
+                        These checks use the current device record. The AI panel above uses separate
+                        fictional evidence so you can explore every frontend review flow.
+                      </p>
+                      <div class="actions">
+                        <button class="button" (click)="openWorkspace('visit-notes')">
+                          Review visit evidence</button
+                        ><button class="button" (click)="openWorkspace('contacts')">
+                          Professional contacts</button
+                        ><button
+                          class="button primary"
+                          (click)="openWorkflowTab('Versions & approval')"
+                        >
+                          Continue to approval →
+                        </button>
+                      </div>
+                    </section>
+                  }
+                  @case ('Versions & approval') {
+                    <section class="plan-card">
+                      <h2>Versions and approval</h2>
+                      <label
+                        >Next care-plan review date<input
+                          type="date"
+                          [(ngModel)]="p.review"
+                          [disabled]="!editable()"
+                      /></label>
+                      <p>
+                        Approved care plans are preserved. A supervisor submits a draft and a
+                        different manager approves it.
+                      </p>
+                      <div class="table-scroll">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Version</th>
+                              <th>Status</th>
+                              <th>Author</th>
+                              <th>Approver</th>
+                              <th>Approved</th>
+                              <th></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (v of record?.versions; track v.id) {
+                              <tr>
+                                <td>v{{ v.version }}</td>
+                                <td>{{ v.status }}</td>
+                                <td>{{ v.author }}</td>
+                                <td>{{ v.approver || '—' }}</td>
+                                <td>{{ v.approvedAt ? (v.approvedAt | date: 'medium') : '—' }}</td>
+                                <td>
+                                  <button class="text-button" (click)="chooseVersion(v.id)">
+                                    Open version
+                                  </button>
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                      <div class="actions">
+                        @if (editable()) {
+                          <button class="button primary" (click)="save('submit')">
+                            Submit for management review
+                          </button>
+                        }
+                        @if (p.status === 'In review' && service.canApprove()) {
+                          <button class="button primary" (click)="save('approve')">
+                            Approve care plan</button
+                          ><label>Return reason<input [(ngModel)]="reason" /></label
+                          ><button class="button" (click)="save('return')">
+                            Return to supervisor
+                          </button>
+                        }
+                      </div>
+                    </section>
+                    <section class="plan-card">
+                      <h2>Changes and audit history</h2>
+                      @for (e of p.events; track $index) {
+                        <article class="audit-event">
+                          <strong>{{ e.action }} · {{ e.by }}</strong
+                          ><small>{{ e.at | date: 'medium' }}</small>
+                          <details>
+                            <summary>View recorded changes</summary>
+                            <pre>{{ e.detail }}</pre>
+                          </details>
+                        </article>
+                      } @empty {
+                        <p>No changes recorded for this draft.</p>
+                      }
+                    </section>
+                  }
+                }
+              }
+            </main>
+          </div>
+          @if (dirty() && !mobilityView && !personalCareView) {
+            <div class="save-bar">
+              <span>Unsaved changes · {{ p.status }}</span
+              ><button class="button" (click)="load(p.id)">Discard changes</button
+              ><button class="button primary" [disabled]="!editable()" (click)="save()">
+                Save draft
+              </button>
+            </div>
+          }
+        } @else {
+          <section class="plan-card empty-plan">
+            <span class="material-symbols-outlined">assignment_add</span>
+            <h2>Start the electronic care plan</h2>
+            <p>
+              Bring forward existing details, contacts, risks and care instructions. The original
+              record stays available.
+            </p>
+            <button class="button primary" [disabled]="!service.canEdit()" (click)="start()">
+              Create care-plan draft
+            </button>
+          </section>
+        }
+      </section>
+    }
+  </div>
+} @else {
+  <section class="plan-card">
+    <h1>Service user unavailable</h1>
+    <a routerLink="/manage/care-plans">Return to care plans</a>
+  </section>
+}

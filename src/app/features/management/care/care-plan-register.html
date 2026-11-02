@@ -1,0 +1,225 @@
+<section class="care-register module-page">
+  <header class="register-heading">
+    <div>
+      <p class="register-eyebrow">CARE DELIVERY / CARE PLANS</p>
+      <h1>Care plans</h1>
+      <p>A clear view of every person’s care, progress and next review.</p>
+    </div>
+    <a class="directory-link" routerLink="/manage/clients">
+      <span class="material-symbols-outlined" aria-hidden="true">group</span>
+      Service user directory
+      <span class="material-symbols-outlined" aria-hidden="true">arrow_outward</span>
+    </a>
+  </header>
+
+  <div class="register-metrics" aria-label="Care plan summary">
+    <button
+      class="register-metric"
+      data-card-tone="blue"
+      [class.selected]="status() === 'All'"
+      (click)="status.set('All')"
+      [attr.aria-pressed]="status() === 'All'"
+    >
+      <span class="metric-icon blue material-symbols-outlined" aria-hidden="true">assignment</span>
+      <span class="metric-copy"
+        ><span>Service users</span><strong>{{ rows().length }}</strong
+        ><small>In this workspace</small></span
+      >
+    </button>
+    <button
+      class="register-metric"
+      data-card-tone="orange"
+      [class.selected]="status() === 'In review'"
+      (click)="status.set('In review')"
+      [attr.aria-pressed]="status() === 'In review'"
+    >
+      <span class="metric-icon amber material-symbols-outlined" aria-hidden="true"
+        >rate_review</span
+      >
+      <span class="metric-copy"
+        ><span>Awaiting approval</span><strong>{{ awaiting() }}</strong
+        ><small>Pending review</small></span
+      >
+    </button>
+    <div class="register-metric" data-card-tone="green">
+      <span class="metric-icon green material-symbols-outlined" aria-hidden="true">verified</span>
+      <span class="metric-copy"
+        ><span>Approved plans</span><strong>{{ approved() }}</strong
+        ><small>On record</small></span
+      >
+    </div>
+    <button
+      class="register-metric"
+      data-card-tone="red"
+      [class.selected]="status() === 'Overdue'"
+      (click)="status.set('Overdue')"
+      [attr.aria-pressed]="status() === 'Overdue'"
+    >
+      <span class="metric-icon rose material-symbols-outlined" aria-hidden="true">event_busy</span>
+      <span class="metric-copy"
+        ><span>Overdue reviews</span><strong>{{ overdue() }}</strong
+        ><small>Action needed</small></span
+      >
+    </button>
+  </div>
+
+  <section class="register-panel" aria-labelledby="register-title">
+    <header class="register-panel-heading">
+      <div class="register-title-group">
+        <span class="register-title-icon material-symbols-outlined" aria-hidden="true"
+          >assignment</span
+        >
+        <h2 id="register-title">
+          Care plan register <span class="count-badge">{{ rows().length }}</span>
+        </h2>
+      </div>
+      <div class="register-toolbar">
+        <label class="register-search">
+          <span class="sr-only">Search service users</span>
+          <span class="material-symbols-outlined" aria-hidden="true">search</span>
+          <input
+            type="search"
+            placeholder="Search by name or client reference…"
+            [ngModel]="query()"
+            (ngModelChange)="query.set($event)"
+          />
+        </label>
+        <div class="register-filter-group">
+          <label class="register-status"
+            ><span class="material-symbols-outlined" aria-hidden="true">filter_list</span
+            ><span class="sr-only">Filter by status</span>
+            <select [ngModel]="status()" (ngModelChange)="status.set($event)">
+              <option value="All">All statuses</option>
+              <option>Draft</option>
+              <option>In review</option>
+              <option>Approved</option>
+              <option>Not started</option>
+              <option>Overdue</option>
+            </select>
+          </label>
+          @if (query() || status() !== 'All') {
+            <button class="clear-filters" (click)="resetFilters()">Clear filters</button>
+          }
+        </div>
+      </div>
+    </header>
+    <div
+      class="register-table-scroll"
+      tabindex="0"
+      role="region"
+      aria-label="Care plan register table"
+    >
+      <table class="register-table">
+        <caption class="sr-only">
+          Care plans, review dates and completion for each service user
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Service user</th>
+            <th scope="col">Care plan status</th>
+            <th scope="col">Review due</th>
+            <th scope="col">Care areas reviewed</th>
+            <th scope="col">Approved version</th>
+            <th scope="col"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of filtered(); track r.client.id; let i = $index) {
+            <tr>
+              <td>
+                <div class="register-person">
+                  <span class="person-avatar" [attr.data-tone]="i % 4" aria-hidden="true">{{
+                    initials(r.client.name)
+                  }}</span>
+                  <div>
+                    <a class="person-name" [routerLink]="['/manage/care-plans', r.client.id]">{{
+                      r.client.name
+                    }}</a
+                    ><span class="person-reference">{{ r.client.reference }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="status-badge" [attr.data-status]="r.current?.status || 'Not started'"
+                  ><span class="status-dot" aria-hidden="true"></span
+                  >{{ r.current?.status || 'Not started' }}</span
+                ><span class="cell-detail">{{
+                  r.current ? 'Working version ' + r.current.version : 'No care plan created'
+                }}</span>
+              </td>
+              <td>
+                <div class="review-date" [class.overdue]="r.overdue">
+                  <span class="material-symbols-outlined" aria-hidden="true">{{
+                    r.overdue ? 'event_busy' : 'calendar_today'
+                  }}</span
+                  >{{
+                    r.current?.review ? (r.current!.review | date: 'dd MMM yyyy') : 'Not scheduled'
+                  }}
+                </div>
+                <span class="cell-detail" [class.overdue-label]="r.overdue">{{
+                  r.overdue
+                    ? 'Review overdue'
+                    : r.current?.review
+                      ? 'Next planned review'
+                      : 'Set up a review date'
+                }}</span>
+              </td>
+              <td>
+                <div class="completion-label">
+                  <strong>{{ r.complete }}<span> / 17</span></strong
+                  ><span>{{ r.complete === 17 ? 'Complete' : 'Reviewed' }}</span>
+                </div>
+                <progress
+                  [value]="r.complete"
+                  max="17"
+                  [attr.aria-label]="r.complete + ' of 17 care areas reviewed for ' + r.client.name"
+                ></progress>
+              </td>
+              <td>
+                @if (r.approved) {
+                  <span class="approved-version"
+                    ><span class="material-symbols-outlined" aria-hidden="true">task_alt</span
+                    >Version {{ r.approved.version }}</span
+                  ><span class="cell-detail">Approved care record</span>
+                } @else {
+                  <span class="no-version">No approved version</span>
+                }
+              </td>
+              <td class="row-action">
+                <a
+                  class="open-plan"
+                  [class.start-plan]="!r.current"
+                  [routerLink]="['/manage/care-plans', r.client.id]"
+                  ><span>{{ r.current ? 'Open care plan' : 'Start care plan' }}</span
+                  ><span class="material-symbols-outlined" aria-hidden="true"
+                    >arrow_forward</span
+                  ></a
+                >
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6">
+                <div class="register-empty">
+                  <span class="material-symbols-outlined" aria-hidden="true">search_off</span>
+                  <h3>No care plans found</h3>
+                  <p>Try a different name, client reference or status.</p>
+                  <button class="directory-link" (click)="resetFilters()">Clear filters</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <footer class="register-footer">
+      <span
+        >Showing <strong>{{ filtered().length }}</strong> of
+        <strong>{{ rows().length }}</strong> service users</span
+      ><span class="register-footer-note"
+        ><span class="material-symbols-outlined" aria-hidden="true">info</span>Select a service user
+        to view their care plan</span
+      >
+    </footer>
+  </section>
+</section>

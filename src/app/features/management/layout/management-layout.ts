@@ -83,6 +83,13 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           users</a
         >
 
+        <a
+          routerLink="/manage/care-plans"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          (click)="menuOpen.set(false)"
+          ><span class="material-symbols-outlined" aria-hidden="true">assignment</span>Care Plans</a
+        >
         <button
           type="button"
           class="visits-submenu-toggle"
@@ -308,6 +315,7 @@ export class ManagementLayout {
   protected readonly mobile = toSignal(inject(BreakpointObserver).observe('(max-width: 1023px)'));
   protected readonly menuOpen = signal(false);
   protected readonly finance = FINANCE_AREAS;
+
   protected readonly visitsExpanded = signal(this.router.url.startsWith('/manage/rota'));
   protected readonly visitsLinks = [
     { path: '/manage/rota/overview', label: 'Overview', icon: 'dashboard' },

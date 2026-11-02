@@ -6,7 +6,9 @@ import {
   effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
+import { of } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -59,6 +61,13 @@ export class CareDocuments {
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
   });
+  private readonly routeQuery = toSignal(
+    this.route.queryParamMap || of(this.route.snapshot.queryParamMap),
+    {
+      initialValue: this.route.snapshot.queryParamMap,
+    },
+  );
+  private routeRequest = '';
   protected readonly id = computed(() => this.params().get('id') ?? '');
   protected readonly client = computed(() => this.care.client(this.id()));
   protected readonly documents = computed(() =>
@@ -173,6 +182,32 @@ export class CareDocuments {
     effect(() => {
       const p = this.preview();
       if (p && !this.documents().some((d) => d.id === this.previewDocumentId)) this.closePreview();
+    });
+    effect(() => {
+      const query = this.routeQuery();
+      const documentId = query?.get('document');
+      const create = query?.get('create') === '1';
+      if (!documentId && !create) {
+        this.routeRequest = '';
+        return;
+      }
+      const request = this.care.store.companyId() + ':' + this.id() + ':' + (documentId || 'new');
+      const document = documentId ? this.documents().find((d) => d.id === documentId) : undefined;
+      if (this.routeRequest === request || (documentId && !document)) return;
+      this.routeRequest = request;
+      untracked(() => {
+        if (this.editing() && !this.canLeave()) return;
+        if (create) {
+          this.open();
+          if (this.editing() && query?.get('section') === 'Mobility') {
+            this.metadata.description = 'Supporting document for the Mobility care-plan section.';
+            this.baseline = this.draftState();
+          }
+        } else if (document) {
+          this.selectedId.set(document.id);
+          void this.view(document);
+        }
+      });
     });
   }
   private previewDocumentId = '';

@@ -1,0 +1,344 @@
+:host {
+  display: block;
+  min-width: 0;
+  font-family: var(--font-sans, Lato, sans-serif);
+  color: #08165e;
+}
+.care-plan-identity {
+  padding: 10px 12px 4px;
+  background: #fff;
+}
+.header-back {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #0057ff;
+  text-decoration: none;
+  margin-bottom: 10px;
+}
+.header-back > .material-symbols-outlined {
+  font-size: 16px;
+}
+.identity-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 216px;
+  grid-template-areas: 'person actions current';
+  gap: 12px;
+  align-items: start;
+}
+.care-plan-person {
+  grid-area: person;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+.care-plan-photo,
+.care-plan-initials {
+  display: block;
+  width: 104px;
+  height: 96px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: #e8f0f8;
+}
+.care-plan-initials {
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  color: #0057ff;
+  font-weight: 700;
+}
+.person-details {
+  padding-top: 4px;
+  min-width: 0;
+}
+.care-plan-person-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+h1 {
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.7px;
+  margin: 0;
+  color: #08165e;
+}
+.identity-status,
+.plan-status {
+  display: inline-block;
+  border-radius: 4px;
+  background: #dcfce9;
+  color: #00833d;
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 700;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+.identity-status.inactive {
+  background: #f0f2f7;
+  color: #52637e;
+}
+.identity-facts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #243b91;
+  line-height: 1.5;
+}
+.identity-facts > span {
+  white-space: nowrap;
+}
+.client-reference {
+  border-left: 1px solid #8ea8e4;
+  padding-left: 12px;
+}
+.care-plan-address {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 7px 0 0;
+  color: #243b91;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.care-plan-address > .material-symbols-outlined {
+  font-size: 16px;
+  color: #08165e;
+  flex-shrink: 0;
+}
+.care-plan-header-actions {
+  grid-area: actions;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding-top: 0;
+}
+.care-plan-header-actions button,
+.care-plan-header-actions summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  border: 1px solid #bfd0ff;
+  border-radius: 4px;
+  padding: 5px 10px;
+  background: white;
+  color: #0057ff;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.care-plan-header-actions .material-symbols-outlined {
+  font-size: 16px;
+}
+.care-plan-header-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.header-more {
+  position: relative;
+}
+.header-more summary {
+  list-style: none;
+}
+.header-more summary::-webkit-details-marker {
+  display: none;
+}
+.more-actions {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 5px);
+  z-index: 5;
+  display: grid;
+  gap: 4px;
+  min-width: 170px;
+  padding: 6px;
+  border: 1px solid #dce6f8;
+  border-radius: 5px;
+  background: white;
+  box-shadow: 0 4px 15px #143d6020;
+}
+.more-actions button {
+  justify-content: flex-start;
+  border: 0;
+  text-align: left;
+}
+.care-plan-version {
+  grid-area: current;
+  box-sizing: border-box;
+  border: 1px solid #dfe9fa;
+  border-radius: 5px;
+  padding: 7px 11px;
+  background: linear-gradient(120deg, #fbfdff, #f7faff);
+  min-width: 0;
+}
+.care-plan-version h2 {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: -0.35px;
+  margin: 0 0 4px;
+  color: #08165e;
+}
+.care-plan-version h2 .material-symbols-outlined {
+  font-size: 16px;
+}
+.version-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.version-icon {
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  background: #e9f1ff;
+  color: #0057ff;
+  border-radius: 4px;
+  padding: 4px;
+}
+.version-identity strong {
+  font-size: 12px;
+  font-weight: 700;
+  color: #08165e;
+  white-space: nowrap;
+}
+.plan-status {
+  font-size: 10px;
+  padding: 3px 7px;
+  font-weight: 400;
+}
+.plan-status[data-status='Draft'],
+.plan-status[data-status='In review'] {
+  background: #fff4d6;
+  color: #946400;
+}
+.plan-status[data-status='Superseded'] {
+  background: #eef1f7;
+  color: #52637e;
+}
+.care-plan-version dl {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.care-plan-version dl > div {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 4px;
+  margin-top: 3px;
+}
+.care-plan-version dt {
+  color: #40558b;
+}
+.care-plan-version dd {
+  margin: 0;
+  color: #243b91;
+}
+button:focus-visible,
+summary:focus-visible,
+a:focus-visible {
+  outline: 2px solid #0057ff;
+  outline-offset: 2px;
+}
+@media (max-width: 1250px) {
+  .identity-grid {
+    grid-template-columns: minmax(0, 1fr) 216px;
+    grid-template-areas: 'person current' 'actions current';
+    gap: 4px 12px;
+  }
+  .care-plan-header-actions {
+    margin-left: 116px;
+  }
+  .identity-facts {
+    gap: 3px 9px;
+  }
+  .client-reference {
+    padding-left: 9px;
+  }
+}
+@media (max-width: 700px) {
+  .identity-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas: 'person' 'actions' 'current';
+  }
+  .care-plan-photo,
+  .care-plan-initials {
+    width: 80px;
+    height: 74px;
+  }
+  .care-plan-person {
+    gap: 10px;
+  }
+  .person-details {
+    padding-top: 0;
+  }
+  .care-plan-header-actions {
+    margin-left: 90px;
+    flex-wrap: wrap;
+  }
+  .care-plan-version {
+    width: min(100%, 320px);
+  }
+  .identity-facts {
+    margin-top: 6px;
+    gap: 3px 8px;
+  }
+  .client-reference {
+    border: 0;
+    padding: 0;
+  }
+  .identity-facts > span {
+    white-space: normal;
+  }
+  .care-plan-person-title {
+    gap: 7px;
+  }
+  .care-plan-identity {
+    padding: 10px 10px 4px;
+  }
+}
+@media print {
+  .header-back,
+  .care-plan-header-actions {
+    display: none;
+  }
+  .identity-grid {
+    grid-template-columns: minmax(0, 1fr) 216px;
+    grid-template-areas: 'person current';
+  }
+  .care-plan-identity {
+    padding: 0 0 10px;
+  }
+  .care-plan-version {
+    break-inside: avoid;
+  }
+  .care-plan-photo,
+  .care-plan-initials {
+    width: 104px;
+    height: 96px;
+  }
+}

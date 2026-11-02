@@ -1,0 +1,218 @@
+:host {
+  display: block;
+}
+.edit-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 10px;
+}
+.edit-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.edit-card-title h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+}
+.edit-card-title h3 > .material-symbols-outlined {
+  color: #0057ff;
+  font-size: 21px;
+}
+.edit-card-title button {
+  min-height: 26px;
+  padding: 3px 12px;
+  font-size: 11px;
+}
+.panel {
+  margin: 0;
+}
+.details-grid {
+  gap: 10px 12px;
+}
+.field-nhs {
+  grid-column: span 4;
+}
+.field-clientId {
+  grid-column: span 8;
+}
+.field-address {
+  grid-column: span 8;
+}
+.field-postcode {
+  grid-column: span 4;
+}
+.field-phone,
+.field-mobile,
+.field-email,
+.field-language {
+  grid-column: span 3;
+}
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+input:disabled,
+textarea:disabled {
+  background: #fbfcfe;
+  color: #243d66;
+}
+input[readonly] {
+  background: #fbfcfe;
+}
+.edit-photo-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.edit-photo-row img,
+.empty-photo {
+  width: 100px;
+  height: 112px;
+  object-fit: cover;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+.empty-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: #eaf2fc;
+  color: #5b7496;
+}
+.empty-photo .material-symbols-outlined {
+  font-size: 38px;
+}
+.edit-photo-row button {
+  margin: 0 8px 8px 0;
+}
+.edit-photo-row p {
+  font-size: 11px;
+}
+.photo-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+.contacts-card {
+  grid-column: 1/-1;
+}
+.contact-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+.contact-edit-grid article {
+  border: 1px solid #e2ebf5;
+  border-radius: 5px;
+  padding: 8px;
+}
+.contact-edit-grid h4 {
+  margin: 0;
+  font-size: 12px;
+}
+.contact-edit-grid .edit-card-title {
+  margin-bottom: 4px;
+}
+.contact-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.contacts-card > p {
+  margin-top: 8px;
+  font-size: 11px;
+}
+.narrative-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.narrative-edit-grid textarea {
+  min-height: 118px;
+}
+.narrative-edit-grid + .panel {
+  margin-top: 10px;
+}
+.review-summary {
+  grid-column: 1/-1;
+}
+.review-summary h4 {
+  margin: 10px 0 4px;
+}
+.review-summary p {
+  white-space: pre-wrap;
+}
+.edit-error {
+  border: 1px solid #efb9c2;
+  background: #fff0f3;
+  color: #a32038;
+  border-radius: 5px;
+  padding: 8px 10px;
+  margin: 0 0 10px;
+}
+.visibility > span {
+  flex: 1;
+}
+.visibility input {
+  margin-left: auto;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+details[open] summary {
+  margin-bottom: 10px;
+}
+@media (max-width: 1000px) {
+  .narrative-edit-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .edit-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .photo-facts {
+    grid-template-columns: 1fr;
+  }
+  .edit-photo-row {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 750px) {
+  .edit-grid,
+  .contact-edit-grid {
+    grid-template-columns: 1fr;
+  }
+  .photo-facts {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 500px) {
+  .narrative-edit-grid,
+  .photo-facts,
+  .contact-fields {
+    grid-template-columns: 1fr;
+  }
+  .details-grid > label {
+    grid-column: span 6;
+  }
+  .edit-card-title {
+    flex-wrap: wrap;
+  }
+}

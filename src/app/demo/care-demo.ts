@@ -1,3 +1,4 @@
+import { seedCarePlans } from './care-plan-demo';
 import { DEMO_WORKSPACES } from './system-demo-utils';
 import { installDemoImages } from './care-demo-images';
 import { seedCareProfiles } from './care-demo-profiles';
@@ -21,7 +22,7 @@ import {
 } from '../features/management/rota/rota.models';
 import { emptyEcm } from '../features/management/ecm/ecm.models';
 
-const VERSION = 2;
+const VERSION = 10;
 const PREFIX = 'care-demo-';
 const STAFF = [
   'Sarah Clarke',
@@ -195,7 +196,7 @@ function serviceUsers(today: string): RotaClient[] {
 export function seedCareDemo(data: WorkspaceData, today = londonDate()): WorkspaceData {
   if (data.careDemoVersion === VERSION) return data;
   if (data.careDemoVersion === 1)
-    return seedCareProfiles({ ...data, careDemoVersion: VERSION }, today);
+    return seedCarePlans(seedCareProfiles({ ...data, careDemoVersion: VERSION }, today), today);
   const start = addDays(today, -((new Date(today + 'T12:00:00Z').getUTCDay() + 6) % 7));
   const people = carers(today);
   const clients = serviceUsers(today);
@@ -346,7 +347,7 @@ export function seedCareDemo(data: WorkspaceData, today = londonDate()): Workspa
       },
     },
   };
-  return seedCareProfiles(seeded, today);
+  return seedCarePlans(seedCareProfiles(seeded, today), today);
 }
 
 const careInstallations = new WeakSet<Injector>();

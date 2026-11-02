@@ -1,0 +1,438 @@
+<section class="personal-care-card">
+  <div class="section-context">
+    <div>
+      <p>
+        <strong>Service User:</strong> {{ client().name }} <span>|</span> Care Plan Version:
+        <strong>{{ plan().version }} ({{ plan().status }})</strong>
+      </p>
+      <span class="section-progress"
+        ><span
+          class="progress-ring"
+          [style.--progress]="progress + '%'"
+          role="progressbar"
+          [attr.aria-valuenow]="completed()"
+          aria-valuemin="0"
+          [attr.aria-valuemax]="plan().sections.length"
+          aria-label="Care plan completion"
+          >{{ completed() }}/{{ plan().sections.length }}</span
+        >{{ completed() }} of {{ plan().sections.length }} sections completed</span
+      >
+    </div>
+    <nav aria-label="Personal Care section navigation">
+      <button (click)="action.emit('previous')">
+        <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Previous Section</button
+      ><button class="primary" (click)="action.emit('next')">
+        Next Section<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+      </button>
+    </nav>
+  </div>
+  <header class="personal-care-heading">
+    <span class="care-icon material-symbols-outlined" aria-hidden="true">volunteer_activism</span>
+    <div>
+      <h2>Personal Care</h2>
+      <p>
+        Record the service user's needs, support required and personal preferences for personal
+        care.
+      </p>
+    </div>
+    <div class="heading-actions">
+      <button
+        class="voice-button"
+        [disabled]="!editable()"
+        [attr.aria-pressed]="listening()"
+        (click)="toggleRecording()"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">mic</span
+        >{{ listening() ? 'Stop Recording' : 'Record by Voice' }}</button
+      ><button class="ai-button" [disabled]="!editable()" (click)="generate()">
+        <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>AI Suggest
+        Update</button
+      ><button [attr.aria-expanded]="historyOpen()" (click)="historyOpen.set(!historyOpen())">
+        <span class="material-symbols-outlined" aria-hidden="true">history</span>View History
+      </button>
+    </div>
+  </header>
+  @if (error()) {
+    <p class="notice error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p class="notice" role="status">{{ notice() }}</p>
+  }
+  @if (historyOpen()) {
+    <section class="history-panel">
+      <h3>Personal Care · Section History</h3>
+      @for (event of history; track $index) {
+        <article>
+          <strong>{{ event.action }} · {{ event.by }}</strong
+          ><small>{{ event.at | date: 'medium' }}</small>
+          <pre>{{ event.detail }}</pre>
+        </article>
+      } @empty {
+        <p>No section changes recorded for this version.</p>
+      }
+      @if (previous(); as previous) {
+        <details>
+          <summary>Previous approved wording</summary>
+          @for (field of careFields; track field[0]) {
+            <h4>{{ field[1] }}</h4>
+            <p>{{ previous.fields[field[0]] || 'Not recorded' }}</p>
+          }
+        </details>
+      }
+    </section>
+  }
+  <div class="personal-care-layout">
+    <div class="care-grid">
+      <section class="care-field situation">
+        <label for="personal-situation"
+          >Current situation with regard to my needs
+          @if (section.required) {
+            <span class="required">*</span>
+          }</label
+        ><textarea
+          id="personal-situation"
+          rows="6"
+          [disabled]="!editable()"
+          [ngModel]="section.fields['situation']"
+          (ngModelChange)="setField('situation', $event)"
+        ></textarea>
+      </section>
+      <section class="care-field assistance">
+        <h3>
+          What assistance is required?
+          @if (section.required) {
+            <span class="required">*</span>
+          }
+        </h3>
+        <fieldset [disabled]="!editable()">
+          @for (option of assistance; track option) {
+            <label class="option"
+              ><input
+                type="checkbox"
+                [ngModel]="selected('assistance', option)"
+                (ngModelChange)="toggle('assistance', option, $event)"
+              />{{ option }}</label
+            >
+          }
+          <details class="additional">
+            <summary>Additional assistance instructions</summary>
+            <textarea
+              rows="3"
+              aria-label="Additional assistance instructions"
+              [ngModel]="additional('assistance')"
+              (ngModelChange)="updateAdditional('assistance', $event)"
+            ></textarea>
+          </details>
+        </fieldset>
+      </section>
+      <section class="care-field equipment">
+        <h3>Equipment or aids required</h3>
+        <fieldset [disabled]="!editable()">
+          @for (option of equipment; track option) {
+            <label class="option"
+              ><input
+                type="checkbox"
+                [ngModel]="selected('equipment', option)"
+                (ngModelChange)="toggle('equipment', option, $event)"
+              />{{ option }}</label
+            >
+          }
+          <details class="additional">
+            <summary>Additional equipment instructions</summary>
+            <textarea
+              rows="3"
+              aria-label="Additional equipment instructions"
+              [ngModel]="additional('equipment')"
+              (ngModelChange)="updateAdditional('equipment', $event)"
+            ></textarea>
+          </details>
+        </fieldset>
+      </section>
+      <section class="care-field required-field">
+        <h3>Care plan required for this area? <span class="required">*</span></h3>
+        <fieldset class="radio-options" [disabled]="!editable()">
+          <label
+            ><input
+              type="radio"
+              name="personal-care-required"
+              [value]="true"
+              [ngModel]="section.required"
+              (ngModelChange)="setRequired($event)"
+            />Yes</label
+          ><label
+            ><input
+              type="radio"
+              name="personal-care-required"
+              [value]="false"
+              [ngModel]="section.required"
+              (ngModelChange)="setRequired($event)"
+            />No</label
+          >
+        </fieldset>
+      </section>
+      <section class="care-field preferences">
+        <label for="personal-preferences">My preferences, wishes and choices</label
+        ><textarea
+          id="personal-preferences"
+          rows="4"
+          [disabled]="!editable()"
+          [ngModel]="section.fields['preferences']"
+          (ngModelChange)="setField('preferences', $event)"
+        ></textarea>
+      </section>
+      <section class="care-field strengths">
+        <label for="personal-strengths">My strengths and independence</label
+        ><textarea
+          id="personal-strengths"
+          rows="4"
+          [disabled]="!editable()"
+          [ngModel]="section.fields['strengths']"
+          (ngModelChange)="setField('strengths', $event)"
+        ></textarea>
+      </section>
+      <section class="care-field risks">
+        <label for="personal-risks">Risks and escalation</label
+        ><textarea
+          id="personal-risks"
+          rows="5"
+          [disabled]="!editable()"
+          [ngModel]="section.fields['risks']"
+          (ngModelChange)="setField('risks', $event)"
+        ></textarea>
+      </section>
+      <section class="care-field goal">
+        <label for="personal-goal">Desired outcome / goal</label
+        ><textarea
+          id="personal-goal"
+          rows="5"
+          [disabled]="!editable()"
+          [ngModel]="section.fields['goal']"
+          (ngModelChange)="setField('goal', $event)"
+        ></textarea>
+      </section>
+      <section class="care-field actions">
+        <label for="personal-actions">How this will be achieved</label
+        ><textarea
+          id="personal-actions"
+          rows="5"
+          [disabled]="!editable()"
+          [ngModel]="section.fields['actions']"
+          (ngModelChange)="setField('actions', $event)"
+        ></textarea>
+      </section>
+      <section class="care-field review-date">
+        <label for="personal-last-review">Last review date</label
+        ><input
+          id="personal-last-review"
+          type="date"
+          [disabled]="!editable()"
+          [ngModel]="lastReview"
+          (ngModelChange)="setField('lastReview', $event)"
+        />
+        <details class="next-review">
+          <summary>Next review date</summary>
+          <input
+            type="date"
+            aria-label="Personal Care next review date"
+            [disabled]="!editable()"
+            [(ngModel)]="section.review"
+            (ngModelChange)="changed()"
+          />
+        </details>
+      </section>
+      <section class="care-field review-outcome">
+        <label for="personal-review-outcome">Review outcome</label
+        ><select
+          id="personal-review-outcome"
+          [disabled]="!editable()"
+          [ngModel]="outcome"
+          (ngModelChange)="setField('reviewOutcome', $event)"
+        >
+          @for (outcome of outcomes; track outcome) {
+            <option>{{ outcome }}</option>
+          }
+        </select>
+      </section>
+      <section class="care-field changes">
+        <label for="personal-changes">Changes since last review</label
+        ><textarea
+          id="personal-changes"
+          rows="2"
+          [disabled]="!editable()"
+          [ngModel]="section.fields['changes']"
+          (ngModelChange)="setField('changes', $event)"
+        ></textarea>
+      </section>
+    </div>
+    <aside class="care-sidebar" aria-label="Personal Care review tools">
+      <section class="ai-panel">
+        <header>
+          <h3>
+            <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>AI
+            Suggested Update <small>(from voice)</small>
+          </h3>
+        </header>
+        <div class="ai-content">
+          <p class="ai-target">Suggested field: Current situation · Seeded demo</p>
+          @if (proposalEditing()) {
+            <textarea
+              aria-label="Edit Personal Care AI suggestion"
+              rows="7"
+              [ngModel]="proposal()"
+              (ngModelChange)="updateProposal($event)"
+            ></textarea>
+          } @else {
+            <p class="suggested-wording">
+              {{ proposal() || 'Record or edit a transcript, then choose AI Suggest Update.' }}
+            </p>
+          }
+          @if (decision() !== 'Pending') {
+            <span class="decision" [attr.data-decision]="decision()" role="status">{{
+              decision()
+            }}</span>
+          }
+          <div class="proposal-actions">
+            <button
+              class="accept"
+              [disabled]="!editable() || decision() !== 'Pending' || !proposal().trim()"
+              (click)="accept()"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">check</span>Accept</button
+            ><button [disabled]="!editable()" (click)="editProposal()">
+              <span class="material-symbols-outlined" aria-hidden="true">edit</span
+              >{{ proposalEditing() ? 'Done' : 'Edit' }}</button
+            ><button
+              class="reject"
+              [disabled]="!editable() || !['Pending', 'Needs regeneration'].includes(decision())"
+              (click)="reject()"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">delete</span>Reject
+            </button>
+          </div>
+        </div>
+      </section>
+      <section class="transcript-panel">
+        <header>
+          <h3>Voice Transcript</h3>
+          <button
+            class="text-button"
+            [disabled]="!editable()"
+            (click)="transcriptEditing.set(!transcriptEditing())"
+          >
+            {{ transcriptEditing() ? 'Done' : 'Edit' }}
+          </button>
+        </header>
+        <div class="transcript-content">
+          <div class="player">
+            <button
+              class="play-button"
+              [disabled]="listening() || !transcript().trim()"
+              [attr.aria-label]="
+                playback() === 'playing' ? 'Pause transcript read-aloud' : 'Read transcript aloud'
+              "
+              (click)="togglePlayback()"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">{{
+                playback() === 'playing' ? 'pause' : 'play_arrow'
+              }}</span></button
+            ><input
+              type="range"
+              min="0"
+              [max]="duration"
+              step="1"
+              [value]="elapsed()"
+              aria-label="Transcript playback position"
+              (input)="seek($any($event.target).value)"
+            /><time>{{ time(elapsed()) }} / {{ time(duration) }}</time>
+          </div>
+          @if (transcriptEditing()) {
+            <textarea
+              aria-label="Personal Care voice transcript"
+              rows="5"
+              [disabled]="!editable()"
+              [ngModel]="transcript()"
+              (ngModelChange)="updateTranscript($event)"
+            ></textarea>
+          } @else {
+            <p class="transcript-wording">{{ transcript() || 'No transcript recorded.' }}</p>
+          }
+          <small>Read-aloud playback · estimated duration</small>
+          @if (listening()) {
+            <span class="recording" role="status">Recording…</span>
+          }
+        </div>
+      </section>
+      <section class="related-records">
+        <header>
+          <h3>
+            <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Related
+            Records
+          </h3>
+        </header>
+        <article>
+          <span class="related-icon skin material-symbols-outlined" aria-hidden="true"
+            >dermatology</span
+          >
+          <div>
+            <strong>Skin Assessment</strong
+            ><small>{{
+              skinAssessment
+                ? 'Review due: ' + (skinAssessment.review | date: 'dd/MM/yyyy')
+                : 'Not recorded'
+            }}</small>
+          </div>
+          <button (click)="action.emit('skin')">View</button>
+        </article>
+        <article>
+          <span class="related-icon body material-symbols-outlined" aria-hidden="true"
+            >accessibility_new</span
+          >
+          <div>
+            <strong>Body Chart</strong
+            ><small>{{ activeBody }} active observation{{ activeBody === 1 ? '' : 's' }}</small>
+          </div>
+          <button (click)="action.emit('body')">View</button>
+        </article>
+        <article>
+          <span class="related-icon incident material-symbols-outlined" aria-hidden="true"
+            >assignment_late</span
+          >
+          <div>
+            <strong>Incidents</strong
+            ><small
+              >{{ incidents.length }} related incident{{ incidents.length === 1 ? '' : 's' }}</small
+            >
+          </div>
+          <button (click)="action.emit('incidents')">View</button>
+        </article>
+      </section>
+    </aside>
+  </div>
+  <footer class="section-footer">
+    <details class="visibility">
+      <summary>Visibility settings (manager only)</summary>
+      <fieldset [disabled]="!editable() || !manager()">
+        @for (audience of audiences; track audience.key) {
+          <label
+            ><input
+              type="checkbox"
+              [(ngModel)]="section.visibility[audience.key]"
+              (ngModelChange)="changed()"
+            />Show to {{ audience.label }}</label
+          >
+        }
+      </fieldset>
+    </details>
+    <div>
+      @if (editable()) {
+        <button (click)="save(false)">
+          <span class="material-symbols-outlined" aria-hidden="true">save</span>Save as Draft</button
+        ><button class="primary" (click)="save(true)">
+          <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>Save Section
+        </button>
+      } @else {
+        <span class="read-only-label">{{ plan().status }} version · Read only</span>
+      }
+    </div>
+  </footer>
+</section>

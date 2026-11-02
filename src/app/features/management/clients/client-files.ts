@@ -59,7 +59,11 @@ export class ClientFiles {
   ngOnInit(): void {
     this.route.queryParamMap?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       if (!this.editing())
-        this.sectionKey.set(params.get('section') === 'plan' ? 'plan' : 'overview');
+        this.sectionKey.set(
+          this.sections.some((section) => section.key === params.get('section'))
+            ? params.get('section')!
+            : 'overview',
+        );
     });
     if (
       this.route.snapshot.queryParamMap.get('edit') === 'profile' &&
@@ -210,7 +214,11 @@ export class ClientFiles {
   protected readonly personalFields = PERSONAL_FIELDS;
   protected readonly riskFlags = RISK_FLAGS;
   protected readonly sectionKey = signal(
-    this.route.snapshot.queryParamMap.get('section') === 'plan' ? 'plan' : 'overview',
+    CLIENT_SECTIONS.some(
+      (section) => section.key === this.route.snapshot.queryParamMap.get('section'),
+    )
+      ? this.route.snapshot.queryParamMap.get('section')!
+      : 'overview',
   );
   protected readonly section = computed(() =>
     this.sections.find((s) => s.key === this.sectionKey())!,
@@ -307,6 +315,10 @@ export class ClientFiles {
   }
   protected selectWorkspaceSection(key: string): void {
     if (this.editing()) return;
+    if (key === 'plan') {
+      void this.router.navigate(['/manage/care-plans', this.client()!.id]);
+      return;
+    }
     this.setSection(key);
     void this.router.navigate([], {
       relativeTo: this.route,

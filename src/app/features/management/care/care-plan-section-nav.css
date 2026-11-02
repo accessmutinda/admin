@@ -1,0 +1,116 @@
+:host {
+  display: block;
+  min-width: 0;
+  align-self: start;
+  position: sticky;
+  top: var(--section-nav-top, 260px);
+}
+.section-navigation {
+  box-sizing: border-box;
+  border: 1px solid #e0e9f8;
+  border-radius: 5px;
+  background: white;
+  padding: 9px 7px;
+  color: #08165e;
+  font-family: var(--font-sans, Lato, sans-serif);
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--section-nav-top, 260px) - 12px);
+}
+h2 {
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 800;
+  letter-spacing: -0.35px;
+  margin: 0 2px 8px;
+}
+.section-list {
+  display: grid;
+  gap: 2px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  align-content: start;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #c3d3ee transparent;
+  position: relative;
+}
+button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  min-height: 34px;
+  width: 100%;
+  padding: 7px 7px 7px 9px;
+  border: 0;
+  border-left: 4px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #2b438c;
+  text-align: left;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+button:hover {
+  background: #f2f7ff;
+}
+button.selected {
+  background: linear-gradient(100deg, #e9f3ff, #dbe9ff);
+  border-left-color: #0057ff;
+  color: #0057ff;
+  font-weight: 700;
+}
+.section-label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.section-number {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 17px;
+  height: 17px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 10px;
+  line-height: 1;
+  flex-shrink: 0;
+  font-weight: 400;
+}
+.section-person {
+  width: 17px;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.section-chevron {
+  font-size: 16px;
+  color: #0057ff;
+  flex-shrink: 0;
+}
+button:focus-visible {
+  outline: 2px solid #0057ff;
+  outline-offset: -2px;
+}
+@media (max-width: 900px) {
+  :host,
+  .section-navigation {
+    position: static;
+  }
+  .section-navigation {
+    height: auto;
+  }
+  .section-list {
+    max-height: 210px;
+    flex: initial;
+  }
+}
+@media print {
+  :host {
+    display: none;
+  }
+}

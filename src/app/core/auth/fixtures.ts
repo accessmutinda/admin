@@ -41,6 +41,14 @@ export const DEMO_PORTAL_USERS: AppUser[] = [
   },
   {
     ...DEMO_USER,
+    id: 'demo-assigned-carer',
+    name: 'Sarah Clarke',
+    initials: 'SC',
+    email: 'sarah.clarke@example.test',
+    roleCode: 'CW',
+  },
+  {
+    ...DEMO_USER,
     id: 'demo-inspector',
     name: 'Demo Inspector',
     initials: 'DI',

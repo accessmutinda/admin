@@ -1,3 +1,4 @@
+import { approvedInstructions } from './care-plan.models';
 import {
   DocumentMetadata,
   documentMetadata,
@@ -230,11 +231,22 @@ export class CareService {
       this.auth.currentUser()?.roleCode !== 'IN' &&
       this.hasVisitNoteStaffIdentity(),
   );
+  private canManageCarePlanDisclosure(): boolean {
+    return (
+      this.rota.can('manage') &&
+      ['PO', 'CA', 'RM'].includes(this.auth.currentUser()?.roleCode || '')
+    );
+  }
   documents(id: string): CareDocument[] {
     if (!this.hasVisitNoteStaffIdentity()) return [];
-    const documents = this.client(id)?.file?.documents ?? [];
-    if (this.canManageDocuments()) return documents;
     const audience = this.auth.currentUser()?.roleCode === 'IN' ? 'inspector' : 'staff';
+    const documents = (this.client(id)?.file?.documents ?? []).filter(
+      (document) =>
+        !document.id.startsWith('care-plan-pdf-') ||
+        ['PO', 'CA', 'RM', 'CC', 'FS'].includes(this.auth.currentUser()?.roleCode || '') ||
+        documentVisibility(document)[audience],
+    );
+    if (this.canManageDocuments()) return documents;
     return documents
       .filter((document) => documentVisibility(document)[audience])
       .map(sharedDocument);
@@ -285,6 +297,12 @@ export class CareService {
         const document = file.documents?.find((d) => d.id === documentId);
         if (!document || (revision !== undefined && (document.revision ?? 1) !== revision))
           return 'This document changed. Refresh it and try again.';
+        if (
+          (document.category.toLowerCase() === 'care plan' ||
+            document.id.startsWith('care-plan-pdf-')) &&
+          !this.canManageCarePlanDisclosure()
+        )
+          return 'Senior management permission is required to change care-plan document disclosure.';
         if (!['staff', 'family', 'inspector'].includes(audience) || typeof value !== 'boolean')
           return 'Choose a valid audience.';
         document.revisions = [...(document.revisions ?? []), documentRevision(document)];
@@ -296,6 +314,54 @@ export class CareService {
         return null;
       },
     );
+  }
+  saveLinkedClientEntry(
+    id: string,
+    workspace: string,
+    key: 'risks' | 'incidents' | 'complaints' | 'feedback',
+    entry: import('../clients/client-file.models').ClientEntry,
+    version: string,
+  ): string | null {
+    if (!['PO', 'CA', 'RM', 'CC', 'FS'].includes(this.auth.currentUser()?.roleCode || ''))
+      return 'Care management permission is required.';
+    return this.change(
+      id,
+      workspace,
+      'Service-user linked record saved',
+      `${key}: ${entry.name}`,
+      (file) => {
+        if (
+          !['risks', 'incidents', 'complaints', 'feedback'].includes(key) ||
+          !entry.name.trim() ||
+          !entry.detail.trim() ||
+          !validDate(entry.date) ||
+          !['Low', 'Medium', 'High'].includes(entry.level) ||
+          !['Active', 'Completed', 'Inactive'].includes(entry.status)
+        )
+          return 'Enter a title, details, valid date, risk level and status.';
+        const saved = { ...structuredClone(entry), id: entry.id || crypto.randomUUID() };
+        file.entries[key] = [...(file.entries[key] || []).filter((r) => r.id !== saved.id), saved];
+        return null;
+      },
+      'manage',
+      version,
+    );
+  }
+  saveCarePlanRecord(
+    id: string,
+    workspace: string,
+    record: import('./care-plan.models').CarePlanRecord,
+    revision: number | undefined,
+    action: string,
+  ): string | null {
+    if (!['PO', 'CA', 'RM', 'CC', 'FS'].includes(this.auth.currentUser()?.roleCode || ''))
+      return 'Care management permission is required.';
+    return this.change(id, workspace, action, `Revision ${record.revision}`, (file) => {
+      if (file.carePlan?.revision !== revision)
+        return 'This care plan changed. Reload before saving.';
+      file.carePlan = structuredClone(record);
+      return null;
+    });
   }
   private change(
     id: string,
@@ -556,6 +622,13 @@ export class CareService {
         document.size > 5 * 1024 * 1024
       )
         return 'Choose a nonempty document up to 5 MB.';
+      if (
+        (document.category.toLowerCase() === 'care plan' ||
+          document.id.startsWith('care-plan-pdf-')) &&
+        !this.canManageCarePlanDisclosure() &&
+        Object.values(documentVisibility(document)).some(Boolean)
+      )
+        return 'Senior management permission is required to disclose a care-plan document.';
       const error = documentMetadataError(documentMetadata(document));
       if (error) return error;
       if (
@@ -728,7 +801,19 @@ export class CareService {
       access,
       photoConsent: fullPreview || file.sections['consent']?.['photo'] === 'Agreed',
       plan: access.scopes.includes('Care plan')
-        ? { details: file.sections['plan'] ?? {}, goals: file.entries['plan'] ?? [] }
+        ? file.carePlan
+          ? {
+              structured: true,
+              details: {} as Record<string, string>,
+              goals: [] as import('../clients/client-file.models').ClientEntry[],
+              sections: approvedInstructions(client, 'family'),
+            }
+          : {
+              structured: false,
+              details: file.sections['plan'] ?? {},
+              goals: file.entries['plan'] ?? [],
+              sections: [],
+            }
         : null,
       medication: access.scopes.includes('Medication')
         ? (file.medications ?? []).map((m) => ({
@@ -824,6 +909,12 @@ export class CareService {
         : null,
       documents: access.scopes.includes('Documents')
         ? (file.documents ?? [])
+            .filter(
+              (d) =>
+                !d.id.startsWith('care-plan-pdf-') ||
+                !fullPreview ||
+                ['PO', 'CA', 'RM', 'CC', 'FS'].includes(this.auth.currentUser()?.roleCode || ''),
+            )
             .filter(
               (d) => (fullPreview || documentVisibility(d).family) && !d.mime.startsWith('image/'),
             )

@@ -1,3 +1,6 @@
+import { ApprovedCareInstructions } from '../care/approved-care-instructions';
+import { CareService } from '../care/care.service';
+import { computed } from '@angular/core';
 import { Component, DestroyRef, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
@@ -19,128 +22,131 @@ interface Recognition {
 }
 @Component({
   selector: 'cv-visit-evidence',
-  imports: [FormsModule, MatSelectModule, CvSelect],
-  template: ` <form (ngSubmit)="save()" novalidate>
-    <div class="panel-body form-grid">
-      <p class="full-width">
-        Demo capture · use sample details. Nothing is sent to a care service or saved to a phone
-        gallery by this page.
-      </p>
-      @if (error()) {
-        <p class="ecm-error full-width" role="alert">{{ error() }}</p>
-      }
-      <label class="full-width"
-        >Evidence type<mat-select
-          cvSelect
-          name="type"
-          aria-label="Evidence type"
-          [(ngModel)]="type"
+  imports: [ApprovedCareInstructions, FormsModule, MatSelectModule, CvSelect],
+  template: ` @if (careVisit(); as visit) {
+      <cv-approved-care-instructions [clientId]="visit.clientId" [visitId]="visit.id" />
+    }
+    <form (ngSubmit)="save()" novalidate>
+      <div class="panel-body form-grid">
+        <p class="full-width">
+          Demo capture · use sample details. Nothing is sent to a care service or saved to a phone
+          gallery by this page.
+        </p>
+        @if (error()) {
+          <p class="ecm-error full-width" role="alert">{{ error() }}</p>
+        }
+        <label class="full-width"
+          >Evidence type<mat-select
+            cvSelect
+            name="type"
+            aria-label="Evidence type"
+            [(ngModel)]="type"
+          >
+            @for (t of types; track t) {
+              <mat-option [value]="t">{{ t }}</mat-option>
+            }
+          </mat-select></label
         >
-          @for (t of types; track t) {
-            <mat-option [value]="t">{{ t }}</mat-option>
-          }
-        </mat-select></label
-      >
-      <div class="row full-width evidence-actions">
-        <button type="button" class="button" (click)="startCamera()">Take photo</button
-        ><button type="button" class="button" (click)="samplePhoto()">Use sample photo</button
-        ><button type="button" class="button" (click)="recording() ? stopVoice() : startVoice()">
-          {{ recording() ? 'Stop recording' : 'Record voice note' }}</button
-        ><button type="button" class="button" (click)="dictating() ? stopDictation() : dictate()">
-          {{ dictating() ? 'Stop dictation' : 'Speech-to-text' }}</button
+        <div class="row full-width evidence-actions">
+          <button type="button" class="button" (click)="startCamera()">Take photo</button
+          ><button type="button" class="button" (click)="samplePhoto()">Use sample photo</button
+          ><button type="button" class="button" (click)="recording() ? stopVoice() : startVoice()">
+            {{ recording() ? 'Stop recording' : 'Record voice note' }}</button
+          ><button type="button" class="button" (click)="dictating() ? stopDictation() : dictate()">
+            {{ dictating() ? 'Stop dictation' : 'Speech-to-text' }}</button
+          ><button
+            type="button"
+            class="button"
+            (click)="
+              note =
+                'Sample note: Breakfast prepared, medication prompt given and wellbeing checked. No concerns observed.'
+            "
+          >
+            Insert demo transcript
+          </button>
+        </div>
+        @if (camera()) {
+          <div class="full-width evidence-camera">
+            <video
+              [srcObject]="camera()"
+              autoplay
+              playsinline
+              muted
+              aria-label="Camera preview"
+            ></video>
+            <div class="row">
+              <button type="button" class="button primary" (click)="capture()">Capture photo</button
+              ><button type="button" class="button" (click)="stopCamera()">Cancel camera</button>
+            </div>
+          </div>
+        }
+        <label class="full-width"
+          >Upload sample photo (optional, up to 500 KB)<input
+            #fileInput
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            (change)="upload($event)"
+        /></label>
+        @if (photo()) {
+          <div class="full-width">
+            <img
+              class="evidence-preview"
+              [src]="photo()"
+              alt="Photo awaiting evidence submission"
+            /><button
+              class="button"
+              type="button"
+              (click)="photo.set(''); photoName = ''; fileInput.value = ''"
+            >
+              Remove photo
+            </button>
+          </div>
+        }
+        @if (recording()) {
+          <p class="full-width" role="status">Recording voice note · maximum 60 seconds</p>
+        }
+        @if (audio()) {
+          <div class="full-width">
+            <audio controls [src]="audio()" aria-label="Voice note awaiting submission"></audio
+            ><button type="button" class="button" (click)="audio.set(''); audioName = ''">
+              Remove recording
+            </button>
+          </div>
+        }
+        <label class="full-width"
+          >Care note / reviewed transcript (required)<textarea
+            name="note"
+            rows="4"
+            [(ngModel)]="note"
+            required
+          ></textarea>
+        </label>
+        <p class="full-width">
+          Review dictation before saving. Browser speech-to-text may use its provider; demo
+          transcript works without microphone access.
+        </p>
+        <label class="check-label full-width"
+          ><input type="checkbox" name="consent" [(ngModel)]="consent" />Consent, care-plan
+          permission and a necessary purpose confirmed for this photo</label
+        >
+        @if (type !== 'Care note') {
+          <p class="full-width">
+            This concern creates a manager review case. Sensitive photos stay hidden from
+            non-manager roles in this demo.
+          </p>
+        }
+      </div>
+      <div class="form-footer">
+        <button type="button" class="button" (click)="cancelled.emit()">Cancel</button
         ><button
-          type="button"
-          class="button"
-          (click)="
-            note =
-              'Sample note: Breakfast prepared, medication prompt given and wellbeing checked. No concerns observed.'
-          "
+          class="button primary"
+          type="submit"
+          [disabled]="busy() || recording() || dictating()"
         >
-          Insert demo transcript
+          {{ busy() ? 'Preparing evidence…' : 'Review and submit' }}
         </button>
       </div>
-      @if (camera()) {
-        <div class="full-width evidence-camera">
-          <video
-            [srcObject]="camera()"
-            autoplay
-            playsinline
-            muted
-            aria-label="Camera preview"
-          ></video>
-          <div class="row">
-            <button type="button" class="button primary" (click)="capture()">Capture photo</button
-            ><button type="button" class="button" (click)="stopCamera()">Cancel camera</button>
-          </div>
-        </div>
-      }
-      <label class="full-width"
-        >Upload sample photo (optional, up to 500 KB)<input
-          #fileInput
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          (change)="upload($event)"
-      /></label>
-      @if (photo()) {
-        <div class="full-width">
-          <img
-            class="evidence-preview"
-            [src]="photo()"
-            alt="Photo awaiting evidence submission"
-          /><button
-            class="button"
-            type="button"
-            (click)="photo.set(''); photoName = ''; fileInput.value = ''"
-          >
-            Remove photo
-          </button>
-        </div>
-      }
-      @if (recording()) {
-        <p class="full-width" role="status">Recording voice note · maximum 60 seconds</p>
-      }
-      @if (audio()) {
-        <div class="full-width">
-          <audio controls [src]="audio()" aria-label="Voice note awaiting submission"></audio
-          ><button type="button" class="button" (click)="audio.set(''); audioName = ''">
-            Remove recording
-          </button>
-        </div>
-      }
-      <label class="full-width"
-        >Care note / reviewed transcript (required)<textarea
-          name="note"
-          rows="4"
-          [(ngModel)]="note"
-          required
-        ></textarea>
-      </label>
-      <p class="full-width">
-        Review dictation before saving. Browser speech-to-text may use its provider; demo transcript
-        works without microphone access.
-      </p>
-      <label class="check-label full-width"
-        ><input type="checkbox" name="consent" [(ngModel)]="consent" />Consent, care-plan permission
-        and a necessary purpose confirmed for this photo</label
-      >
-      @if (type !== 'Care note') {
-        <p class="full-width">
-          This concern creates a manager review case. Sensitive photos stay hidden from non-manager
-          roles in this demo.
-        </p>
-      }
-    </div>
-    <div class="form-footer">
-      <button type="button" class="button" (click)="cancelled.emit()">Cancel</button
-      ><button
-        class="button primary"
-        type="submit"
-        [disabled]="busy() || recording() || dictating()"
-      >
-        {{ busy() ? 'Preparing evidence…' : 'Review and submit' }}
-      </button>
-    </div>
-  </form>`,
+    </form>`,
   styles: [
     `
       :host {
@@ -174,6 +180,10 @@ interface Recognition {
   ],
 })
 export class VisitEvidence {
+  private readonly care = inject(CareService);
+  protected readonly careVisit = computed(() =>
+    this.care.rota.data().visits.find((v) => v.id === this.visitId()),
+  );
   readonly visitId = input.required<string>();
   readonly saved = output<void>();
   readonly cancelled = output<void>();

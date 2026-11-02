@@ -12,6 +12,7 @@ with records isolated by workspace.
 ## Care delivery workspaces
 
 - **Service users** (`/manage/clients`): searchable table/card directory with compact filters and eight records per page, profile photographs, clinical information, capacity/LPA, support preferences, contacts and care-plan summaries.
+- **Electronic care plans** (`/manage/care-plans`, `/manage/care-plans/:id`): brought-forward details, participation/capacity, 17 LQCS care areas, call-package recommendations, voice transcript review, body observations, linked assessment findings, quality checks, independent approval, version history and formal PDF downloads. Fictional sample plans include approved, draft and submitted versions. Approved instructions feed visit/evidence, family and inspector views according to disclosure settings. Browser transcription depends on browser support. The AI drafting and quality-review frontends include seeded responses, evidence selection, structured suggestions, reviewer rationale, accept/edit/reject decisions and saved audit history. All nine linked assessment types have structured fields and fictional examples; live provider connections remain separate from this frontend demo.
 - **Medication & MAR** (`/manage/clients/:id/medication`): prescriptions, PRN protocols, standard/controlled weekly and monthly MAR, stock, recorded outcomes and audited corrections. Historical medication notes remain in the profile.
 - **Visits & Rota** (`/manage/rota`): a home screen with current-week stats, view cards, quick actions and upcoming cover gaps, drafts and conflicts. Schedule, call packages, publishing and history share the same records. The schedule supports staff and service-user calendars, reviewed automatic suggestions, atomic bulk allocation, CSV/Excel export and print/Save PDF.
 - **Live Visits / ECM** (`/manage/ecm`): a separate sidebar destination and home-screen card for attendance, running visits, delays and missed calls.
@@ -107,3 +108,71 @@ by Git.
 | Email    | `jane.doe@lqcs.co.uk` |
 | Password | `CareVerity123!`      |
 | MFA code | `123456`              |
+
+### Care-plan frontend walkthrough
+
+Open `/manage/care-plans` to search the care-plan register and open a service user’s workspace.
+The register uses compact branded summary cards and a combined title, search and status toolbar.
+Select **London Quality Care Services** after sign-in. Use `admin@example.test` for editing,
+`manager@example.test` for independent approval, and `sarah.clarke@example.test` for assigned
+carer views. These demo accounts use `CareVerity123!` and MFA `123456`. Jane Doe is a care-worker
+account and does not open the management editor.
+
+Mary Wilson (`care-demo-client-1`) has the editable example; Arthur Bennett
+(`care-demo-client-0`) provides the submitted approval example; Dorothy Clarke
+(`care-demo-client-3`) provides the approved/PDF example. The seed upgrade preserves
+existing approved versions and edited wording. AI examples are visibly labelled Demo mode.
+The full page/flow guide is `../deliverables/care-plan-frontend-guide.txt`.
+
+### Dedicated care-plan workspace
+
+**Fixed identity header:** all individual care-plan pages use
+`CarePlanIdentityHeader`, matching `Care Plan Dashboard Overview-3.png`. The
+rectangular portrait, person details, Print/Share/More controls and right-hand
+Current Care Plan card must remain the same across modules, care areas and edit
+mode. Future screen references must not introduce another header variant unless
+the user explicitly asks. This supersedes the earlier Overview/Mobility banners.
+
+
+**Open care plan** opens `/manage/care-plans/:id` within Care Plans. The person/photo/version
+summary remains sticky. Main navigation contains only Overview, Care Plan, Assessments,
+Body Chart, Quality Review and Review History. Service User destinations are links in
+Overview, not care-plan navigation tabs. The former More destinations are direct tabs. The 17 care areas now appear in a **left-hand Care Plan Sections panel** only
+while Care Plan is selected. Nutrition & Hydration through Call Package display dedicated
+Coming soon panels while those screens are in development. The header Back action returns
+to the previous screen, with the register as a fallback for direct entry.
+The panel has its own scrolling and vertical keyboard
+navigation. Main care-plan modules retain their horizontal navigation.
+
+About Me has a separate **Edit About Me** screen using `CarePlanEditLayout`, the shared
+pattern for future editors. Its three steps cover existing data only: Personal Details,
+About Me, and Review & Visibility. The edit stepper replaces care-area subtabs while editing.
+Click Edit on a card to unlock it, Confirm All to review the current step, Save Changes to
+persist the snapshot, or Cancel to retain saved data. Unsaved edits are guarded for both
+source navigation and same-route navigation to Review History.
+
+Patient-record management stays under Service Users: Medication/MAR, Visits/Allocation,
+Visit Notes, Documents, Contacts, Family Access, risk records, Incidents/Complaints and
+Reviews/Feedback. Care Plans provides source-record links and planning summaries, not
+embedded copies of these editors. Unsaved care-plan changes are guarded when opening a
+Service User record and retained while switching between care-plan tabs.
+
+The care-plan Overview follows `Care Plan Management Dashboard-1.png`, including
+four top cards, care package/contact/activity panels and all 17 progress links.
+Its seeded Mary Wilson example demonstrates each progress state. Start/Continue
+Review reuses an existing draft, even after viewing the approved version. Create
+Incident/Compliment/Complaint opens the corresponding source form under Service
+Users. Print uses the browser print layout; Share copies the Overview link.
+
+**Care Plan → Mobility** now has a dedicated Dashboard-6 reference screen, including
+formatted fields, review metadata, a seeded AI review-note action, source supporting
+PDFs, linked assessment/risk/incident records and separate Save as Draft/Save Section
+controls. Its header shows plan metadata and recorded Key Information. Documents
+and incidents open their existing source viewers/editors under Service Users.
+
+**Care Plan → Personal Care** uses Dashboard-8's grid/sidebar layout and Dashboard-4's
+colours. It includes assistance/equipment checkboxes, all care narrative/review fields,
+AI Edit/Accept/Reject, recording/manual transcript entry and transcript read-aloud.
+It preserves the fixed header, approved versions and existing custom instructions.
+Related incidents open filtered Service User records; Save Section completes only
+the working draft area after validation. See the Personal Care checklist in deliverables.

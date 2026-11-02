@@ -85,7 +85,7 @@ describe('Care demonstration data', () => {
       expect(file.administrations!.every((record) => Date.parse(record.at) <= Date.now())).toBe(
         true,
       );
-      expect(file.documents).toHaveLength(3);
+      expect(file.documents).toHaveLength(5);
       expect(atob(file.documents![0].data.split(',')[1]).startsWith('%PDF-1.4')).toBe(true);
       expect(file.contacts!.some((contact) => contact.type === 'GP')).toBe(true);
       expect(file.contacts!.some((contact) => contact.type === 'Pharmacy')).toBe(true);
@@ -107,7 +107,7 @@ describe('Care demonstration data', () => {
     client.file!.medications![0].notes = 'User-edited medication note';
     const visits = previous.rota!.visits;
     const upgraded = seedCareDemo(previous, '2026-10-25');
-    expect(upgraded.careDemoVersion).toBe(2);
+    expect(upgraded.careDemoVersion).toBe(10);
     expect(upgraded.rota!.visits).toBe(visits);
     expect(upgraded.rota!.clients[0].name).toBe('Edited name');
     expect(upgraded.rota!.clients[0].file!.sections['capacity']['welfareLpa']).toBe(
@@ -118,5 +118,46 @@ describe('Care demonstration data', () => {
     );
     expect(upgraded.rota!.clients[0].file!.medications).toHaveLength(4);
     expect(seedCareDemo(upgraded, '2026-10-25')).toBe(upgraded);
+  });
+  it('seeds Overview progress states and professional contacts without changing approved wording', () => {
+    const data = seedCareDemo(workspace(), '2026-10-25');
+    const mary = data.rota!.clients.find((c) => c.id === 'care-demo-client-1')!;
+    const draft = mary.file!.carePlan!.versions.find((v) => v.status === 'Draft')!;
+    const approved = mary.file!.carePlan!.versions.find((v) => v.status === 'Approved')!;
+    expect(draft.sections[4].complete).toBe(false);
+    expect(draft.sections[4].fields['changes']).toContain('review in progress');
+    expect(draft.sections[9].complete).toBe(false);
+    expect(draft.sections[9].fields).toEqual(approved.sections[9].fields);
+    expect(approved.sections.every((s) => s.complete)).toBe(true);
+    expect(mary.file!.contacts!.some((c) => c.relationship === 'Social Worker')).toBe(true);
+    expect(seedCareDemo(data, '2026-10-25')).toBe(data);
+  });
+  it('seeds Personal Care options/transcript while preserving approved versions and later user edits', () => {
+    const first = seedCareDemo(workspace(), '2026-10-25');
+    const mary = first.rota!.clients.find((client) => client.id === 'care-demo-client-1')!;
+    const draft = mary.file!.carePlan!.versions.find((version) => version.status === 'Draft')!;
+    const approved = mary.file!.carePlan!.versions.find(
+      (version) => version.status === 'Approved',
+    )!;
+    expect(draft.sections[1].fields['assistance']).toContain('Prompting and encouragement');
+    expect(draft.sections[1].fields['equipment']).toContain('Shower chair');
+    expect(draft.sections[1].fields['personalVoiceTranscript']).toBeTruthy();
+    expect(approved.sections[1].fields['personalCareSeed']).toBeUndefined();
+    first.careDemoVersion = 9;
+    draft.sections[1].fields['assistance'] = 'User-recorded care assistance';
+    draft.events.push({
+      at: '2026-10-25T12:00:00Z',
+      by: 'Manager',
+      action: 'save',
+      detail: 'Personal Care updated',
+    });
+    const upgraded = seedCareDemo(first, '2026-10-25');
+    expect(
+      upgraded
+        .rota!.clients.find((client) => client.id === mary.id)!
+        .file!.carePlan!.versions.find((version) => version.id === draft.id)!.sections[1].fields[
+        'assistance'
+      ],
+    ).toBe('User-recorded care assistance');
   });
 });

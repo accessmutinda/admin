@@ -497,7 +497,7 @@
                 }
               </div>
               <p>{{ v.address }}</p>
-              <p>{{ v.tasks || 'No additional care tasks recorded.' }}</p>
+              <p>{{ v.tasks || 'No additional care tasks recorded.' }}</p><cv-approved-care-instructions [clientId]="v.clientId" [visitId]="v.id" />
               <div class="row" style="flex-wrap: wrap">
                 @for (f of flags(v); track f) {
                   <span class="ecm-priority">{{ f }}</span>

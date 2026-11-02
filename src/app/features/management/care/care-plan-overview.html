@@ -1,0 +1,259 @@
+<div class="overview-dashboard">
+  <div class="top-grid">
+    <section class="dashboard-card key-information">
+      <header>
+        <h2>Key Information</h2>
+        <button (click)="action.emit('details')">Edit</button>
+      </header>
+      <dl class="key-facts">
+        @for (fact of facts; track fact.label) {
+          <div>
+            <dt>
+              <span class="material-symbols-outlined" aria-hidden="true">{{ fact.icon }}</span
+              >{{ fact.label }}:
+            </dt>
+            <dd>
+              @if (fact.phone && fact.value) {
+                <a [href]="'tel:' + fact.value">{{ fact.value }}</a>
+              } @else if (fact.email && fact.value) {
+                <a [href]="'mailto:' + fact.value">{{ fact.value }}</a>
+              } @else {
+                {{ fact.value || '—' }}
+              }
+            </dd>
+          </div>
+        }
+      </dl>
+    </section>
+    <section class="dashboard-card current-plan">
+      <header><h2>Current Care Plan</h2></header>
+      <div class="version-row">
+        <span class="version-icon material-symbols-outlined" aria-hidden="true">assignment</span
+        ><strong>Version {{ current.version }}</strong
+        ><span class="badge" [attr.data-status]="current.status">{{ current.status }}</span
+        ><button (click)="action.emit('view-plan')">View</button>
+      </div>
+      <dl class="plan-facts">
+        <div>
+          <dt>Last updated:</dt>
+          <dd>{{ current.events.at(-1)?.at || current.createdAt | date: 'dd MMM yyyy' }}</dd>
+        </div>
+        <div>
+          <dt>Next review:</dt>
+          <dd>{{ current.review | date: 'dd MMM yyyy' }}</dd>
+        </div>
+        <div>
+          <dt>Author:</dt>
+          <dd>{{ current.author }}</dd>
+        </div>
+        <div>
+          <dt>Approved by:</dt>
+          <dd>{{ current.approver || 'Awaiting approval' }}</dd>
+        </div>
+        <div>
+          <dt>Status:</dt>
+          <dd>
+            <span class="badge" [attr.data-status]="current.status">{{ current.status }}</span>
+          </dd>
+        </div>
+      </dl>
+      <div class="plan-actions">
+        <button class="primary" (click)="action.emit('review')">
+          <span class="material-symbols-outlined" aria-hidden="true">clinical_notes</span
+          >{{
+            hasWorkingReview() || plan().status === 'Draft' || plan().status === 'In review'
+              ? 'Continue Review'
+              : 'Start New Review'
+          }}</button
+        ><button class="pdf" [disabled]="!approved() || !canExport()" (click)="action.emit('pdf')">
+          <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>Download
+          PDF
+        </button>
+      </div>
+    </section>
+    <section class="dashboard-card risks">
+      <header>
+        <h2>Key Risks & Alerts</h2>
+        <button (click)="action.emit('risks')">Edit</button>
+      </header>
+      <ul>
+        @for (alert of alerts; track $index) {
+          <li>
+            <span [class]="'material-symbols-outlined ' + alert.tone" aria-hidden="true">{{
+              alert.icon
+            }}</span
+            ><span>{{ alert.text }}</span>
+          </li>
+        } @empty {
+          <li>No active risks recorded.</li>
+        }
+      </ul>
+    </section>
+    <section class="dashboard-card quick-actions">
+      <header><h2>Quick Actions</h2></header>
+      <button (click)="action.emit('details')">
+        <span class="material-symbols-outlined" aria-hidden="true">person</span>Update Contact
+        Details</button
+      ><button (click)="action.emit('package')">
+        <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Review Care
+        Package</button
+      ><button (click)="action.emit('voice')">
+        <span class="material-symbols-outlined" aria-hidden="true">mic</span>Voice Care Plan Review</button
+      ><button (click)="action.emit('quality')">
+        <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>AI Review &
+        Suggestions</button
+      ><button class="body-action" (click)="action.emit('body')">
+        <span class="material-symbols-outlined" aria-hidden="true">accessibility_new</span>View Body
+        Chart</button
+      ><button class="red-action" (click)="action.emit('incident')">
+        <span class="material-symbols-outlined" aria-hidden="true">warning</span>Create Incident</button
+      ><button class="green-action" (click)="action.emit('compliment')">
+        <span class="material-symbols-outlined" aria-hidden="true">thumb_up</span>Create Compliment</button
+      ><button class="red-action" (click)="action.emit('complaint')">
+        <span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>Create
+        Complaint
+      </button>
+    </section>
+  </div>
+  <div class="middle-grid">
+    <section class="dashboard-card package">
+      <header>
+        <h2>Current Care Package</h2>
+        <button (click)="action.emit('package')">Manage</button>
+      </header>
+      <div class="package-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>Call Type</th>
+              <th>Time</th>
+              <th>Duration</th>
+              <th>Staffing</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of packageRows; track row.id) {
+              <tr>
+                <td>{{ weekdays[row.day] }}</td>
+                <td>{{ row.call.name }}</td>
+                <td>{{ row.call.start }}</td>
+                <td>{{ duration(row.call) }} mins</td>
+                <td>{{ row.call.carers > 1 ? 'Double up' : 'Single' }}</td>
+                <td><span class="badge" data-status="Approved">Active</span></td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6">No active calls recorded.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="package-total">
+        Total: {{ packageRows.length }} calls per week ({{ weeklyMinutes }} minutes)
+      </p>
+    </section>
+    <section class="dashboard-card professional-contacts">
+      <header>
+        <h2>Professional Contacts</h2>
+        <button (click)="action.emit('contacts')">View All</button>
+      </header>
+      @for (contact of contacts; track contact.title) {
+        <article class="professional">
+          <span
+            [class]="'contact-icon material-symbols-outlined ' + contact.tone"
+            aria-hidden="true"
+            >{{ contact.icon }}</span
+          >
+          <div>
+            <strong>{{ contact.title }}</strong
+            ><small>{{ contact.record?.name || 'Not recorded' }}</small>
+          </div>
+          @if (contact.record?.phone) {
+            <a class="phone-number" [href]="'tel:' + contact.record!.phone"
+              ><span class="material-symbols-outlined" aria-hidden="true">call</span
+              >{{ contact.record!.phone }}</a
+            ><a
+              class="call-button"
+              [href]="'tel:' + contact.record!.phone"
+              [attr.aria-label]="'Call ' + contact.record!.name"
+              ><span class="material-symbols-outlined" aria-hidden="true">call</span></a
+            >
+          } @else {
+            <button (click)="action.emit('contacts')">Add</button>
+          }
+        </article>
+      }
+    </section>
+    <section class="dashboard-card recent-activity">
+      <header>
+        <h2>Recent Activity</h2>
+        <button (click)="action.emit('history')">View All</button>
+      </header>
+      <ol>
+        @for (event of activity; track event.id) {
+          <li>
+            <time>{{ event.at | date: 'dd MMM yyyy' }}</time
+            ><span class="activity-icon material-symbols-outlined" aria-hidden="true">{{
+              event.icon
+            }}</span>
+            <div>
+              <strong>{{ event.action }}</strong
+              ><small>by {{ event.by }}</small>
+            </div>
+          </li>
+        } @empty {
+          <li>No activity recorded.</li>
+        }
+      </ol>
+    </section>
+  </div>
+  <section class="dashboard-card progress-card">
+    <header>
+      <div>
+        <h2>Care Plan Progress</h2>
+        <p>Completion status of all care plan sections (LQCS structure)</p>
+      </div>
+      <div class="progress-legend">
+        <span><i class="completed"></i>Completed</span
+        ><span><i class="in-progress"></i>In Progress</span
+        ><span><i class="not-started"></i>Not Started</span>
+      </div>
+      <button (click)="area.emit(0)">
+        Go to Care Plan<span class="material-symbols-outlined" aria-hidden="true"
+          >arrow_forward</span
+        >
+      </button>
+    </header>
+    <div class="progress-grid">
+      @for (section of plan().sections; track section.name; let i = $index) {
+        <button class="progress-section" (click)="area.emit(i)">
+          <span class="area-icon material-symbols-outlined" aria-hidden="true">{{
+            careAreas[i].icon
+          }}</span
+          ><span class="section-name"
+            ><strong>{{ section.name }}</strong
+            ><small>{{ descriptions[i] }}</small></span
+          ><span [class]="'section-state ' + stateClass(section)">{{ status(section) }}</span>
+        </button>
+      }
+    </div>
+  </section>
+  <nav class="source-links" aria-label="Service User records">
+    <strong>Service User records</strong>
+    @for (record of sourceRecords; track record.id) {
+      <a
+        [attr.data-source-record]="record.id"
+        [routerLink]="
+          record.path
+            ? ['/manage/clients', client().id, record.path]
+            : ['/manage/clients', client().id]
+        "
+        [queryParams]="record.section ? { section: record.section } : null"
+        >{{ record.label }}<span aria-hidden="true">↗</span></a
+      >
+    }
+  </nav>
+</div>

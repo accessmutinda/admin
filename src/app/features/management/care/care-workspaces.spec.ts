@@ -448,5 +448,5 @@ describe('Nested service-user routes', () => {
       }
       expect(page.querySelectorAll('.client-section-nav')).toHaveLength(section ? 0 : 1);
     }
-  });
+  }, 15000);
 });

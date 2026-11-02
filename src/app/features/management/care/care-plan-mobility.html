@@ -1,0 +1,239 @@
+<div class="mobility-form">
+  <section class="mobility-heading">
+    <span class="mobility-icon material-symbols-outlined" aria-hidden="true">directions_walk</span>
+    <div>
+      <h2>Mobility</h2>
+      <p>Support with moving around, transfers, balance and use of equipment.</p>
+    </div>
+    <div class="heading-actions">
+      <button class="primary" [disabled]="!editable()" (click)="action.emit('voice')">
+        <span class="material-symbols-outlined" aria-hidden="true">mic</span>Record by Voice</button
+      ><button [disabled]="!editable()" (click)="action.emit('improve')">
+        <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>AI Improve</button
+      ><button [attr.aria-expanded]="historyOpen()" (click)="historyOpen.set(!historyOpen())">
+        <span class="material-symbols-outlined" aria-hidden="true">history</span>View History
+      </button>
+    </div>
+  </section>
+  @if (error()) {
+    <p class="notice error" role="alert">{{ error() }}</p>
+  }
+  @if (message()) {
+    <p class="notice" role="status">{{ message() }}</p>
+  }
+  @if (historyOpen()) {
+    <section class="mobility-history">
+      <h3>Mobility · Section History</h3>
+      @for (event of history; track $index) {
+        <article>
+          <strong>{{ event.action }} · {{ event.by }}</strong
+          ><small>{{ event.at | date: 'medium' }}</small>
+          <pre>{{ event.detail }}</pre>
+        </article>
+      } @empty {
+        <p>No changes recorded for this version.</p>
+      }
+      @if (previous(); as previous) {
+        <details>
+          <summary>Previous approved wording</summary>
+          @for (field of fields; track field.key) {
+            <h4>{{ field.label }}</h4>
+            <p>{{ previous.fields[field.key] || 'Not recorded' }}</p>
+          }
+        </details>
+      }
+    </section>
+  }
+  <div class="mobility-top-row">
+    @for (field of fields.slice(0, 3); track field.key) {
+      <section [class]="'field-panel field-' + field.key">
+        <h3>{{ field.label }}</h3>
+        <cv-care-plan-rich-text
+          [label]="field.label"
+          [text]="section.fields[field.key] || ''"
+          [html]="richHtml(field.key)"
+          [compact]="field.compact"
+          [disabled]="!editable()"
+          (valueChange)="changeRich(field.key, $event)"
+        />
+      </section>
+    }
+    <section class="field-panel required-panel">
+      <h3>4. Care plan required?</h3>
+      <fieldset [disabled]="!editable()">
+        <label
+          ><input
+            type="radio"
+            name="mobility-required"
+            [ngModel]="section.required"
+            [value]="true"
+            (ngModelChange)="section.required = $event; changed()"
+          />Yes</label
+        ><label
+          ><input
+            type="radio"
+            name="mobility-required"
+            [ngModel]="section.required"
+            [value]="false"
+            (ngModelChange)="section.required = $event; changed()"
+          />No</label
+        >
+      </fieldset>
+    </section>
+  </div>
+  <div class="mobility-middle-row">
+    @for (field of fields.slice(3, 6); track field.key) {
+      <section [class]="'field-panel field-' + field.key">
+        <h3>{{ field.label }}</h3>
+        <cv-care-plan-rich-text
+          [label]="field.label"
+          [text]="section.fields[field.key] || ''"
+          [html]="richHtml(field.key)"
+          [compact]="field.compact"
+          [disabled]="!editable()"
+          (valueChange)="changeRich(field.key, $event)"
+        />
+      </section>
+    }
+  </div>
+  <div class="mobility-review-row">
+    <section class="field-panel field-risks">
+      <h3>8. Risks and escalation</h3>
+      <cv-care-plan-rich-text
+        label="8. Risks and escalation"
+        [text]="section.fields['risks'] || ''"
+        [html]="richHtml('risks')"
+        [compact]="true"
+        [disabled]="!editable()"
+        (valueChange)="changeRich('risks', $event)"
+      />
+    </section>
+    <section class="field-panel review-information">
+      <h3>9. Review information</h3>
+      <fieldset [disabled]="!editable()">
+        <div class="review-grid">
+          <label
+            >Last review date<input
+              type="date"
+              [ngModel]="lastReview"
+              (ngModelChange)="setLastReview($event)" /></label
+          ><label
+            >Changes since last review<select
+              [ngModel]="changesStatus"
+              (ngModelChange)="setChanges($event)"
+            >
+              <option>No change</option>
+              <option>Changes recorded</option>
+            </select></label
+          ><label
+            >Next review date<input
+              type="date"
+              [(ngModel)]="section.review"
+              (ngModelChange)="changed()"
+          /></label>
+        </div>
+        @if (changesStatus === 'Changes recorded') {
+          <label class="review-notes"
+            >Review notes<textarea
+              rows="2"
+              [ngModel]="section.fields['changes']"
+              (ngModelChange)="setReviewNotes($event)"
+            ></textarea>
+          </label>
+        }
+      </fieldset>
+    </section>
+    <section class="ai-suggestion">
+      <h3>
+        <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>AI Suggestion
+        <small>(based on linked records)</small>
+      </h3>
+      <p>{{ suggestion }}</p>
+      <small>Demo suggestion · Adds a review note, subject to your review.</small
+      ><button [disabled]="!editable()" (click)="applySuggestion()">Apply to Section</button>
+    </section>
+  </div>
+  <div class="mobility-bottom-row">
+    <section class="field-panel supporting-documents">
+      <header>
+        <h3>
+          <span class="material-symbols-outlined" aria-hidden="true">attach_file</span>Supporting
+          Documents
+        </h3>
+        <button [disabled]="!canAddDocuments()" (click)="action.emit('add-document')">
+          Add Document
+        </button>
+      </header>
+      @for (document of supporting; track document.id) {
+        <article class="linked-row">
+          <span class="material-symbols-outlined pdf-icon" aria-hidden="true">picture_as_pdf</span
+          ><span>{{ document.name }}</span
+          ><time>{{ document.issueDate || document.at | date: 'dd MMM yyyy' }}</time
+          ><button (click)="documentView.emit(document.id)">View</button>
+        </article>
+      } @empty {
+        <p>No mobility documents recorded.</p>
+      }
+    </section>
+    <section class="field-panel linked-records">
+      <header>
+        <h3>
+          <span class="material-symbols-outlined" aria-hidden="true">link</span>Linked Records
+        </h3>
+      </header>
+      <div class="linked-and-save">
+        <div>
+          @for (record of links; track record.kind + record.id) {
+            <article class="linked-row">
+              <span
+                class="material-symbols-outlined"
+                [class.pdf-icon]="record.kind !== 'assessment'"
+                aria-hidden="true"
+                >{{ record.kind === 'assessment' ? 'assignment' : 'description' }}</span
+              ><span>{{ record.name }}</span
+              ><time>{{ record.date | date: 'dd/MM/yyyy' }}</time
+              ><button (click)="linked.emit(record)">View</button>
+            </article>
+          } @empty {
+            <p>No linked mobility records.</p>
+          }
+        </div>
+        <div class="save-actions">
+          @if (editable()) {
+            <button (click)="save(false)">
+              <span class="material-symbols-outlined" aria-hidden="true">save</span>Save as Draft</button
+            ><button class="primary" (click)="save(true)">
+              <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>Save
+              Section
+            </button>
+          } @else {
+            <span class="read-only-label">{{ plan().status }} version · Read only</span>
+          }
+        </div>
+      </div>
+    </section>
+  </div>
+  <details class="additional-controls">
+    <summary>Outcome actions & visibility</summary>
+    <label
+      >How the outcome will be achieved<textarea
+        rows="3"
+        [(ngModel)]="section.fields['actions']"
+        [disabled]="!editable()"
+        (ngModelChange)="changed()"
+      ></textarea>
+    </label>
+    <fieldset class="visibility" [disabled]="!editable() || !manager()">
+      <legend>Section visibility (manager only)</legend>
+      @for (audience of audiences; track audience.key) {
+        <label
+          ><input
+            type="checkbox"
+            [(ngModel)]="section.visibility[audience.key]"
+            (ngModelChange)="changed()"
+          />{{ audience.label }}</label
+        >
+      }
+    </fieldset>
+  </details>
+</div>

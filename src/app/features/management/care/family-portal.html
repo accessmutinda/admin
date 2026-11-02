@@ -306,54 +306,71 @@
                 </p>
               </div>
             </div>
-            <div class="plan-grid">
-              @for (
-                field of [
-                  { key: 'name', label: 'Personalised care plan', icon: 'person' },
-                  { key: 'needs', label: 'Care needs', icon: 'favorite' },
-                  { key: 'support', label: 'How to support me', icon: 'volunteer_activism' },
-                  { key: 'review', label: 'Review date', icon: 'event' },
-                  { key: 'start', label: 'Plan start', icon: 'calendar_month' },
-                  { key: 'status', label: 'Plan status', icon: 'verified' },
-                ];
-                track field.key
-              ) {
+            @if (r.plan?.structured) {
+              @for (section of r.plan?.sections; track section.name) {
                 <section class="panel">
-                  <h2>
-                    <span class="material-symbols-outlined" aria-hidden="true">{{
-                      field.icon
-                    }}</span
-                    >{{ field.label }}
-                  </h2>
-                  <p class="preserve">
-                    {{ r.plan?.details?.[field.key] || 'Not recorded in the shared plan.' }}
-                  </p>
+                  <h2>{{ section.name }}</h2>
+                  <p class="preserve">{{ section.instructions }}</p>
+                  <p>{{ section.preferences }}</p>
+                  <p>{{ section.actions }}</p>
+                  <p><strong>Outcome:</strong> {{ section.outcome }}</p>
+                  <p><strong>Escalation:</strong> {{ section.escalation }}</p>
+                </section>
+              } @empty {
+                <section class="panel">
+                  <p>No approved care sections are currently shared with this family account.</p>
                 </section>
               }
-            </div>
-            <section class="panel">
-              <h2>
-                <span class="material-symbols-outlined" aria-hidden="true">target</span>Goals &
-                outcomes
-              </h2>
-              @for (goal of r.plan?.goals; track goal.id) {
-                <article class="goal">
-                  <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
-                  <div>
-                    <h3>{{ goal.name }}</h3>
-                    <p class="preserve">{{ goal.detail }}</p>
-                    <small
-                      >{{ goal.status }}
-                      @if (goal.date) {
-                        · {{ goal.date | date: 'd MMM yyyy' }}
-                      }
-                    </small>
-                  </div>
-                </article>
-              } @empty {
-                <p>No goals have been recorded in the shared plan.</p>
-              }
-            </section>
+            } @else {
+              <div class="plan-grid">
+                @for (
+                  field of [
+                    { key: 'name', label: 'Personalised care plan', icon: 'person' },
+                    { key: 'needs', label: 'Care needs', icon: 'favorite' },
+                    { key: 'support', label: 'How to support me', icon: 'volunteer_activism' },
+                    { key: 'review', label: 'Review date', icon: 'event' },
+                    { key: 'start', label: 'Plan start', icon: 'calendar_month' },
+                    { key: 'status', label: 'Plan status', icon: 'verified' },
+                  ];
+                  track field.key
+                ) {
+                  <section class="panel">
+                    <h2>
+                      <span class="material-symbols-outlined" aria-hidden="true">{{
+                        field.icon
+                      }}</span
+                      >{{ field.label }}
+                    </h2>
+                    <p class="preserve">
+                      {{ r.plan?.details?.[field.key] || 'Not recorded in the shared plan.' }}
+                    </p>
+                  </section>
+                }
+              </div>
+              <section class="panel">
+                <h2>
+                  <span class="material-symbols-outlined" aria-hidden="true">target</span>Goals &
+                  outcomes
+                </h2>
+                @for (goal of r.plan?.goals; track goal.id) {
+                  <article class="goal">
+                    <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+                    <div>
+                      <h3>{{ goal.name }}</h3>
+                      <p class="preserve">{{ goal.detail }}</p>
+                      <small
+                        >{{ goal.status }}
+                        @if (goal.date) {
+                          · {{ goal.date | date: 'd MMM yyyy' }}
+                        }
+                      </small>
+                    </div>
+                  </article>
+                } @empty {
+                  <p>No goals have been recorded in the shared plan.</p>
+                }
+              </section>
+            }
           }
           @case ('visits') {
             <div class="info-banner success">
