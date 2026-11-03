@@ -76,7 +76,7 @@ export const SERVICE_USER_RECORDS: Record<
   documents: { label: 'Documents', path: 'documents' },
   contacts: { label: 'Contacts', path: 'contacts' },
   family: { label: 'Family Access', path: 'family' },
-  risks: { label: 'Risk Assessments', path: '', section: 'risks' },
+  risks: { label: 'Risk Assessments', path: 'risks' },
   incidents: { label: 'Incidents & Complaints', path: 'incidents' },
   feedback: { label: 'Reviews & Feedback', path: 'feedback' },
 };

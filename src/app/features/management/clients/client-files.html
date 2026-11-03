@@ -526,6 +526,9 @@
                 }
               }
             </section>
+            @if (sectionKey() === 'risks') {
+              <a class="button primary" [routerLink]="['/manage/clients', client()!.id, 'risks']">Open structured Risk Assessments →</a>
+            }
             @if (section().entryLabel) {
               <section class="panel client-entry-panel">
                 <div class="panel-toolbar">

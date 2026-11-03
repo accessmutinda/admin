@@ -8,6 +8,7 @@ export interface ClientEntry {
 }
 
 export interface ClientFile {
+  riskRegister?: import('../care/risk-assessment.models').RiskRegister;
   carePlan?: import('../care/care-plan.models').CarePlanRecord;
   details: Record<string, string>;
   sections: Record<string, Record<string, string>>;

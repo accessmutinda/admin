@@ -1,7 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { CareService } from './care.service';
@@ -42,6 +43,14 @@ import { RotaClient, londonDate } from '../rota/rota.models';
 export class ServiceUserDirectory {
   protected readonly care = inject(CareService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly queryParams = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+  protected readonly openingRisks = computed(() => this.queryParams().get('open') === 'risks');
+  protected recordLink(id: string): string[] {
+    return this.openingRisks() ? ['/manage/clients', id, 'risks'] : ['/manage/clients', id];
+  }
   protected readonly query = signal('');
   protected readonly status = signal('Active');
   protected readonly funding = signal('');
@@ -150,7 +159,7 @@ export class ServiceUserDirectory {
     )
       return;
     event.preventDefault();
-    void this.router.navigate(['/manage/clients', id]);
+    void this.router.navigate(this.recordLink(id));
   }
   protected clear(): void {
     this.query.set('');

@@ -107,7 +107,7 @@ describe('Care demonstration data', () => {
     client.file!.medications![0].notes = 'User-edited medication note';
     const visits = previous.rota!.visits;
     const upgraded = seedCareDemo(previous, '2026-10-25');
-    expect(upgraded.careDemoVersion).toBe(10);
+    expect(upgraded.careDemoVersion).toBe(11);
     expect(upgraded.rota!.visits).toBe(visits);
     expect(upgraded.rota!.clients[0].name).toBe('Edited name');
     expect(upgraded.rota!.clients[0].file!.sections['capacity']['welfareLpa']).toBe(

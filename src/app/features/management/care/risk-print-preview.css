@@ -1,0 +1,182 @@
+cv-risk-print-preview {
+  display: block;
+  min-width: 0;
+}
+.risk-document-preview {
+  position: relative;
+  min-width: 0;
+}
+.risk-document-preview .risk-document-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 794px;
+  margin: 0 auto 14px;
+  padding: 10px 12px;
+  border: 1px solid #dce8f1;
+  border-radius: 6px;
+  background: #f5faff;
+  color: #38627f;
+  font:
+    12px Lato,
+    sans-serif;
+}
+.risk-document-preview .risk-document-controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  min-height: 32px;
+  border: 1px solid #cbdde9;
+  border-radius: 5px;
+  background: #fff;
+  color: #00528c;
+  font:
+    600 12px Lato,
+    sans-serif;
+  cursor: pointer;
+}
+.risk-document-preview .risk-document-controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.risk-document-preview .risk-document-controls .material-symbols-outlined {
+  font-size: 18px;
+}
+.risk-document-preview .risk-document-controls-bottom {
+  margin-top: 14px;
+}
+.risk-document-preview .risk-document-viewport {
+  min-width: 0;
+  touch-action: pan-y;
+  scroll-margin-top: 65px;
+}
+.risk-document-preview :is(button, .risk-document-viewport):focus-visible {
+  outline: 2px solid #008afa;
+  outline-offset: 3px;
+}
+.risk-document-preview .risk-document-pages {
+  min-width: 0;
+}
+.risk-document-preview .risk-print-sheet {
+  position: relative;
+  box-sizing: border-box;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  padding: 28px 38px 22px;
+  min-height: 0;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+.risk-document-preview .risk-print-sheet[hidden] {
+  display: none;
+}
+.risk-document-preview .risk-print-body > h1 {
+  text-align: center;
+  font-size: 22px;
+  line-height: 1.4;
+  margin-bottom: 26px;
+}
+.risk-document-preview .risk-print-field > h3 {
+  margin-top: 14px;
+}
+.risk-document-preview .risk-print-body {
+  display: flow-root;
+}
+.risk-document-preview .risk-print-sheet table {
+  width: 100%;
+  table-layout: fixed;
+}
+.risk-document-preview .risk-print-sheet th {
+  white-space: normal;
+}
+.risk-document-preview .risk-print-sheet :is(td, th, p, dd) {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+.risk-document-preview .risk-print-page-footer {
+  position: static;
+  margin-top: 16px;
+  text-align: right;
+  font-size: 10px;
+  color: #6b8398;
+}
+.risk-document-preview .risk-print-source {
+  display: none;
+}
+@media (max-width: 700px) {
+  .risk-document-preview .risk-print-sheet {
+    padding: 18px;
+  }
+  .risk-document-preview .risk-print-page-footer {
+    margin-top: 12px;
+  }
+  .risk-document-preview .risk-document-controls {
+    gap: 8px;
+    padding: 8px;
+  }
+  .risk-document-preview .risk-document-controls button {
+    padding: 6px 8px;
+  }
+}
+@media print {
+  .cv-management:has(cv-risk-print-preview) :is(.app-body, .page-content) {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  @page careverity-risk {
+    size: A4;
+    margin: 0;
+  }
+  .risk-document-preview .risk-document-controls,
+  .risk-document-preview .risk-print-source {
+    display: none !important;
+  }
+  .risk-document-preview,
+  .risk-document-preview .risk-document-pages,
+  .risk-document-preview .risk-document-viewport {
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+  }
+  .risk-document-preview .risk-print-sheet,
+  .risk-document-preview .risk-print-sheet[hidden] {
+    display: block !important;
+    page: careverity-risk;
+    box-sizing: border-box;
+    width: 210mm !important;
+    max-width: none !important;
+    min-height: 297mm !important;
+    height: auto !important;
+    padding: 10mm 10mm 15mm !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    break-after: page;
+  }
+  .risk-document-preview .risk-print-sheet:last-child {
+    break-after: auto;
+  }
+  .risk-document-preview .risk-print-body > h1 {
+    font-size: 22px !important;
+  }
+  .risk-document-preview .risk-print-sheet tr.risk-print-long-row {
+    break-inside: auto !important;
+  }
+  .risk-document-preview .risk-print-page-footer {
+    position: absolute;
+    margin-top: 0;
+    bottom: 5mm;
+    left: 10mm;
+    right: 10mm;
+  }
+}

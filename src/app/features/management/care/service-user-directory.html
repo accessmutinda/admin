@@ -1,3 +1,9 @@
+@if (openingRisks()) {
+  <section class="care-panel" aria-label="Select a service user for risk assessments">
+    <h2>Risk Assessments</h2>
+    <p>Select a service user below to open their Risk Assessment Overview.</p>
+  </section>
+}
 <section class="care-panel directory-filter-card" aria-label="Filter service users">
   <div class="care-fields care-filters directory-filter-grid">
     <label
@@ -119,7 +125,7 @@
                     <span class="directory-avatar" aria-hidden="true">{{ initials(c.name) }}</span>
                   }
                   <div>
-                    <a [routerLink]="['/manage/clients', c.id]"
+                    <a [routerLink]="recordLink(c.id)"
                       ><strong>{{ c.name }}</strong></a
                     ><small>{{ c.address }}, {{ c.postcode }}</small>
                   </div>
@@ -191,7 +197,7 @@
               <span class="directory-avatar">{{ initials(c.name) }}</span>
             }
             <h3>
-              <a [routerLink]="['/manage/clients', c.id]">{{ c.name }}</a>
+              <a [routerLink]="recordLink(c.id)">{{ c.name }}</a>
             </h3>
           </div>
           <p>{{ c.address }}, {{ c.postcode }}</p>

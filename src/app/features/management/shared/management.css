@@ -1,15 +1,15 @@
 @import '../rota/rota.css';
 
 @media print {
-  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner)) .app-sidebar,
-  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner)) .app-header,
-  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner)) .app-footer {
+  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner, cv-risk-assessments)) .app-sidebar,
+  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner, cv-risk-assessments)) .app-header,
+  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner, cv-risk-assessments)) .app-footer {
     display: none !important;
   }
-  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner)) .app-body {
+  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner, cv-risk-assessments)) .app-body {
     margin-left: 0 !important;
   }
-  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner)) .page-content {
+  .cv-management:has(:is(cv-client-files, cv-medication, cv-visit-planner, cv-risk-assessments)) .page-content {
     padding: 0 !important;
   }
 }

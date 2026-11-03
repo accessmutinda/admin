@@ -1,3 +1,4 @@
+import { seedRiskAssessments } from './risk-assessment-demo';
 import { seedCarePlans } from './care-plan-demo';
 import { DEMO_WORKSPACES } from './system-demo-utils';
 import { installDemoImages } from './care-demo-images';
@@ -22,7 +23,7 @@ import {
 } from '../features/management/rota/rota.models';
 import { emptyEcm } from '../features/management/ecm/ecm.models';
 
-const VERSION = 10;
+const VERSION = 11;
 const PREFIX = 'care-demo-';
 const STAFF = [
   'Sarah Clarke',
@@ -195,8 +196,13 @@ function serviceUsers(today: string): RotaClient[] {
 
 export function seedCareDemo(data: WorkspaceData, today = londonDate()): WorkspaceData {
   if (data.careDemoVersion === VERSION) return data;
+  if (data.careDemoVersion === 10)
+    return seedRiskAssessments({ ...data, careDemoVersion: VERSION }, today);
   if (data.careDemoVersion === 1)
-    return seedCarePlans(seedCareProfiles({ ...data, careDemoVersion: VERSION }, today), today);
+    return seedRiskAssessments(
+      seedCarePlans(seedCareProfiles({ ...data, careDemoVersion: VERSION }, today), today),
+      today,
+    );
   const start = addDays(today, -((new Date(today + 'T12:00:00Z').getUTCDay() + 6) % 7));
   const people = carers(today);
   const clients = serviceUsers(today);
@@ -347,7 +353,7 @@ export function seedCareDemo(data: WorkspaceData, today = londonDate()): Workspa
       },
     },
   };
-  return seedCarePlans(seedCareProfiles(seeded, today), today);
+  return seedRiskAssessments(seedCarePlans(seedCareProfiles(seeded, today), today), today);
 }
 
 const careInstallations = new WeakSet<Injector>();

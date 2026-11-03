@@ -1,3 +1,4 @@
+import { latestRisks, riskLevel } from './risk-assessment.models';
 import { Component, input, output } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -87,6 +88,12 @@ export class CarePlanOverview {
     const c = this.client();
     const risks = [
       ...(c.riskFlags || []),
+      ...latestRisks(
+        (c.file?.riskRegister?.assessments ?? []).filter((r) => r.status === 'Approved'),
+      ).map(
+        (r) =>
+          `${r.domain} – ${riskLevel(r.residualLikelihood * r.residualSeverity)}: ${r.specific}`,
+      ),
       ...(c.file?.entries['risks'] || []).filter((r) => r.status === 'Active').map((r) => r.name),
     ];
     const result = [...new Set(risks)].map((text, i) => ({

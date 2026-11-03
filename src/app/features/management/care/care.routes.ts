@@ -1,6 +1,12 @@
 import { Routes, Router } from '@angular/router';
 import { inject } from '@angular/core';
 export const CARE_ROUTES: Routes = [
+  {
+    path: 'risks',
+    title: 'Risk Assessments · CareVerity',
+    canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+    loadComponent: () => import('./risk-assessments').then((m) => m.RiskAssessments),
+  },
   ...(['incidents', 'feedback'] as const).map((careEventSection) => ({
     path: careEventSection,
     data: { careEventSection },
