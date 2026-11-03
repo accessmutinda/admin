@@ -28,7 +28,11 @@ import {
   imports: [DatePipe, FormsModule, RouterLink, CareHeader, ModuleDesign, RiskPrintPreview],
   host: { class: 'module-page operations-page' },
   templateUrl: './risk-assessments.html',
-  styleUrls: ['./risk-assessments-preview.css', './risk-assessments.css'],
+  styleUrls: [
+    './risk-assessments-preview.css',
+    './risk-assessments.css',
+    './risk-assessment-navigation.css',
+  ],
 })
 export class RiskAssessments {
   protected readonly care = inject(CareService);
