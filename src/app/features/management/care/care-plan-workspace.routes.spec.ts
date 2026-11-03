@@ -1,3 +1,5 @@
+import { EcmService } from '../ecm/ecm.service';
+import { carePlanVisitTasks } from './care-plan-visit-tasks';
 import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
@@ -34,6 +36,52 @@ describe('Dedicated care-plan routes', () => {
     vi.spyOn(auth, 'currentUser').mockReturnValue({ ...DEMO_USER, roleCode: 'CA' });
     TestBed.inject(ManagementStore).saveWorkspace((data) => seedCareDemo(data));
   });
+  it('shows actual task evidence in Quality Review and saves a supervisor reflection', async () => {
+    const store = TestBed.inject(ManagementStore);
+    const client = store.data().rota!.clients.find((c) => c.id === 'care-demo-client-1')!;
+    const visit = store
+      .data()
+      .rota!.visits.find((v) => v.clientId === client.id && v.state === 'Published')!;
+    expect(visit).toBeTruthy();
+    const tasks = carePlanVisitTasks(client, visit);
+    expect(tasks.length).toBeGreaterThan(0);
+    const ecm = TestBed.inject(EcmService);
+    expect(
+      ecm.evidence(
+        visit.id,
+        {
+          type: 'Care note',
+          note: 'Demo personal care took longer than planned.',
+          photo: '',
+          photoName: '',
+          taskResults: [{ ...tasks[0], outcome: 'Concern', note: 'Review morning call duration.' }],
+        },
+        false,
+      ),
+    ).toBeNull();
+    const evidence = ecm.data().evidence.at(-1)!;
+    const harness = await RouterTestingHarness.create(
+      '/manage/care-plans/care-demo-client-1?view=quality',
+    );
+    const page = harness.fixture.nativeElement as HTMLElement;
+    expect(page.querySelector('.demo-evidence-review')?.textContent).toContain(
+      'Review morning call duration.',
+    );
+    const field = page.querySelector<HTMLTextAreaElement>('.demo-evidence-review textarea')!;
+    field.value = 'Discuss the longer call with the rota manager; review personal care support.';
+    field.dispatchEvent(new Event('input'));
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    page.querySelector<HTMLButtonElement>('.demo-evidence-review button')!.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const saved = store.data().rota!.clients.find((c) => c.id === client.id)!.file!.carePlan!;
+    const review = saved.versions
+      .find((p) => p.status === 'Draft')!
+      .visitEvidenceReviews!.find((item) => item.evidenceId === evidence.id)!;
+    expect(review.reflection).toContain('rota manager');
+    expect(page.querySelector('.demo-evidence-review .pill')?.textContent).toBe('Reviewed');
+  }, 15000);
   it('shows coming soon for every unfinished care area without editing controls', async () => {
     const harness = await RouterTestingHarness.create(
       '/manage/care-plans/care-demo-client-1?view=care-plan&stage=sections&area=Nutrition%20%26%20Hydration',

@@ -1,6 +1,13 @@
 import { ASSESSMENT_FIELDS } from './care-plan-assessment.models';
 import { jsPDF } from 'jspdf';
-import { ABOUT_ME_FIELDS, PLAN_FIELDS, PlanVersion } from './care-plan.models';
+import {
+  ABOUT_ME_FIELDS,
+  PLAN_FIELDS,
+  PlanVersion,
+  inReviewScope,
+  DEMO_APPROVAL_LABEL,
+  DEFERRED_CARE_AREAS,
+} from './care-plan.models';
 export function createCarePlanPdf(p: PlanVersion) {
   const doc = new jsPDF();
   const detailFields = [
@@ -38,7 +45,13 @@ export function createCarePlanPdf(p: PlanVersion) {
     doc.rect(0, 0, 210, 18, 'F');
     doc.setTextColor(255);
     doc.setFontSize(13);
-    doc.text('London Quality Care Services | CareVerity', 14, 12);
+    doc.text(
+      p.demoScope
+        ? 'LQCS | DEMO - THREE AVAILABLE CARE AREAS ONLY'
+        : 'London Quality Care Services | CareVerity',
+      14,
+      12,
+    );
     doc.setTextColor(30, 45, 65);
   };
   const line = (label: string, value: string) => {
@@ -62,6 +75,14 @@ export function createCarePlanPdf(p: PlanVersion) {
   y = 73;
   line('Service user', p.details['name']);
   line('Version', p.version + ' · ' + p.status);
+  if (p.demoScope) {
+    line('Approval scope', DEMO_APPROVAL_LABEL.replace('—', '-'));
+    line(
+      'Demonstration only',
+      'Not a complete approved care plan. About Me, Personal Care and Mobility are the only areas reviewed for this demo.',
+    );
+    line('Deferred areas', DEFERRED_CARE_AREAS.join('; '));
+  }
   line('Review date', p.review);
   line('Approved by', p.approver);
   line('Approval date', p.approvedAt);
@@ -87,7 +108,7 @@ export function createCarePlanPdf(p: PlanVersion) {
       c.name,
       `${c.weekdays.map((d) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]).join(', ')} · ${c.start}–${c.end} · ${(Number(c.end.slice(0, 2)) * 60 + Number(c.end.slice(3)) - (Number(c.start.slice(0, 2)) * 60 + Number(c.start.slice(3))) + 1440) % 1440} min · ${c.carers} carer(s) · ${c.active ? 'Active' : 'Inactive'}`,
     );
-  for (const s of p.sections) {
+  for (const s of p.sections.filter((section) => inReviewScope(p, section))) {
     doc.addPage();
     header();
     y = 28;
@@ -198,11 +219,42 @@ export function createCarePlanPdf(p: PlanVersion) {
     'Author / reviewer / approval',
     `${p.author} / ${p.reviewer} / ${p.approver} · ${p.approvedAt}`,
   );
+  for (const review of p.visitEvidenceReviews || []) {
+    line('Visit evidence reviewed', `${review.evidenceId} · ${review.by} · ${review.at}`);
+    line('Review reflection / follow-up', review.reflection);
+  }
+  if (p.demoSignature) {
+    if (y > 215) {
+      doc.addPage();
+      header();
+      y = 28;
+    }
+    doc.setFillColor(242, 249, 247);
+    doc.setDrawColor(208, 228, 222);
+    doc.roundedRect(14, y, 180, 54, 2, 2, 'FD');
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Demonstration signature', 20, y + 8);
+    doc.setFont('times', 'italic');
+    doc.setFontSize(22);
+    doc.text(p.demoSignature.name, 20, y + 20);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    const signedAt = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Africa/Nairobi',
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(p.demoSignature.at));
+    doc.text(`Signed by the authenticated demo approver: ${signedAt} EAT`, 20, y + 29);
+    doc.text('Three available sections reviewed; 14 care areas deferred.', 20, y + 37);
+    doc.text('Frontend demonstration only - not a verified electronic signature.', 20, y + 45);
+    y += 62;
+  }
   for (let i = 1; i <= doc.getNumberOfPages(); i++) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.text(
-      `${p.details['name']} | v${p.version} | Confidential | Page ${i} of ${doc.getNumberOfPages()}`,
+      `${p.details['name']} | v${p.version} | ${p.demoScope ? 'PARTIAL DEMO - 14 DEFERRED' : 'Confidential'} | Page ${i} of ${doc.getNumberOfPages()}`,
       14,
       290,
     );

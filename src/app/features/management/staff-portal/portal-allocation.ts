@@ -1,3 +1,5 @@
+import { VisitEvidence } from '../ecm/visit-evidence';
+import { EcmService } from '../ecm/ecm.service';
 import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -9,7 +11,15 @@ import { addDays, completedVisit, RotaVisit } from '../rota/rota.models';
 import { PortalClientContext } from './portal-client-context';
 @Component({
   selector: 'cv-portal-allocation',
-  imports: [DatePipe, FormsModule, RouterLink, MatSelectModule, CvSelect, StaffJournal],
+  imports: [
+    DatePipe,
+    FormsModule,
+    RouterLink,
+    MatSelectModule,
+    CvSelect,
+    StaffJournal,
+    VisitEvidence,
+  ],
   templateUrl: './portal-allocation.html',
   styleUrls: ['./portal-ui.css', './portal-forms.css', './portal-allocation.css'],
 })
@@ -17,6 +27,31 @@ export class PortalAllocation {
   protected readonly context = inject(PortalClientContext);
   protected readonly portal = this.context.portal;
   protected readonly rota = this.portal.care.rota;
+  protected readonly evidenceService = inject(EcmService);
+  protected readonly evidenceVisitId = signal('');
+  private readonly evidenceForm = viewChild(VisitEvidence);
+  protected readonly evidenceVisits = computed(() =>
+    this.visits().filter((visit) => this.evidenceService.canCaptureEvidence(visit.id)),
+  );
+  protected changeEvidenceVisit(id: string) {
+    if (
+      this.evidenceForm()?.hasUnsavedChanges() &&
+      !window.confirm('Discard unsaved visit evidence?')
+    )
+      return;
+    this.evidenceVisitId.set('');
+    // A different source visit must receive a fresh evidence form.
+    this.pendingEvidenceVisit = id;
+  }
+  protected pendingEvidenceVisit = '';
+  protected openEvidence() {
+    this.evidenceVisitId.set(this.pendingEvidenceVisit);
+  }
+  protected evidenceSaved() {
+    this.evidenceVisitId.set('');
+    this.pendingEvidenceVisit = '';
+    this.notice.set('Visit evidence saved. It is now available in the care-plan Quality Review.');
+  }
   protected readonly from = signal(this.portal.today);
   protected readonly to = signal(addDays(this.portal.today, 6));
   protected readonly month = signal(this.portal.today.slice(0, 7));
@@ -203,6 +238,11 @@ export class PortalAllocation {
     this.clean = this.snapshot();
   }
   canLeave(): boolean {
+    if (
+      this.evidenceForm()?.hasUnsavedChanges() &&
+      !window.confirm('Discard unsaved visit evidence?')
+    )
+      return false;
     return (
       (((!this.editVisit || JSON.stringify(this.editVisit) === this.originalVisit) &&
         !this.cancelReason.trim() &&

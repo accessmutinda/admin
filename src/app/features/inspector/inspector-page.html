@@ -1077,6 +1077,12 @@
       @for (section of data.careInstructions(); track $index) {
         <details>
           <summary>{{ section.client }} · {{ section.name }}</summary>
+          @if (section.partialDemo) {
+            <p>
+              <strong>Partial demo approval - 14 care areas deferred.</strong> Not a complete
+              approved care plan.
+            </p>
+          }
           <p>{{ section.instructions }}</p>
           <p>{{ section.actions }}</p>
           <p><strong>Outcome:</strong> {{ section.outcome }}</p>

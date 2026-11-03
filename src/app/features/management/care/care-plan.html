@@ -55,6 +55,12 @@
           <p class="message success" role="status">{{ notice() }}</p>
         }
         @if (plan; as p) {
+          @if (p.demoScope) {
+            <p class="message demo-scope-banner" role="status">
+              <strong>{{ demoApprovalLabel }}</strong> · Only About Me, Personal Care and Mobility
+              are in scope. This is not a complete care-plan approval.
+            </p>
+          }
           <div
             class="plan-layout"
             [class.with-section-nav]="
@@ -334,16 +340,25 @@
                           </label>
                         }
                       </fieldset>
-                      <p><strong>Package approval:</strong> {{ p.packageStatus }}</p>
-                      @if (service.canApprove() && p.packageDecision === 'Change required') {
+                      <p><strong>Recommendation approval:</strong> {{ p.packageStatus }}</p>
+                      @if (
+                        service.canApprove() &&
+                        p.packageDecision === 'Change required' &&
+                        ['Pending approval', 'Not requested'].includes(p.packageStatus) &&
+                        !['Approved', 'Superseded'].includes(p.status)
+                      ) {
                         <button class="button" [disabled]="dirty()" (click)="save('package')">
                           Authorise recommendation
                         </button>
                       }
                       <p class="muted">
-                        Authorisation records the recommendation only. A rota manager must review
-                        and update the live package through Visits & Allocation.
+                        Save the recommendation first. A different manager authorises it; the demo
+                        handoff then continues in Call packages.
                       </p>
+                      <cv-care-plan-package-handoffs
+                        [clientId]="id"
+                        (changed)="refreshHandoffRevision()"
+                      />
                     </section>
                   }
                   @case ('Care sections') {
@@ -836,6 +851,82 @@
                     </section>
                   }
                   @case ('Quality review') {
+                    <section class="plan-card demo-workflow">
+                      <div class="card-heading">
+                        <div>
+                          <p class="eyebrow">VISIT TASKS → EVIDENCE → REVIEW</p>
+                          <h2>Evidence from assigned visits</h2>
+                        </div>
+                        <a
+                          class="button"
+                          [routerLink]="['/staff-portal/service-users', id, 'allocation']"
+                          >Record visit task evidence</a
+                        >
+                      </div>
+                      <p>
+                        Review recorded task outcomes against their approved plan version. Record
+                        what should change or why no change is needed; wording is updated by the
+                        supervisor.
+                      </p>
+                      @for (row of visitEvidence(); track row.evidence.id) {
+                        <article class="demo-evidence-review">
+                          <div class="card-heading">
+                            <strong
+                              >{{ row.visit.callName }} ·
+                              {{ row.visit.date | date: 'dd MMM yyyy' }} ·
+                              {{ row.visit.start }}</strong
+                            ><span class="pill">{{
+                              reviewedEvidence(row.evidence.id) ? 'Reviewed' : 'Awaiting review'
+                            }}</span>
+                          </div>
+                          <p>
+                            {{ row.evidence.user }} ·
+                            {{ row.evidence.at | date: 'dd MMM yyyy, HH:mm' }}
+                          </p>
+                          <p>{{ row.evidence.note }}</p>
+                          @for (task of row.evidence.taskResults; track task.taskId) {
+                            <div class="demo-task-result">
+                              <strong
+                                >{{ task.section }} · v{{ task.planVersion }} ·
+                                {{ task.outcome }}</strong
+                              >
+                              <p>{{ task.instruction }}</p>
+                              @if (task.note) {
+                                <p><strong>Evidence:</strong> {{ task.note }}</p>
+                              }
+                            </div>
+                          }
+                          @if (reviewedEvidence(row.evidence.id); as review) {
+                            <p class="message">
+                              {{ review.reflection }}<br />{{ review.by }} ·
+                              {{ review.at | date: 'dd MMM yyyy, HH:mm' }}
+                            </p>
+                          }
+                          @if (editable()) {
+                            <label
+                              >Review reflection / actions<textarea
+                                rows="2"
+                                [(ngModel)]="evidenceReflections[row.evidence.id]"
+                                placeholder="What does this evidence mean for the next care plan?"
+                              ></textarea>
+                            </label>
+                            <button
+                              type="button"
+                              class="button"
+                              (click)="reviewVisitEvidence(row.evidence)"
+                            >
+                              Save evidence review
+                            </button>
+                          }
+                        </article>
+                      } @empty {
+                        <p class="message">
+                          No task-linked evidence recorded yet. Open an assigned published visit,
+                          record task outcomes and submit the evidence, then return here.
+                        </p>
+                      }
+                    </section>
+
                     <section class="plan-card review-banner">
                       <div class="card-heading">
                         <div>
@@ -1060,6 +1151,34 @@
                   @case ('Versions & approval') {
                     <section class="plan-card">
                       <h2>Versions and approval</h2>
+                      <div class="demo-approval-scope">
+                        <p class="eyebrow">FRONTEND WORKFLOW DEMONSTRATION</p>
+                        <h3>Review the three available care areas</h3>
+                        <p>
+                          About Me, Personal Care and Mobility can be completed in this demo. The
+                          other 14 screens await supplied designs and remain deferred.
+                        </p>
+                        @if (editable()) {
+                          <label class="check"
+                            ><input
+                              type="checkbox"
+                              [ngModel]="p.demoScope === 'available-sections'"
+                              (ngModelChange)="setDemoScope($event)"
+                            />Use the three-section demo approval workflow</label
+                          >
+                        }
+                        @if (p.demoScope) {
+                          <p class="message">
+                            <strong>{{ demoApprovalLabel }}</strong
+                            ><br />{{ demoCompleted() }} of 3 available areas reviewed. This is a
+                            partial demonstration, not a complete approved care plan.
+                          </p>
+                        }
+                        <details>
+                          <summary>14 deferred care areas</summary>
+                          <p>{{ deferredCareAreas.join(' · ') }}</p>
+                        </details>
+                      </div>
                       <label
                         >Next care-plan review date<input
                           type="date"
@@ -1085,7 +1204,14 @@
                           <tbody>
                             @for (v of record?.versions; track v.id) {
                               <tr>
-                                <td>v{{ v.version }}</td>
+                                <td>
+                                  v{{ v.version }}
+                                  @if (v.demoScope) {
+                                    <small class="demo-inline-label"
+                                      >3-section demo · 14 deferred</small
+                                    >
+                                  }
+                                </td>
                                 <td>{{ v.status }}</td>
                                 <td>{{ v.author }}</td>
                                 <td>{{ v.approver || '—' }}</td>
@@ -1100,15 +1226,49 @@
                           </tbody>
                         </table>
                       </div>
+                      @if (p.demoSignature; as signature) {
+                        <div class="demo-signoff">
+                          <h3>{{ signature.label }}</h3>
+                          <p class="demo-signed-name">{{ signature.name }}</p>
+                          <p>
+                            {{ signature.at | date: 'dd MMM yyyy, HH:mm' }} · Three-section demo
+                            approval
+                          </p>
+                        </div>
+                      }
                       <div class="actions">
                         @if (editable()) {
                           <button class="button primary" (click)="save('submit')">
-                            Submit for management review
+                            {{
+                              p.demoScope
+                                ? 'Submit three-section demo'
+                                : 'Submit for management review'
+                            }}
                           </button>
                         }
                         @if (p.status === 'In review' && service.canApprove()) {
+                          @if (p.demoScope) {
+                            <section class="demo-signoff">
+                              <h3>Demonstration signature</h3>
+                              <p>
+                                Type your signed-in name. This demo sign-off appears in the PDF and
+                                is not a verified electronic signature.
+                              </p>
+                              <label
+                                >Approver name<input [(ngModel)]="signatureName" autocomplete="off"
+                              /></label>
+                              <label class="check"
+                                ><input type="checkbox" [(ngModel)]="signatureConfirmed" />I
+                                reviewed the three available sections and acknowledge the 14
+                                deferred areas.</label
+                              >
+                            </section>
+                          }
+
                           <button class="button primary" (click)="save('approve')">
-                            Approve care plan</button
+                            {{
+                              p.demoScope ? 'Approve three-section demo' : 'Approve care plan'
+                            }}</button
                           ><label>Return reason<input [(ngModel)]="reason" /></label
                           ><button class="button" (click)="save('return')">
                             Return to supervisor

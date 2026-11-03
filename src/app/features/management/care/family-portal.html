@@ -306,6 +306,12 @@
                 </p>
               </div>
             </div>
+            @if (r.plan?.partialDemo) {
+              <p class="message">
+                Partial frontend demo approval: three available care areas only. Fourteen care areas
+                remain deferred; this is not a complete care-plan approval.
+              </p>
+            }
             @if (r.plan?.structured) {
               @for (section of r.plan?.sections; track section.name) {
                 <section class="panel">

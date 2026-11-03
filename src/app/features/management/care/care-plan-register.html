@@ -144,7 +144,11 @@
                   ><span class="status-dot" aria-hidden="true"></span
                   >{{ r.current?.status || 'Not started' }}</span
                 ><span class="cell-detail">{{
-                  r.current ? 'Working version ' + r.current.version : 'No care plan created'
+                  r.current
+                    ? 'Working version ' +
+                      r.current.version +
+                      (r.current.demoScope ? ' · 3-section demo' : '')
+                    : 'No care plan created'
                 }}</span>
               </td>
               <td>
@@ -166,13 +170,20 @@
               </td>
               <td>
                 <div class="completion-label">
-                  <strong>{{ r.complete }}<span> / 17</span></strong
-                  ><span>{{ r.complete === 17 ? 'Complete' : 'Reviewed' }}</span>
+                  <strong
+                    >{{ r.complete }}<span> / {{ r.total }}</span></strong
+                  ><span>{{ r.complete === r.total ? 'Complete' : 'Reviewed' }}</span>
                 </div>
                 <progress
                   [value]="r.complete"
-                  max="17"
-                  [attr.aria-label]="r.complete + ' of 17 care areas reviewed for ' + r.client.name"
+                  [max]="r.total"
+                  [attr.aria-label]="
+                    r.complete +
+                    ' of ' +
+                    r.total +
+                    ' available care areas reviewed for ' +
+                    r.client.name
+                  "
                 ></progress>
               </td>
               <td>
@@ -180,7 +191,11 @@
                   <span class="approved-version"
                     ><span class="material-symbols-outlined" aria-hidden="true">task_alt</span
                     >Version {{ r.approved.version }}</span
-                  ><span class="cell-detail">Approved care record</span>
+                  ><span class="cell-detail">{{
+                    r.approved.demoScope
+                      ? 'Demo approval · 14 areas deferred'
+                      : 'Approved care record'
+                  }}</span>
                 } @else {
                   <span class="no-version">No approved version</span>
                 }

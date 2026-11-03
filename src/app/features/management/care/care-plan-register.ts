@@ -24,7 +24,13 @@ export class CarePlanRegister {
         client,
         current,
         approved,
-        complete: current?.sections.filter((s) => s.complete || !s.required).length || 0,
+        complete:
+          current?.sections.filter(
+            (s) =>
+              (!current.demoScope || ['About Me', 'Personal Care', 'Mobility'].includes(s.name)) &&
+              (s.complete || !s.required),
+          ).length || 0,
+        total: current?.demoScope ? 3 : 17,
         overdue: !!current?.review && current.review < new Date().toISOString().slice(0, 10),
       };
     }),

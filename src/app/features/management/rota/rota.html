@@ -76,6 +76,9 @@
     permissionsTitle="Visits & Allocation access"
   />
 } @else {
+  @if (section === 'call-packages') {
+    <cv-care-plan-package-handoffs [clientId]="handoffClientId" [rotaMode]="true" />
+  }
   @if (section) {
     <div class="metrics four" aria-label="Page statistics">
       @for (stat of sectionStats(); track stat.label) {

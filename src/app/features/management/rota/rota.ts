@@ -1,3 +1,4 @@
+import { CarePlanPackageHandoffs } from '../care/care-plan-package-handoffs';
 import { ModuleDesign } from '../shared/module-design';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
@@ -28,6 +29,7 @@ import {
   selector: 'cv-rota',
   imports: [
     ModuleDesign,
+    CarePlanPackageHandoffs,
     DatePipe,
     FormsModule,
     MatSelectModule,
@@ -55,6 +57,7 @@ export class Rota {
       : this.section === 'history'
         ? 'History & audit'
         : 'Publishing';
+  protected readonly handoffClientId = this.route.snapshot.queryParamMap.get('client') || '';
   protected readonly clientFiles = !!this.route.snapshot.data['clientFiles'];
   protected readonly riskFlags = RISK_FLAGS;
   private readonly callStyles = computed(() => ({

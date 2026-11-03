@@ -30,6 +30,7 @@ export interface EcmRecord {
   followUp: string;
 }
 export interface EcmEvidence {
+  taskResults?: import('../care/care-plan-visit-tasks').CarePlanTaskResult[];
   audio?: string;
   audioName?: string;
   transcript?: string;

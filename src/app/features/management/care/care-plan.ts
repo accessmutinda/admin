@@ -1,3 +1,5 @@
+import { CarePlanPackageHandoffs } from './care-plan-package-handoffs';
+import { EcmEvidence } from '../ecm/ecm.models';
 import { CarePlanSectionNav } from './care-plan-section-nav';
 import { CarePlanPersonalCare } from './care-plan-personal-care';
 import { CarePlanIdentityHeader } from './care-plan-identity-header';
@@ -51,6 +53,9 @@ import {
   BodyObservation,
   CarePlanRecord,
   PLAN_FIELDS,
+  DEMO_APPROVAL_LABEL,
+  DEMO_CARE_AREAS,
+  DEFERRED_CARE_AREAS,
   PLAN_SECTIONS,
   PlanAssessment,
   PlanVersion,
@@ -63,6 +68,7 @@ import {
   selector: 'cv-care-plan',
   imports: [
     CarePlanSectionNav,
+    CarePlanPackageHandoffs,
     CarePlanPersonalCare,
     CarePlanIdentityHeader,
     CarePlanMobility,
@@ -81,6 +87,7 @@ import {
     './care-controls.css',
     './care-plan.css',
     './care-plan-workspace.css',
+    './care-plan-demo-workflows.css',
   ],
 })
 export class CarePlan implements OnDestroy {
@@ -89,6 +96,68 @@ export class CarePlan implements OnDestroy {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   protected readonly modules = WORKSPACE_MODULES;
+  protected readonly demoApprovalLabel = DEMO_APPROVAL_LABEL;
+  protected readonly demoCareAreas = DEMO_CARE_AREAS;
+  protected readonly deferredCareAreas = DEFERRED_CARE_AREAS;
+  protected signatureName = '';
+  protected signatureConfirmed = false;
+  protected evidenceReflections: Record<string, string> = {};
+  protected readonly visitEvidence = computed(() => {
+    const data = this.service.care.rota.data();
+    const visits = data.visits.filter((visit) => visit.clientId === this.id);
+    return (data.ecm?.evidence || [])
+      .filter(
+        (item) => visits.some((visit) => visit.id === item.visitId) && !!item.taskResults?.length,
+      )
+      .map((evidence) => ({
+        evidence,
+        visit: visits.find((visit) => visit.id === evidence.visitId)!,
+      }))
+      .sort((a, b) => b.evidence.at.localeCompare(a.evidence.at));
+  });
+  protected setDemoScope(enabled: boolean) {
+    if (!this.plan || !this.editable()) return;
+    this.plan.demoScope = enabled ? 'available-sections' : undefined;
+  }
+  protected demoCompleted() {
+    return (
+      this.plan?.sections.filter(
+        (section) =>
+          DEMO_CARE_AREAS.includes(section.name) && (section.complete || !section.required),
+      ).length || 0
+    );
+  }
+  protected refreshHandoffRevision() {
+    this.record = structuredClone(this.service.read(this.id));
+  }
+  protected reviewedEvidence(id: string) {
+    return this.plan?.visitEvidenceReviews?.find((review) => review.evidenceId === id);
+  }
+  protected reviewVisitEvidence(evidence: EcmEvidence) {
+    if (!this.plan || !this.editable()) return;
+    const reflection = this.evidenceReflections[evidence.id]?.trim();
+    if (!reflection) {
+      this.error.set('Record how this visit evidence informs the review or follow-up actions.');
+      return;
+    }
+    const review = {
+      evidenceId: evidence.id,
+      by: this.service.care.auth.currentUser()!.name,
+      at: new Date().toISOString(),
+      reflection,
+    };
+    this.plan.visitEvidenceReviews = [
+      ...(this.plan.visitEvidenceReviews || []).filter((item) => item.evidenceId !== evidence.id),
+      review,
+    ];
+    this.plan.events.push({
+      at: review.at,
+      by: review.by,
+      action: 'Visit-task evidence reviewed',
+      detail: JSON.stringify({ ...review, visitId: evidence.visitId, tasks: evidence.taskResults }),
+    });
+    this.save();
+  }
   protected editingAboutMe = false;
   protected aboutEditDirty = false;
   protected startAboutEdit() {
@@ -326,6 +395,8 @@ export class CarePlan implements OnDestroy {
         return v.id === requested || v.version === requested;
       }) || this.record?.versions[0],
     );
+    this.signatureName = '';
+    this.signatureConfirmed = false;
     this.clean = JSON.stringify(this.plan);
     this.report = structuredClone(this.plan?.reviewReport || seededReviewReport());
     this.wordingProposals = [];
@@ -645,6 +716,9 @@ export class CarePlan implements OnDestroy {
       this.record.revision,
       action,
       this.reason,
+      action === 'approve'
+        ? { name: this.signatureName, confirmed: this.signatureConfirmed }
+        : undefined,
     );
     this.error.set(error || '');
     if (!error) {

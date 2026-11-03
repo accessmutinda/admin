@@ -176,3 +176,26 @@ AI Edit/Accept/Reject, recording/manual transcript entry and transcript read-alo
 It preserves the fixed header, approved versions and existing custom instructions.
 Related incidents open filtered Service User records; Save Section completes only
 the working draft area after validation. See the Personal Care checklist in deliverables.
+
+
+### Frontend demo: approval, rota handoff and visit evidence
+
+The fourteen unavailable care-area screens remain Coming soon. To demonstrate approval,
+finish About Me, Personal Care and Mobility, confirm the review details/capacity/package,
+then open **Review History** and select **Use the three-section demo approval workflow**.
+Submit the draft. A different manager signs in, types their own displayed name and confirms
+that fourteen areas are deferred before approving. The partial scope and demonstration
+signature are retained on the version and in the generated PDF; this is not full-plan approval.
+
+For a package-change demonstration, save a Change required recommendation in the current
+care-package review. A different manager authorises it. Send the handoff to the rota queue,
+then open **Visits & Rostering → Call packages**, enter a simulated completion note and
+complete the handoff. The status/history persist; recurring calls and published visits are
+not modified by this simulation.
+
+In **Staff portal → Service users → Allocation**, choose an assigned published visit and
+open visit evidence. Record outcomes for tasks derived from approved, staff-visible care
+instructions, add a note and submit. Managers can return to the person's care-plan
+**Quality Review** to see those task/version snapshots and save a review reflection.
+Carers can capture only their own assigned published visits. No live AI or backend service
+is required for these local frontend demonstrations.

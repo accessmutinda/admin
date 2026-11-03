@@ -1,3 +1,47 @@
+<section class="portal-panel">
+  <div class="portal-panel-header">
+    <div>
+      <h2>Visit tasks & evidence</h2>
+      <p class="portal-muted">
+        Frontend demo · approved care tasks → recorded evidence → care-plan review
+      </p>
+    </div>
+  </div>
+  <label class="portal-form"
+    >Published visit in {{ month()
+    }}<select [ngModel]="pendingEvidenceVisit" (ngModelChange)="changeEvidenceVisit($event)">
+      <option value="">Choose an assigned visit</option>
+      @for (visit of evidenceVisits(); track visit.id) {
+        <option [value]="visit.id">
+          {{ visit.date }} · {{ visit.start }} · {{ visit.callName }}
+        </option>
+      }
+    </select></label
+  >
+  <div class="portal-actions">
+    <button
+      type="button"
+      class="button primary"
+      [disabled]="!pendingEvidenceVisit || !!evidenceVisitId()"
+      (click)="openEvidence()"
+    >
+      Open visit evidence
+    </button>
+  </div>
+  @if (!evidenceVisits().length) {
+    <p class="portal-muted">
+      No permitted published visits in this month. Choose another month in the allocation preview,
+      or publish an assigned visit first.
+    </p>
+  }
+  @if (evidenceVisitId(); as visitId) {
+    <cv-visit-evidence
+      [visitId]="visitId"
+      (saved)="evidenceSaved()"
+      (cancelled)="changeEvidenceVisit('')"
+    />
+  }
+</section>
 <div class="page-heading">
   <div>
     <h1>Client Allocation & Follow-up</h1>

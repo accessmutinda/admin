@@ -19,6 +19,27 @@ export const PLAN_SECTIONS = [
   'Home Access & Security',
   'Call Package',
 ];
+export const DEMO_CARE_AREAS = PLAN_SECTIONS.slice(0, 3);
+export const DEFERRED_CARE_AREAS = PLAN_SECTIONS.slice(3);
+export const DEMO_APPROVAL_LABEL = 'Demo approval — 14 care areas deferred';
+export function inReviewScope(p: PlanVersion, section: PlanSection) {
+  return p.demoScope !== 'available-sections' || DEMO_CARE_AREAS.includes(section.name);
+}
+export interface PackageHandoff {
+  id: string;
+  versionId: string;
+  version: string;
+  proposal: string;
+  status: 'Authorised' | 'Awaiting rota update' | 'Completed';
+  note: string;
+  events: PlanEvent[];
+}
+export interface VisitEvidenceReview {
+  evidenceId: string;
+  by: string;
+  at: string;
+  reflection: string;
+}
 export const PLAN_FIELDS = [
   ['situation', 'Current situation with regard to my needs'],
   ['assistance', 'What assistance is required'],
@@ -81,6 +102,9 @@ export interface PlanEvent {
   detail: string;
 }
 export interface PlanVersion {
+  demoScope?: 'available-sections';
+  demoSignature?: { name: string; userId: string; at: string; label: 'Demonstration signature' };
+  visitEvidenceReviews?: VisitEvidenceReview[];
   id: string;
   version: string;
   status: 'Draft' | 'In review' | 'Approved' | 'Superseded';
@@ -109,6 +133,7 @@ export interface PlanVersion {
   reviewReport?: import('./care-plan-review.models').ReviewReport;
 }
 export interface CarePlanRecord {
+  packageHandoffs?: PackageHandoff[];
   revision: number;
   versions: PlanVersion[];
 }
@@ -279,7 +304,7 @@ export function planIssues(
     issues.push('Review the current call package.');
   if (p.packageDecision === 'Change required' && !p.packageProposal.trim())
     issues.push('Describe the proposed package change.');
-  for (const s of p.sections) {
+  for (const s of p.sections.filter((section) => inReviewScope(p, section))) {
     const error = sectionError(s);
     if (error) issues.push(error);
     if (s.required && !s.complete)
@@ -340,7 +365,7 @@ export function approvedInstructions(c: RotaClient, audience: 'staff' | 'family'
   const p = c.file?.carePlan?.versions.find((v) => v.status === 'Approved');
   return (
     p?.sections
-      .filter((s) => s.required && s.visibility[audience])
+      .filter((s) => inReviewScope(p!, s) && s.required && s.visibility[audience])
       .map((s) => ({
         name: s.name,
         instructions: s.fields['assistance'],

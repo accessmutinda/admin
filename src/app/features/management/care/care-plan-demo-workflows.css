@@ -1,0 +1,109 @@
+.demo-scope-banner,
+.demo-approval-scope {
+  border: 1px solid #eeddb6;
+  border-left: 3px solid #cb941f;
+  background: #fffbf1;
+  border-radius: 7px;
+  padding: 14px;
+}
+.demo-approval-scope {
+  margin-bottom: 16px;
+}
+.demo-approval-scope h3 {
+  margin-top: 0;
+  color: var(--color-navy);
+}
+.demo-approval-scope details {
+  margin-top: 12px;
+  font-size: 12px;
+}
+.demo-handoff,
+.demo-evidence-review {
+  padding: 16px;
+  margin-top: 12px;
+  border: 1px solid #dce8ec;
+  border-radius: 8px;
+  background: white;
+}
+.demo-stages {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  gap: 8px;
+  padding: 0;
+  margin: 14px 0;
+}
+.demo-stages li {
+  padding: 7px 10px;
+  border-radius: 5px;
+  background: #f1f4f8;
+  color: #76869a;
+  font-size: 11px;
+}
+.demo-stages li.done {
+  color: var(--color-teal-600);
+  background: var(--color-teal-50);
+  font-weight: 700;
+}
+.demo-stages li[aria-current] {
+  box-shadow: inset 0 0 0 1px var(--color-teal);
+}
+.demo-workflow label,
+.demo-signoff label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+  font-size: 12px;
+}
+.demo-workflow textarea,
+.demo-signoff input:not([type='checkbox']) {
+  font: inherit;
+  padding: 9px;
+  border: 1px solid #d7e4e7;
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.demo-signoff {
+  flex: 1 1 100%;
+  border: 1px solid #d7e8e4;
+  border-radius: 7px;
+  background: #f6fcfa;
+  padding: 14px;
+  margin: 12px 0;
+}
+.demo-signoff label.check {
+  flex-direction: row;
+  align-items: center;
+}
+.demo-signoff p {
+  font-size: 12px;
+}
+.demo-signed-name {
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 24px !important;
+  color: var(--color-navy) !important;
+}
+.demo-task-result {
+  border-left: 3px solid var(--color-teal);
+  padding: 10px 12px;
+  margin: 8px 0;
+  background: #f6fbfa;
+}
+.demo-task-result strong,
+.demo-inline-label {
+  font-size: 11px;
+  color: var(--color-teal-600);
+}
+.demo-inline-label {
+  display: block;
+  margin-top: 4px;
+}
+@media (max-width: 600px) {
+  .demo-handoff,
+  .demo-evidence-review {
+    padding: 12px;
+  }
+}

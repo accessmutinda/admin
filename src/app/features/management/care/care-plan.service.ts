@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { CareService } from './care.service';
 import {
   CarePlanRecord,
+  inReviewScope,
+  DEMO_APPROVAL_LABEL,
   PlanVersion,
   planIssues,
   planDetails,
@@ -55,6 +57,7 @@ export class CarePlanService {
     revision: number,
     action: 'save' | 'submit' | 'approve' | 'return' | 'review' | 'package',
     reason = '',
+    signature?: { name: string; confirmed: boolean },
   ): string | null {
     const current = this.read(id),
       client = this.care.client(id),
@@ -95,10 +98,20 @@ export class CarePlanService {
         qualityReview: '',
         events: [],
         reviewReport: undefined,
+        demoSignature: undefined,
+        visitEvidenceReviews: [],
+        packageDecision: 'Not reviewed',
+        packageProposal: '',
+        packageStatus: 'Not requested',
       };
       next.sections.forEach((s) => (s.complete = false));
       record.versions.unshift(next);
     } else {
+      if (old.status !== 'Draft' && next.demoScope !== old.demoScope)
+        return 'Return this version to draft before changing its review scope.';
+      if (next.demoScope && next.demoScope !== 'available-sections')
+        return 'Choose the available-sections demo scope.';
+      next.demoSignature = old.demoSignature;
       const contentChanged = Object.keys(next).some(
         (k) =>
           ![
@@ -138,7 +151,9 @@ export class CarePlanService {
           return 'Review quality findings and record a management review rationale before submission.';
         if (
           !next.confirmed ||
-          next.sections.some((s) => s.required && (!s.complete || !!sectionError(s))) ||
+          next.sections.some(
+            (s) => inReviewScope(next, s) && s.required && (!s.complete || !!sectionError(s)),
+          ) ||
           !next.capacity['decision'].trim() ||
           next.capacity['concerns'] === 'Not recorded' ||
           next.packageDecision === 'Not reviewed'
@@ -168,7 +183,20 @@ export class CarePlanService {
           return 'Senior management can approve submitted versions only.';
         if (old.authorId === actor.id || old.contributors?.includes(actor.id))
           return 'A different manager must approve this care plan.';
+        if (
+          old.demoScope &&
+          (!signature?.confirmed ||
+            signature.name.trim().toLowerCase() !== actor.name.trim().toLowerCase())
+        )
+          return 'Type your signed-in name and confirm the demonstration signature.';
         next = structuredClone(old);
+        if (old.demoScope)
+          next.demoSignature = {
+            name: actor.name,
+            userId: actor.id,
+            at: new Date().toISOString(),
+            label: 'Demonstration signature',
+          };
         next.status = 'Approved';
         next.approver = actor.name;
         next.reviewer = actor.name;
@@ -195,6 +223,25 @@ export class CarePlanService {
           return 'A different manager must authorise the package recommendation.';
         next = structuredClone(old);
         next.packageStatus = 'Authorised recommendation — rota update required';
+        record.packageHandoffs = [
+          ...(record.packageHandoffs || []),
+          {
+            id: crypto.randomUUID(),
+            versionId: old.id,
+            version: old.version,
+            proposal: old.packageProposal,
+            status: 'Authorised',
+            note: '',
+            events: [
+              {
+                at: new Date().toISOString(),
+                by: actor.name,
+                action: 'Authorised',
+                detail: old.packageProposal,
+              },
+            ],
+          },
+        ];
       }
       if (action === 'save') {
         next.status = old.status;
@@ -234,7 +281,15 @@ export class CarePlanService {
           current: { capacity: next.capacity, participation: next.participation },
         }),
       });
-    next.events.push({ at: new Date().toISOString(), by: actor.name, action, detail: changes });
+    next.events.push({
+      at: new Date().toISOString(),
+      by: actor.name,
+      action,
+      detail:
+        next.demoScope && ['submit', 'approve'].includes(action)
+          ? `${DEMO_APPROVAL_LABEL}. ${changes}`
+          : changes,
+    });
     record.revision++;
     return this.care.saveCarePlanRecord(
       id,
@@ -242,6 +297,41 @@ export class CarePlanService {
       record,
       current.revision,
       `Care plan ${action} · v${next.version}`,
+    );
+  }
+  advancePackageHandoff(
+    id: string,
+    workspace: string,
+    handoffId: string,
+    revision: number,
+    note: string,
+  ): string | null {
+    if (!this.care.rota.can('manage') || !this.canEdit())
+      return 'Rota management permission is required.';
+    const saved = this.read(id);
+    if (!saved || saved.revision !== revision)
+      return 'This care plan changed. Reload the handoff before saving.';
+    const record = structuredClone(saved);
+    const handoff = record.packageHandoffs?.find((item) => item.id === handoffId);
+    if (!handoff || handoff.status === 'Completed')
+      return 'Choose an outstanding authorised recommendation.';
+    if (handoff.status === 'Awaiting rota update' && !note.trim())
+      return 'Record the simulated rota update and outcome.';
+    handoff.status = handoff.status === 'Authorised' ? 'Awaiting rota update' : 'Completed';
+    handoff.note = note.trim();
+    handoff.events.push({
+      at: new Date().toISOString(),
+      by: this.care.auth.currentUser()!.name,
+      action: handoff.status,
+      detail: 'Frontend simulation — live calls and allocations unchanged. ' + note.trim(),
+    });
+    record.revision++;
+    return this.care.saveCarePlanRecord(
+      id,
+      workspace,
+      record,
+      saved.revision,
+      'Demo package handoff: ' + handoff.status,
     );
   }
 }

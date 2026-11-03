@@ -6,6 +6,12 @@ import { approvedInstructions } from './care-plan.models';
   selector: 'cv-approved-care-instructions',
   template: `<section class="instructions">
     <h3>Approved visit care instructions</h3>
+    @if (partialDemo()) {
+      <p>
+        <strong>Partial demo approval:</strong> three available care areas only; 14 areas are
+        deferred. This is not a complete care-plan approval.
+      </p>
+    }
     <p>Follow the current approved plan, the visit task list and linked risk assessments.</p>
     @for (s of instructions(); track s.name) {
       <details>
@@ -54,6 +60,13 @@ export class ApprovedCareInstructions {
   readonly clientId = input.required<string>();
   readonly visitId = input('');
   private readonly care = inject(CareService);
+  protected readonly partialDemo = computed(
+    () =>
+      this.care
+        .client(this.clientId())
+        ?.file?.carePlan?.versions.find((p) => p.status === 'Approved')?.demoScope ===
+      'available-sections',
+  );
   protected readonly instructions = computed(() => {
     const client = this.care.client(this.clientId());
     if (!client) return [];

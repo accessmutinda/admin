@@ -804,12 +804,16 @@ export class CareService {
         ? file.carePlan
           ? {
               structured: true,
+              partialDemo:
+                file.carePlan.versions.find((p) => p.status === 'Approved')?.demoScope ===
+                'available-sections',
               details: {} as Record<string, string>,
               goals: [] as import('../clients/client-file.models').ClientEntry[],
               sections: approvedInstructions(client, 'family'),
             }
           : {
               structured: false,
+              partialDemo: false,
               details: file.sections['plan'] ?? {},
               goals: file.entries['plan'] ?? [],
               sections: [],

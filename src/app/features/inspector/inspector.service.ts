@@ -27,7 +27,13 @@ export class InspectorService {
   readonly clients = computed(() => this.store.data().rota?.clients ?? []);
   readonly careInstructions = computed(() =>
     this.clients().flatMap((c) =>
-      approvedInstructions(c, 'inspector').map((s) => ({ ...s, client: c.name })),
+      approvedInstructions(c, 'inspector').map((s) => ({
+        ...s,
+        client: c.name,
+        partialDemo:
+          c.file?.carePlan?.versions.find((p) => p.status === 'Approved')?.demoScope ===
+          'available-sections',
+      })),
     ),
   );
   readonly staff = this.store.staff;

@@ -85,6 +85,9 @@
           <span class="plan-status" [attr.data-status]="current.status">{{ current.status }}</span>
         }
       </div>
+      @if (plan()?.demoScope) {
+        <p class="identity-demo-label">3-section demo · 14 areas deferred</p>
+      }
       <dl>
         <div>
           <dt>Last review:</dt>

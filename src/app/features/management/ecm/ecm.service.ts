@@ -1,3 +1,4 @@
+import { carePlanVisitTasks } from '../care/care-plan-visit-tasks';
 import { Injectable, computed, inject } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ManagementStore, COURSES } from '../shared/management.store';
@@ -93,8 +94,10 @@ export class EcmService {
     detail: string,
     change: (data: EcmData) => EcmData,
     changedVisit?: RotaVisit,
+    evidenceVisitId?: string,
   ): string | null {
-    if (!this.rota.can('manage')) return 'Your role cannot manage ECM records.';
+    if (!this.rota.can('manage') && (!evidenceVisitId || !this.canCaptureEvidence(evidenceVisitId)))
+      return 'Your role cannot manage ECM records.';
     const user = this.auth.currentUser()!;
     return this.store.saveWorkspace((d) => {
       const rota = d.rota ?? emptyRota();
@@ -273,11 +276,26 @@ export class EcmService {
       }),
     );
   }
+  canCaptureEvidence(visitId: string): boolean {
+    const visit = this.rota.data().visits.find((v) => v.id === visitId && v.state === 'Published');
+    if (!visit) return false;
+    const actor = this.auth.currentUser();
+    if (actor?.roleCode !== 'CW' && this.rota.can('manage')) return true;
+    const staff = this.store
+      .staff()
+      .find((s) => s.email.toLowerCase() === actor?.email.toLowerCase());
+    return !!(
+      actor?.roleCode === 'CW' &&
+      this.rota.can('attendance') &&
+      staff &&
+      visit.staffIds.includes(staff.id)
+    );
+  }
   evidence(
     visitId: string,
     input: Pick<
       EcmEvidence,
-      'type' | 'note' | 'photo' | 'photoName' | 'audio' | 'audioName' | 'transcript'
+      'type' | 'note' | 'photo' | 'photoName' | 'audio' | 'audioName' | 'transcript' | 'taskResults'
     >,
     consent: boolean,
   ): string | null {
@@ -303,6 +321,33 @@ export class EcmService {
         input.audio.length > 2800000)
     )
       return 'Use a voice recording under 2 MB in a supported audio format.';
+    if (!this.canCaptureEvidence(visitId))
+      return 'Only a manager or assigned carer can record evidence for this visit.';
+    const visit = this.rota.data().visits.find((v) => v.id === visitId)!;
+    const client = this.rota.data().clients.find((c) => c.id === visit.clientId);
+    const tasks = client ? carePlanVisitTasks(client, visit) : [];
+    if (input.taskResults) {
+      if (!input.taskResults.length) return 'Record at least one task outcome before submitting.';
+      const seen = new Set<string>();
+      for (const result of input.taskResults) {
+        const task = tasks.find((t) => t.taskId === result.taskId);
+        if (
+          !task ||
+          seen.has(result.taskId) ||
+          task.planVersionId !== result.planVersionId ||
+          task.instruction !== result.instruction ||
+          task.section !== result.section ||
+          task.planVersion !== result.planVersion
+        )
+          return 'The approved visit tasks changed. Reopen the evidence form before saving.';
+        if (
+          !['Completed', 'Not completed', 'Concern'].includes(result.outcome) ||
+          (result.outcome !== 'Completed' && !result.note.trim())
+        )
+          return 'Record an outcome and explain any incomplete task or concern.';
+        seen.add(result.taskId);
+      }
+    }
     return this.save(
       'Visit evidence added',
       `${visitId} · ${input.type}${input.photo ? ' · photo attached' : ''}`,
@@ -348,6 +393,8 @@ export class EcmService {
           },
         ],
       }),
+      undefined,
+      visitId,
     );
   }
   reviewEvidence(id: string): string | null {

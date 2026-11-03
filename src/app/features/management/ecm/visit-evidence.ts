@@ -1,3 +1,4 @@
+import { carePlanVisitTasks, CarePlanTaskResult } from '../care/care-plan-visit-tasks';
 import { ApprovedCareInstructions } from '../care/approved-care-instructions';
 import { CareService } from '../care/care.service';
 import { computed } from '@angular/core';
@@ -27,6 +28,44 @@ interface Recognition {
       <cv-approved-care-instructions [clientId]="visit.clientId" [visitId]="visit.id" />
     }
     <form (ngSubmit)="save()" novalidate>
+      @if (tasks().length) {
+        <section class="visit-task-capture">
+          <h3>Approved care-plan tasks · demo evidence</h3>
+          <p>
+            Record the tasks you carried out. Each result retains its approved plan version for the
+            next review.
+          </p>
+          @for (task of tasks(); track task.taskId; let i = $index) {
+            <article>
+              <strong>{{ task.section }} · v{{ task.planVersion }}</strong>
+              <p>{{ task.instruction }}</p>
+              <label
+                >Task outcome<select
+                  [name]="'task-outcome-' + i"
+                  [(ngModel)]="outcomes[task.taskId]"
+                >
+                  <option value="">Not recorded</option>
+                  <option>Completed</option>
+                  <option>Not completed</option>
+                  <option>Concern</option>
+                </select></label
+              >
+              @if (outcomes[task.taskId]) {
+                <label
+                  >Task evidence / follow-up
+                  {{ outcomes[task.taskId] === 'Completed' ? '(optional)' : '(required)'
+                  }}<textarea
+                    rows="2"
+                    [name]="'task-note-' + i"
+                    [(ngModel)]="taskNotes[task.taskId]"
+                  ></textarea>
+                </label>
+              }
+            </article>
+          }
+        </section>
+      }
+
       <div class="panel-body form-grid">
         <p class="full-width">
           Demo capture · use sample details. Nothing is sent to a care service or saved to a phone
@@ -152,6 +191,48 @@ interface Recognition {
       :host {
         display: block;
       }
+      .visit-task-capture {
+        margin: 14px;
+        padding: 16px;
+        border: 1px solid #d9e9e7;
+        border-radius: 8px;
+        background: var(--color-teal-50);
+      }
+      .visit-task-capture h3 {
+        margin: 0;
+        color: var(--color-navy);
+        font-size: 15px;
+      }
+      .visit-task-capture p {
+        margin: 8px 0;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .visit-task-capture article {
+        margin-top: 12px;
+        padding: 12px;
+        background: white;
+        border-radius: 6px;
+      }
+      .visit-task-capture strong {
+        color: var(--color-teal-600);
+        font-size: 11px;
+      }
+      .visit-task-capture label {
+        display: grid;
+        gap: 6px;
+        margin-top: 10px;
+        font-size: 12px;
+      }
+      .visit-task-capture select,
+      .visit-task-capture textarea {
+        padding: 8px;
+        font: inherit;
+        border: 1px solid #d7e4e7;
+        border-radius: 5px;
+        width: 100%;
+        box-sizing: border-box;
+      }
       .evidence-actions {
         flex-wrap: wrap;
       }
@@ -184,6 +265,23 @@ export class VisitEvidence {
   protected readonly careVisit = computed(() =>
     this.care.rota.data().visits.find((v) => v.id === this.visitId()),
   );
+  protected readonly tasks = computed(() => {
+    const visit = this.careVisit();
+    const client = visit && this.care.client(visit.clientId);
+    return visit && client && this.service.canCaptureEvidence(visit.id)
+      ? carePlanVisitTasks(client, visit)
+      : [];
+  });
+  protected outcomes: Record<string, CarePlanTaskResult['outcome'] | ''> = {};
+  protected taskNotes: Record<string, string> = {};
+  hasUnsavedChanges() {
+    return !!(
+      this.note.trim() ||
+      this.photo() ||
+      this.audio() ||
+      Object.values(this.outcomes).some(Boolean)
+    );
+  }
   readonly visitId = input.required<string>();
   readonly saved = output<void>();
   readonly cancelled = output<void>();
@@ -419,6 +517,15 @@ export class VisitEvidence {
         audio: this.audio(),
         audioName: this.audioName,
         transcript: this.note,
+        taskResults: this.tasks().length
+          ? this.tasks()
+              .filter((task) => this.outcomes[task.taskId])
+              .map((task) => ({
+                ...task,
+                outcome: this.outcomes[task.taskId] as CarePlanTaskResult['outcome'],
+                note: this.taskNotes[task.taskId] || '',
+              }))
+          : undefined,
       },
       this.consent,
     );
