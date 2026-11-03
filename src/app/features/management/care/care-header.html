@@ -99,11 +99,12 @@
     </div>
   </section>
   <nav
-    cvAlignedWorkspaceTabs
-    class="client-workspace-tabs reference-tabs"
+    #workspaceNav
+    class="client-workspace-tabs reference-tabs workspace-overflow-nav"
     aria-label="Service user workspace"
   >
     <button
+      class="workspace-tab"
       [class.selected]="active() === 'overview'"
       [attr.aria-current]="active() === 'overview' ? 'page' : null"
       [disabled]="disabled()"
@@ -111,30 +112,76 @@
     >
       <span class="material-symbols-outlined" aria-hidden="true">home</span>Overview
     </button>
-    @for (tab of tabs; track tab.path) {
+    @for (tab of tabs.slice(0, visibleTabCount()); track tab.path) {
       <a
+        class="workspace-tab"
         [class.selected]="active() === tab.path"
         [attr.aria-current]="active() === tab.path ? 'page' : null"
         [routerLink]="['/manage/clients', c.id, tab.path]"
-        ><span class="material-symbols-outlined" aria-hidden="true">{{
-          tab.path === 'journal'
-            ? 'forum'
-            : tab.path === 'communications'
-              ? 'groups'
-              : tab.path === 'medication'
-                ? 'pill'
-                : tab.path === 'visits'
-                  ? 'calendar_month'
-                  : tab.path === 'visit-notes'
-                    ? 'clinical_notes'
-                    : tab.path === 'documents'
-                      ? 'description'
-                      : tab.path === 'audit'
-                        ? 'history'
-                        : 'group'
-        }}</span
-        >{{ tab.label }}</a
       >
+        <span class="material-symbols-outlined" aria-hidden="true">{{ tabIcon(tab.path) }}</span
+        >{{ tab.label }}
+      </a>
     }
+    @if (overflowTabs().length) {
+      <div class="workspace-more">
+        <button
+          #moreButton
+          type="button"
+          class="workspace-tab workspace-more-trigger"
+          [class.selected]="overflowSelected()"
+          [attr.aria-expanded]="overflowOpen()"
+          [attr.aria-controls]="'service-user-more-' + c.id"
+          aria-label="More service-user sections"
+          (click)="toggleOverflow()"
+          (keydown.arrowdown)="openOverflow($event)"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>More<span
+            class="material-symbols-outlined workspace-more-chevron"
+            aria-hidden="true"
+            >expand_more</span
+          >
+        </button>
+        @if (overflowOpen()) {
+          <div
+            class="workspace-overflow-menu"
+            [id]="'service-user-more-' + c.id"
+            (keydown)="overflowKey($event)"
+          >
+            @for (tab of overflowTabs(); track tab.path) {
+              <a
+                class="workspace-tab"
+                [class.selected]="active() === tab.path"
+                [attr.aria-current]="active() === tab.path ? 'page' : null"
+                [routerLink]="['/manage/clients', c.id, tab.path]"
+                (click)="overflowOpen.set(false)"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">{{
+                  tabIcon(tab.path)
+                }}</span
+                >{{ tab.label }}
+              </a>
+            }
+          </div>
+        }
+      </div>
+    }
+    <div #tabSizer class="workspace-tab-sizer" aria-hidden="true" inert>
+      <span class="workspace-tab" data-measure-tab="overview"
+        ><span class="material-symbols-outlined">home</span>Overview</span
+      >
+      @for (tab of tabs; track tab.path) {
+        <span class="workspace-tab" [attr.data-measure-tab]="tab.path"
+          ><span class="material-symbols-outlined">{{ tabIcon(tab.path) }}</span
+          >{{ tab.label }}</span
+        >
+      }
+      <span class="workspace-tab" data-measure-more
+        ><span class="material-symbols-outlined">more_horiz</span>More<span
+          class="material-symbols-outlined workspace-more-chevron"
+          >expand_more</span
+        ></span
+      >
+    </div>
   </nav>
 }

@@ -12,54 +12,59 @@
     </a>
   </header>
 
-  <div class="register-metrics" aria-label="Care plan summary">
+  <div class="co-metrics register-metrics" aria-label="Care plan summary">
     <button
-      class="register-metric"
+      type="button"
+      class="co-stat co-surface register-metric"
       data-card-tone="blue"
       [class.selected]="status() === 'All'"
       (click)="status.set('All')"
       [attr.aria-pressed]="status() === 'All'"
     >
-      <span class="metric-icon blue material-symbols-outlined" aria-hidden="true">assignment</span>
-      <span class="metric-copy"
-        ><span>Service users</span><strong>{{ rows().length }}</strong
-        ><small>In this workspace</small></span
-      >
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
+      <div>
+        <h2>Service users</h2>
+        <strong>{{ rows().length }}</strong>
+        <p>In this workspace</p>
+      </div>
     </button>
     <button
-      class="register-metric"
+      type="button"
+      class="co-stat co-surface register-metric"
       data-card-tone="orange"
       [class.selected]="status() === 'In review'"
       (click)="status.set('In review')"
       [attr.aria-pressed]="status() === 'In review'"
     >
-      <span class="metric-icon amber material-symbols-outlined" aria-hidden="true"
-        >rate_review</span
-      >
-      <span class="metric-copy"
-        ><span>Awaiting approval</span><strong>{{ awaiting() }}</strong
-        ><small>Pending review</small></span
-      >
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">rate_review</span>
+      <div>
+        <h2>Awaiting approval</h2>
+        <strong>{{ awaiting() }}</strong>
+        <p>Pending review</p>
+      </div>
     </button>
-    <div class="register-metric" data-card-tone="green">
-      <span class="metric-icon green material-symbols-outlined" aria-hidden="true">verified</span>
-      <span class="metric-copy"
-        ><span>Approved plans</span><strong>{{ approved() }}</strong
-        ><small>On record</small></span
-      >
-    </div>
+    <section class="co-stat co-surface register-metric" data-card-tone="green">
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">verified</span>
+      <div>
+        <h2>Approved plans</h2>
+        <strong>{{ approved() }}</strong>
+        <p>On record</p>
+      </div>
+    </section>
     <button
-      class="register-metric"
+      type="button"
+      class="co-stat co-surface register-metric"
       data-card-tone="red"
       [class.selected]="status() === 'Overdue'"
       (click)="status.set('Overdue')"
       [attr.aria-pressed]="status() === 'Overdue'"
     >
-      <span class="metric-icon rose material-symbols-outlined" aria-hidden="true">event_busy</span>
-      <span class="metric-copy"
-        ><span>Overdue reviews</span><strong>{{ overdue() }}</strong
-        ><small>Action needed</small></span
-      >
+      <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">event_busy</span>
+      <div>
+        <h2>Overdue reviews</h2>
+        <strong>{{ overdue() }}</strong>
+        <p>Action needed</p>
+      </div>
     </button>
   </div>
 

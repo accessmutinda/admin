@@ -1,0 +1,109 @@
+:host .reference-tabs.workspace-overflow-nav {
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0;
+  min-width: 0;
+  overflow: visible;
+}
+:host .reference-tabs .workspace-tab {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border: 0;
+  border-right: 1px solid #eff3f6;
+  background: transparent;
+  color: var(--color-navy, #0f2d4a);
+  font: 500 11px var(--font-sans);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+:host .reference-tabs .workspace-tab.selected {
+  background: #e5f3ff;
+  box-shadow: inset 0 -3px #008afa;
+  color: #0066ac;
+}
+:host .reference-tabs .workspace-tab:first-child {
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+:host .reference-tabs .workspace-tab .material-symbols-outlined {
+  font-size: 21px;
+  flex-shrink: 0;
+}
+:host .reference-tabs .workspace-tab .workspace-more-chevron {
+  font-size: 16px;
+}
+.workspace-more {
+  position: relative;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+:host .reference-tabs .workspace-more-trigger {
+  border-right: 0;
+  border-radius: 0 8px 8px 0;
+}
+.workspace-overflow-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 60;
+  width: min(300px, calc(100vw - 32px));
+  max-height: min(420px, 60vh);
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid #dce7ee;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 12px 32px #123c5426;
+}
+:host .reference-tabs .workspace-overflow-menu .workspace-tab {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 40px;
+  border: 0;
+  border-radius: 5px;
+  padding: 10px 12px;
+  white-space: normal;
+  text-align: left;
+}
+:host .reference-tabs .workspace-overflow-menu .workspace-tab.selected {
+  box-shadow: inset 3px 0 #008afa;
+}
+:host .reference-tabs .workspace-tab:hover {
+  background: #eff8fd;
+}
+:host .reference-tabs .workspace-tab:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.workspace-tab-sizer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+  contain: layout;
+}
+@media (pointer: coarse) {
+  :host .reference-tabs .workspace-tab {
+    min-height: 44px;
+  }
+}
+@media print {
+  :host .reference-tabs.workspace-overflow-nav {
+    display: none !important;
+  }
+}
