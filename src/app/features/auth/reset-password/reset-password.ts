@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import {
   AbstractControl,
@@ -11,6 +12,8 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { AuthCenteredLayout } from '../../../shared/layouts/auth-centered-layout';
 import { Alert } from '../../../shared/ui/alert';
 import { AuthService } from '../../../core/auth/auth.service';
 
@@ -25,6 +28,9 @@ function passwordsMatch(): ValidatorFn {
 @Component({
   selector: 'cv-reset-password',
   imports: [
+    NgTemplateOutlet,
+    AuthCenteredLayout,
+    MatProgressSpinnerModule,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,
