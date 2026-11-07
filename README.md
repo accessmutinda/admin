@@ -29,6 +29,31 @@ Authentication and account security import no sample records. Security history, 
 
 ## Companies API
 
+Contact Information loads saved channels, all address records and key contacts
+from the backend aggregate. Save Changes atomically applies edits, additions and
+confirmed removals using version and idempotency headers. Partial setup can be
+saved, failures retain unsaved input, and billing inheritance preserves the
+independent billing record. Local format checks do not claim postal verification.
+
+Registration & Compliance reads and saves backend records with optimistic
+version checks. Evidence upload, replacement, download and removal are authorised
+API operations; owner/expiry edits save atomically with the form. Uploaded bytes
+are stored in database chunks, with a migration required on the backend. Clearing
+compliance fields retains company identity and document history. No scanning
+provider is configured, so evidence remains explicitly unverified.
+
+General Information loads the authorised company detail before opening. Stored
+identity, registration, description, dates, capacity, staff-size band, head-office
+address and audit fields populate both the read view and edit form. Missing facts
+remain unrecorded; failed detail requests show an explicit retry state.
+
+Overview statistics use authorised-scope backend aggregates for lifecycle counts,
+required-section completion and remaining setup sections. Checklist status indicators use
+returned `setup_progress` states: grey for pending or unavailable, orange for in
+progress, and green for complete. Card surfaces retain their category colours.
+Unavailable integrations are excluded from
+completion and task counts. Numeric directory page links are supported.
+
 The existing Companies overview, directory, five-step creation wizard and company
 administration screens retain their original UI/UX. `CompaniesApiService` loads
 all pages from the documented list endpoints and supplies the existing management
