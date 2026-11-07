@@ -251,7 +251,9 @@
           >
           <div><h2 id="cp-completion-title">Profile Completion</h2></div>
         </div>
-        <strong class="cp-completion-value">{{ completion() }}%</strong>
+        <strong class="cp-completion-value">{{
+          completion() == null ? '—' : completion() + '%'
+        }}</strong>
         <p>Complete the remaining company details to improve your profile.</p>
         <progress
           [value]="completion()"

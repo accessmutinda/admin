@@ -43,8 +43,8 @@
     >
   </div>
 </div>
-@if (error()) {
-  <p class="cd-error" role="alert">{{ error() }}</p>
+@if (error() || api.error()) {
+  <p class="cd-error" role="alert">{{ error() || api.error() }}</p>
 }
 <div class="cd-overview-grid" role="region" aria-label="Company overview">
   @for (stat of stats(); track stat.label) {
@@ -69,10 +69,13 @@
             </button>
           }
         </h2>
-        <strong>{{ stat.value }}</strong>
+        <strong>{{ stat.value == null ? '—' : stat.value }}</strong>
         @if (stat.progress) {
           <div class="cd-progress-meta">
-            <span>{{ stat.value }}/{{ store.companies().length }} {{ stat.shortLabel }}</span>
+            <span
+              >{{ stat.value == null ? '—' : stat.value }}/{{ store.companies().length }}
+              {{ stat.shortLabel }}</span
+            >
           </div>
           <progress
             [value]="stat.value"
@@ -297,11 +300,11 @@
             </td>
             <td>
               <div class="co-completion">
-                <strong>{{ completion(company) }}%</strong
+                <strong>{{ completion(company) == null ? '—' : completion(company) + '%' }}</strong
                 ><progress
                   [value]="completion(company)"
                   max="100"
-                  [class.amber]="completion(company) < 75"
+                  [class.amber]="(completion(company) ?? 100) < 75"
                   [attr.aria-label]="company.name + ' profile completion'"
                 ></progress>
               </div>
@@ -346,7 +349,15 @@
           <tr>
             <td colspan="11" class="cd-empty">
               <span class="material-symbols-outlined" aria-hidden="true">search_off</span>
-              <h3>{{ store.companies().length ? 'No matching companies' : 'No companies yet' }}</h3>
+              <h3>
+                {{
+                  api.loading()
+                    ? 'Loading companies…'
+                    : store.companies().length
+                      ? 'No matching companies'
+                      : 'No companies yet'
+                }}
+              </h3>
               <p>
                 {{
                   store.companies().length

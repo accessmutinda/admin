@@ -280,9 +280,7 @@ export class CompanyContactsPage {
         modifiedBy: this.auth.currentUser()?.name ?? 'Company administrator',
       })
     ) {
-      this.saveError.set(
-        'Changes could not be saved on this device. Your edits are still here; free some browser storage and try again.',
-      );
+      this.saveError.set(this.store.companyWriteError());
       return;
     }
     this.draft = structuredClone(contacts);

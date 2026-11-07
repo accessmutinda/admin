@@ -1,13 +1,12 @@
 {
   "/api/**": {
-    "target": "https://9022-105-164-104-38.ngrok-free.app",
+    "target": "https://care.neuraledge.co.ke",
     "secure": true,
     "changeOrigin": true,
     "cookieDomainRewrite": "",
     "headers": {
-      "ngrok-skip-browser-warning": "true",
-      "Origin": "https://9022-105-164-104-38.ngrok-free.app",
-      "Referer": "https://9022-105-164-104-38.ngrok-free.app/"
+      "Origin": "https://care.neuraledge.co.ke",
+      "Referer": "https://care.neuraledge.co.ke/"
     }
   }
 }

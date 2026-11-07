@@ -306,9 +306,7 @@ export class CompanyProfile {
     next.modifiedAt = new Date().toISOString();
     next.modifiedBy = this.auth.currentUser()?.name ?? 'Company administrator';
     if (!this.store.saveCompany(next)) {
-      this.saveError.set(
-        'Changes could not be saved on this device. Free some browser storage and try again. Your edits are still here.',
-      );
+      this.saveError.set(this.store.companyWriteError());
       return;
     }
     try {

@@ -1,0 +1,139 @@
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { AuthService } from '../../../core/auth/auth.service';
+import { API_BASE, API_BASE_PATH } from '../../../core/auth/auth-api';
+import {
+  CompanyPage,
+  CompanySummary,
+  CreateCompanyRequest,
+  CreatedCompany,
+  COMPANY_LIFECYCLE_LABELS,
+} from './companies-api.models';
+
+@Injectable({ providedIn: 'root' })
+export class CompaniesApiService {
+  private readonly auth = inject(AuthService);
+  private readonly snapshot = signal<{
+    context: string;
+    companies: CompanySummary[];
+    count: number;
+  } | null>(null);
+  private readonly pending = signal<{ context: string; request: number } | null>(null);
+  private readonly failure = signal<{ context: string; message: string } | null>(null);
+  private request = 0;
+  private inFlight: { context: string; promise: Promise<void> } | null = null;
+  readonly scope = computed(() => this.context());
+  private context(): string | null {
+    const profile = this.auth.profile();
+    if (!this.auth.isAuthenticated() || !profile) return null;
+    return `${profile.id}:${this.auth.isSuperAdmin() ? 'platform' : (profile.company_id ?? 'unassigned')}`;
+  }
+  readonly companies = computed(() =>
+    this.snapshot()?.context === this.context() ? this.snapshot()!.companies : [],
+  );
+  readonly count = computed(() =>
+    this.snapshot()?.context === this.context() ? this.snapshot()!.count : 0,
+  );
+  readonly loading = computed(() => !!this.pending() && this.pending()?.context === this.context());
+  readonly error = computed(() =>
+    this.failure()?.context === this.context() ? this.failure()!.message : '',
+  );
+  readonly canCreate = computed(() => this.auth.isSuperAdmin());
+
+  ensureLoaded(): Promise<void> {
+    const context = this.context();
+    if (!context || this.snapshot()?.context === context) return Promise.resolve();
+    if (this.inFlight?.context === context) return this.inFlight.promise;
+    const promise = this.load();
+    const flight = { context, promise };
+    this.inFlight = flight;
+    void promise.finally(() => {
+      if (this.inFlight === flight) this.inFlight = null;
+    });
+    return promise;
+  }
+
+  async load(): Promise<void> {
+    const context = this.context();
+    const request = ++this.request;
+    this.failure.set(null);
+    this.snapshot.set(null);
+    if (!context) {
+      this.pending.set(null);
+      return;
+    }
+    this.pending.set({ context, request });
+    const platform = this.auth.isSuperAdmin();
+    const assigned = this.auth.profile()?.company_id;
+    const endpoint = platform ? '/platform/companies' : '/companies';
+    const companies: CompanySummary[] = [];
+    const visited = new Set<string>();
+    let path: string | null = endpoint;
+    let count = 0;
+    try {
+      while (path) {
+        if (visited.has(path))
+          throw new Error('The company list could not be completed. Please retry.');
+        visited.add(path);
+        const page: CompanyPage = await this.auth.api(path);
+        if (context !== this.context() || request !== this.request) return;
+        if (!Array.isArray(page.results) || !Number.isInteger(page.count) || page.count < 0)
+          throw new Error('The company list could not be read. Please retry.');
+        for (const company of page.results) {
+          if (
+            !company ||
+            typeof company.id !== 'string' ||
+            !company.id ||
+            typeof company.name !== 'string' ||
+            typeof company.code !== 'string' ||
+            !Object.hasOwn(COMPANY_LIFECYCLE_LABELS, company.lifecycle)
+          )
+            throw new Error('Company data could not be read. Please retry.');
+          if (!platform && company.id !== assigned)
+            throw new Error('The company list does not match your account assignment.');
+          companies.push(company);
+        }
+        count = page.count;
+        path = page.next ? this.pagePath(page.next, endpoint) : null;
+      }
+      this.snapshot.set({ context, companies, count });
+    } catch (error) {
+      if (context !== this.context() || request !== this.request) return;
+      this.failure.set({
+        context,
+        message: error instanceof Error ? error.message : 'Unable to load companies. Please retry.',
+      });
+    } finally {
+      if (this.pending()?.request === request) this.pending.set(null);
+    }
+  }
+
+  async create(payload: CreateCompanyRequest, idempotencyKey: string): Promise<CreatedCompany> {
+    if (!this.auth.isSuperAdmin()) throw new Error('Only Super Admin can create companies.');
+    if (!idempotencyKey) throw new Error('A company creation request key is required.');
+    const result = await this.auth.api<CreatedCompany>('/platform/companies', payload, undefined, {
+      'Idempotency-Key': idempotencyKey,
+    });
+    if (
+      !result ||
+      typeof result.id !== 'string' ||
+      !result.id ||
+      typeof result.code !== 'string' ||
+      !result.code ||
+      result.lifecycle !== 'pending_setup' ||
+      !result.initial_admin_invitation?.id ||
+      typeof result.initial_admin_invitation.state !== 'string' ||
+      typeof result.initial_admin_invitation.delivery_state !== 'string'
+    )
+      throw new Error(
+        'The creation response could not be read. Retry this request to check its result.',
+      );
+    return result;
+  }
+
+  private pagePath(next: string, endpoint: string): string {
+    const url = new URL(next, `${API_BASE}${endpoint}`);
+    if (url.pathname.replace(/\/$/, '') !== `${API_BASE_PATH}${endpoint}`)
+      throw new Error('The company list returned an invalid page. Please retry.');
+    return url.pathname.slice(API_BASE_PATH.length) + url.search;
+  }
+}

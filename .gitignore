@@ -32,6 +32,7 @@ yarn-error.log
 .history/*
 
 # Miscellaneous
+/.playwright-cli/
 /.angular/cache
 .sass-cache/
 /connect.lock

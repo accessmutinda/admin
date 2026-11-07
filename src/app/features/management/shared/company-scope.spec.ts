@@ -1,3 +1,4 @@
+import { CompaniesApiService } from '../companies/companies-api.service';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -65,6 +66,17 @@ describe('Platform role company boundaries', () => {
     };
     TestBed.configureTestingModule({
       providers: [
+        {
+          provide: CompaniesApiService,
+          useValue: {
+            scope: () => (authenticated() ? 'scope' : null),
+            ensureLoaded: () => Promise.resolve(),
+            companies: () => [
+              { id: 'company-1', name: 'Company One', code: 'ONE', lifecycle: 'active' },
+              { id: 'company-2', name: 'Company Two', code: 'TWO', lifecycle: 'suspended' },
+            ],
+          },
+        },
         { provide: AuthService, useValue: auth },
         {
           provide: WorkspaceService,

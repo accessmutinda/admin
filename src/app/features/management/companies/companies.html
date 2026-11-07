@@ -55,7 +55,12 @@
         </div>
         <div>
           <span class="material-symbols-outlined" aria-hidden="true">person</span
-          ><span><small>Assigned plan</small>{{ current.modules.length }} modules enabled</span>
+          ><span
+            ><small>Assigned plan</small
+            >{{
+              current.apiSummaryOnly ? 'Unavailable' : current.modules.length + ' modules enabled'
+            }}</span
+          >
         </div>
       </div>
     </div>
@@ -91,7 +96,7 @@
     <span class="co-stat-icon amber material-symbols-outlined" aria-hidden="true">schedule</span>
     <div>
       <h2>Pending Setups</h2>
-      <strong>{{ pending() }}</strong>
+      <strong>{{ pending() == null ? '—' : pending() }}</strong>
       <p>Profiles to complete</p>
       <progress
         class="amber"
@@ -107,7 +112,7 @@
     >
     <div>
       <h2>Profile Completion</h2>
-      <strong>{{ average() }}%</strong>
+      <strong>{{ average() == null ? '—' : average() + '%' }}</strong>
       <p>Average across all companies</p>
       <progress [value]="average()" max="100" aria-label="Average profile completion"></progress>
     </div>
@@ -116,7 +121,7 @@
     <span class="co-stat-icon red material-symbols-outlined" aria-hidden="true">edit_calendar</span>
     <div>
       <h2>Open Admin Tasks</h2>
-      <strong>{{ tasks() }}</strong>
+      <strong>{{ tasks() == null ? '—' : tasks() }}</strong>
       <p>Requires attention</p>
     </div>
   </section>
@@ -136,7 +141,10 @@
       </h2>
       <div class="co-overall">
         <span
-          >Overall Completion <strong>{{ company() ? completion(company()!) : 0 }}%</strong></span
+          >Overall Completion
+          <strong>{{
+            company() && completion(company()!) != null ? completion(company()!) + '%' : '—'
+          }}</strong></span
         ><progress
           [value]="company() ? completion(company()!) : 0"
           max="100"
@@ -252,16 +260,16 @@
               </td>
               <td>
                 <div class="co-completion">
-                  <strong>{{ completion(row) }}%</strong
+                  <strong>{{ completion(row) == null ? '—' : completion(row) + '%' }}</strong
                   ><progress
                     [value]="completion(row)"
                     max="100"
-                    [class.amber]="completion(row) < 75"
+                    [class.amber]="(completion(row) ?? 100) < 75"
                     [attr.aria-label]="row.name + ' profile completion'"
                   ></progress>
                 </div>
               </td>
-              <td>{{ row.modules.length }} enabled</td>
+              <td>{{ row.apiSummaryOnly ? 'Unavailable' : row.modules.length + ' enabled' }}</td>
               <td>
                 <a
                   class="co-row-action"
@@ -274,7 +282,11 @@
           } @empty {
             <tr>
               <td colspan="7" class="co-empty">
-                No companies found. Try another company name or service type.
+                {{
+                  api.loading()
+                    ? 'Loading companies…'
+                    : api.error() || 'No companies found. Try another company name or service type.'
+                }}
               </td>
             </tr>
           }

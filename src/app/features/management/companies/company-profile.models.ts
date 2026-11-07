@@ -1,6 +1,7 @@
 import type { Company } from '../shared/management.store';
 
-export function companyCompletion(company: Company): number {
+export function companyCompletion(company: Company): number | null {
+  if (company.apiSummaryOnly) return company.profileCompletion ?? null;
   const fields = [
     company.name,
     company.code,

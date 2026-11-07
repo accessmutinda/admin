@@ -4,12 +4,17 @@ Web admin console for CareVerity, a care management platform. This build covers 
 administration, recruitment, employee onboarding, compliance, training, rota,
 payroll, the Live ECM board, supervisor assessments, quality assurance and the inspector portal.
 
-Authentication uses the CareVerity API under `/api/v1`. The development server
-(`proxy.conf.json`) and Docker Nginx (`nginx.conf`) forward these requests to
-`https://9022-105-164-104-38.ngrok-free.app`. Update both targets when the tunnel changes.
-Keep `/api/` on the frontend origin when deploying elsewhere; the HttpOnly refresh
-and pending cookies use SameSite=Lax. The proxy supplies the upstream Origin and
-Referer for CSRF checks. Never cache API responses.
+Authentication calls `https://care.neuraledge.co.ke/api/v1` directly.
+Update `API_BASE` in `src/app/core/auth/auth-api.ts` when the API host changes.
+Requests include credentials.
+The backend must allow the frontend origin through credentialed CORS, trust it for
+CSRF, and allow the request headers. Cross-site authentication requires cookies
+with SameSite=None and Secure, subject to browser third-party cookie policy.
+For direct cross-origin sign-in, `GET /auth/csrf` must return a nonempty
+`csrf_token` alongside setting the CSRF cookie. The frontend sends that response
+token as `X-CSRFToken`; cookie reading is used only for same-origin API requests.
+A response containing only `{ "csrf": "set" }` cannot support cross-origin sign-in.
+The development and Nginx proxy configurations remain available for same-origin hosting.
 
 Access tokens stay in memory. Session restoration rotates the refresh cookie;
 background refresh does not extend the 30-minute idle deadline. User interaction
@@ -21,6 +26,26 @@ trusted devices are unavailable in the current API and are hidden from sign-in.
 Company users enter their assigned company; only Super Admin can select workspaces.
 Until RBAC is implemented, role codes come from `/me.platform_roles`. `PO` is Super Admin and can create companies and select workspaces. `CA` is Company Admin and can only enter the company returned in `/me.company_id`; company creation, the global directory and foreign-company routes are blocked. Unknown roles do not receive administrator privileges. The API must still enforce company boundaries on every request.
 Authentication and account security import no sample records. Security history, trusted devices, Google sign-in and password recovery show unavailable until their endpoints exist. Demo installation is disabled at startup and in the staff portal. Workspace lists, assignments and profile identity come only from the API. Legacy demo caches are ignored; local business drafts now use `cv_api_company_details_v1` and `cv_api_company_data_v1`. Missing profile fields are displayed as unavailable. Business sample fixtures remain outside the workspace/profile flow and cannot establish a session. Business records in the remaining modules still use local sample data and browser storage.
+
+## Companies API
+
+The existing Companies overview, directory, five-step creation wizard and company
+administration screens retain their original UI/UX. `CompaniesApiService` loads
+all pages from the documented list endpoints and supplies the existing management
+store. Identity and lifecycle values come from the API; unavailable detail and
+completion fields are not filled with sample values.
+
+Provisioning uses `POST /platform/companies` with a stable idempotency key for
+unchanged retries. The original form remains intact; the implemented backend only
+persists its documented subset. The confirmation notes that additional setup fields
+still require backend support. No locally fabricated company is added to the list.
+
+Missing endpoints, response fields and full-form persistence requirements are
+recorded in the local `backend-MD/03-companies.md` contract for the backend team.
+Existing screens/routes and their controls remain in place. Unsupported profile,
+status and export writes report that backend support is pending rather than
+pretending a server save succeeded. Browser drafts remain local until draft
+endpoints are available. Invitation acceptance remains API-backed.
 
 ## Care delivery workspaces
 

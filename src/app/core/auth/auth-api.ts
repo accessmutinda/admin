@@ -1,4 +1,5 @@
-export const API_BASE = '/api/v1';
+export const API_BASE = 'https://care.neuraledge.co.ke/api/v1';
+export const API_BASE_PATH = new URL(API_BASE).pathname;
 
 export type AuthState =
   | 'signed_out'
@@ -62,4 +63,19 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+}
+
+export function apiFieldErrors(value: unknown): Record<string, string[]> {
+  const fields: Record<string, string[]> = Object.create(null);
+  const visit = (value: unknown, path: string): void => {
+    if (typeof value === 'string' && path) {
+      fields[path] = [...(fields[path] ?? []), value];
+    } else if (Array.isArray(value)) {
+      for (const item of value) visit(item, path);
+    } else if (value && typeof value === 'object') {
+      for (const [key, item] of Object.entries(value)) visit(item, path ? `${path}.${key}` : key);
+    }
+  };
+  visit(value, '');
+  return fields;
 }

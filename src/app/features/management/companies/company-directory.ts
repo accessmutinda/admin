@@ -1,3 +1,4 @@
+import { CompaniesApiService } from './companies-api.service';
 import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -30,6 +31,7 @@ type FilterKey = 'status' | 'region' | 'service' | 'plan' | 'completion' | 'upda
   templateUrl: './company-directory.html',
 })
 export class CompanyDirectory {
+  protected readonly api = inject(CompaniesApiService);
   protected readonly store = inject(ManagementStore);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
@@ -119,7 +121,9 @@ export class CompanyDirectory {
     const all = this.store.companies();
     const total = all.length;
     const active = all.filter((c) => this.isActive(c)).length;
-    const pending = all.filter((c) => this.completion(c) < 75).length;
+    const pending = all.some((c) => this.completion(c) == null)
+      ? null
+      : all.filter((c) => this.completion(c)! < 75).length;
     return [
       {
         label: 'Total Companies',
@@ -198,11 +202,12 @@ export class CompanyDirectory {
         (f.plan === 'all' || (f.plan === 'missing' ? !plan : plan === f.plan)) &&
         updated &&
         (f.completion === 'all' ||
-          (f.completion === 'complete'
-            ? completion === 100
-            : f.completion === 'pending'
-              ? completion < 75
-              : completion >= 75 && completion < 100))
+          (completion != null &&
+            (f.completion === 'complete'
+              ? completion === 100
+              : f.completion === 'pending'
+                ? completion < 75
+                : completion >= 75 && completion < 100)))
       );
     });
   });
@@ -217,7 +222,7 @@ export class CompanyDirectory {
       case 'status':
         return this.isActive(company) ? 'Active' : 'Inactive';
       case 'completion':
-        return this.completion(company);
+        return this.completion(company) ?? '';
       case 'modifiedAt':
         return Number.isFinite(Date.parse(company.modifiedAt ?? ''))
           ? Date.parse(company.modifiedAt!)
@@ -281,6 +286,14 @@ export class CompanyDirectory {
     this.resetResults();
   }
   protected setFilter(key: FilterKey, value: string): void {
+    if (
+      key !== 'status' &&
+      value !== 'all' &&
+      this.store.companies().some((company) => company.apiSummaryOnly)
+    ) {
+      this.error.set('This filter needs company details the backend does not return yet.');
+      return;
+    }
     this.filters.update((filters) => ({ ...filters, [key]: value }));
     this.resetResults();
   }
@@ -337,54 +350,14 @@ export class CompanyDirectory {
     if (
       !this.store.setCompaniesActive(ids, active, this.auth.currentUser()?.name ?? 'Administrator')
     ) {
-      this.error.set(
-        'Company status could not be saved. Your selection is still here; refresh if a company was removed, or free browser storage and try again.',
-      );
+      this.error.set(this.store.companyWriteError());
       return;
     }
     this.error.set('');
     this.selected.set(new Set());
     this.toast.success('Company status updated.');
   }
-  protected exportList(selectedOnly = false): void {
-    const companies = selectedOnly
-      ? this.sorted().filter((c) => this.selected().has(c.id))
-      : this.sorted();
-    if (!companies.length) return;
-    const cell = (value: string | number) => {
-      const text = String(value);
-      return (
-        '"' + (/^\s*[=+@-]|^[\t\r\n]/.test(text) ? "'" + text : text).replaceAll('"', '""') + '"'
-      );
-    };
-    const rows = [
-      [
-        'Company Name',
-        'Company Code',
-        'Service Type',
-        'Region / County',
-        'Status',
-        'Profile Completion (%)',
-        'Primary Admin',
-        'Subscription Plan',
-        'Last Updated',
-      ],
-      ...companies.map((c) => [
-        c.name,
-        c.code,
-        c.sector,
-        this.region(c),
-        this.isActive(c) ? 'Active' : 'Inactive',
-        this.completion(c),
-        this.admin(c),
-        this.plan(c),
-        this.modifiedAt(c.modifiedAt),
-      ]),
-    ];
-    this.store.download(
-      selectedOnly ? 'selected-companies.csv' : 'company-directory.csv',
-      rows.map((row) => row.map(cell).join(',')).join('\r\n'),
-      'text/csv;charset=utf-8',
-    );
+  protected exportList(_selectedOnly = false): void {
+    this.error.set('Company exports are not supported by the backend yet.');
   }
 }

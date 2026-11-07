@@ -1,3 +1,4 @@
+import { CompaniesApiService } from './companies-api.service';
 import { Component, inject, signal, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -17,7 +18,6 @@ import {
   newCompanySetup,
   companySetupErrors,
   prepareCreatedCompany,
-  safeWorkspaceSetup,
 } from './company-create.models';
 
 interface SavedCompanyDraft {
@@ -34,6 +34,7 @@ interface SavedCompanyDraft {
 })
 export class CompanyCreatePage {
   protected readonly store = inject(ManagementStore);
+  private readonly companiesApi = inject(CompaniesApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
@@ -243,6 +244,10 @@ export class CompanyCreatePage {
       return;
     }
     if (this.invalidSource || this.created() || this.saving()) return;
+    if (this.duplicating) {
+      this.error.set('Company setup duplication is not supported by the backend yet.');
+      return;
+    }
     this.submitted.set(true);
     this.error.set('');
     const first = STEP_FIELDS.findIndex((_, index) => this.stageErrors(index).length);
@@ -283,7 +288,6 @@ export class CompanyCreatePage {
         ? [
             {
               line1: address.line1,
-              line2: address.line2,
               town: address.city,
               postcode: address.postcode,
             },
@@ -298,12 +302,22 @@ export class CompanyCreatePage {
     }
     this.saving.set(true);
     try {
-      const result = await this.auth.createCompany(payload, this.creationKey);
+      const result = await this.companiesApi.create(
+        { ...payload, initial_admin: { ...payload.initial_admin, mfa_override: 'inherit' } },
+        this.creationKey,
+      );
       company.id = result.id;
       company.code = result.code;
-      if (!this.store.saveCompany(company, safeWorkspaceSetup(this.draft.setup)))
-        this.notice.set(
-          'The company was created, but additional settings could not be saved on this device.',
+      this.notice.set(
+        'Company created. Additional setup fields are awaiting backend support and have not been saved.',
+      );
+      void this.companiesApi.load();
+      void this.auth
+        .loadWorkspaces()
+        .catch(() =>
+          this.notice.set(
+            'Company created. Refresh the workspace list to see it. Additional setup fields are awaiting backend support.',
+          ),
         );
     } catch (error) {
       this.error.set(

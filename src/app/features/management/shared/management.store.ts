@@ -1,3 +1,4 @@
+import { CompaniesApiService } from '../companies/companies-api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import type { AccessChange } from '../company-admin/access/access.models';
 import type { WorkspaceSetup } from '../companies/company-create.models';
@@ -9,12 +10,11 @@ import type {
   PublishedCompanyBranding,
 } from '../companies/company-branding.models';
 import type { CompanyContacts } from '../companies/company-contacts.models';
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { vacancyClosed, vacancyScheduled } from '../recruitment/vacancy-deadline';
 import type { PayrollData, PayrollAction } from '../payroll/payroll.models';
 import type { RotaData, RotaAction } from '../rota/rota.models';
 import type { QualityData } from '../quality/quality.models';
-import { WorkspaceService } from '../../../core/auth/workspace.service';
 import { ROLES } from '../../../core/auth/models/role';
 import { PAYROLL_ACTIONS } from '../payroll/payroll.models';
 import { ROTA_ACTIONS } from '../rota/rota.models';
@@ -36,6 +36,9 @@ export interface Company {
   tagline: string;
   logo: string;
   modules: string[];
+  lifecycle?: 'pending_setup' | 'active' | 'suspended' | 'archived';
+  apiSummaryOnly?: boolean;
+  profileCompletion?: number | null;
   tradingName?: string;
   description?: string;
   establishedDate?: string;
@@ -292,18 +295,22 @@ function emptyWorkspace(): WorkspaceData {
 }
 @Injectable({ providedIn: 'root' })
 export class ManagementStore {
-  private readonly workspace = inject(WorkspaceService);
   private accessMigrationPending = false;
   private readonly auth = inject(AuthService);
-  private readonly companyRecords = signal<Company[]>(
-    this.restore('cv_api_company_details_v1', []),
-  );
+  private readonly companyApi = inject(CompaniesApiService);
+  readonly companyWriteError = signal('');
   readonly companies = computed<Company[]>(() =>
-    this.workspace
-      .allWorkspaces()
-      .filter((workspace) => this.auth.canAccessCompany(workspace.id))
-      .map((workspace) => ({
-        id: workspace.id,
+    this.companyApi
+      .companies()
+      .filter((company) => this.auth.canAccessCompany(company.id))
+      .map((company) => ({
+        id: company.id,
+        name: company.name,
+        code: company.code,
+        lifecycle: company.lifecycle,
+        active: company.lifecycle === 'active',
+        apiSummaryOnly: true,
+        profileCompletion: null,
         sector: '',
         size: '',
         registration: '',
@@ -313,14 +320,6 @@ export class ManagementStore {
         tagline: '',
         logo: '',
         modules: [],
-        ...this.companyRecords().find((company) => company.id === workspace.id),
-        name: workspace.name,
-        code: workspace.shortCode ?? '',
-        active: workspace.lifecycle
-          ? workspace.lifecycle === 'active'
-          : workspace.entryState === 'ready'
-            ? true
-            : undefined,
       })),
   );
   private readonly storedRecords = signal<Record<string, WorkspaceData>>(
@@ -357,6 +356,12 @@ export class ManagementStore {
     this.persist('cv_api_company_data_v1', this.storedRecords());
   }
   constructor() {
+    effect(() => {
+      if (this.companyApi.scope())
+        untracked(() => {
+          void this.companyApi.ensureLoaded();
+        });
+    });
     if (this.accessMigrationPending) {
       this.persist('cv_api_company_data_v1', this.storedRecords());
       this.accessMigrationPending = false;
@@ -472,103 +477,21 @@ export class ManagementStore {
   addPerson(person: Person): void {
     this.update((d) => ({ ...d, people: [...d.people, person] }));
   }
-  saveCompany(company: Company, setup?: WorkspaceSetup): boolean {
-    if (!this.auth.canAccessCompany(company.id)) return false;
-    const isNew = !this.companyRecords().some((c) => c.id === company.id);
-    const currentCompanies = isNew
-      ? this.restore<Company[]>('cv_api_company_details_v1', this.companyRecords())
-      : this.companyRecords();
-    if (
-      isNew &&
-      currentCompanies.some(
-        (c) =>
-          c.id === company.id || c.code.trim().toLowerCase() === company.code.trim().toLowerCase(),
-      )
-    )
-      return false;
-    const nextCompanies = isNew
-      ? [...currentCompanies, structuredClone(company)]
-      : this.companyRecords().map((c) => (c.id === company.id ? structuredClone(company) : c));
-    const nextRecords = isNew
-      ? {
-          ...this.restore<Record<string, WorkspaceData>>('cv_api_company_data_v1', this.records()),
-          [company.id]: {
-            ...emptyWorkspace(),
-            people: [],
-            vacancies: [],
-            members: [],
-            leaves: [],
-            reviews: [],
-            cpd: [],
-            locations: [],
-            ...(setup
-              ? {
-                  permissions: structuredClone(setup.permissions),
-                  workflows: structuredClone(setup.workflows),
-                  backup: setup.backup,
-                  rotaPermissions: structuredClone(setup.rotaPermissions ?? {}),
-                  payrollPermissions: structuredClone(setup.payrollPermissions ?? {}),
-                  workflowPreferences: structuredClone(setup.workflowPreferences ?? {}),
-                }
-              : {}),
-          },
-        }
-      : this.records();
-    let previousRecords: string | null = null;
-    if (isNew) {
-      try {
-        previousRecords = localStorage.getItem('cv_api_company_data_v1');
-      } catch {
-        this.storageAvailable.set(false);
-        return false;
-      }
-      if (!this.persist('cv_api_company_data_v1', nextRecords)) return false;
-    }
-    if (!this.persist('cv_api_company_details_v1', nextCompanies)) {
-      if (isNew) {
-        try {
-          if (previousRecords === null) localStorage.removeItem('cv_api_company_data_v1');
-          else localStorage.setItem('cv_api_company_data_v1', previousRecords);
-        } catch {
-          this.storageAvailable.set(false);
-        }
-      }
-      return false;
-    }
-    this.companyRecords.set(nextCompanies);
-    if (isNew) this.storedRecords.set(nextRecords);
-    this.workspace.registerWorkspace({
-      id: company.id,
-      name: company.name,
-      shortCode: company.code,
-      logoUrl: company.logo || undefined,
-      careType: company.sector,
-      serviceUserCount:
-        this.workspace.allWorkspaces().find((w) => w.id === company.id)?.serviceUserCount ?? 0,
-      colorClass: 'bg-teal-600',
-    });
-    return true;
-  }
-  setCompaniesActive(ids: string[], active: boolean, actor: string): boolean {
-    if (!this.auth.isSuperAdmin() || ids.some((id) => !this.auth.canAccessCompany(id)))
-      return false;
-    const selected = new Set(ids);
-    const current = this.restore<Company[]>('cv_api_company_details_v1', this.companyRecords());
-    if (!selected.size || [...selected].some((id) => !current.some((company) => company.id === id)))
-      return false;
-    const modifiedAt = new Date().toISOString();
-    const next = current.map((company) =>
-      selected.has(company.id) ? { ...company, active, modifiedAt, modifiedBy: actor } : company,
+  saveCompany(_company: Company, _setup?: WorkspaceSetup): boolean {
+    this.companyWriteError.set(
+      'Company updates are not supported by the backend yet. Your edits have not been saved.',
     );
-    if (!this.persist('cv_api_company_details_v1', next)) return false;
-    this.companyRecords.set(next);
-    return true;
+    return false;
+  }
+  setCompaniesActive(_ids: string[], _active: boolean, _actor: string): boolean {
+    this.companyWriteError.set('Company status changes are not supported by the backend yet.');
+    return false;
   }
   initials(name: string): string {
     return name
       .split(' ')
       .slice(0, 2)
-      .map((n) => n[0])
+      .map((part) => part[0])
       .join('');
   }
   download(filename: string, content: string, type = 'text/plain'): void {

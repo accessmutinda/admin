@@ -269,9 +269,7 @@ export class CompanyCompliancePage {
         modifiedBy: this.auth.currentUser()?.name ?? 'Company administrator',
       })
     ) {
-      this.error.set(
-        'Changes could not be saved on this device. Your edits and files are still here; free browser storage and try again.',
-      );
+      this.error.set(this.store.companyWriteError());
       return;
     }
     this.draft = structuredClone(compliance);

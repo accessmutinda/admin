@@ -133,9 +133,7 @@ export class CompanyEditor {
     this.submitted.set(false);
     if (this.step() === 3) {
       if (!this.store.saveCompany(this.company)) {
-        this.toast.error(
-          'Company settings could not be saved. Free some browser storage and try again.',
-        );
+        this.toast.error(this.store.companyWriteError());
         return;
       }
       this.toast.success(this.isNew ? 'Company created.' : 'Company profile saved.');
@@ -159,9 +157,7 @@ export class CompanyEditor {
       return;
     }
     if (!this.store.saveCompany(this.company)) {
-      this.toast.error(
-        'Company settings could not be saved. Free some browser storage and try again.',
-      );
+      this.toast.error(this.store.companyWriteError());
       return;
     }
     this.submitted.set(false);

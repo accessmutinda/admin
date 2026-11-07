@@ -1,3 +1,4 @@
+import { CompaniesApiService } from './companies-api.service';
 import { QuickActions } from '../shared/quick-actions';
 import { complianceComplete } from './company-compliance.models';
 import { locationsComplete } from '../locations/locations.models';
@@ -19,6 +20,7 @@ import {
   templateUrl: './companies.html',
 })
 export class Companies {
+  protected readonly api = inject(CompaniesApiService);
   protected readonly store = inject(ManagementStore);
   protected readonly search = signal('');
   protected readonly company = computed(() => this.store.company() ?? this.store.companies()[0]);
@@ -40,16 +42,22 @@ export class Companies {
   protected readonly modifiedAt = companyModifiedAt;
   protected readonly average = computed(() => {
     const all = this.store.companies();
-    return all.length
-      ? Math.round(all.reduce((total, c) => total + this.completion(c), 0) / all.length)
+    const values = all.map((company) => this.completion(company));
+    if (this.api.loading() || this.api.error() || values.some((value) => value == null))
+      return null;
+    return values.length
+      ? Math.round(values.reduce<number>((total, value) => total + (value ?? 0), 0) / values.length)
       : 0;
   });
   protected readonly active = computed(
     () => this.store.companies().filter((c) => c.active ?? c.modules.length > 0).length,
   );
-  protected readonly pending = computed(
-    () => this.store.companies().filter((c) => this.completion(c) < 75).length,
-  );
+  protected readonly pending = computed(() => {
+    const all = this.store.companies();
+    return all.some((company) => this.completion(company) == null)
+      ? null
+      : all.filter((company) => this.completion(company)! < 75).length;
+  });
   protected readonly checklist = computed(() => {
     const c = this.company();
     return [
@@ -121,10 +129,12 @@ export class Companies {
         state: 'Pending',
         link: ['/manage/companies/integrations'],
       },
-    ];
+    ].map((item) => (c?.apiSummaryOnly ? { ...item, state: 'Unavailable' } : item));
   });
-  protected readonly tasks = computed(
-    () => this.checklist().filter((item) => item.state !== 'Complete').length,
+  protected readonly tasks = computed(() =>
+    this.company()?.apiSummaryOnly
+      ? null
+      : this.checklist().filter((item) => item.state !== 'Complete').length,
   );
   protected readonly actions = computed(() => [
     { title: 'Create New Company', icon: 'add', link: ['/manage/companies/new'] },

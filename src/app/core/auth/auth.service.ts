@@ -6,6 +6,8 @@ import { AuthSession } from './models/session';
 import { RoleCode, ROLES } from './models/role';
 import {
   API_BASE,
+  API_BASE_PATH,
+  apiFieldErrors,
   ApiError,
   ApiWorkspace,
   AuthResponse,
@@ -179,10 +181,10 @@ export class AuthService {
       const page: { results: ApiWorkspace[]; next: string | null } = await this.api(path);
       results.push(...page.results);
       if (page.next) {
-        const url = new URL(page.next, window.location.origin);
-        if (!url.pathname.startsWith(`${API_BASE}/me/workspaces`))
+        const url = new URL(page.next, `${API_BASE}/me/workspaces`);
+        if (url.pathname.replace(/\/$/, '') !== `${API_BASE_PATH}/me/workspaces`)
           throw new Error('Invalid workspace page.');
-        path = url.pathname.slice(API_BASE.length) + url.search;
+        path = url.pathname.slice(API_BASE_PATH.length) + url.search;
       } else path = null;
     }
     this.workspaces.set(results);
@@ -419,14 +421,24 @@ export class AuthService {
     method?: 'POST',
     extraHeaders?: Record<string, string>,
   ): Promise<T> {
-    const headers: Record<string, string> = { ...extraHeaders, Accept: 'application/json' };
+    const headers: Record<string, string> = {
+      ...extraHeaders,
+      Accept: 'application/json',
+    };
     if (this.access) headers['Authorization'] = `Bearer ${this.access}`;
     if (body !== undefined) {
-      await this.request('/auth/csrf');
+      const csrf = await this.request<{ csrf_token?: string }>('/auth/csrf');
       const cookie = document.cookie.split('; ').find((value) => value.startsWith('csrftoken='));
-      if (!cookie)
-        throw new Error('Cookies are required to sign in. Check the API proxy configuration.');
-      headers['X-CSRFToken'] = decodeURIComponent(cookie.slice('csrftoken='.length));
+      const token = typeof csrf.csrf_token === 'string' && csrf.csrf_token.trim()
+        ? csrf.csrf_token
+        : new URL(API_BASE).origin === window.location.origin && cookie
+          ? decodeURIComponent(cookie.slice('csrftoken='.length))
+          : null;
+      if (!token)
+        throw new Error(
+          'The API must return csrf_token from /auth/csrf for cross-origin sign-in.',
+        );
+      headers['X-CSRFToken'] = token;
       headers['Content-Type'] = 'application/json';
     }
     let response: Response;
@@ -445,7 +457,7 @@ export class AuthService {
     if (response.status === 204) return undefined as T;
     const data = await response.json().catch(() => null);
     if (!response.ok) {
-      const fields = data?.field_errors ?? {};
+      const fields = apiFieldErrors(data?.field_errors);
       const details = Object.values(fields).flat().join(' ');
       throw new ApiError(
         details || data?.detail || 'CareVerity is temporarily unavailable. Please try again.',
@@ -474,21 +486,6 @@ export class AuthService {
     this.enrolment.set(null);
     this.workspaces.set([]);
     this.state.set('signed_out');
-  }
-
-  async createCompany(
-    payload: unknown,
-    idempotencyKey: string,
-  ): Promise<{ id: string; code: string; lifecycle: string }> {
-    if (!this.isSuperAdmin()) throw new Error('Only Super Admin can create companies.');
-    const company = await this.api<{ id: string; code: string; lifecycle: string }>(
-      '/platform/companies',
-      payload,
-      undefined,
-      { 'Idempotency-Key': idempotencyKey },
-    );
-    await this.loadWorkspaces();
-    return company;
   }
 
   acceptInvite(token: string): Observable<void> {

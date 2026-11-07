@@ -267,9 +267,7 @@ export class CompanyBrandingPage {
           : {}),
       })
     ) {
-      this.error.set(
-        'Branding could not be saved on this device. Your changes are still here; free some browser storage and try again.',
-      );
+      this.error.set(this.store.companyWriteError());
       return;
     }
     this.draft = theme;

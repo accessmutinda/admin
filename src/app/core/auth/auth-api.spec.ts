@@ -1,9 +1,10 @@
+import { CompaniesApiService } from '../../features/management/companies/companies-api.service';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthService } from './auth.service';
-import { MeProfile } from './auth-api';
+import { API_BASE, MeProfile } from './auth-api';
 
 const companyUser: MeProfile = {
   id: 'person-1',
@@ -40,9 +41,9 @@ describe('CareVerity API authentication', () => {
     profile = { ...companyUser };
     loginResponse = authenticated;
     fetchMock = vi.fn(async (url: string, _options?: RequestInit) => {
-      const path = url.replace('/api/v1', '');
+      const path = url.replace(API_BASE, '');
       const bodies: Record<string, unknown> = {
-        '/auth/csrf': { csrf: 'set' },
+        '/auth/csrf': { csrf: 'set', csrf_token: 'test-csrf' },
         '/auth/login': loginResponse,
         '/auth/state': { state: 'signed_out' },
         '/auth/refresh': authenticated,
@@ -73,7 +74,13 @@ describe('CareVerity API authentication', () => {
           results: [{ id: 'company-1', code: 'CARE', name: 'Example Care', lifecycle: 'active' }],
           next: null,
         },
-        '/platform/companies': { id: 'company-2', code: 'NEW', lifecycle: 'pending_setup' },
+        '/platform/companies': {
+          id: 'company-2',
+          code: 'NEW',
+          lifecycle: 'pending_setup',
+          initial_admin_invitation: { id: 'invite-1', state: 'pending', delivery_state: 'queued' },
+          request_id: 'request-1',
+        },
         '/me/workspaces/select': { company_id: 'company-1' },
       };
       if (path === '/auth/logout') return new Response(null, { status: 204 });
@@ -93,9 +100,9 @@ describe('CareVerity API authentication', () => {
 
   it('sends CSRF and credentials, loads /me and enters the assigned company without persisting a token', async () => {
     await firstValueFrom(auth.signIn(' person@example.com ', 'password'));
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/auth/csrf');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://care.neuraledge.co.ke/api/v1/auth/csrf');
     const options = fetchMock.mock.calls.find(
-      (call) => call[0] === '/api/v1/auth/login',
+      (call) => call[0] === `${API_BASE}/auth/login`,
     )![1] as RequestInit;
     expect(options.credentials).toBe('include');
     expect(options.headers).toMatchObject({ 'X-CSRFToken': 'test-csrf' });
@@ -103,12 +110,29 @@ describe('CareVerity API authentication', () => {
       email: 'person@example.com',
       password: 'password',
     });
-    const me = fetchMock.mock.calls.find((call) => call[0] === '/api/v1/me')![1] as RequestInit;
+    const me = fetchMock.mock.calls.find((call) => call[0] === `${API_BASE}/me`)![1] as RequestInit;
     expect(me.headers).toMatchObject({ Authorization: 'Bearer access-token' });
     expect(auth.nextRoute()).toBe('/manage/rota/overview');
     expect(auth.session()?.workspaceId).toBe('company-1');
     expect(auth.hasRole('CA')).toBe(true);
     expect(localStorage.getItem('cv_session')).toBeNull();
+  });
+
+  it('uses the API CSRF response token without a frontend cookie', async () => {
+    document.cookie = 'csrftoken=; Max-Age=0; path=/';
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    const options = fetchMock.mock.calls.find(
+      (call) => call[0] === `${API_BASE}/auth/login`,
+    )![1] as RequestInit;
+    expect(options.headers).toMatchObject({ 'X-CSRFToken': 'test-csrf' });
+  });
+
+  it('rejects a cross-origin CSRF response without a token even with a local cookie', async () => {
+    fetchMock.mockResolvedValue(Response.json({ csrf: 'set' }));
+    await expect(firstValueFrom(auth.signIn('person@example.com', 'password'))).rejects.toThrow(
+      'The API must return csrf_token from /auth/csrf for cross-origin sign-in.',
+    );
+    expect(fetchMock.mock.calls.some((call) => call[0] === `${API_BASE}/auth/login`)).toBe(false);
   });
 
   it('follows MFA enrolment, password gate, and session revocation on password change', async () => {
@@ -120,7 +144,7 @@ describe('CareVerity API authentication', () => {
     expect(auth.enrolment()?.secret).toBe('ABCDEF');
     await firstValueFrom(auth.verifyMfa('123456'));
     const confirm = fetchMock.mock.calls.find(
-      (call) => call[0] === '/api/v1/auth/mfa/confirm',
+      (call) => call[0] === `${API_BASE}/auth/mfa/confirm`,
     )![1] as RequestInit;
     expect(JSON.parse(confirm.body as string)).toEqual({ device_id: 'device-1', code: '123456' });
     expect(auth.nextRoute()).toBe('/auth/change-password');
@@ -135,13 +159,15 @@ describe('CareVerity API authentication', () => {
     await firstValueFrom(auth.signIn('person@example.com', 'password'));
     await firstValueFrom(auth.verifyMfa('654321'));
     expect(auth.isAuthenticated()).toBe(true);
-    expect(fetchMock.mock.calls.some((call) => call[0] === '/api/v1/auth/mfa/verify')).toBe(true);
+    expect(fetchMock.mock.calls.some((call) => call[0] === `${API_BASE}/auth/mfa/verify`)).toBe(
+      true,
+    );
   });
 
   it('surfaces credential errors and server field validation without creating a session', async () => {
     fetchMock.mockImplementation(async (url: string) =>
       url.endsWith('/csrf')
-        ? Response.json({ csrf: 'set' })
+        ? Response.json({ csrf: 'set', csrf_token: 'test-csrf' })
         : Response.json(
             { code: 'invalid_credentials', detail: 'Sign-in failed.' },
             { status: 401 },
@@ -153,7 +179,7 @@ describe('CareVerity API authentication', () => {
     expect(auth.isAuthenticated()).toBe(false);
     fetchMock.mockImplementation(async (url: string) =>
       url.endsWith('/csrf')
-        ? Response.json({ csrf: 'set' })
+        ? Response.json({ csrf: 'set', csrf_token: 'test-csrf' })
         : Response.json(
             { code: 'validation_error', field_errors: { new_password: ['Too common.'] } },
             { status: 400 },
@@ -167,11 +193,11 @@ describe('CareVerity API authentication', () => {
   it('restores from cookies through one refresh shared by initialization calls', async () => {
     await Promise.all([auth.initialize(), auth.initialize()]);
     expect(auth.isAuthenticated()).toBe(true);
-    expect(fetchMock.mock.calls.filter((call) => call[0] === '/api/v1/auth/refresh')).toHaveLength(
-      1,
-    );
+    expect(
+      fetchMock.mock.calls.filter((call) => call[0] === `${API_BASE}/auth/refresh`),
+    ).toHaveLength(1);
     const refresh = fetchMock.mock.calls.find(
-      (call) => call[0] === '/api/v1/auth/refresh',
+      (call) => call[0] === `${API_BASE}/auth/refresh`,
     )![1] as RequestInit;
     expect(JSON.parse(refresh.body as string)).toEqual({ continue_session: false });
   });
@@ -209,11 +235,11 @@ describe('CareVerity API authentication', () => {
     await firstValueFrom(auth.signIn('person@example.com', 'password'));
     vi.setSystemTime(Date.now() + 295000);
     await Promise.all([auth.api('/me'), auth.api('/me')]);
-    expect(fetchMock.mock.calls.filter((call) => call[0] === '/api/v1/auth/refresh')).toHaveLength(
-      1,
-    );
+    expect(
+      fetchMock.mock.calls.filter((call) => call[0] === `${API_BASE}/auth/refresh`),
+    ).toHaveLength(1);
     const options = fetchMock.mock.calls.find(
-      (call) => call[0] === '/api/v1/auth/refresh',
+      (call) => call[0] === `${API_BASE}/auth/refresh`,
     )![1] as RequestInit;
     expect(JSON.parse(options.body as string)).toEqual({ continue_session: false });
   });
@@ -223,7 +249,7 @@ describe('CareVerity API authentication', () => {
     auth.signOut();
     expect(auth.isAuthenticated()).toBe(false);
     await vi.waitFor(() =>
-      expect(fetchMock.mock.calls.some((call) => call[0] === '/api/v1/auth/logout')).toBe(true),
+      expect(fetchMock.mock.calls.some((call) => call[0] === `${API_BASE}/auth/logout`)).toBe(true),
     );
   });
   it('reports real user activity without sending a body and throttles it to once a minute', async () => {
@@ -232,11 +258,11 @@ describe('CareVerity API authentication', () => {
     document.dispatchEvent(new Event('keydown'));
     await vi.waitFor(() =>
       expect(
-        fetchMock.mock.calls.filter((call) => call[0] === '/api/v1/auth/activity'),
+        fetchMock.mock.calls.filter((call) => call[0] === `${API_BASE}/auth/activity`),
       ).toHaveLength(1),
     );
     const options = fetchMock.mock.calls.find(
-      (call) => call[0] === '/api/v1/auth/activity',
+      (call) => call[0] === `${API_BASE}/auth/activity`,
     )![1] as RequestInit;
     expect(options.method).toBe('POST');
     expect(options.body).toBeUndefined();
@@ -250,14 +276,14 @@ describe('CareVerity API authentication', () => {
     await firstValueFrom(auth.signIn('person@example.com', 'password'));
     await vi.advanceTimersByTimeAsync(15000);
     expect(auth.isAuthenticated()).toBe(false);
-    expect(fetchMock.mock.calls.some((call) => call[0] === '/api/v1/auth/refresh')).toBe(false);
+    expect(fetchMock.mock.calls.some((call) => call[0] === `${API_BASE}/auth/refresh`)).toBe(false);
   });
 
   it('clears the session when refresh credentials are rejected', async () => {
     await firstValueFrom(auth.signIn('person@example.com', 'password'));
     fetchMock.mockImplementation(async (url: string) =>
       url.endsWith('/csrf')
-        ? Response.json({ csrf: 'set' })
+        ? Response.json({ csrf: 'set', csrf_token: 'test-csrf' })
         : Response.json(
             { code: 'invalid_credentials', detail: 'Session expired.' },
             { status: 401 },
@@ -271,14 +297,14 @@ describe('CareVerity API authentication', () => {
     await firstValueFrom(auth.signIn('person@example.com', 'password'));
     await firstValueFrom(auth.acceptInvite('server-token'));
     const request = fetchMock.mock.calls.find(
-      (call) => call[0] === '/api/v1/auth/invitations/server-token/accept',
+      (call) => call[0] === `${API_BASE}/auth/invitations/server-token/accept`,
     )![1] as RequestInit;
     expect(request.method).toBe('POST');
     expect(request.headers).toMatchObject({
       Authorization: 'Bearer access-token',
       'X-CSRFToken': 'test-csrf',
     });
-    expect(fetchMock.mock.calls.filter((call) => call[0] === '/api/v1/me')).toHaveLength(2);
+    expect(fetchMock.mock.calls.filter((call) => call[0] === `${API_BASE}/me`)).toHaveLength(2);
   });
 
   it('never authenticates from local accounts, trusted-device flags or MFA overrides when the API rejects credentials', async () => {
@@ -297,7 +323,7 @@ describe('CareVerity API authentication', () => {
     );
     fetchMock.mockImplementation(async (url: string) =>
       url.endsWith('/csrf')
-        ? Response.json({ csrf: 'set' })
+        ? Response.json({ csrf: 'set', csrf_token: 'test-csrf' })
         : Response.json(
             { code: 'invalid_credentials', detail: 'Sign-in failed.' },
             { status: 401 },
@@ -327,8 +353,17 @@ describe('CareVerity API authentication', () => {
     expect(auth.canSwitchWorkspace()).toBe(false);
     expect(auth.canAccessCompany('company-1')).toBe(true);
     expect(auth.canAccessCompany('company-2')).toBe(false);
-    await expect(auth.createCompany({}, 'key')).rejects.toThrow('Only Super Admin');
-    expect(fetchMock.mock.calls.some((call) => call[0] === '/api/v1/platform/companies')).toBe(
+    await expect(
+      TestBed.inject(CompaniesApiService).create(
+        {
+          company: { name: 'New', code: 'NEW' },
+          addresses: [],
+          initial_admin: { email: 'admin@example.com', mfa_override: 'inherit' },
+        },
+        'key',
+      ),
+    ).rejects.toThrow('Only Super Admin');
+    expect(fetchMock.mock.calls.some((call) => call[0] === `${API_BASE}/platform/companies`)).toBe(
       false,
     );
   });
@@ -347,11 +382,12 @@ describe('CareVerity API authentication', () => {
     expect(auth.canAccessCompany('company-2')).toBe(true);
     const payload = {
       company: { name: 'New', code: 'NEW' },
-      initial_admin: { email: 'admin@example.com' },
+      addresses: [],
+      initial_admin: { email: 'admin@example.com', mfa_override: 'inherit' as const },
     };
-    await auth.createCompany(payload, 'request-key');
+    await TestBed.inject(CompaniesApiService).create(payload, 'request-key');
     const options = fetchMock.mock.calls.find(
-      (call) => call[0] === '/api/v1/platform/companies',
+      (call) => call[0] === `${API_BASE}/platform/companies`,
     )![1] as RequestInit;
     expect(options.headers).toMatchObject({ 'Idempotency-Key': 'request-key' });
     expect(JSON.parse(options.body as string)).toEqual(payload);
@@ -398,7 +434,7 @@ describe('CareVerity API authentication', () => {
     );
     const original = fetchMock.getMockImplementation()!;
     fetchMock.mockImplementation((url: string, options?: RequestInit) =>
-      url === '/api/v1/me/workspaces'
+      url === `${API_BASE}/me/workspaces`
         ? Promise.resolve(Response.json({ results: [], next: null, count: 0 }))
         : original(url, options),
     );
@@ -411,7 +447,7 @@ describe('CareVerity API authentication', () => {
   it('fails closed when assigned-company responses disagree', async () => {
     const original = fetchMock.getMockImplementation()!;
     fetchMock.mockImplementation((url: string, options?: RequestInit) =>
-      url === '/api/v1/me/company'
+      url === `${API_BASE}/me/company`
         ? Promise.resolve(
             Response.json({
               company_id: 'other-company',
@@ -432,7 +468,7 @@ describe('CareVerity API authentication', () => {
   it('does not fill in a profile when the API profile request fails', async () => {
     const original = fetchMock.getMockImplementation()!;
     fetchMock.mockImplementation((url: string, options?: RequestInit) =>
-      url === '/api/v1/me'
+      url === `${API_BASE}/me`
         ? Promise.resolve(Response.json({ detail: 'Profile unavailable.' }, { status: 503 }))
         : original(url, options),
     );
@@ -442,5 +478,46 @@ describe('CareVerity API authentication', () => {
     expect(auth.currentUser()).toBeNull();
     expect(auth.profile()).toBeNull();
     expect(auth.workspaces()).toEqual([]);
+  });
+  it('surfaces nested company validation messages as named field errors', async () => {
+    profile = {
+      ...companyUser,
+      platform_roles: ['PO'],
+      company_entry_state: 'platform',
+      can_select_workspace: true,
+    };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    const original = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url: string, options?: RequestInit) =>
+      url === `${API_BASE}/platform/companies`
+        ? Promise.resolve(
+            Response.json(
+              {
+                code: 'validation_error',
+                detail: 'Invalid company.',
+                field_errors: {
+                  company: { code: ['Already exists.'] },
+                  initial_admin: { email: ['Enter a valid email.'] },
+                },
+              },
+              { status: 400 },
+            ),
+          )
+        : original(url, options),
+    );
+    const payload = {
+      company: { name: 'New', code: 'NEW' },
+      addresses: [],
+      initial_admin: { email: 'admin@example.com', mfa_override: 'inherit' as const },
+    };
+    await expect(
+      TestBed.inject(CompaniesApiService).create(payload, 'validation-key'),
+    ).rejects.toMatchObject({
+      message: 'Already exists. Enter a valid email.',
+      fieldErrors: {
+        'company.code': ['Already exists.'],
+        'initial_admin.email': ['Enter a valid email.'],
+      },
+    });
   });
 });

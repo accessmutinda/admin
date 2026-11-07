@@ -10,6 +10,20 @@ import {
   workspaceSelectionGuard,
 } from './core/auth/auth.guard';
 
+const companyDataGuard = (
+  _route: import('@angular/router').ActivatedRouteSnapshot,
+  state: import('@angular/router').RouterStateSnapshot,
+) => {
+  if (!state.url.startsWith('/manage/companies') && !state.url.startsWith('/manage/locations'))
+    return true;
+  const context = inject(EnvironmentInjector);
+  return import('./features/management/companies/companies-api.service').then((m) =>
+    runInInjectionContext(context, () => inject(m.CompaniesApiService).ensureLoaded()).then(
+      () => true,
+    ),
+  );
+};
+
 const peopleGuard = (
   route: import('@angular/router').ActivatedRouteSnapshot,
   state: import('@angular/router').RouterStateSnapshot,
@@ -213,6 +227,7 @@ export const routes: Routes = [
     canActivate: [workspaceGuard],
     canActivateChild: [
       managementAccessGuard,
+      companyDataGuard,
       (route, state) => {
         const injector = inject(EnvironmentInjector);
         return import('./features/management/shared/module.guard').then((m) =>

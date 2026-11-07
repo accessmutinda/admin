@@ -308,7 +308,7 @@ export class CompanyModulesPage {
       modifiedBy: this.auth.currentUser()?.name ?? 'Administrator',
     };
     if (!this.store.saveCompany(next)) {
-      this.error.set('Changes could not be saved. Free some browser storage and try again.');
+      this.error.set(this.store.companyWriteError());
       return;
     }
     this.baseline = this.snapshot();
