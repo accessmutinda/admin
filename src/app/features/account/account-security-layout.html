@@ -6,21 +6,23 @@
       <a routerLink="/manage/companies" class="shrink-0" aria-label="Back to company management"
         ><cv-logo
       /></a>
-      @if (workspaceSvc.currentWorkspace(); as workspace) {
+      @if (auth.canSwitchWorkspace() && workspaceSvc.currentWorkspace(); as workspace) {
         <button
           type="button"
           class="flex min-w-0 items-center gap-2 rounded-lg border border-line px-2 py-1.5 text-sm text-ink sm:px-3 transition-all duration-150 hover:border-slate/40 hover:bg-cloud hover:shadow-sm"
-          [attr.aria-label]="'Switch workspace (current: ' + workspace.name + ')'"
+          [attr.aria-label]="
+            'Switch workspace (current: ' + workspaceSvc.currentWorkspace()!.name + ')'
+          "
           (click)="switchWorkspace()"
         >
           <span
             class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white {{
-              workspace.colorClass
+              workspaceSvc.currentWorkspace()!.colorClass
             }}"
           >
-            {{ workspace.shortCode }}
+            {{ workspaceSvc.currentWorkspace()!.shortCode }}
           </span>
-          <span class="hidden truncate md:inline">{{ workspace.name }}</span>
+          <span class="hidden truncate md:inline">{{ workspaceSvc.currentWorkspace()!.name }}</span>
           <span class="material-symbols-outlined shrink-0 text-[16px] text-slate">unfold_more</span>
         </button>
       }

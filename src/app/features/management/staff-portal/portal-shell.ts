@@ -7,7 +7,6 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { MAT_SELECT_CONFIG } from '@angular/material/select';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ROLES } from '../../../core/auth/models/role';
-import { PortalDemo } from './portal-demo.service';
 import { Logo } from '../../../shared/ui/logo';
 import { ManagementStore } from '../shared/management.store';
 import { ModuleDesign } from '../shared/module-design';
@@ -173,9 +172,6 @@ import { ModuleDesign } from '../shared/module-design';
         </header>
         <main id="staff-content" class="page-content" tabindex="-1">
           <section class="module-page operations-page portal-content">
-            @if (demo.error()) {
-              <p role="alert">{{ demo.error() }}</p>
-            }
             <router-outlet />
           </section>
         </main>
@@ -189,7 +185,6 @@ import { ModuleDesign } from '../shared/module-design';
     </div>`,
 })
 export class PortalShell {
-  protected readonly demo = inject(PortalDemo);
   protected readonly auth = inject(AuthService);
   protected readonly store = inject(ManagementStore);
   protected readonly router = inject(Router);

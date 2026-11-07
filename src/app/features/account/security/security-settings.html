@@ -12,12 +12,18 @@
       <span
         class="account-sec-status"
         [class.enabled]="user.mfaEnabled"
-        [class.attention]="!user.mfaEnabled"
+        [class.attention]="user.mfaEnabled === false"
       >
         <span class="material-symbols-outlined" aria-hidden="true">{{
           user.mfaEnabled ? 'verified_user' : 'shield'
         }}</span>
-        {{ user.mfaEnabled ? 'MFA verified' : 'MFA not verified' }}
+        {{
+          user.mfaEnabled == null
+            ? 'MFA verification unavailable'
+            : user.mfaEnabled
+              ? 'MFA verified'
+              : 'MFA not verified'
+        }}
       </span>
     </div>
   </section>
@@ -52,9 +58,11 @@
           <h3>Multi-factor authentication</h3>
           <p>
             {{
-              user.mfaEnabled
-                ? 'Your sign-in uses an additional verification step.'
-                : 'MFA was not verified for this sign-in.'
+              user.mfaEnabled == null
+                ? 'Verification information is not available for this sign-in.'
+                : user.mfaEnabled
+                  ? 'Your sign-in uses an additional verification step.'
+                  : 'MFA was not verified for this sign-in.'
             }}
           </p>
         </div>
@@ -62,16 +70,10 @@
           <span
             class="account-sec-status"
             [class.enabled]="user.mfaEnabled"
-            [class.attention]="!user.mfaEnabled"
-            >{{ user.mfaEnabled ? 'Verified' : 'Not verified' }}</span
+            [class.attention]="user.mfaEnabled === false"
+            >{{ verificationStatus() }}</span
           >
-          <span>{{
-            user.mfaEnabled
-              ? user.mfaMethod === 'authenticator'
-                ? 'Authenticator app'
-                : 'SMS verification'
-              : 'Not verified for this sign-in'
-          }}</span>
+          <span>{{ user.mfaEnabled ? verificationMethod() : verificationStatus() }}</span>
         </div>
         <button class="account-sec-action" type="button" (click)="details.set('mfa')">
           View method<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
@@ -135,7 +137,15 @@
           </div>
           <div>
             <dt>Verification</dt>
-            <dd>{{ auth.session()?.mfaVerified ? 'Session verified' : 'Not verified' }}</dd>
+            <dd>
+              {{
+                auth.session()?.mfaVerified == null
+                  ? 'Unavailable'
+                  : auth.session()?.mfaVerified
+                    ? 'Session verified'
+                    : 'Not verified'
+              }}
+            </dd>
           </div>
         </dl>
         <a class="account-sec-action" routerLink="/account/security/login-history"
@@ -183,18 +193,10 @@
             <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>
             <div>
               <h3>
-                {{
-                  user?.mfaEnabled
-                    ? user?.mfaMethod === 'authenticator'
-                      ? 'Authenticator app'
-                      : 'SMS verification'
-                    : 'Not verified for this sign-in'
-                }}
+                {{ user?.mfaEnabled ? verificationMethod() : verificationStatus() }}
               </h3>
               <p>
-                {{
-                  user?.mfaEnabled ? 'Verified for this sign-in' : 'Not verified for this sign-in'
-                }}
+                {{ verificationStatus() }}
               </p>
             </div>
           </div>

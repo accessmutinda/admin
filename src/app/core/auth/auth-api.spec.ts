@@ -9,7 +9,7 @@ const companyUser: MeProfile = {
   id: 'person-1',
   email: 'person@example.com',
   display_name: 'Person Name',
-  platform_roles: [],
+  platform_roles: ['CA'],
   platform_permissions: [],
   available_contexts: ['company'],
   company_id: 'company-1',
@@ -26,7 +26,9 @@ const authenticated = {
 
 describe('CareVerity API authentication', () => {
   let auth: AuthService;
-  let fetchMock: ReturnType<typeof vi.fn>;
+  let fetchMock: ReturnType<
+    typeof vi.fn<(url: string, options?: RequestInit) => Promise<Response>>
+  >;
   let profile: MeProfile;
   let loginResponse: object;
 
@@ -71,6 +73,7 @@ describe('CareVerity API authentication', () => {
           results: [{ id: 'company-1', code: 'CARE', name: 'Example Care', lifecycle: 'active' }],
           next: null,
         },
+        '/platform/companies': { id: 'company-2', code: 'NEW', lifecycle: 'pending_setup' },
         '/me/workspaces/select': { company_id: 'company-1' },
       };
       if (path === '/auth/logout') return new Response(null, { status: 204 });
@@ -104,7 +107,7 @@ describe('CareVerity API authentication', () => {
     expect(me.headers).toMatchObject({ Authorization: 'Bearer access-token' });
     expect(auth.nextRoute()).toBe('/manage/rota/overview');
     expect(auth.session()?.workspaceId).toBe('company-1');
-    expect(auth.hasRole('CA')).toBe(false);
+    expect(auth.hasRole('CA')).toBe(true);
     expect(localStorage.getItem('cv_session')).toBeNull();
   });
 
@@ -315,6 +318,129 @@ describe('CareVerity API authentication', () => {
     expect(auth.nextRoute('https://example.com')).toBe('/manage/rota/overview');
     expect(auth.nextRoute('//example.com')).toBe('/manage/rota/overview');
     expect(auth.session()?.signedInAt).toBeNull();
-    expect(auth.session()?.mfaVerified).toBe(false);
+    expect(auth.session()?.mfaVerified).toBeNull();
+  });
+  it('takes Company Admin from platform roles and restricts company access to its server assignment', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    expect(auth.currentUser()?.roleCode).toBe('CA');
+    expect(auth.isSuperAdmin()).toBe(false);
+    expect(auth.canSwitchWorkspace()).toBe(false);
+    expect(auth.canAccessCompany('company-1')).toBe(true);
+    expect(auth.canAccessCompany('company-2')).toBe(false);
+    await expect(auth.createCompany({}, 'key')).rejects.toThrow('Only Super Admin');
+    expect(fetchMock.mock.calls.some((call) => call[0] === '/api/v1/platform/companies')).toBe(
+      false,
+    );
+  });
+
+  it('uses Super Admin authority for company creation and workspace access', async () => {
+    profile = {
+      ...companyUser,
+      platform_roles: ['CA', 'PO'],
+      company_entry_state: 'platform',
+      can_select_workspace: true,
+    };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    expect(auth.currentUser()?.roleCode).toBe('PO');
+    expect(auth.currentUser()?.workspaceIds).toEqual([]);
+    expect(auth.canSwitchWorkspace()).toBe(true);
+    expect(auth.canAccessCompany('company-2')).toBe(true);
+    const payload = {
+      company: { name: 'New', code: 'NEW' },
+      initial_admin: { email: 'admin@example.com' },
+    };
+    await auth.createCompany(payload, 'request-key');
+    const options = fetchMock.mock.calls.find(
+      (call) => call[0] === '/api/v1/platform/companies',
+    )![1] as RequestInit;
+    expect(options.headers).toMatchObject({ 'Idempotency-Key': 'request-key' });
+    expect(JSON.parse(options.body as string)).toEqual(payload);
+  });
+
+  it('does not infer an administrator role from company membership alone', async () => {
+    profile = { ...companyUser, platform_roles: [] };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    expect(auth.currentUser()?.roleCode).toBe('UN');
+    expect(auth.hasRole('CA', 'PO')).toBe(false);
+    expect(auth.canSwitchWorkspace()).toBe(false);
+  });
+  it('uses the API profile and assigned company without inventing missing fields', async () => {
+    profile = {
+      ...companyUser,
+      display_name: 'Server Person',
+      version: 7,
+      authentication: {
+        primary_method: 'password',
+        mfa_verified_at: '2026-11-07T09:00:00Z',
+        trusted_device_used: false,
+      },
+    };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    expect(auth.currentUser()?.name).toBe('Server Person');
+    expect(auth.profile()).toEqual(profile);
+    expect(auth.currentUser()?.mfaMethod).toBeNull();
+    expect(auth.workspaces()).toEqual([
+      { id: 'company-1', name: 'Example Care', entryState: 'ready' },
+    ]);
+    expect(auth.session()?.signedInAt).toBeNull();
+  });
+
+  it('keeps an empty API workspace list empty despite legacy cached workspaces', async () => {
+    profile = {
+      ...companyUser,
+      platform_roles: ['PO'],
+      company_entry_state: 'platform',
+      can_select_workspace: true,
+    };
+    localStorage.setItem(
+      'cv_custom_workspaces_v1',
+      JSON.stringify([{ id: 'local-company', name: 'Cached Company' }]),
+    );
+    const original = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url: string, options?: RequestInit) =>
+      url === '/api/v1/me/workspaces'
+        ? Promise.resolve(Response.json({ results: [], next: null, count: 0 }))
+        : original(url, options),
+    );
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    expect(auth.workspaces()).toEqual([]);
+    expect(auth.session()?.workspaceId).toBeNull();
+    expect(auth.needsWorkspace()).toBe(true);
+  });
+
+  it('fails closed when assigned-company responses disagree', async () => {
+    const original = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url: string, options?: RequestInit) =>
+      url === '/api/v1/me/company'
+        ? Promise.resolve(
+            Response.json({
+              company_id: 'other-company',
+              name: 'Other Company',
+              company_entry_state: 'ready',
+            }),
+          )
+        : original(url, options),
+    );
+    await expect(firstValueFrom(auth.signIn('person@example.com', 'password'))).rejects.toThrow(
+      'company assignment changed',
+    );
+    expect(auth.isAuthenticated()).toBe(false);
+    expect(auth.profile()).toBeNull();
+    expect(auth.workspaces()).toEqual([]);
+  });
+
+  it('does not fill in a profile when the API profile request fails', async () => {
+    const original = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url: string, options?: RequestInit) =>
+      url === '/api/v1/me'
+        ? Promise.resolve(Response.json({ detail: 'Profile unavailable.' }, { status: 503 }))
+        : original(url, options),
+    );
+    await expect(firstValueFrom(auth.signIn('person@example.com', 'password'))).rejects.toThrow(
+      'Profile unavailable.',
+    );
+    expect(auth.currentUser()).toBeNull();
+    expect(auth.profile()).toBeNull();
+    expect(auth.workspaces()).toEqual([]);
   });
 });

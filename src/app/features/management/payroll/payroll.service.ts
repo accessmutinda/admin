@@ -30,6 +30,7 @@ export class PayrollService {
     () => this.store.data().payrollPermissions?.[this.role()] ?? payrollDefaults(this.role()),
   );
   can(action: PayrollAction): boolean {
+    if (this.auth.isSuperAdmin() || this.auth.hasRole('CA')) return true;
     const index = { view: 0, manage: 2, approve: 2, finalise: 2, export: 4, pay: 2 }[action];
     const finance = this.store.data().permissions[this.role() + ':Finance'];
     return (

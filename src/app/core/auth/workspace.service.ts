@@ -6,15 +6,14 @@ import { Workspace } from './models/workspace';
 export class WorkspaceService {
   private readonly auth = inject(AuthService);
   readonly allWorkspaces = computed<Workspace[]>(() => [
-    ...this.auth
-      .workspaces()
-      .map((w) => ({
-        id: w.id,
-        name: w.name,
-        shortCode: w.code,
-        careType: w.lifecycle,
-        colorClass: 'bg-teal',
-      })),
+    ...this.auth.workspaces().map((w) => ({
+      id: w.id,
+      name: w.name,
+      shortCode: w.code,
+      lifecycle: w.lifecycle,
+      entryState: w.entryState,
+      colorClass: 'bg-teal',
+    })),
   ]);
   readonly myWorkspaces = this.allWorkspaces;
   readonly currentWorkspace = computed(() =>
@@ -24,7 +23,7 @@ export class WorkspaceService {
   );
 
   async load(): Promise<void> {
-    if (this.auth.profile()?.can_select_workspace) await this.auth.loadWorkspaces();
+    if (this.auth.canSwitchWorkspace()) await this.auth.loadWorkspaces();
   }
   registerWorkspace(_workspace: Workspace): void {
     /* New companies are provisioned by the API. */

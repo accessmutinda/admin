@@ -25,6 +25,7 @@ export class HrService {
     ),
   );
   can(action: 'view' | 'create' | 'edit' | 'export'): boolean {
+    if (this.auth.isSuperAdmin() || this.auth.hasRole('CA')) return true;
     const role = ROLES[this.auth.currentUser()?.roleCode ?? 'CW'].label;
     const flags = this.store.data().permissions[role + ':People & HR'];
     return (

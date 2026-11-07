@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { Observable, defer, from, throwError } from 'rxjs';
 import { AppUser } from './models/user';
 import { AuthSession } from './models/session';
-import { RoleCode } from './models/role';
+import { RoleCode, ROLES } from './models/role';
 import {
   API_BASE,
   ApiError,
@@ -37,11 +37,12 @@ export class AuthService {
   readonly session = this._session.asReadonly();
   readonly currentUser = computed(() => this._session()?.user ?? null);
   readonly isAuthenticated = computed(() => this.state() === 'authenticated' && !!this.access);
+  readonly isSuperAdmin = computed(() => this.isAuthenticated() && this.hasRole('PO'));
+  readonly canSwitchWorkspace = computed(
+    () => this.isSuperAdmin() && !!this.profile()?.can_select_workspace,
+  );
   readonly needsWorkspace = computed(
-    () =>
-      this.isAuthenticated() &&
-      this.profile()?.can_select_workspace &&
-      !this.session()?.workspaceId,
+    () => this.isAuthenticated() && this.canSwitchWorkspace() && !this.session()?.workspaceId,
   );
 
   constructor() {
@@ -170,6 +171,8 @@ export class AuthService {
   }
 
   async loadWorkspaces(): Promise<void> {
+    if (!this.profile()?.platform_roles.includes('PO'))
+      throw new Error('Workspace selection is limited to Super Admin.');
     const results: ApiWorkspace[] = [];
     let path: string | null = '/me/workspaces';
     while (path) {
@@ -186,18 +189,22 @@ export class AuthService {
   }
 
   async selectWorkspace(id: string): Promise<void> {
-    if (!this.profile()?.can_select_workspace)
+    if (!this.canSwitchWorkspace())
       throw new Error('Workspace selection is limited to Super Admin.');
-    await this.api('/me/workspaces/select', { company_id: id });
-    this.setWorkspace(id);
+    const selected = await this.api<{ company_id: string }>('/me/workspaces/select', {
+      company_id: id,
+    });
+    if (selected.company_id !== id)
+      throw new Error('The server returned a different company. Please reload your workspaces.');
+    this.setWorkspace(selected.company_id);
+    this.profile.update((profile) =>
+      profile ? { ...profile, company_id: selected.company_id } : profile,
+    );
   }
 
   private setWorkspace(workspaceId: string): void {
     const session = this.session();
-    if (
-      session &&
-      (this.profile()?.can_select_workspace || this.profile()?.company_id === workspaceId)
-    ) {
+    if (session && (this.canSwitchWorkspace() || this.profile()?.company_id === workspaceId)) {
       this._session.set({ ...session, workspaceId });
     }
   }
@@ -205,12 +212,22 @@ export class AuthService {
   hasRole(...codes: RoleCode[]): boolean {
     return !!this.currentUser() && codes.includes(this.currentUser()!.roleCode);
   }
+  canAccessCompany(companyId: string): boolean {
+    return (
+      this.isAuthenticated() &&
+      !!companyId &&
+      (this.isSuperAdmin() ||
+        (this.profile()?.company_entry_state === 'ready' &&
+          this.profile()?.company_id === companyId))
+    );
+  }
+
   nextRoute(redirectTo?: string | null): string {
     if (this.state().startsWith('mfa_')) return '/auth/mfa';
     if (this.state() === 'password_change_required') return '/auth/change-password';
     if (!this.isAuthenticated()) return '/auth/sign-in';
     if (redirectTo && /^\/auth\/invite\/[^/?#]+$/.test(redirectTo)) return redirectTo;
-    if (this.profile()?.company_entry_state === 'platform') return '/manage/companies';
+    if (this.isSuperAdmin()) return '/manage/companies';
     if (this.profile()?.company_entry_state === 'ready') return '/manage/rota/overview';
     return '/access-denied';
   }
@@ -269,6 +286,10 @@ export class AuthService {
     const me = await this.api<MeProfile>('/me');
     this.profile.set(me);
     const name = me.display_name || me.email;
+    const mfaVerified =
+      me.authentication && Object.hasOwn(me.authentication, 'mfa_verified_at')
+        ? !!me.authentication.mfa_verified_at
+        : null;
     const user: AppUser = {
       id: me.id,
       name,
@@ -279,30 +300,45 @@ export class AuthService {
         .map((part) => part[0])
         .join('')
         .toUpperCase(),
-      roleCode: me.platform_roles.includes('PO') ? 'PO' : 'UN',
-      mfaEnabled: !!me.authentication?.mfa_verified_at,
-      mfaMethod: 'authenticator',
-      workspaceIds: me.company_id ? [me.company_id] : [],
+      roleCode: me.platform_roles.includes('PO')
+        ? 'PO'
+        : me.platform_roles.includes('CA')
+          ? 'CA'
+          : ((me.platform_roles.find((role) => Object.hasOwn(ROLES, role) && role !== 'UN') as
+              RoleCode | undefined) ?? 'UN'),
+      mfaEnabled: mfaVerified,
+      mfaMethod: null,
+      workspaceIds: me.company_entry_state === 'ready' && me.company_id ? [me.company_id] : [],
     };
-    if (me.company_entry_state === 'ready') {
+    if (me.platform_roles.includes('PO')) {
+      await this.loadWorkspaces();
+    } else if (me.company_entry_state === 'ready') {
       const company = await this.api<{
         company_id: string;
         name: string;
         company_entry_state: string;
       }>('/me/company');
+      if (company.company_id !== me.company_id || company.company_entry_state !== 'ready') {
+        throw new Error('Your company assignment changed. Please sign in again.');
+      }
       this.workspaces.set([
         {
           id: company.company_id,
           name: company.name,
-          code: '',
-          lifecycle: company.company_entry_state,
+          entryState: company.company_entry_state as MeProfile['company_entry_state'],
         },
       ]);
     }
     this._session.set({
       user,
-      workspaceId: me.company_entry_state === 'ready' ? me.company_id : null,
-      mfaVerified: !!me.authentication?.mfa_verified_at,
+      workspaceId: me.platform_roles.includes('PO')
+        ? this.workspaces().some((workspace) => workspace.id === me.company_id)
+          ? me.company_id
+          : null
+        : me.company_entry_state === 'ready'
+          ? me.company_id
+          : null,
+      mfaVerified,
       signedInAt: null,
     });
   }
@@ -323,7 +359,12 @@ export class AuthService {
     return this.refreshInFlight;
   }
 
-  async api<T>(path: string, body?: unknown, method?: 'POST'): Promise<T> {
+  async api<T>(
+    path: string,
+    body?: unknown,
+    method?: 'POST',
+    extraHeaders?: Record<string, string>,
+  ): Promise<T> {
     if (this.access && Date.now() >= this.accessExpiresAt - 10000) {
       try {
         await this.refresh();
@@ -333,7 +374,7 @@ export class AuthService {
       }
     }
     try {
-      return await this.request<T>(path, body, method);
+      return await this.request<T>(path, body, method, extraHeaders);
     } catch (error) {
       if (
         error instanceof ApiError &&
@@ -352,7 +393,7 @@ export class AuthService {
           throw refreshError;
         }
         try {
-          return await this.request<T>(path, body, method);
+          return await this.request<T>(path, body, method, extraHeaders);
         } catch (retryError) {
           if (retryError instanceof ApiError && retryError.status === 401) this.expire();
           throw retryError;
@@ -372,8 +413,13 @@ export class AuthService {
     }
   }
 
-  private async request<T>(path: string, body?: unknown, method?: 'POST'): Promise<T> {
-    const headers: Record<string, string> = { Accept: 'application/json' };
+  private async request<T>(
+    path: string,
+    body?: unknown,
+    method?: 'POST',
+    extraHeaders?: Record<string, string>,
+  ): Promise<T> {
+    const headers: Record<string, string> = { ...extraHeaders, Accept: 'application/json' };
     if (this.access) headers['Authorization'] = `Bearer ${this.access}`;
     if (body !== undefined) {
       await this.request('/auth/csrf');
@@ -428,6 +474,21 @@ export class AuthService {
     this.enrolment.set(null);
     this.workspaces.set([]);
     this.state.set('signed_out');
+  }
+
+  async createCompany(
+    payload: unknown,
+    idempotencyKey: string,
+  ): Promise<{ id: string; code: string; lifecycle: string }> {
+    if (!this.isSuperAdmin()) throw new Error('Only Super Admin can create companies.');
+    const company = await this.api<{ id: string; code: string; lifecycle: string }>(
+      '/platform/companies',
+      payload,
+      undefined,
+      { 'Idempotency-Key': idempotencyKey },
+    );
+    await this.loadWorkspaces();
+    return company;
   }
 
   acceptInvite(token: string): Observable<void> {

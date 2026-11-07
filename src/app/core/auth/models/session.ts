@@ -3,6 +3,6 @@ import { AppUser } from './user';
 export interface AuthSession {
   user: AppUser;
   workspaceId: string | null;
-  mfaVerified: boolean;
+  mfaVerified: boolean | null;
   signedInAt: string | null;
 }

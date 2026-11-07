@@ -22,5 +22,17 @@ export class SecuritySettings {
   protected readonly auth = inject(AuthService);
   protected readonly user = this.auth.currentUser();
   protected readonly role = this.user ? ROLES[this.user.roleCode].label : '';
+  protected verificationStatus(): string {
+    return this.user?.mfaEnabled == null
+      ? 'Verification unavailable'
+      : this.user.mfaEnabled
+        ? 'Verified'
+        : 'Not verified';
+  }
+  protected verificationMethod(): string {
+    if (this.user?.mfaMethod === 'authenticator') return 'Authenticator app';
+    if (this.user?.mfaMethod === 'sms') return 'SMS verification';
+    return 'Method unavailable';
+  }
   protected readonly details = signal<'mfa' | 'connections' | null>(null);
 }

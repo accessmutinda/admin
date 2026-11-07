@@ -1,3 +1,4 @@
+import { AuthService } from '../../../core/auth/auth.service';
 import type { AccessChange } from '../company-admin/access/access.models';
 import type { WorkspaceSetup } from '../companies/company-create.models';
 import type { CompanyCompliance } from '../companies/company-compliance.models';
@@ -237,36 +238,6 @@ export const MODULES = [
   'Finance',
   'Reports & insights',
 ];
-const seedPerson = (
-  id: string,
-  name: string,
-  role: string,
-  stage: string,
-  location: string,
-): Person => ({
-  id,
-  name,
-  email: name.toLowerCase().replace(' ', '..') + '@example.co.uk',
-  role,
-  stage,
-  location,
-  checkExpiry:
-    stage === 'Hired' ? { 'Right to work': '2026-10-27', 'DBS check': '2026-11-12' } : {},
-  visaType: '',
-  visaExpiry: '',
-  documents: [],
-  vacancy: role,
-  start: stage === 'Hired' ? '2026-10-19' : '',
-  notes: [],
-  checks:
-    stage === 'Hired'
-      ? [true, true, true, true, true, true, true]
-      : [true, false, false, false, true, false, false],
-  onboarding:
-    stage === 'Hired' ? [true, true, true, true, false, true, false, false] : Array(8).fill(false),
-  learning: ['safeguarding', 'handling', 'infection'],
-  progress: stage === 'Hired' ? { safeguarding: 100, handling: 40 } : {},
-});
 export interface WorkspaceData {
   systemDemoVersion?: number;
   hrDemoVersion?: number;
@@ -305,98 +276,17 @@ export interface WorkspaceData {
     reflection: string;
   }[];
 }
-function seed(): WorkspaceData {
+function emptyWorkspace(): WorkspaceData {
   return {
     permissionDefaultsVersion: 2,
-    people: [
-      seedPerson('sophie', 'Sophie Williams', 'Care Worker', 'Interview', 'Manchester'),
-      seedPerson('oliver', 'Oliver Bennett', 'Senior Carer', 'Applied', 'London'),
-      seedPerson('amara', 'Amara Khan', 'Care Worker', 'Applied', 'London'),
-      seedPerson('ella', 'Ella Thompson', 'Team Leader', 'Offer', 'Leeds'),
-      seedPerson('james', 'James Carter', 'Care Worker', 'Hired', 'Manchester'),
-      seedPerson('aisha', 'Aisha Khan', 'Care Worker', 'Hired', 'London'),
-      seedPerson('maria', 'Maria Lopez', 'Senior Carer', 'Hired', 'London'),
-    ],
-    vacancies: [
-      {
-        id: 'v1',
-        title: 'Care Worker',
-        location: 'Manchester',
-        type: 'Full time',
-        salary: '£12.80–£14.20 / hour',
-      },
-      {
-        id: 'v2',
-        title: 'Senior Carer',
-        location: 'London',
-        type: 'Full time',
-        salary: '£15.00–£17.00 / hour',
-      },
-      {
-        id: 'v3',
-        title: 'Team Leader',
-        location: 'Leeds',
-        type: 'Full time',
-        salary: '£28,000–£32,000 / year',
-      },
-    ],
-    members: [
-      {
-        id: 'u1',
-        name: 'Arthur Bennett',
-        email: 'arthur.bennett@example.co.uk',
-        role: 'Registered Manager',
-        status: 'Active',
-      },
-      {
-        id: 'u2',
-        name: 'Mary Wilson',
-        email: 'mary.wilson@example.co.uk',
-        role: 'Care Worker',
-        status: 'Active',
-      },
-      {
-        id: 'u3',
-        name: 'James Carter',
-        email: 'james.carter@example.co.uk',
-        role: 'Company Admin',
-        status: 'Active',
-      },
-      {
-        id: 'u4',
-        name: 'Sarah Thompson',
-        email: 'sarah.thompson@example.co.uk',
-        role: 'Compliance Officer',
-        status: 'Active',
-      },
-    ],
+    people: [],
+    vacancies: [],
+    members: [],
     permissions: {},
-    workflows: {
-      'Care plans': ['Create', 'Manager review', 'Compliance approval'],
-      Policies: ['Draft', 'Compliance review', 'Publish'],
-      Incidents: ['Report', 'Manager review', 'Close'],
-      Training: ['Assign', 'Complete', 'Manager verification'],
-      Exports: ['Request', 'Administrator approval', 'Export'],
-    },
-    backup: true,
-    leaves: [
-      {
-        id: 'l1',
-        person: 'Aisha Khan',
-        type: 'Annual leave',
-        start: '2026-10-12',
-        end: '2026-10-16',
-      },
-    ],
-    reviews: [
-      {
-        id: 'r1',
-        person: 'Maria Lopez',
-        type: 'Supervision',
-        date: '2026-10-14',
-        status: 'Scheduled',
-      },
-    ],
+    workflows: {},
+    backup: false,
+    leaves: [],
+    reviews: [],
     cpd: [],
   };
 }
@@ -404,45 +294,54 @@ function seed(): WorkspaceData {
 export class ManagementStore {
   private readonly workspace = inject(WorkspaceService);
   private accessMigrationPending = false;
-  readonly companies = signal<Company[]>(
-    this.restore('cv_companies_v1', [
-      {
-        id: 'lqcs',
-        name: 'London Quality Care Services',
-        code: 'LQ',
-        sector: 'Domiciliary care',
-        size: '11–50 staff',
-        registration: '1-234567890',
-        postcode: 'SW1A 1AA',
+  private readonly auth = inject(AuthService);
+  private readonly companyRecords = signal<Company[]>(
+    this.restore('cv_api_company_details_v1', []),
+  );
+  readonly companies = computed<Company[]>(() =>
+    this.workspace
+      .allWorkspaces()
+      .filter((workspace) => this.auth.canAccessCompany(workspace.id))
+      .map((workspace) => ({
+        id: workspace.id,
+        sector: '',
+        size: '',
+        registration: '',
+        postcode: '',
         color: '#087f76',
         accent: '#3b82f6',
-        tagline: 'Quality care. Brighter everyday lives.',
+        tagline: '',
         logo: '',
-        modules: [...MODULES],
-      },
-      ...this.workspace
-        .myWorkspaces()
-        .filter((w) => w.id !== 'lqcs')
-        .map((w) => ({
-          id: w.id,
-          name: w.name,
-          code: w.shortCode,
-          sector: w.careType,
-          size: '11–50 staff',
-          registration: '',
-          postcode: '',
-          color: '#087f76',
-          accent: '#3b82f6',
-          tagline: 'People. Purpose. Progress.',
-          logo: '',
-          modules: [...MODULES],
-        })),
-    ]),
+        modules: [],
+        ...this.companyRecords().find((company) => company.id === workspace.id),
+        name: workspace.name,
+        code: workspace.shortCode ?? '',
+        active: workspace.lifecycle
+          ? workspace.lifecycle === 'active'
+          : workspace.entryState === 'ready'
+            ? true
+            : undefined,
+      })),
   );
-  readonly records = signal<Record<string, WorkspaceData>>(this.restore('cv_management_v1', {}));
-  readonly companyId = computed(() => this.workspace.currentWorkspace()?.id ?? 'lqcs');
-  readonly company = computed(() => this.companies().find((c) => c.id === this.companyId()));
-  readonly data = computed(() => this.records()[this.companyId()] ?? seed());
+  private readonly storedRecords = signal<Record<string, WorkspaceData>>(
+    this.restore('cv_api_company_data_v1', {}),
+  );
+  readonly records = computed(() =>
+    Object.fromEntries(
+      Object.entries(this.storedRecords()).filter(([id]) => this.auth.canAccessCompany(id)),
+    ),
+  );
+  readonly companyId = computed(() =>
+    this.auth.isSuperAdmin()
+      ? (this.auth.session()?.workspaceId ?? '')
+      : this.auth.profile()?.company_entry_state === 'ready'
+        ? (this.auth.profile()?.company_id ?? '')
+        : '',
+  );
+  readonly company = computed(() =>
+    this.companies().find((company) => company.id === this.companyId()),
+  );
+  readonly data = computed(() => this.records()[this.companyId()] ?? emptyWorkspace());
   readonly staff = computed(() => this.data().people.filter((p) => p.stage === 'Hired'));
   readonly applicants = computed(() => this.data().people.filter((p) => p.stage !== 'Hired'));
   readonly storageAvailable = signal(true);
@@ -453,19 +352,20 @@ export class ManagementStore {
     ),
   );
   update(change: (data: WorkspaceData) => WorkspaceData): void {
-    this.records.update((all) => ({ ...all, [this.companyId()]: change(this.data()) }));
-    this.persist('cv_management_v1', this.records());
+    if (!this.auth.canAccessCompany(this.companyId())) return;
+    this.storedRecords.update((all) => ({ ...all, [this.companyId()]: change(this.data()) }));
+    this.persist('cv_api_company_data_v1', this.storedRecords());
   }
   constructor() {
     if (this.accessMigrationPending) {
-      this.persist('cv_management_v1', this.records());
+      this.persist('cv_api_company_data_v1', this.storedRecords());
       this.accessMigrationPending = false;
     }
     const refresh = (event: StorageEvent) => {
-      if (event.key === 'cv_management_v1') {
-        this.records.set(this.restore('cv_management_v1', {}));
+      if (event.key === 'cv_api_company_data_v1') {
+        this.storedRecords.set(this.restore('cv_api_company_data_v1', {}));
         if (this.accessMigrationPending) {
-          this.persist('cv_management_v1', this.records());
+          this.persist('cv_api_company_data_v1', this.storedRecords());
           this.accessMigrationPending = false;
         }
       }
@@ -489,10 +389,15 @@ export class ManagementStore {
     return this.vacancyScheduled(vacancy) ? 'Scheduled' : 'Accepting applications';
   }
   publicVacancy(companyId: string, vacancyId: string): Vacancy | undefined {
-    return this.records()[companyId]?.vacancies.find((v) => v.id === vacancyId && v.published);
+    return this.storedRecords()[companyId]?.vacancies.find(
+      (v) => v.id === vacancyId && v.published,
+    );
   }
   saveVacancy(vacancy: Vacancy): boolean {
-    const all = this.restore<Record<string, WorkspaceData>>('cv_management_v1', this.records());
+    const all = this.restore<Record<string, WorkspaceData>>(
+      'cv_api_company_data_v1',
+      this.records(),
+    );
     const data = all[this.companyId()] ?? this.data();
     const next = {
       ...all,
@@ -503,13 +408,16 @@ export class ManagementStore {
           : [...data.vacancies, structuredClone(vacancy)],
       },
     };
-    if (!this.persist('cv_companies_v1', this.companies())) return false;
-    if (!this.persist('cv_management_v1', next)) return false;
-    this.records.set(next);
+    if (!this.persist('cv_api_company_details_v1', this.companies())) return false;
+    if (!this.persist('cv_api_company_data_v1', next)) return false;
+    this.storedRecords.set(next);
     return true;
   }
   submitApplication(companyId: string, vacancyId: string, person: Person): string | null {
-    const all = this.restore<Record<string, WorkspaceData>>('cv_management_v1', this.records());
+    const all = this.restore<Record<string, WorkspaceData>>(
+      'cv_api_company_data_v1',
+      this.records(),
+    );
     const data = all[companyId];
     const vacancy = data?.vacancies.find((v) => v.id === vacancyId && v.published);
     if (!data || !vacancy) return 'This vacancy is no longer accepting applications.';
@@ -535,17 +443,21 @@ export class ManagementStore {
     )
       return 'An application with this email has already been received for this vacancy.';
     const next = { ...all, [companyId]: { ...data, people: [...data.people, person] } };
-    if (!this.persist('cv_management_v1', next))
+    if (!this.persist('cv_api_company_data_v1', next))
       return 'Your application could not be saved. Free some browser storage and try again.';
-    this.records.set(next);
+    this.storedRecords.set(next);
     return null;
   }
   saveWorkspace(change: (data: WorkspaceData) => WorkspaceData): boolean {
-    const all = this.restore<Record<string, WorkspaceData>>('cv_management_v1', this.records());
+    if (!this.auth.canAccessCompany(this.companyId())) return false;
+    const all = this.restore<Record<string, WorkspaceData>>(
+      'cv_api_company_data_v1',
+      this.records(),
+    );
     const data = all[this.companyId()] ?? this.data();
     const next = { ...all, [this.companyId()]: structuredClone(change(data)) };
-    if (!this.persist('cv_management_v1', next)) return false;
-    this.records.set(next);
+    if (!this.persist('cv_api_company_data_v1', next)) return false;
+    this.storedRecords.set(next);
     return true;
   }
   savePayroll(payroll: PayrollData): boolean {
@@ -561,10 +473,11 @@ export class ManagementStore {
     this.update((d) => ({ ...d, people: [...d.people, person] }));
   }
   saveCompany(company: Company, setup?: WorkspaceSetup): boolean {
-    const isNew = !this.companies().some((c) => c.id === company.id);
+    if (!this.auth.canAccessCompany(company.id)) return false;
+    const isNew = !this.companyRecords().some((c) => c.id === company.id);
     const currentCompanies = isNew
-      ? this.restore<Company[]>('cv_companies_v1', this.companies())
-      : this.companies();
+      ? this.restore<Company[]>('cv_api_company_details_v1', this.companyRecords())
+      : this.companyRecords();
     if (
       isNew &&
       currentCompanies.some(
@@ -575,12 +488,12 @@ export class ManagementStore {
       return false;
     const nextCompanies = isNew
       ? [...currentCompanies, structuredClone(company)]
-      : this.companies().map((c) => (c.id === company.id ? structuredClone(company) : c));
+      : this.companyRecords().map((c) => (c.id === company.id ? structuredClone(company) : c));
     const nextRecords = isNew
       ? {
-          ...this.restore<Record<string, WorkspaceData>>('cv_management_v1', this.records()),
+          ...this.restore<Record<string, WorkspaceData>>('cv_api_company_data_v1', this.records()),
           [company.id]: {
-            ...seed(),
+            ...emptyWorkspace(),
             people: [],
             vacancies: [],
             members: [],
@@ -604,26 +517,26 @@ export class ManagementStore {
     let previousRecords: string | null = null;
     if (isNew) {
       try {
-        previousRecords = localStorage.getItem('cv_management_v1');
+        previousRecords = localStorage.getItem('cv_api_company_data_v1');
       } catch {
         this.storageAvailable.set(false);
         return false;
       }
-      if (!this.persist('cv_management_v1', nextRecords)) return false;
+      if (!this.persist('cv_api_company_data_v1', nextRecords)) return false;
     }
-    if (!this.persist('cv_companies_v1', nextCompanies)) {
+    if (!this.persist('cv_api_company_details_v1', nextCompanies)) {
       if (isNew) {
         try {
-          if (previousRecords === null) localStorage.removeItem('cv_management_v1');
-          else localStorage.setItem('cv_management_v1', previousRecords);
+          if (previousRecords === null) localStorage.removeItem('cv_api_company_data_v1');
+          else localStorage.setItem('cv_api_company_data_v1', previousRecords);
         } catch {
           this.storageAvailable.set(false);
         }
       }
       return false;
     }
-    this.companies.set(nextCompanies);
-    if (isNew) this.records.set(nextRecords);
+    this.companyRecords.set(nextCompanies);
+    if (isNew) this.storedRecords.set(nextRecords);
     this.workspace.registerWorkspace({
       id: company.id,
       name: company.name,
@@ -637,16 +550,18 @@ export class ManagementStore {
     return true;
   }
   setCompaniesActive(ids: string[], active: boolean, actor: string): boolean {
+    if (!this.auth.isSuperAdmin() || ids.some((id) => !this.auth.canAccessCompany(id)))
+      return false;
     const selected = new Set(ids);
-    const current = this.restore<Company[]>('cv_companies_v1', this.companies());
+    const current = this.restore<Company[]>('cv_api_company_details_v1', this.companyRecords());
     if (!selected.size || [...selected].some((id) => !current.some((company) => company.id === id)))
       return false;
     const modifiedAt = new Date().toISOString();
     const next = current.map((company) =>
       selected.has(company.id) ? { ...company, active, modifiedAt, modifiedBy: actor } : company,
     );
-    if (!this.persist('cv_companies_v1', next)) return false;
-    this.companies.set(next);
+    if (!this.persist('cv_api_company_details_v1', next)) return false;
+    this.companyRecords.set(next);
     return true;
   }
   initials(name: string): string {
@@ -678,7 +593,7 @@ export class ManagementStore {
   private restore<T>(key: string, fallback: T): T {
     try {
       const restored = JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback;
-      if (key !== 'cv_management_v1') return restored;
+      if (key !== 'cv_api_company_data_v1') return restored;
       return Object.fromEntries(
         Object.entries(restored as Record<string, WorkspaceData>).map(([id, data]) => {
           if (data.permissionDefaultsVersion === 2) return [id, data];

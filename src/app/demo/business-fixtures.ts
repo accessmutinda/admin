@@ -14,7 +14,7 @@ export const DEMO_USER: AppUser = {
   workspaceIds: ['lqcs', 'riverside', 'sunrise', 'meadowview', 'oakwood'],
 };
 
-export const WORKSPACES: Workspace[] = [
+export const WORKSPACES: (Workspace & { shortCode: string; careType: string })[] = [
   {
     id: 'lqcs',
     name: 'London Quality Care Services',

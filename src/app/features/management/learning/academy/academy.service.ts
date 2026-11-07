@@ -62,7 +62,10 @@ export class AcademyService {
     ),
   ]);
   readonly enabled = computed(
-    () => !!this.auth.currentUser() && !!this.store.company()?.modules.includes('Training academy'),
+    () =>
+      this.auth.isSuperAdmin() ||
+      this.auth.hasRole('CA') ||
+      (!!this.auth.currentUser() && !!this.store.company()?.modules.includes('Training academy')),
   );
   readonly canManage = computed(() =>
     (['author', 'publish', 'assign', 'review', 'correct', 'configure'] as AcademyCapability[]).some(
@@ -70,6 +73,7 @@ export class AcademyService {
     ),
   );
   readonly canViewEvidence = computed(() => {
+    if (this.auth.isSuperAdmin() || this.auth.hasRole('CA')) return true;
     const user = this.auth.currentUser();
     if (!user || !this.enabled()) return false;
     const grants =
@@ -91,6 +95,7 @@ export class AcademyService {
     return !permission || !!permission[0];
   });
   can(capability: AcademyCapability, personId = ''): boolean {
+    if (this.auth.isSuperAdmin() || this.auth.hasRole('CA')) return true;
     if (!this.enabled()) return false;
     const user = this.auth.currentUser();
     if (!user) return false;

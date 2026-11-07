@@ -19,10 +19,8 @@ revoke sessions and require another sign-in. Google sign-in, password recovery a
 trusted devices are unavailable in the current API and are hidden from sign-in.
 
 Company users enter their assigned company; only Super Admin can select workspaces.
-The documented `/me` response has no company role or permission fields. Such accounts
-are displayed as Company member and are not assigned Company Admin privileges.
-Company module permissions still need a server contract before those workflows are integrated.
-Authentication and account security import no sample records. Security history, trusted devices, Google sign-in and password recovery show unavailable until their endpoints exist. Business sample fixtures live in `src/app/demo/business-fixtures.ts` and cannot establish a session. Business records in the remaining modules still use local sample data and browser storage.
+Until RBAC is implemented, role codes come from `/me.platform_roles`. `PO` is Super Admin and can create companies and select workspaces. `CA` is Company Admin and can only enter the company returned in `/me.company_id`; company creation, the global directory and foreign-company routes are blocked. Unknown roles do not receive administrator privileges. The API must still enforce company boundaries on every request.
+Authentication and account security import no sample records. Security history, trusted devices, Google sign-in and password recovery show unavailable until their endpoints exist. Demo installation is disabled at startup and in the staff portal. Workspace lists, assignments and profile identity come only from the API. Legacy demo caches are ignored; local business drafts now use `cv_api_company_details_v1` and `cv_api_company_data_v1`. Missing profile fields are displayed as unavailable. Business sample fixtures remain outside the workspace/profile flow and cannot establish a session. Business records in the remaining modules still use local sample data and browser storage.
 
 ## Care delivery workspaces
 

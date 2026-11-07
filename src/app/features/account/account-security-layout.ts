@@ -17,7 +17,7 @@ interface SubNavItem {
   templateUrl: './account-security-layout.html',
 })
 export class AccountSecurityLayout {
-  private readonly auth = inject(AuthService);
+  protected readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   protected readonly workspaceSvc = inject(WorkspaceService);
 
@@ -33,6 +33,7 @@ export class AccountSecurityLayout {
   ];
 
   protected switchWorkspace(): void {
+    if (!this.auth.canSwitchWorkspace()) return;
     this.router.navigateByUrl('/select-workspace');
   }
 

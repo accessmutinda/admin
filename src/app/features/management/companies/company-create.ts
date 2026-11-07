@@ -60,6 +60,10 @@ export class CompanyCreatePage {
   protected readonly error = signal('');
   protected readonly notice = signal('');
   protected readonly created = signal(false);
+  protected readonly saving = signal(false);
+  protected initialAdminEmail = '';
+  private creationKey = crypto.randomUUID();
+  private creationPayload = '';
   protected readonly reviewed = signal(false);
   protected readonly savedDraft = signal<SavedCompanyDraft | null>(null);
   protected readonly draftSavedAt = signal('');
@@ -233,8 +237,12 @@ export class CompanyCreatePage {
   protected cancel(): void {
     this.router.navigate(['/manage/companies']);
   }
-  protected create(): void {
-    if (this.invalidSource || this.created()) return;
+  protected async create(): Promise<void> {
+    if (!this.auth.isSuperAdmin()) {
+      this.error.set('Only Super Admin can create companies.');
+      return;
+    }
+    if (this.invalidSource || this.created() || this.saving()) return;
     this.submitted.set(true);
     this.error.set('');
     const first = STEP_FIELDS.findIndex((_, index) => this.stageErrors(index).length);
@@ -255,11 +263,55 @@ export class CompanyCreatePage {
     const company = prepareCreatedCompany(this.draft.company);
     company.modifiedAt = new Date().toISOString();
     company.modifiedBy = this.auth.currentUser()?.name ?? 'Company administrator';
-    if (!this.store.saveCompany(company, safeWorkspaceSetup(this.draft.setup))) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.initialAdminEmail.trim())) {
+      this.step.set(4);
+      this.error.set('Enter the initial company administrator’s email address.');
+      return;
+    }
+    const address = company.contacts?.addresses.headOffice;
+    const payload = {
+      company: {
+        name: company.name,
+        code: company.code,
+        legal_name: company.name,
+        trading_name: company.tradingName ?? '',
+        sector: company.sector.toLowerCase().replaceAll(' ', '-'),
+        country: company.country,
+        timezone: 'Europe/London',
+      },
+      addresses: address?.line1
+        ? [
+            {
+              line1: address.line1,
+              line2: address.line2,
+              town: address.city,
+              postcode: address.postcode,
+            },
+          ]
+        : [],
+      initial_admin: { email: this.initialAdminEmail.trim(), mfa_override: 'inherit' },
+    };
+    const serialized = JSON.stringify(payload);
+    if (serialized !== this.creationPayload) {
+      this.creationKey = crypto.randomUUID();
+      this.creationPayload = serialized;
+    }
+    this.saving.set(true);
+    try {
+      const result = await this.auth.createCompany(payload, this.creationKey);
+      company.id = result.id;
+      company.code = result.code;
+      if (!this.store.saveCompany(company, safeWorkspaceSetup(this.draft.setup)))
+        this.notice.set(
+          'The company was created, but additional settings could not be saved on this device.',
+        );
+    } catch (error) {
       this.error.set(
-        'Company could not be created. Your setup is still here; check storage and try again.',
+        error instanceof Error ? error.message : 'Company could not be created. Please try again.',
       );
       return;
+    } finally {
+      this.saving.set(false);
     }
     this.draft.company = company;
     this.created.set(true);

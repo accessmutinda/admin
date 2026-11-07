@@ -37,6 +37,7 @@ export class RotaService {
     () => this.store.data().rotaPermissions?.[this.role()] ?? rotaDefaults(this.role()),
   );
   can(action: RotaAction): boolean {
+    if (this.auth.isSuperAdmin() || this.auth.hasRole('CA')) return true;
     const permissions = this.store.data().permissions[this.role() + ':Care delivery'];
     const index = { view: 0, manage: 2, publish: 2, attendance: 2, export: 4 }[action];
     return (

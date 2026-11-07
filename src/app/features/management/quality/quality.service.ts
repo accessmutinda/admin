@@ -30,6 +30,7 @@ export class QualityService {
     inject(DestroyRef).onDestroy(() => window.clearInterval(timer));
   }
   can(action: QualityPermission): boolean {
+    if (this.auth.isSuperAdmin() || this.auth.hasRole('CA')) return true;
     if (!this.auth.currentUser() || !this.store.company()?.modules.includes('Quality & compliance'))
       return false;
     const saved = this.store.data().permissions[this.role() + ':Quality & compliance'];

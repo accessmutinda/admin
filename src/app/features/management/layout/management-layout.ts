@@ -77,7 +77,11 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
         </button>
       }
       <ng-template #careDelivery>
-        @if (store.company()?.modules.includes('Care delivery')) {
+        @if (
+          auth.isSuperAdmin() ||
+          auth.hasRole('CA') ||
+          store.company()?.modules.includes('Care delivery')
+        ) {
           <p class="nav-label">CARE DELIVERY</p>
           <button
             type="button"
@@ -143,7 +147,7 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
         <ng-container *ngTemplateOutlet="careDelivery" />
       }
       <p class="nav-label">ORGANISATION</p>
-      @for (item of organisation; track item.path) {
+      @for (item of organisation(); track item.path) {
         <a
           [routerLink]="item.path"
           routerLinkActive="active"
@@ -200,7 +204,11 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
       @if (!auth.hasRole('CA')) {
         <ng-container *ngTemplateOutlet="careDelivery" />
       }
-      @if (store.company()?.modules.includes('Quality & compliance')) {
+      @if (
+        auth.isSuperAdmin() ||
+        auth.hasRole('CA') ||
+        store.company()?.modules.includes('Quality & compliance')
+      ) {
         <p class="nav-label">SUPERVISION & QUALITY</p>
         <a routerLink="/manage/supervisor" routerLinkActive="active" (click)="menuOpen.set(false)"
           ><span class="material-symbols-outlined" aria-hidden="true">supervisor_account</span
@@ -214,7 +222,9 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           ><span class="material-symbols-outlined" aria-hidden="true">monitoring</span>Rich KPI</a
         >
       }
-      @if (store.company()?.modules.includes('Finance')) {
+      @if (
+        auth.isSuperAdmin() || auth.hasRole('CA') || store.company()?.modules.includes('Finance')
+      ) {
         <p class="nav-label">FINANCE</p>
         @for (item of finance; track item.key) {
           <a
@@ -228,7 +238,11 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           >
         }
       }
-      @if (store.company()?.modules.includes('Care delivery')) {
+      @if (
+        auth.isSuperAdmin() ||
+        auth.hasRole('CA') ||
+        store.company()?.modules.includes('Care delivery')
+      ) {
         <button class="sidebar-tv" (click)="menuOpen.set(false); tv.open()">
           <span class="material-symbols-outlined" aria-hidden="true">connected_tv</span>
           <span>ECM TV wallboard<small>Open full screen</small></span>
@@ -252,8 +266,7 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           ><span class="material-symbols-outlined" aria-hidden="true">diversity_1</span>Family
           Portal</a
         >
-        <span class="demo-label"><span></span> Demo workspace</span
-        ><a
+        <a
           routerLink="/account/security"
           routerLinkActive="active"
           ariaCurrentWhenActive="page"
@@ -314,7 +327,7 @@ export class ManagementLayout {
   protected readonly tv = inject(WallboardLauncher);
   protected readonly auth = inject(AuthService);
   protected readonly userRole = computed(
-    () => ROLES[this.auth.currentUser()?.roleCode ?? 'CW'].label,
+    () => ROLES[this.auth.currentUser()?.roleCode ?? 'UN'].label,
   );
   protected readonly store = inject(ManagementStore);
   private readonly router = inject(Router);
@@ -420,10 +433,20 @@ export class ManagementLayout {
     const current = this.router.url.split(/[?#]/)[0];
     return current === path || (path.endsWith('/overview') && current === '/manage/rota/planner');
   }
-  protected readonly organisation = [
-    { path: '/manage/companies', label: 'Companies', icon: 'domain' },
+  protected readonly organisation = computed(() => [
+    ...(this.auth.isSuperAdmin()
+      ? [{ path: '/manage/companies', label: 'Companies', icon: 'domain' }]
+      : this.auth.profile()?.company_id
+        ? [
+            {
+              path: '/manage/companies/' + this.auth.profile()!.company_id,
+              label: 'Company',
+              icon: 'domain',
+            },
+          ]
+        : []),
     { path: '/manage/workflows', label: 'Approval workflows', icon: 'account_tree' },
-  ];
+  ]);
   protected isCompaniesOverview(): boolean {
     const path = this.router.url.split(/[?#]/)[0];
     return path.startsWith('/manage/companies') || path === '/manage/locations';
@@ -435,7 +458,7 @@ export class ManagementLayout {
     );
   }
   protected switchWorkspace(): void {
-    if (!this.auth.hasRole('PO')) return;
+    if (!this.auth.canSwitchWorkspace()) return;
     this.menuOpen.set(false);
     this.router.navigateByUrl('/select-workspace');
   }

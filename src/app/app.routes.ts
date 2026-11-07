@@ -3,6 +3,7 @@ import { Router, Routes } from '@angular/router';
 import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
 import {
   authGuard,
+  managementAccessGuard,
   passwordChangeGuard,
   guestGuard,
   workspaceGuard,
@@ -211,6 +212,7 @@ export const routes: Routes = [
     path: 'manage',
     canActivate: [workspaceGuard],
     canActivateChild: [
+      managementAccessGuard,
       (route, state) => {
         const injector = inject(EnvironmentInjector);
         return import('./features/management/shared/module.guard').then((m) =>

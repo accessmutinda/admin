@@ -6,7 +6,7 @@ export interface AppUser {
   initials: string;
   email: string;
   roleCode: RoleCode;
-  mfaEnabled: boolean;
-  mfaMethod: 'authenticator' | 'sms';
+  mfaEnabled: boolean | null;
+  mfaMethod: 'authenticator' | 'sms' | null;
   workspaceIds: string[];
 }

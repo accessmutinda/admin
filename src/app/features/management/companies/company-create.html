@@ -504,6 +504,18 @@
             </dd>
           </div>
         </dl>
+        <div class="cn-field">
+          <label for="cn-initial-admin-email">Initial administrator email <span>*</span></label>
+          <input
+            id="cn-initial-admin-email"
+            name="initialAdminEmail"
+            type="email"
+            autocomplete="email"
+            [(ngModel)]="initialAdminEmail"
+            required
+          />
+          <small>The administrator will receive an invitation to this company.</small>
+        </div>
         <label class="cn-confirm"
           ><input
             type="checkbox"
@@ -622,8 +634,8 @@
       <div>
         <button type="button" class="cn-button cn-outline" (click)="saveDraft()">
           <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Draft</button
-        ><button type="submit" class="cn-button cn-primary">
-          {{ step() === 4 ? 'Create Company' : 'Continue'
+        ><button type="submit" class="cn-button cn-primary" [disabled]="saving()">
+          {{ saving() ? 'Creating…' : step() === 4 ? 'Create Company' : 'Continue'
           }}<span class="material-symbols-outlined" aria-hidden="true">{{
             step() === 4 ? 'add_business' : 'arrow_forward'
           }}</span>

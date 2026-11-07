@@ -9,8 +9,8 @@ export interface RoleDefinition {
 }
 
 export const ROLES: Record<RoleCode, RoleDefinition> = {
-  UN: { code: 'UN', label: 'Company member', colorClass: 'bg-role-cw' },
-  PO: { code: 'PO', label: 'Platform Owner', colorClass: 'bg-role-po' },
+  UN: { code: 'UN', label: 'Role unavailable', colorClass: 'bg-role-cw' },
+  PO: { code: 'PO', label: 'Super Admin', colorClass: 'bg-role-po' },
   CA: { code: 'CA', label: 'Company Admin', colorClass: 'bg-role-ca' },
   RM: { code: 'RM', label: 'Registered Manager', colorClass: 'bg-role-rm' },
   CC: { code: 'CC', label: 'Care Coordinator', colorClass: 'bg-role-cc' },

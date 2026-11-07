@@ -66,12 +66,14 @@
                   class="h-full w-full object-contain rounded-lg"
                 />
               } @else {
-                {{ workspace.shortCode }}
+                {{ workspace.shortCode || workspace.name.slice(0, 2).toUpperCase() }}
               }
             </span>
             <span class="min-w-0 flex-1">
               <span class="block text-sm font-semibold text-ink">{{ workspace.name }}</span>
-              <span class="block text-xs text-slate">{{ workspace.careType }}</span>
+              <span class="block text-xs text-slate">{{
+                (workspace.lifecycle || workspace.entryState || '').replaceAll('_', ' ')
+              }}</span>
             </span>
             @if (switching() === workspace.id) {
               <span class="shrink-0 text-xs font-medium text-teal">Switching…</span>
@@ -85,7 +87,11 @@
         </li>
       } @empty {
         <li class="px-4 py-8 text-center text-sm text-slate">
-          No workspaces found. Try a different search.
+          {{
+            search()
+              ? 'No matching workspaces found.'
+              : 'No companies are available for this account.'
+          }}
           @if (search()) {
             <button
               type="button"

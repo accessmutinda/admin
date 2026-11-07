@@ -9,6 +9,7 @@ export type AuthState =
 
 export interface MeProfile {
   id: string;
+  version?: number;
   email: string;
   display_name: string;
   platform_roles: string[];
@@ -18,7 +19,11 @@ export interface MeProfile {
   company_entry_state:
     'platform' | 'ready' | 'pending_setup' | 'suspended' | 'archived' | 'unavailable' | 'no_access';
   can_select_workspace: boolean;
-  authentication?: { mfa_verified_at?: string; primary_method?: string };
+  authentication?: {
+    mfa_verified_at?: string | null;
+    primary_method?: string;
+    trusted_device_used?: boolean;
+  };
 }
 
 export interface AuthResponse {
@@ -41,9 +46,10 @@ export interface MfaEnrolment {
 
 export interface ApiWorkspace {
   id: string;
-  code: string;
+  code?: string;
   name: string;
-  lifecycle: string;
+  lifecycle?: 'pending_setup' | 'active' | 'suspended' | 'archived';
+  entryState?: MeProfile['company_entry_state'];
 }
 
 export class ApiError extends Error {

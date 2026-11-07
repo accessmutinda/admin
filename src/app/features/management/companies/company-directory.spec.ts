@@ -82,7 +82,7 @@ describe('Company directory', () => {
         modifiedAt: i % 5 === 0 ? undefined : new Date(Date.now() - i * 2 * 86400000).toISOString(),
       };
     });
-    store.companies.set(all);
+    vi.spyOn(store, 'companies').mockReturnValue(all);
     return all;
   }
   async function open(query = '') {
@@ -160,8 +160,8 @@ describe('Company directory', () => {
     editor.setSearch(all[10].code);
     expect(editor.filtered().map((c) => c.id)).toEqual([all[10].id]);
     const first = store.companies()[0];
-    store.companies.update((companies) =>
-      companies.map((c) => (c.id === first.id ? { ...c, contacts: undefined } : c)),
+    vi.spyOn(store, 'companies').mockReturnValue(
+      store.companies().map((c) => (c.id === first.id ? { ...c, contacts: undefined } : c)),
     );
     editor.clearFilters();
     editor.setFilter('region', 'missing');
@@ -209,7 +209,7 @@ describe('Company directory', () => {
     const all = populate();
     all[0] = { ...all[0], name: '=SUM(1,1)' };
     all[1] = { ...all[1], name: 'Care, "One"' };
-    store.companies.set(all);
+    vi.spyOn(store, 'companies').mockReturnValue(all);
     const editor = await open();
     const download = vi.spyOn(store, 'download').mockImplementation(() => {});
     editor.exportList();
@@ -277,7 +277,7 @@ describe('Company directory', () => {
     harness.detectChanges();
     expect(harness.routeNativeElement!.textContent).toContain('No matching companies');
     expect(editor.currentPage()).toBe(1);
-    store.companies.set([]);
+    vi.spyOn(store, 'companies').mockReturnValue([]);
     editor.clearFilters();
     harness.detectChanges();
     expect(harness.routeNativeElement!.textContent).toContain('No companies yet');

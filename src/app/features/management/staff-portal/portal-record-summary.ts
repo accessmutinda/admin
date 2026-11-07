@@ -1,7 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { PortalDemo } from './portal-demo.service';
 import { PortalConnections } from './portal-connections.service';
 
 @Component({
@@ -13,7 +12,6 @@ import { PortalConnections } from './portal-connections.service';
 export class PortalRecordSummary {
   readonly clientId = input('');
   readonly staffId = input('');
-  private readonly demo = inject(PortalDemo);
   private readonly connections = inject(PortalConnections);
   protected readonly connection = computed(() =>
     this.clientId()
