@@ -407,7 +407,9 @@
                 aria-hidden="true"
                 >{{ module.icon }}</span
               ><span
-                ><strong>{{ module.name }}</strong
+                ><strong>{{
+                  module.name === 'Training academy' ? 'CareVerity Academy' : module.name
+                }}</strong
                 ><small>{{ module.description }}</small></span
               ><input
                 type="checkbox"
@@ -497,7 +499,7 @@
             <dt>Modules</dt>
             <dd class="cn-chips">
               @for (module of draft.company.modules; track module) {
-                <span>{{ module }}</span>
+                <span>{{ module === 'Training academy' ? 'CareVerity Academy' : module }}</span>
               }
             </dd>
           </div>

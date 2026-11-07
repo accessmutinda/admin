@@ -119,7 +119,7 @@ export class HrService {
     if (
       h.status === 'Active' &&
       (creating || existing?.hr?.status !== 'Active') &&
-      !readiness(person).ready
+      !readiness(person, today(), this.store.data().academy).ready
     )
       return 'Complete the outstanding readiness requirements before activating this employee.';
     if (

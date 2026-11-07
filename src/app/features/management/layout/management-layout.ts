@@ -1,10 +1,13 @@
+import { AcademyGovernanceService } from '../learning/academy/academy-governance.service';
+import { AcademyService } from '../learning/academy/academy.service';
+import { AcademyDemoWorkflow } from '../learning/academy/academy-demo-workflow';
 import { WorkspaceTools } from '../care/workspace-tools';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MAT_SELECT_CONFIG } from '@angular/material/select';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Component, ViewEncapsulation, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, ViewEncapsulation, computed, effect, inject, signal } from '@angular/core';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ROLES } from '../../../core/auth/models/role';
 import { ManagementRole } from '../shared/role-pill';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -69,13 +72,43 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
         (click)="menuOpen.set(false)"
         ><span class="material-symbols-outlined" aria-hidden="true">groups</span>People & HR</a
       >
-      <a
-        routerLink="/manage/learning"
-        routerLinkActive="active"
-        ariaCurrentWhenActive="page"
-        (click)="menuOpen.set(false)"
-        ><span class="material-symbols-outlined" aria-hidden="true">school</span>Training Academy</a
+      <button
+        type="button"
+        class="academy-submenu-toggle"
+        #academyMenu
+        [class.active]="routerUrl().startsWith('/manage/learning')"
+        [attr.aria-expanded]="academyExpanded()"
+        aria-controls="academy-submenu"
+        (click)="academyExpanded.set(!academyExpanded())"
       >
+        <span class="material-symbols-outlined" aria-hidden="true">school</span>
+        <span class="academy-menu-label">CareVerity Academy</span>
+        <span class="material-symbols-outlined" aria-hidden="true">{{
+          academyExpanded() ? 'expand_less' : 'expand_more'
+        }}</span>
+      </button>
+      @if (academyExpanded()) {
+        <nav
+          class="academy-submenu"
+          id="academy-submenu"
+          aria-label="CareVerity Academy pages"
+          (keydown.escape)="
+            academyExpanded.set(false); academyMenu.focus(); $event.stopPropagation()
+          "
+        >
+          @for (item of academyVisibleLinks(); track item.path) {
+            <a
+              [routerLink]="item.path"
+              [class.selected]="isAcademySection(item.path)"
+              [attr.aria-current]="isAcademySection(item.path) ? 'page' : null"
+              (click)="menuOpen.set(false)"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span
+              ><span>{{ item.label }}</span>
+            </a>
+          }
+        </nav>
+      }
       @if (store.company()?.modules.includes('Care delivery')) {
         <p class="nav-label">CARE DELIVERY</p>
         <a routerLink="/manage/clients" routerLinkActive="active" (click)="menuOpen.set(false)"
@@ -315,6 +348,90 @@ export class ManagementLayout {
   protected readonly mobile = toSignal(inject(BreakpointObserver).observe('(max-width: 1023px)'));
   protected readonly menuOpen = signal(false);
   protected readonly finance = FINANCE_AREAS;
+  protected readonly academyLinks: {
+    path: string;
+    label: string;
+    icon: string;
+  }[] = [
+    { path: '/manage/learning', label: 'Dashboard', icon: 'dashboard' },
+    { path: '/manage/learning/courses', label: 'Courses & modules', icon: 'menu_book' },
+    { path: '/manage/learning/manage', label: 'Staff assignments', icon: 'groups' },
+    { path: '/manage/learning/results', label: 'Results & retakes', icon: 'bar_chart' },
+    {
+      path: '/manage/learning/certificates',
+      label: 'Certificates & compliance',
+      icon: 'workspace_premium',
+    },
+    { path: '/manage/learning/reports', label: 'Training matrix & reports', icon: 'grid_view' },
+    { path: '/manage/learning/governance', label: 'Policies & reviews', icon: 'policy' },
+    { path: '/manage/learning/settings', label: 'Settings', icon: 'settings' },
+  ];
+
+  private readonly academy = inject(AcademyService);
+  protected academyVisibleLinks() {
+    if (this.academy.canManage())
+      return this.academyLinks
+        .filter((l) => l.path !== '/manage/learning/courses' || this.academy.can('author'))
+        .filter((l) => l.path !== '/manage/learning/settings' || this.academy.can('configure'));
+    if (this.academy.canViewEvidence())
+      return this.academyLinks.filter((l) =>
+        [
+          '/manage/learning',
+          '/manage/learning/results',
+          '/manage/learning/certificates',
+          '/manage/learning/reports',
+          '/manage/learning/governance',
+        ].includes(l.path),
+      );
+    if (this.academy.can('diagnostics'))
+      return [
+        {
+          path: '/manage/learning/diagnostics',
+          label: 'Restricted diagnostics',
+          icon: 'troubleshoot',
+        },
+      ];
+    return [{ path: '/staff-portal/training', label: 'My learning', icon: 'school' }];
+  }
+  protected readonly academyExpanded = signal(this.router.url.startsWith('/manage/learning'));
+  private readonly navigation = toSignal(this.router.events);
+  private readonly academyWorkflow = inject(AcademyDemoWorkflow);
+  private readonly academyGovernance = inject(AcademyGovernanceService);
+  constructor() {
+    effect(() => {
+      this.navigation();
+      if (
+        this.router.url.startsWith('/manage/learning') &&
+        this.academy.can('configure') &&
+        !this.academy.state().governance
+      )
+        this.academyGovernance.seed();
+    });
+    effect(() => {
+      if (
+        this.navigation() instanceof NavigationEnd &&
+        this.router.url.startsWith('/manage/learning')
+      )
+        this.academyExpanded.set(true);
+    });
+  }
+
+  protected isAcademySection(path: string): boolean {
+    const current = this.router.url.split(/[?#]/)[0];
+    return path === '/manage/learning'
+      ? current === path
+      : current === path ||
+          current.startsWith(path + '/') ||
+          (path.endsWith('/courses') &&
+            (current.startsWith('/manage/learning/content/') ||
+              current.startsWith('/manage/learning/structure/') ||
+              current === '/manage/learning/questions' ||
+              current.startsWith('/manage/learning/questions/') ||
+              current === '/manage/learning/rules' ||
+              current.startsWith('/manage/learning/rules/') ||
+              current === '/manage/learning/publish' ||
+              current.startsWith('/manage/learning/publish/')));
+  }
 
   protected readonly visitsExpanded = signal(this.router.url.startsWith('/manage/rota'));
   protected readonly visitsLinks = [

@@ -121,7 +121,17 @@ export class Rota {
       description: 'Trace planning, allocation, publishing and attendance changes.',
     },
   ];
-  protected readonly courses = COURSES;
+  protected get courses() {
+    return [
+      ...COURSES,
+      ...(this.store
+        .data()
+        .academy?.courses.filter(
+          (c) =>
+            c.status === 'Published' && c.active !== false && !COURSES.some((x) => x.id === c.id),
+        ) ?? []),
+    ];
+  }
   protected readonly weekdays = [
     { id: 1, name: 'Mon' },
     { id: 2, name: 'Tue' },
@@ -520,7 +530,7 @@ export class Rota {
     };
   }
   protected skillName(id: string): string {
-    return COURSES.find((c) => c.id === id)?.title ?? id;
+    return this.courses.find((c) => c.id === id)?.title ?? id;
   }
   protected days(call: RotaCall): string {
     return this.weekdays

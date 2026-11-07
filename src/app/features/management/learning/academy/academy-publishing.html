@@ -1,0 +1,552 @@
+<cv-academy-admin-nav />
+<div class="heading publish-heading">
+  <div>
+    <h1>CareVerity Academy — Review &amp; Publish Course</h1>
+    <p>Review course readiness, confirm approval and publish an immutable course version.</p>
+  </div>
+  <div class="actions">
+    <button class="academy-button" [disabled]="!course" (click)="preview()">
+      <span class="material-symbols-outlined" aria-hidden="true">visibility</span>Preview Learner
+      Journey</button
+    ><button class="academy-button" [disabled]="!course" (click)="save()">
+      <span class="material-symbols-outlined" aria-hidden="true">save</span
+      >{{ course?.status === 'Published' ? 'Save as New Draft' : 'Save Draft' }}</button
+    ><button
+      class="academy-button primary"
+      [disabled]="!course || !!validation() || !attested() || unchangedPublication()"
+      (click)="publish()"
+    >
+      <span class="material-symbols-outlined" aria-hidden="true">publish</span>Publish Course
+    </button>
+  </div>
+</div>
+<cv-academy-message [error]="error()" [notice]="notice()" />
+@if (course) {
+  <cv-academy-course-steps [courseId]="course.id" [current]="6" />
+  <div class="publication-context">
+    <label
+      ><span class="material-symbols-outlined" aria-hidden="true">school</span
+      ><mat-select
+        cvSelect
+        #courseSelect="matSelect"
+        aria-label="Publishing course"
+        [value]="course.id"
+        (selectionChange)="changeCourse($event.value); courseSelect.value = course?.id"
+      >
+        @for (item of courses(); track item.id) {
+          <mat-option [value]="item.id">{{ item.title }}</mat-option>
+        }
+      </mat-select></label
+    ><button class="academy-button refresh-checks" (click)="reload()">
+      <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Reload latest draft
+    </button>
+  </div>
+  @if (lastPublished() !== null) {
+    <section class="publication-success" role="status">
+      <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+      <div>
+        <h2>Course version {{ lastPublished() }} published</h2>
+        <p>
+          {{
+            course.active === false
+              ? 'This published version is inactive for new assignments.'
+              : scheduled()
+                ? 'New assignments become available on the effective date.'
+                : 'The course is ready for new staff assignments.'
+          }}
+          Existing learning cycles retain their original content, questions and rules.
+        </p>
+      </div>
+      <a
+        class="academy-button"
+        [routerLink]="['/manage/learning/rules', course.id]"
+        [queryParams]="context()"
+        >{{
+          course.active === false || scheduled()
+            ? 'Review staff assignment setup'
+            : 'Assign Training'
+        }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a
+      >
+    </section>
+  }
+  <div class="publishing-layout">
+    <main class="publication-main">
+      <section class="panel course-review">
+        <div class="section-heading">
+          <span class="section-icon material-symbols-outlined" aria-hidden="true">school</span>
+          <div>
+            <h2>{{ course.title }}</h2>
+            <p>
+              {{ course.code || 'Course code not set' }} · {{ course.category }} ·
+              {{ course.mandatory ? 'Mandatory' : 'Optional' }}
+            </p>
+          </div>
+          <span class="status-pill" [class.published]="course.status === 'Published'">{{
+            course.status === 'Published' && course.active === false
+              ? 'Published · Inactive'
+              : course.status === 'Published' && scheduled()
+                ? 'Published · future availability'
+                : course.status
+          }}</span>
+        </div>
+        <p class="course-description">{{ course.description }}</p>
+        <div class="stats overview-metrics">
+          <div class="cv-metric" data-card-tone="blue">
+            <span class="material-symbols-outlined" aria-hidden="true">layers</span>
+            <div>
+              <h3 class="cv-metric-label">Modules</h3>
+              <strong>{{ modules() }}</strong
+              ><small>Course structure</small>
+            </div>
+          </div>
+          <div class="cv-metric" data-card-tone="teal">
+            <span class="material-symbols-outlined" aria-hidden="true">video_library</span>
+            <div>
+              <h3 class="cv-metric-label">Lessons</h3>
+              <strong>{{ course.lessons.length }}</strong
+              ><small>Learning content</small>
+            </div>
+          </div>
+          <div class="cv-metric" data-card-tone="green">
+            <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
+            <div>
+              <h3 class="cv-metric-label">Learning time</h3>
+              <strong>{{ minutes() }} min</strong><small>Estimated course duration</small>
+            </div>
+          </div>
+          <div class="cv-metric" data-card-tone="purple">
+            <span class="material-symbols-outlined" aria-hidden="true">quiz</span>
+            <div>
+              <h3 class="cv-metric-label">Published questions</h3>
+              <strong>{{ questions().length }}</strong
+              ><small>Approved assessment bank</small>
+            </div>
+          </div>
+        </div>
+        @if (course.sample) {
+          <p class="sample-note">
+            <span class="material-symbols-outlined" aria-hidden="true">info</span>Sample learning
+            content · Internal demonstration course
+          </p>
+        }
+        <a class="text-link" [routerLink]="['/manage/learning/courses', course.id]"
+          >Edit course details<span class="material-symbols-outlined" aria-hidden="true"
+            >arrow_forward</span
+          ></a
+        >
+      </section>
+      <section class="panel readiness-panel">
+        <div class="section-heading">
+          <span class="section-icon material-symbols-outlined" aria-hidden="true">fact_check</span>
+          <div>
+            <h2>Publication Readiness</h2>
+            <p>Check required content, accessibility, assessment and approval details.</p>
+          </div>
+          <span class="check-count" [class.blocked]="!!validation()"
+            >{{ completedChecks() }} / {{ checks().length }} checks</span
+          >
+        </div>
+        <div class="readiness-checks">
+          @for (check of checks(); track check.title) {
+            <article class="readiness-item" [class.blocked]="check.issues.length">
+              <span class="check-indicator material-symbols-outlined" aria-hidden="true">{{
+                check.issues.length ? 'warning' : 'check_circle'
+              }}</span
+              ><span class="check-category material-symbols-outlined" aria-hidden="true">{{
+                check.icon
+              }}</span>
+              <div>
+                <h3>{{ check.title }}</h3>
+                <p>{{ check.detail }}</p>
+                @if (check.issues.length) {
+                  <ul>
+                    @for (issue of check.issues; track $index) {
+                      <li>{{ issue }}</li>
+                    }
+                  </ul>
+                }
+              </div>
+              @if (
+                check.title !== 'Final publication validation' &&
+                check.title !== 'Publication approval'
+              ) {
+                <a class="check-action" [routerLink]="check.path" [queryParams]="check.query || {}"
+                  >Review<span class="material-symbols-outlined" aria-hidden="true"
+                    >arrow_forward</span
+                  ></a
+                >
+              }
+            </article>
+          }
+        </div>
+      </section>
+      <section class="panel publication-groups">
+        <h2>Assessment groups &amp; final grade</h2>
+        <p>
+          The final grade combines earned marks / available marks from the final assessment and the
+          quizzes marked to count. The latest submitted quiz result is fixed when a final attempt
+          starts. Required quizzes must also be passed; required surveys must be completed.
+        </p>
+        @for (group of course.questionGroups || []; track group.id) {
+          <p>
+            <strong>{{ group.title }}</strong> · {{ group.placement }} ·
+            {{
+              group.kind === 'Survey'
+                ? 'Survey · Not graded'
+                : group.countsTowardGrade
+                  ? 'Counts toward final grade'
+                  : 'Practice only · Excluded'
+            }}
+          </p>
+        }
+        <p><strong>Final course assessment</strong> · End of course · Counts toward final grade</p>
+      </section>
+      <section class="panel approval-panel">
+        <div class="section-heading">
+          <span class="section-icon purple material-symbols-outlined" aria-hidden="true"
+            >verified_user</span
+          >
+          <div>
+            <h2>Approval &amp; Availability</h2>
+            <p>Confirm the approved ownership, issuing name and publication details.</p>
+          </div>
+        </div>
+        <div class="field-grid">
+          <label class="field"
+            >Course owner<input
+              aria-label="Publication course owner"
+              [(ngModel)]="course.owner"
+              maxlength="180" /></label
+          ><label class="field"
+            >Approved certificate issuer<input
+              aria-label="Publication issuer"
+              [(ngModel)]="course.issuer"
+              maxlength="180" /></label
+          ><label class="field"
+            >Publish approver<input
+              aria-label="Publication approver"
+              [(ngModel)]="course.approver"
+              maxlength="180" /></label
+          ><label class="field"
+            >Effective date<input
+              type="date"
+              aria-label="Publication effective date"
+              [(ngModel)]="course.effectiveDate" /></label
+          ><label class="field wide"
+            >Content rights / licence<input
+              aria-label="Publication content rights"
+              [(ngModel)]="course.rights"
+              maxlength="300" /></label
+          ><label class="field"
+            >Approved CPD hours<input
+              type="number"
+              min="0"
+              max="100"
+              step="0.25"
+              aria-label="Publication CPD hours"
+              [(ngModel)]="course.cpdHours" /></label
+          ><label class="check"
+            ><input
+              type="checkbox"
+              aria-label="Course active for assignments"
+              [ngModel]="course.active !== false"
+              (ngModelChange)="course.active = $event"
+            />Active for new assignments</label
+          ><label class="field wide"
+            >Version notes<textarea
+              rows="3"
+              maxlength="1000"
+              aria-label="Publication version notes"
+              [(ngModel)]="course.publicationNote"
+              placeholder="Describe the reviewed changes in this version."
+            ></textarea>
+          </label>
+        </div>
+        @if (scheduled()) {
+          <p class="availability-note">
+            <span class="material-symbols-outlined" aria-hidden="true">event</span>New assignments
+            and optional enrolment open {{ course.effectiveDate | ukDate: 'd MMM yyyy' }}. Existing
+            assigned versions remain available.
+          </p>
+        }
+      </section>
+      <section class="panel publication-history">
+        <div class="section-heading">
+          <span class="section-icon material-symbols-outlined" aria-hidden="true">history</span>
+          <div>
+            <h2>Published Version History</h2>
+            <p>Published versions are retained as read-only records.</p>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Version</th>
+                <th>Published</th>
+                <th>Published by</th>
+                <th>Effective from</th>
+                <th>Change notes</th>
+                <th><span class="visually-hidden">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (version of versions(); track version.version) {
+                <tr>
+                  <td>
+                    <span
+                      class="version-pill"
+                      [class.current]="version.version === liveVersion()?.version"
+                      >v{{ version.version
+                      }}{{ version.version === liveVersion()?.version ? ' · Current' : '' }}</span
+                    >
+                  </td>
+                  <td>
+                    {{
+                      version.publishedAt
+                        ? (version.publishedAt | ukDate: 'd MMM yyyy, HH:mm')
+                        : 'Not recorded'
+                    }}
+                  </td>
+                  <td>{{ version.publishedBy || 'Not recorded' }}</td>
+                  <td>
+                    {{
+                      version.effectiveDate
+                        ? (version.effectiveDate | ukDate: 'd MMM yyyy')
+                        : 'Not recorded'
+                    }}
+                  </td>
+                  <td>{{ version.publicationNote || '—' }}</td>
+                  <td>
+                    <button
+                      class="text-button"
+                      [attr.aria-label]="'View published version ' + version.version"
+                      (click)="selectedVersion.set(version)"
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="empty-row">No published versions yet.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <aside class="publication-sidebar">
+      <section class="panel publish-summary">
+        <div class="section-heading">
+          <span class="section-icon material-symbols-outlined" aria-hidden="true">publish</span>
+          <h2>Publish Course</h2>
+        </div>
+        <div class="readiness-banner" [class.blocked]="!!validation()">
+          <span class="material-symbols-outlined" aria-hidden="true">{{
+            validation() ? 'pending' : unchangedPublication() ? 'verified' : 'check_circle'
+          }}</span>
+          <div>
+            <h3>
+              {{
+                validation()
+                  ? 'Changes Required'
+                  : unchangedPublication()
+                    ? 'Current Version Published'
+                    : 'Ready for Publication'
+              }}
+            </h3>
+            <p>
+              {{
+                validation()
+                  ? 'Resolve publication checks before making this version available.'
+                  : unchangedPublication()
+                    ? 'Save a new draft or edit the course to publish another version.'
+                    : 'Confirm the review below to publish this course version.'
+              }}
+            </p>
+          </div>
+        </div>
+        <dl class="publication-facts">
+          <div>
+            <dt>Current published version</dt>
+            <dd>{{ liveVersion() ? 'v' + liveVersion()!.version : 'None' }}</dd>
+          </div>
+          <div>
+            <dt>Version to publish</dt>
+            <dd>{{ unchangedPublication() ? 'No changes' : 'v' + (course.version + 1) }}</dd>
+          </div>
+          <div>
+            <dt>Pass threshold</dt>
+            <dd>{{ course.passMark ?? academy.state().settings.passMark }}%</dd>
+          </div>
+          <div>
+            <dt>Attempts</dt>
+            <dd>{{ policy()?.maxAttempts }}</dd>
+          </div>
+          <div>
+            <dt>Assessment timer</dt>
+            <dd>
+              {{ policy()?.timeLimitMinutes ? policy()!.timeLimitMinutes + ' min' : 'Untimed' }}
+            </dd>
+          </div>
+          <div>
+            <dt>Knowledge renewal</dt>
+            <dd>
+              {{
+                (course.validityMonths ?? academy.state().settings.validityMonths)
+                  ? (course.validityMonths ?? academy.state().settings.validityMonths) + ' months'
+                  : 'No fixed expiry'
+              }}
+            </dd>
+          </div>
+          <div>
+            <dt>Separate practical sign-off</dt>
+            <dd>{{ course.practicalRequired ? 'Required' : 'Not configured' }}</dd>
+          </div>
+          <div>
+            <dt>Availability</dt>
+            <dd>
+              {{
+                course.active === false
+                  ? 'Inactive for new assignments'
+                  : scheduled()
+                    ? (course.effectiveDate | ukDate: 'd MMM yyyy')
+                    : 'On publication'
+              }}
+            </dd>
+          </div>
+        </dl>
+        <label class="approval-confirmation"
+          ><input
+            type="checkbox"
+            aria-label="Confirm publication approval"
+            [ngModel]="attested()"
+            (ngModelChange)="attest($event)"
+          /><span
+            >I confirm that the current course content, answer keys, accessibility and issuing
+            details have been reviewed and approved.</span
+          ></label
+        >
+        <p class="confirmation-note">
+          Changes to the reviewed course or its publication inputs reset this confirmation.
+        </p>
+        @if (validation()) {
+          <p class="publish-blocker" role="status">{{ validation() }}</p>
+        }
+        <button
+          class="academy-button primary publish-action"
+          [disabled]="!!validation() || !attested() || unchangedPublication()"
+          (click)="publish()"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">publish</span
+          >{{ scheduled() ? 'Publish with Effective Date' : 'Publish Course Version' }}</button
+        ><button class="academy-button secondary-action" (click)="save()">
+          {{ course.status === 'Published' ? 'Create New Draft' : 'Save Draft' }}
+        </button>
+      </section>
+      <section class="panel after-publication">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">account_tree</span>After
+          Publication
+        </h2>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+          <p>
+            New assignments use this version’s content, approved questions and assessment policy.
+          </p>
+        </div>
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">history</span>
+          <p>
+            Existing learner assignments, attempts and evidence retain their original snapshots.
+          </p>
+        </div>
+        <div>
+          <span class="material-symbols-outlined purple" aria-hidden="true">workspace_premium</span>
+          <p>A final course pass starts the certificate, HR filing and training update workflow.</p>
+        </div>
+        <a
+          class="academy-button"
+          [routerLink]="['/manage/learning/rules', course.id]"
+          [queryParams]="context()"
+          >Staff Assignment Setup<span class="material-symbols-outlined" aria-hidden="true"
+            >arrow_forward</span
+          ></a
+        >
+      </section>
+    </aside>
+  </div>
+  <footer class="wizard-footer">
+    <button class="academy-button" (click)="back()">
+      <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to Rules
+      &amp; Assignments
+    </button>
+    @if (lastPublished() !== null) {
+      <a class="academy-button" routerLink="/manage/learning/courses"
+        >Return to Course Register<span class="material-symbols-outlined" aria-hidden="true"
+          >arrow_forward</span
+        ></a
+      >
+    }
+  </footer>
+} @else {
+  <section class="panel empty">
+    <h2>Course unavailable</h2>
+    <p>Save a course before reviewing it for publication.</p>
+    <a class="academy-button" routerLink="/manage/learning/courses">Back to courses</a>
+  </section>
+}
+@if (selectedVersion(); as version) {
+  <div class="version-backdrop" (click)="selectedVersion.set(null)"></div>
+  <section
+    class="version-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="version-title"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <div class="heading">
+      <h2 id="version-title">Published Version {{ version.version }} · Read-only</h2>
+      <button
+        class="icon-button"
+        aria-label="Close published version"
+        (click)="selectedVersion.set(null)"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    </div>
+    <h3>{{ version.title }}</h3>
+    <p>{{ version.description }}</p>
+    <p>
+      Approver: {{ version.approver || 'Not recorded' }} · Issuer:
+      {{ version.issuer || 'Not recorded' }}
+    </p>
+    <p>
+      {{ version.lessons.length }} lessons ·
+      {{ version.assessmentQuestions?.length ?? 'Not recorded' }} published questions ·
+      {{ version.passMark ?? 'Inherited policy' }}{{ version.passMark != null ? '%' : '' }} pass
+      threshold
+    </p>
+    <p>
+      Published by {{ version.publishedBy || 'Not recorded'
+      }}{{ version.publishedAt ? ' · ' + (version.publishedAt | ukDate: 'd MMM yyyy, HH:mm') : '' }}
+    </p>
+    @if (version.publicationNote) {
+      <p class="notice">{{ version.publicationNote }}</p>
+    }
+    <ol>
+      @for (lesson of version.lessons; track lesson.id) {
+        <li>
+          <strong
+            >{{ lesson.moduleTitle ? lesson.moduleTitle + ' · ' : '' }}{{ lesson.title }}</strong
+          >
+          · {{ lesson.minutes }} min
+        </li>
+      }
+    </ol>
+    <button class="academy-button" (click)="selectedVersion.set(null)">Close</button>
+  </section>
+}

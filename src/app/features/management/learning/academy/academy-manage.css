@@ -1,0 +1,48 @@
+:host .field-grid.assignment-filters {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 8px;
+}
+:host .assignment-filter-card {
+  padding: 8px;
+}
+:host .assignment-filter-card > .heading {
+  margin: 0 0 4px;
+}
+:host .assignment-filter-card > .heading h2 {
+  margin: 0;
+}
+:host .assignment-filters > .field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  gap: 3px;
+  line-height: 1.3;
+}
+.assignment-filter-clear {
+  align-self: end;
+  justify-self: start;
+  margin: 0;
+}
+:host .assigned-course-list {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 4px;
+  vertical-align: middle;
+}
+.assigned-course-list .badge {
+  max-width: 200px;
+  white-space: normal;
+}
+:host .assigned-course-overflow {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 11px;
+}
+@media (max-width: 640px) {
+  :host .field-grid.assignment-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,3 +1,5 @@
+import { AcademyService } from '../learning/academy/academy.service';
+import { AcademyStaffTraining } from '../learning/academy/academy-staff-training';
 import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import { PortalRecordSummary } from '../staff-portal/portal-record-summary';
 import { StaffAvailability } from './staff-availability';
@@ -25,6 +27,7 @@ import { COURSES } from '../shared/management.store';
     '[class.hr-profile-editing]': 'editing()',
   },
   imports: [
+    AcademyStaffTraining,
     CardTonePipe,
     PortalRecordSummary,
     StaffAvailability,
@@ -51,6 +54,7 @@ import { COURSES } from '../shared/management.store';
   ],
 })
 export class StaffProfile {
+  private readonly academy = inject(AcademyService);
   protected readonly hr = inject(HrService);
   protected readonly payroll = inject(PayrollService);
   private readonly sanitizer = inject(DomSanitizer);
@@ -415,7 +419,12 @@ export class StaffProfile {
   protected reflective = false;
   protected trainingQuery = '';
   protected trainingFilter = '';
-  protected trainingState(t: { completed: string; expiry: string }): string {
+  protected trainingState(t: {
+    completed: string;
+    expiry: string;
+    evidenceStatus?: string;
+  }): string {
+    if (t.evidenceStatus === 'Revoked') return 'Evidence revoked';
     if (!t.completed) return 'Assigned';
     if (t.expiry && t.expiry < today()) return 'Expired';
     const soon = new Date(today() + 'T12:00:00Z');
@@ -593,7 +602,11 @@ export class StaffProfile {
   protected readonly courses = COURSES;
   protected review = { type: 'Supervision', date: '', assessor: '', discussion: '', outcome: '' };
   protected leave = { type: 'Annual leave', start: '', end: '' };
-  protected readonly documents = computed(() => this.person()?.documents ?? []);
+  protected readonly documents = computed(() =>
+    (this.person()?.documents ?? []).filter(
+      (d) => !d.id.startsWith('academy-document:') || this.academy.canReadCertificate(),
+    ),
+  );
   protected showReviewForm = false;
   protected reviewTab = 'Supervision';
   protected readonly reviewTabs = [
@@ -971,12 +984,24 @@ export class StaffProfile {
       );
     }, 'Document reviewed');
   }
+  private auditAcademyDocument(documentId: string) {
+    const c = this.academy.state().certificates.find((c) => c.documentId === documentId);
+    if (!c) return true;
+    const error = this.academy.recordCertificateAccess(
+      c.id,
+      'Filed PDF',
+      this.academy.store.companyId(),
+    );
+    if (error) this.error.set(error);
+    return !error;
+  }
   protected previewDocument(id: string): void {
     const d = this.documents().find((doc) => doc.id === id);
     if (!d || !/^data:(application\/pdf|image\/(jpeg|png));base64,/.test(d.content)) {
       this.notice.set('Use Download to open this document in its supported application.');
       return;
     }
+    if (!this.auditAcademyDocument(d.id)) return;
     try {
       const bytes = Uint8Array.from(atob(d.content.split(',')[1]), (char) => char.charCodeAt(0));
       this.closePreview();
@@ -1007,6 +1032,7 @@ export class StaffProfile {
       this.error.set('This document format cannot be downloaded here.');
       return;
     }
+    if (!this.auditAcademyDocument(d.id)) return;
     const a = document.createElement('a');
     a.href = d.content;
     a.download = d.name;

@@ -1,7 +1,7 @@
 <cv-academy-admin-nav />
-<div class="heading">
+<div class="heading settings-heading">
   <div>
-    <h1>Training Academy settings</h1>
+    <h1>CareVerity Academy settings</h1>
     <p>Configure assessments, certificates, refresher rules and the learner experience.</p>
   </div>
   <div class="actions">
@@ -30,84 +30,116 @@
     <cv-academy-certificate [certificate]="preview()" />
   </div>
 } @else if (tab() === 'General settings') {
-  <div class="columns">
-    <div>
-      <div class="grid">
-        <section class="panel">
-          <h2>
-            <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Assessment
-            settings
-          </h2>
-          <p>Defaults apply to newly started assessments.</p>
-          <div class="field-grid">
-            <label class="field"
-              >Pass mark (%)<input
-                type="number"
-                min="1"
-                max="100"
-                [(ngModel)]="draft.passMark" /></label
-            ><label class="field"
-              >Maximum attempts<input
-                type="number"
-                min="1"
-                max="10"
-                [(ngModel)]="draft.maxAttempts" /></label
-            ><label class="field wide"
-              >Time limit (minutes)<input
-                type="number"
-                min="1"
-                max="240"
-                [(ngModel)]="draft.timeLimitMinutes"
-            /></label>
-          </div>
-          <label class="check"
-            ><input type="checkbox" [(ngModel)]="draft.shuffleQuestions" />Randomise question
-            order</label
-          ><label class="check"
-            ><input type="checkbox" [(ngModel)]="draft.shuffleOptions" />Randomise answer options
-            where enabled</label
-          >
-        </section>
-        <section class="panel">
-          <h2>
-            <span class="material-symbols-outlined" aria-hidden="true">update</span>Expiry &
-            refresher rules
-          </h2>
-          <div class="field-grid">
-            <label class="field"
-              >Certificate validity (months)<input
-                type="number"
-                min="0"
-                max="120"
-                [(ngModel)]="draft.validityMonths"
-              /><small>Use 0 for no expiry. Courses can override this default.</small></label
-            ><label class="field"
-              >Expiry reminder (days before)<input
-                type="number"
-                min="0"
-                max="365"
-                [(ngModel)]="draft.reminderDays" /></label
-            ><label class="field"
-              >Refresher reminder (days before)<input
-                type="number"
-                min="0"
-                max="365"
-                [(ngModel)]="draft.refresherDays" /></label
-            ><label class="field"
-              >Due soon (days)<input
-                type="number"
-                min="0"
-                max="365"
-                [(ngModel)]="draft.dueSoonDays"
-            /></label>
-          </div>
-          <p>
-            Certificate validity is fixed when issued. Refresher reminders do not automatically
-            reset a completed assignment.
-          </p>
-        </section>
+  <div class="settings-overview">
+    <section class="panel settings-assessment">
+      <h2>
+        <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Assessment
+        settings
+      </h2>
+      <p>Defaults apply to newly started assessments.</p>
+      <div class="field-grid">
+        <label class="field"
+          >Pass mark (%)<input
+            type="number"
+            min="1"
+            max="100"
+            [(ngModel)]="draft.passMark" /></label
+        ><label class="field"
+          >Maximum attempts<input
+            type="number"
+            min="1"
+            max="10"
+            [(ngModel)]="draft.maxAttempts" /></label
+        ><label class="field wide"
+          >Time limit (minutes)<input
+            type="number"
+            min="1"
+            max="240"
+            [(ngModel)]="draft.timeLimitMinutes"
+        /></label>
       </div>
-      <section class="panel">
+      <label class="check"
+        ><input type="checkbox" [(ngModel)]="draft.shuffleQuestions" />Randomise question
+        order</label
+      ><label class="check"
+        ><input type="checkbox" [(ngModel)]="draft.shuffleOptions" />Randomise answer options where
+        enabled</label
+      >
+    </section>
+    <section class="panel settings-renewal">
+      <h2>
+        <span class="material-symbols-outlined" aria-hidden="true">update</span>Expiry & refresher
+        rules
+      </h2>
+      <div class="field-grid">
+        <label class="field"
+          >Certificate validity (months)<input
+            type="number"
+            min="0"
+            max="120"
+            [(ngModel)]="draft.validityMonths"
+          /><small>Use 0 for no expiry. Courses can override this default.</small></label
+        ><label class="field"
+          >Expiry reminder (days before)<input
+            type="number"
+            min="0"
+            max="365"
+            [(ngModel)]="draft.reminderDays" /></label
+        ><label class="field"
+          >Refresher reminder (days before)<input
+            type="number"
+            min="0"
+            max="365"
+            [(ngModel)]="draft.refresherDays" /></label
+        ><label class="field"
+          >Due soon (days)<input type="number" min="0" max="365" [(ngModel)]="draft.dueSoonDays"
+        /></label>
+      </div>
+      <p>
+        Certificate validity is fixed when issued. Refresher reminders do not automatically reset a
+        completed assignment.
+      </p>
+    </section>
+    <section class="panel settings-brand">
+      <h2>
+        <span class="material-symbols-outlined" aria-hidden="true">palette</span>Brand settings
+      </h2>
+      <div class="field-grid">
+        <label class="field">Primary colour<input type="color" [(ngModel)]="draft.primary" /></label
+        ><label class="field"
+          >Secondary colour<input type="color" [(ngModel)]="draft.secondary" /></label
+        ><label class="field wide"
+          >Issuing organisation<input
+            [(ngModel)]="draft.issuer"
+            [placeholder]="academy.store.company()?.name || 'CareVerity'" /></label
+        ><label class="field wide"
+          >Logo<mat-select cvSelect aria-label="Certificate logo" [(ngModel)]="draft.logoId"
+            ><mat-option value="">CareVerity logo</mat-option>
+            @for (asset of academy.state().assets; track asset.id) {
+              @if (asset.kind === 'Image') {
+                <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
+              }
+            }
+          </mat-select></label
+        ><label class="field wide"
+          >Background<mat-select
+            cvSelect
+            aria-label="Certificate background"
+            [(ngModel)]="draft.backgroundId"
+            ><mat-option value="">Template background</mat-option>
+            @for (asset of academy.state().assets; track asset.id) {
+              @if (asset.kind === 'Image') {
+                <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
+              }
+            }
+          </mat-select></label
+        >
+      </div>
+    </section>
+  </div>
+  <div class="settings-evidence">
+    <div class="settings-editor-stack">
+      <section class="panel settings-templates">
         <h2>
           <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span
           >Certificate templates
@@ -129,7 +161,7 @@
         </div>
         <p>Preview the selected template alongside your organisation’s branding.</p>
       </section>
-      <section class="panel">
+      <section class="panel settings-signatory">
         <h2>
           <span class="material-symbols-outlined" aria-hidden="true">draw</span>Authorised signatory
         </h2>
@@ -149,74 +181,49 @@
                   <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
                 }
               }</mat-select
-            ><small>Use an authorised signature uploaded to the asset library.</small></label
+            ><small>Select an authorised signature image.</small></label
           >
         </div>
         <label class="check"
           ><input type="checkbox" [(ngModel)]="draft.showSignatureDate" />Show signature date</label
-        ><a routerLink="/manage/learning/assets">Upload signature or logo assets →</a>
+        ><label class="field"
+          >Upload a signature, logo or background image<input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            aria-label="Upload certificate branding image"
+            [disabled]="uploadingImage()"
+            (change)="uploadBrandImage($event)"
+          /><small>{{
+            uploadingImage()
+              ? 'Uploading image…'
+              : 'PNG, JPEG or WebP. Select the uploaded image below or in the signature field.'
+          }}</small></label
+        >
       </section>
     </div>
-    <div>
-      <section class="panel preview-card">
-        <div class="heading">
-          <h2>Certificate preview</h2>
-          <button class="academy-button" (click)="fullPreview.set(true)">Full screen ↗</button>
-        </div>
-        <cv-academy-certificate [certificate]="preview()" />
-      </section>
-      <section class="panel">
-        <h2>
-          <span class="material-symbols-outlined" aria-hidden="true">palette</span>Brand settings
-        </h2>
-        <div class="field-grid">
-          <label class="field"
-            >Primary colour<input type="color" [(ngModel)]="draft.primary" /></label
-          ><label class="field"
-            >Secondary colour<input type="color" [(ngModel)]="draft.secondary" /></label
-          ><label class="field wide"
-            >Issuing organisation<input
-              [(ngModel)]="draft.issuer"
-              [placeholder]="academy.store.company()?.name || 'CareVerity'" /></label
-          ><label class="field wide"
-            >Logo<mat-select cvSelect aria-label="Certificate logo" [(ngModel)]="draft.logoId"
-              ><mat-option value="">CareVerity logo</mat-option>
-              @for (asset of academy.state().assets; track asset.id) {
-                @if (asset.kind === 'Image') {
-                  <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
-                }
-              }
-            </mat-select></label
-          ><label class="field wide"
-            >Background<mat-select
-              cvSelect
-              aria-label="Certificate background"
-              [(ngModel)]="draft.backgroundId"
-              ><mat-option value="">Template background</mat-option>
-              @for (asset of academy.state().assets; track asset.id) {
-                @if (asset.kind === 'Image') {
-                  <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
-                }
-              }
-            </mat-select></label
-          >
-        </div>
-      </section>
-    </div>
+    <section class="panel settings-preview preview-card">
+      <div class="heading">
+        <h2>Certificate preview</h2>
+        <button class="academy-button" (click)="fullPreview.set(true)">Full screen ↗</button>
+      </div>
+      <cv-academy-certificate [certificate]="preview()" />
+    </section>
   </div>
 } @else if (tab() === 'Learner experience') {
   <section class="panel">
     <h2>Learner controls</h2>
-    <label class="check"
-      ><input type="checkbox" [(ngModel)]="draft.sequentialLessons" />Complete lessons in
-      order</label
-    ><label class="check"
-      ><input type="checkbox" [(ngModel)]="draft.allowSelfEnrolment" />Allow staff to enrol
-      themselves on published optional courses</label
-    ><label class="check"
-      ><input type="checkbox" [(ngModel)]="draft.showFeedback" />Show question explanations after
-      assessment submission</label
-    >
+    <div class="settings-learner-options">
+      <label class="check"
+        ><input type="checkbox" [(ngModel)]="draft.sequentialLessons" />Complete lessons in
+        order</label
+      ><label class="check"
+        ><input type="checkbox" [(ngModel)]="draft.allowSelfEnrolment" />Allow staff to enrol
+        themselves on published optional courses</label
+      ><label class="check"
+        ><input type="checkbox" [(ngModel)]="draft.showFeedback" />Show question explanations after
+        assessment submission</label
+      >
+    </div>
     <p>
       Assessment answers and video positions are saved on this device. Timers continue while an
       assessment is closed. Learners can enlarge question text and use keyboard navigation.
@@ -226,16 +233,18 @@
   <div class="grid">
     <section class="panel">
       <h2>Roles with academy administration access</h2>
-      @for (role of roles; track role.code) {
-        <label class="check"
-          ><input
-            type="checkbox"
-            [checked]="['PO', 'CA'].includes(role.code) || draft.adminRoles.includes(role.code)"
-            [disabled]="['PO', 'CA'].includes(role.code)"
-            (change)="toggleRole(role.code)"
-          />{{ role.label }}</label
-        >
-      }
+      <div class="settings-role-options">
+        @for (role of roles; track role.code) {
+          <label class="check"
+            ><input
+              type="checkbox"
+              [checked]="['PO', 'CA'].includes(role.code) || draft.adminRoles.includes(role.code)"
+              [disabled]="['PO', 'CA'].includes(role.code)"
+              (change)="toggleRole(role.code)"
+            />{{ role.label }}</label
+          >
+        }
+      </div>
       <p>
         Platform owners and company administrators retain access. Existing module permissions still
         apply to other roles.
@@ -256,16 +265,33 @@
   </div>
 } @else if (tab() === 'Integrations') {
   <section class="panel">
-    <h2>Storage & integrations</h2>
+    <h2>Seeded evidence workflow</h2>
     <p>
-      Course records, assignments, assessments and certificates use the current workspace’s saved
-      data. Uploaded video and other binary assets use this browser’s media storage.
+      A verified demo pass generates a PDF, files it in the same worker’s HR record, updates
+      training and refresher dates, and refreshes the matrix, compliance and rota inputs. All data
+      stays in this browser.
     </p>
-    <div class="notice">
-      External learning providers, email delivery, remote uploads and background scheduling are not
-      configured. Media stored on this device is unavailable in another browser until uploaded
-      there.
-    </div>
+    <label class="field"
+      >Failure scenario<mat-select
+        cvSelect
+        aria-label="Demo integration failure"
+        [(ngModel)]="draft.demoFailure"
+        ><mat-option value="None">Healthy workflow</mat-option>
+        @for (
+          stage of ['HR filing', 'Training record', 'Compliance', 'Rota refresh'];
+          track stage
+        ) {
+          <mat-option [value]="stage">{{ stage }} unavailable</mat-option>
+        }
+      </mat-select></label
+    >
+    <p>
+      Save the scenario, complete an assessment, then inspect its exception. Restore Healthy
+      workflow and retry to demonstrate recovery without duplicate PDFs or HR links.
+    </p>
+    <button class="academy-button" (click)="workflow.reconcile()">
+      Reconcile seeded completions
+    </button>
     <a class="academy-button" routerLink="/manage/learning/reports">Export academy records →</a>
   </section>
 } @else {
@@ -276,16 +302,18 @@
         Templates are used for portal records. Email delivery is not configured. Available fields:
         <code>{{ '{{course}}' }}</code> and <code>{{ '{{due}}' }}</code>.
       </p>
-      @for (key of notificationKeys; track key) {
-        <label class="field"
-          >{{ key
-          }}<textarea
-            rows="3"
-            maxlength="2000"
-            [(ngModel)]="draft.notificationTemplates[key]"
-          ></textarea>
-        </label>
-      }
+      <div class="field-grid settings-notification-fields">
+        @for (key of notificationKeys; track key) {
+          <label class="field"
+            >{{ key
+            }}<textarea
+              rows="3"
+              maxlength="2000"
+              [(ngModel)]="draft.notificationTemplates[key]"
+            ></textarea>
+          </label>
+        }
+      </div>
     </section>
     <section class="panel">
       <h2>Reminder schedules</h2>

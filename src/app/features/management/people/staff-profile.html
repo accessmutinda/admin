@@ -954,6 +954,7 @@
           </button>
         }
       </div>
+      <cv-academy-staff-training [personId]="id" />
       <section class="hr-panel">
         <div class="hr-panel-head">
           <h2>
@@ -964,7 +965,7 @@
             class="hr-button"
             routerLink="/manage/learning"
             [queryParams]="{ person: id, returnTo: '/manage/people/staff/' + id + '/training' }"
-            >Open Training Academy</a
+            >Open CareVerity Academy</a
           >
         </div>
         <div class="hr-filters">

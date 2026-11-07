@@ -1,3 +1,4 @@
+import { AcademyPortalSummary } from '../learning/academy/academy-portal-summary';
 import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -9,7 +10,15 @@ import { addDays, completedVisit } from '../rota/rota.models';
 import { PortalService } from './portal.service';
 @Component({
   selector: 'cv-portal-dashboard',
-  imports: [DatePipe, FormsModule, RouterLink, MatSelectModule, CvSelect, StaffJournal],
+  imports: [
+    AcademyPortalSummary,
+    DatePipe,
+    FormsModule,
+    RouterLink,
+    MatSelectModule,
+    CvSelect,
+    StaffJournal,
+  ],
   templateUrl: './portal-dashboard.html',
   styleUrls: ['./portal-ui.css', './portal-forms.css', './portal-dashboard.css'],
 })

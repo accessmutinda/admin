@@ -1,0 +1,260 @@
+<cv-academy-admin-nav />
+<div class="heading">
+  <div>
+    <p class="eyebrow">CAREVERITY ACADEMY</p>
+    <h1>{{ resultsView ? 'Results, Feedback & Retakes' : 'Certificates & Compliance' }}</h1>
+    <p>
+      {{
+        resultsView
+          ? 'Assessment outcomes, learner feedback and pending evidence actions.'
+          : 'Internal completion evidence, staff HR filing and workforce compliance.'
+      }}
+    </p>
+  </div>
+  <a class="academy-button" routerLink="/manage/learning/reports">Reports & audit log →</a>
+</div>
+<cv-academy-message [error]="error()" [notice]="notice()" />
+<section class="panel toolbar">
+  <label class="field"
+    >Search learner, course or reference<input type="search" [(ngModel)]="search"
+  /></label>
+  @if (resultsView) {
+    <label class="field"
+      >Staff member<mat-select
+        cvSelect
+        aria-label="Select staff result"
+        [(ngModel)]="resultStaff"
+        (selectionChange)="openStaffResult($event.value)"
+        ><mat-option value="">Select a staff member</mat-option>
+        @for (person of resultPeople(); track person.id) {
+          <mat-option [value]="person.id">{{ person.name }}</mat-option>
+        }
+      </mat-select></label
+    >
+  }
+  @if (!resultsView) {
+    <label class="field"
+      >Staff member<mat-select
+        cvSelect
+        aria-label="Select staff certificates"
+        [(ngModel)]="certificateStaff"
+        (selectionChange)="openStaffCertificate($event.value)"
+        ><mat-option value="">Select a staff member</mat-option>
+        @for (person of certificatePeople(); track person.id) {
+          <mat-option [value]="person.id">{{ person.name }}</mat-option>
+        }
+      </mat-select></label
+    >
+    <label class="field"
+      >Evidence state<select [(ngModel)]="filter">
+        <option>All</option>
+        <option>Pending</option>
+        <option>Synced</option>
+        <option>Revoked</option>
+      </select></label
+    >
+  }
+</section>
+@if (resultsView) {
+  <section class="panel">
+    <h2>Assessment results & retake review</h2>
+    <div class="scroll" tabindex="0" role="region" aria-label="Assessment results">
+      <table>
+        <thead>
+          <tr>
+            <th>Learner / course</th>
+            <th>Score</th>
+            <th>Result</th>
+            <th>Evidence workflow</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (a of attempts(); track a.id) {
+            <tr>
+              <td>
+                <strong
+                  ><a [routerLink]="['/manage/learning/results', a.id]">{{
+                    name(a.personId)
+                  }}</a></strong
+                ><small
+                  >{{ a.courseTitle }}{{ a.groupTitle ? ' · ' + a.groupTitle : '' }} · v{{
+                    a.courseVersion
+                  }}</small
+                ><small>{{ a.submittedAt | ukDate: 'd MMM yyyy, HH:mm' }}</small>
+              </td>
+              <td>{{ a.groupKind === 'Survey' ? 'Not graded' : a.score + '%' }}</td>
+              <td>
+                <span
+                  class="badge"
+                  [class.good]="a.passed && !a.invalidatedAt"
+                  [class.bad]="!a.passed"
+                  >{{
+                    a.invalidatedAt
+                      ? 'Invalidated'
+                      : a.groupKind === 'Survey'
+                        ? 'Completed'
+                        : a.passed
+                          ? 'Passed'
+                          : 'Failed'
+                  }}</span
+                >
+                @if (a.criticalFailed) {
+                  <small>Critical question failed</small>
+                }
+              </td>
+              <td>
+                {{
+                  a.groupId
+                    ? 'Checkpoint only — no course certificate'
+                    : a.passed
+                      ? (academy.completion(a.assignmentId)?.status ?? 'Evidence review required')
+                      : 'No certificate'
+                }}
+              </td>
+              <td>
+                <a
+                  [routerLink]="['/manage/learning/results', a.id]"
+                  [queryParams]="{ person: a.personId }"
+                  >Result & feedback →</a
+                ><small
+                  ><a [routerLink]="['/manage/people/staff', a.personId, 'training']"
+                    >Staff training record →</a
+                  ></small
+                >
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="empty">No submitted assessments in this workspace.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+} @else {
+  <section class="panel">
+    <h2>Internal certificate evidence</h2>
+    <div class="scroll" tabindex="0" role="region" aria-label="Certificate evidence">
+      <table>
+        <thead>
+          <tr>
+            <th>Learner / course</th>
+            <th>Review due</th>
+            <th>Workflow</th>
+            <th>Reference</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of certificates(); track c.id) {
+            <tr>
+              <td>
+                <strong>{{ c.learner }}</strong
+                ><small>{{ c.courseTitle }} · v{{ c.courseVersion ?? 1 }}</small>
+              </td>
+              <td>{{ c.expires ? (c.expires | ukDate: 'd MMM yyyy') : 'Policy review' }}</td>
+              <td>
+                <span
+                  class="badge"
+                  [class.good]="
+                    !c.revokedAt && academy.completion(c.assignmentId)?.status === 'COMPLETE_SYNCED'
+                  "
+                  [class.warn]="
+                    !!c.revokedAt ||
+                    academy.completion(c.assignmentId)?.status !== 'COMPLETE_SYNCED'
+                  "
+                  >{{
+                    c.revokedAt
+                      ? 'Revoked'
+                      : (academy.completion(c.assignmentId)?.status ?? 'Evidence review')
+                  }}</span
+                >
+              </td>
+              <td>{{ c.id }}</td>
+              <td>
+                <a class="academy-button" [routerLink]="['/manage/learning/certificates', c.id]"
+                  >Inspect evidence</a
+                >
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="empty">No completion evidence matches this view.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
+
+@if (!resultsView) {
+  <section class="panel">
+    <h2>Training record access requests</h2>
+    <p>
+      Review worker requests through the organisation’s approved disclosure process. Acknowledgement
+      does not mark the records as provided.
+    </p>
+    <div class="scroll" tabindex="0" role="region" aria-label="Training record access requests">
+      <table>
+        <thead>
+          <tr>
+            <th>Worker</th>
+            <th>Requested</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (request of accessRequests(); track request.id) {
+            <tr>
+              <td>
+                {{ name(request.personId) }}<small>{{ request.personId }}</small>
+              </td>
+              <td>{{ request.createdAt | ukDate: 'd MMM yyyy, HH:mm' }}</td>
+              <td>{{ request.status }}</td>
+              <td>
+                <button
+                  class="academy-button"
+                  [disabled]="
+                    request.status !== 'Requested' || !academy.can('review', request.personId)
+                  "
+                  (click)="acknowledgeAccess(request.id)"
+                >
+                  Acknowledge for HR review
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4">No training-record access requests.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
+
+<section class="panel">
+  <div class="heading">
+    <h2>Evidence workflow exceptions</h2>
+    <a class="academy-button" routerLink="/manage/learning/settings">Demo failure scenarios →</a>
+  </div>
+  @for (job of academy.state().completions; track job.id) {
+    @if (job.status === 'SYNC_EXCEPTION' && academy.can('evidence', job.personId)) {
+      <article class="list-item">
+        <div>
+          <h3>{{ name(job.personId) }}</h3>
+          <p>{{ job.error }}</p>
+          <small>Trace {{ job.correlationId }} · Retry attempts {{ job.retryCount }}</small>
+        </div>
+        <button class="academy-button" [disabled]="!academy.canManage()" (click)="retry(job.id)">
+          Retry saved workflow
+        </button>
+      </article>
+    }
+  }
+</section>

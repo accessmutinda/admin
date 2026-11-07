@@ -1,0 +1,522 @@
+<cv-academy-admin-nav />
+<cv-academy-message [error]="error()" [notice]="notice()" />
+@if (result(); as a) {
+  @if (a.invalidatedAt) {
+    <p class="evidence-revoked" role="status">
+      This result was invalidated after review: {{ a.invalidationReason }}. Original marks and
+      history are retained; this result is not current evidence.
+    </p>
+  }
+  <div class="results-review">
+    <div class="heading results-heading">
+      <div>
+        <small class="results-eyebrow">RESULTS &amp; RETAKES</small>
+        <h1>CareVerity Academy — Results, Feedback &amp; Retakes</h1>
+        <p>Assessment outcomes, automated workflow, learner feedback and retake management</p>
+      </div>
+      <label class="results-period"
+        ><span class="material-symbols-outlined" aria-hidden="true">date_range</span
+        ><mat-select cvSelect aria-label="Result period" [(ngModel)]="period"
+          ><mat-option value="7">Last 7 Days</mat-option
+          ><mat-option value="30">Last 30 Days</mat-option
+          ><mat-option value="90">Last 90 Days</mat-option
+          ><mat-option value="all">All Time</mat-option></mat-select
+        ></label
+      >
+    </div>
+    <nav class="results-tabs" aria-label="Result review sections">
+      @for (item of tabs; track item) {
+        <button
+          [class.active]="tab() === item"
+          [attr.aria-pressed]="tab() === item"
+          (click)="tab.set(item)"
+        >
+          {{ item }}
+        </button>
+      }
+    </nav>
+    <div class="results-grid">
+      <main class="results-main">
+        <section class="panel staff-result-card" [class.not-passed]="!a.passed">
+          <div class="result-identity-row">
+            <div class="staff-identity">
+              <span class="staff-avatar material-symbols-outlined" aria-hidden="true">person</span>
+              <div>
+                <h2>{{ name(a.personId) }}</h2>
+                <span class="learner-id"
+                  ><span class="material-symbols-outlined" aria-hidden="true">badge</span>Staff ID:
+                  {{ a.personId }}</span
+                >
+              </div>
+            </div>
+            <div class="result-fact">
+              <span class="material-symbols-outlined blue" aria-hidden="true">menu_book</span>
+              <div>
+                <small>Course</small><strong>{{ a.courseTitle }}</strong>
+                @if (a.groupTitle) {
+                  <small>{{ a.groupTitle }}</small>
+                }
+              </div>
+            </div>
+            <div
+              class="result-fact score-fact"
+              [title]="
+                a.groupKind === 'Survey' ? 'Not graded' : 'Unrounded score: ' + a.score + '%'
+              "
+            >
+              <span
+                class="score-ring"
+                [class.failed]="!a.passed"
+                [style.--score]="(a.score ?? 0) + '%'"
+                ><span>{{ a.groupKind === 'Survey' ? '—' : score(a) }}</span></span
+              >
+              <div>
+                <small>Score</small><strong>{{ score(a) }}</strong>
+              </div>
+            </div>
+            <div class="result-fact result-state" [class.failed]="!a.passed">
+              <span class="material-symbols-outlined" aria-hidden="true">{{
+                a.passed ? 'check_circle' : 'cancel'
+              }}</span>
+              <div>
+                <small>Result</small
+                ><strong>{{
+                  a.groupKind === 'Survey' ? 'Completed' : a.passed ? 'Passed' : 'Not passed'
+                }}</strong>
+              </div>
+            </div>
+            <div class="result-fact">
+              <span class="material-symbols-outlined purple" aria-hidden="true"
+                >event_available</span
+              >
+              <div>
+                <small>Completed</small
+                ><strong class="completion-date">{{
+                  a.submittedAt | ukDate: 'd MMM yyyy, HH:mm'
+                }}</strong>
+              </div>
+            </div>
+            <div class="result-fact">
+              <span class="material-symbols-outlined purple" aria-hidden="true">stacks</span>
+              <div>
+                <small>Attempt</small
+                ><strong>{{ attemptNumber() }} of {{ policy().maxAttempts }}</strong>
+              </div>
+            </div>
+          </div>
+          <div class="feedback-band">
+            <span class="material-symbols-outlined" aria-hidden="true">chat</span
+            ><strong>Feedback summary</strong>
+            <p>{{ feedback() }}</p>
+          </div>
+          <div class="actions result-actions">
+            <a class="academy-button" [routerLink]="['/manage/people/staff', a.personId]"
+              ><span class="material-symbols-outlined" aria-hidden="true">folder</span>View Staff
+              File</a
+            ><a
+              class="academy-button"
+              [routerLink]="['/manage/people/staff', a.personId, 'training']"
+              ><span class="material-symbols-outlined" aria-hidden="true">menu_book</span>View
+              Training Record</a
+            ><button class="academy-button primary" [matMenuTriggerFor]="retakeMenu">
+              <span class="material-symbols-outlined" aria-hidden="true">sync</span>Manage
+              Retakes<span class="material-symbols-outlined" aria-hidden="true"
+                >expand_more</span
+              ></button
+            ><mat-menu #retakeMenu="matMenu"
+              ><button mat-menu-item [disabled]="!canSchedule(a)" (click)="openSchedule(a)">
+                Schedule this learner’s retake</button
+              ><button mat-menu-item (click)="tab.set('Retakes & Outstanding Actions')">
+                View outstanding retakes</button
+              ><a
+                mat-menu-item
+                [routerLink]="['/staff-portal/training/results', a.id]"
+                [queryParams]="{ person: a.personId }"
+                >View result &amp; permitted feedback</a
+              >
+              @if (academy.canManage()) {
+                <a
+                  mat-menu-item
+                  routerLink="/manage/learning/manage"
+                  [queryParams]="{ person: a.personId, action: 'refresher' }"
+                  >Review refresher assignment</a
+                >
+              }
+            </mat-menu>
+          </div>
+        </section>
+        @if (tab() !== 'Retakes & Outstanding Actions') {
+          <section class="panel post-pass-workflow">
+            <div class="results-card-heading">
+              <h2>
+                <span class="material-symbols-outlined blue" aria-hidden="true">settings</span
+                >Automatic Post-Pass Workflow
+              </h2>
+              <span class="workflow-badge" [class.done]="complete()">{{
+                certificate()?.revokedAt
+                  ? 'Evidence revoked'
+                  : complete()
+                    ? 'Completed automatically in ' + elapsed() + ' seconds'
+                    : a.groupKind === 'Survey' || a.groupId
+                      ? 'No course certificate for this group'
+                      : !a.passed
+                        ? 'Pass required'
+                        : job()?.status || 'Evidence not recorded'
+              }}</span>
+            </div>
+            <p class="workflow-intro">
+              Recorded assessment and evidence acknowledgements for this staff member and this
+              result.
+            </p>
+            @if (certificate()?.revokedAt) {
+              <p class="evidence-revoked" role="status">
+                Completion evidence was revoked. The historical pass and workflow acknowledgements
+                are retained; current training compliance requires review.
+              </p>
+            }
+            @if (a.groupKind !== 'Survey' && !a.groupId) {
+              <div
+                class="workflow-scroll"
+                tabindex="0"
+                role="region"
+                aria-label="Selected staff post-pass workflow"
+              >
+                <ol class="workflow-steps">
+                  @for (step of steps(); track step.label) {
+                    <li [class.done]="step.done" [class.failed]="step.failed">
+                      <span class="step-check material-symbols-outlined" aria-hidden="true">{{
+                        step.done ? 'check_circle' : step.failed ? 'cancel' : 'schedule'
+                      }}</span
+                      ><span class="step-icon material-symbols-outlined" aria-hidden="true">{{
+                        step.icon
+                      }}</span
+                      ><strong>{{ step.label }}</strong
+                      ><small>{{
+                        step.at ? (step.at | ukDate: 'HH:mm:ss') : 'Not acknowledged'
+                      }}</small>
+                    </li>
+                  }
+                </ol>
+              </div>
+            }
+            <div class="workflow-outcome" [class.done]="complete()">
+              <span class="material-symbols-outlined" aria-hidden="true">{{
+                complete() ? 'check_circle' : job()?.status === 'SYNC_EXCEPTION' ? 'error' : 'info'
+              }}</span
+              ><strong>{{
+                certificate()?.revokedAt
+                  ? 'Evidence revoked. Historical acknowledgements do not confirm current compliance.'
+                  : complete()
+                    ? 'Workflow complete: HR filing, training evidence, compliance inputs and rota training inputs are acknowledged.'
+                    : a.groupKind === 'Survey'
+                      ? 'Survey responses are recorded without marking or a certificate.'
+                      : a.groupId
+                        ? 'Checkpoint results do not generate course completion evidence.'
+                        : !a.passed
+                          ? 'A failed attempt does not generate a course certificate or update compliance.'
+                          : job()?.error ||
+                            'The result is saved. Follow the recorded stages until filing and downstream updates are acknowledged.'
+              }}</strong>
+            </div>
+            @if (job()?.status === 'SYNC_EXCEPTION') {
+              <button
+                class="academy-button"
+                [disabled]="!academy.canManage()"
+                (click)="retryWorkflow()"
+              >
+                Retry Saved Workflow
+              </button>
+            }
+            <small class="workflow-footnote"
+              >Knowledge evidence, practical competency and visit-specific deployment readiness
+              remain separate checks.</small
+            >
+          </section>
+        }
+        @if (tab() !== 'Automation & Integration Status') {
+          <section class="panel failed-retakes">
+            <div class="results-card-heading">
+              <h2>
+                <span class="material-symbols-outlined blue" aria-hidden="true">sync</span>Failed
+                Attempts Needing Retakes
+              </h2>
+              <span class="retake-count"
+                >{{ outstanding().length }} outstanding
+                {{ outstanding().length === 1 ? 'assessment' : 'assessments' }}</span
+              >
+            </div>
+            <p class="table-context">
+              Workspace retake queue in the selected period. Select a learner to review their
+              result.
+            </p>
+            <div
+              class="table-scroll"
+              tabindex="0"
+              role="region"
+              aria-label="Failed attempts needing retakes"
+            >
+              <table>
+                <thead>
+                  <tr>
+                    <th>Learner</th>
+                    <th>Course</th>
+                    <th>Last Attempt</th>
+                    <th>Score</th>
+                    <th>Status</th>
+                    <th>Attempts</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (failed of outstanding(); track failed.id) {
+                    <tr>
+                      <td>
+                        <a
+                          class="retake-person"
+                          [routerLink]="['/manage/learning/results', failed.id]"
+                          ><span class="material-symbols-outlined" aria-hidden="true">person</span
+                          >{{ name(failed.personId) }}</a
+                        >
+                      </td>
+                      <td>
+                        {{ failed.courseTitle }}
+                        @if (failed.groupTitle) {
+                          <small>{{ failed.groupTitle }}</small>
+                        }
+                      </td>
+                      <td>{{ failed.submittedAt | ukDate: 'd MMM, HH:mm' }}</td>
+                      <td>
+                        <strong>{{ score(failed) }}</strong>
+                      </td>
+                      <td>
+                        <span class="failed-pill">Not passed</span
+                        ><small>{{ retakeStatus(failed) }}</small>
+                        @if (plan(failed); as p) {
+                          <small>Scheduled {{ p.scheduledFor | ukDate: 'd MMM, HH:mm' }}</small>
+                        }
+                      </td>
+                      <td>{{ attemptNumber(failed) }} of {{ policy(failed).maxAttempts }}</td>
+                      <td>
+                        <div class="actions">
+                          <button
+                            class="academy-button"
+                            [attr.aria-label]="'Schedule retake for ' + name(failed.personId)"
+                            [disabled]="!canSchedule(failed)"
+                            (click)="openSchedule(failed)"
+                          >
+                            <span class="material-symbols-outlined" aria-hidden="true">event</span
+                            >Schedule Retake</button
+                          ><button
+                            class="academy-button"
+                            [attr.aria-label]="'Notify ' + name(failed.personId) + ' about retake'"
+                            [disabled]="
+                              !canSchedule(failed) || !academy.state().settings.portalNotifications
+                            "
+                            (click)="notify(failed)"
+                          >
+                            <span class="material-symbols-outlined" aria-hidden="true">mail</span
+                            >Notify Learner
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="7" class="empty">
+                        No outstanding failed assessments in this period.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        } @else {
+          <section class="panel workflow-audit">
+            <h2>Recorded integration acknowledgements</h2>
+            @if (job(); as j) {
+              <p>Trace {{ j.correlationId }} · Result {{ j.id }}</p>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Stage</th>
+                      <th>Recorded at (UK)</th>
+                      <th>Reference</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (acknowledgement of j.acknowledgements; track acknowledgement.stage) {
+                      <tr>
+                        <td>{{ acknowledgement.stage }}</td>
+                        <td>{{ acknowledgement.at | ukDate: 'd MMM yyyy, HH:mm:ss' }}</td>
+                        <td>{{ acknowledgement.reference }}</td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="3">No integration acknowledgements recorded yet.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <p>No course integration workflow belongs to this selected result.</p>
+            }
+          </section>
+        }
+        <a class="academy-button" routerLink="/manage/learning/results"
+          ><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>All Results
+          &amp; Retakes</a
+        >
+      </main>
+      <aside class="results-sidebar">
+        <section class="panel retry-rules">
+          <h2>
+            <span class="material-symbols-outlined blue" aria-hidden="true">sync</span>Retry Rules
+          </h2>
+          <dl>
+            <div>
+              <dt>Maximum attempts</dt>
+              <dd>{{ policy().maxAttempts }}</dd>
+            </div>
+            <div>
+              <dt>Minimum retake gap</dt>
+              <dd>{{ policy().retakeWaitHours }} hours</dd>
+            </div>
+            <div>
+              <dt>Pass mark (required score)</dt>
+              <dd>{{ a.groupKind === 'Survey' ? 'Not graded' : a.passMark + '%' }}</dd>
+            </div>
+          </dl>
+        </section>
+        <section class="panel retake-policy">
+          <h2>
+            <span class="material-symbols-outlined blue" aria-hidden="true">description</span>Retake
+            Policy
+          </h2>
+          @if (a.groupKind === 'Survey') {
+            <p>
+              Submitted surveys are complete. Their responses are not graded and cannot be scheduled
+              as an assessment retake.
+            </p>
+          } @else {
+            <ul>
+              <li>
+                <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>Up to
+                {{ policy().maxAttempts - 1 }} retakes under this assignment’s frozen policy.
+              </li>
+              <li>
+                <span class="material-symbols-outlined" aria-hidden="true">check_circle</span
+                >Retakes cannot begin before the {{ policy().retakeWaitHours }} hour minimum gap. A
+                later scheduled time also applies.
+              </li>
+              <li>
+                <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>Portal
+                notices include a course link when portal notifications are enabled.
+              </li>
+              <li>
+                <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>If no
+                attempts remain, training manager review is required. Scheduling does not reset the
+                limit.
+              </li>
+            </ul>
+          }
+          <small>External email delivery is not configured in this seeded frontend.</small>
+        </section>
+        <section class="panel integration-status">
+          <h2>
+            <span class="material-symbols-outlined blue" aria-hidden="true">power</span>Integration
+            Status
+          </h2>
+          @for (integration of integrations(); track integration.stage) {
+            <div class="integration-row">
+              <span class="material-symbols-outlined blue" aria-hidden="true">{{
+                integration.icon
+              }}</span>
+              <div>
+                <strong>{{ integration.label }}</strong
+                ><small>{{ integration.detail }}</small>
+              </div>
+              <span
+                class="integration-pill"
+                [class.revoked]="!!certificate()?.revokedAt"
+                [class.done]="ack(integration.stage) && !certificate()?.revokedAt"
+                ><span class="material-symbols-outlined" aria-hidden="true">{{
+                  certificate()?.revokedAt
+                    ? 'cancel'
+                    : ack(integration.stage)
+                      ? 'check_circle'
+                      : 'schedule'
+                }}</span
+                >{{
+                  certificate()?.revokedAt
+                    ? 'Revoked'
+                    : ack(integration.stage)
+                      ? 'Updated'
+                      : a.groupId || a.groupKind === 'Survey'
+                        ? 'Not applicable'
+                        : !a.passed
+                          ? 'Not started'
+                          : job()?.status === 'SYNC_EXCEPTION'
+                            ? 'Needs retry'
+                            : 'Pending'
+                }}</span
+              >
+            </div>
+          }
+        </section>
+      </aside>
+    </div>
+  </div>
+} @else {
+  <section class="panel empty">
+    <h1>Result unavailable</h1>
+    <p>Select a submitted assessment for a staff member in this workspace.</p>
+    <a class="academy-button" routerLink="/manage/learning/results">All Results &amp; Retakes</a>
+  </section>
+}
+@if (scheduling(); as attempt) {
+  <div class="schedule-backdrop" aria-hidden="true"></div>
+  <section
+    class="retake-schedule-modal panel"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="retake-schedule-title"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <div class="heading">
+      <h2 id="retake-schedule-title">Schedule Retake</h2>
+      <button
+        class="icon-button"
+        aria-label="Close retake scheduler"
+        (click)="scheduling.set(null)"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    </div>
+    <p>{{ name(attempt.personId) }} · {{ attempt.courseTitle }}</p>
+    <cv-academy-message [error]="scheduleError()" />
+    <form (ngSubmit)="saveSchedule()">
+      <label class="field"
+        >Retake date and time (UK — Europe/London)<input
+          cdkFocusInitial
+          type="datetime-local"
+          name="retake-date"
+          aria-label="Retake date and time (UK)"
+          required
+          [(ngModel)]="scheduleDate"
+      /></label>
+      <p>
+        Minimum waiting period: {{ policy(attempt).retakeWaitHours }} hours.
+        {{ availability(attempt)?.remaining }} attempts remain. Scheduling preserves this learning
+        cycle and question snapshot.
+      </p>
+      <div class="actions">
+        <button type="button" class="academy-button" (click)="scheduling.set(null)">Cancel</button
+        ><button type="submit" class="academy-button primary">Save Retake Schedule</button>
+      </div>
+    </form>
+  </section>
+}

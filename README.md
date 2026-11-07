@@ -12,7 +12,7 @@ with records isolated by workspace.
 ## Care delivery workspaces
 
 - **Service users** (`/manage/clients`): searchable table/card directory with compact filters and eight records per page, profile photographs, clinical information, capacity/LPA, support preferences, contacts and care-plan summaries.
-- **Electronic care plans** (`/manage/care-plans`, `/manage/care-plans/:id`): brought-forward details, participation/capacity, 17 LQCS care areas, call-package recommendations, voice transcript review, body observations, linked assessment findings, quality checks, independent approval, version history and formal PDF downloads. Fictional sample plans include approved, draft and submitted versions. Approved instructions feed visit/evidence, family and inspector views according to disclosure settings. Browser transcription depends on browser support. The AI drafting and quality-review frontends include seeded responses, evidence selection, structured suggestions, reviewer rationale, accept/edit/reject decisions and saved audit history. All nine linked assessment types have structured fields and fictional examples; live provider connections remain separate from this frontend demo.
+- **Electronic care plans** (`/manage/care-plans`, `/manage/care-plans/:id`): brought-forward details, participation/capacity, 17 LQCS care areas, call-package recommendations, voice transcript review, body observations, linked assessment findings, quality checks, independent approval, version history and formal PDF downloads. Fictional sample plans include approved, draft and submitted versions. Approved instructions feed visit/evidence, family and inspector views according to disclosure settings. Browser transcription depends on browser support. The drafting and quality-review frontends include seeded responses, evidence selection, structured suggestions, reviewer rationale, accept/edit/reject decisions and saved audit history. All nine linked assessment types have structured fields and fictional examples; live provider connections remain separate from this frontend demo.
 - **Medication & MAR** (`/manage/clients/:id/medication`): prescriptions, PRN protocols, standard/controlled weekly and monthly MAR, stock, recorded outcomes and audited corrections. Historical medication notes remain in the profile.
 - **Visits & Rota** (`/manage/rota`): a home screen with current-week stats, view cards, quick actions and upcoming cover gaps, drafts and conflicts. Schedule, call packages, publishing and history share the same records. The schedule supports staff and service-user calendars, reviewed automatic suggestions, atomic bulk allocation, CSV/Excel export and print/Save PDF.
 - **Live Visits / ECM** (`/manage/ecm`): a separate sidebar destination and home-screen card for attendance, running visits, delays and missed calls.
@@ -121,7 +121,7 @@ account and does not open the management editor.
 Mary Wilson (`care-demo-client-1`) has the editable example; Arthur Bennett
 (`care-demo-client-0`) provides the submitted approval example; Dorothy Clarke
 (`care-demo-client-3`) provides the approved/PDF example. The seed upgrade preserves
-existing approved versions and edited wording. AI examples are visibly labelled Demo mode.
+existing approved versions and edited wording. Drafting examples are visibly labelled Demo mode.
 The full page/flow guide is `../deliverables/care-plan-frontend-guide.txt`.
 
 ### Dedicated care-plan workspace
@@ -165,14 +165,14 @@ Incident/Compliment/Complaint opens the corresponding source form under Service
 Users. Print uses the browser print layout; Share copies the Overview link.
 
 **Care Plan → Mobility** now has a dedicated Dashboard-6 reference screen, including
-formatted fields, review metadata, a seeded AI review-note action, source supporting
+formatted fields, review metadata, a seeded review-note action, source supporting
 PDFs, linked assessment/risk/incident records and separate Save as Draft/Save Section
 controls. Its header shows plan metadata and recorded Key Information. Documents
 and incidents open their existing source viewers/editors under Service Users.
 
 **Care Plan → Personal Care** uses Dashboard-8's grid/sidebar layout and Dashboard-4's
 colours. It includes assistance/equipment checkboxes, all care narrative/review fields,
-AI Edit/Accept/Reject, recording/manual transcript entry and transcript read-aloud.
+Edit/Accept/Reject, recording/manual transcript entry and transcript read-aloud.
 It preserves the fixed header, approved versions and existing custom instructions.
 Related incidents open filtered Service User records; Save Section completes only
 the working draft area after validation. See the Personal Care checklist in deliverables.
@@ -197,5 +197,13 @@ In **Staff portal → Service users → Allocation**, choose an assigned publish
 open visit evidence. Record outcomes for tasks derived from approved, staff-visible care
 instructions, add a note and submit. Managers can return to the person's care-plan
 **Quality Review** to see those task/version snapshots and save a review reflection.
-Carers can capture only their own assigned published visits. No live AI or backend service
+Carers can capture only their own assigned published visits. No external service or backend
 is required for these local frontend demonstrations.
+
+## CareVerity Academy
+
+Open CareVerity Academy in the Admin Console for courses, media, questions, assignments, results, certificates and reports. Staff Portal has a matching CareVerity Academy dropdown, training summary on the main dashboard, own courses, assessments, historical training records, refreshers and messages. The existing HR training tab offers exact-worker assignment/refresher actions and shows the same Academy evidence.
+
+This is a seeded frontend. A pass automatically generates a local PDF, files it once in the correct worker's Training & Certificates category, updates HR knowledge training and history, schedules renewal, and acknowledges matrix/compliance/rota refreshes. Practical sign-off and its review date remain separate. Academy settings include failure scenarios; the evidence queue supports retry without duplicate artifacts. Workers see their result and status without ordinary internal-PDF download shortcuts, and can record a request for HR-mediated access.
+
+See the [implementation checklist](docs/academy-implementation-checklist.md) and [seeded workflow guide](docs/academy-service-handoff.md) for the demonstration path and verification status. All records and files remain in this browser/workspace; no backend or external delivery is implied.

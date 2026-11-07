@@ -24,7 +24,7 @@ import { AcademyAssets } from './academy-assets.service';
         object-fit: cover;
       }
       .material-symbols-outlined {
-        font-size: 36px;
+        font-size: var(--academy-image-icon-size, 36px);
       }
     `,
   ],

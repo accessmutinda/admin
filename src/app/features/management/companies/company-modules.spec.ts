@@ -99,7 +99,9 @@ describe('Company modules and subscription', () => {
     const editor = await open();
     expect(harness.routeNativeElement!.querySelectorAll('.cm-module').length).toBe(6);
     for (const module of MODULE_CATALOG)
-      expect(harness.routeNativeElement!.textContent).toContain(module.name);
+      expect(harness.routeNativeElement!.textContent).toContain(
+        module.name === 'Training academy' ? 'CareVerity Academy' : module.name,
+      );
     expect(harness.routeNativeElement!.textContent).toContain('Plan not recorded');
     expect(harness.routeNativeElement!.textContent).toContain('No billing records');
     expect(editor.hasChanges()).toBe(false);
@@ -130,7 +132,10 @@ describe('Company modules and subscription', () => {
         '/manage/companies/lqcs/modules/configure?module=' + encodeURIComponent(module.name),
         CompanyModulesPage,
       );
-      expect(harness.routeNativeElement!.textContent).toContain(module.name + ' Configuration');
+      expect(harness.routeNativeElement!.textContent).toContain(
+        (module.name === 'Training academy' ? 'CareVerity Academy' : module.name) +
+          ' Configuration',
+      );
       expect(harness.routeNativeElement!.textContent).toContain('Manage role permissions');
     }
   });

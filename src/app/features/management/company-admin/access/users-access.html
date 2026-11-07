@@ -347,7 +347,7 @@
               >{{ moduleIcons[module] }}</span
             >
             <div>
-              <h3 [id]="'ua-module-' + moduleIndex">{{ module }}</h3>
+              <h3 [id]="'ua-module-' + moduleIndex">{{ module === 'Training academy' ? 'CareVerity Academy' : module }}</h3>
               <small>{{ enabledActions(module) }}/{{ actions.length }} actions enabled</small>
             </div>
           </div>

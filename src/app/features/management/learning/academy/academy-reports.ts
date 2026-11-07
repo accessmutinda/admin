@@ -1,3 +1,4 @@
+import { AcademyGovernanceService } from './academy-governance.service';
 import { Component, inject, signal } from '@angular/core';
 import { AcademyDate } from './academy-date';
 import { FormsModule } from '@angular/forms';
@@ -10,6 +11,7 @@ import { AcademyAssignment } from './academy.models';
 import { AcademyService } from './academy.service';
 import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 @Component({
+  host: { class: 'module-page academy-page' },
   selector: 'cv-academy-reports',
   imports: [
     AcademyDate,
@@ -25,6 +27,7 @@ import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 })
 export class AcademyReports {
   protected readonly academy = inject(AcademyService);
+  private readonly governance = inject(AcademyGovernanceService);
   protected from = addDays(londonDate(), -29);
   protected to = londonDate();
   protected branch = 'All';
@@ -38,6 +41,7 @@ export class AcademyReports {
       .staff()
       .filter(
         (p) =>
+          this.academy.can('evidence', p.id) &&
           (this.branch === 'All' || p.location === this.branch) &&
           (this.role === 'All' || p.role === this.role),
       );
@@ -58,7 +62,11 @@ export class AcademyReports {
     );
   }
   protected current(a: AcademyAssignment) {
-    return !!a.completedAt && !['Expired'].includes(this.academy.status(a));
+    return (
+      !!a.completedAt &&
+      this.academy.completion(a.id)?.status === 'COMPLETE_SYNCED' &&
+      !['Expired', 'Evidence review'].includes(this.academy.status(a))
+    );
   }
   protected percent(assignments: AcademyAssignment[]) {
     return assignments.length
@@ -74,7 +82,13 @@ export class AcademyReports {
     return this.academy
       .state()
       .attempts.filter(
-        (a) => a.submittedAt && ids.includes(a.personId) && this.period(a.submittedAt),
+        (a) =>
+          !a.groupId &&
+          !a.invalidatedAt &&
+          a.groupKind !== 'Survey' &&
+          a.submittedAt &&
+          ids.includes(a.personId) &&
+          this.period(a.submittedAt),
       );
   }
   protected certificates() {
@@ -88,9 +102,9 @@ export class AcademyReports {
     const attempts = this.attempts();
     return [
       {
-        label: 'Mandatory completion',
+        label: 'Assigned evidence currency',
         value: this.percent(assignments) === null ? '—' : this.percent(assignments) + '%',
-        caption: 'Current assigned requirements',
+        caption: 'Assigned mandatory courses only; not overall deployment readiness',
         icon: 'verified_user',
       },
       {
@@ -106,7 +120,7 @@ export class AcademyReports {
         value: attempts.length
           ? Math.round(attempts.reduce((sum, a) => sum + (a.score ?? 0), 0) / attempts.length) + '%'
           : '—',
-        caption: 'Submitted in selected period',
+        caption: 'Final assessments submitted in selected period',
         icon: 'star',
       },
       {
@@ -123,9 +137,9 @@ export class AcademyReports {
         icon: 'schedule',
       },
       {
-        label: 'Certificates issued',
+        label: 'Completion evidence',
         value: this.certificates().length,
-        caption: 'Selected reporting period',
+        caption: 'Saved completion evidence in this workspace',
         icon: 'workspace_premium',
       },
     ];
@@ -148,7 +162,14 @@ export class AcademyReports {
       const ids = this.people().map((p) => p.id);
       const attempts = this.academy
         .state()
-        .attempts.filter((a) => a.submittedAt.startsWith(month) && ids.includes(a.personId));
+        .attempts.filter(
+          (a) =>
+            !a.groupId &&
+            !a.invalidatedAt &&
+            a.groupKind !== 'Survey' &&
+            a.submittedAt.startsWith(month) &&
+            ids.includes(a.personId),
+        );
       return {
         month: date.toLocaleDateString('en-GB', {
           month: 'short',
@@ -224,10 +245,25 @@ export class AcademyReports {
           period: { from: this.from, to: this.to },
           scope:
             'Current assignments, with assessment and certificate activity in the selected period. Internal learning records; not proof of external accreditation.',
-          assignments: this.assignments(),
-          attempts: this.attempts().map(({ questions, answers, ...attempt }) => attempt),
-          certificates: this.certificates(),
-          audit: this.events(),
+          assignments:
+            this.governance
+              .redactedEvidence()
+              ?.assignments.filter((a) => this.assignments().some((x) => x.id === a.id)) ?? [],
+          attempts:
+            this.governance
+              .redactedEvidence()
+              ?.attempts.filter((a) => this.attempts().some((x) => x.id === a.id)) ?? [],
+          certificates:
+            this.governance
+              .redactedEvidence()
+              ?.certificates.filter(
+                (c) => this.people().some((p) => p.id === c.personId) && this.period(c.issuedAt),
+              ) ?? [],
+          completionWorkflows: this.academy
+            .state()
+            .completions?.filter((c) => this.people().some((p) => p.id === c.personId))
+            .map(({ pdfContent, ...job }) => job),
+          audit: this.events().map(({ detail, ...event }) => event),
         },
         null,
         2,

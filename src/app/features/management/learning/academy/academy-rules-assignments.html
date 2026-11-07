@@ -1,0 +1,688 @@
+<cv-academy-admin-nav />
+<div class="heading rules-heading">
+  <div>
+    <h1>CareVerity Academy — Assessment Rules &amp; Staff Assignments</h1>
+    <p>
+      Configure assessment rules, assign training to staff, and automate post-pass compliance
+      actions.
+    </p>
+  </div>
+  <div class="actions">
+    <button class="academy-button" [disabled]="!course || saving()" (click)="openReview()">
+      <span class="material-symbols-outlined" aria-hidden="true">group_add</span>Assign Training</button
+    ><button class="academy-button" [disabled]="!course || saving()" (click)="openReview(true)">
+      <span class="material-symbols-outlined" aria-hidden="true">sync</span>Send Refresher</button
+    ><button class="academy-button primary" [disabled]="!course || saving()" (click)="save()">
+      <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Rules &amp;
+      Assignments
+    </button>
+    <button class="academy-button" [disabled]="!course || saving()" (click)="reviewPublishing()">
+      <span class="material-symbols-outlined" aria-hidden="true">publish</span>Review Publishing
+    </button>
+  </div>
+</div>
+<label class="field"
+  >Learning supervisor (optional)<mat-select
+    cvSelect
+    aria-label="Learning supervisor"
+    [(ngModel)]="supervisorId"
+    ><mat-option value="">Not assigned</mat-option>
+    @for (p of academy.store.staff(); track p.id) {
+      <mat-option [value]="p.id">{{ p.name }}</mat-option>
+    }
+  </mat-select></label
+><cv-academy-message [error]="error()" [notice]="notice()" />
+@if (course) {
+  <cv-academy-course-steps [courseId]="course.id" [current]="5" />
+  <div class="rules-course-context">
+    <label
+      ><span class="material-symbols-outlined" aria-hidden="true">school</span
+      ><mat-select
+        cvSelect
+        #courseSelect="matSelect"
+        aria-label="Rules course"
+        [value]="course.id"
+        (selectionChange)="changeCourse($event.value); courseSelect.value = course?.id"
+      >
+        @for (item of courses(); track item.id) {
+          <mat-option [value]="item.id">{{ item.title }}</mat-option>
+        }
+      </mat-select></label
+    ><span class="course-version">{{ course.status }} · v{{ course.version }}</span>
+  </div>
+  <div class="rules-layout">
+    <section class="panel assessment-rules">
+      <div class="section-title">
+        <span class="material-symbols-outlined" aria-hidden="true">assignment</span>
+        <div>
+          <h2>Assessment Rules</h2>
+          <p>Set the assessment configuration and compliance rules</p>
+        </div>
+      </div>
+      <div class="rule-row">
+        <span class="material-symbols-outlined blue" aria-hidden="true">track_changes</span>
+        <div><strong>Pass mark (minimum score)</strong></div>
+        <label class="pass-mark"
+          ><input
+            aria-label="Assessment pass mark"
+            type="number"
+            min="1"
+            max="100"
+            [(ngModel)]="course.passMark"
+          /><span>%</span></label
+        >
+      </div>
+      <div class="rule-row timed-row">
+        <span class="material-symbols-outlined blue" aria-hidden="true">timer</span>
+        <div>
+          <strong>Timed assessment</strong><small>Set a time limit for the assessment</small>
+        </div>
+        <label class="toggle"
+          ><input
+            type="checkbox"
+            role="switch"
+            aria-label="Timed assessment"
+            [ngModel]="timed()"
+            (ngModelChange)="setTimed($event)" /><span
+            class="toggle-track"
+            aria-hidden="true"
+          ></span></label
+        ><mat-select
+          cvSelect
+          aria-label="Assessment time limit"
+          [disabled]="!timed()"
+          [(ngModel)]="course.policy!.timeLimitMinutes"
+        >
+          @if (!timed()) {
+            <mat-option [value]="0">Untimed</mat-option>
+          }
+          @for (minutes of timerOptions(); track minutes) {
+            <mat-option [value]="minutes">{{ minutes }} minutes</mat-option>
+          }
+        </mat-select>
+      </div>
+      <div class="rule-row">
+        <span class="material-symbols-outlined cyan" aria-hidden="true">layers</span>
+        <div><strong>Attempt limit</strong><small>Maximum number of attempts allowed</small></div>
+        <mat-select
+          cvSelect
+          aria-label="Assessment attempt limit"
+          [(ngModel)]="course.policy!.maxAttempts"
+        >
+          @for (attempts of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; track attempts) {
+            <mat-option [value]="attempts"
+              >{{ attempts }} {{ attempts === 1 ? 'attempt' : 'attempts' }}</mat-option
+            >
+          }
+        </mat-select>
+      </div>
+      <div class="rule-row">
+        <span class="material-symbols-outlined blue" aria-hidden="true">sync</span>
+        <div>
+          <strong>Retake waiting period</strong><small>Required wait time before a retake</small>
+        </div>
+        <mat-select
+          cvSelect
+          aria-label="Assessment retake wait"
+          [(ngModel)]="course.policy!.retakeWaitHours"
+        >
+          @for (hours of waitOptions(); track hours) {
+            <mat-option [value]="hours">{{
+              hours ? hours + ' hours' : 'No waiting period'
+            }}</mat-option>
+          }
+        </mat-select>
+      </div>
+      <div class="rule-row">
+        <span class="material-symbols-outlined blue" aria-hidden="true">warning</span>
+        <div>
+          <strong>Critical questions</strong
+          ><small>Questions that must be answered correctly</small>
+        </div>
+        <mat-select
+          cvSelect
+          class="critical-select"
+          aria-label="Configured critical questions"
+          [ngModel]="criticalCount()"
+          [disabled]="true"
+          ><mat-option [value]="criticalCount()">{{
+            criticalCount() ? 'Yes (' + criticalCount() + ')' : 'None configured'
+          }}</mat-option></mat-select
+        >
+      </div>
+      @for (rule of requiredRules; track rule.title) {
+        <div class="rule-row required-rule">
+          <span
+            class="material-symbols-outlined"
+            [class]="'material-symbols-outlined ' + rule.tone"
+            aria-hidden="true"
+            >{{ rule.icon }}</span
+          >
+          <div>
+            <strong>{{ rule.title }}</strong
+            ><small>{{ rule.detail }}</small>
+          </div>
+          <label class="toggle required-toggle" title="Required by the course completion workflow"
+            ><input
+              type="checkbox"
+              role="switch"
+              [attr.aria-label]="rule.title + ' required'"
+              checked
+              disabled /><span class="toggle-track" aria-hidden="true"></span
+          ></label>
+        </div>
+      }
+      <p class="required-note">
+        Post-pass actions are required. Critical questions are configured in the question bank.
+      </p>
+    </section>
+    <section class="panel staff-assignments">
+      <div class="section-title">
+        <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+        <div>
+          <h2>Staff Assignments</h2>
+          <p>Assign the course to staff, set due dates, and manage refreshers</p>
+        </div>
+      </div>
+      <div class="assignment-method">
+        <h3>Assignment method</h3>
+        <div class="method-options" role="radiogroup" aria-label="Assignment method">
+          @for (method of methods; track method.value) {
+            <label
+              class="method-tile"
+              [class.selected]="plan.method === method.value"
+              [class.locked]="!!staffContext && method.value !== 'From HR Staff Profile'"
+              ><input
+                type="radio"
+                name="assignmentMethod"
+                [value]="method.value"
+                [ngModel]="plan.method"
+                (ngModelChange)="setMethod($event)"
+                [disabled]="!!staffContext && method.value !== 'From HR Staff Profile'"
+                [attr.aria-label]="method.value"
+              /><span class="method-content"
+                ><span class="material-symbols-outlined" aria-hidden="true">{{ method.icon }}</span
+                ><strong>{{ method.label }}</strong
+                ><span class="method-check material-symbols-outlined" aria-hidden="true"
+                  >check</span
+                ></span
+              ></label
+            >
+          }
+        </div>
+      </div>
+      <div class="assignment-fields">
+        <div class="target-fields">
+          @if (plan.method === 'By Role' || plan.method === 'By Team') {
+            <label class="field"
+              >{{ plan.method === 'By Role' ? 'Role (select one or more)' : 'Role (optional)'
+              }}<mat-select
+                cvSelect
+                multiple
+                aria-label="Assignment roles"
+                [(ngModel)]="plan.roles"
+                placeholder="Select staff roles"
+              >
+                @for (role of roles(); track role) {
+                  <mat-option
+                    [value]="role"
+                    [disabled]="!!course.targetRoles?.length && !course.targetRoles?.includes(role)"
+                    >{{ role }}</mat-option
+                  >
+                }
+              </mat-select></label
+            ><label class="field"
+              >{{ plan.method === 'By Team' ? 'Team (required)' : 'Team (optional)'
+              }}<mat-select cvSelect aria-label="Assignment team" [(ngModel)]="plan.team"
+                ><mat-option value="All">{{
+                  plan.method === 'By Team' ? 'Select a team' : 'All Teams'
+                }}</mat-option>
+                @for (team of teams(); track team) {
+                  <mat-option [value]="team">{{ team }}</mat-option>
+                }
+              </mat-select></label
+            >
+          }
+          @if (plan.method === 'Individual Worker') {
+            <label class="field worker-picker"
+              >Individual worker(s)<mat-select
+                cvSelect
+                multiple
+                aria-label="Assignment workers"
+                [(ngModel)]="plan.personIds"
+                placeholder="Select current staff"
+              >
+                @for (person of eligibleStaff(); track person.id) {
+                  <mat-option [value]="person.id">{{ person.name }} · {{ person.role }}</mat-option>
+                }
+              </mat-select></label
+            >
+          }
+          @if (plan.method === 'From HR Staff Profile') {
+            <label class="field worker-picker"
+              >Existing HR staff record<mat-select
+                cvSelect
+                aria-label="HR assignment worker"
+                [disabled]="!!staffContext"
+                [ngModel]="plan.personIds[0] || ''"
+                (ngModelChange)="plan.personIds = [$event]"
+              >
+                @if (staffContext && contextPerson(); as person) {
+                  <mat-option [value]="person.id">{{ person.name }} · {{ person.role }}</mat-option>
+                } @else {
+                  @for (person of eligibleStaff(); track person.id) {
+                    <mat-option [value]="person.id"
+                      >{{ person.name }} · {{ person.role }}</mat-option
+                    >
+                  }
+                }
+              </mat-select></label
+            >
+          }
+          <label class="field"
+            >Priority<span class="priority-select"
+              ><span class="material-symbols-outlined" aria-hidden="true">flag</span
+              ><mat-select cvSelect aria-label="Assignment priority" [(ngModel)]="plan.priority">
+                @for (priority of ['Normal', 'High', 'Urgent']; track priority) {
+                  <mat-option [value]="priority">{{ priority }}</mat-option>
+                }
+              </mat-select></span
+            ></label
+          >
+        </div>
+        <div class="delivery-fields">
+          <label class="field refresher-field"
+            >Send refresher assignment<span class="toggle-with-info"
+              ><span class="toggle"
+                ><input
+                  type="checkbox"
+                  role="switch"
+                  aria-label="Send refresher assignment"
+                  [(ngModel)]="plan.refresher" /><span
+                  class="toggle-track"
+                  aria-hidden="true"
+                ></span></span
+              ><span
+                class="material-symbols-outlined info-icon"
+                title="A refresher starts a new cycle and preserves the old assignment in history"
+                aria-hidden="true"
+                >info</span
+              ></span
+            ></label
+          ><label class="field"
+            >Due date<span class="due-input"
+              ><span class="material-symbols-outlined" aria-hidden="true">event</span
+              ><input type="date" aria-label="Assignment due date" [(ngModel)]="plan.due" /></span
+          ></label>
+          <fieldset class="notification-channels">
+            <legend>
+              Notification channels
+              <span
+                class="material-symbols-outlined info-icon"
+                [title]="notificationSummary()"
+                aria-hidden="true"
+                >info</span
+              >
+            </legend>
+            <div>
+              @for (channel of channels; track channel) {
+                <label
+                  ><input
+                    type="checkbox"
+                    [attr.aria-label]="'Notify by ' + channel"
+                    [checked]="hasChannel(channel)"
+                    (change)="toggleChannel(channel)"
+                  />{{ channel }}</label
+                >
+              }
+            </div>
+          </fieldset>
+        </div>
+        <div class="selection-summary">
+          <span>{{ recipients().length }} eligible staff selected</span>
+          @if (plan.method === 'From HR Staff Profile' && plan.personIds.length === 1) {
+            <a [routerLink]="['/manage/people/staff', plan.personIds[0], 'training']"
+              >Open HR staff profile<span class="material-symbols-outlined" aria-hidden="true"
+                >open_in_new</span
+              ></a
+            >
+          }
+        </div>
+        <p class="setup-note">
+          Save stores a draft setup. Assign Training reviews the exact recipients and course version
+          before applying it.
+        </p>
+      </div>
+      <div class="assigned-heading">
+        <h3>
+          <span class="material-symbols-outlined" aria-hidden="true">groups</span>Assigned Staff ({{
+            assignments().length
+          }})
+        </h3>
+        <a routerLink="/manage/learning/manage" [queryParams]="{ course: course.id }"
+          >Manage assignments<span class="material-symbols-outlined" aria-hidden="true"
+            >open_in_new</span
+          ></a
+        >
+      </div>
+      <div class="table-scroll">
+        <table class="assigned-table">
+          <thead>
+            <tr>
+              <th>
+                <button (click)="sortBy('name')">
+                  Worker<span class="material-symbols-outlined" aria-hidden="true">swap_vert</span>
+                </button>
+              </th>
+              <th>
+                <button (click)="sortBy('role')">
+                  Role<span class="material-symbols-outlined" aria-hidden="true">swap_vert</span>
+                </button>
+              </th>
+              <th>Assignment Source</th>
+              <th>
+                <button (click)="sortBy('due')">
+                  Due Date<span class="material-symbols-outlined" aria-hidden="true"
+                    >swap_vert</span
+                  >
+                </button>
+              </th>
+              <th>
+                <button (click)="sortBy('status')">
+                  Status<span class="material-symbols-outlined" aria-hidden="true">swap_vert</span>
+                </button>
+              </th>
+              <th>
+                <button (click)="sortBy('type')">
+                  Type<span class="material-symbols-outlined" aria-hidden="true">swap_vert</span>
+                </button>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (assignment of rows(); track assignment.id; let index = $index) {
+              <tr>
+                <td>
+                  <a
+                    class="worker-name"
+                    [routerLink]="['/manage/people/staff', assignment.personId, 'training']"
+                    ><span class="avatar" [class.purple-avatar]="index % 2">{{
+                      initials(person(assignment.personId)?.name || '?')
+                    }}</span
+                    ><strong>{{
+                      person(assignment.personId)?.name || 'Unavailable worker'
+                    }}</strong></a
+                  >
+                </td>
+                <td>{{ person(assignment.personId)?.role }}</td>
+                <td>
+                  <span class="assignment-source"
+                    ><span class="material-symbols-outlined" aria-hidden="true">{{
+                      sourceIcon(assignment)
+                    }}</span
+                    >{{ source(assignment) }}</span
+                  >
+                </td>
+                <td>{{ assignment.due | ukDate: 'd MMM yyyy' }}</td>
+                <td>
+                  <span
+                    class="status-pill"
+                    [class.warning]="
+                      [
+                        'Overdue',
+                        'Expired',
+                        'Passed · evidence pending',
+                        'Evidence review',
+                      ].includes(status(assignment))
+                    "
+                    [class.in-progress]="status(assignment) === 'In progress'"
+                    ><span class="material-symbols-outlined" aria-hidden="true">{{
+                      [
+                        'Overdue',
+                        'Expired',
+                        'Passed · evidence pending',
+                        'Evidence review',
+                      ].includes(status(assignment))
+                        ? 'schedule'
+                        : 'check_circle'
+                    }}</span
+                    >{{ status(assignment) }}</span
+                  >
+                </td>
+                <td>
+                  <span class="type-pill" [class.refresher]="assignment.type === 'Refresher'">{{
+                    assignment.type || 'Initial'
+                  }}</span>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="empty-row">No current staff assignments for this course.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (pages() > 1) {
+        <div class="pagination">
+          <small>Page {{ page }} of {{ pages() }}</small
+          ><button class="academy-button" [disabled]="page <= 1" (click)="page = page - 1">
+            Previous</button
+          ><button class="academy-button" [disabled]="page >= pages()" (click)="page = page + 1">
+            Next
+          </button>
+        </div>
+      }
+      <details class="additional-settings">
+        <summary>Publication approval &amp; additional rules</summary>
+        <div class="field-grid">
+          <label class="field"
+            >Course owner<input aria-label="Course owner" [(ngModel)]="course.owner" /></label
+          ><label class="field"
+            >Approved issuer<input
+              aria-label="Approved issuer"
+              [(ngModel)]="course.issuer" /></label
+          ><label class="field"
+            >Publish approver<input
+              aria-label="Publish approver"
+              [(ngModel)]="course.approver" /></label
+          ><label class="field"
+            >Effective date<input
+              type="date"
+              aria-label="Course effective date"
+              [(ngModel)]="course.effectiveDate" /></label
+          ><label class="field wide"
+            >Content rights / licence<textarea
+              rows="2"
+              aria-label="Course content rights"
+              [(ngModel)]="course.rights"
+            ></textarea></label
+          ><label class="check"
+            ><input
+              type="checkbox"
+              aria-label="Release assessment feedback"
+              [(ngModel)]="course.policy!.showFeedback"
+            />Release feedback after submission</label
+          ><label class="check"
+            ><input type="checkbox" [(ngModel)]="course.policy!.sequentialLessons" />Require
+            sequential lesson completion</label
+          ><label class="field"
+            >Refresher planning (months)<input
+              type="number"
+              min="0"
+              max="120"
+              aria-label="Assignment recurrence months"
+              [(ngModel)]="plan.recurrenceMonths" /></label
+          ><label class="field wide"
+            >Assignment message<textarea
+              rows="2"
+              maxlength="2000"
+              aria-label="Assignment message"
+              [(ngModel)]="plan.message"
+            ></textarea>
+          </label>
+        </div>
+        <p>
+          App and in-platform requests are stored locally. Email requests are recorded as not
+          configured; no external delivery is claimed.
+        </p>
+        <a class="academy-button" [routerLink]="['/manage/learning/courses', course.id]"
+          >Review complete course approval</a
+        >
+      </details>
+    </section>
+    <aside class="panel post-pass-actions">
+      <div class="section-title">
+        <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+        <div>
+          <h2>Automated Post-Pass Actions</h2>
+          <p>The following actions run automatically when a learner passes the final assessment</p>
+        </div>
+      </div>
+      <div class="post-pass-flow">
+        @for (action of postPass; track action.title; let index = $index) {
+          <div class="post-pass-card">
+            <span [class]="'material-symbols-outlined ' + action.tone" aria-hidden="true">{{
+              action.icon
+            }}</span>
+            <div>
+              <strong>{{ action.title }}</strong
+              ><small>{{
+                index === 0
+                  ? 'Meet the pass mark (' + course.passMark + '%) and applicable critical rules'
+                  : action.detail
+              }}</small>
+            </div>
+            <span
+              class="material-symbols-outlined configured-check"
+              title="Configured workflow step"
+              aria-hidden="true"
+              >check_circle</span
+            >
+          </div>
+          @if (index < postPass.length - 1) {
+            <span class="flow-arrow material-symbols-outlined" aria-hidden="true"
+              >arrow_downward</span
+            >
+          }
+        }
+      </div>
+      <p class="workflow-note">
+        Configured actions. Each completion’s evidence timeline shows when filing and downstream
+        updates are acknowledged.
+      </p>
+    </aside>
+  </div>
+  <footer class="wizard-footer">
+    <button class="academy-button" (click)="back()">
+      <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to Questions</button
+    ><button class="academy-button primary" (click)="reviewPublishing()">
+      Save &amp; Continue to Publishing<span class="material-symbols-outlined" aria-hidden="true"
+        >arrow_forward</span
+      >
+    </button>
+  </footer>
+} @else {
+  <section class="panel empty">
+    <h2>Course unavailable</h2>
+    <p>Save a course before setting its rules and staff assignments.</p>
+    <a class="academy-button" routerLink="/manage/learning/courses/new">Create a course</a>
+  </section>
+}
+@if (reviewOpen() && course) {
+  <div class="review-backdrop" (click)="!saving() && reviewOpen.set(false)"></div>
+  <section
+    class="assignment-review"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="review-title"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <div class="heading">
+      <h2 id="review-title">
+        {{ plan.refresher ? 'Review Refresher Assignment' : 'Review Training Assignment' }}
+      </h2>
+      <button
+        class="icon-button"
+        aria-label="Close assignment review"
+        [disabled]="saving()"
+        (click)="reviewOpen.set(false)"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    </div>
+    <cv-academy-message [error]="error()" />
+    <h3>{{ course.title }}</h3>
+    <p>
+      {{ reviewPeople().length }} staff · Due {{ plan.due | ukDate: 'd MMM yyyy' }} ·
+      {{ plan.priority }} priority
+    </p>
+    <p>
+      {{ approvedQuestions().length }} published questions · {{ criticalCount() }} critical
+      questions · {{ course.questionGroups?.length || 0 }} checkpoint groups
+    </p>
+    <p>
+      Pass mark {{ course.passMark }}% ·
+      {{
+        course.policy!.timeLimitMinutes
+          ? course.policy!.timeLimitMinutes + ' minute timer'
+          : 'Untimed'
+      }}
+      · {{ course.policy!.maxAttempts }} attempts · {{ course.policy!.retakeWaitHours }} hour retake
+      wait
+    </p>
+    @if (needsPublication()) {
+      <p class="notice">
+        This action publishes the approved course version and assigns it in one transaction.
+        Required content, published questions, accessibility and approval fields must be valid.
+      </p>
+    }
+    @if (plan.refresher) {
+      <p class="notice">
+        A refresher starts a new learning cycle and archives the existing cycle. Original progress,
+        results and evidence remain in history.
+      </p>
+    } @else {
+      <p>
+        Existing learning cycles keep their original course version. Their deadlines are updated;
+        use a refresher to start a new cycle.
+      </p>
+    }
+    <div class="review-staff-list">
+      @for (person of reviewPeople(); track person.id) {
+        <article>
+          <span class="avatar">{{ initials(person.name) }}</span>
+          <div>
+            <strong>{{ person.name }}</strong
+            ><small>{{ person.role }} · {{ person.location }}</small>
+          </div>
+          <span class="type-pill" [class.refresher]="plan.refresher">{{
+            plan.refresher ? 'Refresher' : assignmentFor(person.id) ? 'Update deadline' : 'Initial'
+          }}</span>
+        </article>
+      }
+    </div>
+    <p>Channels: {{ plan.channels.join(', ') || 'None' }}. {{ notificationSummary() }}</p>
+    <div class="actions review-actions">
+      <button class="academy-button" [disabled]="saving()" (click)="reviewOpen.set(false)">
+        Cancel</button
+      ><button
+        class="academy-button primary"
+        aria-label="Confirm training assignment"
+        [disabled]="saving()"
+        (click)="confirmAssign()"
+      >
+        {{
+          saving()
+            ? 'Saving…'
+            : needsPublication()
+              ? 'Publish Approved Version & Assign'
+              : plan.refresher
+                ? 'Send Refresher'
+                : 'Assign Training'
+        }}
+      </button>
+    </div>
+  </section>
+}

@@ -1,6 +1,6 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../../shared/ui/select';
@@ -9,6 +9,7 @@ import { londonDate, addDays } from '../../rota/rota.models';
 import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 import { AcademyService } from './academy.service';
 @Component({
+  host: { class: 'module-page academy-page' },
   selector: 'cv-academy-manage',
   imports: [
     FormsModule,
@@ -20,11 +21,20 @@ import { AcademyService } from './academy.service';
     AcademyMessage,
   ],
   templateUrl: './academy-manage.html',
-  styleUrls: ['./academy-forms.css', './academy.css', './academy-workflows.css'],
+  styleUrls: [
+    './academy-forms.css',
+    './academy.css',
+    './academy-workflows.css',
+    './academy-manage.css',
+  ],
 })
 export class AcademyManage {
   protected readonly academy = inject(AcademyService);
   private workspace = this.academy.store.companyId();
+  private readonly route = inject(ActivatedRoute);
+  private readonly staffContext = this.academy.store
+    .staff()
+    .find((p) => p.id === this.route.snapshot.queryParamMap.get('person'))?.id;
   protected search = '';
   protected branch = 'All';
   protected role = 'All';
@@ -33,15 +43,25 @@ export class AcademyManage {
   protected status = 'All';
   protected recurrence = 'All';
   protected page = 1;
-  protected selected = new Set<string>();
-  protected courseIds = new Set<string>();
+  protected selected = new Set<string>(this.staffContext ? [this.staffContext] : []);
+  protected courseIds = new Set<string>(
+    this.academy
+      .state()
+      .courses.filter(
+        (c) =>
+          c.id === this.route.snapshot.queryParamMap.get('course') &&
+          c.status === 'Published' &&
+          c.active !== false,
+      )
+      .map((c) => c.id),
+  );
   protected courseSearch = '';
   protected due = addDays(londonDate(), 14);
   protected recurrenceMonths = 0;
   protected message = '';
   protected notify = true;
-  protected renew = false;
-  protected readonly drawer = signal('');
+  protected renew = this.route.snapshot.queryParamMap.get('action') === 'refresher';
+  protected readonly drawer = signal(this.staffContext ? 'assign' : '');
   protected readonly error = signal('');
   protected readonly notice = signal('');
   protected assignments(personId: string) {
@@ -52,9 +72,16 @@ export class AcademyManage {
     if (!a.length) return 'No assignments';
     const statuses = a.map((v) => this.academy.status(v));
     return (
-      ['Overdue', 'Expired', 'Due soon', 'Expiring soon', 'In progress', 'Not started'].find((s) =>
-        statuses.includes(s),
-      ) ?? 'Completed'
+      [
+        'Evidence review',
+        'Passed · evidence pending',
+        'Overdue',
+        'Expired',
+        'Due soon',
+        'Expiring soon',
+        'In progress',
+        'Not started',
+      ].find((s) => statuses.includes(s)) ?? 'Completed'
     );
   }
   protected readonly branches = () =>

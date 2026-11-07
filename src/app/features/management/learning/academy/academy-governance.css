@@ -1,0 +1,164 @@
+:host {
+  font: 400 12px/1.5 var(--font-sans, Lato, sans-serif);
+  color: #093252;
+}
+:host h1 {
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+:host h2 {
+  font-size: 14px;
+  font-weight: 800;
+  margin: 0 0 8px;
+}
+:host h3 {
+  font-size: 12px;
+  font-weight: 800;
+}
+.demo-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #bad8fa;
+  border-radius: 7px;
+  padding: 8px 12px;
+  background: #edf6ff;
+  color: #245784;
+  margin: 0 0 12px;
+}
+.material-symbols-outlined {
+  font-size: 20px;
+}
+.governance-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.governance-tabs button {
+  background: #fff;
+  color: #093252;
+  border: 1px solid #c8daed;
+  border-radius: 6px;
+  font: inherit;
+  min-height: 44px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.governance-tabs button.active {
+  border-color: #008afa;
+  background: #e9f4ff;
+  color: #0069d0;
+  font-weight: 800;
+}
+.governance-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+  align-items: start;
+}
+:host .panel {
+  min-width: 0;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid #d6e4ef;
+  border-radius: 9px;
+  background: #fff;
+}
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+fieldset:disabled {
+  opacity: 0.7;
+}
+:host .field {
+  min-width: 0;
+  font-size: 12px;
+}
+:host input,
+:host textarea {
+  max-width: 100%;
+}
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+:host .scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+:host table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+:host th {
+  font-size: 10px;
+  font-weight: 500;
+  background: #edf5ff;
+  padding: 8px;
+  text-align: left;
+}
+:host td {
+  padding: 8px;
+  border-bottom: 1px solid #e2ecf4;
+  vertical-align: top;
+}
+:host td small,
+:host .list-item small {
+  display: block;
+  font-size: 11px;
+  color: #657184;
+  overflow-wrap: anywhere;
+}
+:host .list-item {
+  align-items: start;
+  gap: 8px;
+}
+:host .list-item > div {
+  min-width: 0;
+}
+:host .academy-button {
+  min-height: 44px;
+  font-size: 12px;
+}
+.supporting {
+  font-size: 11px;
+  color: #657184;
+}
+:host button:focus-visible,
+:host a:focus-visible {
+  outline: 2px solid #008afa;
+  outline-offset: 2px;
+}
+@media (max-width: 1000px) {
+  .governance-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .field-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .governance-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .list-item {
+    flex-wrap: wrap;
+  }
+}
+
+:host .governance-heading h1 {
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.25;
+}

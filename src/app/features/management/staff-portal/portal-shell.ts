@@ -1,5 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AcademyDemoWorkflow } from '../learning/academy/academy-demo-workflow';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { A11yModule } from '@angular/cdk/a11y';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -15,7 +16,7 @@ import { ModuleDesign } from '../shared/module-design';
   host: { '(document:keydown.escape)': 'menuOpen.set(false)' },
   imports: [RouterLink, RouterLinkActive, RouterOutlet, ModuleDesign, A11yModule, Logo],
   providers: [{ provide: MAT_SELECT_CONFIG, useValue: { overlayPanelClass: 'cv-select-overlay' } }],
-  styleUrl: './portal-shell.css',
+  styleUrls: ['./portal-shell.css', '../layout/quality-submenu.css'],
   template: `<cv-module-design />
     <div class="cv-management staff-portal-shell">
       <a class="skip-link" href="#staff-content">Skip to content</a>
@@ -47,15 +48,56 @@ import { ModuleDesign } from '../shared/module-design';
           aria-label="Staff portal navigation"
         >
           @for (item of visibleLinks(); track item.path) {
-            <a
-              [routerLink]="portalLink(item.path)"
-              routerLinkActive="active"
-              ariaCurrentWhenActive="page"
-              (click)="menuOpen.set(false)"
-            >
-              <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span
-              >{{ item.label }}
-            </a>
+            @if (item.path === 'training') {
+              <button
+                type="button"
+                class="academy-submenu-toggle"
+                #academyMenu
+                [class.active]="router.url.startsWith('/staff-portal/training')"
+                [attr.aria-expanded]="trainingExpanded()"
+                aria-controls="staff-academy-menu"
+                (click)="trainingExpanded.set(!trainingExpanded())"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">school</span
+                ><span class="academy-menu-label">CareVerity Academy</span
+                ><span class="material-symbols-outlined" aria-hidden="true">{{
+                  trainingExpanded() ? 'expand_less' : 'expand_more'
+                }}</span>
+              </button>
+              @if (trainingExpanded()) {
+                <nav
+                  class="academy-submenu"
+                  id="staff-academy-menu"
+                  aria-label="My training pages"
+                  (keydown.escape)="
+                    trainingExpanded.set(false); academyMenu.focus(); $event.stopPropagation()
+                  "
+                >
+                  @for (link of trainingLinks; track link.path) {
+                    <a
+                      [routerLink]="portalLink(link.path)"
+                      routerLinkActive="selected"
+                      ariaCurrentWhenActive="page"
+                      (click)="menuOpen.set(false)"
+                      ><span class="material-symbols-outlined" aria-hidden="true">{{
+                        link.icon
+                      }}</span
+                      ><span>{{ link.label }}</span></a
+                    >
+                  }
+                </nav>
+              }
+            } @else {
+              <a
+                [routerLink]="portalLink(item.path)"
+                routerLinkActive="active"
+                ariaCurrentWhenActive="page"
+                (click)="menuOpen.set(false)"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span
+                >{{ item.label }}
+              </a>
+            }
           }
         </nav>
         <div class="sidebar-bottom">
@@ -150,7 +192,19 @@ export class PortalShell {
   protected readonly demo = inject(PortalDemo);
   protected readonly auth = inject(AuthService);
   protected readonly store = inject(ManagementStore);
-  private readonly router = inject(Router);
+  protected readonly router = inject(Router);
+  protected readonly trainingExpanded = signal(false);
+  private readonly navigation = toSignal(this.router.events);
+  private readonly academyWorkflow = inject(AcademyDemoWorkflow);
+  constructor() {
+    effect(() => {
+      if (
+        this.navigation() instanceof NavigationEnd &&
+        this.router.url.startsWith('/staff-portal/training')
+      )
+        this.trainingExpanded.set(true);
+    });
+  }
   protected readonly menuOpen = signal(false);
   protected readonly mobile = toSignal(inject(BreakpointObserver).observe('(max-width: 1023px)'));
   protected readonly userRole = computed(
@@ -158,15 +212,20 @@ export class PortalShell {
   );
   protected readonly links = [
     { path: 'dashboard', label: 'My dashboard', icon: 'space_dashboard' },
-    { path: 'training/dashboard', label: 'My training', icon: 'school' },
-    { path: 'training/courses', label: 'Course library', icon: 'menu_book' },
-    { path: 'training/assessments', label: 'Assessments', icon: 'assignment' },
-    { path: 'training/certificates', label: 'Certificates', icon: 'workspace_premium' },
+    { path: 'training', label: 'CareVerity Academy', icon: 'school' },
     { path: 'journal', label: 'Journal & messages', icon: 'forum' },
     { path: 'tasks', label: 'Staff & tasks', icon: 'assignment' },
     { path: 'concerns', label: 'Concerns', icon: 'health_and_safety' },
     { path: 'service-users', label: 'Service users', icon: 'groups' },
     { path: 'oversight', label: 'Manager oversight', icon: 'monitoring' },
+  ];
+  protected readonly trainingLinks = [
+    { path: 'training/dashboard', label: 'My learning', icon: 'school' },
+    { path: 'training/courses', label: 'My courses', icon: 'menu_book' },
+    { path: 'training/assessments', label: 'Assessments', icon: 'quiz' },
+    { path: 'training/history', label: 'Training record', icon: 'history' },
+    { path: 'training/refreshers', label: 'Required refreshers', icon: 'update' },
+    { path: 'training/messages', label: 'Training messages', icon: 'notifications' },
   ];
   protected portalLink(path: string): string[] {
     return ['/staff-portal', ...path.split('/')];
@@ -174,8 +233,7 @@ export class PortalShell {
   protected visibleLinks() {
     return this.links.filter(
       (item) =>
-        !item.path.startsWith('training/') ||
-        this.store.company()?.modules.includes('Training academy'),
+        item.path !== 'training' || this.store.company()?.modules.includes('Training academy'),
     );
   }
   protected search(event: Event, term: string): void {

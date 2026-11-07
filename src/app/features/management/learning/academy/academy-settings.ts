@@ -1,3 +1,4 @@
+import { AcademyDemoWorkflow } from './academy-demo-workflow';
 import { Component, HostListener, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -6,9 +7,11 @@ import { CvSelect } from '../../../../shared/ui/select';
 import { ROLES } from '../../../../core/auth/models/role';
 import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 import { AcademyService } from './academy.service';
+import { AcademyAssets } from './academy-assets.service';
 import { AcademyCertificate, AcademySettings } from './academy.models';
 import { AcademyCertificateView } from './academy-certificate';
 @Component({
+  host: { class: 'module-page academy-page' },
   selector: 'cv-academy-settings',
   imports: [
     FormsModule,
@@ -20,12 +23,46 @@ import { AcademyCertificateView } from './academy-certificate';
     AcademyCertificateView,
   ],
   templateUrl: './academy-settings.html',
-  styleUrls: ['./academy-forms.css', './academy.css', './academy-workflows.css'],
+  styleUrls: [
+    './academy-forms.css',
+    './academy.css',
+    './academy-workflows.css',
+    './academy-settings.css',
+  ],
 })
 export class AcademySettingsPage {
+  protected readonly workflow = inject(AcademyDemoWorkflow);
   protected readonly academy = inject(AcademyService);
   private readonly workspace = this.academy.store.companyId();
-  protected draft = structuredClone(this.academy.state().settings);
+  private readonly files = inject(AcademyAssets);
+  protected readonly uploadingImage = signal(false);
+  protected async uploadBrandImage(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file || this.uploadingImage()) return;
+    this.error.set('');
+    this.notice.set('');
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      this.error.set('Choose a PNG, JPEG or WebP image.');
+      return;
+    }
+    this.uploadingImage.set(true);
+    try {
+      await this.files.upload(file, this.workspace);
+      this.notice.set(
+        'Image uploaded. Select it for the signature, logo or background, then save your settings.',
+      );
+    } catch (e) {
+      this.error.set((e as Error).message);
+    } finally {
+      this.uploadingImage.set(false);
+    }
+  }
+  protected draft: AcademySettings = {
+    ...structuredClone(this.academy.state().settings),
+    demoFailure: this.academy.state().settings.demoFailure ?? ('None' as const),
+  };
   private original = JSON.stringify(this.draft);
   protected readonly tab = signal('General settings');
   protected readonly tabs = [
@@ -41,7 +78,9 @@ export class AcademySettingsPage {
     'Minimal',
     'Professional',
   ];
-  protected readonly roles = Object.values(ROLES);
+  protected readonly roles = Object.values(ROLES).filter((r) =>
+    ['PO', 'CA', 'RM', 'TM', 'HR'].includes(r.code),
+  );
   protected readonly notificationKeys = ['assigned', 'result', 'certificate', 'expiry'] as const;
   protected readonly error = signal('');
   protected readonly notice = signal('');

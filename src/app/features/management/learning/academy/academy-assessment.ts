@@ -6,18 +6,21 @@ import { FormsModule } from '@angular/forms';
 import { AcademyService } from './academy.service';
 import { AcademyAssets } from './academy-assets.service';
 import { questionCorrect } from './academy.models';
+import { AcademyTimeline } from './academy-timeline';
 import { AcademyMessage } from './academy-shared';
 import { AcademyImage } from './academy-image';
 import { downloadAcademyCertificate } from './academy-pdf';
 @Component({
+  host: { class: 'module-page academy-page' },
   selector: 'cv-academy-assessment',
-  imports: [AcademyDate, FormsModule, RouterLink, AcademyMessage, AcademyImage],
+  imports: [AcademyDate, FormsModule, RouterLink, AcademyMessage, AcademyImage, AcademyTimeline],
   templateUrl: './academy-assessment.html',
   styleUrls: [
     './academy-forms.css',
     './academy.css',
     './academy-workflows.css',
     './academy-assessment.css',
+    './academy-quiz-view.css',
   ],
 })
 export class AcademyAssessment {
@@ -41,8 +44,10 @@ export class AcademyAssessment {
     () =>
       Math.max(0, Math.ceil((Date.parse(this.attempt()?.deadline ?? '') - this.now()) / 1000)) || 0,
   );
-  protected readonly timer = computed(
-    () => Math.floor(this.seconds() / 60) + ':' + String(this.seconds() % 60).padStart(2, '0'),
+  protected readonly timer = computed(() =>
+    this.attempt()?.policy?.timeLimitMinutes === 0
+      ? 'Untimed'
+      : Math.floor(this.seconds() / 60) + ':' + String(this.seconds() % 60).padStart(2, '0'),
   );
   protected readonly answered = computed(
     () =>
@@ -60,7 +65,9 @@ export class AcademyAssessment {
       .state()
       .certificates.find(
         (c) =>
-          c.assignmentId === this.attempt()?.assignmentId && this.academy.canReadPerson(c.personId),
+          !this.attempt()?.groupId &&
+          c.assignmentId === this.attempt()?.assignmentId &&
+          this.academy.canReadPerson(c.personId),
       ),
   );
   protected readonly history = computed(() =>
@@ -68,13 +75,15 @@ export class AcademyAssessment {
       .state()
       .attempts.filter(
         (a) =>
-          a.assignmentId === this.attempt()?.assignmentId && this.academy.canReadPerson(a.personId),
+          a.assignmentId === this.attempt()?.assignmentId &&
+          (a.groupId ?? '') === (this.attempt()?.groupId ?? '') &&
+          this.academy.canReadPerson(a.personId),
       )
       .sort((a, b) => a.startedAt.localeCompare(b.startedAt)),
   );
   protected readonly topics = computed(() => {
     const a = this.attempt();
-    if (!a) return [];
+    if (!a || !this.academy.feedbackVisible(a)) return [];
     return [...new Set(a.questions.map((q) => q.category))].map((topic) => {
       const questions = a.questions.filter((q) => q.category === topic);
       const total = questions.reduce((sum, q) => sum + q.weight, 0);
@@ -114,6 +123,60 @@ export class AcademyAssessment {
       this.review.set(false);
     });
   }
+  protected completionPercent() {
+    const count = this.attempt()?.questions.length ?? 0;
+    return count ? Math.round((this.answered() / count) * 100) : 0;
+  }
+  protected maxAttempts() {
+    return this.attempt()?.policy?.maxAttempts ?? this.academy.state().settings.maxAttempts;
+  }
+  protected totalMarks() {
+    return this.attempt()?.questions.reduce((sum, q) => sum + q.weight, 0) ?? 0;
+  }
+  protected requiredMarks() {
+    return Math.ceil((this.totalMarks() * (this.attempt()?.passMark ?? 0)) / 100);
+  }
+  protected timerDescription() {
+    return this.attempt()?.policy?.timeLimitMinutes === 0
+      ? 'Untimed'
+      : Math.floor(this.seconds() / 60) + ' minutes ' + (this.seconds() % 60) + ' seconds';
+  }
+  protected answerInstruction() {
+    return this.question()?.type === 'Free text'
+      ? 'Enter your response.'
+      : this.question()?.type === 'Multiple choice'
+        ? this.attempt()?.groupKind === 'Survey'
+          ? 'Select all that apply.'
+          : 'Select every correct answer.'
+        : 'Select one answer.';
+  }
+  protected letter(index: number) {
+    return String.fromCharCode(65 + index);
+  }
+  protected questionTypes() {
+    return [...new Set(this.attempt()?.questions.map((q) => q.type) ?? [])].join(', ');
+  }
+  protected hasCriticalQuestions() {
+    return !!this.attempt()?.questions.some((q) => q.critical);
+  }
+  protected saveNext() {
+    const attempt = this.attempt(),
+      question = this.question();
+    if (!attempt || !question || !this.canEdit()) return;
+    this.notice.set('');
+    const error = this.academy.answer(
+      attempt.id,
+      question.id,
+      attempt.answers[question.id] ?? [],
+      null,
+      this.academy.store.companyId(),
+    );
+    this.error.set(error ?? '');
+    if (error) return;
+    this.notice.set('Responses saved.');
+    if (this.index() < attempt.questions.length - 1) this.index.update((index) => index + 1);
+    else this.notice.set('Responses saved. Review your answers, then submit when you are ready.');
+  }
   protected choose(id: string, event: Event) {
     const a = this.attempt();
     const q = this.question();
@@ -128,6 +191,20 @@ export class AcademyAssessment {
     const error = this.academy.answer(a.id, q.id, answers, null, this.academy.store.companyId());
     this.error.set(error ?? '');
     if (error) (event.target as HTMLInputElement).checked = previous.includes(id);
+  }
+  protected writeResponse(text: string) {
+    const a = this.attempt(),
+      q = this.question();
+    if (!a || !q || !this.canEdit()) return;
+    this.error.set(
+      this.academy.answer(
+        a.id,
+        q.id,
+        text.trim() ? [text] : [],
+        null,
+        this.academy.store.companyId(),
+      ) ?? '',
+    );
   }
   protected flag() {
     const a = this.attempt();
@@ -147,7 +224,11 @@ export class AcademyAssessment {
     if (!a || !this.academy.owns(a.personId)) return;
     if (
       !expired &&
-      !window.confirm('Submit your assessment for marking? Submitted answers cannot be changed.')
+      !window.confirm(
+        a.groupKind === 'Survey'
+          ? 'Submit your survey? Submitted responses cannot be changed.'
+          : 'Submit your assessment for marking? Submitted answers cannot be changed.',
+      )
     )
       return;
     const error = this.academy.submit(a.id, this.academy.store.companyId());
@@ -177,12 +258,27 @@ export class AcademyAssessment {
   protected retry() {
     const a = this.attempt();
     if (!a) return;
-    const result = this.academy.startAttempt(a.assignmentId, this.academy.store.companyId());
+    const result = this.academy.startAttempt(
+      a.assignmentId,
+      this.academy.store.companyId(),
+      a.groupId ?? '',
+    );
     this.error.set(result.error ?? '');
     if (!result.error) void this.router.navigate(['/staff-portal/training/assessment', result.id]);
   }
+  protected retake() {
+    this.now();
+    const assignment = this.academy.assignment(this.attempt()?.assignmentId ?? '');
+    return assignment
+      ? this.academy.assessmentAvailability(assignment, this.now(), this.attempt()?.groupId ?? '')
+      : undefined;
+  }
   protected remaining() {
-    return Math.max(0, this.academy.state().settings.maxAttempts - this.history().length);
+    return Math.max(
+      0,
+      (this.attempt()?.policy?.maxAttempts ?? this.academy.state().settings.maxAttempts) -
+        this.history().length,
+    );
   }
   protected reviewQuestion(id: string) {
     const i = this.attempt()?.questions.findIndex((q) => q.id === id) ?? 0;
@@ -201,7 +297,7 @@ export class AcademyAssessment {
   }
   protected async download() {
     const c = this.certificate();
-    if (!c) return;
+    if (!c || !this.academy.canReadCertificate()) return;
     try {
       await downloadAcademyCertificate(c, this.files);
       this.notice.set('Certificate PDF prepared.');

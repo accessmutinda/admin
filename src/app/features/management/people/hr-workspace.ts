@@ -256,7 +256,7 @@ export class HrWorkspace {
       path: '/manage/reviews',
     },
     {
-      title: 'Training academy',
+      title: 'CareVerity Academy',
       description: 'Courses, certificates and workforce learning.',
       icon: 'school',
       path: '/manage/learning',

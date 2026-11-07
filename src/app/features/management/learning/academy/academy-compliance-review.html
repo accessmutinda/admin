@@ -1,0 +1,595 @@
+<cv-academy-admin-nav />
+<div class="compliance-review">
+  <div class="heading compliance-heading">
+    <div>
+      <span class="eyebrow">CERTIFICATES & COMPLIANCE</span>
+      <h1>CareVerity Academy — Certificates & Compliance</h1>
+      <p>
+        Certificate management, HR file integration, training records and workforce compliance
+        updates.
+      </p>
+    </div>
+    <div class="actions">
+      <label class="period-picker"
+        ><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+        ><mat-select
+          cvSelect
+          aria-label="Staff certificate reporting period"
+          [ngModel]="period()"
+          (ngModelChange)="period.set($event)"
+        >
+          @for (days of ['7', '30', '90', 'all']; track days) {
+            <mat-option [value]="days">{{
+              days === 'all' ? 'All time' : 'Last ' + days + ' Days'
+            }}</mat-option>
+          }
+        </mat-select></label
+      ><button
+        class="academy-button"
+        [disabled]="!certificate()"
+        [attr.aria-expanded]="auditOpen()"
+        aria-controls="certificate-audit"
+        (click)="auditOpen.set(!auditOpen())"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">description</span>Audit Log
+      </button>
+    </div>
+  </div>
+  <cv-academy-message [error]="error()" [notice]="notice()" />
+  @if (certificate(); as c) {
+    <div class="staff-context">
+      <span
+        ><strong>{{ person()?.name ?? c.learner }}</strong> · Staff ID {{ c.personId }} · Summary
+        cards apply to this staff member and the selected period.</span
+      ><label
+        >Certificate<mat-select
+          cvSelect
+          aria-label="Select staff certificate"
+          [ngModel]="c.id"
+          (selectionChange)="selectCertificate($event.value)"
+        >
+          @for (item of staffCertificates(); track item.id) {
+            <mat-option [value]="item.id"
+              >{{ item.courseTitle }} · {{ item.issuedAt | ukDate: 'd MMM yyyy' }} ·
+              {{ item.id }}</mat-option
+            >
+          }
+        </mat-select></label
+      >
+    </div>
+    <section class="metrics compliance-stats" aria-label="Selected staff certificate summary">
+      @for (stat of stats(); track stat.label) {
+        <article class="metric cv-metric" [attr.data-card-tone]="stat.tone">
+          <span class="cv-metric-icon material-symbols-outlined" aria-hidden="true">{{
+            stat.icon
+          }}</span>
+          <div class="cv-metric-copy">
+            <h2 class="cv-metric-label">{{ stat.label }}</h2>
+            <strong>{{ stat.value }}</strong>
+            <p>{{ stat.caption }}</p>
+          </div>
+        </article>
+      }
+    </section>
+    <div class="compliance-grid">
+      <section class="panel certificate-panel">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span
+          >Certificate Preview <small>(HR / Manager View)</small>
+        </h2>
+        @if (c.revokedAt || expired()) {
+          <p class="evidence-warning" role="status">
+            {{ c.revokedAt ? 'Revoked — historical certificate' : 'Expired — renewal required' }}
+          </p>
+        }
+        <article
+          class="certificate-preview"
+          [attr.data-template]="c.branding.template"
+          [style.--certificate-primary]="c.branding.primary"
+          [style.--certificate-secondary]="c.branding.secondary"
+          aria-label="Internal completion certificate preview"
+        >
+          @if (c.branding.backgroundId) {
+            <cv-academy-image
+              class="certificate-background"
+              [id]="c.branding.backgroundId"
+              alt=""
+            />
+          }
+          <div class="certificate-body">
+            @if (c.branding.logoId) {
+              <cv-academy-image class="issuer-logo" [id]="c.branding.logoId" alt="Issuer logo" />
+            } @else {
+              <img class="issuer-logo" src="/brand/logo-full.png" alt="CareVerity ECM" />
+            }
+            <p class="academy-name">CAREVERITY ACADEMY</p>
+            <div class="certificate-title">
+              <span class="material-symbols-outlined laurel" aria-hidden="true"
+                >workspace_premium</span
+              >
+              <h3>Internal Training<br />Completion Certificate</h3>
+              <span class="material-symbols-outlined laurel" aria-hidden="true"
+                >workspace_premium</span
+              >
+            </div>
+            <div class="gold-rule" aria-hidden="true">◆</div>
+            <p>This certifies that</p>
+            <h4>{{ c.learner }}</h4>
+            <p>has successfully completed the internal training course</p>
+            <h5>{{ c.courseTitle }}</h5>
+            <div class="certificate-dates">
+              <div>
+                <span class="material-symbols-outlined" aria-hidden="true">event_available</span
+                ><span
+                  >Completion Date<strong>{{ c.issuedAt | ukDate: 'd MMM yyyy' }}</strong></span
+                >
+              </div>
+              <div>
+                <span class="material-symbols-outlined" aria-hidden="true">event_repeat</span
+                ><span
+                  >Renewal Date<strong>{{
+                    c.expires ? (c.expires | ukDate: 'd MMM yyyy') : 'Policy review'
+                  }}</strong></span
+                >
+              </div>
+            </div>
+            <div class="certificate-references">
+              <div>
+                <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span
+                ><span
+                  >Reference No.<strong>{{ c.id }}</strong></span
+                >
+              </div>
+              <div>
+                <span class="material-symbols-outlined" aria-hidden="true">verified_user</span
+                ><span
+                  >Verification Reference<strong>{{
+                    c.checksum ? c.checksum.slice(0, 16) : 'Generation pending'
+                  }}</strong></span
+                >
+              </div>
+            </div>
+            <p class="issued-by">
+              Issued by<strong>{{ c.issuer }}</strong>
+            </p>
+            @if (c.branding.signatureId) {
+              <cv-academy-image
+                class="signature-image"
+                [id]="c.branding.signatureId"
+                alt="Authorised signature"
+              />
+            }
+            @if (c.branding.signatureName) {
+              <p class="signatory">
+                {{ c.branding.signatureName }} · {{ c.branding.signatureRole }}
+              </p>
+            }
+            <small
+              >Knowledge completion · {{ c.score }}% · {{ c.cpdHours }} CPD hours<br />Internal
+              completion evidence. No external accreditation is implied.</small
+            >
+          </div>
+          <div class="certificate-wave" aria-hidden="true"></div>
+        </article>
+      </section>
+      <div class="record-column">
+        <section class="panel hr-storage">
+          <div class="panel-heading">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">folder</span>Staff HR File
+              — Certificate Storage
+            </h2>
+            <span class="status" [class.good]="filed() && active()">{{
+              c.revokedAt ? 'Revoked' : filed() ? 'Stored' : 'Pending'
+            }}</span>
+          </div>
+          <div class="staff-row">
+            <span class="material-symbols-outlined person-icon" aria-hidden="true">person</span>
+            <div>
+              <small>Worker</small><strong>{{ person()?.name ?? c.learner }}</strong>
+            </div>
+            <div>
+              <small>Staff ID</small><strong>{{ c.personId }}</strong>
+            </div>
+          </div>
+          <p class="folder-label">HR File: Training & Certificates</p>
+          <div class="document-row">
+            <span class="material-symbols-outlined purple" aria-hidden="true">picture_as_pdf</span>
+            <div>
+              <strong>{{ document()?.name ?? c.courseTitle + ' — Completion Certificate' }}</strong
+              ><small
+                >{{ document()?.id ?? 'HR attachment pending' }}
+                @if (document(); as d) {
+                  · Added: {{ d.uploadedAt | ukDate: 'd MMM yyyy, HH:mm' }}
+                }
+              </small>
+            </div>
+            <span class="status" [class.good]="filed() && active()">{{
+              filed() ? 'Attached' : 'Pending'
+            }}</span>
+          </div>
+          @if (filed()) {
+            <button class="text-action" (click)="previewFiled()">
+              Preview filed PDF<span class="material-symbols-outlined" aria-hidden="true"
+                >visibility</span
+              ></button
+            ><button class="text-action" (click)="download()">
+              Open filed PDF<span class="material-symbols-outlined" aria-hidden="true"
+                >open_in_new</span
+              >
+            </button>
+          }
+        </section>
+        <section class="panel training-record">
+          <div class="panel-heading">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">school</span>Training
+              Record — Course Completion
+            </h2>
+            <span class="status" [class.good]="recorded() && active()">{{
+              c.revokedAt ? 'Revoked' : recorded() ? 'Updated' : 'Pending'
+            }}</span>
+          </div>
+          <dl class="record-facts">
+            <div>
+              <dt>Course</dt>
+              <dd>{{ c.courseTitle }}</dd>
+            </div>
+            <div>
+              <dt>Completion Status</dt>
+              <dd>{{ recorded() ? 'Completed' : 'Update pending' }}</dd>
+            </div>
+            <div>
+              <dt>Assessment Score</dt>
+              <dd>
+                {{ c.score }}%
+                @if (academy.attempt(c.passedAttemptId ?? job()?.attemptId ?? ''); as a) {
+                  (Pass ≥ {{ a.passMark }}%)
+                }
+              </dd>
+            </div>
+            <div>
+              <dt>Expiry Date</dt>
+              <dd>{{ c.expires ? (c.expires | ukDate: 'd MMM yyyy') : 'Policy review' }}</dd>
+            </div>
+            <div>
+              <dt>Record Status</dt>
+              <dd>
+                <span class="status" [class.good]="courseCurrent()">{{ recordStatus() }}</span>
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+      <div class="suitability-column">
+        <section class="panel matrix-status">
+          <div class="panel-heading">
+            <h2>
+              <span class="material-symbols-outlined" aria-hidden="true">stacks</span>Training
+              Matrix Status
+            </h2>
+            <span class="status" [class.good]="active() && !!ack('ROTA_REFRESH_PENDING')">{{
+              c.revokedAt ? 'Revoked' : ack('ROTA_REFRESH_PENDING') ? 'Recalculated' : 'Pending'
+            }}</span>
+          </div>
+          <div class="matrix-outcome" [class.current]="courseCurrent()">
+            <span class="material-symbols-outlined" aria-hidden="true">{{
+              courseCurrent() ? 'check_circle' : 'pending'
+            }}</span>
+            <div>
+              <strong>Course: {{ courseCurrent() ? 'Current' : recordStatus() }}</strong>
+              <p>{{ c.courseTitle }}</p>
+              <small
+                >Version {{ c.courseVersion ?? 1 }} ·
+                {{ c.expires ? 'Time-limited knowledge evidence' : 'Policy-based review' }}</small
+              >
+            </div>
+          </div>
+          <p class="supporting">
+            Overall mandatory knowledge:
+            {{
+              academy.knowledgeCompliance(c.personId).compliant === null
+                ? 'No applicable requirements'
+                : academy.knowledgeCompliance(c.personId).compliant
+                  ? 'Current'
+                  : 'Requirements outstanding'
+            }}. Practical competency is assessed separately.
+          </p>
+        </section>
+        <section class="panel rota-status">
+          <div class="panel-heading">
+            <h2>
+              <span class="material-symbols-outlined purple" aria-hidden="true"
+                >event_available</span
+              >Rota Eligibility — {{ active() && ack('COMPLETE_SYNCED') ? 'Refreshed' : 'Review' }}
+            </h2>
+            <span class="status" [class.good]="active() && !!ack('COMPLETE_SYNCED')">{{
+              c.revokedAt ? 'Revoked' : ack('COMPLETE_SYNCED') ? 'Applied' : 'Pending'
+            }}</span>
+          </div>
+          <p>
+            Training inputs {{ ack('COMPLETE_SYNCED') ? 'acknowledged' : 'pending' }}.
+            {{ academy.practicalReadiness(c.personId, c.courseId) }}.
+          </p>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Staff visit suitability">
+            <table>
+              <thead>
+                <tr>
+                  <th>Assigned Visit</th>
+                  <th>Suitability</th>
+                  <th>Visit Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (visit of visits(); track visit.id) {
+                  <tr>
+                    <td>{{ visit.label }}</td>
+                    <td>
+                      <span class="status" [class.good]="visit.eligible">{{
+                        visit.eligible ? 'Eligible for visit' : 'Review required'
+                      }}</span>
+                      @if (visit.reasons.length) {
+                        <details>
+                          <summary>Reasons</summary>
+                          <ul>
+                            @for (reason of visit.reasons; track reason) {
+                              <li>{{ reason }}</li>
+                            }
+                          </ul>
+                        </details>
+                      }
+                    </td>
+                    <td>{{ visit.date | ukDate: 'd MMM yyyy' }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="3">
+                      {{
+                        canViewRota()
+                          ? 'No upcoming assigned visits. Suitability is checked for each actual visit.'
+                          : 'Visit suitability is restricted to authorised rota viewers.'
+                      }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      <section class="panel process-timeline">
+        <div class="panel-heading">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">hub</span>Process Timeline —
+            Automatic Storage & Compliance Updates
+          </h2>
+          <span class="status" [class.good]="completed()">{{
+            completed()
+              ? 'Completed Successfully'
+              : c.revokedAt
+                ? 'Evidence revoked'
+                : job()?.status === 'SYNC_EXCEPTION'
+                  ? 'Needs retry'
+                  : expired()
+                    ? 'Evidence expired'
+                    : 'In progress'
+          }}</span>
+        </div>
+        <ol>
+          @for (step of steps(); track step.label) {
+            <li [class.done]="step.done" [class.not-applicable]="step.notApplicable">
+              <span class="step-check material-symbols-outlined" aria-hidden="true">{{
+                step.done
+                  ? 'check_circle'
+                  : step.notApplicable
+                    ? 'remove_circle_outline'
+                    : 'radio_button_unchecked'
+              }}</span>
+              <div>
+                <span class="step-icon material-symbols-outlined" aria-hidden="true">{{
+                  step.icon
+                }}</span
+                ><strong>{{ step.label }}</strong
+                ><small>{{
+                  step.notApplicable
+                    ? 'Not applicable'
+                    : step.done
+                      ? (step.at | ukDate: 'd MMM yyyy, HH:mm:ss')
+                      : 'Pending'
+                }}</small>
+                @if (step.detail) {
+                  <small>{{ step.detail }}</small>
+                }
+              </div>
+            </li>
+          }
+        </ol>
+        <small class="supporting"
+          >Historical acknowledgements are retained. Current validity and visit-specific suitability
+          are shown separately.</small
+        >
+        @if (job()?.status === 'SYNC_EXCEPTION') {
+          <p class="evidence-warning">{{ job()?.error }}</p>
+          <button
+            class="academy-button"
+            [disabled]="!academy.canManage() || !!c.revokedAt"
+            (click)="retry()"
+          >
+            Retry saved workflow
+          </button>
+        }
+      </section>
+    </div>
+    <section class="panel result-bar" [class.success]="completed()">
+      <span class="material-symbols-outlined" aria-hidden="true">info</span><strong>Result</strong>
+      <p>{{ outcome() }}</p>
+      <div class="actions">
+        <a class="academy-button primary" [routerLink]="['/manage/people/staff', c.personId]"
+          ><span class="material-symbols-outlined" aria-hidden="true">folder</span>Open Staff
+          File</a
+        ><button
+          class="academy-button"
+          aria-controls="staff-matrix"
+          [attr.aria-expanded]="matrixOpen()"
+          (click)="matrixOpen.set(!matrixOpen())"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>View Training
+          Matrix</button
+        ><button
+          class="academy-button"
+          aria-controls="certificate-audit"
+          [attr.aria-expanded]="auditOpen()"
+          (click)="auditOpen.set(!auditOpen())"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">description</span>Audit Log
+        </button>
+      </div>
+    </section>
+    @if (matrixOpen()) {
+      <section class="panel staff-matrix" id="staff-matrix">
+        <h2>Mandatory Training Matrix — {{ person()?.name ?? c.learner }}</h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Course</th>
+                <th>Knowledge Currency</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of matrix(); track row.title) {
+                <tr>
+                  <td>{{ row.title }}</td>
+                  <td>
+                    <span class="status" [class.good]="!row.missing">{{
+                      row.missing ? 'Outstanding' : 'Current'
+                    }}</span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="2">No applicable mandatory courses.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+    @if (auditOpen()) {
+      <section class="panel certificate-audit" id="certificate-audit">
+        <h2>Certificate Integration Audit</h2>
+        <p>
+          Certificate {{ c.id }} · Staff {{ c.personId }} · Trace
+          {{ job()?.correlationId ?? 'No exact workflow recorded' }}
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Recorded At (UK)</th>
+                <th>Stage</th>
+                <th>Reference</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (acknowledgement of job()?.acknowledgements ?? []; track acknowledgement.stage) {
+                <tr>
+                  <td>{{ acknowledgement.at | ukDate: 'd MMM yyyy, HH:mm:ss' }}</td>
+                  <td>{{ acknowledgement.stage }}</td>
+                  <td>{{ acknowledgement.reference }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="3">No integration acknowledgements recorded.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <h3 class="audit-subheading">Certificate Access History</h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Recorded At (UK)</th>
+                <th>User</th>
+                <th>Access</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (event of accessEvents(); track event.id) {
+                <tr>
+                  <td>{{ event.at | ukDate: 'd MMM yyyy, HH:mm:ss' }}</td>
+                  <td>{{ event.actor }}</td>
+                  <td>{{ event.detail }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="3">No access events recorded.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="checksum">SHA-256: {{ c.checksum || 'Generation pending' }}</p>
+        @if (c.revokedAt) {
+          <p class="evidence-warning">
+            Revoked {{ c.revokedAt | ukDate: 'd MMM yyyy, HH:mm' }} · {{ c.revocationReason }}
+          </p>
+        }
+      </section>
+    }
+    @if (pdfPreview()) {
+      <section class="panel">
+        <div class="heading">
+          <h2>Canonical filed certificate PDF</h2>
+          <button class="academy-button" (click)="closePdf()">Close PDF preview</button>
+        </div>
+        <iframe
+          class="filed-pdf"
+          [src]="pdfPreview()"
+          title="Protected filed certificate PDF"
+        ></iframe>
+      </section>
+    }
+    <div class="secondary-actions">
+      <a class="academy-button" routerLink="/manage/learning/certificates"
+        >All Certificates & Compliance</a
+      ><a class="academy-button" [routerLink]="['/manage/people/staff', c.personId, 'training']"
+        >Staff Training Record</a
+      >
+      @if (!c.revokedAt && academy.canManage()) {
+        <button
+          class="text-action danger"
+          [attr.aria-expanded]="revokeOpen()"
+          (click)="revokeOpen.set(!revokeOpen())"
+        >
+          Controlled revocation
+        </button>
+      }
+    </div>
+    @if (revokeOpen() && academy.canManage() && !c.revokedAt) {
+      <section class="panel revoke-panel">
+        <h2>Controlled Revocation</h2>
+        <p>
+          Original assessment and evidence history will be retained. Current training and rota
+          checks will be refreshed.
+        </p>
+        <label class="field"
+          >Reason<textarea [(ngModel)]="reason" maxlength="1000" rows="3"></textarea></label
+        ><button class="academy-button danger" [disabled]="!reason.trim()" (click)="revoke()">
+          Revoke evidence
+        </button>
+      </section>
+    }
+  } @else {
+    <section class="panel">
+      <h2>Certificate unavailable</h2>
+      <p>This certificate is unavailable in the current workspace or your role cannot access it.</p>
+      <a class="academy-button" routerLink="/manage/learning/certificates"
+        >Return to certificates</a
+      >
+    </section>
+  }
+</div>

@@ -1,36 +1,103 @@
 import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
 import { CanActivateFn, Router, Routes } from '@angular/router';
 const access =
-  (manage: boolean): CanActivateFn =>
+  (scope: 'manage' | 'learner' | 'evidence'): CanActivateFn =>
   () => {
     const context = inject(EnvironmentInjector);
     return import('./academy.service').then((m) =>
       runInInjectionContext(context, () => {
         const academy = inject(m.AcademyService);
         return (
-          (manage ? academy.canManage() : academy.enabled()) ||
-          inject(Router).createUrlTree(['/access-denied'])
+          (scope === 'manage'
+            ? academy.canManage()
+            : scope === 'evidence'
+              ? academy.canViewEvidence()
+              : academy.enabled()) || inject(Router).createUrlTree(['/access-denied'])
         );
       }),
     );
   };
-const admin = access(true);
-const learner = access(false);
+const uploadsPlaced: CanActivateFn = (route) => {
+  const context = inject(EnvironmentInjector);
+  return import('./academy.service').then((m) =>
+    runInInjectionContext(context, () => {
+      const academy = inject(m.AcademyService);
+      const id =
+        route.paramMap.get('courseId') ??
+        academy.editableQuestions().find((q) => q.id === route.paramMap.get('questionId'))
+          ?.courseId ??
+        route.queryParamMap.get('course') ??
+        academy.editableCourses()[0]?.id;
+      return id && academy.course(id)?.pendingLessons?.some((l) => !!l.videoId)
+        ? inject(Router).createUrlTree(['/manage/learning/structure', id])
+        : true;
+    }),
+  );
+};
+const capability =
+  (value: import('./academy-governance.models').AcademyCapability): CanActivateFn =>
+  () => {
+    const context = inject(EnvironmentInjector);
+    return import('./academy.service').then((m) =>
+      runInInjectionContext(
+        context,
+        () =>
+          inject(m.AcademyService).can(value) || inject(Router).createUrlTree(['/access-denied']),
+      ),
+    );
+  };
+const admin = capability('author');
+const reader = access('evidence');
+const learner = access('learner');
 const leave = (c: { canLeave: () => boolean }) => c.canLeave();
 export const ACADEMY_ADMIN_ROUTES: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    title: 'Training Academy · CareVerity',
-    loadComponent: () => import('../learning').then((m) => m.Learning),
+    canActivate: [reader],
+    title: 'CareVerity Academy · CareVerity',
+    loadComponent: () => import('./academy-dashboard').then((m) => m.AcademyDashboard),
   },
-  ...['courses', 'questions', 'assets'].map((view) => ({
+  {
+    path: 'results/:attemptId',
+    canActivate: [reader],
+    title: 'Staff results & retakes · CareVerity',
+    loadComponent: () => import('./academy-results-review').then((m) => m.AcademyResultsReview),
+  },
+  {
+    path: 'certificates/:certificateId',
+    canActivate: [reader],
+    title: 'Staff certificates & compliance · CareVerity',
+    loadComponent: () =>
+      import('./academy-compliance-review').then((m) => m.AcademyComplianceReview),
+  },
+  ...['results', 'certificates'].map((view) => ({
     path: view,
-    data: { module: 'Training academy', view },
-    canActivate: [admin],
-    title: 'Training Academy · CareVerity',
-    loadComponent: () => import('./academy-catalog').then((m) => m.AcademyCatalog),
+    data: { view },
+    canActivate: [reader],
+    title: 'CareVerity Academy · Evidence',
+    loadComponent: () => import('./academy-evidence').then((m) => m.AcademyEvidence),
   })),
+  {
+    path: 'diagnostics',
+    canActivate: [capability('diagnostics')],
+    title: 'Academy diagnostics · CareVerity',
+    loadComponent: () => import('./academy-diagnostics').then((m) => m.AcademyDiagnostics),
+  },
+  {
+    path: 'governance',
+    canActivate: [reader],
+    title: 'Academy policies & reviews · CareVerity',
+    loadComponent: () => import('./academy-governance').then((m) => m.AcademyGovernancePage),
+  },
+  { path: 'assets', pathMatch: 'full', redirectTo: 'courses' },
+  {
+    path: 'courses',
+    data: { module: 'Training academy', view: 'courses' },
+    canActivate: [admin],
+    title: 'CareVerity Academy · CareVerity',
+    loadComponent: () => import('./academy-catalog').then((m) => m.AcademyCatalog),
+  },
   ...['courses/new', 'courses/:courseId'].map((path) => ({
     path,
     canActivate: [admin],
@@ -38,13 +105,42 @@ export const ACADEMY_ADMIN_ROUTES: Routes = [
     title: 'Course editor · CareVerity',
     loadComponent: () => import('./academy-course-editor').then((m) => m.AcademyCourseEditor),
   })),
-  ...['questions/new', 'questions/:questionId'].map((path) => ({
+  ...['questions', 'questions/new', 'questions/:questionId'].map((path) => ({
     path,
-    canActivate: [admin],
+    canActivate: [admin, uploadsPlaced],
     canDeactivate: [leave],
     title: 'Question builder · CareVerity',
     loadComponent: () => import('./academy-question-editor').then((m) => m.AcademyQuestionEditor),
   })),
+  ...['publish', 'publish/:courseId'].map((path) => ({
+    path,
+    canActivate: [capability('publish'), uploadsPlaced],
+    canDeactivate: [leave],
+    title: 'Review & publish course · CareVerity',
+    loadComponent: () => import('./academy-publishing').then((m) => m.AcademyPublishing),
+  })),
+  ...['rules', 'rules/:courseId'].map((path) => ({
+    path,
+    canActivate: [capability('assign'), uploadsPlaced],
+    canDeactivate: [leave],
+    title: 'Assessment rules & staff assignments · CareVerity',
+    loadComponent: () =>
+      import('./academy-rules-assignments').then((m) => m.AcademyRulesAssignments),
+  })),
+  {
+    path: 'structure/:courseId',
+    canActivate: [admin],
+    canDeactivate: [leave],
+    title: 'Modules & lessons · CareVerity',
+    loadComponent: () => import('./academy-structure-editor').then((m) => m.AcademyStructureEditor),
+  },
+  {
+    path: 'content/:courseId',
+    canActivate: [admin],
+    canDeactivate: [leave],
+    title: 'Upload training video & resources · CareVerity',
+    loadComponent: () => import('./academy-content-editor').then((m) => m.AcademyContentEditor),
+  },
   {
     path: 'content/:courseId/:lessonId',
     canActivate: [admin],
@@ -54,33 +150,41 @@ export const ACADEMY_ADMIN_ROUTES: Routes = [
   },
   {
     path: 'manage',
-    canActivate: [admin],
+    canActivate: [capability('assign')],
     canDeactivate: [leave],
     title: 'Manage training · CareVerity',
     loadComponent: () => import('./academy-manage').then((m) => m.AcademyManage),
   },
   {
     path: 'settings',
-    canActivate: [admin],
+    canActivate: [capability('configure')],
     canDeactivate: [leave],
     title: 'Academy settings · CareVerity',
     loadComponent: () => import('./academy-settings').then((m) => m.AcademySettingsPage),
   },
   {
     path: 'reports',
-    canActivate: [admin],
+    canActivate: [reader],
     title: 'Training compliance & reporting · CareVerity',
     loadComponent: () => import('./academy-reports').then((m) => m.AcademyReports),
   },
 ];
 export const ACADEMY_STAFF_ROUTES: Routes = [
   { path: 'training', pathMatch: 'full', redirectTo: 'training/dashboard' },
-  ...['dashboard', 'courses', 'assessments', 'certificates'].map((view) => ({
+  ...[
+    'dashboard',
+    'courses',
+    'assessments',
+    'certificates',
+    'history',
+    'refreshers',
+    'messages',
+  ].map((view) => ({
     path: 'training/' + view,
     data: { view },
     canActivate: [learner],
     canDeactivate: [leave],
-    title: 'My Training Academy · CareVerity',
+    title: 'My CareVerity Academy · CareVerity',
     loadComponent: () => import('./academy-learner').then((m) => m.AcademyLearner),
   })),
   {

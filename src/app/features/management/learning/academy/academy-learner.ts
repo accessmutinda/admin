@@ -2,12 +2,15 @@ import {
   Component,
   DestroyRef,
   HostListener,
+  NgZone,
   computed,
   effect,
   inject,
   signal,
 } from '@angular/core';
+import { addDays, londonDate } from '../../rota/rota.models';
 import { AcademyDate } from './academy-date';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -15,16 +18,18 @@ import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../../shared/ui/select';
 import { AcademyService } from './academy.service';
 import { AcademyAssets } from './academy-assets.service';
-import { AcademyCertificate } from './academy.models';
+import { AcademyCertificate, AcademyQuestionGroup } from './academy.models';
 import { AcademyImage } from './academy-image';
 import { AcademyCertificateView } from './academy-certificate';
 import { AcademyMessage } from './academy-shared';
 import { downloadAcademyCertificate } from './academy-pdf';
 
 @Component({
+  host: { class: 'module-page academy-page' },
   selector: 'cv-academy-learner',
   imports: [
     AcademyDate,
+    NgTemplateOutlet,
     FormsModule,
     RouterLink,
     MatSelectModule,
@@ -34,7 +39,13 @@ import { downloadAcademyCertificate } from './academy-pdf';
     AcademyMessage,
   ],
   templateUrl: './academy-learner.html',
-  styleUrls: ['./academy-forms.css', './academy.css', './academy-workflows.css'],
+  styleUrls: [
+    './academy-forms.css',
+    './academy.css',
+    './academy-workflows.css',
+    './academy-portal.css',
+    './academy-lesson-view.css',
+  ],
 })
 export class AcademyLearner {
   protected readonly academy = inject(AcademyService);
@@ -65,13 +76,13 @@ export class AcademyLearner {
   protected readonly assignments = computed(() =>
     this.academy.assignments().filter((a) => a.personId === this.person()?.id && !a.archived),
   );
-  protected readonly course = computed(() =>
-    this.query().get('preview') === '1' && this.academy.canManage()
-      ? this.academy.course(this.params().get('courseId') ?? '')
-      : this.academy
-          .state()
-          .courses.find((c) => c.id === this.params().get('courseId') && c.status === 'Published'),
-  );
+  protected readonly course = computed(() => {
+    const id = this.params().get('courseId') ?? '';
+    if (this.query().get('preview') === '1' && this.academy.canManage())
+      return this.academy.course(id);
+    const assignment = this.assignments().find((a) => a.courseId === id);
+    return assignment ? this.academy.assignedCourse(assignment) : this.academy.course(id);
+  });
   protected readonly assignment = computed(() =>
     this.assignments().find((a) => a.courseId === this.course()?.id),
   );
@@ -81,11 +92,7 @@ export class AcademyLearner {
     if (!course || index < 0) return undefined;
     if (this.preview()) return course.lessons[index];
     const assignment = this.assignment();
-    if (
-      !assignment ||
-      (this.academy.state().settings.sequentialLessons &&
-        course.lessons.slice(0, index).some((l) => !assignment.completedLessonIds.includes(l.id)))
-    )
+    if (!assignment || this.academy.lessonBlock(assignment, course.lessons[index].id))
       return undefined;
     return course.lessons[index];
   });
@@ -108,7 +115,7 @@ export class AcademyLearner {
     this.academy
       .state()
       .notices.filter((n) => n.personId === this.person()?.id)
-      .slice(0, 8),
+      .slice(0, 100),
   );
   protected search = '';
   protected category = 'All';
@@ -127,7 +134,12 @@ export class AcademyLearner {
   private readonly mediaKey = computed(() =>
     [this.lesson()?.videoId ?? '', this.lesson()?.captionId ?? ''].join('|'),
   );
+  private readonly clock = signal(Date.now());
   constructor() {
+    const timer = inject(NgZone).runOutsideAngular(() =>
+      setInterval(() => this.clock.set(Date.now()), 30000),
+    );
+    inject(DestroyRef).onDestroy(() => clearInterval(timer));
     effect((cleanup) => {
       const key = this.mediaKey();
       let disposed = false;
@@ -178,7 +190,7 @@ export class AcademyLearner {
         try {
           cached = sessionStorage.getItem(key);
         } catch {}
-      this.note = cached ?? assignment?.notes[lesson?.id ?? ''] ?? '';
+      this.note = this.preview() ? '' : (cached ?? assignment?.notes[lesson?.id ?? ''] ?? '');
       this.notePending.set(
         cached !== null && cached !== (assignment?.notes[lesson?.id ?? ''] ?? ''),
       );
@@ -203,9 +215,14 @@ export class AcademyLearner {
   protected courses() {
     return this.academy
       .state()
-      .courses.filter(
+      .courses.map((c) => {
+        const a = this.assignments().find((a) => a.courseId === c.id);
+        return a ? (this.academy.assignedCourse(a) ?? c) : c;
+      })
+      .filter(
         (c) =>
           c.status === 'Published' &&
+          this.academy.canBrowseCourse(c) &&
           `${c.title} ${c.description}`.toLowerCase().includes(this.search.toLowerCase()) &&
           (this.category === 'All' || c.category === this.category),
       );
@@ -222,7 +239,10 @@ export class AcademyLearner {
     ];
   }
   protected completedLessons(courseId: string) {
-    const course = this.academy.state().courses.find((c) => c.id === courseId);
+    const assignmentRecord = this.assignments().find((a) => a.courseId === courseId);
+    const course = assignmentRecord
+      ? this.academy.assignedCourse(assignmentRecord)
+      : this.academy.state().courses.find((c) => c.id === courseId);
     const a = this.assignments().find((a) => a.courseId === courseId);
     return course?.lessons.filter((l) => a?.completedLessonIds.includes(l.id)).length ?? 0;
   }
@@ -233,7 +253,10 @@ export class AcademyLearner {
     return this.courses().filter((c) => this.assignments().some((a) => a.courseId === c.id));
   }
   protected progress(courseId: string) {
-    const course = this.academy.state().courses.find((c) => c.id === courseId);
+    const assignmentRecord = this.assignments().find((a) => a.courseId === courseId);
+    const course = assignmentRecord
+      ? this.academy.assignedCourse(assignmentRecord)
+      : this.academy.state().courses.find((c) => c.id === courseId);
     const assignment = this.assignments().find((a) => a.courseId === courseId);
     return course?.lessons.length && assignment
       ? Math.round(
@@ -274,29 +297,192 @@ export class AcademyLearner {
     ];
   }
   protected nextLesson(courseId: string) {
-    const c = this.academy.state().courses.find((c) => c.id === courseId);
     const a = this.assignments().find((a) => a.courseId === courseId);
-    return c?.lessons.find((l) => !a?.completedLessonIds.includes(l.id)) ?? c?.lessons[0];
+    const c = a
+      ? this.academy.assignedCourse(a)
+      : this.academy.state().courses.find((c) => c.id === courseId);
+    const incomplete = c?.lessons.filter((l) => !a?.completedLessonIds.includes(l.id)) ?? [];
+    return incomplete.length
+      ? incomplete.find((l) => !a || !this.academy.lessonBlock(a, l.id))
+      : c?.lessons[0];
   }
   protected locked(index: number) {
-    return (
-      !this.assignment() ||
-      (this.academy.state().settings.sequentialLessons &&
-        !!this.course()
-          ?.lessons.slice(0, index)
-          .some((l) => !this.assignment()?.completedLessonIds.includes(l.id)))
-    );
+    const a = this.assignment();
+    const lesson = this.course()?.lessons[index];
+    return !a || !lesson || !!this.academy.lessonBlock(a, lesson.id);
   }
   protected unlocked() {
-    const c = this.course();
     const a = this.assignment();
+    return !!a && !this.academy.assessmentAvailability(a, this.clock()).reason;
+  }
+  protected availability() {
+    const a = this.assignment();
+    return a ? this.academy.assessmentAvailability(a, this.clock()) : undefined;
+  }
+  protected adjacent(direction: number) {
+    const lessons = this.course()?.lessons ?? [];
+    const index = lessons.findIndex((l) => l.id === this.lesson()?.id) + direction;
+    return index >= 0 && index < lessons.length && (this.preview() || !this.locked(index))
+      ? lessons[index]
+      : undefined;
+  }
+  protected watched() {
+    const a = this.assignment();
+    const l = this.lesson();
+    return a && l ? this.academy.watchedPercent(a, l.id) : 0;
+  }
+  protected lessonPosition() {
+    return (this.course()?.lessons.findIndex((l) => l.id === this.lesson()?.id) ?? -1) + 1;
+  }
+  protected followingLesson() {
+    const lessons = this.course()?.lessons ?? [];
+    const index = lessons.findIndex((l) => l.id === this.lesson()?.id);
+    return index >= 0 ? lessons[index + 1] : this.nextLesson(this.course()?.id ?? '');
+  }
+  protected canOpenLesson(id: string) {
+    const assignment = this.assignment();
+    return this.preview() || (!!assignment && !this.academy.lessonBlock(assignment, id));
+  }
+  protected currentLessonDone() {
+    return !!this.assignment()?.completedLessonIds.includes(this.lesson()?.id ?? '');
+  }
+  protected requiredResources() {
+    const lesson = this.lesson();
+    return lesson?.requireResourceAck
+      ? lesson.handoutIds.filter((id) => !lesson.optionalHandoutIds?.includes(id))
+      : [];
+  }
+  protected resourceOpened(id: string) {
+    return !!this.assignment()?.openedResourceIds?.includes(id);
+  }
+  protected resourcesOpenedCount() {
+    return this.requiredResources().filter((id) => this.resourceOpened(id)).length;
+  }
+  protected resourcesAcknowledgedCount() {
+    return this.requiredResources().filter((id) => this.resourceDone(id)).length;
+  }
+  protected lessonRequirementsMet() {
+    const lesson = this.lesson();
     return (
-      !!c?.lessons.length && !!a && c.lessons.every((l) => a.completedLessonIds.includes(l.id))
+      !!lesson &&
+      (!lesson.videoId || this.watched() >= (lesson.watchThreshold ?? 90)) &&
+      this.requiredResources().every((id) => this.resourceDone(id))
     );
   }
-  protected start(assignmentId: string) {
+  protected allRequiredLessonsDone() {
+    return (
+      !!this.assignment() &&
+      !!this.course()?.lessons.every(
+        (l) => l.mandatory === false || this.assignment()!.completedLessonIds.includes(l.id),
+      )
+    );
+  }
+  protected resourceFormat(id: string) {
+    const asset = this.academy.state().assets.find((a) => a.id === id);
+    return asset?.mime === 'application/pdf' || asset?.name.toLowerCase().endsWith('.pdf')
+      ? 'PDF'
+      : 'DOCX';
+  }
+  protected resourceDone(id: string) {
+    return !!this.assignment()?.resourceAcknowledgements?.includes(id);
+  }
+  protected totalMinutes() {
+    return this.course()?.lessons.reduce((sum, l) => sum + l.minutes, 0) ?? 0;
+  }
+  protected moduleCount() {
+    return new Set(this.course()?.lessons.map((l) => l.moduleTitle || 'Course lessons')).size;
+  }
+  protected learningHistory() {
+    return this.academy
+      .assignments()
+      .filter((a) => a.personId === this.person()?.id)
+      .sort((a, b) => b.assignedAt.localeCompare(a.assignedAt));
+  }
+  protected latestAttempt(assignmentId: string) {
+    return this.attempts().find((a) => a.assignmentId === assignmentId && !a.groupId);
+  }
+  protected renewals() {
+    const latest = this.certificates().filter(
+      (c, i, all) => all.findIndex((v) => v.courseId === c.courseId) === i,
+    );
+    return latest
+      .filter(
+        (c) =>
+          c.expires &&
+          c.expires <= addDays(londonDate(), this.academy.state().settings.refresherDays),
+      )
+      .sort((a, b) => a.expires.localeCompare(b.expires));
+  }
+  protected refresherAssignments() {
+    return this.assignments().filter(
+      (a) =>
+        !a.completedAt &&
+        (a.type === 'Refresher' || ['Overdue', 'Due soon'].includes(this.academy.status(a))),
+    );
+  }
+  protected noticeCourse(id: string) {
+    return (
+      this.academy.assignments().find((a) => a.id === id && a.personId === this.person()?.id)
+        ?.courseId ?? ''
+    );
+  }
+  protected requests() {
+    return (
+      this.academy.state().accessRequests?.filter((r) => r.personId === this.person()?.id) ?? []
+    );
+  }
+  protected requestRecords() {
     if (this.preview()) return;
-    const result = this.academy.startAttempt(assignmentId, this.academy.store.companyId());
+    const error = this.academy.requestTrainingRecords(this.academy.store.companyId());
+    this.error.set(error ?? '');
+    if (!error)
+      this.notice.set(
+        'Your training-record access request is recorded for HR review on this device. No external message has been sent.',
+      );
+  }
+  protected pendingRequest() {
+    return this.requests().some((r) => r.status === 'Requested');
+  }
+  protected groupPlacement(group: AcademyQuestionGroup) {
+    const target = ['Before module', 'After module'].includes(group.placement)
+      ? this.course()?.modules?.find((m) => m.id === group.moduleId)?.title
+      : ['After lesson', 'Within module'].includes(group.placement)
+        ? this.course()?.lessons.find((l) => l.id === group.lessonId)?.title
+        : '';
+    return group.placement + (target ? ': ' + target : '');
+  }
+  protected placedGroups(lessonId: string, before: boolean) {
+    const course = this.course();
+    const index = course?.lessons.findIndex((l) => l.id === lessonId) ?? -1;
+    if (!course || index < 0) return [];
+    const lesson = course.lessons[index];
+    return (course.questionGroups ?? []).filter((g) =>
+      before
+        ? g.placement === 'Before module' &&
+          g.moduleId === lesson.moduleId &&
+          !course.lessons.slice(0, index).some((l) => l.moduleId === lesson.moduleId)
+        : (['After lesson', 'Within module'].includes(g.placement) && g.lessonId === lessonId) ||
+          (g.placement === 'After module' &&
+            g.moduleId === lesson.moduleId &&
+            !course.lessons.slice(index + 1).some((l) => l.moduleId === lesson.moduleId)),
+    );
+  }
+  protected endingGroups() {
+    return (
+      this.course()?.questionGroups?.filter((g) =>
+        ['Course completion', 'Scheduled'].includes(g.placement),
+      ) ?? []
+    );
+  }
+  protected groupAvailability(id: string) {
+    const assignment = this.assignment();
+    return assignment
+      ? this.academy.assessmentAvailability(assignment, this.clock(), id)
+      : undefined;
+  }
+  protected start(assignmentId: string, groupId = '') {
+    if (this.preview()) return;
+    const result = this.academy.startAttempt(assignmentId, this.academy.store.companyId(), groupId);
     this.error.set(result.error ?? '');
     if (!result.error) void this.router.navigate(['/staff-portal/training/assessment', result.id]);
   }
@@ -346,26 +532,43 @@ export class AcademyLearner {
     } catch {}
     return true;
   }
+  private playback = { lessonId: '', position: 0, at: 0 };
   protected resume(event: Event) {
     const video = event.target as HTMLVideoElement;
     const saved = this.assignment()?.positions[this.lesson()?.id ?? ''] ?? 0;
     if (saved > 0 && saved < video.duration) video.currentTime = saved;
+    this.playback = {
+      lessonId: this.lesson()?.id ?? '',
+      position: video.currentTime,
+      at: performance.now(),
+    };
   }
   protected position(event: Event) {
     const a = this.assignment();
     const lesson = this.lesson();
     if (!a || !lesson || this.preview()) return;
-    const value = Math.floor((event.target as HTMLVideoElement).currentTime);
-    if (Math.abs(value - (a.positions[lesson.id] ?? 0)) < 10) return;
-    const error = this.academy.saveLesson(
+    const video = event.target as HTMLVideoElement;
+    if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+    const now = performance.now();
+    const previous = this.playback;
+    if (event.type === 'timeupdate' && previous.lessonId === lesson.id && now - previous.at < 5000)
+      return;
+    this.playback = { lessonId: lesson.id, position: video.currentTime, at: now };
+    if (previous.lessonId !== lesson.id || !previous.at) return;
+    const error = this.academy.recordVideoProgress(
       a.id,
       lesson.id,
-      null,
-      value,
-      false,
+      event.type === 'seeking' ? video.currentTime : previous.position,
+      video.currentTime,
+      video.duration,
+      (now - previous.at) / 1000,
       this.academy.store.companyId(),
     );
     if (error) this.error.set(error);
+  }
+  protected toggleCaptions(video: HTMLVideoElement) {
+    for (let i = 0; i < video.textTracks.length; i++)
+      video.textTracks[i].mode = video.textTracks[i].mode === 'showing' ? 'hidden' : 'showing';
   }
   protected assetName(id: string) {
     return this.academy.state().assets.find((a) => a.id === id)?.name ?? 'handout';
@@ -373,18 +576,52 @@ export class AcademyLearner {
   protected async download(id: string) {
     try {
       await this.files.download(id);
+      const assignment = this.assignment();
+      if (assignment && !this.preview()) {
+        const error = this.academy.recordResourceOpen(
+          assignment.id,
+          id,
+          this.academy.store.companyId(),
+        );
+        if (error) this.error.set(error);
+      }
     } catch (e) {
       this.error.set((e as Error).message);
     }
   }
+  protected acknowledge(id: string) {
+    const a = this.assignment();
+    if (!a || this.preview()) return;
+    const error = this.academy.acknowledgeResource(a.id, id, this.academy.store.companyId());
+    this.error.set(error ?? '');
+    if (!error) this.notice.set('Resource read acknowledgement saved.');
+  }
+  protected captionLanguage(id: string) {
+    return this.academy.state().assets.find((a) => a.id === id)?.language ?? 'en';
+  }
   protected async downloadCertificate(c: AcademyCertificate) {
-    if (!this.academy.certificate(c.id)) return;
-    try {
-      await downloadAcademyCertificate(c, this.files);
-      this.notice.set('Certificate PDF prepared.');
-    } catch (e) {
-      this.error.set((e as Error).message || 'Could not prepare the certificate PDF.');
+    if (!this.academy.canReadCertificate() || !this.academy.certificate(c.id)) return;
+    const document = this.academy.store
+      .staff()
+      .find((p) => p.id === c.personId)
+      ?.documents?.find((d) => d.id === c.documentId);
+    if (!document?.content.startsWith('data:application/pdf;base64,')) {
+      this.error.set('The filed PDF is not available yet.');
+      return;
     }
+    const error = this.academy.recordCertificateAccess(
+      c.id,
+      'Filed PDF',
+      this.academy.store.companyId(),
+    );
+    if (error) {
+      this.error.set(error);
+      return;
+    }
+    const link = window.document.createElement('a');
+    link.href = document.content;
+    link.download = document.name;
+    link.click();
   }
   protected enrol() {
     if (!this.course()) return;

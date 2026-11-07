@@ -135,7 +135,11 @@
                       >{{ module.icon }}</span
                     >
                     <div>
-                      <h3>{{ module.name }}</h3>
+                      <h3>
+                        {{
+                          module.name === 'Training academy' ? 'CareVerity Academy' : module.name
+                        }}
+                      </h3>
                       <span
                         class="cm-badge"
                         [class.cm-neutral]="!selectedModules.includes(module.name)"
@@ -149,7 +153,10 @@
                       class="cm-switch"
                       role="switch"
                       [attr.aria-checked]="selectedModules.includes(module.name)"
-                      [attr.aria-label]="'Enable ' + module.name"
+                      [attr.aria-label]="
+                        'Enable ' +
+                        (module.name === 'Training academy' ? 'CareVerity Academy' : module.name)
+                      "
                       [class.on]="selectedModules.includes(module.name)"
                       (click)="toggleModule(module.name)"
                     >
@@ -186,7 +193,12 @@
               <div class="cm-panel-heading">
                 <span class="material-symbols-outlined" aria-hidden="true">{{ module.icon }}</span>
                 <div>
-                  <h2>{{ module.name }} Configuration</h2>
+                  <h2>
+                    {{
+                      module.name === 'Training academy' ? 'CareVerity Academy' : module.name
+                    }}
+                    Configuration
+                  </h2>
                   <p>{{ module.description }}</p>
                 </div>
                 <a class="cm-button" [routerLink]="link()">Back to Modules</a>
@@ -202,7 +214,10 @@
                   class="cm-switch"
                   [class.on]="selectedModules.includes(module.name)"
                   [attr.aria-checked]="selectedModules.includes(module.name)"
-                  [attr.aria-label]="'Enable ' + module.name"
+                  [attr.aria-label]="
+                    'Enable ' +
+                    (module.name === 'Training academy' ? 'CareVerity Academy' : module.name)
+                  "
                   (click)="toggleModule(module.name)"
                 >
                   <span></span>

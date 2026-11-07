@@ -7,9 +7,9 @@
   <a class="academy-button" routerLink="/manage/learning/reports">View training reports →</a>
 </div>
 <cv-academy-message [error]="error()" [notice]="notice()" />
-<div class="stats">
-  @for (stat of stats(); track stat.label) {
-    <div class="stat cv-metric">
+<div class="stats" [style.--academy-metric-columns]="stats().length">
+  @for (stat of stats(); track stat.label; let index = $index) {
+    <div class="stat cv-metric" [attr.data-card-tone]="['orange', 'teal', 'green', 'blue'][index]">
       <span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>
       <div>
         <small>{{ stat.label }}</small
@@ -19,12 +19,11 @@
     </div>
   }
 </div>
-<section class="panel">
+<section class="panel assignment-filter-card">
   <div class="heading">
     <h2>Filters</h2>
-    <button class="academy-button" (click)="clear()">Clear filters</button>
   </div>
-  <div class="field-grid">
+  <div class="field-grid assignment-filters">
     <label class="field"
       >Search staff<input type="search" [(ngModel)]="search" (ngModelChange)="page = 1" /></label
     ><label class="field"
@@ -87,6 +86,8 @@
             'Expiring soon',
             'In progress',
             'Not started',
+            'Passed · evidence pending',
+            'Evidence review',
             'Completed',
             'No assignments',
           ];
@@ -107,6 +108,7 @@
         }
       </mat-select></label
     >
+    <button class="academy-button assignment-filter-clear" (click)="clear()">Clear filters</button>
   </div>
 </section>
 <section class="panel">
@@ -171,12 +173,14 @@
               {{ person.role }}<small>{{ person.location }}</small>
             </td>
             <td>
-              <div class="tag-list">
+              <div class="tag-list assigned-course-list">
                 @for (assignment of assignments(person.id).slice(0, 2); track assignment.id) {
                   <span class="badge">{{ academy.course(assignment.courseId)?.title }}</span>
                 }
                 @if (assignments(person.id).length > 2) {
-                  <small>+{{ assignments(person.id).length - 2 }}</small>
+                  <span class="assigned-course-overflow"
+                    >+{{ assignments(person.id).length - 2 }}</span
+                  >
                 }
               </div>
             </td>

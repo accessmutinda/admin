@@ -564,7 +564,7 @@ export const routes: Routes = [
       {
         path: 'learning',
         data: { module: 'Training academy' },
-        title: 'Training academy · CareVerity',
+        title: 'CareVerity Academy · CareVerity',
         loadChildren: () =>
           import('./features/management/learning/academy/academy.routes').then(
             (m) => m.ACADEMY_ADMIN_ROUTES,

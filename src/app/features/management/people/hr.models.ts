@@ -1,3 +1,5 @@
+import type { AcademyData } from '../learning/academy/academy.models';
+import { requirementsFor, evidenceCurrent } from '../learning/academy/academy-governance.models';
 import { CHECKS, COURSES, ONBOARDING, Person } from '../shared/management.store';
 
 export type StaffStatus = 'Onboarding' | 'Active' | 'Inactive' | 'Left';
@@ -13,6 +15,10 @@ export interface StaffCheck {
   note: string;
 }
 export interface StaffTraining {
+  sourceCompletionId?: string;
+  evidenceStatus?: 'Current' | 'Revoked';
+  practicalCompleted?: string;
+  practicalReviewDue?: string;
   score?: number | null;
   reassessmentDue?: string;
   courseId: string;
@@ -130,6 +136,7 @@ export interface StaffRecord {
     liveIn?: string;
   };
   training: StaffTraining[];
+  trainingHistory?: StaffTraining[];
   induction: { id: string; title: string; complete: boolean }[];
   bookings?: {
     id: string;
@@ -310,7 +317,11 @@ export function checkState(check: StaffCheck, day = today()): string {
   if (check.expiry && check.expiry <= soon.toISOString().slice(0, 10)) return 'Due soon';
   return check.status;
 }
-export function readiness(p: Person, day = today()): { ready: boolean; missing: string[] } {
+export function readiness(
+  p: Person,
+  day = today(),
+  academy?: AcademyData,
+): { ready: boolean; missing: string[] } {
   const h = staffRecord(p);
   const missing = h.checks
     .filter(
@@ -321,17 +332,28 @@ export function readiness(p: Person, day = today()): { ready: boolean; missing: 
     .map((c) => c.title);
   if (!p.role || !p.location || !p.start) missing.push('Employment details');
   if (h.induction.some((t) => !t.complete)) missing.push('Induction');
-  const mandatory = COURSES.filter((c) => c.category === 'Mandatory');
+  const rules = academy ? requirementsFor(academy, p, day) : [];
+  const mandatory = academy
+    ? rules.map((r) => ({ id: r.courseId }))
+    : COURSES.filter((c) => c.category === 'Mandatory');
   if (
-    mandatory.some(
-      (c) =>
-        !h.training.some(
-          (t) =>
-            t.courseId === c.id &&
-            dateValid(t.completed) &&
-            t.completed <= day &&
-            (!t.expiry || t.expiry >= day),
-        ),
+    mandatory.some((c) =>
+      academy
+        ? !evidenceCurrent(
+            academy,
+            p,
+            c.id,
+            day,
+            rules.find((r) => r.courseId === c.id),
+          )
+        : !h.training.some(
+            (t) =>
+              t.courseId === c.id &&
+              t.evidenceStatus !== 'Revoked' &&
+              dateValid(t.completed) &&
+              t.completed <= day &&
+              (!t.expiry || t.expiry >= day),
+          ),
     )
   )
     missing.push('Mandatory training');

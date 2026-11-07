@@ -1,0 +1,715 @@
+<cv-academy-admin-nav />
+<div class="heading structure-heading">
+  <div>
+    <h1>CareVerity Academy — Modules &amp; Lessons</h1>
+    <p>Build and manage the course structure, lessons, and completion rules.</p>
+  </div>
+  <div class="actions">
+    <button class="academy-button" [disabled]="!course" (click)="openModule()">
+      <span class="material-symbols-outlined" aria-hidden="true">add</span>Add Module
+    </button>
+    <button class="academy-button" [disabled]="!course" (click)="openLesson()">
+      <span class="material-symbols-outlined" aria-hidden="true">add</span>Add Lesson
+    </button>
+    <button class="academy-button" [disabled]="!course" (click)="preview()">
+      <span class="material-symbols-outlined" aria-hidden="true">play_arrow</span>Preview Learner
+      Journey
+    </button>
+    <button class="academy-button primary" [disabled]="!course" (click)="save()">
+      <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Structure
+    </button>
+  </div>
+</div>
+<cv-academy-message [error]="error()" [notice]="notice()" />
+@if (course) {
+  <cv-academy-course-steps
+    [courseId]="course.id"
+    [current]="3"
+    [blockedAfterStructure]="unusedVideos().length > 0"
+  />
+  <section class="course-banner">
+    <span class="banner-icon material-symbols-outlined" aria-hidden="true">stacks</span
+    ><strong class="course-name"><small>Course:</small>{{ course.title }}</strong>
+    <div class="learning-time">
+      <span class="material-symbols-outlined" aria-hidden="true">schedule</span>Total Learning Time:
+      <strong>{{ totalMinutes() }} minutes</strong>
+    </div>
+    <span class="structure-badge" [class.needs-work]="readiness().length"
+      ><span class="material-symbols-outlined" aria-hidden="true">{{
+        readiness().length ? 'pending' : 'check_circle'
+      }}</span
+      >{{ readiness().length ? 'Structure In Progress' : 'Structure Valid' }}</span
+    >
+  </section>
+  <div class="structure-layout" [class.outline-hidden]="outlineCollapsed()">
+    <aside class="panel course-outline" aria-label="Course structure outline">
+      <div class="panel-heading">
+        <h2>
+          Course Structure <small>({{ modules().length + 1 }} items)</small>
+        </h2>
+        <button
+          class="icon-button"
+          [attr.aria-label]="
+            outlineCollapsed() ? 'Expand course outline' : 'Collapse course outline'
+          "
+          [attr.aria-expanded]="!outlineCollapsed()"
+          (click)="outlineCollapsed.set(!outlineCollapsed())"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">{{
+            outlineCollapsed() ? 'keyboard_double_arrow_right' : 'keyboard_double_arrow_left'
+          }}</span>
+        </button>
+      </div>
+      @if (!outlineCollapsed()) {
+        <nav aria-label="Select course module" class="outline-items">
+          @for (module of modules(); track module.id; let index = $index) {
+            <div class="outline-item" [class.selected]="selected() === module.id">
+              <button
+                class="outline-select"
+                [attr.aria-label]="'Open module ' + module.title"
+                [attr.aria-expanded]="selected() === module.id"
+                [attr.aria-controls]="'module-' + module.id"
+                (click)="selected.set(module.id)"
+              >
+                <span class="material-symbols-outlined chevron" aria-hidden="true">{{
+                  selected() === module.id ? 'expand_more' : 'chevron_right'
+                }}</span
+                ><span class="material-symbols-outlined" aria-hidden="true">folder_open</span
+                ><span
+                  ><strong>Module {{ index + 1 }}: {{ module.title }}</strong
+                  ><small
+                    >{{ lessons(module).length }} lessons · {{ minutes(module) }} min</small
+                  ></span
+                >
+              </button>
+              <button
+                class="icon-button"
+                [matMenuTriggerFor]="moduleMenu"
+                [attr.aria-label]="'Actions for module ' + module.title"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+              </button>
+              <mat-menu #moduleMenu="matMenu"
+                ><button mat-menu-item (click)="openModule(module)">Rename module</button
+                ><button mat-menu-item [disabled]="index === 0" (click)="moveModule(module, -1)">
+                  Move module up</button
+                ><button
+                  mat-menu-item
+                  [disabled]="index === modules().length - 1"
+                  (click)="moveModule(module, 1)"
+                >
+                  Move module down</button
+                ><button mat-menu-item (click)="removeModule(module)">
+                  Remove empty module
+                </button></mat-menu
+              >
+            </div>
+          } @empty {
+            <p class="empty-outline">Add a module to begin building this course.</p>
+          }
+          <button
+            class="outline-item assessment-outline"
+            [class.selected]="selected() === 'assessment'"
+            (click)="selected.set('assessment')"
+            aria-controls="final-assessment"
+            [attr.aria-expanded]="selected() === 'assessment'"
+          >
+            <span class="material-symbols-outlined chevron" aria-hidden="true">{{
+              selected() === 'assessment' ? 'expand_more' : 'chevron_right'
+            }}</span
+            ><span class="material-symbols-outlined" aria-hidden="true">school</span
+            ><span
+              ><strong>Final Assessment</strong
+              ><small
+                >{{ finalQuestions().length }} questions · {{ course.assessmentMinutes || 0 }} min
+                estimated</small
+              ></span
+            >
+          </button>
+        </nav>
+        @if (unusedUploads().length) {
+          <section class="unused-uploads" aria-label="Unused videos and resources">
+            <h3>
+              <span class="material-symbols-outlined" aria-hidden="true">warning</span>Unused
+              uploads ({{ unusedUploads().length }})
+            </h3>
+            <p>Add these uploads to a module as lessons, or delete them from this course.</p>
+            @for (item of unusedUploads(); track item.id) {
+              <article class="unused-upload">
+                <div class="unused-upload-title">
+                  <span class="material-symbols-outlined" aria-hidden="true">{{
+                    item.videoId ? 'videocam' : 'description'
+                  }}</span
+                  ><strong>{{ uploadName(item) }}</strong>
+                </div>
+                <small>{{
+                  item.videoId ? 'Video · Not used in a module' : 'Resource · Not used in a module'
+                }}</small>
+                <div class="actions">
+                  <button
+                    class="academy-button"
+                    [attr.aria-label]="'Add upload ' + uploadName(item) + ' to module'"
+                    (click)="addUpload(item)"
+                  >
+                    Add to module</button
+                  ><button
+                    class="icon-button"
+                    [attr.aria-label]="'Delete unused upload ' + uploadName(item)"
+                    (click)="deleteUpload(item)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                  </button>
+                </div>
+              </article>
+            }
+          </section>
+        }
+      }
+    </aside>
+    <main class="panel modules-workspace" aria-label="Modules and lessons editor" cdkDropListGroup>
+      @for (module of modules(); track module.id; let moduleIndex = $index) {
+        <section
+          class="module-block"
+          [class.expanded]="selected() === module.id"
+          [id]="'module-' + module.id"
+        >
+          <button
+            class="module-heading"
+            [attr.aria-expanded]="selected() === module.id"
+            [attr.aria-controls]="'module-content-' + module.id"
+            (click)="selected.set(selected() === module.id ? '' : module.id)"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">folder_open</span
+            ><strong>Module {{ moduleIndex + 1 }}: {{ module.title }}</strong
+            ><small>{{ lessons(module).length }} lessons · {{ minutes(module) }} minutes</small
+            ><span class="material-symbols-outlined expand-icon" aria-hidden="true">{{
+              selected() === module.id ? 'expand_less' : 'expand_more'
+            }}</span>
+          </button>
+          @if (selected() === module.id) {
+            <div class="module-content" [id]="'module-content-' + module.id">
+              <div class="table-scroll">
+                <table class="lesson-table">
+                  <thead>
+                    <tr>
+                      <th><span class="visually-hidden">Reorder</span></th>
+                      <th>#</th>
+                      <th>Lesson (Drag to reorder)</th>
+                      <th>Type</th>
+                      <th>Duration</th>
+                      <th>Rule</th>
+                      <th>Status</th>
+                      <th><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody
+                    cdkDropList
+                    [cdkDropListData]="module.id"
+                    (cdkDropListDropped)="drop($event)"
+                  >
+                    @for (lesson of lessons(module); track lesson.id; let index = $index) {
+                      <tr cdkDrag [cdkDragData]="lesson.id">
+                        <td>
+                          <span
+                            class="material-symbols-outlined drag-handle"
+                            aria-hidden="true"
+                            cdkDragHandle
+                            >drag_indicator</span
+                          >
+                        </td>
+                        <td>
+                          <span class="lesson-number">{{ moduleIndex + 1 }}.{{ index + 1 }}</span>
+                        </td>
+                        <td>
+                          <button
+                            class="lesson-title"
+                            [matTooltip]="lesson.content"
+                            [matTooltipDisabled]="!lesson.content"
+                            matTooltipPosition="above"
+                            (click)="openLesson(lesson)"
+                          >
+                            {{ lesson.title }}
+                          </button>
+                        </td>
+                        <td>
+                          <span
+                            class="lesson-type"
+                            [class.reading]="!lesson.videoId && lesson.type !== 'Video'"
+                            ><span class="material-symbols-outlined" aria-hidden="true">{{
+                              lesson.type === 'Video' || lesson.videoId
+                                ? 'videocam'
+                                : lesson.type === 'Interactive check'
+                                  ? 'quiz'
+                                  : 'menu_book'
+                            }}</span
+                            >{{ lesson.type || (lesson.videoId ? 'Video' : 'Reading') }}</span
+                          >
+                        </td>
+                        <td>{{ duration(lesson.minutes) }}</td>
+                        <td>
+                          <span class="rule-pill" [class.optional]="lesson.mandatory === false">{{
+                            lesson.mandatory === false ? 'Optional' : 'Mandatory'
+                          }}</span>
+                        </td>
+                        <td>
+                          <span class="lesson-status" [class.incomplete]="!lessonReady(lesson)"
+                            ><span class="material-symbols-outlined" aria-hidden="true">{{
+                              lessonReady(lesson) ? 'check_circle' : 'pending'
+                            }}</span
+                            >{{ lessonReady(lesson) ? 'Configured' : 'Needs content' }}</span
+                          >
+                        </td>
+                        <td>
+                          <button
+                            class="icon-button"
+                            [matMenuTriggerFor]="lessonMenu"
+                            [attr.aria-label]="'Actions for lesson ' + lesson.title"
+                          >
+                            <span class="material-symbols-outlined" aria-hidden="true"
+                              >more_horiz</span
+                            ></button
+                          ><mat-menu #lessonMenu="matMenu"
+                            ><button mat-menu-item (click)="openLesson(lesson)">
+                              Edit lesson / move to module</button
+                            ><button
+                              mat-menu-item
+                              [disabled]="index === 0"
+                              (click)="moveLesson(lesson, -1)"
+                            >
+                              Move lesson up</button
+                            ><button
+                              mat-menu-item
+                              [disabled]="index === lessons(module).length - 1"
+                              (click)="moveLesson(lesson, 1)"
+                            >
+                              Move lesson down</button
+                            ><button
+                              mat-menu-item
+                              [disabled]="!mediaSaved(lesson)"
+                              [routerLink]="['/manage/learning/content', course.id, lesson.id]"
+                            >
+                              Video &amp; resources</button
+                            ><button mat-menu-item (click)="removeLesson(lesson)">
+                              Remove lesson
+                            </button></mat-menu
+                          >
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="8" class="empty-lessons">
+                          No lessons yet.
+                          <button
+                            class="text-button"
+                            (click)="selected.set(module.id); openLesson()"
+                          >
+                            Add a lesson
+                          </button>
+                          to this module.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <section class="completion-rules">
+                <h3>
+                  <span class="material-symbols-outlined" aria-hidden="true">settings</span>Module
+                  {{ moduleIndex + 1 }} – Lesson Completion Rules
+                </h3>
+                <div class="rule-fields">
+                  <label class="rule-field"
+                    ><span class="material-symbols-outlined" aria-hidden="true"
+                      >video_camera_front</span
+                    ><span
+                      >Minimum watch time (video lessons)
+                      <span
+                        class="material-symbols-outlined info-icon"
+                        title="Required watched percentage before lesson completion"
+                        aria-hidden="true"
+                        >info</span
+                      ></span
+                    ><mat-select
+                      cvSelect
+                      [aria-label]="'Minimum watch time for ' + module.title"
+                      [ngModel]="watchThreshold(module)"
+                      (ngModelChange)="setWatch(module, $event)"
+                    >
+                      @if (watchThreshold(module) === -1) {
+                        <mat-option [value]="-1" disabled>Custom per lesson</mat-option>
+                      }
+                      @for (value of watchOptions(module); track value) {
+                        <mat-option [value]="value">≥ {{ value }}% of video duration</mat-option>
+                      }
+                    </mat-select></label
+                  >
+                  <label class="rule-field"
+                    ><span class="material-symbols-outlined" aria-hidden="true">description</span
+                    ><span
+                      >Required document open (reading lessons)
+                      <span
+                        class="material-symbols-outlined info-icon"
+                        title="Learners must open and explicitly acknowledge mandatory resources"
+                        aria-hidden="true"
+                        >info</span
+                      ></span
+                    ><span class="rule-switch"
+                      ><input
+                        type="checkbox"
+                        role="switch"
+                        [attr.aria-label]="'Require document acknowledgement for ' + module.title"
+                        [ngModel]="resourceAck(module)"
+                        (ngModelChange)="setResourceAck(module, $event)"
+                      /><span class="switch-track" aria-hidden="true"></span
+                      >{{ resourceAck(module) ? 'Required' : 'Optional' }}</span
+                    ></label
+                  >
+                  <label class="rule-field"
+                    ><span class="material-symbols-outlined" aria-hidden="true">account_tree</span
+                    ><span
+                      >Prerequisites
+                      <span
+                        class="material-symbols-outlined info-icon"
+                        title="Complete mandatory lessons in the selected earlier modules first"
+                        aria-hidden="true"
+                        >info</span
+                      ></span
+                    ><mat-select
+                      cvSelect
+                      multiple
+                      [aria-label]="'Prerequisite modules for ' + module.title"
+                      [disabled]="!priorModules(module).length"
+                      [ngModel]="module.prerequisiteModuleIds || []"
+                      (ngModelChange)="module.prerequisiteModuleIds = $event"
+                      [placeholder]="priorModules(module).length ? 'None' : 'None (first module)'"
+                    >
+                      @for (previous of priorModules(module); track previous.id) {
+                        <mat-option [value]="previous.id">{{ previous.title }}</mat-option>
+                      }
+                    </mat-select></label
+                  >
+                </div>
+              </section>
+              @for (group of moduleGroups(module); track group.id) {
+                <p class="notice">
+                  <span class="material-symbols-outlined" aria-hidden="true">{{
+                    group.kind === 'Survey' ? 'rate_review' : 'quiz'
+                  }}</span
+                  >{{ group.title }} · {{ group.placement }} ·
+                  {{
+                    group.kind === 'Survey'
+                      ? 'Survey · Not graded'
+                      : group.countsTowardGrade
+                        ? 'Counts toward final grade'
+                        : 'Practice only · Not in final grade'
+                  }}<a
+                    routerLink="/manage/learning/questions"
+                    [queryParams]="{ course: course.id }"
+                  >
+                    Edit question group</a
+                  >
+                </p>
+              }
+            </div>
+          }
+        </section>
+      }
+      <section
+        class="module-block assessment-block"
+        [class.expanded]="selected() === 'assessment'"
+        id="final-assessment"
+      >
+        <button
+          class="module-heading"
+          [attr.aria-expanded]="selected() === 'assessment'"
+          aria-controls="assessment-content"
+          (click)="selected.set(selected() === 'assessment' ? '' : 'assessment')"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">school</span
+          ><strong>Final Assessment</strong
+          ><small
+            >{{ finalQuestions().length }} questions ·
+            {{ course.assessmentMinutes || 0 }} minutes</small
+          ><span class="material-symbols-outlined expand-icon" aria-hidden="true">{{
+            selected() === 'assessment' ? 'expand_less' : 'expand_more'
+          }}</span>
+        </button>
+        @if (selected() === 'assessment') {
+          <div class="assessment-content" id="assessment-content">
+            <h3>Final assessment required</h3>
+            <p>
+              Learners must complete mandatory lessons and pass the published assessment. Assessment
+              questions remain linked to their lesson.
+            </p>
+            <label class="field"
+              >Estimated assessment duration (minutes)<input
+                type="number"
+                min="0"
+                max="240"
+                aria-label="Estimated assessment duration"
+                [(ngModel)]="course.assessmentMinutes"
+            /></label>
+            <p>
+              {{ finalQuestions().length }} questions ·
+              {{
+                course.policy?.timeLimitMinutes
+                  ? course.policy!.timeLimitMinutes + ' minute timer'
+                  : 'Untimed assessment'
+              }}
+            </p>
+            <a
+              class="academy-button"
+              routerLink="/manage/learning/questions/new"
+              [queryParams]="{ course: course.id }"
+              ><span class="material-symbols-outlined" aria-hidden="true">add</span>Add question</a
+            ><a class="academy-button" routerLink="/manage/learning/questions">Question Bank</a>
+          </div>
+        }
+      </section>
+    </main>
+    <aside class="panel structure-summary" aria-label="Course structure summary">
+      <div class="panel-heading">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>Course
+          Structure Summary
+        </h2>
+      </div>
+      <div class="stats structure-stats">
+        <div class="cv-metric" data-card-tone="blue">
+          <span class="material-symbols-outlined" aria-hidden="true">stacks</span>
+          <div>
+            <h3 class="cv-metric-label">Total Modules</h3>
+            <strong>{{ modules().length }}</strong
+            ><small>Course structure</small>
+          </div>
+        </div>
+        <div class="cv-metric" data-card-tone="teal">
+          <span class="material-symbols-outlined" aria-hidden="true">video_library</span>
+          <div>
+            <h3 class="cv-metric-label">Total Lessons</h3>
+            <strong>{{ course.lessons.length }}</strong
+            ><small>Learning content</small>
+          </div>
+        </div>
+        <div class="cv-metric" data-card-tone="green">
+          <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
+          <div>
+            <h3 class="cv-metric-label">Estimated Total Duration</h3>
+            <strong>{{ totalMinutes() }} minutes</strong><small>Lessons and final assessment</small>
+          </div>
+        </div>
+      </div>
+      <dl class="summary-rows">
+        <div>
+          <dt>
+            <span class="material-symbols-outlined" aria-hidden="true">format_list_numbered</span
+            >Required Completion Order
+          </dt>
+          <dd>
+            <label class="order-switch"
+              ><input
+                type="checkbox"
+                aria-label="Require sequential completion"
+                [(ngModel)]="course.policy!.sequentialLessons"
+              /><span [class.enabled]="course.policy?.sequentialLessons">{{
+                course.policy?.sequentialLessons ? 'Yes' : 'No'
+              }}</span></label
+            >
+          </dd>
+        </div>
+        <div>
+          <dt>
+            <span class="material-symbols-outlined" aria-hidden="true">school</span>Final Assessment
+            Required
+          </dt>
+          <dd class="enabled">Yes</dd>
+        </div>
+      </dl>
+      <section class="readiness" [class.incomplete]="readiness().length">
+        <span class="material-symbols-outlined" aria-hidden="true">{{
+          readiness().length ? 'pending' : 'check_circle'
+        }}</span>
+        <div>
+          <h3>{{ readiness().length ? 'Structure In Progress' : 'Structure Ready' }}</h3>
+          @if (readiness().length) {
+            <ul>
+              @for (issue of readiness(); track $index) {
+                <li>{{ issue }}</li>
+              }
+            </ul>
+          } @else {
+            <p>
+              All modules, lessons and completion rules are configured. Content approval is checked
+              at publication.
+            </p>
+          }
+        </div>
+      </section>
+    </aside>
+  </div>
+  <section class="panel">
+    <div class="heading">
+      <div>
+        <h2>Assessment groups &amp; surveys</h2>
+        <p>
+          Add quizzes or surveys within a module, after a module, or at the end of the course in the
+          Questions step.
+        </p>
+      </div>
+      <a
+        class="academy-button"
+        routerLink="/manage/learning/questions"
+        [queryParams]="{ course: course.id }"
+        >Configure groups</a
+      >
+    </div>
+    @for (group of course.questionGroups || []; track group.id) {
+      <p>
+        <strong>{{ group.title }}</strong> · {{ group.placement }} ·
+        {{
+          group.kind === 'Survey'
+            ? 'Survey · Not graded'
+            : group.countsTowardGrade
+              ? 'Counts toward final grade'
+              : 'Practice only'
+        }}
+      </p>
+    }
+    <p><strong>Final course assessment</strong> · End of course · Counts toward final grade</p>
+  </section>
+  @if (unusedVideos().length) {
+    <p class="notice unused-video-blocker" role="status">
+      {{ unusedVideos().length }} unused video(s). Add every video to a module or delete it to
+      unlock Save &amp; Continue.
+    </p>
+  }
+  <footer class="structure-footer">
+    <button class="academy-button" (click)="back()">
+      <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Video &amp;
+      Resources</button
+    ><button
+      class="academy-button primary"
+      [disabled]="unusedVideos().length > 0"
+      (click)="continue()"
+    >
+      Save &amp; Continue to Questions<span class="material-symbols-outlined" aria-hidden="true"
+        >arrow_forward</span
+      >
+    </button>
+  </footer>
+} @else {
+  <section class="panel empty">
+    <h2>Course unavailable</h2>
+    <p>Save a course profile before creating modules and lessons.</p>
+    <a class="academy-button" routerLink="/manage/learning/courses">Back to courses</a>
+  </section>
+}
+@if (editor()) {
+  <div class="editor-backdrop" (click)="closeEditor()"></div>
+  <section
+    class="structure-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="structure-dialog-title"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <div class="heading">
+      <h2 id="structure-dialog-title">
+        {{ editId ? 'Edit' : 'Add' }} {{ editor() === 'module' ? 'Module' : 'Lesson' }}
+      </h2>
+      <button class="icon-button" aria-label="Close structure editor" (click)="closeEditor()">
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    </div>
+    <cv-academy-message [error]="error()" />
+    <form (ngSubmit)="submitEditor()">
+      <label class="field"
+        >{{ editor() === 'module' ? 'Module' : 'Lesson' }} title *<input
+          cdkFocusInitial
+          name="title"
+          aria-label="Structure item title"
+          required
+          maxlength="180"
+          [(ngModel)]="form.title"
+      /></label>
+      @if (editor() === 'lesson') {
+        <div class="field-grid">
+          <label class="field"
+            >Module *<mat-select
+              cvSelect
+              name="module"
+              aria-label="Lesson module"
+              [(ngModel)]="form.moduleId"
+            >
+              @for (module of modules(); track module.id) {
+                <mat-option [value]="module.id">{{ module.title }}</mat-option>
+              }
+            </mat-select></label
+          ><label class="field"
+            >Type<mat-select
+              cvSelect
+              name="type"
+              aria-label="Lesson type"
+              [(ngModel)]="form.type"
+              [disabled]="placingUpload()"
+            >
+              @for (type of lessonTypes; track type) {
+                <mat-option [value]="type">{{ type }}</mat-option>
+              }
+            </mat-select></label
+          ><label class="field"
+            >Duration (minutes) *<input
+              type="number"
+              name="minutes"
+              aria-label="Lesson duration"
+              min="1"
+              max="480"
+              required
+              [(ngModel)]="form.minutes" /></label
+          ><label class="check"
+            ><input type="checkbox" name="mandatory" [(ngModel)]="form.mandatory" />Mandatory
+            lesson</label
+          ><label class="field wide"
+            >Lesson prerequisites<mat-select
+              cvSelect
+              name="prerequisites"
+              multiple
+              aria-label="Lesson prerequisites"
+              [(ngModel)]="form.prerequisiteIds"
+            >
+              @for (previous of course?.lessons || []; track previous.id) {
+                @if (previous.id !== editId) {
+                  <mat-option [value]="previous.id">{{ previous.title }}</mat-option>
+                }
+              }</mat-select
+            ><small>Prerequisites must appear before this lesson in course order.</small></label
+          >
+          <label class="field wide"
+            >{{ placingUpload() ? 'Brief description *' : 'Lesson content'
+            }}<textarea
+              name="content"
+              aria-label="Lesson content"
+              rows="5"
+              [required]="placingUpload()"
+              [(ngModel)]="form.content"
+            ></textarea>
+          </label>
+        </div>
+        <p>
+          {{
+            placingUpload()
+              ? 'The uploaded file, captions, transcript and resource requirements will be retained in this lesson.'
+              : 'Save the structure, then use the lesson menu to add video, subtitles and resources.'
+          }}
+        </p>
+      }
+      <div class="actions dialog-actions">
+        <button type="button" class="academy-button" (click)="closeEditor()">Cancel</button
+        ><button type="submit" class="academy-button primary">
+          {{ editId ? 'Update' : 'Add' }} {{ editor() === 'module' ? 'Module' : 'Lesson' }}
+        </button>
+      </div>
+    </form>
+  </section>
+}

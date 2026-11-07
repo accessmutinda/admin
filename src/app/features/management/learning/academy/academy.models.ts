@@ -1,8 +1,65 @@
+import type { AcademyGovernance, AcademyAdjustment } from './academy-governance.models';
 import { COURSES, Person } from '../../shared/management.store';
 import { londonDate } from '../../rota/rota.models';
 
+export type AcademySyncStatus =
+  | 'CERTIFICATE_PENDING'
+  | 'CERTIFICATE_GENERATED'
+  | 'HR_LINK_PENDING'
+  | 'TRAINING_RECORD_PENDING'
+  | 'COMPLIANCE_PENDING'
+  | 'ROTA_REFRESH_PENDING'
+  | 'COMPLETE_SYNCED'
+  | 'SYNC_EXCEPTION';
+export interface AcademyPolicy {
+  feedbackMode?: 'Immediate' | 'After delay' | 'Manager release';
+  feedbackDelayHours?: number;
+  sequentialLessons?: boolean;
+  shuffleQuestions?: boolean;
+  shuffleOptions?: boolean;
+  maxAttempts: number;
+  retakeWaitHours: number;
+  timeLimitMinutes: number;
+  showFeedback: boolean;
+}
+export interface AcademyCompletion {
+  certificateId?: string;
+  nextRetryAt?: string;
+  id: string;
+  tenantId: string;
+  personId: string;
+  assignmentId: string;
+  attemptId: string;
+  courseVersion: number;
+  correlationId: string;
+  status: AcademySyncStatus;
+  createdAt: string;
+  updatedAt: string;
+  retryCount: number;
+  pdfContent?: string;
+  checksum?: string;
+  documentId?: string;
+  trainingRecordId?: string;
+  refresherDue?: string;
+  error: string;
+  acknowledgements: { stage: AcademySyncStatus; at: string; reference: string }[];
+}
 export type Publication = 'Draft' | 'Published' | 'Archived';
+export interface AcademyModule {
+  id: string;
+  title: string;
+  watchThreshold?: number;
+  requireResourceAck?: boolean;
+  prerequisiteModuleIds?: string[];
+}
 export interface AcademyLesson {
+  moduleId?: string;
+  moduleTitle?: string;
+  type?: 'Video' | 'Reading' | 'Policy acknowledgement' | 'Interactive check';
+  mandatory?: boolean;
+  prerequisiteIds?: string[];
+  watchThreshold?: number;
+  requireResourceAck?: boolean;
   id: string;
   title: string;
   minutes: number;
@@ -12,8 +69,79 @@ export interface AcademyLesson {
   thumbnailId: string;
   captionId: string;
   handoutIds: string[];
+  optionalHandoutIds?: string[];
+}
+export interface AcademyQuestionGroup {
+  kind?: 'Quiz' | 'Survey';
+  countsTowardGrade?: boolean;
+  id: string;
+  title: string;
+  placement:
+    | 'Course completion'
+    | 'Before module'
+    | 'After module'
+    | 'Within module'
+    | 'After lesson'
+    | 'Scheduled';
+  moduleId: string;
+  lessonId: string;
+  availableAfterDays: number;
+  dueAfterDays: number | null;
+  required: boolean;
+}
+export type AcademyNotificationChannel = 'Email' | 'App' | 'In-platform';
+export type AcademyAssignmentMethod =
+  'By Role' | 'By Team' | 'Individual Worker' | 'From HR Staff Profile';
+export interface AcademyAssignmentOptions {
+  supervisorId?: string;
+  expectedCourseUpdatedAt?: string;
+  source?: AcademyAssignmentMethod;
+  priority?: 'Normal' | 'High' | 'Urgent';
+  notificationChannels?: AcademyNotificationChannel[];
+}
+export interface AcademyAssignmentPlan {
+  method: AcademyAssignmentMethod;
+  roles: string[];
+  team: string;
+  personIds: string[];
+  priority: 'Normal' | 'High' | 'Urgent';
+  due: string;
+  refresher: boolean;
+  channels: AcademyNotificationChannel[];
+  recurrenceMonths: number;
+  message: string;
 }
 export interface AcademyCourse {
+  targetBranches?: string[];
+  prerequisiteCourseIds?: string[];
+  evidenceType?:
+    | 'Internal knowledge completion'
+    | 'Practical observation record'
+    | 'Portable qualification evidence';
+  renewalPolicyRef?: string;
+  cpdJustification?: string;
+  pendingLessons?: AcademyLesson[];
+  publishedAt?: string;
+  publishedBy?: string;
+  publicationNote?: string;
+  assignmentPlan?: AcademyAssignmentPlan;
+  questionGroups?: AcademyQuestionGroup[];
+  modules?: AcademyModule[];
+  assessmentMinutes?: number;
+  estimatedMinutes?: number;
+  tags?: string[];
+  active?: boolean;
+  code?: string;
+  outcomes?: string;
+  targetRoles?: string[];
+  owner?: string;
+  issuer?: string;
+  rights?: string;
+  approver?: string;
+  effectiveDate?: string;
+  practicalRequired?: boolean;
+  policy?: AcademyPolicy;
+  assessmentQuestions?: AcademyQuestion[];
   id: string;
   title: string;
   description: string;
@@ -29,11 +157,20 @@ export interface AcademyCourse {
   version: number;
   updatedAt: string;
 }
+export const courseMediaLessons = (course: AcademyCourse | null | undefined): AcademyLesson[] => [
+  ...(course?.lessons ?? []),
+  ...(course?.pendingLessons ?? []),
+];
+export const hasUnusedVideos = (course: AcademyCourse | null | undefined): boolean =>
+  !!course?.pendingLessons?.some((l) => !!l.videoId);
 export interface AcademyQuestion {
+  groupId?: string;
+  order?: number;
+  critical?: boolean;
   id: string;
   courseId: string;
   lessonId: string;
-  type: 'Single choice' | 'Multiple choice' | 'True / false';
+  type: 'Single choice' | 'Multiple choice' | 'True / false' | 'Free text';
   text: string;
   scenario: string;
   category: string;
@@ -53,6 +190,7 @@ export interface AcademyQuestion {
   updatedAt: string;
 }
 export interface AcademySettings {
+  demoFailure?: 'None' | 'HR filing' | 'Training record' | 'Compliance' | 'Rota refresh';
   passMark: number;
   maxAttempts: number;
   timeLimitMinutes: number;
@@ -82,6 +220,26 @@ export interface AcademySettings {
   updatedAt: string;
 }
 export interface AcademyAssignment {
+  renewalPolicyId?: string;
+  supervisorId?: string;
+  priority?: 'Normal' | 'High' | 'Urgent';
+  notificationChannels?: AcademyNotificationChannel[];
+  notificationRequests?: {
+    channel: AcademyNotificationChannel;
+    status: 'Recorded' | 'Not configured';
+    at: string;
+  }[];
+  tenantId?: string;
+  courseVersion?: number;
+  courseSnapshot?: AcademyCourse;
+  questionSnapshot?: AcademyQuestion[];
+  policySnapshot?: AcademyPolicy;
+  source?: string;
+  type?: 'Initial' | 'Refresher';
+  resourceAcknowledgements?: string[];
+  openedResourceIds?: string[];
+  watchedRanges?: Record<string, [number, number][]>;
+  videoDurations?: Record<string, number>;
   id: string;
   personId: string;
   courseId: string;
@@ -96,6 +254,29 @@ export interface AcademyAssignment {
   archived: boolean;
 }
 export interface AcademyAttempt {
+  adjustment?: AcademyAdjustment;
+  invalidatedAt?: string;
+  invalidationReason?: string;
+  feedbackReleasedAt?: string;
+  feedbackAvailableAt?: string;
+  groupKind?: 'Quiz' | 'Survey';
+  countsTowardGrade?: boolean;
+  sectionScore?: number | null;
+  contributingAttemptIds?: string[];
+  gradeBreakdown?: {
+    groupId: string;
+    title: string;
+    attemptId: string;
+    earned: number;
+    available: number;
+  }[];
+  groupId?: string;
+  groupTitle?: string;
+  policy?: AcademyPolicy;
+  resultId?: string;
+  correlationId?: string;
+  criticalFailed?: boolean;
+  scorerVersion?: string;
   award?: {
     cpdHours: number;
     validityMonths: number;
@@ -123,6 +304,17 @@ export interface AcademyAttempt {
   passed: boolean;
 }
 export interface AcademyCertificate {
+  templateVersion?: number;
+  replacesId?: string;
+  replacedById?: string;
+  correctionReason?: string;
+  brandingImages?: { logo?: string; background?: string; signature?: string };
+  documentId?: string;
+  checksum?: string;
+  passedAttemptId?: string;
+  courseCode?: string;
+  revokedAt?: string;
+  revocationReason?: string;
   courseVersion?: number;
   id: string;
   personId: string;
@@ -139,6 +331,17 @@ export interface AcademyCertificate {
   branding: AcademySettings;
 }
 export interface AcademyAsset {
+  checksum?: string;
+  rights?: string;
+  version?: number;
+  replacesId?: string;
+  language?: string;
+  durationSeconds?: number;
+  width?: number;
+  height?: number;
+  accessibilityReview?: { by: string; at: string; note: string };
+  status?: 'UPLOADING' | 'SCAN_PENDING' | 'PROCESSING' | 'CAPTIONS_REVIEW' | 'READY' | 'FAILED';
+  failure?: string;
   id: string;
   name: string;
   mime: string;
@@ -164,7 +367,50 @@ export interface AcademyNotice {
   at: string;
   key: string;
 }
+export interface AcademyAccessRequest {
+  id: string;
+  tenantId: string;
+  personId: string;
+  createdAt: string;
+  status: 'Requested' | 'Acknowledged' | 'Approved' | 'Declined' | 'Provided';
+  decision?: string;
+  completedAt?: string;
+  deliveryReference?: string;
+  portable?: boolean;
+  acknowledgedAt: string;
+  acknowledgedBy: string;
+}
+export interface AcademyRefresherSchedule {
+  id: string;
+  tenantId: string;
+  personId: string;
+  courseId: string;
+  completionId: string;
+  due: string;
+  remindOn: string;
+  notifiedAt: string;
+  cancelledAt?: string;
+}
+export interface AcademyRetakePlan {
+  id: string;
+  assignmentId: string;
+  personId: string;
+  fromAttemptId: string;
+  groupId: string;
+  scheduledFor: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+  notifiedAt: string;
+  startedAttemptId?: string;
+}
 export interface AcademyData {
+  governance?: AcademyGovernance;
+  retakePlans?: AcademyRetakePlan[];
+  courseVersions?: AcademyCourse[];
+  refresherSchedules?: AcademyRefresherSchedule[];
+  accessRequests?: AcademyAccessRequest[];
+  completions?: AcademyCompletion[];
   courseDrafts: AcademyCourse[];
   questionDrafts: AcademyQuestion[];
   courses: AcademyCourse[];
@@ -179,6 +425,7 @@ export interface AcademyData {
 }
 export function defaultAcademySettings(): AcademySettings {
   return {
+    demoFailure: 'None',
     passMark: 70,
     maxAttempts: 3,
     timeLimitMinutes: 30,
@@ -311,14 +558,12 @@ export const questionCorrect = (q: AcademyQuestion, answers: string[]) =>
 export function gradeAttempt(attempt: AcademyAttempt): number {
   const total = attempt.questions.reduce((sum, q) => sum + q.weight, 0);
   return total
-    ? Math.round(
-        (attempt.questions.reduce(
-          (sum, q) => sum + (questionCorrect(q, attempt.answers[q.id] ?? []) ? q.weight : 0),
-          0,
-        ) /
-          total) *
-          100,
-      )
+    ? (attempt.questions.reduce(
+        (sum, q) => sum + (questionCorrect(q, attempt.answers[q.id] ?? []) ? q.weight : 0),
+        0,
+      ) /
+        total) *
+        100
     : 0;
 }
 export function addMonths(date: string, months: number): string {

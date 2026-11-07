@@ -74,7 +74,7 @@
   align-items: center;
   gap: 3px 6px;
   margin-top: 4px;
-  font-size: 10px;
+  font-size: 11px;
   color: #677488;
 }
 .academy-category,
@@ -82,7 +82,7 @@
 .academy-course-status {
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.4;
   background: #edf2f5;
   color: #677488;

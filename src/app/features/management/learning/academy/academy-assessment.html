@@ -1,3 +1,9 @@
+@if (academy.state().governance?.offline) {
+  <p class="panel" role="status">
+    Offline demonstration: responses are saved on this device and recorded for local reconciliation.
+    No server acknowledgement is claimed.
+  </p>
+}
 <cv-academy-message [error]="error()" [notice]="notice()" />
 @if (attempt(); as a) {
   @if (!academy.owns(a.personId)) {
@@ -5,13 +11,51 @@
       Administrator preview · Assessment answers and submission are read-only.
     </div>
   }
-  @if (result() && a.submittedAt) {
+  @if (result() && a.submittedAt && a.groupKind === 'Survey') {
+    <div class="heading">
+      <div>
+        <h1>{{ a.groupTitle }} — Survey completed</h1>
+        <p>{{ a.courseTitle }} · Course version {{ a.courseVersion }}</p>
+      </div>
+      <a
+        class="academy-button"
+        [routerLink]="['/staff-portal/training/courses', a.courseId]"
+        [queryParams]="context()"
+        >Continue course</a
+      >
+    </div>
+    <section class="panel survey-result">
+      <h2>Thank you for your feedback</h2>
+      <p>
+        Your responses are saved. This survey has no score and does not contribute to your final
+        grade.
+      </p>
+      <p>Submitted {{ a.submittedAt | ukDate: 'd MMM yyyy, HH:mm' }}</p>
+      @for (q of a.questions; track q.id) {
+        <article class="panel">
+          <h3>{{ q.text }}</h3>
+          @if (q.type === 'Free text') {
+            <p class="preserve">{{ a.answers[q.id]?.[0] || 'No response' }}</p>
+          } @else {
+            @for (option of q.options; track option.id) {
+              @if (a.answers[q.id]?.includes(option.id)) {
+                <p>{{ option.text }}</p>
+              }
+            }
+            @if (!a.answers[q.id]?.length) {
+              <p>No response</p>
+            }
+          }
+        </article>
+      }
+    </section>
+  } @else if (result() && a.submittedAt) {
     <a [routerLink]="['/staff-portal/training/courses', a.courseId]" [queryParams]="context()"
       >← Back to course</a
     >
     <div class="heading">
       <div>
-        <h1>Assessment result</h1>
+        <h1>{{ a.groupTitle ? a.groupTitle + ' — Result' : 'Assessment result' }}</h1>
         <p>{{ a.courseTitle }} · Course version {{ a.courseVersion }}</p>
       </div>
       <a
@@ -23,52 +67,98 @@
     </div>
     <div class="columns">
       <div>
-        <section class="result-banner" [class.failed]="!a.passed">
+        @if (a.invalidatedAt) {
+          <p class="panel" role="status">
+            Invalidated {{ a.invalidatedAt | ukDate: 'd MMM yyyy, HH:mm' }} ·
+            {{ a.invalidationReason }}. The original score is retained and does not provide current
+            evidence.
+          </p>
+        }
+        <section class="result-banner" [class.failed]="!a.passed || !!a.invalidatedAt">
           <h2>
             <span class="material-symbols-outlined" aria-hidden="true">{{
               a.passed ? 'check_circle' : 'error'
             }}</span
-            >{{ a.passed ? 'Well done! Assessment passed.' : 'Result: Failed' }}
+            >{{
+              a.invalidatedAt
+                ? 'Result invalidated — original evidence retained'
+                : a.passed
+                  ? 'Well done! Assessment passed.'
+                  : 'Result: Failed'
+            }}
           </h2>
           <p>
             {{
-              a.passed
-                ? 'Your result has been recorded. Your course completion certificate is available below.'
-                : 'Review your feedback and the recommended topics, then try again when you are ready.'
+              a.passed && a.groupId
+                ? a.countsTowardGrade
+                  ? 'Your quiz result is saved and contributes to the overall course grade. Continue to the final assessment.'
+                  : 'Your practice checkpoint result is saved. It does not contribute to the final grade.'
+                : a.passed
+                  ? 'Your knowledge result is recorded. The automatic evidence workflow below shows certificate filing and training updates.'
+                  : 'Review your feedback and the recommended topics, then try again when you are ready.'
             }}
           </p>
-          <div class="grid">
-            <div>
-              <small>Your score</small>
-              <div class="score">{{ a.score }}%</div>
-              <p>{{ correctCount() }} of {{ a.questions.length }} questions correct</p>
+          <div class="stats result-stats">
+            <div
+              class="cv-metric"
+              [attr.data-card-tone]="a.passed && !a.invalidatedAt ? 'green' : 'orange'"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">assignment_turned_in</span>
+              <div>
+                <h3 class="cv-metric-label">
+                  {{
+                    a.gradeBreakdown && a.gradeBreakdown.length > 1
+                      ? 'Overall course grade'
+                      : 'Your score'
+                  }}
+                </h3>
+                <strong>{{ a.score }}%</strong>
+                @if (academy.feedbackVisible(a) || academy.canManage()) {
+                  <small
+                    >{{ correctCount() }} of {{ a.questions.length }} questions correct in this
+                    assessment{{
+                      a.gradeBreakdown && a.gradeBreakdown.length > 1
+                        ? '; counted quizzes are included below'
+                        : ''
+                    }}</small
+                  >
+                } @else {
+                  <small>Weighted assessment result</small>
+                }
+              </div>
             </div>
-            <div>
-              <small>Pass mark</small>
-              <div class="score">{{ a.passMark }}%</div>
-              <p>Weighted marks are used when questions carry different marks.</p>
+            <div class="cv-metric" data-card-tone="blue">
+              <span class="material-symbols-outlined" aria-hidden="true">track_changes</span>
+              <div>
+                <h3 class="cv-metric-label">Pass mark</h3>
+                <strong>{{ a.passMark }}%</strong
+                ><small>Weighted marks are used when questions carry different marks.</small>
+              </div>
             </div>
           </div>
           <div class="actions">
-            @if (a.passed && certificate(); as c) {
+            @if (a.passed && !a.invalidatedAt && !a.groupId) {
               <a
                 class="academy-button"
-                [routerLink]="['/staff-portal/training/certificates', c.id]"
+                routerLink="/staff-portal/training/certificates"
                 [queryParams]="context()"
-                >View certificate ↗</a
-              ><button class="academy-button primary" (click)="download()">
-                Download certificate PDF ↓
-              </button>
-            } @else {
+                >View training history →</a
+              >
+              @if (academy.canReadCertificate()) {
+                <a class="academy-button" routerLink="/manage/learning/certificates"
+                  >Inspect evidence workflow →</a
+                >
+              }
+            } @else if (!a.passed) {
               <button
                 class="academy-button primary"
-                [disabled]="!remaining() || !academy.owns(a.personId)"
+                [disabled]="!remaining() || !academy.owns(a.personId) || !!retake()?.reason"
                 (click)="retry()"
               >
                 Retry assessment</button
               ><button
                 class="academy-button"
-                [disabled]="!a.showFeedback"
+                [disabled]="!academy.feedbackVisible(a)"
                 (click)="review.set(!review())"
               >
                 {{ review() ? 'Hide answer review' : 'Review answers' }}</button
@@ -80,8 +170,52 @@
                 Notify my training manager
               </button>
             }
+            @if (a.passed && academy.feedbackVisible(a)) {
+              <button class="academy-button" (click)="review.set(!review())">
+                {{ review() ? 'Hide answer review' : 'Review answers' }}
+              </button>
+            }
           </div>
         </section>
+        @if (a.gradeBreakdown && a.gradeBreakdown.length > 1) {
+          <section class="panel grade-breakdown">
+            <h2>Final grade breakdown</h2>
+            <p>
+              Earned marks across counted quizzes and the final assessment divided by their
+              available marks. Surveys and practice-only groups are excluded. Quiz results are fixed
+              when this final attempt starts.
+            </p>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Assessment group</th>
+                    <th>Earned marks</th>
+                    <th>Available marks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (section of a.gradeBreakdown; track section.attemptId) {
+                    <tr>
+                      <td>{{ section.title }}</td>
+                      <td>{{ section.earned }}</td>
+                      <td>{{ section.available }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        }
+        @if (a.passed && !a.invalidatedAt && !a.groupId) {
+          <cv-academy-timeline [assignmentId]="a.assignmentId" />
+        }
+        @if (a.criticalFailed) {
+          <p class="notice">
+            A required critical question was answered incorrectly. Meeting the percentage threshold
+            alone does not pass this assessment.
+          </p>
+        }
         <section class="panel">
           <h2>{{ a.passed ? 'Your strengths by topic' : 'Your performance by topic' }}</h2>
           @for (topic of topics(); track topic.topic) {
@@ -98,6 +232,17 @@
           }
         </section>
         @if (!a.passed) {
+          <section class="notice" role="status">
+            <strong>{{
+              retake()?.reason || 'A retake is available under your assigned policy.'
+            }}</strong>
+            @if (retake()?.readyAt) {
+              <p>Available {{ retake()?.readyAt | ukDate: 'd MMM yyyy, HH:mm' }}</p>
+            }
+            <p>{{ remaining() }} attempts remain. Original failed results are retained.</p>
+          </section>
+        }
+        @if (!a.passed && academy.feedbackVisible(a)) {
           <section class="panel">
             <h2>Key areas to review</h2>
             @for (topic of topics(); track topic.topic) {
@@ -121,7 +266,7 @@
             }
           </section>
         }
-        @if (review() && a.showFeedback) {
+        @if (review() && academy.feedbackVisible(a)) {
           <section class="panel">
             <h2>Answer review</h2>
             @for (q of a.questions; track q.id) {
@@ -171,10 +316,14 @@
           </div>
           <p>Submitted {{ a.submittedAt | ukDate: 'd MMM yyyy, HH:mm' : 'Europe/London' }}</p>
           <p>{{ minutesTaken() }} minutes taken · {{ a.questions.length }} questions</p>
-          <p>
-            {{ correctCount() }} correct · {{ a.questions.length - correctCount() }} incorrect /
-            unanswered
-          </p>
+          @if (academy.feedbackVisible(a) || academy.canManage()) {
+            <p>
+              {{ correctCount() }} correct · {{ a.questions.length - correctCount() }} incorrect /
+              unanswered
+            </p>
+          } @else {
+            <p>Detailed feedback is withheld under the assigned assessment policy.</p>
+          }
           <p>{{ remaining() }} attempts remaining for this assignment.</p>
           @if (certificate(); as c) {
             <p>
@@ -202,78 +351,74 @@
           <h2>What happens next?</h2>
           <p>
             {{
-              a.passed
-                ? 'Your result and certificate are saved in your learning record. This does not overwrite verified practical competency records.'
-                : remaining()
-                  ? 'Revisit the course, review your answers if feedback is enabled, then use an available attempt.'
-                  : 'No attempts remain. Ask your training manager to review your learning plan.'
+              a.passed && a.groupId
+                ? 'Your checkpoint is saved. Continue learning and complete the final course assessment; certificates are issued only for course completion.'
+                : a.passed
+                  ? 'Your knowledge result is saved. Follow the evidence timeline for HR filing, matrix and rota updates. Practical competency requires separate sign-off.'
+                  : remaining()
+                    ? 'Revisit the course, review your answers if feedback is enabled, then use an available attempt.'
+                    : 'No attempts remain. Ask your training manager to review your learning plan.'
             }}
           </p>
         </section>
       </aside>
     </div>
   } @else if (!a.submittedAt) {
-    <div [class.large-text]="largeText" [class.high-contrast]="highContrast">
-      <div class="heading">
+    <div class="quiz-view" [class.large-text]="largeText" [class.high-contrast]="highContrast">
+      <div class="heading quiz-heading">
         <div>
-          <a [routerLink]="['/staff-portal/training/courses', a.courseId]" [queryParams]="context()"
-            >← Back to course</a
+          <small class="quiz-eyebrow"
+            >LEARNER {{ a.groupKind === 'Survey' ? 'SURVEY' : 'ASSESSMENT' }}</small
           >
-          <h1>{{ a.courseTitle }} assessment</h1>
+          <h1>
+            CareVerity Academy —
+            {{ a.groupKind === 'Survey' ? 'Survey: Your Feedback' : 'Quiz: Select Answers'
+            }}{{ a.groupTitle ? ' — ' + a.groupTitle : '' }}
+          </h1>
           <p>
-            Answer each required question. Responses are saved on this device and the timer
-            continues after exit.
+            {{ a.courseTitle
+            }}{{
+              a.groupKind === 'Survey'
+                ? ' · Share your feedback; this survey has no grade.'
+                : ' · Complete your assigned course assessment.'
+            }}
           </p>
         </div>
         <a
-          class="academy-button"
+          class="academy-button exit-assessment"
           routerLink="/staff-portal/training/assessments"
           [queryParams]="context()"
-          >Exit assessment</a
+          ><span class="material-symbols-outlined" aria-hidden="true">logout</span>Exit
+          Assessment</a
         >
       </div>
-      <section class="panel actions">
-        <label class="check"
-          ><input type="checkbox" [(ngModel)]="largeText" />Larger question text</label
-        ><label class="check"
-          ><input type="checkbox" [(ngModel)]="highContrast" />High contrast answer borders</label
-        >
-      </section>
-      <div class="columns">
-        <section class="panel">
-          <div class="heading">
+      <div class="quiz-identity">
+        <span class="quiz-identity-pill">{{
+          a.groupKind === 'Survey' ? 'Learner survey' : 'Learner assessment'
+        }}</span
+        ><strong>{{ a.courseTitle }} · Attempt {{ attemptNumber() }} of {{ maxAttempts() }}</strong>
+      </div>
+      <div class="quiz-grid">
+        <section class="panel quiz-question-card" aria-label="Current assessment question">
+          <div class="quiz-question-progress">
             <strong>Question {{ index() + 1 }} of {{ a.questions.length }}</strong
-            ><span>{{ answered() }} answered</span>
-          </div>
-          <progress
-            max="100"
-            [value]="a.questions.length ? (answered() / a.questions.length) * 100 : 0"
-            aria-label="Assessment answered progress"
-          ></progress>
-          <div class="notice heading">
-            <div>
-              <small>Time remaining</small>
-              <div class="timer" role="timer" aria-label="Time remaining">{{ timer() }}</div>
-            </div>
-            <div>
-              <small>Pass mark</small><strong>{{ a.passMark }}%</strong>
-            </div>
-            <button class="academy-button" [disabled]="!canEdit()" (click)="flag()">
-              {{
-                a.flags.includes(question()?.id || '') ? 'Unflag question' : 'Flag this question'
-              }}
-            </button>
+            ><progress
+              max="100"
+              [value]="completionPercent()"
+              aria-label="Assessment answered progress"
+            >
+              {{ completionPercent() }}%</progress
+            ><strong class="completion-percent">{{ completionPercent() }}% complete</strong>
           </div>
           @if (question(); as q) {
             @if (q.scenario) {
               <div class="scenario preserve question-copy">{{ q.scenario }}</div>
             }
-            <h2 class="question-copy">{{ q.text }}</h2>
-            <p>
-              {{
-                q.type === 'Multiple choice' ? 'Select every correct answer.' : 'Select one answer.'
-              }}
-              · {{ q.weight }} marks{{ q.required ? ' · Required' : '' }}
+            <h2 class="question-copy quiz-question-text">{{ q.text }}</h2>
+            <p class="question-requirement">
+              {{ answerInstruction() }}
+              {{ a.groupKind === 'Survey' ? 'Not graded' : '· ' + q.weight + ' marks'
+              }}{{ q.required ? ' · Required' : '' }}
             </p>
             @if (q.imageId) {
               <cv-academy-image
@@ -282,49 +427,98 @@
                 alt="Question illustration"
               />
             }
-            <div role="group" [attr.aria-label]="q.text">
-              @for (option of q.options; track option.id) {
-                <label
-                  class="question-option"
-                  [class.selected]="a.answers[q.id]?.includes(option.id)"
-                  ><input
-                    [type]="q.type === 'Multiple choice' ? 'checkbox' : 'radio'"
-                    [name]="q.id"
-                    [checked]="a.answers[q.id]?.includes(option.id)"
-                    [disabled]="!canEdit()"
-                    (change)="choose(option.id, $event)"
-                  /><span class="question-copy">{{ option.text }}</span></label
-                >
-              }
+            @if (q.type === 'Free text') {
+              <label class="field survey-response"
+                >Your response<textarea
+                  aria-label="Survey response"
+                  rows="5"
+                  maxlength="4000"
+                  [disabled]="!canEdit()"
+                  [ngModel]="a.answers[q.id]?.[0] || ''"
+                  (ngModelChange)="writeResponse($event)"
+                ></textarea>
+              </label>
+            } @else {
+              <div class="quiz-answer-options" role="group" [attr.aria-label]="q.text">
+                @for (option of q.options; track option.id; let optionIndex = $index) {
+                  <label
+                    class="question-option"
+                    [class.selected]="a.answers[q.id]?.includes(option.id)"
+                    ><input
+                      [type]="q.type === 'Multiple choice' ? 'checkbox' : 'radio'"
+                      [name]="q.id"
+                      [checked]="a.answers[q.id]?.includes(option.id)"
+                      [disabled]="!canEdit()"
+                      (change)="choose(option.id, $event)"
+                    /><strong class="option-letter" aria-hidden="true">{{
+                      letter(optionIndex)
+                    }}</strong
+                    ><span class="question-copy">{{ option.text }}</span></label
+                  >
+                }
+              </div>
+            }
+            <div class="quiz-answer-note">
+              <span class="material-symbols-outlined" aria-hidden="true">info</span>
+              <p>
+                {{ answerInstruction() }} Click
+                <strong>{{
+                  index() < a.questions.length - 1 ? 'Save & Next' : 'Save & Review'
+                }}</strong>
+                to save your response.
+                {{
+                  a.groupKind === 'Survey'
+                    ? 'Survey responses are not marked.'
+                    : 'Correct answers are not shown during the assessment.'
+                }}
+              </p>
             </div>
           }
-          <div class="heading">
+          <footer class="quiz-question-actions">
             <button
-              class="academy-button"
+              class="academy-button previous-question"
               [disabled]="index() === 0"
               (click)="index.set(index() - 1)"
             >
-              ← Previous
+              <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Previous
+              Question
             </button>
-            @if (index() < a.questions.length - 1) {
-              <button class="academy-button primary" (click)="index.set(index() + 1)">
-                Next question →
-              </button>
-            } @else {
+            <div class="actions">
               <button
-                class="academy-button primary"
-                [disabled]="!academy.owns(a.personId)"
-                (click)="submit()"
+                class="academy-button flag-question"
+                [class.flagged]="a.flags.includes(question()?.id || '')"
+                [disabled]="!canEdit()"
+                [attr.aria-pressed]="a.flags.includes(question()?.id || '')"
+                (click)="flag()"
               >
-                Submit assessment
+                <span class="material-symbols-outlined" aria-hidden="true">bookmark</span
+                >{{
+                  a.flags.includes(question()?.id || '') ? 'Unflag for Review' : 'Flag for Review'
+                }}</button
+              ><button
+                class="academy-button primary save-next"
+                [disabled]="!canEdit()"
+                (click)="saveNext()"
+              >
+                {{ index() < a.questions.length - 1 ? 'Save & Next' : 'Save & Review'
+                }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
               </button>
-            }
-          </div>
+            </div>
+          </footer>
         </section>
-        <aside>
-          <section class="panel">
-            <h2>Question navigation</h2>
-            <p>✓ Answered · Outline: current · ⚑ Flagged</p>
+        <aside class="quiz-sidebar">
+          <section class="panel quiz-navigator">
+            <div class="quiz-card-heading">
+              <h2>Question navigator</h2>
+              <span
+                class="quiz-time-pill"
+                [class.urgent]="a.policy?.timeLimitMinutes !== 0 && seconds() <= 60"
+                ><span class="material-symbols-outlined" aria-hidden="true">schedule</span
+                ><span role="timer" aria-label="Time remaining">{{
+                  a.policy?.timeLimitMinutes === 0 ? 'Untimed' : 'Time remaining: ' + timer()
+                }}</span></span
+              >
+            </div>
             <div class="question-nav">
               @for (q of a.questions; track q.id; let i = $index) {
                 <button
@@ -340,24 +534,155 @@
                   [attr.aria-current]="index() === i ? 'step' : null"
                   (click)="index.set(i)"
                 >
-                  {{ i + 1 }}
+                  <span>{{ i + 1 }}</span>
+                  @if (a.answers[q.id]?.length) {
+                    <span class="material-symbols-outlined answer-tick" aria-hidden="true"
+                      >check</span
+                    >
+                  }
+                  @if (a.flags.includes(q.id)) {
+                    <span class="material-symbols-outlined nav-flag" aria-hidden="true"
+                      >bookmark</span
+                    >
+                  }
                 </button>
               }
             </div>
-          </section>
-          <section class="panel">
-            <h2>Assessment summary</h2>
-            <p>Total questions: {{ a.questions.length }}</p>
-            <p>Answered: {{ answered() }}</p>
-            <p>Unanswered: {{ a.questions.length - answered() }}</p>
-            <p>Required score: {{ a.passMark }}%</p>
-            <div class="notice">
-              Answers and question order are saved for this attempt. Exiting does not pause the time
-              limit.
+            <div class="question-nav-legend">
+              <span><i class="legend-swatch answered" aria-hidden="true"></i>Answered</span
+              ><span><i class="legend-swatch current" aria-hidden="true"></i>Current</span
+              ><span><i class="legend-swatch" aria-hidden="true"></i>Not answered</span
+              ><span
+                ><span class="material-symbols-outlined" aria-hidden="true">bookmark</span
+                >Flagged</span
+              >
             </div>
+          </section>
+          <section class="panel quiz-summary">
+            <h2>
+              <span class="material-symbols-outlined blue" aria-hidden="true">assignment</span
+              >Assessment summary
+            </h2>
+            <div class="quiz-summary-row">
+              <span class="summary-row-icon material-symbols-outlined" aria-hidden="true"
+                >track_changes</span
+              ><strong>{{ a.groupKind === 'Survey' ? 'Grading' : 'Pass mark' }}</strong
+              ><span class="summary-value pass-value">{{
+                a.groupKind === 'Survey'
+                  ? 'Not graded'
+                  : a.contributingAttemptIds?.length
+                    ? '≥ ' + a.passMark + '% overall'
+                    : '≥ ' +
+                      a.passMark +
+                      '% (' +
+                      requiredMarks() +
+                      ' of ' +
+                      totalMarks() +
+                      ' marks)'
+              }}</span>
+            </div>
+            <div class="quiz-summary-row">
+              <span class="summary-row-icon material-symbols-outlined" aria-hidden="true"
+                >stacks</span
+              ><strong>Attempt</strong
+              ><span class="summary-value"
+                >Attempt {{ attemptNumber() }} of {{ maxAttempts() }}</span
+              >
+            </div>
+            <div class="quiz-summary-row">
+              <span class="summary-row-icon material-symbols-outlined" aria-hidden="true"
+                >schedule</span
+              ><strong>Time remaining</strong
+              ><span class="summary-value time-value">{{ timerDescription() }}</span>
+            </div>
+            @if (a.contributingAttemptIds?.length) {
+              <p class="quiz-summary-note">
+                The final grade includes this assessment and the counted quiz results fixed when
+                this attempt started.
+              </p>
+            }
+          </section>
+          <section class="panel quiz-rules">
+            <h2>
+              <span class="material-symbols-outlined blue" aria-hidden="true">shield</span
+              >Assessment rules
+            </h2>
+            <ul>
+              <li>
+                <span class="material-symbols-outlined" aria-hidden="true">check</span
+                >{{ a.questions.length }} questions · {{ questionTypes() }}.
+              </li>
+              @if (a.groupKind !== 'Survey') {
+                <li>
+                  <span class="material-symbols-outlined" aria-hidden="true">check</span>Pass mark:
+                  {{ a.passMark }}%{{
+                    a.contributingAttemptIds?.length
+                      ? ' of combined counted marks'
+                      : ' of available marks'
+                  }}.
+                </li>
+              }
+              <li>
+                <span class="material-symbols-outlined" aria-hidden="true">check</span>Up to
+                {{ maxAttempts() }} attempts allowed for this
+                {{ a.groupKind === 'Survey' ? 'survey' : 'assessment' }}.
+              </li>
+              <li>
+                <span class="material-symbols-outlined" aria-hidden="true">check</span>Responses are
+                saved and you can move between questions.
+              </li>
+              <li>
+                <span class="material-symbols-outlined" aria-hidden="true">check</span>Flag
+                questions for review before submission.
+              </li>
+              <li>
+                <span class="material-symbols-outlined" aria-hidden="true">check</span
+                >{{
+                  a.policy?.timeLimitMinutes === 0
+                    ? 'Untimed. Return to your saved responses after exit.'
+                    : 'Complete and submit within the time limit. Exiting does not pause the timer.'
+                }}
+              </li>
+              @if (hasCriticalQuestions() && a.groupKind !== 'Survey') {
+                <li>
+                  <span class="material-symbols-outlined" aria-hidden="true">check</span>Critical
+                  questions must be answered correctly to pass.
+                </li>
+              }
+            </ul>
           </section>
         </aside>
       </div>
+      <section class="quiz-submit-bar">
+        <span class="material-symbols-outlined submission-check" aria-hidden="true"
+          >check_circle</span
+        >
+        <p>
+          @if (a.groupKind === 'Survey') {
+            <strong>Your responses are recorded after submission.</strong> Surveys are not graded
+            and do not issue a certificate.
+          } @else {
+            <strong>Results are auto-marked after submission.</strong>
+            {{
+              a.groupId
+                ? 'Checkpoint results are saved to your course journey. Complete the final course assessment for a course completion record.'
+                : 'A pass starts the certificate and HR evidence workflow. Follow its status in your Training Record.'
+            }}
+          }
+        </p>
+        <button class="academy-button submit-assessment" [disabled]="!canEdit()" (click)="submit()">
+          <span class="material-symbols-outlined" aria-hidden="true">check</span
+          >{{ a.groupKind === 'Survey' ? 'Submit Survey' : 'Submit Assessment' }}
+        </button>
+      </section>
+      <details class="quiz-accessibility">
+        <summary>Accessibility options</summary>
+        <label class="check"
+          ><input type="checkbox" [(ngModel)]="largeText" />Larger question text</label
+        ><label class="check"
+          ><input type="checkbox" [(ngModel)]="highContrast" />High contrast answer borders</label
+        >
+      </details>
     </div>
   } @else {
     <section class="panel">

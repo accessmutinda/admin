@@ -1,11 +1,11 @@
 <nav class="hr-breadcrumb" aria-label="Breadcrumb">
   <a routerLink="/manage/people">People & HR</a
   ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span
-  ><span aria-current="page">Training Academy</span>
+  ><span aria-current="page">CareVerity Academy</span>
 </nav>
 <div class="hr-heading">
   <div>
-    <h1>Training Academy</h1>
+    <h1>CareVerity Academy</h1>
     <p>Manage sample learning, team progress and continuing professional development.</p>
   </div>
   <div class="hr-actions">
@@ -121,7 +121,7 @@
   <label class="academy-section-picker"
     >Academy section<mat-select
       cvSelect
-      aria-label="Training academy section"
+      aria-label="CareVerity Academy section"
       [ngModel]="tab()"
       (ngModelChange)="tab.set($event)"
     >
@@ -130,7 +130,7 @@
       }
     </mat-select></label
   >
-  <nav class="academy-tabs" aria-label="Training academy sections">
+  <nav class="academy-tabs" aria-label="CareVerity Academy sections">
     @for (item of tabs; track item) {
       <button
         [class.active]="tab() === item"

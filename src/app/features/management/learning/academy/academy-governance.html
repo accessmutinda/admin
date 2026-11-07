@@ -1,0 +1,1137 @@
+<cv-academy-admin-nav />
+<div class="heading governance-heading">
+  <div>
+    <h1>CareVerity Academy — Policies & Reviews</h1>
+    <p>Manage learning support, evidence requirements, renewal policies and controlled access.</p>
+  </div>
+  <a class="academy-button" routerLink="/manage/learning/reports">Training matrix & reports</a>
+</div>
+<p class="demo-notice">
+  <span class="material-symbols-outlined" aria-hidden="true">science</span>Seeded frontend
+  demonstration. Delivery states and background processing are local simulations; no external
+  messages are sent.
+</p>
+<cv-academy-message [error]="error()" [notice]="notice()" />
+<nav class="governance-tabs" aria-label="Academy policy workspaces">
+  @for (item of tabs; track item) {
+    <button
+      [class.active]="tab() === item"
+      [attr.aria-pressed]="tab() === item"
+      (click)="tab.set(item)"
+    >
+      {{ item }}
+    </button>
+  }
+</nav>
+@if (!academy.state().governance) {
+  <section class="panel">
+    <h2>Demonstration policies</h2>
+    <p>
+      An administrator can initialise the seeded review, requirement, adjustment and delivery
+      examples.
+    </p>
+    <button
+      class="academy-button primary"
+      [disabled]="!academy.can('configure')"
+      (click)="result(operations.seed(), 'Examples seeded.')"
+    >
+      Load demonstration examples
+    </button>
+  </section>
+}
+@switch (tab()) {
+  @case ('Reviews') {
+    <div class="governance-grid">
+      <section class="panel">
+        <h2>Learning review queue</h2>
+        <p>
+          Exhausted assessments require a documented decision. Resolving a review never changes the
+          original score or resets attempt limits.
+        </p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Staff / reason</th>
+                <th>Owner / due</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of operations.data().reviews; track r.id) {
+                @if (academy.can('evidence', r.personId)) {
+                  <tr>
+                    <td>
+                      <strong>{{ name(r.personId) }}</strong
+                      ><small>{{ r.reason }}</small>
+                    </td>
+                    <td>
+                      {{ name(r.ownerId) }}<small>{{ r.due | ukDate: 'd MMM yyyy' }}</small>
+                    </td>
+                    <td>
+                      <span class="badge" [class.good]="r.status === 'Resolved'">{{
+                        r.status
+                      }}</span>
+                    </td>
+                    <td>
+                      <button class="academy-button" (click)="editReview(r)">Review</button>
+                      @if (r.attemptId) {
+                        <a [routerLink]="['/manage/learning/results', r.attemptId]"
+                          >View original result</a
+                        >
+                      }
+                    </td>
+                  </tr>
+                }
+              } @empty {
+                <tr>
+                  <td colspan="4">No reviews recorded.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <button class="academy-button" (click)="review = newReview()">New review</button>
+      </section>
+      <section class="panel">
+        <h2>Review decision</h2>
+        <form (ngSubmit)="saveReview()">
+          <fieldset [disabled]="!academy.can('review', review.personId) || !!review.resolvedAt">
+            <label class="field"
+              >Assignment<mat-select
+                cvSelect
+                name="reviewAssignment"
+                [(ngModel)]="review.assignmentId"
+                (selectionChange)="
+                  review.personId = academy.assignment($event.value)?.personId ?? ''
+                "
+                aria-label="Review assignment"
+              >
+                @for (a of assignments(); track a.id) {
+                  <mat-option [value]="a.id"
+                    >{{ name(a.personId) }} · {{ title(a.courseId) }}</mat-option
+                  >
+                }
+              </mat-select></label
+            ><label class="field"
+              >Reviewer<mat-select
+                cvSelect
+                name="reviewOwner"
+                [(ngModel)]="review.ownerId"
+                aria-label="Review owner"
+              >
+                @for (p of people(); track p.id) {
+                  <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                }
+              </mat-select></label
+            ><label class="field"
+              >Due date<input
+                type="date"
+                name="reviewDue"
+                [(ngModel)]="review.due"
+                required /></label
+            ><label class="field"
+              >Reason<textarea
+                name="reviewReason"
+                [(ngModel)]="review.reason"
+                required
+                maxlength="1000"
+              ></textarea></label
+            ><label class="field"
+              >Remedial actions<textarea
+                name="reviewActions"
+                [(ngModel)]="review.actions"
+                maxlength="2000"
+              ></textarea></label
+            ><label class="field"
+              >Decision<textarea
+                name="reviewDecision"
+                [(ngModel)]="review.decision"
+                maxlength="2000"
+              ></textarea></label
+            ><label class="field"
+              >Status<mat-select
+                cvSelect
+                name="reviewStatus"
+                [(ngModel)]="review.status"
+                aria-label="Review status"
+                ><mat-option value="Open">Open</mat-option
+                ><mat-option value="In progress">In progress</mat-option
+                ><mat-option value="Resolved">Resolved</mat-option></mat-select
+              ></label
+            ><button class="academy-button primary" type="submit">Save review</button>
+          </fieldset>
+        </form>
+      </section>
+    </div>
+    <section class="panel">
+      <h2>Controlled result and certificate corrections</h2>
+      <p>
+        Invalidation retains the original result. A certificate replacement requires an existing
+        valid pass, retains its original assessment and links the original and replacement
+        documents.
+      </p>
+      <div class="field-grid">
+        <label class="field"
+          >Submitted attempt<mat-select
+            cvSelect
+            [(ngModel)]="invalidationAttempt"
+            aria-label="Attempt to invalidate"
+          >
+            @for (a of academy.state().attempts; track a.id) {
+              @if (a.submittedAt && academy.can('evidence', a.personId)) {
+                <mat-option [value]="a.id"
+                  >{{ name(a.personId) }} · {{ a.courseTitle }} ·
+                  {{
+                    a.invalidatedAt ? 'Invalidated' : a.passed ? 'Passed' : 'Not passed'
+                  }}</mat-option
+                >
+              }
+            }
+          </mat-select></label
+        ><label class="field"
+          >Certificate to correct<mat-select
+            cvSelect
+            [(ngModel)]="correctionCertificate"
+            aria-label="Certificate to correct"
+          >
+            @for (c of academy.state().certificates; track c.id) {
+              @if (academy.can('evidence', c.personId)) {
+                <mat-option [value]="c.id"
+                  >{{ c.learner }} · {{ c.courseTitle }} · {{ c.id }}</mat-option
+                >
+              }
+            }
+          </mat-select></label
+        ><label class="field"
+          >Correction / invalidation reason<textarea
+            [(ngModel)]="reason"
+            maxlength="1000"
+          ></textarea>
+        </label>
+      </div>
+      <div class="actions">
+        <button
+          class="academy-button danger"
+          [disabled]="!academy.can('correct') || !invalidationAttempt || !reason.trim()"
+          (click)="invalidate()"
+        >
+          Invalidate original result</button
+        ><button
+          class="academy-button"
+          [disabled]="!academy.can('correct') || !correctionCertificate || !reason.trim()"
+          (click)="reissue()"
+        >
+          Issue linked correction
+        </button>
+      </div>
+    </section>
+  }
+  @case ('Requirements & renewals') {
+    <div class="governance-grid">
+      <section class="panel">
+        <h2>Effective-dated requirements</h2>
+        <p>
+          Applicability uses staff role, branch and service department. A successor policy starts
+          after the previous policy ends. Issued certificates and assignment snapshots are retained.
+        </p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Course / scope</th>
+                <th>Effective dates</th>
+                <th>Renewal</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of operations.data().requirements; track r.id) {
+                <tr>
+                  <td>
+                    {{ title(r.courseId)
+                    }}<small
+                      >{{ r.roles.join(', ') || 'All roles' }} ·
+                      {{ r.branches.join(', ') || 'All branches' }} ·
+                      {{ r.serviceCategory || 'All services' }}</small
+                    >
+                  </td>
+                  <td>
+                    {{ r.effectiveFrom | ukDate: 'd MMM yyyy'
+                    }}<small>{{ r.effectiveTo || 'No end date' }}</small>
+                  </td>
+                  <td>
+                    {{ r.renewalMonths }} months<small>{{
+                      r.autoAssign ? 'Automatic assignment' : 'Review only'
+                    }}</small>
+                  </td>
+                  <td>
+                    <button class="academy-button" (click)="editRequirement(r)">Edit policy</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <button class="academy-button" (click)="resetRequirement()">New policy / successor</button
+        ><button
+          class="academy-button primary"
+          [disabled]="!academy.can('assign')"
+          (click)="
+            result(
+              operations.runSchedules(),
+              'Renewal rules evaluated and eligible notices recorded. Repeat runs do not duplicate assignments.'
+            )
+          "
+        >
+          Run renewal scheduler
+        </button>
+        @for (run of operations.data().schedulerRuns.slice(0, 5); track run.at) {
+          <p class="supporting">
+            {{ run.at | ukDate: 'd MMM yyyy, HH:mm:ss' }} · {{ run.assignments }} assignments ·
+            {{ run.notices }} notices · {{ run.actor }}
+          </p>
+        }
+      </section>
+      <section class="panel">
+        <h2>Requirement policy</h2>
+        <form (ngSubmit)="saveRequirement()">
+          <fieldset [disabled]="!academy.can('configure')">
+            <label class="field"
+              >Course<mat-select
+                cvSelect
+                name="requirementCourse"
+                [(ngModel)]="requirement.courseId"
+                aria-label="Requirement course"
+              >
+                @for (c of academy.state().courses; track c.id) {
+                  <mat-option [value]="c.id">{{ c.title }}</mat-option>
+                }
+              </mat-select></label
+            ><label class="field"
+              >Applicable roles (comma separated; blank for all)<input
+                name="requirementRoles"
+                [(ngModel)]="requirementRoles" /></label
+            ><label class="field"
+              >Branches (comma separated; blank for all)<input
+                name="requirementBranches"
+                [(ngModel)]="requirementBranches" /></label
+            ><label class="field"
+              >Service department (blank for all)<input
+                name="requirementService"
+                [(ngModel)]="requirement.serviceCategory"
+            /></label>
+            <div class="field-grid">
+              <label class="field"
+                >Effective from<input
+                  type="date"
+                  name="requirementFrom"
+                  [(ngModel)]="requirement.effectiveFrom"
+                  required /></label
+              ><label class="field"
+                >Effective to<input
+                  type="date"
+                  name="requirementTo"
+                  [(ngModel)]="requirement.effectiveTo" /></label
+              ><label class="field"
+                >Minimum course version<input
+                  type="number"
+                  min="0"
+                  name="requirementVersion"
+                  [(ngModel)]="requirement.minimumVersion" /></label
+              ><label class="field"
+                >Renewal months (0 = policy review)<input
+                  type="number"
+                  min="0"
+                  max="120"
+                  name="requirementRenewal"
+                  [(ngModel)]="requirement.renewalMonths"
+              /></label>
+            </div>
+            <label class="field"
+              >Reminder days before due<input
+                name="requirementReminders"
+                [(ngModel)]="reminderDays" /></label
+            ><label class="check"
+              ><input
+                type="checkbox"
+                name="requirementExternal"
+                [(ngModel)]="requirement.allowExternal"
+              />Accept verified external HR evidence</label
+            ><label class="check"
+              ><input
+                type="checkbox"
+                name="requirementReview"
+                [(ngModel)]="requirement.reviewRequired"
+              />Evidence review required</label
+            ><label class="check"
+              ><input
+                type="checkbox"
+                name="requirementAuto"
+                [(ngModel)]="requirement.autoAssign"
+              />Automatically assign initial / refresher learning</label
+            ><button class="academy-button primary" type="submit">Save policy</button>
+          </fieldset>
+        </form>
+      </section>
+    </div>
+  }
+  @case ('Adjustments & feedback') {
+    <div class="governance-grid">
+      <section class="panel">
+        <h2>Approved individual adjustments</h2>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Staff / assignment</th>
+                <th>Adjustment</th>
+                <th>Approval</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (a of operations.data().adjustments; track a.id) {
+                @if (academy.can('evidence', a.personId)) {
+                  <tr>
+                    <td>
+                      {{ name(a.personId) }}<small>{{ a.reason }}</small>
+                    </td>
+                    <td>
+                      {{ a.untimed ? 'Untimed' : a.extraMinutes + ' extra minutes'
+                      }}<small>Expires {{ a.expires | ukDate: 'd MMM yyyy' }}</small>
+                    </td>
+                    <td>
+                      {{ a.approvedBy
+                      }}<small>{{ a.approvedAt | ukDate: 'd MMM yyyy, HH:mm' }}</small>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+        <h2>Feedback releases</h2>
+        <p>
+          Releasing feedback does not change the result. New course policies can use immediate,
+          delayed or manager-approved release.
+        </p>
+        @for (a of academy.state().attempts; track a.id) {
+          @if (
+            a.submittedAt &&
+            a.policy?.feedbackMode === 'Manager release' &&
+            academy.can('evidence', a.personId)
+          ) {
+            <article class="list-item">
+              <span>{{ name(a.personId) }} · {{ a.courseTitle }}</span
+              ><button
+                class="academy-button"
+                [disabled]="!academy.can('review', a.personId) || !!a.feedbackReleasedAt"
+                (click)="result(operations.releaseFeedback(a.id))"
+              >
+                {{ a.feedbackReleasedAt ? 'Feedback released' : 'Release feedback' }}
+              </button>
+            </article>
+          }
+        }
+      </section>
+      <section class="panel">
+        <h2>Approve adjustment</h2>
+        <p>
+          Applies to new attempts only. Existing attempts retain the adjustment approved when they
+          started.
+        </p>
+        <form (ngSubmit)="saveAdjustment()">
+          <fieldset [disabled]="!academy.can('review')">
+            <label class="field"
+              >Assignment<mat-select
+                cvSelect
+                name="adjustmentAssignment"
+                [(ngModel)]="adjustment.assignmentId"
+                (selectionChange)="adjustmentAssignment()"
+                aria-label="Adjustment assignment"
+              >
+                @for (a of assignments(); track a.id) {
+                  <mat-option [value]="a.id"
+                    >{{ name(a.personId) }} · {{ title(a.courseId) }}</mat-option
+                  >
+                }
+              </mat-select></label
+            ><label class="field"
+              >Extra minutes<input
+                type="number"
+                min="0"
+                max="240"
+                name="adjustmentMinutes"
+                [(ngModel)]="adjustment.extraMinutes" /></label
+            ><label class="check"
+              ><input
+                type="checkbox"
+                name="adjustmentUntimed"
+                [(ngModel)]="adjustment.untimed"
+              />Approved untimed assessment</label
+            ><label class="field"
+              >Approval reason<textarea
+                name="adjustmentReason"
+                [(ngModel)]="adjustment.reason"
+                required
+                maxlength="1000"
+              ></textarea></label
+            ><label class="field"
+              >Approval expires<input
+                type="date"
+                name="adjustmentExpiry"
+                [(ngModel)]="adjustment.expires" /></label
+            ><button class="academy-button primary" type="submit">Approve adjustment</button>
+          </fieldset>
+        </form>
+      </section>
+    </div>
+  }
+  @case ('Task authorisations') {
+    <div class="governance-grid">
+      <section class="panel">
+        <h2>Observed task evidence & restrictions</h2>
+        <p>
+          A quiz pass does not grant clinical authority. These records add task, service-user and
+          location-specific restrictions to existing rota checks.
+        </p>
+        @for (a of operations.data().authorisations; track a.id) {
+          @if (academy.can('evidence', a.personId)) {
+            <article class="list-item">
+              <div>
+                <h3>{{ name(a.personId) }} · {{ a.task }}</h3>
+                <p>
+                  {{ a.status }} · {{ a.location || 'All locations' }} ·
+                  {{ a.clientId || 'All service users' }}
+                </p>
+                <p>{{ a.evidence }}</p>
+                <small
+                  >{{ a.restrictions }} · Review {{ a.reviewDue | ukDate: 'd MMM yyyy' }}</small
+                >
+              </div>
+              <button class="academy-button" (click)="editAuthorisation(a)">Review evidence</button>
+            </article>
+          }
+        }
+        <button class="academy-button" (click)="authorisation = newAuthorisation()">
+          New observation
+        </button>
+      </section>
+      <section class="panel">
+        <h2>Task authorisation</h2>
+        <form (ngSubmit)="saveAuthorisation()">
+          <fieldset [disabled]="!academy.can('review')">
+            <label class="field"
+              >Staff<mat-select
+                cvSelect
+                name="taskPerson"
+                [(ngModel)]="authorisation.personId"
+                aria-label="Task person"
+              >
+                @for (p of people(); track p.id) {
+                  <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                }
+              </mat-select></label
+            ><label class="field"
+              >Course<mat-select
+                cvSelect
+                name="taskCourse"
+                [(ngModel)]="authorisation.courseId"
+                aria-label="Task course"
+              >
+                @for (c of academy.state().courses; track c.id) {
+                  <mat-option [value]="c.id">{{ c.title }}</mat-option>
+                }
+              </mat-select></label
+            ><label class="field"
+              >Observed task<input
+                name="taskName"
+                [(ngModel)]="authorisation.task"
+                required /></label
+            ><label class="field"
+              >Service user ID (blank for all)<input
+                name="taskClient"
+                [(ngModel)]="authorisation.clientId" /></label
+            ><label class="field"
+              >Location (blank for all)<input
+                name="taskLocation"
+                [(ngModel)]="authorisation.location" /></label
+            ><label class="field"
+              >Assessor<mat-select
+                cvSelect
+                name="taskAssessor"
+                [(ngModel)]="authorisation.assessorId"
+                aria-label="Task assessor"
+              >
+                @for (p of people(); track p.id) {
+                  <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                }
+              </mat-select></label
+            >
+            <div class="field-grid">
+              <label class="field"
+                >Observed on<input
+                  type="date"
+                  name="taskObserved"
+                  [(ngModel)]="authorisation.observedAt" /></label
+              ><label class="field"
+                >Review due<input
+                  type="date"
+                  name="taskReview"
+                  [(ngModel)]="authorisation.reviewDue"
+              /></label>
+            </div>
+            <label class="field"
+              >Status<mat-select
+                cvSelect
+                name="taskStatus"
+                [(ngModel)]="authorisation.status"
+                aria-label="Task status"
+                ><mat-option value="Approved">Approved</mat-option
+                ><mat-option value="Restricted">Restricted</mat-option
+                ><mat-option value="Revoked">Revoked</mat-option></mat-select
+              ></label
+            ><label class="field"
+              >Observation evidence<textarea
+                name="taskEvidence"
+                [(ngModel)]="authorisation.evidence"
+                required
+              ></textarea></label
+            ><label class="field"
+              >Restrictions<textarea
+                name="taskRestrictions"
+                [(ngModel)]="authorisation.restrictions"
+              ></textarea></label
+            ><button class="academy-button primary" type="submit">Save observed evidence</button>
+          </fieldset>
+        </form>
+      </section>
+    </div>
+  }
+  @case ('Notifications') {
+    <section class="panel">
+      <div class="heading">
+        <div>
+          <h2>Notification delivery ledger</h2>
+          <p>
+            Queued → Sent → Delivered, or Failed with a retry record. These are local simulation
+            outcomes.
+          </p>
+        </div>
+        <label class="check"
+          ><input
+            type="checkbox"
+            [disabled]="!academy.can('configure')"
+            [ngModel]="operations.data().channelFailure"
+            (ngModelChange)="result(operations.setChannelFailure($event))"
+          />Simulate channel outage</label
+        >
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Staff / channel</th>
+              <th>Message</th>
+              <th>Delivery</th>
+              <th>Attempts / next retry</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (n of operations.data().deliveries; track n.id) {
+              @if (academy.can('evidence', n.personId)) {
+                <tr>
+                  <td>
+                    {{ name(n.personId) }}<small>{{ n.channel }}</small>
+                  </td>
+                  <td>
+                    {{ n.title }}<small>{{ n.text }}</small>
+                    <details>
+                      <summary>Delivery history</summary>
+                      @for (h of n.history; track $index) {
+                        <p>
+                          {{ h.at | ukDate: 'd MMM, HH:mm:ss' }} · {{ h.status }} · {{ h.detail }}
+                        </p>
+                      }
+                    </details>
+                  </td>
+                  <td>
+                    <span
+                      class="badge"
+                      [class.good]="n.status === 'Delivered'"
+                      [class.bad]="n.status === 'Failed'"
+                      >{{ n.status }}</span
+                    ><small>{{ n.error }}</small>
+                  </td>
+                  <td>
+                    {{ n.attempts
+                    }}<small>{{
+                      n.nextAttemptAt ? (n.nextAttemptAt | ukDate: 'd MMM, HH:mm:ss') : '—'
+                    }}</small>
+                  </td>
+                  <td>
+                    <button
+                      class="academy-button"
+                      [disabled]="!academy.can('assign') || n.status === 'Delivered'"
+                      (click)="result(operations.processDelivery(n.id, n.status === 'Failed'))"
+                    >
+                      {{
+                        n.status === 'Failed'
+                          ? 'Retry delivery'
+                          : n.status === 'Sent'
+                            ? 'Acknowledge delivery'
+                            : 'Process queue'
+                      }}
+                    </button>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Queue a training notification</h2>
+      <div class="field-grid">
+        <label class="field"
+          >Assignment<mat-select
+            cvSelect
+            [(ngModel)]="deliveryAssignment"
+            aria-label="Notification assignment"
+          >
+            @for (a of assignments(); track a.id) {
+              <mat-option [value]="a.id"
+                >{{ name(a.personId) }} · {{ title(a.courseId) }}</mat-option
+              >
+            }
+          </mat-select></label
+        ><label class="field"
+          >Channel<mat-select
+            cvSelect
+            [(ngModel)]="deliveryChannel"
+            aria-label="Notification channel"
+          >
+            @for (c of ['In-platform', 'App', 'Email', 'SMS']; track c) {
+              <mat-option [value]="c">{{ c }}</mat-option>
+            }
+          </mat-select></label
+        ><label class="field">Message<textarea [(ngModel)]="deliveryText"></textarea></label>
+      </div>
+      <button class="academy-button primary" [disabled]="!academy.can('assign')" (click)="queue()">
+        Queue demo notification
+      </button>
+    </section>
+  }
+  @case ('Access controls') {
+    <div class="governance-grid">
+      <section class="panel">
+        <h2>Role capabilities</h2>
+        <p>
+          Publication, assignment, correction and evidence access are separate capabilities.
+          Administrator recovery access is retained.
+        </p>
+        <label class="field"
+          >Role<mat-select
+            cvSelect
+            [(ngModel)]="role"
+            (selectionChange)="roleChanged()"
+            aria-label="Academy capability role"
+          >
+            @for (r of roles; track r.code) {
+              @if (r.code !== 'CA' && r.code !== 'PO') {
+                <mat-option [value]="r.code">{{ r.label }}</mat-option>
+              }
+            }
+          </mat-select></label
+        ><label class="field"
+          >Allowed capabilities<mat-select
+            cvSelect
+            multiple
+            [(ngModel)]="selectedCapabilities"
+            aria-label="Allowed Academy capabilities"
+          >
+            @for (c of capabilities; track c) {
+              <mat-option [value]="c">{{ c }}</mat-option>
+            }
+          </mat-select></label
+        ><button
+          class="academy-button primary"
+          [disabled]="!academy.can('configure')"
+          (click)="saveCapabilities()"
+        >
+          Save role permissions
+        </button>
+        <h2>Approved access windows</h2>
+        @for (g of operations.data().grants; track g.id) {
+          <article class="list-item">
+            <div>
+              <strong>{{ g.email }}</strong
+              ><small>{{ g.capabilities.join(', ') }} · {{ g.personIds.length }} scoped staff</small
+              ><small
+                >{{ g.startsAt | ukDate: 'd MMM, HH:mm' }} —
+                {{ g.expiresAt | ukDate: 'd MMM, HH:mm' }}</small
+              >
+              <p>{{ g.reason }} · Approved by {{ g.approvedBy }}</p>
+            </div>
+            <button
+              class="academy-button"
+              [disabled]="!academy.can('configure') || !!g.revokedAt"
+              (click)="result(operations.revokeGrant(g.id))"
+            >
+              {{ g.revokedAt ? 'Revoked' : 'Revoke grant' }}
+            </button>
+          </article>
+        }
+      </section>
+      <section class="panel">
+        <h2>Approve time-limited access</h2>
+        <form (ngSubmit)="saveGrant()">
+          <fieldset [disabled]="!academy.can('configure')">
+            <label class="field"
+              >Reviewer email<input
+                type="email"
+                name="grantEmail"
+                [(ngModel)]="grant.email"
+                required /></label
+            ><label class="field"
+              >Staff scope (empty = workspace)<mat-select
+                cvSelect
+                multiple
+                name="grantPeople"
+                [(ngModel)]="grant.personIds"
+                aria-label="Grant people"
+              >
+                @for (p of people(); track p.id) {
+                  <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                }
+              </mat-select></label
+            ><label class="field"
+              >Capabilities<mat-select
+                cvSelect
+                multiple
+                name="grantCapabilities"
+                [(ngModel)]="grant.capabilities"
+                aria-label="Grant capabilities"
+              >
+                @for (c of capabilities; track c) {
+                  <mat-option [value]="c">{{ c }}</mat-option>
+                }
+              </mat-select></label
+            ><label class="field"
+              >Starts at (ISO UTC)<input
+                name="grantStart"
+                [(ngModel)]="grant.startsAt"
+                required /></label
+            ><label class="field"
+              >Expires at (ISO UTC)<input
+                name="grantExpiry"
+                [(ngModel)]="grant.expiresAt"
+                required /></label
+            ><label class="field"
+              >Approval reason<textarea
+                name="grantReason"
+                [(ngModel)]="grant.reason"
+                required
+              ></textarea></label
+            ><button class="academy-button primary" type="submit">Approve access</button>
+          </fieldset>
+        </form>
+      </section>
+    </div>
+  }
+  @case ('Records disclosure') {
+    <section class="panel">
+      <h2>HR-mediated training-record requests</h2>
+      <p>
+        Record approval before marking provision. A delivery reference documents the organisation’s
+        secure disclosure process; it does not send a file or enable routine learner PDF downloads.
+      </p>
+      <div class="field-grid">
+        <label class="field"
+          >Decision / reason<textarea [(ngModel)]="disclosureDecision"></textarea></label
+        ><label class="field"
+          >Secure delivery / case reference<input [(ngModel)]="disclosureReference"
+        /></label>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Staff / request</th>
+              <th>Outcome</th>
+              <th>Decision / delivery</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of academy.state().accessRequests ?? []; track r.id) {
+              @if (academy.can('evidence', r.personId)) {
+                <tr>
+                  <td>
+                    {{ name(r.personId)
+                    }}<small
+                      >{{ r.createdAt | ukDate: 'd MMM yyyy' }} ·
+                      {{
+                        r.portable ? 'Qualification portability review' : 'Training records'
+                      }}</small
+                    >
+                  </td>
+                  <td>
+                    {{ r.status
+                    }}<small>{{
+                      r.completedAt ? (r.completedAt | ukDate: 'd MMM yyyy') : 'Open'
+                    }}</small>
+                  </td>
+                  <td>
+                    {{ r.decision || 'Awaiting review' }}<small>{{ r.deliveryReference }}</small>
+                  </td>
+                  <td>
+                    <div class="actions">
+                      <button
+                        class="academy-button"
+                        [disabled]="
+                          !academy.can('review', r.personId) ||
+                          r.status === 'Provided' ||
+                          r.status === 'Declined'
+                        "
+                        (click)="disclose(r.id, 'Approved')"
+                      >
+                        Approve</button
+                      ><button
+                        class="academy-button"
+                        [disabled]="!academy.can('review', r.personId) || r.status !== 'Approved'"
+                        (click)="disclose(r.id, 'Provided')"
+                      >
+                        Record provision</button
+                      ><button
+                        class="academy-button"
+                        [disabled]="
+                          !academy.can('review', r.personId) ||
+                          r.status === 'Provided' ||
+                          r.status === 'Declined'
+                        "
+                        (click)="disclose(r.id, 'Declined')"
+                      >
+                        Decline with reason
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+  @case ('Recovery & data') {
+    <div class="governance-grid">
+      <section class="panel">
+        <h2>Evidence reconciliation</h2>
+        <a class="academy-button" routerLink="/manage/learning/diagnostics"
+          >Open restricted diagnostics</a
+        >
+        <p>
+          Recheck saved passes and workflow stages. Pending and interrupted jobs resume from
+          acknowledged steps; revoked originals remain historical.
+        </p>
+        <button
+          class="academy-button primary"
+          [disabled]="!academy.can('review')"
+          (click)="reconcile()"
+        >
+          Reconcile saved evidence
+        </button>
+        @for (j of academy.state().completions ?? []; track j.id) {
+          @if (academy.can('evidence', j.personId)) {
+            <article class="list-item">
+              <div>
+                <strong>{{ name(j.personId) }} · {{ j.status }}</strong
+                ><small>{{ j.correlationId }} · Retry {{ j.retryCount }}</small>
+                <p>{{ j.error }}</p>
+              </div>
+              @if (j.status === 'SYNC_EXCEPTION') {
+                <button
+                  class="academy-button"
+                  [disabled]="!academy.can('review')"
+                  (click)="result(workflow.retry(j.id))"
+                >
+                  Retry workflow
+                </button>
+              }
+            </article>
+          }
+        }
+      </section>
+      <section class="panel">
+        <h2>Private demo backup & restore</h2>
+        <p>
+          Backups contain protected workspace records and answer keys. Use the redacted evidence
+          export for inspections. Uploaded media blobs remain in browser storage.
+        </p>
+        <div class="actions">
+          <button class="academy-button" [disabled]="!academy.can('configure')" (click)="backup()">
+            Export private demo backup</button
+          ><label class="academy-button"
+            >Restore demo backup<input
+              type="file"
+              accept="application/json,.json"
+              [disabled]="!academy.can('configure')"
+              (change)="restore($event)"
+          /></label>
+        </div>
+        <p>{{ backupStatus }}</p>
+        <h2>Reconnect demonstration</h2>
+        <p>
+          Local answers and records remain on this device. Server synchronisation is not connected.
+        </p>
+        <button
+          class="academy-button"
+          [disabled]="!academy.can('configure')"
+          (click)="
+            result(
+              operations.setOffline(!operations.data().offline),
+              'Local reconnect state updated.'
+            )
+          "
+        >
+          {{ operations.data().offline ? 'Restore connection' : 'Simulate offline mode' }}
+        </button>
+        <p role="status">
+          {{
+            operations.data().offline
+              ? 'Offline simulation — local changes queued; no server delivery claimed'
+              : 'Online simulation — local changes persisted'
+          }}
+        </p>
+        <p>{{ operations.data().syncQueue?.length ?? 0 }} recorded offline operations</p>
+        @for (event of operations.data().syncQueue ?? []; track event.id) {
+          <p class="supporting">
+            {{ name(event.personId) }} · {{ event.action }} · {{ event.status }} ·
+            {{ event.at | ukDate: 'd MMM, HH:mm:ss' }}
+          </p>
+        }
+        <button
+          class="academy-button"
+          [disabled]="!academy.can('export')"
+          (click)="exportEvidence()"
+        >
+          Export redacted evidence
+        </button>
+      </section>
+    </div>
+    <section class="panel">
+      <h2>Media processing & recovery</h2>
+      <p>
+        These controls simulate quarantine/retry for locally uploaded files. Videos require
+        accessibility approval again after a retry.
+      </p>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Asset / version</th>
+              <th>State / checksum</th>
+              <th>Rights / language</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of academy.state().assets; track a.id) {
+              <tr>
+                <td>
+                  {{ a.name }}<small>Version {{ a.version ?? 1 }} · {{ a.size }} bytes</small>
+                </td>
+                <td>
+                  {{ a.status }}<small>{{ a.checksum?.slice(0, 16) || 'Checksum pending' }}</small
+                  ><small>{{ a.failure }}</small>
+                </td>
+                <td>
+                  {{ a.rights || 'Rights review pending'
+                  }}<small
+                    >{{ a.language || 'en' }} ·
+                    {{ a.accessibilityReview?.by || 'Accessibility review pending' }}</small
+                  >
+                </td>
+                <td>
+                  <button
+                    class="academy-button"
+                    [disabled]="!academy.can('author')"
+                    (click)="
+                      result(
+                        academy.simulateMediaCheck(
+                          a.id,
+                          a.status !== 'FAILED',
+                          academy.store.companyId()
+                        )
+                      )
+                    "
+                  >
+                    {{
+                      a.status === 'FAILED' ? 'Retry local processing' : 'Simulate scan rejection'
+                    }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+  @case ('KPI definitions') {
+    <section class="panel">
+      <div class="heading">
+        <div>
+          <h2>Shared training KPI definitions</h2>
+          <p>
+            Final course assessments and checkpoint quizzes have separate denominators. Surveys are
+            ungraded and excluded.
+          </p>
+        </div>
+        <a class="academy-button" routerLink="/manage/learning/reports"
+          >Open source-linked reports</a
+        >
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Definition</th>
+              <th>Current value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Final assessment pass rate</td>
+              <td>Passed submitted final assessments / submitted final assessments</td>
+              <td>{{ operations.kpis().finalPassRate }}</td>
+            </tr>
+            <tr>
+              <td>Checkpoint pass rate</td>
+              <td>Passed submitted quizzes / submitted quizzes; excludes surveys</td>
+              <td>{{ operations.kpis().checkpointPassRate }}</td>
+            </tr>
+            <tr>
+              <td>Evidence sync exceptions</td>
+              <td>Saved completion jobs in SYNC_EXCEPTION</td>
+              <td>{{ operations.kpis().exceptions }}</td>
+            </tr>
+            <tr>
+              <td>Mandatory knowledge currency</td>
+              <td>
+                Applicable staff with all accepted current requirements / staff with applicable
+                requirements
+              </td>
+              <td>{{ operations.kpis().currency }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+}

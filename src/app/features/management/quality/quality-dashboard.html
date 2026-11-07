@@ -7,6 +7,30 @@
   />
 } @else {
   @if (dashboard(); as page) {
+    @if (academy.canViewEvidence()) {
+      <details class="academy-kpi-projection">
+        <summary>CareVerity Academy — current workspace training evidence</summary>
+        <p>
+          This projection uses current saved Academy records, independently of the illustrative
+          dashboard reporting month.
+        </p>
+        <div class="academy-kpi-grid">
+          <a routerLink="/manage/learning/reports"
+            ><strong>{{ trainingKpis().currency }}</strong
+            >Mandatory knowledge currency · {{ trainingKpis().applicable }} applicable staff</a
+          ><a routerLink="/manage/learning/results"
+            ><strong>{{ trainingKpis().finalPassRate }}</strong
+            >Final assessments · {{ trainingKpis().finalAttempts }} attempts</a
+          ><a routerLink="/manage/learning/governance"
+            ><strong>{{ trainingKpis().checkpointPassRate }}</strong
+            >Checkpoint quizzes · {{ trainingKpis().checkpointAttempts }} attempts</a
+          ><a routerLink="/manage/learning/certificates"
+            ><strong>{{ trainingKpis().exceptions }}</strong
+            >Evidence synchronisation exceptions</a
+          >
+        </div>
+      </details>
+    }
     <nav class="qd-breadcrumb" aria-label="Breadcrumb">
       <a routerLink="/manage/quality">Quality & Compliance</a>
       @if (page.slug) {

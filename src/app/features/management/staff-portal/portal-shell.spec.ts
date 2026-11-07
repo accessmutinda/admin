@@ -30,15 +30,25 @@ describe('Standalone staff portal', () => {
     const links = Array.from(root.querySelectorAll('nav[aria-label="Staff portal navigation"] a'));
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/staff-portal/dashboard',
-      '/staff-portal/training/dashboard',
-      '/staff-portal/training/courses',
-      '/staff-portal/training/assessments',
-      '/staff-portal/training/certificates',
       '/staff-portal/journal',
       '/staff-portal/tasks',
       '/staff-portal/concerns',
       '/staff-portal/service-users',
       '/staff-portal/oversight',
+    ]);
+    const toggle = root.querySelector<HTMLButtonElement>('.academy-submenu-toggle')!;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    toggle.click();
+    harness.detectChanges();
+    expect(
+      Array.from(root.querySelectorAll('#staff-academy-menu a')).map((a) => a.getAttribute('href')),
+    ).toEqual([
+      '/staff-portal/training/dashboard',
+      '/staff-portal/training/courses',
+      '/staff-portal/training/assessments',
+      '/staff-portal/training/history',
+      '/staff-portal/training/refreshers',
+      '/staff-portal/training/messages',
     ]);
     expect(root.querySelector('.staff-console')?.textContent).toContain('Staff Portal');
     expect(root.querySelector('.portal-nav')).toBeNull();

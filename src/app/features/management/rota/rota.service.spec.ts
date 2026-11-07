@@ -427,6 +427,48 @@ describe('Rota allocation and publishing', () => {
       'expired',
     );
   });
+  it('keeps knowledge completion separate from required practical sign-off', () => {
+    expect(service.saveCall({ ...call(), skills: ['medication'] })).toBeNull();
+    store.update((d) => ({
+      ...d,
+      people: d.people.map((p) =>
+        p.id === 'james'
+          ? {
+              ...p,
+              progress: { ...p.progress, medication: 100 },
+              hr: {
+                ...staffRecord(p),
+                training: [
+                  {
+                    courseId: 'medication',
+                    completed: '2026-10-01',
+                    expiry: '2027-10-01',
+                    assessor: 'Assessor',
+                    competency: 'Not assessed',
+                    certificateId: 'internal-test',
+                  },
+                ],
+              },
+            }
+          : p,
+      ),
+    }));
+    expect(service.generate('client', ['call'], '2026-10-06', '2026-10-06', ['james'])).toContain(
+      'practical competency',
+    );
+  });
+  it('never treats browser lesson progress as accepted HR training evidence', () => {
+    expect(service.saveCall({ ...call(), skills: ['handling'] })).toBeNull();
+    store.update((d) => ({
+      ...d,
+      people: d.people.map((p) =>
+        p.id === 'james' ? { ...p, hr: undefined, progress: { ...p.progress, handling: 100 } } : p,
+      ),
+    }));
+    expect(service.generate('client', ['call'], '2026-10-06', '2026-10-06', ['james'])).toContain(
+      'accepted HR evidence',
+    );
+  });
   it('requires distinct double-up carers before publication and isolates temporary cover', () => {
     expect(service.saveCall({ ...call(), carers: 2 })).toBeNull();
     expect(

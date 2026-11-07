@@ -26,9 +26,12 @@
     </mat-select></label
   >
 </section>
-<div class="stats">
-  @for (stat of stats(); track stat.label) {
-    <div class="stat cv-metric">
+<div class="stats" [style.--academy-metric-columns]="stats().length">
+  @for (stat of stats(); track stat.label; let index = $index) {
+    <div
+      class="stat cv-metric"
+      [attr.data-card-tone]="['green', 'orange', 'purple', 'teal', 'blue'][index]"
+    >
       <span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>
       <div>
         <small>{{ stat.label }}</small

@@ -8,14 +8,11 @@
 .academy-stats {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-.academy-stats .academy-stat-date {
-  font-size: 14px;
-}
 .hr-panel-head > div {
   min-width: 0;
 }
 .hr-panel-head p {
-  margin: 3px 0 0;
+  margin: 4px 0 0;
   font-size: 11px;
   color: #677488;
 }
@@ -109,6 +106,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .academy-form-footer .hr-button {
-    min-height: 40px;
+    min-height: 44px;
   }
 }

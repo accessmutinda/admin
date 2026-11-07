@@ -1,3 +1,4 @@
+import { evidenceCurrent, requirementsFor } from '../learning/academy/academy-governance.models';
 import { RecurringAllocationOptions } from './rota.models';
 import { readiness, availabilityCovers } from '../people/hr.models';
 import { Injectable, computed, inject } from '@angular/core';
@@ -216,7 +217,17 @@ export class RotaService {
       call.regularStaffIds.some((id) => !this.store.staff().some((p) => p.id === id))
     )
       return 'Choose distinct hired staff within the required carer count.';
-    if (call.skills.some((skill) => !COURSES.some((course) => course.id === skill)))
+    if (
+      call.skills.some(
+        (skill) =>
+          !COURSES.some((course) => course.id === skill) &&
+          !this.store
+            .data()
+            .academy?.courses.some(
+              (c) => c.id === skill && c.status === 'Published' && c.active !== false,
+            ),
+      )
+    )
       return 'Choose recognised training requirements.';
     const prospective = this.makeVisit(call, '2000-01-01', call.regularStaffIds, 'Regular');
     const skills = call.regularStaffIds.flatMap((id) => this.skillConflicts(prospective, id));
@@ -274,19 +285,67 @@ export class RotaService {
   private skillConflicts(visit: RotaVisit, id: string): string[] {
     const person = this.store.staff().find((p) => p.id === id);
     if (!person) return ['A selected carer is no longer hired.'];
-    return visit.skills
-      .filter((s) =>
-        person.hr
-          ? !person.hr.training.some(
-              (t) =>
-                t.courseId === s &&
-                t.completed &&
-                t.completed <= visit.date &&
-                (!t.expiry || t.expiry >= visit.date),
-            )
-          : (person.progress[s] ?? 0) < 100,
+    return visit.skills.flatMap((skill) => {
+      const academy = this.store.data().academy;
+      const rule = academy
+        ? requirementsFor(academy, person, visit.date).find((r) => r.courseId === skill)
+        : undefined;
+      if (academy && rule && !evidenceCurrent(academy, person, skill, visit.date, rule))
+        return [`${person.name} has missing, expired, restricted or unaccepted ${skill} evidence.`];
+      const authorisations =
+        academy?.governance?.authorisations.filter(
+          (a) =>
+            a.personId === id &&
+            a.courseId === skill &&
+            (a.task === visit.taskType || a.task === visit.callName || a.task === 'All tasks'),
+        ) ?? [];
+      if (
+        authorisations.length &&
+        !authorisations.some(
+          (a) =>
+            a.status === 'Approved' &&
+            a.observedAt <= visit.date &&
+            a.reviewDue >= visit.date &&
+            (!a.clientId || a.clientId === visit.clientId) &&
+            (!a.location || a.location === visit.location),
+        )
       )
-      .map((s) => `${person.name} has not completed ${s} training.`);
+        return [
+          `${person.name} lacks current approved ${skill} task authorisation for this service user/location.`,
+        ];
+
+      const evidence = person.hr?.training.find(
+        (t) =>
+          t.courseId === skill &&
+          t.completed &&
+          t.completed <= visit.date &&
+          (!t.expiry || t.expiry >= visit.date),
+      );
+      if (!evidence)
+        return [`${person.name} has not completed ${skill} training with accepted HR evidence.`];
+      const practicalRequired =
+        ['medication', 'handling'].includes(skill) ||
+        this.store.data().academy?.courses.find((c) => c.id === skill)?.practicalRequired;
+      if (
+        practicalRequired &&
+        (evidence.competency !== 'Competent' ||
+          (evidence.practicalReviewDue && evidence.practicalReviewDue < visit.date))
+      )
+        return [`${person.name} requires separate practical competency sign-off for ${skill}.`];
+      const certificate = this.store
+        .data()
+        .academy?.certificates.find((c) => c.id === evidence.certificateId);
+      if (certificate?.revokedAt) return [`${person.name} has revoked ${skill} training evidence.`];
+      if (
+        certificate &&
+        this.store
+          .data()
+          .academy?.completions?.find((c) => c.assignmentId === certificate.assignmentId)
+          ?.status !== 'COMPLETE_SYNCED'
+      )
+        return [`${person.name} has ${skill} evidence pending HR/matrix/rota synchronisation.`];
+      return [];
+    });
   }
   conflicts(visit: RotaVisit, all = this.data().visits): string[] {
     const client = this.data().clients.find((c) => c.id === visit.clientId);
@@ -353,7 +412,11 @@ export class RotaService {
         (person.visaExpiry && person.visaExpiry < visit.date)
       )
         problems.push(`${person.name} has an expired employment check.`);
-      if (person.hr && (person.hr.status !== 'Active' || !readiness(person, visit.date).ready))
+      if (
+        person.hr &&
+        (person.hr.status !== 'Active' ||
+          !readiness(person, visit.date, this.store.data().academy).ready)
+      )
         problems.push(`${person.name} is not ready for deployment on this date.`);
       if (!availabilityCovers(person, visit.date, visit.start, visit.end))
         problems.push(`${person.name} is outside their recorded availability.`);

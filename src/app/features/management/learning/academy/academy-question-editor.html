@@ -1,194 +1,788 @@
 <cv-academy-admin-nav />
-<div class="heading">
+<div class="heading bank-heading">
   <div>
-    <a routerLink="/manage/learning/questions">← Back to question bank</a>
-    <h1>Question builder</h1>
-    <p>Create assessment questions and preview how learners will see them.</p>
+    <h1>CareVerity Academy — Question Bank &amp; Correct Answers</h1>
+    <p>Build and manage assessment questions, answers and feedback for a course.</p>
   </div>
-  <div class="actions">
-    <span class="badge">{{ draft.status }} · v{{ draft.version }}</span
-    ><button class="academy-button" [disabled]="unavailable" (click)="save(false)">
-      Save as draft</button
-    ><button class="academy-button primary" [disabled]="unavailable" (click)="save(true)">
-      Publish question
-    </button>
-  </div>
+  <label class="course-picker"
+    ><span class="material-symbols-outlined" aria-hidden="true">school</span
+    ><mat-select
+      cvSelect
+      aria-label="Question bank course"
+      #coursePicker="matSelect"
+      [value]="course?.id"
+      (selectionChange)="changeCourse($event.value); coursePicker.value = course?.id"
+    >
+      @for (item of academy.editableCourses(); track item.id) {
+        <mat-option [value]="item.id">Course Assessment: {{ item.title }}</mat-option>
+      }
+    </mat-select></label
+  >
 </div>
 <cv-academy-message [error]="error()" [notice]="notice()" />
-@if (unavailable) {
+@if (unavailable || !course) {
   <section class="panel empty">
-    <h2>Question unavailable</h2>
-    <p>Choose a question in the current workspace.</p>
+    <h2>Question bank unavailable</h2>
+    <p>Choose a saved course in the current workspace before writing questions.</p>
+    <a class="academy-button" routerLink="/manage/learning/courses">Back to courses</a>
   </section>
 } @else {
-  <div class="columns">
-    <section class="panel">
-      <h2>Question details</h2>
-      <small>Question ID: {{ draft.id }}</small>
-      <div class="field-grid">
-        <label class="field"
-          >Course *<mat-select
-            cvSelect
-            aria-label="Question course"
-            [(ngModel)]="draft.courseId"
-            (ngModelChange)="changeCourse()"
+  <cv-academy-course-steps [courseId]="course.id" [current]="4" />
+  <div class="bank-toolbar">
+    <div class="actions">
+      <button class="academy-button add-question" (click)="add()">
+        <span class="material-symbols-outlined" aria-hidden="true">add</span>Add Question</button
+      ><button class="academy-button" [disabled]="!hasSelectedQuestion()" (click)="duplicate()">
+        <span class="material-symbols-outlined" aria-hidden="true">content_copy</span
+        >Duplicate</button
+      ><button class="academy-button" [disabled]="!hasSelectedQuestion()" (click)="showPreview()">
+        <span class="material-symbols-outlined" aria-hidden="true">visibility</span>Preview Question
+      </button>
+    </div>
+    <button class="academy-button primary" (click)="save()">
+      <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Question Bank
+    </button>
+  </div>
+  <div class="bank-layout">
+    <aside class="panel question-groups-panel" aria-label="Question groups">
+      <div class="panel-header">
+        <h2>Question Groups</h2>
+        <span class="badge">{{ sections().length }}</span>
+      </div>
+      <nav aria-label="Choose question group" class="group-navigation">
+        @for (section of sections(); track section.id) {
+          <div class="group-row">
+            <button
+              class="group-select"
+              [class.active]="selectedGroupId === section.id"
+              [attr.aria-pressed]="selectedGroupId === section.id"
+              [attr.aria-label]="'Select group ' + section.title"
+              (click)="chooseGroup(section.id)"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">{{
+                section.kind === 'Survey' ? 'rate_review' : 'quiz'
+              }}</span>
+              <span
+                ><strong>{{ section.title }}</strong
+                ><small>{{ section.description }}</small
+                ><small>{{ section.questions.length }} questions</small></span
+              >
+              <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+            </button>
+            @if (groupDefinition(section.id); as group) {
+              <button
+                class="icon-button"
+                [matMenuTriggerFor]="groupMenu"
+                [attr.aria-label]="'Actions for group ' + group.title"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>
+              </button>
+              <mat-menu #groupMenu="matMenu"
+                ><button mat-menu-item (click)="openGroup(group)">Edit group</button
+                ><button mat-menu-item (click)="removeGroup(group)">Remove group</button></mat-menu
+              >
+            }
+          </div>
+        }
+      </nav>
+      <button class="academy-button group-create" (click)="openGroup()">
+        <span class="material-symbols-outlined" aria-hidden="true">add</span>Add Question Group
+      </button>
+    </aside>
+    <main class="bank-workspace" aria-label="Selected question bank">
+      <section class="panel selected-bank">
+        <div class="heading">
+          <div>
+            <h2>{{ selectedGroup().title }}</h2>
+            <p>{{ selectedGroup().description }}</p>
+          </div>
+          <button
+            class="academy-button"
+            [attr.aria-label]="'Add question to ' + selectedGroup().title"
+            (click)="add()"
           >
-            @for (c of academy.editableCourses(); track c.id) {
-              <mat-option [value]="c.id">{{ c.title }}</mat-option>
+            <span class="material-symbols-outlined" aria-hidden="true">add</span>Add Question
+          </button>
+        </div>
+        <div class="panel-header">
+          <strong>{{ rows().length }} questions in this bank</strong
+          ><button class="sort-button" (click)="byTopic = !byTopic">
+            Sort: {{ byTopic ? 'Topic' : 'Question order'
+            }}<span class="material-symbols-outlined" aria-hidden="true">sort</span>
+          </button>
+        </div>
+        <div class="question-items">
+          @for (question of rows(); track question.id) {
+            <div class="question-item" [class.active]="draft.id === question.id">
+              <label class="bulk-select"
+                ><input
+                  type="checkbox"
+                  [attr.aria-label]="
+                    'Select question ' + number(question) + ' for group assignment'
+                  "
+                  [checked]="selectedIds().includes(question.id)"
+                  (change)="toggleSelected(question.id)" /></label
+              ><button
+                class="question-select"
+                [attr.aria-label]="'Edit question ' + number(question)"
+                [attr.aria-current]="draft.id === question.id ? 'true' : null"
+                (click)="select(question)"
+              >
+                <span class="question-number">{{ padded(question) }}</span
+                ><span
+                  ><strong>{{ question.text || 'Untitled question' }}</strong
+                  ><small
+                    ><span class="material-symbols-outlined" aria-hidden="true">label</span
+                    >{{ question.category
+                    }}<span class="group-name">· {{ groupLabel(question.groupId) }}</span></small
+                  ></span
+                ><span class="question-marks">{{
+                  isSurvey(question) ? 'Survey' : question.weight + ' pt'
+                }}</span></button
+              ><button
+                class="icon-button"
+                [matMenuTriggerFor]="questionMenu"
+                [attr.aria-label]="'Actions for question ' + number(question)"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span></button
+              ><mat-menu #questionMenu="matMenu"
+                ><button mat-menu-item (click)="duplicate(question)">Duplicate question</button
+                ><button
+                  mat-menu-item
+                  [disabled]="!canMove(question, -1)"
+                  (click)="move(question, -1)"
+                >
+                  Move question up</button
+                ><button
+                  mat-menu-item
+                  [disabled]="!canMove(question, 1)"
+                  (click)="move(question, 1)"
+                >
+                  Move question down
+                </button></mat-menu
+              >
+            </div>
+          } @empty {
+            <p class="empty-questions">No questions in this bank. Add a question to get started.</p>
+          }
+        </div>
+        <div class="bulk-assignment">
+          <strong>{{ selectedIds().length }} questions selected</strong
+          ><mat-select
+            cvSelect
+            aria-label="Assign selected questions to group"
+            [(ngModel)]="targetGroup"
+            ><mat-option value="">Final course assessment</mat-option>
+            @for (group of groups; track group.id) {
+              <mat-option [value]="group.id">{{ group.title }}</mat-option>
+            }</mat-select
+          ><button
+            class="academy-button primary"
+            [disabled]="!selectedIds().length"
+            (click)="assignSelected()"
+          >
+            Assign Selected
+          </button>
+        </div>
+      </section>
+      @if (hasSelectedQuestion()) {
+        <section class="panel question-editor" aria-label="Question editor">
+          <div class="editor-header">
+            <span class="current-question">Q{{ padded() }}</span>
+            <h2>Edit Question</h2>
+            <div class="question-navigation">
+              <button
+                class="icon-button"
+                aria-label="Previous question"
+                [disabled]="questionPosition() <= 0"
+                (click)="navigate(-1)"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true"
+                  >chevron_left</span
+                ></button
+              ><small>Question {{ questionPosition() + 1 }} of {{ rows().length }}</small
+              ><button
+                class="icon-button"
+                aria-label="Next question"
+                [disabled]="questionPosition() >= rows().length - 1"
+                (click)="navigate(1)"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+              </button>
+            </div>
+          </div>
+          <div class="field-grid">
+            <label class="field"
+              >Question type *<mat-select
+                cvSelect
+                aria-label="Question type"
+                [ngModel]="draft.type"
+                (ngModelChange)="changeType($event)"
+              >
+                @for (type of types; track type.value) {
+                  <mat-option
+                    [value]="type.value"
+                    [disabled]="type.value === 'Free text' && !isSurvey()"
+                    >{{ type.label }}</mat-option
+                  >
+                }
+              </mat-select></label
+            ><label class="field"
+              >Topic / skill tag *<input
+                aria-label="Question topic"
+                maxlength="120"
+                [(ngModel)]="draft.category"
+                list="question-topics" /><datalist id="question-topics">
+                <option value="Medication"></option>
+                <option value="Infection Control"></option>
+                <option value="Safeguarding"></option>
+                <option value="Moving & Handling"></option></datalist></label
+            ><label class="field wide"
+              >Question text *<textarea
+                aria-label="Question text"
+                rows="2"
+                maxlength="2000"
+                [(ngModel)]="draft.text"
+              ></textarea>
+            </label>
+          </div>
+          @if (isSurvey()) {
+            <p class="notice">
+              Survey responses have no correct answers, marks or pass/fail grade.
+            </p>
+          }
+          @if (draft.type !== 'Free text') {
+            <h3 class="answers-heading">Answer options *</h3>
+            <div class="answer-options">
+              @for (option of draft.options; track option.id; let index = $index) {
+                <div class="answer-option" [class.correct]="draft.correctIds.includes(option.id)">
+                  @if (!isSurvey()) {
+                    <label class="answer-marker"
+                      ><input
+                        [type]="draft.type === 'Multiple choice' ? 'checkbox' : 'radio'"
+                        name="correct-answer"
+                        [checked]="draft.correctIds.includes(option.id)"
+                        (change)="toggleCorrect(option.id)"
+                        [attr.aria-label]="'Correct answer ' + (index + 1)"
+                      /><span class="material-symbols-outlined" aria-hidden="true">{{
+                        draft.correctIds.includes(option.id)
+                          ? 'check_circle'
+                          : 'radio_button_unchecked'
+                      }}</span></label
+                    >
+                  }
+                  <strong class="answer-letter">{{ letter(index) }}</strong
+                  ><input
+                    class="answer-text"
+                    [attr.aria-label]="'Answer option ' + (index + 1)"
+                    [(ngModel)]="option.text"
+                    maxlength="1000"
+                    placeholder="Enter answer option"
+                  />
+                  @if (draft.correctIds.includes(option.id)) {
+                    <span class="correct-label">Correct answer</span>
+                  }
+                  <button
+                    class="icon-button remove-option"
+                    [disabled]="draft.options.length <= 2 || draft.type === 'True / false'"
+                    [attr.aria-label]="'Remove option ' + (index + 1)"
+                    (click)="removeOption(option.id)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                  </button>
+                </div>
+              }
+            </div>
+            <button
+              class="text-button add-option"
+              [disabled]="draft.options.length >= 8 || draft.type === 'True / false'"
+              (click)="addOption()"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>Add option
+            </button>
+          } @else {
+            <p class="notice">Staff can enter a free text response of up to 4,000 characters.</p>
+          }
+          <div class="feedback-grid">
+            <label class="field"
+              >{{
+                isSurvey()
+                  ? 'Survey context (optional)'
+                  : 'Explanation / feedback (shown after completion) *'
+              }}<textarea
+                rows="4"
+                aria-label="Question explanation"
+                [(ngModel)]="draft.explanation"
+              ></textarea>
+            </label>
+            <div>
+              <label class="critical-control"
+                >Critical question
+                <span
+                  class="material-symbols-outlined info-icon"
+                  title="Incorrect answers to critical questions prevent a pass"
+                  aria-hidden="true"
+                  >info</span
+                ><span class="toggle"
+                  ><input
+                    type="checkbox"
+                    role="switch"
+                    aria-label="Critical question"
+                    [disabled]="isSurvey()"
+                    [(ngModel)]="draft.critical" /><span
+                    class="toggle-track"
+                    aria-hidden="true"
+                  ></span></span></label
+              ><label class="field marks-field"
+                >Marks *<input
+                  type="number"
+                  min="1"
+                  max="10"
+                  aria-label="Question marks"
+                  [disabled]="isSurvey()"
+                  [(ngModel)]="draft.weight"
+              /></label>
+            </div>
+          </div>
+          <label class="randomise-check"
+            ><input
+              type="checkbox"
+              aria-label="Randomise answer order"
+              [(ngModel)]="draft.shuffle"
+            />Randomise answer order for this question<span
+              class="material-symbols-outlined info-icon"
+              title="The assigned course policy also controls answer randomisation"
+              aria-hidden="true"
+              >info</span
+            ></label
+          >
+          <details class="version-history" open>
+            <summary>
+              <span class="material-symbols-outlined" aria-hidden="true">history</span>Version
+              history ({{ history().length }})<span
+                class="material-symbols-outlined expand-icon"
+                aria-hidden="true"
+                >expand_less</span
+              >
+            </summary>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Version</th>
+                    <th>Last updated</th>
+                    <th>Updated by</th>
+                    <th>Change summary</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (event of history(); track event.id; let index = $index) {
+                    <tr>
+                      <td>
+                        <span class="version-pill" [class.current]="index === 0"
+                          >v{{ draft.version - index }}{{ index === 0 ? ' (Current)' : '' }}</span
+                        >
+                      </td>
+                      <td>{{ event.at | ukDate: 'd MMM yyyy, HH:mm' }}</td>
+                      <td>{{ event.actor }}</td>
+                      <td>
+                        {{ draft.version - index === 1 ? 'Initial version' : 'Question saved' }}
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="4">
+                        No saved revisions yet. Save this bank to create the first version.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </details>
+          <details class="additional-settings">
+            <summary>
+              Question placement &amp; approval
+              <span class="badge">{{ draft.status }} · v{{ draft.version }}</span>
+            </summary>
+            <div class="field-grid">
+              <label class="field"
+                >Question group / assessment point<mat-select
+                  cvSelect
+                  aria-label="Question group"
+                  [ngModel]="draft.groupId === 'final' ? '' : draft.groupId || ''"
+                  (ngModelChange)="draft.groupId = $event; changeGroup()"
+                  ><mat-option value="">Final course assessment</mat-option>
+                  @for (group of groups; track group.id) {
+                    <mat-option [value]="group.id">{{ group.title }}</mat-option>
+                  }
+                </mat-select></label
+              ><label class="field"
+                >Related lesson *<mat-select
+                  cvSelect
+                  aria-label="Question lesson"
+                  [(ngModel)]="draft.lessonId"
+                >
+                  @for (lesson of lessons(); track lesson.id) {
+                    <mat-option [value]="lesson.id"
+                      >{{ lesson.moduleTitle ? lesson.moduleTitle + ' · ' : ''
+                      }}{{ lesson.title }}</mat-option
+                    >
+                  }
+                </mat-select></label
+              ><label class="field"
+                >Difficulty<mat-select
+                  cvSelect
+                  aria-label="Question difficulty"
+                  [(ngModel)]="draft.difficulty"
+                >
+                  @for (level of ['Easy', 'Medium', 'Hard']; track level) {
+                    <mat-option [value]="level">{{ level }}</mat-option>
+                  }
+                </mat-select></label
+              ><label class="field"
+                >Tags (comma separated)<input
+                  aria-label="Question tags"
+                  [(ngModel)]="tags" /></label
+              ><label class="check"
+                ><input type="checkbox" [(ngModel)]="draft.required" />Answer required before
+                submission</label
+              ><label class="field wide"
+                >Scenario<textarea rows="2" [(ngModel)]="draft.scenario"></textarea></label
+              ><label class="field wide"
+                >Question image<mat-select
+                  cvSelect
+                  aria-label="Question image"
+                  [(ngModel)]="draft.imageId"
+                  ><mat-option value="">No image</mat-option>
+                  @for (asset of academy.state().assets; track asset.id) {
+                    @if (asset.kind === 'Image') {
+                      <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
+                    }
+                  }
+                </mat-select></label
+              ><label class="field"
+                >Correct answer feedback<textarea
+                  rows="2"
+                  [(ngModel)]="draft.correctFeedback"
+                ></textarea></label
+              ><label class="field"
+                >Incorrect answer feedback<textarea
+                  rows="2"
+                  [(ngModel)]="draft.incorrectFeedback"
+                ></textarea>
+              </label>
+            </div>
+            <p>
+              Publish reviewed questions, then publish the approved course version. Existing
+              assignments retain their original bank and schedule.
+            </p>
+            <button class="academy-button primary" (click)="save(true)">
+              Publish selected question
+            </button>
+          </details>
+        </section>
+      }
+    </main>
+    <aside class="panel bank-summary">
+      <h2>
+        <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>Question Bank
+        Summary
+      </h2>
+      <div class="stats bank-summary-stats">
+        <div class="cv-metric" data-card-tone="blue">
+          <span class="material-symbols-outlined" aria-hidden="true">assignment</span>
+          <div>
+            <h3 class="cv-metric-label">Total questions</h3>
+            <strong>{{ bank.length }}</strong
+            ><small>Selected course question bank</small>
+          </div>
+        </div>
+        <div class="cv-metric" data-card-tone="purple">
+          <span class="material-symbols-outlined" aria-hidden="true">star</span>
+          <div>
+            <h3 class="cv-metric-label">Total marks</h3>
+            <strong>{{ totalMarks() }} pts</strong><small>Available question marks</small>
+          </div>
+        </div>
+        <div class="cv-metric" data-card-tone="green">
+          <span class="material-symbols-outlined" aria-hidden="true">track_changes</span>
+          <div>
+            <h3 class="cv-metric-label">Required pass mark</h3>
+            <strong>{{
+              selectedGroup().kind === 'Survey'
+                ? 'Not graded'
+                : requiredMarks() + ' pts (' + passMark() + '%)'
+            }}</strong
+            ><small>{{ selectedGroup().title }}</small>
+          </div>
+        </div>
+      </div>
+      <p class="summary-note">
+        {{
+          selectedGroup().kind === 'Survey'
+            ? 'Survey responses are recorded without marking.'
+            : 'Quizzes use the course pass threshold. Counted groups contribute their earned and available marks to the final grade.'
+        }}
+      </p>
+      <h3 class="types-heading">
+        <span class="material-symbols-outlined" aria-hidden="true">layers</span>Question types used
+      </h3>
+      <div class="type-list">
+        @for (type of types; track type.value) {
+          <div>
+            <span
+              class="material-symbols-outlined"
+              [class.used]="count(type.value)"
+              aria-hidden="true"
+              >{{ count(type.value) ? 'check_circle' : 'radio_button_unchecked' }}</span
+            ><span>{{ type.label }}</span
+            ><strong>{{ count(type.value) }} ({{ percent(type.value) }}%)</strong>
+          </div>
+        }
+        <div class="unsupported">
+          <span class="material-symbols-outlined" aria-hidden="true">radio_button_unchecked</span
+          ><span>Matching</span><strong>0 (0%)</strong>
+        </div>
+      </div>
+      <div class="feedback-summary">
+        <span class="material-symbols-outlined" aria-hidden="true">chat_bubble_outline</span
+        ><span>Answer feedback after completion</span
+        ><strong
+          [class.hidden-feedback]="
+            !(course.policy?.showFeedback ?? academy.state().settings.showFeedback)
+          "
+          >{{
+            (course.policy?.showFeedback ?? academy.state().settings.showFeedback)
+              ? 'Shown'
+              : 'Withheld'
+          }}</strong
+        >
+      </div>
+    </aside>
+  </div>
+  <footer class="wizard-footer">
+    <button class="academy-button" (click)="back()">
+      <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to Modules
+      &amp; Lessons</button
+    ><button class="academy-button primary" (click)="saveContinue()">
+      Save &amp; Continue to Rules &amp; Assignments<span
+        class="material-symbols-outlined"
+        aria-hidden="true"
+        >arrow_forward</span
+      >
+    </button>
+  </footer>
+}
+@if (previewOpen()) {
+  <div class="modal-backdrop" (click)="previewOpen.set(false)"></div>
+  <section
+    class="question-modal"
+    [class.mobile-preview]="mobilePreview()"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="preview-title"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <div class="heading">
+      <h2 id="preview-title">Question preview</h2>
+      <div class="actions">
+        <button class="academy-button" (click)="mobilePreview.set(!mobilePreview())">
+          {{ mobilePreview() ? 'Desktop' : 'Mobile' }} preview</button
+        ><button
+          class="icon-button"
+          aria-label="Close question preview"
+          (click)="previewOpen.set(false)"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+    </div>
+    <p>
+      {{ groupLabel(draft.groupId) }} · {{ isSurvey() ? 'Not graded' : draft.weight + ' marks' }}
+    </p>
+    @if (draft.type === 'Free text') {
+      <textarea
+        aria-label="Survey response preview"
+        placeholder="Enter your feedback"
+        disabled
+      ></textarea>
+    }
+    @if (draft.scenario) {
+      <p class="preserve">{{ draft.scenario }}</p>
+    }
+    <h2>{{ draft.text || 'Your question will appear here.' }}</h2>
+    @if (draft.imageId) {
+      <cv-academy-image [id]="draft.imageId" alt="Question illustration" />
+    }
+    @for (option of draft.options; track option.id) {
+      <div
+        class="preview-option"
+        [class.correct]="revealAnswers() && draft.correctIds.includes(option.id)"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">{{
+          revealAnswers() && draft.correctIds.includes(option.id)
+            ? 'check_circle'
+            : 'radio_button_unchecked'
+        }}</span
+        >{{ option.text || 'Answer option' }}
+      </div>
+    }
+    @if (!isSurvey()) {
+      <button class="academy-button" (click)="revealAnswers.set(!revealAnswers())">
+        {{ revealAnswers() ? 'Hide' : 'Show' }} correct answers &amp; feedback
+      </button>
+    }
+    @if (revealAnswers() && !isSurvey()) {
+      <div class="preview-feedback">
+        <strong>Explanation · Released under the assigned feedback policy</strong>
+        <p>{{ draft.explanation }}</p>
+      </div>
+    }
+  </section>
+}
+@if (groupOpen()) {
+  <div class="modal-backdrop" (click)="groupOpen.set(false)"></div>
+  <section
+    class="question-modal group-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="group-title"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <div class="heading">
+      <h2 id="group-title">Question Group &amp; Schedule</h2>
+      <button class="icon-button" aria-label="Close group editor" (click)="groupOpen.set(false)">
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    </div>
+    <cv-academy-message [error]="error()" />
+    <form (ngSubmit)="saveGroup()">
+      <label class="field"
+        >Group name *<input
+          cdkFocusInitial
+          name="name"
+          aria-label="Question group name"
+          maxlength="100"
+          required
+          [(ngModel)]="groupForm.title" /></label
+      ><label class="field"
+        >Group type<mat-select
+          cvSelect
+          name="kind"
+          aria-label="Question group type"
+          [ngModel]="groupForm.kind"
+          (ngModelChange)="changeGroupKind($event)"
+          ><mat-option value="Quiz">Quiz / assessment</mat-option
+          ><mat-option value="Survey">Survey / feedback</mat-option></mat-select
+        ></label
+      >
+      <label class="check"
+        ><input
+          type="checkbox"
+          name="graded"
+          aria-label="Count toward final grade"
+          [disabled]="groupForm.kind === 'Survey'"
+          [(ngModel)]="groupForm.countsTowardGrade"
+        />Count toward final grade</label
+      >
+      <p>
+        Counted quizzes contribute earned marks / available marks alongside the final assessment.
+        Surveys are never graded.
+      </p>
+      <label class="field"
+        >Assessment point<mat-select
+          cvSelect
+          name="placement"
+          aria-label="Assessment placement"
+          [(ngModel)]="groupForm.placement"
+        >
+          @for (
+            placement of [
+              'Before module',
+              'After module',
+              'Within module',
+              'After lesson',
+              'Scheduled',
+              'Course completion',
+            ];
+            track placement
+          ) {
+            <mat-option [value]="placement">{{ placement }}</mat-option>
+          }
+        </mat-select></label
+      >
+      @if (
+        groupForm.placement === 'Before module' ||
+        groupForm.placement === 'After module' ||
+        groupForm.placement === 'Within module'
+      ) {
+        <label class="field"
+          >Module *<mat-select
+            cvSelect
+            name="module"
+            aria-label="Assessment module"
+            [(ngModel)]="groupForm.moduleId"
+          >
+            @for (module of course?.modules || []; track module.id) {
+              <mat-option [value]="module.id">{{ module.title }}</mat-option>
             }
           </mat-select></label
-        ><label class="field"
-          >Module / lesson *<mat-select
+        >
+      }
+      @if (groupForm.placement === 'After lesson' || groupForm.placement === 'Within module') {
+        <label class="field"
+          >Lesson *<mat-select
             cvSelect
-            aria-label="Question lesson"
-            [(ngModel)]="draft.lessonId"
+            name="lesson"
+            aria-label="Assessment lesson"
+            [(ngModel)]="groupForm.lessonId"
           >
-            @for (lesson of lessons(); track lesson.id) {
+            @for (lesson of groupLessons(); track lesson.id) {
               <mat-option [value]="lesson.id">{{ lesson.title }}</mat-option>
             }
           </mat-select></label
-        ><label class="field"
-          >Question type *<mat-select
-            cvSelect
-            aria-label="Question type"
-            [(ngModel)]="draft.type"
-            (ngModelChange)="changeType()"
-          >
-            @for (type of ['Single choice', 'Multiple choice', 'True / false']; track type) {
-              <mat-option [value]="type">{{ type }}</mat-option>
-            }
-          </mat-select></label
-        ><label class="field"
-          >Difficulty<mat-select
-            cvSelect
-            aria-label="Question difficulty"
-            [(ngModel)]="draft.difficulty"
-          >
-            @for (level of ['Easy', 'Medium', 'Hard']; track level) {
-              <mat-option [value]="level">{{ level }}</mat-option>
-            }
-          </mat-select></label
-        ><label class="field">Category / topic *<input [(ngModel)]="draft.category" /></label
-        ><label class="field"
-          >Marks<input type="number" min="1" max="10" [(ngModel)]="draft.weight" /></label
-        ><label class="field wide"
-          >Scenario (optional)<textarea rows="3" [(ngModel)]="draft.scenario"></textarea></label
-        ><label class="field wide"
-          >Question text *<textarea rows="4" maxlength="2000" [(ngModel)]="draft.text"></textarea
-          ><small>{{ draft.text.length }}/2000 characters</small></label
-        ><label class="field wide"
-          >Image (optional)<mat-select
-            cvSelect
-            aria-label="Question image"
-            [(ngModel)]="draft.imageId"
-            ><mat-option value="">No image</mat-option>
-            @for (asset of academy.state().assets; track asset.id) {
-              @if (asset.kind === 'Image') {
-                <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
-              }
-            }</mat-select
-          ><a routerLink="/manage/learning/assets">Upload an image →</a></label
         >
-      </div>
-      <h2>Answer options</h2>
-      <p>
-        Select every correct option for a multiple-choice question. All correct options are required
-        to earn its marks.
-      </p>
-      @for (option of draft.options; track option.id; let i = $index) {
-        <div class="option-editor">
-          <label class="check"
-            ><input
-              [type]="draft.type === 'Multiple choice' ? 'checkbox' : 'radio'"
-              name="correct-answer"
-              [checked]="draft.correctIds.includes(option.id)"
-              (change)="toggleCorrect(option.id)"
-              [attr.aria-label]="'Correct answer ' + (i + 1)" /></label
-          ><input [(ngModel)]="option.text" [attr.aria-label]="'Answer option ' + (i + 1)" /><button
-            class="academy-button danger"
-            [disabled]="draft.options.length <= 2 || draft.type === 'True / false'"
-            (click)="removeOption(option.id)"
-            [attr.aria-label]="'Remove option ' + (i + 1)"
-          >
-            ×
-          </button>
-        </div>
       }
-      <button
-        class="academy-button"
-        [disabled]="draft.options.length >= 8 || draft.type === 'True / false'"
-        (click)="addOption()"
-      >
-        Add option</button
-      ><label class="check"
-        ><input type="checkbox" [(ngModel)]="draft.required" />Required question</label
-      ><label class="check"
-        ><input type="checkbox" [(ngModel)]="draft.shuffle" />Allow answer option
-        randomisation</label
-      ><label class="field">Tags (comma separated)<input [(ngModel)]="tags" /></label>
-    </section>
-    <aside>
-      <section
-        class="panel preview-question"
-        [style.max-width]="mobilePreview() ? '390px' : 'none'"
-      >
-        <div class="heading">
-          <h2>Question preview</h2>
-          <button class="academy-button" (click)="mobilePreview.set(!mobilePreview())">
-            {{ mobilePreview() ? 'Desktop' : 'Mobile' }} preview
-          </button>
-        </div>
-        @if (draft.scenario) {
-          <div class="scenario preserve">{{ draft.scenario }}</div>
-        }
-        <h2>{{ draft.text || 'Your question will appear here.' }}</h2>
-        @if (draft.imageId) {
-          <cv-academy-image
-            class="question-image"
-            [id]="draft.imageId"
-            alt="Question illustration"
-          />
-        }
-        @for (option of draft.options; track option.id) {
-          <div class="question-option" [class.selected]="draft.correctIds.includes(option.id)">
-            <span class="material-symbols-outlined" aria-hidden="true">{{
-              draft.correctIds.includes(option.id) ? 'check_circle' : 'radio_button_unchecked'
-            }}</span
-            >{{ option.text || 'Answer option' }}
-          </div>
-        }
-        <div class="notice">
-          <strong>Explanation · shown after submission if enabled</strong>
-          <p class="preserve">{{ draft.explanation || 'Add an explanation for learners.' }}</p>
-        </div>
-      </section>
-      <section class="panel">
-        <h2>Feedback & explanation</h2>
+      <div class="field-grid">
         <label class="field"
-          >Explanation *<textarea rows="4" [(ngModel)]="draft.explanation"></textarea></label
+          >Available after assignment (days)<input
+            type="number"
+            name="available"
+            aria-label="Group available after days"
+            min="0"
+            max="3650"
+            [(ngModel)]="groupForm.availableAfterDays" /></label
         ><label class="field"
-          >Correct answer feedback<textarea
-            rows="3"
-            [(ngModel)]="draft.correctFeedback"
-          ></textarea></label
-        ><label class="field"
-          >Incorrect answer feedback<textarea
-            rows="3"
-            [(ngModel)]="draft.incorrectFeedback"
-          ></textarea>
-        </label>
-      </section>
-      <section class="panel">
-        <h2>Saved version history</h2>
-        @for (event of history(); track event.id) {
-          <article class="history-item">
-            <strong>{{ event.action }}</strong
-            ><small>{{ event.actor }} · {{ event.at }}</small>
-          </article>
-        } @empty {
-          <p>No saved revisions yet.</p>
-        }
-      </section>
-    </aside>
-  </div>
+          >Due after assignment (days)<input
+            type="number"
+            name="due"
+            aria-label="Group due after days"
+            min="0"
+            max="3650"
+            placeholder="No due date"
+            [(ngModel)]="groupForm.dueAfterDays"
+        /></label>
+      </div>
+      <label class="check"
+        ><input type="checkbox" name="required" [(ngModel)]="groupForm.required" />{{
+          groupForm.kind === 'Survey'
+            ? 'Require completion before continuing'
+            : 'Require a pass before continuing'
+        }}</label
+      >
+      <p>
+        Within-module groups appear after the selected lesson. Required quizzes gate later learning
+        until passed; required surveys gate it until submitted. Counted quizzes must be submitted
+        before the final assessment. Scheduled dates use the staff member’s course assignment date.
+        Due dates show overdue status and do not erase attempts.
+      </p>
+      <div class="actions modal-actions">
+        <button type="button" class="academy-button" (click)="groupOpen.set(false)">Cancel</button
+        ><button type="submit" class="academy-button primary">Apply Group</button>
+      </div>
+    </form>
+  </section>
 }

@@ -1,15 +1,14 @@
 <cv-academy-admin-nav />
-<div class="heading">
+<div class="heading course-heading">
   <div>
-    <h1>{{ draft.title || 'Create course' }}</h1>
-    <p>Define the course, lessons, assessment and certificate requirements.</p>
+    <h1>CareVerity Academy — {{ isNew() ? 'Create Training Course' : 'Edit Training Course' }}</h1>
+    <p>Define course details, applicability, renewal rules and publishing settings.</p>
   </div>
   <div class="actions">
-    <a class="academy-button" routerLink="/manage/learning/courses">Back to courses</a
-    ><button class="academy-button" [disabled]="unavailable" (click)="save(false)">
-      Save as draft</button
-    ><button class="academy-button primary" [disabled]="unavailable" (click)="save(true)">
-      Publish course
+    <button class="academy-button" [disabled]="unavailable" (click)="save(false)">Save Draft</button
+    ><button class="academy-button primary" [disabled]="unavailable" (click)="saveContinue()">
+      <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>Save &amp;
+      Continue
     </button>
   </div>
 </div>
@@ -20,53 +19,451 @@
     <p>This course is no longer in the current workspace.</p>
   </section>
 } @else {
-  <div class="columns">
-    <div>
-      <section class="panel">
-        <h2>Course details</h2>
-        <div class="field-grid">
-          <label class="field wide"
-            >Course title<input [(ngModel)]="draft.title" maxlength="180" /></label
-          ><label class="field wide"
-            >Description<textarea rows="4" [(ngModel)]="draft.description"></textarea></label
-          ><label class="field">Category<input [(ngModel)]="draft.category" /></label
+  <cv-academy-course-steps [courseId]="hasSavedCourse() ? draft.id : ''" [current]="1" />
+  <div class="course-reference-layout">
+    <div class="course-profile-grid">
+      <section class="panel course-details">
+        <div class="section-heading">
+          <span class="material-symbols-outlined" aria-hidden="true">school</span>
+          <div>
+            <h2>Course Details</h2>
+            <p>Core information about the training course.</p>
+          </div>
+        </div>
+        <div class="course-identity">
+          <label class="field"
+            >Course title *<input
+              aria-label="Course title"
+              required
+              [(ngModel)]="draft.title"
+              maxlength="180"
+              placeholder="Medication Awareness for Home Care" /></label
           ><label class="field"
-            >CPD hours<input
-              type="number"
-              min="0"
-              max="100"
-              step="0.25"
-              [(ngModel)]="draft.cpdHours" /></label
-          ><label class="field"
-            >Pass mark override (%)<input
-              type="number"
-              min="1"
-              max="100"
-              [(ngModel)]="draft.passMark"
-              placeholder="Use academy default" /></label
-          ><label class="field"
-            >Validity override (months)<input
-              type="number"
-              min="0"
-              max="120"
-              [(ngModel)]="draft.validityMonths"
-              placeholder="Use academy default" /></label
-          ><label class="field wide"
-            >Thumbnail<mat-select
-              cvSelect
-              aria-label="Course thumbnail"
-              [(ngModel)]="draft.thumbnailId"
-              ><mat-option value="">Category placeholder</mat-option>
-              @for (asset of academy.state().assets; track asset.id) {
-                @if (asset.kind === 'Image') {
-                  <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
+            >Course code *<input
+              aria-label="Course code"
+              required
+              [(ngModel)]="draft.code"
+              maxlength="60"
+              placeholder="CVTA-MED-001"
+          /></label>
+        </div>
+        <label class="field description-field"
+          >Description *<textarea
+            aria-label="Course description"
+            required
+            rows="4"
+            [(ngModel)]="draft.description"
+            placeholder="Describe the purpose and scope of this training course."
+          ></textarea>
+        </label>
+        <div class="duration-type-row">
+          <label class="field"
+            >Estimated duration *<span class="icon-select"
+              ><span class="material-symbols-outlined" aria-hidden="true">schedule</span
+              ><mat-select
+                cvSelect
+                aria-label="Estimated duration"
+                [(ngModel)]="draft.estimatedMinutes"
+              >
+                @for (duration of durationOptions(); track duration) {
+                  <mat-option [value]="duration">{{ duration }} minutes</mat-option>
                 }
+              </mat-select></span
+            ></label
+          >
+          <fieldset class="course-type">
+            <legend>Course type *</legend>
+            <div>
+              <label [class.selected]="draft.mandatory"
+                ><input
+                  type="radio"
+                  name="courseType"
+                  [value]="true"
+                  [ngModel]="draft.mandatory"
+                  (ngModelChange)="setMandatory($event)"
+                /><span>Mandatory<small>(required)</small></span></label
+              ><label [class.selected]="!draft.mandatory"
+                ><input
+                  type="radio"
+                  name="courseType"
+                  [value]="false"
+                  [ngModel]="draft.mandatory"
+                  (ngModelChange)="setMandatory($event)"
+                /><span>Optional<small>(recommended)</small></span></label
+              >
+            </div>
+          </fieldset>
+        </div>
+      </section>
+      <div class="applicability-stack">
+        <section class="panel role-applicability">
+          <div class="section-heading">
+            <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+            <div>
+              <h2>Role Applicability</h2>
+              <p>Select the role groups that must or can complete this course.</p>
+            </div>
+          </div>
+          <label class="field"
+            >Applicable role groups *<mat-select
+              cvSelect
+              class="chip-select role-select"
+              multiple
+              required
+              aria-label="Applicable staff roles"
+              [(ngModel)]="draft.targetRoles"
+              placeholder="Select role groups"
+              ><mat-select-trigger
+                ><span class="selection-chips">
+                  @for (role of draft.targetRoles; track role) {
+                    <span class="selection-chip"
+                      >{{ role
+                      }}<button
+                        type="button"
+                        tabindex="-1"
+                        [attr.aria-label]="'Remove role ' + role"
+                        (click)="removeRole(role); $event.stopPropagation()"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                      </button></span
+                    >
+                  }
+                </span></mat-select-trigger
+              >
+              @for (role of audienceRoles; track role) {
+                <mat-option [value]="role">{{ role }}</mat-option>
               }
             </mat-select></label
           >
+        </section>
+        <section class="panel compliance-tags">
+          <div class="section-heading">
+            <span class="material-symbols-outlined" aria-hidden="true">sell</span>
+            <div>
+              <h2>Compliance Tags</h2>
+              <p>Add tags to support reporting, filtering and compliance tracking.</p>
+            </div>
+          </div>
+          <label class="field"
+            >Tags<mat-select
+              cvSelect
+              class="chip-select"
+              multiple
+              aria-label="Compliance tags"
+              [(ngModel)]="draft.tags"
+              placeholder="Select tags"
+              ><mat-select-trigger
+                ><span class="selection-chips">
+                  @for (tag of draft.tags; track tag) {
+                    <span class="selection-chip"
+                      >{{ tag
+                      }}<button
+                        type="button"
+                        tabindex="-1"
+                        [attr.aria-label]="'Remove tag ' + tag"
+                        (click)="removeTag(tag); $event.stopPropagation()"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                      </button></span
+                    >
+                  }
+                </span></mat-select-trigger
+              >
+              @for (tag of tagOptions(); track tag) {
+                <mat-option [value]="tag">{{ tag }}</mat-option>
+              }
+            </mat-select></label
+          >
+        </section>
+      </div>
+      <section class="panel renewal-rules">
+        <div class="section-heading">
+          <span class="material-symbols-outlined" aria-hidden="true">autorenew</span>
+          <div>
+            <h2>Renewal & Refresher Rules</h2>
+            <p>Set how often this course must be refreshed and the pass requirements.</p>
+          </div>
         </div>
-        <label class="check"
-          ><input type="checkbox" [(ngModel)]="draft.mandatory" />Mandatory course</label
+        <div class="renewal-field-grid">
+          <label class="field"
+            >Refresher interval *<span class="icon-select"
+              ><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span
+              ><mat-select
+                cvSelect
+                aria-label="Refresher interval"
+                [(ngModel)]="draft.validityMonths"
+                [placeholder]="validity() ? validity() + ' months (policy)' : 'Policy review'"
+                ><mat-option [value]="null">Use company policy</mat-option>
+                @for (months of validityOptions(); track months) {
+                  <mat-option [value]="months">{{
+                    months ? months + ' months' : 'No automatic expiry'
+                  }}</mat-option>
+                }
+              </mat-select></span
+            ></label
+          ><label class="field"
+            >Pass mark (default) *<span class="icon-select"
+              ><span class="material-symbols-outlined" aria-hidden="true">target</span
+              ><mat-select
+                cvSelect
+                aria-label="Course pass mark"
+                [(ngModel)]="draft.passMark"
+                [placeholder]="passMark() + '% (policy)'"
+                ><mat-option [value]="null">Use academy default</mat-option>
+                @for (mark of passMarkOptions(); track mark) {
+                  <mat-option [value]="mark">{{ mark }}%</mat-option>
+                }
+              </mat-select></span
+            ></label
+          ><label class="field"
+            >Version number *<span class="icon-input"
+              ><span class="material-symbols-outlined" aria-hidden="true">layers</span
+              ><input
+                aria-label="Course version"
+                readonly
+                [value]="'v' + (draft.version || 1) + '.0'" /></span
+          ></label>
+        </div>
+      </section>
+      <section class="panel publishing-controls">
+        <div class="section-heading">
+          <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+          <div>
+            <h2>Publishing Controls</h2>
+            <p>Manage course status and completion requirements.</p>
+          </div>
+        </div>
+        <label class="switch-row"
+          ><span>Active (available to assign)</span
+          ><span class="switch"
+            ><input
+              type="checkbox"
+              role="switch"
+              aria-label="Active (available to assign)"
+              [(ngModel)]="draft.active" /><span class="switch-track"></span></span></label
+        ><label class="switch-row"
+          ><span
+            >Requires practical sign-off separately
+            <span
+              class="material-symbols-outlined info-icon"
+              title="A knowledge assessment does not award practical competency."
+              aria-hidden="true"
+              >info</span
+            ></span
+          ><span class="switch"
+            ><input
+              type="checkbox"
+              role="switch"
+              aria-label="Requires practical sign-off separately"
+              [(ngModel)]="draft.practicalRequired" /><span class="switch-track"></span></span
+        ></label>
+      </section>
+      <section class="panel learning-outcomes">
+        <div class="section-heading">
+          <span class="material-symbols-outlined" aria-hidden="true">target</span>
+          <div>
+            <h2>Learning Outcomes</h2>
+            <p>Define what learners will be able to do after completing this course.</p>
+          </div>
+          <button
+            class="add-outcome"
+            type="button"
+            aria-label="Add learning outcome"
+            (click)="addOutcome()"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">add</span>
+          </button>
+        </div>
+        <div class="outcome-list">
+          @for (outcome of outcomeRows(); track $index; let index = $index) {
+            <div class="outcome-entry">
+              <span class="outcome-number">{{ index + 1 }}</span
+              ><input
+                [attr.aria-label]="'Learning outcome ' + (index + 1)"
+                [ngModel]="outcome"
+                (ngModelChange)="setOutcome(index, $event)"
+                maxlength="600"
+                placeholder="Define a measurable learning outcome."
+              /><button
+                type="button"
+                [attr.aria-label]="'Remove learning outcome ' + (index + 1)"
+                (click)="removeOutcome(index)"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">close</span>
+              </button>
+            </div>
+          }
+        </div>
+      </section>
+    </div>
+    <aside class="panel course-summary">
+      <div class="section-heading">
+        <span class="material-symbols-outlined" aria-hidden="true">assignment</span>
+        <div>
+          <h2>Course Summary</h2>
+          <p>A quick view of the key course settings.</p>
+        </div>
+      </div>
+      <div class="course-status" [class.archived]="draft.status === 'Archived'">
+        <span class="material-symbols-outlined" aria-hidden="true">description</span>
+        <div>
+          <h3>Course Status</h3>
+          <strong>{{ draft.status }}</strong>
+        </div>
+        <span class="status-label">{{
+          draft.status === 'Published'
+            ? draft.active
+              ? 'Available to assign'
+              : 'Inactive'
+            : draft.status === 'Archived'
+              ? 'Retired'
+              : 'Not yet published'
+        }}</span>
+      </div>
+      <dl class="summary-rows">
+        <div>
+          <dt><span class="material-symbols-outlined" aria-hidden="true">layers</span>Version</dt>
+          <dd>v{{ draft.version || 1 }}.0</dd>
+        </div>
+        <div>
+          <dt>
+            <span class="material-symbols-outlined" aria-hidden="true">schedule</span>Estimated
+            completion time
+          </dt>
+          <dd>{{ draft.estimatedMinutes }} minutes</dd>
+        </div>
+        <div>
+          <dt>
+            <span class="material-symbols-outlined" aria-hidden="true">groups</span
+            >{{ draft.mandatory ? 'Mandatory roles' : 'Applicable roles' }}
+          </dt>
+          <dd>{{ draft.targetRoles?.length ? draft.targetRoles?.join(', ') : 'Not selected' }}</dd>
+        </div>
+        <div>
+          <dt>
+            <span class="material-symbols-outlined" aria-hidden="true">autorenew</span>Refresher
+            interval
+          </dt>
+          <dd>{{ validity() ? validity() + ' months' : 'No automatic expiry' }}</dd>
+        </div>
+        <div>
+          <dt>
+            <span class="material-symbols-outlined" aria-hidden="true">target</span>Pass mark
+            (default)
+          </dt>
+          <dd>{{ passMark() }}%</dd>
+        </div>
+        <div>
+          <dt>
+            <span class="material-symbols-outlined" aria-hidden="true">assignment_turned_in</span
+            >Practical sign-off required
+          </dt>
+          <dd>{{ draft.practicalRequired ? 'Yes' : 'No' }}</dd>
+        </div>
+      </dl>
+      <section class="post-pass">
+        <h3>
+          <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>When this
+          course is passed, it updates:
+        </h3>
+        @for (action of postPassActions; track action.title) {
+          <div class="post-pass-row">
+            <span class="material-symbols-outlined action-check" aria-hidden="true"
+              >check_circle</span
+            ><span class="material-symbols-outlined action-icon" aria-hidden="true">{{
+              action.icon
+            }}</span>
+            <div>
+              <h4>{{ action.title }}</h4>
+              <p>{{ action.description }}</p>
+            </div>
+          </div>
+        }
+      </section>
+    </aside>
+  </div>
+  <details class="panel course-additional" [open]="showPublishing">
+    <summary>
+      <span class="material-symbols-outlined" aria-hidden="true">fact_check</span>Publishing
+      approval & additional settings
+    </summary>
+    <div class="additional-body">
+      <div class="field-grid">
+        <label class="field"
+          >Applicable branches<mat-select
+            cvSelect
+            multiple
+            aria-label="Course branches"
+            [(ngModel)]="draft.targetBranches"
+          >
+            @for (branch of audienceBranches; track branch) {
+              <mat-option [value]="branch">{{ branch }}</mat-option>
+            }
+          </mat-select></label
+        >
+        <label class="field"
+          >Prerequisite courses<mat-select
+            cvSelect
+            multiple
+            aria-label="Prerequisite courses"
+            [(ngModel)]="draft.prerequisiteCourseIds"
+          >
+            @for (c of academy.state().courses; track c.id) {
+              @if (c.id !== draft.id) {
+                <mat-option [value]="c.id">{{ c.title }}</mat-option>
+              }
+            }
+          </mat-select></label
+        >
+        <label class="field"
+          >Learning evidence type<mat-select
+            cvSelect
+            aria-label="Learning evidence type"
+            [(ngModel)]="draft.evidenceType"
+            ><mat-option value="Internal knowledge completion"
+              >Internal knowledge completion</mat-option
+            ><mat-option value="Practical observation record"
+              >Practical observation record — separate sign-off</mat-option
+            ><mat-option value="Portable qualification evidence"
+              >Portable qualification evidence — separate review</mat-option
+            ></mat-select
+          ></label
+        >
+        <label class="field"
+          >Renewal policy reference<input [(ngModel)]="draft.renewalPolicyRef" maxlength="180"
+        /></label>
+        <label class="field"
+          >CPD justification<input [(ngModel)]="draft.cpdJustification" maxlength="500"
+        /></label>
+        <label class="field">Course owner<input [(ngModel)]="draft.owner" maxlength="180" /></label
+        ><label class="field"
+          >Approved certificate issuer<input [(ngModel)]="draft.issuer" maxlength="180" /></label
+        ><label class="field"
+          >Publish approver<input [(ngModel)]="draft.approver" maxlength="180" /></label
+        ><label class="field"
+          >Effective date<input type="date" [(ngModel)]="draft.effectiveDate" /></label
+        ><label class="field"
+          >Content rights / licence<input [(ngModel)]="draft.rights" maxlength="300" /></label
+        ><label class="field">Category<input [(ngModel)]="draft.category" maxlength="80" /></label
+        ><label class="field"
+          >Approved CPD hours<input
+            type="number"
+            min="0"
+            max="100"
+            step="0.25"
+            [(ngModel)]="draft.cpdHours" /></label
+        ><label class="field"
+          >Thumbnail<mat-select
+            cvSelect
+            aria-label="Course thumbnail"
+            [(ngModel)]="draft.thumbnailId"
+            ><mat-option value="">Category placeholder</mat-option>
+            @for (asset of academy.state().assets; track asset.id) {
+              @if (asset.kind === 'Image') {
+                <mat-option [value]="asset.id">{{ asset.name }}</mat-option>
+              }
+            }
+          </mat-select></label
         ><label class="check"
           ><input type="checkbox" [(ngModel)]="draft.sample" />Sample learning content</label
         ><label class="field"
@@ -80,83 +477,110 @@
             }
           </mat-select></label
         >
-      </section>
-      <section class="panel">
-        <div class="heading">
-          <h2>Lessons & modules</h2>
-          <button class="academy-button" (click)="addLesson()">Add lesson</button>
+      </div>
+      @if (draft.policy; as policy) {
+        <h3>Assessment rules</h3>
+        <div class="field-grid">
+          <label class="field"
+            >Feedback release<mat-select
+              cvSelect
+              aria-label="Feedback release policy"
+              [(ngModel)]="policy.feedbackMode"
+              ><mat-option value="Immediate">After submission</mat-option
+              ><mat-option value="After delay">After approved delay</mat-option
+              ><mat-option value="Manager release">Manager-approved release</mat-option></mat-select
+            ></label
+          ><label class="field"
+            >Feedback delay (hours)<input
+              type="number"
+              min="0"
+              max="720"
+              [(ngModel)]="policy.feedbackDelayHours"
+          /></label>
         </div>
-        @for (lesson of draft.lessons; track lesson.id; let index = $index) {
-          <article class="panel">
-            <div class="field-grid">
-              <label class="field"
-                >Lesson {{ index + 1 }} title<input [(ngModel)]="lesson.title" /></label
-              ><label class="field"
-                >Duration (minutes)<input
-                  type="number"
-                  min="1"
-                  max="480"
-                  [(ngModel)]="lesson.minutes" /></label
-              ><label class="field wide"
-                >Lesson details<textarea rows="4" [(ngModel)]="lesson.content"></textarea>
-              </label>
-            </div>
-            <div class="actions">
-              <button
-                class="academy-button"
-                [disabled]="index === 0"
-                (click)="move(index, -1)"
-                aria-label="Move lesson up"
-              >
-                ↑</button
-              ><button
-                class="academy-button"
-                [disabled]="index === draft.lessons.length - 1"
-                (click)="move(index, 1)"
-                aria-label="Move lesson down"
-              >
-                ↓</button
-              ><button class="academy-button danger" (click)="remove(lesson)">Remove lesson</button>
-              @if (lessonSaved(lesson.id)) {
-                <a
-                  class="academy-button"
-                  [routerLink]="['/manage/learning/content', draft.id, lesson.id]"
-                  >Edit video & resources →</a
-                >
-              }
-            </div>
-          </article>
-        } @empty {
-          <p>Add at least one lesson before publishing.</p>
-        }
+        <div class="field-grid">
+          <label class="field"
+            >Maximum attempts<input
+              type="number"
+              min="1"
+              max="10"
+              [(ngModel)]="policy.maxAttempts" /></label
+          ><label class="field"
+            >Retake waiting period (hours)<input
+              type="number"
+              min="0"
+              max="720"
+              [(ngModel)]="policy.retakeWaitHours" /></label
+          ><label class="field"
+            >Assessment time limit (minutes; 0 = untimed)<input
+              type="number"
+              min="0"
+              max="240"
+              [(ngModel)]="policy.timeLimitMinutes" /></label
+          ><label class="check"
+            ><input type="checkbox" [(ngModel)]="policy.showFeedback" />Release feedback after
+            submission</label
+          >
+        </div>
+      }
+      <p>
+        Publishing requires approved content and questions. Existing assignments retain their
+        original published course version.
+      </p>
+      <div class="actions">
+        <a class="academy-button" routerLink="/manage/learning/courses">Back to courses</a
+        ><button class="academy-button primary" [disabled]="!saved()" (click)="reviewPublish()">
+          Publish course version
+        </button>
+      </div>
+    </div>
+  </details>
+  <details class="panel course-additional" [open]="showModules" id="modules">
+    <summary>
+      <span class="material-symbols-outlined" aria-hidden="true">view_module</span>Modules, lessons
+      & assessment
+      <small
+        >{{ modules() }} modules · {{ draft.lessons.length }} lessons · {{ minutes() }} learning
+        minutes</small
+      >
+    </summary>
+    <div class="additional-body">
+      <p>
+        Build the course outline, manage modules and lessons, and configure completion rules in step
+        three.
+      </p>
+      @if (hasSavedCourse()) {
+        <a class="academy-button primary" [routerLink]="['/manage/learning/structure', draft.id]"
+          ><span class="material-symbols-outlined" aria-hidden="true">stacks</span>Open Modules
+          &amp; Lessons</a
+        >
+      } @else {
+        <p>Save the course profile to begin building its structure.</p>
+      }
+      <section class="assessment-links">
+        <h3>Assessment questions</h3>
+        <p>Save the course profile and lessons, then create and publish its questions.</p>
+        <div class="actions">
+          <a
+            class="academy-button"
+            routerLink="/manage/learning/questions/new"
+            [queryParams]="{ course: draft.id }"
+            >Create question →</a
+          ><a class="academy-button" routerLink="/manage/learning/questions">Question bank →</a>
+        </div>
       </section>
     </div>
-    <aside>
-      <section class="panel">
-        <cv-academy-image [id]="draft.thumbnailId" [alt]="draft.title" />
-        <h2>{{ draft.title || 'Course preview' }}</h2>
-        <p>{{ draft.description || 'Add a description to introduce this course.' }}</p>
-        <span class="badge">{{ draft.status }}</span>
-        <p>{{ draft.lessons.length }} lessons · {{ draft.cpdHours }} CPD hours</p>
-        <small>Version {{ draft.version }}</small>
-      </section>
-      <section class="panel">
-        <h2>Assessment questions</h2>
-        <p>
-          Save the draft course and lessons first, then create and publish its questions. A
-          published course needs at least one published question.
-        </p>
-        <a
-          class="academy-button"
-          routerLink="/manage/learning/questions/new"
-          [queryParams]="{ course: draft.id }"
-          >Create question →</a
-        ><a class="academy-button" routerLink="/manage/learning/questions">Question bank →</a>
-      </section>
-      <div class="notice">
-        Course completion records learning activity. It does not establish practical competency or
-        external accreditation.
-      </div>
-    </aside>
-  </div>
+  </details>
+  <footer class="wizard-footer">
+    <a class="academy-button" routerLink="/manage/learning/courses"
+      ><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Course
+      register</a
+    ><button class="academy-button primary" (click)="saveContinue()">
+      Save &amp; Continue to Video &amp; Resources<span
+        class="material-symbols-outlined"
+        aria-hidden="true"
+        >arrow_forward</span
+      >
+    </button>
+  </footer>
 }

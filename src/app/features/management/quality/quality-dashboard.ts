@@ -1,3 +1,5 @@
+import { AcademyService } from '../learning/academy/academy.service';
+import { academyKpis } from '../learning/academy/academy-kpis';
 import { demoReferenceDashboard } from './quality-reference-data';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -29,6 +31,13 @@ import { ToastService } from '../../../shared/ui/toast.service';
 })
 export class QualityDashboardPage {
   protected readonly service = inject(QualityService);
+  protected readonly academy = inject(AcademyService);
+  protected readonly trainingKpis = computed(() =>
+    academyKpis(
+      this.academy.state(),
+      this.academy.store.staff().filter((p) => this.academy.can('evidence', p.id)),
+    ),
+  );
   private readonly route = inject(ActivatedRoute);
   private readonly title = inject(Title);
   private readonly toast = inject(ToastService);

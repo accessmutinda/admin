@@ -242,7 +242,7 @@
                 moduleDetails[module].icon
               }}</span
               ><span
-                ><strong>{{ module }}</strong
+                ><strong>{{ module === 'Training academy' ? 'CareVerity Academy' : module }}</strong
                 ><small>{{ moduleDetails[module].description }}</small></span
               ></label
             >
@@ -372,7 +372,7 @@
                 ><span class="material-symbols-outlined" aria-hidden="true">{{
                   moduleDetails[module].icon
                 }}</span
-                >{{ module }}</span
+                >{{ module === 'Training academy' ? 'CareVerity Academy' : module }}</span
               >
             }
           </div>

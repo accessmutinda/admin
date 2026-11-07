@@ -47,7 +47,7 @@
   margin: 12px 0;
 }
 .result-banner {
-  padding: 18px;
+  padding: 12px;
   border-radius: 9px;
   background: #e5f8ed;
   border: 1px solid #c9eddb;
@@ -58,12 +58,7 @@
   border-color: #f5d4da;
 }
 .result-banner h2 {
-  font-size: 21px;
-}
-.score {
-  font-size: 28px;
-  font-weight: 800;
-  color: #093252;
+  font-size: 14px;
 }
 .topic {
   display: grid;
@@ -108,4 +103,8 @@
 .history-item small {
   display: block;
   margin-top: 4px;
+}
+
+.result-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }

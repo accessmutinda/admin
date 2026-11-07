@@ -22,13 +22,18 @@ import { AcademyImage } from './academy-image';
         <img class="brand-logo" src="/brand/logo-full.png" alt="CareVerity" />
       }
       <p class="issuer">{{ certificate().issuer }}</p>
-      <h2>Certificate of Completion</h2>
+      <h2>CareVerity Academy</h2>
+      <p>Internal Training Completion Certificate</p>
       <p>This is to certify that</p>
       <h3>{{ certificate().learner }}</h3>
       <p>has successfully completed</p>
       <h4>{{ certificate().courseTitle }}</h4>
       <p>Completed {{ certificate().issuedAt | ukDate: 'd MMM yyyy' : 'Europe/London' }}</p>
-      <p>Score {{ certificate().score }}% · {{ certificate().cpdHours }} CPD hours</p>
+      <p>{{ certificate().courseCode }} · Version {{ certificate().courseVersion ?? 1 }}</p>
+      <p>
+        Knowledge completion · Score {{ certificate().score }}% · {{ certificate().cpdHours }} CPD
+        hours
+      </p>
       @if (certificate().expires) {
         <p>Valid until {{ certificate().expires | ukDate: 'd MMM yyyy' }}</p>
       }

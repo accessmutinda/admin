@@ -1,72 +1,68 @@
 import { Component, inject, input } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
-import { AcademyService } from './academy.service';
+import { Router, RouterLink } from '@angular/router';
 
 @Component({
   selector: 'cv-academy-admin-nav',
-  imports: [RouterLink, RouterLinkActive],
-  template: ` <nav class="academy-nav" aria-label="Training administration">
-    <a routerLink="/manage/learning">Academy home</a>
-    @for (link of links; track link.path) {
-      <a
-        [routerLink]="['/manage/learning', link.path]"
-        routerLinkActive="active"
-        ariaCurrentWhenActive="page"
-        ><span class="material-symbols-outlined" aria-hidden="true">{{ link.icon }}</span
-        >{{ link.label }}</a
-      >
+  imports: [RouterLink],
+  template: `<nav class="academy-breadcrumb" aria-label="Breadcrumb">
+    <a routerLink="/manage/learning">CareVerity Academy</a>
+    @if (section()) {
+      <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span
+      ><span aria-current="page">{{ section() }}</span>
     }
   </nav>`,
   styles: [
     `
-      .academy-nav {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-bottom: 12px;
+      :host {
+        display: block;
       }
-      .academy-nav a {
+      .academy-breadcrumb {
         display: flex;
         align-items: center;
         gap: 6px;
-        min-height: 36px;
-        padding: 6px 10px;
-        border: 1px solid #e5edf1;
-        border-radius: 6px;
-        background: #fff;
-        color: #123352;
-        font-size: 12px;
+        min-height: 16px;
+        margin-bottom: 8px;
+        color: #657184;
+        font: 11px/16px var(--font-sans);
+      }
+      a {
+        color: #536781;
         text-decoration: none;
-      }
-      .academy-nav .active {
-        border-color: #008afa;
-        background: #eaf5fc;
-        color: #007bcc;
-      }
-      .material-symbols-outlined {
-        font-size: 18px;
       }
       a:focus-visible {
         outline: 2px solid #008bd9;
         outline-offset: 2px;
       }
-      @media (pointer: coarse) {
-        .academy-nav a {
-          min-height: 44px;
-        }
+      .material-symbols-outlined {
+        font-size: 16px;
       }
     `,
   ],
 })
 export class AcademyAdminNav {
-  readonly links = [
-    { path: 'courses', label: 'Courses & content', icon: 'menu_book' },
-    { path: 'manage', label: 'Manage training', icon: 'groups' },
-    { path: 'questions', label: 'Question bank', icon: 'quiz' },
-    { path: 'assets', label: 'Asset library', icon: 'perm_media' },
-    { path: 'reports', label: 'Compliance & reports', icon: 'monitoring' },
-    { path: 'settings', label: 'Academy settings', icon: 'settings' },
-  ];
+  private readonly router = inject(Router);
+  protected section() {
+    const path = this.router.url.split(/[?#]/)[0].split('/')[3] ?? '';
+    return (
+      (
+        {
+          courses: 'Courses & content',
+          manage: 'Staff assignments',
+          questions: 'Question bank',
+          results: 'Results & retakes',
+          certificates: 'Certificates & compliance',
+          reports: 'Compliance & reports',
+          settings: 'Academy settings',
+          governance: 'Policies & reviews',
+          diagnostics: 'Restricted diagnostics',
+          content: 'Lesson content',
+          structure: 'Modules & lessons',
+          rules: 'Assessment rules & assignments',
+          publish: 'Review & publish',
+        } as Record<string, string>
+      )[path] ?? 'Dashboard'
+    );
+  }
 }
 @Component({
   selector: 'cv-academy-message',
