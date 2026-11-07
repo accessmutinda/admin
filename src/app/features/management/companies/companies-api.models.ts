@@ -1,3 +1,27 @@
+export type SetupAreaKey =
+  | 'general'
+  | 'registration'
+  | 'contacts'
+  | 'locations'
+  | 'branding'
+  | 'modules'
+  | 'access'
+  | 'integrations';
+export interface SetupArea {
+  complete: boolean | null;
+  available?: boolean;
+  state?: 'pending' | 'in_progress' | 'complete' | 'unavailable';
+  missing?: string[];
+}
+export type SetupProgress = Partial<Record<SetupAreaKey, SetupArea>> & { complete?: boolean };
+export interface CompanyOverviewStats {
+  authorised_total: number;
+  active_total: number;
+  pending_setup_total: number;
+  profile_completion_percent: number;
+  open_admin_tasks: number;
+}
+
 export type CompanyLifecycle = 'pending_setup' | 'active' | 'suspended' | 'archived';
 
 export interface CompanySummary {
@@ -5,12 +29,44 @@ export interface CompanySummary {
   code: string;
   name: string;
   lifecycle: CompanyLifecycle;
+  profile_completion_percent?: number;
+  setup_progress?: SetupProgress;
+  service_type?: string | null;
+  postcode?: string | null;
+  enabled_modules?: string[];
+  updated_at?: string | null;
+}
+
+export interface CompanyDetail extends CompanySummary {
+  version: number;
+  etag: string;
+  trading_name?: string | null;
+  description?: string | null;
+  staff_size_band?: string | null;
+  registration_number?: string | null;
+  registration_country?: string | null;
+  region?: string | null;
+  country?: string | null;
+  head_office_name?: string | null;
+  head_office_address?: {
+    line1: string;
+    line2: string;
+    city: string;
+    county: string;
+    postcode: string;
+    country: string;
+  } | null;
+  registered_places?: number | null;
+  primary_language?: string | null;
+  date_established?: string | null;
+  tagline?: string | null;
+  updated_by?: { id: string; name: string } | null;
 }
 
 export interface CompanyPage {
   count: number;
-  next: string | null;
-  previous: string | null;
+  next: string | number | null;
+  previous: string | number | null;
   results: CompanySummary[];
   meta: Record<string, unknown>;
 }

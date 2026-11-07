@@ -1,3 +1,4 @@
+import { companyProfileFields } from '../companies/company-profile.models';
 import { CompaniesApiService } from '../companies/companies-api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import type { AccessChange } from '../company-admin/access/access.models';
@@ -39,6 +40,7 @@ export interface Company {
   lifecycle?: 'pending_setup' | 'active' | 'suspended' | 'archived';
   apiSummaryOnly?: boolean;
   profileCompletion?: number | null;
+  setupProgress?: import('../companies/companies-api.models').SetupProgress;
   tradingName?: string;
   description?: string;
   establishedDate?: string;
@@ -310,16 +312,21 @@ export class ManagementStore {
         lifecycle: company.lifecycle,
         active: company.lifecycle === 'active',
         apiSummaryOnly: true,
-        profileCompletion: null,
-        sector: '',
+        profileCompletion: company.profile_completion_percent ?? null,
+        setupProgress: company.setup_progress,
+        modifiedAt: company.updated_at ?? undefined,
+        sector: company.service_type ?? '',
         size: '',
         registration: '',
-        postcode: '',
+        postcode: company.postcode ?? '',
         color: '#087f76',
         accent: '#3b82f6',
         tagline: '',
         logo: '',
-        modules: [],
+        modules: company.enabled_modules ?? [],
+        ...(this.companyApi.details()[company.id]
+          ? companyProfileFields(this.companyApi.details()[company.id])
+          : {}),
       })),
   );
   private readonly storedRecords = signal<Record<string, WorkspaceData>>(

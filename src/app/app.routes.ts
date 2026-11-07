@@ -11,16 +11,26 @@ import {
 } from './core/auth/auth.guard';
 
 const companyDataGuard = (
-  _route: import('@angular/router').ActivatedRouteSnapshot,
+  route: import('@angular/router').ActivatedRouteSnapshot,
   state: import('@angular/router').RouterStateSnapshot,
 ) => {
   if (!state.url.startsWith('/manage/companies') && !state.url.startsWith('/manage/locations'))
     return true;
   const context = inject(EnvironmentInjector);
   return import('./features/management/companies/companies-api.service').then((m) =>
-    runInInjectionContext(context, () => inject(m.CompaniesApiService).ensureLoaded()).then(
-      () => true,
-    ),
+    runInInjectionContext(context, async () => {
+      const api = inject(m.CompaniesApiService);
+      await api.ensureLoaded();
+      const id = route.paramMap.get('id');
+      if (
+        ['companies/:id', 'companies/:id/compliance', 'companies/:id/contacts'].includes(
+          route.routeConfig?.path ?? '',
+        ) &&
+        id
+      )
+        await api.loadDetail(id);
+      return true;
+    }),
   );
 };
 

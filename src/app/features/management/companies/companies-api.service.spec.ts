@@ -60,6 +60,7 @@ describe('Companies API service', () => {
           provide: AuthService,
           useValue: {
             api: request,
+            canAccessCompany: (id: string) => signedIn() && (role() === 'PO' || id === assigned()),
             isAuthenticated: signedIn,
             isSuperAdmin: () => signedIn() && role() === 'PO',
             profile: () => (signedIn() ? { id: user(), company_id: assigned() } : null),
@@ -80,6 +81,46 @@ describe('Companies API service', () => {
     expect(service.companies()).toEqual([company]);
     expect(service.count()).toBe(1);
   });
+  it('loads company detail without using directory placeholders and hides it after logout', async () => {
+    const detail = {
+      ...company,
+      version: 2,
+      etag: '"v2"',
+      description: 'Stored description',
+      registered_places: 0,
+    };
+    request.mockResolvedValue(detail);
+    await service.loadDetail(company.id);
+    expect(request).toHaveBeenCalledExactlyOnceWith('/companies/company-1');
+    expect(service.details()[company.id]).toEqual(detail);
+    signedIn.set(false);
+    expect(service.details()).toEqual({});
+  });
+  it('rejects mismatched detail records and preserves errors for retry', async () => {
+    request.mockResolvedValue({ ...company, id: 'other-company', version: 1 });
+    await service.loadDetail(company.id);
+    expect(service.details()).toEqual({});
+    expect(service.detailError(company.id)).toContain('could not be read');
+    request.mockResolvedValue({ ...company, version: 2, etag: '"v2"' });
+    await service.loadDetail(company.id);
+    expect(service.detailError(company.id)).toBe('');
+    expect(service.details()[company.id].version).toBe(2);
+  });
+  it('does not request another company profile for a company account', async () => {
+    role.set('CA');
+    await service.loadDetail('other-company');
+    expect(request).not.toHaveBeenCalled();
+  });
+  it('discards a profile response after the account changes', async () => {
+    let resolve!: (value: unknown) => void;
+    request.mockReturnValue(new Promise((value) => (resolve = value)));
+    const loading = service.loadDetail(company.id);
+    user.set('another-user');
+    resolve({ ...company, version: 1, etag: '"v1"' });
+    await loading;
+    expect(service.details()).toEqual({});
+  });
+
   it('uses the assigned-company listing for a company account', async () => {
     role.set('CA');
     await service.load();
@@ -101,6 +142,32 @@ describe('Companies API service', () => {
     expect(service.companies()).toHaveLength(2);
     expect(service.count()).toBe(2);
   });
+  it('reads server overview totals and follows numeric page links', async () => {
+    const meta = {
+      authorised_total: 2,
+      active_total: 1,
+      pending_setup_total: 1,
+      profile_completion_percent: 50,
+      open_admin_tasks: 7,
+    };
+    request
+      .mockResolvedValueOnce({ ...page([company], null, 2), next: 2, meta })
+      .mockResolvedValueOnce({
+        ...page([{ ...company, id: 'company-2', lifecycle: 'pending_setup' }], null, 2),
+        meta,
+      });
+    await service.load();
+    expect(request.mock.calls.map((call) => call[0])).toEqual([
+      '/platform/companies',
+      '/platform/companies?page=2',
+    ]);
+    expect(service.overview()).toEqual(meta);
+    expect(service.companies()).toHaveLength(2);
+    signedIn.set(false);
+    expect(service.overview()).toBeNull();
+    expect(service.loaded()).toBe(false);
+  });
+
   it('does not follow a pagination link to a different endpoint', async () => {
     request.mockResolvedValue(page([company], '/api/v1/auth/state'));
     await service.load();

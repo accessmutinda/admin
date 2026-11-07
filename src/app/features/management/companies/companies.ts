@@ -1,3 +1,4 @@
+import { SetupAreaKey } from './companies-api.models';
 import { CompaniesApiService } from './companies-api.service';
 import { QuickActions } from '../shared/quick-actions';
 import { complianceComplete } from './company-compliance.models';
@@ -40,36 +41,57 @@ export class Companies {
   protected readonly preview = computed(() => this.filtered().slice(0, 5));
   protected readonly completion = companyCompletion;
   protected readonly modifiedAt = companyModifiedAt;
-  protected readonly average = computed(() => {
-    const all = this.store.companies();
-    const values = all.map((company) => this.completion(company));
-    if (this.api.loading() || this.api.error() || values.some((value) => value == null))
-      return null;
-    return values.length
-      ? Math.round(values.reduce<number>((total, value) => total + (value ?? 0), 0) / values.length)
-      : 0;
-  });
-  protected readonly active = computed(
-    () => this.store.companies().filter((c) => c.active ?? c.modules.length > 0).length,
+  protected readonly statsReady = computed(
+    () => this.api.loaded() && !this.api.loading() && !this.api.error(),
   );
-  protected readonly pending = computed(() => {
-    const all = this.store.companies();
-    return all.some((company) => this.completion(company) == null)
-      ? null
-      : all.filter((company) => this.completion(company)! < 75).length;
+  protected readonly total = computed(() =>
+    this.statsReady()
+      ? (this.api.overview()?.authorised_total ?? this.store.companies().length)
+      : null,
+  );
+  protected readonly active = computed(() =>
+    this.statsReady()
+      ? (this.api.overview()?.active_total ??
+        this.store.companies().filter((c) => c.lifecycle === 'active').length)
+      : null,
+  );
+  protected readonly pending = computed(() =>
+    this.statsReady()
+      ? (this.api.overview()?.pending_setup_total ??
+        this.store.companies().filter((c) => c.lifecycle === 'pending_setup').length)
+      : null,
+  );
+  protected readonly average = computed(() => {
+    if (!this.statsReady()) return null;
+    const server = this.api.overview();
+    if (server) return server.profile_completion_percent;
+    const values = this.store.companies().map(companyCompletion);
+    if (values.some((value) => value == null)) return null;
+    return values.length
+      ? Math.round(values.reduce<number>((sum, value) => sum + (value ?? 0), 0) / values.length)
+      : 0;
   });
   protected readonly checklist = computed(() => {
     const c = this.company();
     return [
       {
+        key: 'general',
         title: 'General Information',
         description: 'Basic company information and service details',
         icon: 'description',
         tone: 'teal',
-        state: generalInformationComplete(c) ? 'Complete' : 'Pending',
+        state: generalInformationComplete(c)
+          ? 'Complete'
+          : c &&
+              [c.name, c.code, c.sector, c.description, c.registration].some((value) =>
+                value?.trim(),
+              )
+            ? 'In Progress'
+            : 'Pending',
         link: this.profileLink(),
       },
       {
+        key: 'registration',
         title: 'Registration & Compliance',
         description: 'Registration, documents and responsible owners',
         icon: 'shield',
@@ -78,6 +100,7 @@ export class Companies {
         link: [...this.profileLink(), 'compliance'],
       },
       {
+        key: 'contacts',
         title: 'Contact Information',
         description: 'Key contacts and communication details',
         icon: 'groups',
@@ -86,6 +109,7 @@ export class Companies {
         link: [...this.profileLink(), 'contacts'],
       },
       {
+        key: 'locations',
         title: 'Branches & Locations',
         description: 'Manage all company locations and services',
         icon: 'location_on',
@@ -98,14 +122,16 @@ export class Companies {
         link: ['/manage/locations'],
       },
       {
+        key: 'branding',
         title: 'Branding',
         description: 'Logo, colours and customisation settings',
         icon: 'palette',
         tone: 'teal',
-        state: c?.logo ? 'Complete' : 'In Progress',
+        state: c?.logo ? 'Complete' : c?.branding ? 'In Progress' : 'Pending',
         link: [...this.profileLink(), 'branding'],
       },
       {
+        key: 'modules',
         title: 'Modules & Subscription',
         description: 'Select and configure modules',
         icon: 'deployed_code',
@@ -114,6 +140,7 @@ export class Companies {
         link: [...this.profileLink(), 'modules'],
       },
       {
+        key: 'access',
         title: 'Roles & Permissions',
         description: 'Admin users and role assignments',
         icon: 'groups',
@@ -122,6 +149,7 @@ export class Companies {
         link: ['/manage/companies/access'],
       },
       {
+        key: 'integrations',
         title: 'Integrations',
         description: 'API setup, backup preferences and data exports',
         icon: 'link',
@@ -129,12 +157,28 @@ export class Companies {
         state: 'Pending',
         link: ['/manage/companies/integrations'],
       },
-    ].map((item) => (c?.apiSummaryOnly ? { ...item, state: 'Unavailable' } : item));
+    ].map((item) => {
+      const area = c?.setupProgress?.[item.key as SetupAreaKey];
+      const state = area
+        ? area.available === false || area.complete == null
+          ? 'Unavailable'
+          : area.complete
+            ? 'Complete'
+            : area.state === 'in_progress'
+              ? 'In Progress'
+              : 'Pending'
+        : c?.apiSummaryOnly
+          ? 'Unavailable'
+          : item.state;
+      return {
+        ...item,
+        state,
+        statusTone: state === 'Complete' ? 'green' : state === 'In Progress' ? 'orange' : 'neutral',
+      };
+    });
   });
   protected readonly tasks = computed(() =>
-    this.company()?.apiSummaryOnly
-      ? null
-      : this.checklist().filter((item) => item.state !== 'Complete').length,
+    this.statsReady() ? (this.api.overview()?.open_admin_tasks ?? null) : null,
   );
   protected readonly actions = computed(() => [
     { title: 'Create New Company', icon: 'add', link: ['/manage/companies/new'] },

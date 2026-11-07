@@ -6,7 +6,13 @@
   }
   <span aria-current="page">General Information</span>
 </nav>
-@if (company(); as current) {
+@if (profileError()) {
+  <section class="co-surface cp-not-found" role="alert">
+    <h1>Company details unavailable</h1>
+    <p>{{ profileError() }}</p>
+    <button type="button" class="cp-button cp-primary" (click)="retryProfile()">Retry</button>
+  </section>
+} @else if (company(); as current) {
   <div class="co-heading">
     <h1>Company Profile{{ editing() ? ' Update' : '' }} – General Information</h1>
     <p>

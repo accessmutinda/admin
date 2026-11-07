@@ -69,6 +69,7 @@ describe('Platform role company boundaries', () => {
         {
           provide: CompaniesApiService,
           useValue: {
+            details: () => ({}),
             scope: () => (authenticated() ? 'scope' : null),
             ensureLoaded: () => Promise.resolve(),
             companies: () => [

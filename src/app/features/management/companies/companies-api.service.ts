@@ -3,6 +3,8 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { API_BASE, API_BASE_PATH } from '../../../core/auth/auth-api';
 import {
   CompanyPage,
+  CompanyDetail,
+  CompanyOverviewStats,
   CompanySummary,
   CreateCompanyRequest,
   CreatedCompany,
@@ -16,6 +18,7 @@ export class CompaniesApiService {
     context: string;
     companies: CompanySummary[];
     count: number;
+    overview: CompanyOverviewStats | null;
   } | null>(null);
   private readonly pending = signal<{ context: string; request: number } | null>(null);
   private readonly failure = signal<{ context: string; message: string } | null>(null);
@@ -33,10 +36,67 @@ export class CompaniesApiService {
   readonly count = computed(() =>
     this.snapshot()?.context === this.context() ? this.snapshot()!.count : 0,
   );
+  readonly overview = computed(() =>
+    this.snapshot()?.context === this.context() ? this.snapshot()!.overview : null,
+  );
+  readonly loaded = computed(() => !!this.context() && this.snapshot()?.context === this.context());
   readonly loading = computed(() => !!this.pending() && this.pending()?.context === this.context());
   readonly error = computed(() =>
     this.failure()?.context === this.context() ? this.failure()!.message : '',
   );
+  private readonly detailSnapshot = signal<{
+    context: string;
+    records: Record<string, CompanyDetail>;
+  } | null>(null);
+  private readonly detailFailures = signal<{
+    context: string;
+    records: Record<string, string>;
+  } | null>(null);
+  private detailRequest = 0;
+  readonly details = computed(() =>
+    this.detailSnapshot()?.context === this.context() ? this.detailSnapshot()!.records : {},
+  );
+  detailError(id: string): string {
+    return this.detailFailures()?.context === this.context()
+      ? (this.detailFailures()!.records[id] ?? '')
+      : '';
+  }
+
+  async loadDetail(id: string, retainExisting = false): Promise<void> {
+    const context = this.context();
+    const request = ++this.detailRequest;
+    if (!context || !this.auth.canAccessCompany(id)) return;
+    this.detailFailures.set({ context, records: {} });
+    const records = { ...this.details() };
+    if (!retainExisting) delete records[id];
+    this.detailSnapshot.set({ context, records });
+    try {
+      const detail = await this.auth.api<CompanyDetail>(`/companies/${encodeURIComponent(id)}`);
+      if (request !== this.detailRequest || context !== this.context()) return;
+      if (
+        !detail ||
+        detail.id !== id ||
+        typeof detail.name !== 'string' ||
+        typeof detail.code !== 'string' ||
+        !Number.isInteger(detail.version) ||
+        detail.version < 1
+      )
+        throw new Error('The company profile could not be read. Please retry.');
+      this.detailSnapshot.set({ context, records: { ...this.details(), [id]: detail } });
+    } catch (error) {
+      if (request !== this.detailRequest || context !== this.context()) return;
+      this.detailFailures.set({
+        context,
+        records: {
+          [id]:
+            error instanceof Error
+              ? error.message
+              : 'Unable to load company details. Please retry.',
+        },
+      });
+    }
+  }
+
   readonly canCreate = computed(() => this.auth.isSuperAdmin());
 
   ensureLoaded(): Promise<void> {
@@ -52,11 +112,11 @@ export class CompaniesApiService {
     return promise;
   }
 
-  async load(): Promise<void> {
+  async load(retainExisting = false): Promise<void> {
     const context = this.context();
     const request = ++this.request;
     this.failure.set(null);
-    this.snapshot.set(null);
+    if (!retainExisting) this.snapshot.set(null);
     if (!context) {
       this.pending.set(null);
       return;
@@ -69,6 +129,7 @@ export class CompaniesApiService {
     const visited = new Set<string>();
     let path: string | null = endpoint;
     let count = 0;
+    let overview: CompanyOverviewStats | null = null;
     try {
       while (path) {
         if (visited.has(path))
@@ -93,9 +154,10 @@ export class CompaniesApiService {
           companies.push(company);
         }
         count = page.count;
+        if (!overview) overview = this.readOverview(page.meta);
         path = page.next ? this.pagePath(page.next, endpoint) : null;
       }
-      this.snapshot.set({ context, companies, count });
+      this.snapshot.set({ context, companies, count, overview });
     } catch (error) {
       if (context !== this.context() || request !== this.request) return;
       this.failure.set({
@@ -130,7 +192,34 @@ export class CompaniesApiService {
     return result;
   }
 
-  private pagePath(next: string, endpoint: string): string {
+  private readOverview(meta: Record<string, unknown>): CompanyOverviewStats | null {
+    const keys: (keyof CompanyOverviewStats)[] = [
+      'authorised_total',
+      'active_total',
+      'pending_setup_total',
+      'profile_completion_percent',
+      'open_admin_tasks',
+    ];
+    if (
+      !meta ||
+      !keys.every(
+        (key) =>
+          typeof meta[key] === 'number' && Number.isFinite(meta[key]) && Number(meta[key]) >= 0,
+      )
+    )
+      return null;
+    if (Number(meta['profile_completion_percent']) > 100) return null;
+    return Object.fromEntries(
+      keys.map((key) => [key, meta[key]]),
+    ) as unknown as CompanyOverviewStats;
+  }
+
+  private pagePath(next: string | number, endpoint: string): string {
+    if (typeof next === 'number') {
+      if (!Number.isInteger(next) || next < 1)
+        throw new Error('The company list returned an invalid page. Please retry.');
+      return `${endpoint}?page=${next}`;
+    }
     const url = new URL(next, `${API_BASE}${endpoint}`);
     if (url.pathname.replace(/\/$/, '') !== `${API_BASE_PATH}${endpoint}`)
       throw new Error('The company list returned an invalid page. Please retry.');

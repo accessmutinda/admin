@@ -71,25 +71,20 @@
     <span class="co-stat-icon blue material-symbols-outlined" aria-hidden="true">domain</span>
     <div>
       <h2>Total Companies</h2>
-      <strong>{{ store.companies().length }}</strong>
-      <p>Across all regions</p>
+      <strong>{{ total() ?? '—' }}</strong>
+      <p>Companies you can access</p>
     </div>
   </section>
   <section class="co-stat co-surface" data-card-tone="green">
     <span class="co-stat-icon green material-symbols-outlined" aria-hidden="true">domain</span>
     <div>
       <h2>Active Companies</h2>
-      <strong>{{ active() }}</strong>
+      <strong>{{ active() ?? '—' }}</strong>
       <p>
-        {{
-          store.companies().length ? ((active() / store.companies().length) * 100).toFixed(0) : 0
-        }}% of total
+        {{ total() == null ? '—' : total() ? (((active() ?? 0) / total()!) * 100).toFixed(0) : 0 }}%
+        of total
       </p>
-      <progress
-        [value]="active()"
-        [max]="store.companies().length || 1"
-        aria-label="Active companies"
-      ></progress>
+      <progress [value]="active()" [max]="total() || 1" aria-label="Active companies"></progress>
     </div>
   </section>
   <section class="co-stat co-surface" data-card-tone="orange">
@@ -97,11 +92,11 @@
     <div>
       <h2>Pending Setups</h2>
       <strong>{{ pending() == null ? '—' : pending() }}</strong>
-      <p>Profiles to complete</p>
+      <p>Companies awaiting setup</p>
       <progress
         class="amber"
         [value]="pending()"
-        [max]="store.companies().length || 1"
+        [max]="total() || 1"
         aria-label="Pending company setups"
       ></progress>
     </div>
@@ -113,7 +108,7 @@
     <div>
       <h2>Profile Completion</h2>
       <strong>{{ average() == null ? '—' : average() + '%' }}</strong>
-      <p>Average across all companies</p>
+      <p>Required setup sections completed</p>
       <progress [value]="average()" max="100" aria-label="Average profile completion"></progress>
     </div>
   </section>
@@ -122,7 +117,7 @@
     <div>
       <h2>Open Admin Tasks</h2>
       <strong>{{ tasks() == null ? '—' : tasks() }}</strong>
-      <p>Requires attention</p>
+      <p>Incomplete setup sections across companies</p>
     </div>
   </section>
 </div>
@@ -134,8 +129,8 @@
         Checklist
         <span
           class="co-info material-symbols-outlined"
-          title="Status is based on the current company configuration"
-          aria-label="Status is based on the current company configuration"
+          title="Grey: pending or unavailable. Orange: in progress. Green: required fields complete."
+          aria-label="Grey: pending or unavailable. Orange: in progress. Green: required fields complete."
           >info</span
         >
       </h2>
@@ -166,6 +161,7 @@
             <p>{{ item.description }}</p>
             <span
               class="co-check-status"
+              [attr.data-setup-state]="item.statusTone"
               [class.complete]="item.state === 'Complete'"
               [class.in-progress]="item.state === 'In Progress'"
               ><span class="co-status-icon" aria-hidden="true"></span>{{ item.state }}</span

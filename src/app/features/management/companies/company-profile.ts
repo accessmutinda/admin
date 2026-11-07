@@ -1,7 +1,17 @@
+import { toSignal } from '@angular/core/rxjs-interop';
+import { CompaniesApiService } from './companies-api.service';
 import { complianceChecks, complianceComplete, emptyCompliance } from './company-compliance.models';
 import { locationsComplete } from '../locations/locations.models';
 import { contactInformationComplete } from './company-contacts.models';
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
@@ -37,7 +47,14 @@ export class CompanyProfile {
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
-  private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
+  private readonly api = inject(CompaniesApiService);
+  private readonly routeParams = toSignal(this.route.paramMap, {
+    initialValue: this.route.snapshot.paramMap,
+  });
+  private get id(): string {
+    return this.routeParams().get('id') ?? '';
+  }
+  protected readonly profileError = computed(() => this.api.detailError(this.id));
   protected readonly company = computed(() => this.store.companies().find((c) => c.id === this.id));
   protected readonly editing = signal(this.route.snapshot.queryParamMap.get('edit') === 'true');
   protected readonly submitted = signal(false);
@@ -201,13 +218,33 @@ export class CompanyProfile {
       },
     ];
   });
+  constructor() {
+    let previousId = '';
+    effect(() => {
+      const company = this.company();
+      if (!company || previousId === this.id) return;
+      previousId = this.id;
+      untracked(() => {
+        this.draft = this.newDraft();
+        this.editing.set(this.route.snapshot.queryParamMap.get('edit') === 'true');
+        this.submitted.set(false);
+        this.saveError.set('');
+        this.draftAvailable.set(this.readDraft() !== null);
+      });
+    });
+  }
+  protected async retryProfile(): Promise<void> {
+    await this.api.loadDetail(this.id);
+    if (!this.api.detailError(this.id)) this.draft = this.newDraft();
+  }
   private newDraft(): Company {
     const c = this.company();
     return structuredClone({ ...c, active: c?.active ?? !!c?.modules.length } as Company);
   }
   protected managedByContacts(field: ProfileField): boolean {
     return (
-      !!this.company()?.contacts && (field.key === 'headOfficeAddress' || field.key === 'postcode')
+      (!!this.company()?.contacts || !!this.api.details()[this.id]) &&
+      (field.key === 'headOfficeAddress' || field.key === 'postcode')
     );
   }
   protected setField(key: keyof Company, value: string | number | boolean | null): void {
