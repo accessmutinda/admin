@@ -364,8 +364,9 @@ export class AuthService {
   async api<T>(
     path: string,
     body?: unknown,
-    method?: 'POST',
+    method?: 'POST' | 'PATCH' | 'DELETE',
     extraHeaders?: Record<string, string>,
+    responseType: 'json' | 'blob' = 'json',
   ): Promise<T> {
     if (this.access && Date.now() >= this.accessExpiresAt - 10000) {
       try {
@@ -376,7 +377,7 @@ export class AuthService {
       }
     }
     try {
-      return await this.request<T>(path, body, method, extraHeaders);
+      return await this.request<T>(path, body, method, extraHeaders, responseType);
     } catch (error) {
       if (
         error instanceof ApiError &&
@@ -395,7 +396,7 @@ export class AuthService {
           throw refreshError;
         }
         try {
-          return await this.request<T>(path, body, method, extraHeaders);
+          return await this.request<T>(path, body, method, extraHeaders, responseType);
         } catch (retryError) {
           if (retryError instanceof ApiError && retryError.status === 401) this.expire();
           throw retryError;
@@ -418,43 +419,46 @@ export class AuthService {
   private async request<T>(
     path: string,
     body?: unknown,
-    method?: 'POST',
+    method?: 'POST' | 'PATCH' | 'DELETE',
     extraHeaders?: Record<string, string>,
+    responseType: 'json' | 'blob' = 'json',
   ): Promise<T> {
     const headers: Record<string, string> = {
       ...extraHeaders,
       Accept: 'application/json',
     };
     if (this.access) headers['Authorization'] = `Bearer ${this.access}`;
-    if (body !== undefined) {
+    const requestMethod = method ?? (body === undefined ? 'GET' : 'POST');
+    const multipart = body instanceof FormData;
+    if (requestMethod !== 'GET') {
       const csrf = await this.request<{ csrf_token?: string }>('/auth/csrf');
       const cookie = document.cookie.split('; ').find((value) => value.startsWith('csrftoken='));
-      const token = typeof csrf.csrf_token === 'string' && csrf.csrf_token.trim()
-        ? csrf.csrf_token
-        : new URL(API_BASE).origin === window.location.origin && cookie
-          ? decodeURIComponent(cookie.slice('csrftoken='.length))
-          : null;
+      const token =
+        typeof csrf.csrf_token === 'string' && csrf.csrf_token.trim()
+          ? csrf.csrf_token
+          : new URL(API_BASE).origin === window.location.origin && cookie
+            ? decodeURIComponent(cookie.slice('csrftoken='.length))
+            : null;
       if (!token)
-        throw new Error(
-          'The API must return csrf_token from /auth/csrf for cross-origin sign-in.',
-        );
+        throw new Error('The API must return csrf_token from /auth/csrf for cross-origin sign-in.');
       headers['X-CSRFToken'] = token;
-      headers['Content-Type'] = 'application/json';
+      if (body !== undefined && !multipart) headers['Content-Type'] = 'application/json';
     }
     let response: Response;
     try {
       response = await fetch(`${API_BASE}${path}`, {
-        method: method ?? (body === undefined ? 'GET' : 'POST'),
+        method: requestMethod,
         credentials: 'include',
         signal: AbortSignal.timeout(15000),
         headers,
         cache: 'no-store',
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: multipart ? body : body === undefined ? undefined : JSON.stringify(body),
       });
     } catch {
       throw new Error('Unable to reach CareVerity. Check your connection and try again.');
     }
     if (response.status === 204) return undefined as T;
+    if (response.ok && responseType === 'blob') return (await response.blob()) as T;
     const data = await response.json().catch(() => null);
     if (!response.ok) {
       const fields = apiFieldErrors(data?.field_errors);

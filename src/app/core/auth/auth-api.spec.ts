@@ -135,6 +135,60 @@ describe('CareVerity API authentication', () => {
     expect(fetchMock.mock.calls.some((call) => call[0] === `${API_BASE}/auth/login`)).toBe(false);
   });
 
+  it('sends CSRF and If-Match on bodyless deletes', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    const original = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url: string, options?: RequestInit) =>
+      url.endsWith('/evidence/file-1')
+        ? Promise.resolve(new Response(null, { status: 204 }))
+        : original(url, options),
+    );
+    await auth.api('/companies/company-1/evidence/file-1', undefined, 'DELETE', {
+      'If-Match': '"v2"',
+    });
+    const options = fetchMock.mock.calls.find((call) =>
+      call[0].endsWith('/evidence/file-1'),
+    )![1] as RequestInit;
+    expect(options.method).toBe('DELETE');
+    expect(options.credentials).toBe('include');
+    expect(options.headers).toMatchObject({
+      'X-CSRFToken': 'test-csrf',
+      'If-Match': '"v2"',
+      Authorization: 'Bearer access-token',
+    });
+    expect(options.body).toBeUndefined();
+  });
+  it('preserves multipart upload boundaries and returns authorised binary downloads', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    const original = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url: string, options?: RequestInit) =>
+      url.endsWith('/evidence')
+        ? Promise.resolve(Response.json({ id: 'file-1' }))
+        : url.endsWith('/evidence/file-1')
+          ? Promise.resolve(
+              new Response('saved bytes', { headers: { 'Content-Type': 'application/pdf' } }),
+            )
+          : original(url, options),
+    );
+    const body = new FormData();
+    body.set('kind', 'insurance_certificate');
+    await auth.api('/companies/company-1/evidence', body, 'POST');
+    const options = fetchMock.mock.calls.find((call) =>
+      call[0].endsWith('/evidence'),
+    )![1] as RequestInit;
+    expect(options.body).toBe(body);
+    expect(options.headers).not.toHaveProperty('Content-Type');
+    expect(options.headers).toMatchObject({ 'X-CSRFToken': 'test-csrf' });
+    const file = await auth.api<Blob>(
+      '/companies/company-1/evidence/file-1',
+      undefined,
+      undefined,
+      undefined,
+      'blob',
+    );
+    expect(await file.text()).toBe('saved bytes');
+  });
+
   it('follows MFA enrolment, password gate, and session revocation on password change', async () => {
     loginResponse = { state: 'mfa_enrolment_required', challenge_id: 'challenge-1' };
     await firstValueFrom(auth.signIn('person@example.com', 'password'));
