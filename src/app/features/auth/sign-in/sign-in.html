@@ -6,6 +6,14 @@
   <h1 class="cv-auth-heading">Welcome back</h1>
   <p class="mt-2 text-sm text-slate">Good to see you. Sign in to continue.</p>
 
+  @if (sessionError()) {
+    <div class="mt-5" role="alert">
+      <cv-alert tone="error">{{ sessionError() }}</cv-alert>
+      @if (sessionError().startsWith('Sign-out')) {
+        <button mat-button type="button" (click)="retrySignOut()">Retry sign out</button>
+      }
+    </div>
+  }
   @if (errorMessage()) {
     <div class="mt-5">
       <cv-alert tone="error">{{ errorMessage() }}</cv-alert>
@@ -55,11 +63,6 @@
       }
     </mat-form-field>
 
-    <div class="cv-sign-in-options mb-4 flex flex-wrap items-center justify-between gap-x-4">
-      <mat-checkbox formControlName="rememberMe" color="primary">Remember me</mat-checkbox>
-      <a routerLink="/auth/forgot-password" class="cv-auth-link text-sm">Forgot password?</a>
-    </div>
-
     <button
       mat-flat-button
       color="primary"
@@ -81,31 +84,4 @@
       }
     </button>
   </form>
-
-  <div class="cv-entry-divider my-4 flex items-center gap-3">
-    <span class="h-px flex-1 bg-line"></span>
-    <span class="text-xs text-slate">or continue with</span>
-    <span class="h-px flex-1 bg-line"></span>
-  </div>
-
-  <a mat-stroked-button routerLink="/auth/sso/google" class="cv-auth-secondary !w-full">
-    <span class="flex items-center justify-center gap-2">
-      <svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4">
-        <path
-          fill="#4285F4"
-          d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.89-1.74 2.98-4.3 2.98-7.36Z"
-        />
-        <path
-          fill="#34A853"
-          d="M12 22c2.7 0 4.96-.9 6.62-2.41l-3.24-2.51c-.9.6-2.04.96-3.38.96-2.6 0-4.81-1.76-5.6-4.13H3.06v2.59A10 10 0 0 0 12 22Z"
-        />
-        <path fill="#FBBC05" d="M6.4 13.91a6 6 0 0 1 0-3.82V7.5H3.06a10 10 0 0 0 0 9l3.34-2.59Z" />
-        <path
-          fill="#EA4335"
-          d="M12 5.96c1.47 0 2.79.5 3.82 1.5l2.87-2.87A9.63 9.63 0 0 0 12 2a10 10 0 0 0-8.94 5.5l3.34 2.59C7.19 7.72 9.4 5.96 12 5.96Z"
-        />
-      </svg>
-      Sign in with Google
-    </span>
-  </a>
 </cv-auth-split-layout>

@@ -1,0 +1,320 @@
+import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { vi } from 'vitest';
+import { AuthService } from './auth.service';
+import { MeProfile } from './auth-api';
+
+const companyUser: MeProfile = {
+  id: 'person-1',
+  email: 'person@example.com',
+  display_name: 'Person Name',
+  platform_roles: [],
+  platform_permissions: [],
+  available_contexts: ['company'],
+  company_id: 'company-1',
+  company_entry_state: 'ready',
+  can_select_workspace: false,
+};
+const authenticated = {
+  state: 'authenticated',
+  access: 'access-token',
+  expires_in: 300,
+  server_time: new Date().toISOString(),
+  idle_expires_at: new Date(Date.now() + 1800000).toISOString(),
+};
+
+describe('CareVerity API authentication', () => {
+  let auth: AuthService;
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let profile: MeProfile;
+  let loginResponse: object;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    localStorage.clear();
+    localStorage.setItem('cv_session', JSON.stringify({ user: companyUser }));
+    document.cookie = 'csrftoken=test-csrf; path=/';
+    profile = { ...companyUser };
+    loginResponse = authenticated;
+    fetchMock = vi.fn(async (url: string, _options?: RequestInit) => {
+      const path = url.replace('/api/v1', '');
+      const bodies: Record<string, unknown> = {
+        '/auth/csrf': { csrf: 'set' },
+        '/auth/login': loginResponse,
+        '/auth/state': { state: 'signed_out' },
+        '/auth/refresh': authenticated,
+        '/me': profile,
+        '/me/company': {
+          company_id: 'company-1',
+          name: 'Example Care',
+          company_entry_state: 'ready',
+        },
+        '/auth/mfa/enrol': {
+          device_id: 'device-1',
+          secret: 'ABCDEF',
+          otpauth_url: 'otpauth://totp/CareVerity',
+        },
+        '/auth/mfa/confirm': {
+          state: 'password_change_required',
+          reason: 'initial_password',
+          password_policy: { min_length: 10 },
+        },
+        '/auth/mfa/verify': authenticated,
+        '/auth/activity': authenticated,
+        '/auth/invitations/server-token/accept': {
+          membership_id: 'membership-1',
+          company_id: 'company-1',
+        },
+        '/auth/password/change': { state: 'signed_out' },
+        '/me/workspaces': {
+          results: [{ id: 'company-1', code: 'CARE', name: 'Example Care', lifecycle: 'active' }],
+          next: null,
+        },
+        '/me/workspaces/select': { company_id: 'company-1' },
+      };
+      if (path === '/auth/logout') return new Response(null, { status: 204 });
+      if (!(path in bodies)) throw new Error(`Unexpected request: ${url}`);
+      return Response.json(bodies[path]);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    auth = TestBed.inject(AuthService);
+  });
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it('sends CSRF and credentials, loads /me and enters the assigned company without persisting a token', async () => {
+    await firstValueFrom(auth.signIn(' person@example.com ', 'password'));
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/auth/csrf');
+    const options = fetchMock.mock.calls.find(
+      (call) => call[0] === '/api/v1/auth/login',
+    )![1] as RequestInit;
+    expect(options.credentials).toBe('include');
+    expect(options.headers).toMatchObject({ 'X-CSRFToken': 'test-csrf' });
+    expect(JSON.parse(options.body as string)).toEqual({
+      email: 'person@example.com',
+      password: 'password',
+    });
+    const me = fetchMock.mock.calls.find((call) => call[0] === '/api/v1/me')![1] as RequestInit;
+    expect(me.headers).toMatchObject({ Authorization: 'Bearer access-token' });
+    expect(auth.nextRoute()).toBe('/manage/rota/overview');
+    expect(auth.session()?.workspaceId).toBe('company-1');
+    expect(auth.hasRole('CA')).toBe(false);
+    expect(localStorage.getItem('cv_session')).toBeNull();
+  });
+
+  it('follows MFA enrolment, password gate, and session revocation on password change', async () => {
+    loginResponse = { state: 'mfa_enrolment_required', challenge_id: 'challenge-1' };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    expect(auth.isAuthenticated()).toBe(false);
+    expect(auth.nextRoute()).toBe('/auth/mfa');
+    await firstValueFrom(auth.enrolMfa());
+    expect(auth.enrolment()?.secret).toBe('ABCDEF');
+    await firstValueFrom(auth.verifyMfa('123456'));
+    const confirm = fetchMock.mock.calls.find(
+      (call) => call[0] === '/api/v1/auth/mfa/confirm',
+    )![1] as RequestInit;
+    expect(JSON.parse(confirm.body as string)).toEqual({ device_id: 'device-1', code: '123456' });
+    expect(auth.nextRoute()).toBe('/auth/change-password');
+    expect(auth.minPasswordLength()).toBe(10);
+    expect(auth.enrolment()).toBeNull();
+    await firstValueFrom(auth.resetPassword('old-password', 'new-password', 'new-password'));
+    expect(auth.nextRoute()).toBe('/auth/sign-in');
+  });
+
+  it('verifies an existing authenticator with the pending cookie', async () => {
+    loginResponse = { state: 'mfa_required' };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    await firstValueFrom(auth.verifyMfa('654321'));
+    expect(auth.isAuthenticated()).toBe(true);
+    expect(fetchMock.mock.calls.some((call) => call[0] === '/api/v1/auth/mfa/verify')).toBe(true);
+  });
+
+  it('surfaces credential errors and server field validation without creating a session', async () => {
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith('/csrf')
+        ? Response.json({ csrf: 'set' })
+        : Response.json(
+            { code: 'invalid_credentials', detail: 'Sign-in failed.' },
+            { status: 401 },
+          ),
+    );
+    await expect(firstValueFrom(auth.signIn('person@example.com', 'wrong'))).rejects.toThrow(
+      'Sign-in failed.',
+    );
+    expect(auth.isAuthenticated()).toBe(false);
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith('/csrf')
+        ? Response.json({ csrf: 'set' })
+        : Response.json(
+            { code: 'validation_error', field_errors: { new_password: ['Too common.'] } },
+            { status: 400 },
+          ),
+    );
+    await expect(firstValueFrom(auth.resetPassword('old', 'password'))).rejects.toThrow(
+      'Too common.',
+    );
+  });
+
+  it('restores from cookies through one refresh shared by initialization calls', async () => {
+    await Promise.all([auth.initialize(), auth.initialize()]);
+    expect(auth.isAuthenticated()).toBe(true);
+    expect(fetchMock.mock.calls.filter((call) => call[0] === '/api/v1/auth/refresh')).toHaveLength(
+      1,
+    );
+    const refresh = fetchMock.mock.calls.find(
+      (call) => call[0] === '/api/v1/auth/refresh',
+    )![1] as RequestInit;
+    expect(JSON.parse(refresh.body as string)).toEqual({ continue_session: false });
+  });
+
+  it('does not accept a previously stored local session', () => {
+    expect(localStorage.getItem('cv_session')).toBeNull();
+    expect(auth.isAuthenticated()).toBe(false);
+  });
+
+  it('restricts workspace selection to Super Admin and records selection on the server', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    await expect(auth.selectWorkspace('other-company')).rejects.toThrow('Super Admin');
+    profile = {
+      ...companyUser,
+      platform_roles: ['PO'],
+      company_entry_state: 'platform',
+      can_select_workspace: true,
+    };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    expect(auth.nextRoute()).toBe('/manage/companies');
+    await auth.loadWorkspaces();
+    expect(auth.workspaces()).toHaveLength(1);
+    await auth.selectWorkspace('company-1');
+    expect(auth.session()?.workspaceId).toBe('company-1');
+  });
+
+  it('shows blocked company states without offering a workspace picker', async () => {
+    profile = { ...companyUser, company_entry_state: 'suspended' };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    expect(auth.nextRoute()).toBe('/access-denied');
+    expect(auth.needsWorkspace()).toBe(false);
+  });
+
+  it('rotates an expired token once for concurrent requests without extending idle time', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    vi.setSystemTime(Date.now() + 295000);
+    await Promise.all([auth.api('/me'), auth.api('/me')]);
+    expect(fetchMock.mock.calls.filter((call) => call[0] === '/api/v1/auth/refresh')).toHaveLength(
+      1,
+    );
+    const options = fetchMock.mock.calls.find(
+      (call) => call[0] === '/api/v1/auth/refresh',
+    )![1] as RequestInit;
+    expect(JSON.parse(options.body as string)).toEqual({ continue_session: false });
+  });
+
+  it('revokes server cookies on logout and immediately clears local authentication', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    auth.signOut();
+    expect(auth.isAuthenticated()).toBe(false);
+    await vi.waitFor(() =>
+      expect(fetchMock.mock.calls.some((call) => call[0] === '/api/v1/auth/logout')).toBe(true),
+    );
+  });
+  it('reports real user activity without sending a body and throttles it to once a minute', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    document.dispatchEvent(new Event('pointerdown'));
+    document.dispatchEvent(new Event('keydown'));
+    await vi.waitFor(() =>
+      expect(
+        fetchMock.mock.calls.filter((call) => call[0] === '/api/v1/auth/activity'),
+      ).toHaveLength(1),
+    );
+    const options = fetchMock.mock.calls.find(
+      (call) => call[0] === '/api/v1/auth/activity',
+    )![1] as RequestInit;
+    expect(options.method).toBe('POST');
+    expect(options.body).toBeUndefined();
+  });
+
+  it('clears an idle session without refreshing it to extend the deadline', async () => {
+    loginResponse = {
+      ...authenticated,
+      idle_expires_at: new Date(Date.now() + 10000).toISOString(),
+    };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    await vi.advanceTimersByTimeAsync(15000);
+    expect(auth.isAuthenticated()).toBe(false);
+    expect(fetchMock.mock.calls.some((call) => call[0] === '/api/v1/auth/refresh')).toBe(false);
+  });
+
+  it('clears the session when refresh credentials are rejected', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith('/csrf')
+        ? Response.json({ csrf: 'set' })
+        : Response.json(
+            { code: 'invalid_credentials', detail: 'Session expired.' },
+            { status: 401 },
+          ),
+    );
+    vi.setSystemTime(Date.now() + 295000);
+    await expect(auth.api('/me')).rejects.toThrow('Session expired.');
+    expect(auth.isAuthenticated()).toBe(false);
+  });
+  it('accepts invitations through the API and reloads the assigned profile', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    await firstValueFrom(auth.acceptInvite('server-token'));
+    const request = fetchMock.mock.calls.find(
+      (call) => call[0] === '/api/v1/auth/invitations/server-token/accept',
+    )![1] as RequestInit;
+    expect(request.method).toBe('POST');
+    expect(request.headers).toMatchObject({
+      Authorization: 'Bearer access-token',
+      'X-CSRFToken': 'test-csrf',
+    });
+    expect(fetchMock.mock.calls.filter((call) => call[0] === '/api/v1/me')).toHaveLength(2);
+  });
+
+  it('never authenticates from local accounts, trusted-device flags or MFA overrides when the API rejects credentials', async () => {
+    localStorage.setItem(
+      'cv_trusted_device:person@example.com',
+      JSON.stringify({ expiresAt: Date.now() + 86400000 }),
+    );
+    localStorage.setItem(
+      'cv_management_v1',
+      JSON.stringify({
+        company: {
+          roleMfa: { 'Company Admin': false },
+          members: [{ email: 'person@example.com', role: 'Company Admin', status: 'Active' }],
+        },
+      }),
+    );
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith('/csrf')
+        ? Response.json({ csrf: 'set' })
+        : Response.json(
+            { code: 'invalid_credentials', detail: 'Sign-in failed.' },
+            { status: 401 },
+          ),
+    );
+    await expect(firstValueFrom(auth.signIn('person@example.com', 'password'))).rejects.toThrow(
+      'Sign-in failed.',
+    );
+    expect(auth.session()).toBeNull();
+    expect(auth.currentUser()).toBeNull();
+    expect(auth.workspaces()).toEqual([]);
+    expect(auth.isAuthenticated()).toBe(false);
+  });
+
+  it('preserves server invitation destinations while rejecting external redirects', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    expect(auth.nextRoute('/auth/invite/server-token')).toBe('/auth/invite/server-token');
+    expect(auth.nextRoute('https://example.com')).toBe('/manage/rota/overview');
+    expect(auth.nextRoute('//example.com')).toBe('/manage/rota/overview');
+    expect(auth.session()?.signedInAt).toBeNull();
+    expect(auth.session()?.mfaVerified).toBe(false);
+  });
+});

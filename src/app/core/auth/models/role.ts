@@ -1,16 +1,5 @@
 export type RoleCode =
-  | 'PO'
-  | 'CA'
-  | 'RM'
-  | 'CC'
-  | 'CW'
-  | 'FS'
-  | 'QA'
-  | 'HR'
-  | 'FN'
-  | 'TM'
-  | 'CO'
-  | 'IN';
+  'PO' | 'CA' | 'RM' | 'CC' | 'CW' | 'FS' | 'QA' | 'HR' | 'FN' | 'TM' | 'CO' | 'IN' | 'UN';
 
 export interface RoleDefinition {
   code: RoleCode;
@@ -20,6 +9,7 @@ export interface RoleDefinition {
 }
 
 export const ROLES: Record<RoleCode, RoleDefinition> = {
+  UN: { code: 'UN', label: 'Company member', colorClass: 'bg-role-cw' },
   PO: { code: 'PO', label: 'Platform Owner', colorClass: 'bg-role-po' },
   CA: { code: 'CA', label: 'Company Admin', colorClass: 'bg-role-ca' },
   RM: { code: 'RM', label: 'Registered Manager', colorClass: 'bg-role-rm' },

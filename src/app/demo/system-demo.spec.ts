@@ -1,6 +1,6 @@
 import { seedSystemDemo } from './system-demo';
 import { seedSystemCompany } from './system-demo-company';
-import { DEMO_EMAIL } from '../core/auth/fixtures';
+import { DEMO_EMAIL } from './business-fixtures';
 import type { WorkspaceData, Company } from '../features/management/shared/management.store';
 import { ASSESSMENT_TEMPLATES } from '../features/management/quality/quality.models';
 import { invoiceTotal } from '../features/management/payroll/payroll.models';

@@ -5,7 +5,7 @@ import {
   type PortalConcern,
   type ProfessionalRecord,
 } from '../features/management/staff-portal/portal.models';
-import { DEMO_EMAIL } from '../core/auth/fixtures';
+import { DEMO_EMAIL } from './business-fixtures';
 import { addDays } from '../features/management/rota/rota.models';
 import { appendDemo, demoAt, demoId } from './system-demo-utils';
 

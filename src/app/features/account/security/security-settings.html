@@ -17,7 +17,7 @@
         <span class="material-symbols-outlined" aria-hidden="true">{{
           user.mfaEnabled ? 'verified_user' : 'shield'
         }}</span>
-        {{ user.mfaEnabled ? 'MFA enabled' : 'MFA not enabled' }}
+        {{ user.mfaEnabled ? 'MFA verified' : 'MFA not verified' }}
       </span>
     </div>
   </section>
@@ -54,7 +54,7 @@
             {{
               user.mfaEnabled
                 ? 'Your sign-in uses an additional verification step.'
-                : 'No additional verification method is enabled for this account.'
+                : 'MFA was not verified for this sign-in.'
             }}
           </p>
         </div>
@@ -63,14 +63,14 @@
             class="account-sec-status"
             [class.enabled]="user.mfaEnabled"
             [class.attention]="!user.mfaEnabled"
-            >{{ user.mfaEnabled ? 'Enabled' : 'Not enabled' }}</span
+            >{{ user.mfaEnabled ? 'Verified' : 'Not verified' }}</span
           >
           <span>{{
             user.mfaEnabled
               ? user.mfaMethod === 'authenticator'
                 ? 'Authenticator app'
                 : 'SMS verification'
-              : 'No method configured'
+              : 'Not verified for this sign-in'
           }}</span>
         </div>
         <button class="account-sec-action" type="button" (click)="details.set('mfa')">
@@ -84,8 +84,8 @@
           <p>Review the device records and sign-in events available for your account.</p>
         </div>
         <div class="account-sec-method">
-          <span class="account-sec-status demo">Demo records</span
-          ><span>{{ trustedDeviceCount }} sample trusted-device records</span>
+          <span class="account-sec-status neutral">Unavailable</span
+          ><span>Device history is not available yet</span>
         </div>
         <a class="account-sec-action" routerLink="/account/security/login-history"
           >Review devices<span class="material-symbols-outlined" aria-hidden="true"
@@ -100,7 +100,7 @@
           <p>See the work-account sign-in option available in this workspace.</p>
         </div>
         <div class="account-sec-method">
-          <span class="account-sec-status demo">Demo integration</span><span>Google</span>
+          <span class="account-sec-status neutral">Unavailable</span><span>Google</span>
         </div>
         <button class="account-sec-action" type="button" (click)="details.set('connections')">
           View details<span class="material-symbols-outlined" aria-hidden="true"
@@ -125,7 +125,13 @@
           </div>
           <div>
             <dt>Signed in at</dt>
-            <dd>{{ auth.session()?.signedInAt | date: 'd MMM yyyy, HH:mm' }}</dd>
+            <dd>
+              {{
+                auth.session()?.signedInAt
+                  ? (auth.session()?.signedInAt | date: 'd MMM yyyy, HH:mm')
+                  : 'Unavailable'
+              }}
+            </dd>
           </div>
           <div>
             <dt>Verification</dt>
@@ -141,8 +147,8 @@
       <div class="account-sec-note">
         <span class="material-symbols-outlined" aria-hidden="true">info</span>
         <p>
-          Device and login history are sample records. Authentication methods and work-account
-          connections are shown for this demo.
+          Your account details come from your current sign-in. Login history, trusted devices and
+          work-account connections are not available yet.
         </p>
       </div>
     </aside>
@@ -182,17 +188,19 @@
                     ? user?.mfaMethod === 'authenticator'
                       ? 'Authenticator app'
                       : 'SMS verification'
-                    : 'No method configured'
+                    : 'Not verified for this sign-in'
                 }}
               </h3>
               <p>
-                {{ user?.mfaEnabled ? 'Enabled for your account' : 'Not enabled for your account' }}
+                {{
+                  user?.mfaEnabled ? 'Verified for this sign-in' : 'Not verified for this sign-in'
+                }}
               </p>
             </div>
           </div>
           <p class="security-detail-copy">
-            This demo displays your configured method. Enrolling a new method or changing it is not
-            available here.
+            This shows verification for your current sign-in. Changing your verification method is
+            not available here.
           </p>
         } @else {
           <div class="security-detail-highlight">
@@ -203,8 +211,7 @@
             </div>
           </div>
           <p class="security-detail-copy">
-            Google sign-in is demonstrated in the sign-in flow. This page does not establish or
-            manage a live Google account connection.
+            Google sign-in is not available yet. Continue signing in with your email and password.
           </p>
         }
       </div>

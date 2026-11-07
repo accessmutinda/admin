@@ -1,301 +1,447 @@
-import { Injectable, computed, signal } from '@angular/core';
-import { Observable, delay, of, throwError } from 'rxjs';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { Observable, defer, from, throwError } from 'rxjs';
 import { AppUser } from './models/user';
 import { AuthSession } from './models/session';
-import { Invite } from './models/invite';
-import { RoleCode, ROLES } from './models/role';
-import { effectiveMfa, MfaWorkspace } from './mfa-policy';
+import { RoleCode } from './models/role';
 import {
-  DEMO_EMAIL,
-  DEMO_MFA_CODE,
-  DEMO_PASSWORD,
-  DEMO_USER,
-  DEMO_PORTAL_USERS,
-  INVITES,
-} from './fixtures';
-
-const SESSION_KEY = 'cv_session';
-const TRUSTED_DEVICE_PREFIX = 'cv_trusted_device:';
-const LATENCY_MS = 700;
+  API_BASE,
+  ApiError,
+  ApiWorkspace,
+  AuthResponse,
+  AuthState,
+  MeProfile,
+  MfaEnrolment,
+} from './auth-api';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly _session = signal<AuthSession | null>(this.restoreSession());
-  /** Set once a password has been accepted but MFA has not been verified yet. */
-  private readonly _pendingUser = signal<AppUser | null>(null);
-
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly _session = signal<AuthSession | null>(null);
+  readonly state = signal<AuthState>('signed_out');
+  readonly profile = signal<MeProfile | null>(null);
+  readonly enrolment = signal<MfaEnrolment | null>(null);
+  readonly workspaces = signal<ApiWorkspace[]>([]);
+  readonly passwordReason = signal('');
+  readonly minPasswordLength = signal(8);
+  readonly sessionError = signal('');
+  private access: string | null = null;
+  private accessExpiresAt = 0;
+  private idleExpiresAt = 0;
+  private refreshInFlight?: Promise<void>;
+  private initialization?: Promise<void>;
+  private lastActivity = 0;
+  private generation = 0;
+  private serverOffset = 0;
   readonly session = this._session.asReadonly();
-  readonly pendingUser = this._pendingUser.asReadonly();
   readonly currentUser = computed(() => this._session()?.user ?? null);
-  readonly isAuthenticated = computed(() => this._session() !== null);
+  readonly isAuthenticated = computed(() => this.state() === 'authenticated' && !!this.access);
   readonly needsWorkspace = computed(
-    () => this._session() !== null && this._session()?.workspaceId === null,
+    () =>
+      this.isAuthenticated() &&
+      this.profile()?.can_select_workspace &&
+      !this.session()?.workspaceId,
   );
 
-  signIn(email: string, password: string): Observable<{ requiresMfa: boolean; user: AppUser }> {
-    const address = email.trim().toLowerCase();
-    const user =
-      address === DEMO_EMAIL
-        ? DEMO_USER
-        : (DEMO_PORTAL_USERS.find((account) => account.email === address) ??
-          this.localMemberAccount(address));
-    if (!user || password !== DEMO_PASSWORD) {
-      return throwError(() => new Error('Incorrect email or password.')).pipe(delay(LATENCY_MS));
-    }
-
-    return this.beginSignIn(user);
-  }
-
-  private localMemberAccount(email: string): AppUser | undefined {
+  constructor() {
+    // Discard sessions saved by the previous local sign-in implementation.
     try {
-      const records: Record<string, MfaWorkspace> =
-        JSON.parse(localStorage.getItem('cv_management_v1') ?? '{}') ?? {};
-      const memberships = Object.entries(records).flatMap(([workspace, data]) =>
-        (data.members ?? [])
-          .filter((member) => member.email.toLowerCase() === email && member.status === 'Active')
-          .map((member) => ({ workspace, member })),
-      );
-      const member = memberships[0]?.member;
-      const role = Object.values(ROLES).find((role) => role.label === member?.role);
-      if (!member || !role) return undefined;
-      const name = member.name?.trim() || email;
-      return {
-        id: member.id ?? email,
-        name,
-        initials: name
-          .split(/\s+/)
-          .map((part) => part[0])
-          .slice(0, 2)
-          .join('')
-          .toUpperCase(),
-        email,
-        roleCode: role.code,
-        mfaEnabled: true,
-        mfaMethod: 'authenticator',
-        workspaceIds: memberships.map((membership) => membership.workspace),
-      };
+      localStorage.removeItem('cv_session');
     } catch {
-      return undefined;
+      /* Storage is optional for API authentication. */
     }
+    const activity = () => void this.recordActivity();
+    for (const event of ['pointerdown', 'keydown'])
+      document.addEventListener(event, activity, { passive: true });
+    const timer = setInterval(() => {
+      if (!this.isAuthenticated()) return;
+      if (this.idleExpiresAt && Date.now() >= this.idleExpiresAt) {
+        this.clear();
+        void this.router.navigateByUrl('/auth/sign-in');
+      } else if (Date.now() >= this.accessExpiresAt - 30000) {
+        void this.refresh().catch(() => this.expire());
+      }
+    }, 15000);
+    this.destroyRef.onDestroy(() => {
+      clearInterval(timer);
+      for (const event of ['pointerdown', 'keydown']) document.removeEventListener(event, activity);
+    });
   }
 
-  private beginSignIn(account: AppUser): Observable<{ requiresMfa: boolean; user: AppUser }> {
-    const user = { ...account, mfaEnabled: this.requiresMfa(account) };
-    const requiresMfa = user.mfaEnabled && !this.isDeviceTrusted(user);
-    this._session.set(null);
-    this._pendingUser.set(null);
-    localStorage.removeItem(SESSION_KEY);
-
-    if (requiresMfa) {
-      this._pendingUser.set(user);
-    } else {
-      this.establishSession(user, false);
-    }
-
-    return of({ requiresMfa, user }).pipe(delay(LATENCY_MS));
+  initialize(): Promise<void> {
+    return (this.initialization ??= this.restore());
   }
 
-  verifyMfa(code: string, trustDevice: boolean): Observable<AuthSession> {
-    const user = this._pendingUser();
-    if (!user) {
-      return throwError(() => new Error('Your sign-in session expired. Please sign in again.'));
-    }
-    if (code !== DEMO_MFA_CODE) {
-      return throwError(() => new Error('That code is incorrect. Please try again.')).pipe(
-        delay(LATENCY_MS),
-      );
-    }
-
-    this._pendingUser.set(null);
-    const session = this.establishSession(user, trustDevice);
-    return of(session).pipe(delay(LATENCY_MS));
-  }
-
-  resendMfaCode(): Observable<void> {
-    return of(void 0).pipe(delay(LATENCY_MS));
-  }
-
-  signInWithGoogle(): Observable<{ requiresMfa: boolean; user: AppUser }> {
-    return this.beginSignIn(DEMO_USER);
-  }
-
-  requiresMfa(user: AppUser): boolean {
-    return this.accountPolicies(user).some((policy) => policy.required);
-  }
-
-  private accountPolicies(
-    user: AppUser,
-  ): { workspace: string; required: boolean; policy: string }[] {
-    let records: Record<string, MfaWorkspace> = {};
+  private async restore(): Promise<void> {
     try {
-      records = JSON.parse(localStorage.getItem('cv_management_v1') ?? '{}') ?? {};
-    } catch {
-      /* Use the seeded account policy when storage is unavailable. */
-    }
-    const policies = [...new Set([...user.workspaceIds, ...this.localWorkspaceIds()])].flatMap(
-      (workspace) => {
-        const data = records[workspace];
-        const member = data?.members?.find(
-          (m) => m.email.toLowerCase() === user.email.toLowerCase(),
+      const response = await this.request<AuthResponse>('/auth/state');
+      if (response.state !== 'signed_out') await this.apply(response);
+      else {
+        await this.refresh();
+        await this.loadProfile();
+      }
+    } catch (error) {
+      this.clear();
+      if (!(error instanceof ApiError && error.status === 401)) {
+        this.sessionError.set(
+          error instanceof Error ? error.message : 'Unable to restore your session.',
         );
-        const role = member?.role ?? ROLES[user.roleCode].label;
-        if (!member && data?.roleMfa?.[role] === undefined) return [];
-        const policy = member ?? { email: user.email, role, mfaPolicy: 'inherit' as const };
-        return [
-          {
-            workspace,
-            required: effectiveMfa(policy, data?.roleMfa),
-            policy: JSON.stringify([
-              role,
-              policy.mfaPolicy,
-              policy.mfaEnabled,
-              data?.roleMfa?.[role],
-            ]),
-          },
-        ];
-      },
+      }
+    }
+  }
+
+  signIn(
+    email: string,
+    password: string,
+  ): Observable<{ requiresMfa: boolean; user: AppUser | null }> {
+    return defer(() =>
+      from(
+        (async () => {
+          this.clear();
+          this.sessionError.set('');
+          await this.apply(
+            await this.request<AuthResponse>('/auth/login', { email: email.trim(), password }),
+          );
+          return { requiresMfa: this.state().startsWith('mfa_'), user: this.currentUser() };
+        })(),
+      ),
     );
-    return policies.length
-      ? policies
-      : [{ workspace: '', required: user.mfaEnabled, policy: 'account-default' }];
   }
 
-  private trustSignature(user: AppUser): string {
-    return JSON.stringify(this.accountPolicies(user));
+  verifyMfa(code: string, _trustDevice = false): Observable<AuthSession | null> {
+    return defer(() =>
+      from(
+        (async () => {
+          const device = this.enrolment();
+          const path =
+            this.state() === 'mfa_enrolment_required' ? '/auth/mfa/confirm' : '/auth/mfa/verify';
+          if (path.endsWith('confirm') && !device)
+            throw new Error('Set up your authenticator before continuing.');
+          await this.apply(
+            await this.request<AuthResponse>(
+              path,
+              device ? { device_id: device.device_id, code } : { code },
+            ),
+          );
+          return this.session();
+        })(),
+      ),
+    );
   }
 
-  signInDemoSession(): Observable<AuthSession> {
-    const session = this.establishSession(DEMO_USER, false);
-    return of(session).pipe(delay(900));
+  enrolMfa(): Observable<MfaEnrolment> {
+    return defer(() =>
+      from(
+        (async () => {
+          const result = await this.request<MfaEnrolment>('/auth/mfa/enrol', {});
+          this.enrolment.set(result);
+          return result;
+        })(),
+      ),
+    );
   }
 
-  requestPasswordReset(_email: string): Observable<void> {
-    return of(void 0).pipe(delay(LATENCY_MS));
+  resetPassword(
+    currentPassword: string,
+    newPassword: string,
+    confirmation = newPassword,
+  ): Observable<void> {
+    return defer(() =>
+      from(
+        (async () => {
+          if (this.access && Date.now() >= this.accessExpiresAt - 10000) {
+            try {
+              await this.refresh();
+            } catch (error) {
+              this.expire();
+              throw error;
+            }
+          }
+          await this.request('/auth/password/change', {
+            current_password: currentPassword,
+            new_password: newPassword,
+            confirmation,
+          });
+          this.clear();
+        })(),
+      ),
+    );
   }
 
-  resetPassword(currentPassword: string, _newPassword: string): Observable<void> {
-    if (currentPassword !== DEMO_PASSWORD) {
-      return throwError(() => new Error('Your current password is incorrect.')).pipe(
-        delay(LATENCY_MS),
-      );
+  async loadWorkspaces(): Promise<void> {
+    const results: ApiWorkspace[] = [];
+    let path: string | null = '/me/workspaces';
+    while (path) {
+      const page: { results: ApiWorkspace[]; next: string | null } = await this.api(path);
+      results.push(...page.results);
+      if (page.next) {
+        const url = new URL(page.next, window.location.origin);
+        if (!url.pathname.startsWith(`${API_BASE}/me/workspaces`))
+          throw new Error('Invalid workspace page.');
+        path = url.pathname.slice(API_BASE.length) + url.search;
+      } else path = null;
     }
-    return of(void 0).pipe(delay(LATENCY_MS));
+    this.workspaces.set(results);
   }
 
-  getInvite(token: string): Invite | undefined {
-    return INVITES[token];
+  async selectWorkspace(id: string): Promise<void> {
+    if (!this.profile()?.can_select_workspace)
+      throw new Error('Workspace selection is limited to Super Admin.');
+    await this.api('/me/workspaces/select', { company_id: id });
+    this.setWorkspace(id);
   }
 
-  acceptInvite(token: string): Observable<AuthSession> {
-    const invite = INVITES[token];
-    if (!invite || invite.status !== 'pending') {
-      return throwError(() => new Error('This invitation is no longer valid.'));
+  private setWorkspace(workspaceId: string): void {
+    const session = this.session();
+    if (
+      session &&
+      (this.profile()?.can_select_workspace || this.profile()?.company_id === workspaceId)
+    ) {
+      this._session.set({ ...session, workspaceId });
     }
-    invite.status = 'accepted';
-    const user: AppUser = { ...DEMO_USER, roleCode: invite.roleCode };
-    const session = this.establishSession(user, false);
-    return of(session).pipe(delay(LATENCY_MS));
-  }
-
-  declineInvite(token: string): Observable<void> {
-    const invite = INVITES[token];
-    if (invite) {
-      invite.status = 'declined';
-    }
-    return of(void 0).pipe(delay(LATENCY_MS));
-  }
-
-  setWorkspace(workspaceId: string): void {
-    const current = this._session();
-    if (!current) {
-      return;
-    }
-    const next: AuthSession = { ...current, workspaceId };
-    this._session.set(next);
-    this.persistSession(next);
-  }
-
-  grantWorkspaceAccess(workspaceId: string): void {
-    const session = this._session();
-    if (!session || session.user.workspaceIds.includes(workspaceId)) return;
-    const next = {
-      ...session,
-      user: { ...session.user, workspaceIds: [...session.user.workspaceIds, workspaceId] },
-    };
-    this._session.set(next);
-    this.persistSession(next);
-  }
-
-  signOut(): void {
-    this._session.set(null);
-    this._pendingUser.set(null);
-    localStorage.removeItem(SESSION_KEY);
   }
 
   hasRole(...codes: RoleCode[]): boolean {
-    const user = this.currentUser();
-    return !!user && codes.includes(user.roleCode);
+    return !!this.currentUser() && codes.includes(this.currentUser()!.roleCode);
+  }
+  nextRoute(redirectTo?: string | null): string {
+    if (this.state().startsWith('mfa_')) return '/auth/mfa';
+    if (this.state() === 'password_change_required') return '/auth/change-password';
+    if (!this.isAuthenticated()) return '/auth/sign-in';
+    if (redirectTo && /^\/auth\/invite\/[^/?#]+$/.test(redirectTo)) return redirectTo;
+    if (this.profile()?.company_entry_state === 'platform') return '/manage/companies';
+    if (this.profile()?.company_entry_state === 'ready') return '/manage/rota/overview';
+    return '/access-denied';
   }
 
-  private establishSession(user: AppUser, trustDevice: boolean): AuthSession {
-    const session: AuthSession = {
-      user: {
-        ...user,
-        workspaceIds: [...new Set([...user.workspaceIds, ...this.localWorkspaceIds()])],
-      },
-      workspaceId: null,
-      mfaVerified: true,
-      signedInAt: new Date().toISOString(),
+  signOut(): void {
+    this.sessionError.set('');
+    const logout = this.request('/auth/logout', {});
+    this.clear();
+    void logout.catch(() =>
+      this.sessionError.set(
+        'Sign-out could not reach the server. Please retry before leaving this device.',
+      ),
+    );
+  }
+
+  private async apply(response: AuthResponse): Promise<void> {
+    this.state.set(response.state);
+    this.passwordReason.set(response.reason ?? '');
+    this.minPasswordLength.set(response.password_policy?.min_length ?? 8);
+    if (response.state === 'authenticated') {
+      try {
+        this.acceptToken(response);
+        await this.loadProfile();
+      } catch (error) {
+        this.clear();
+        throw error;
+      }
+    } else {
+      this.access = null;
+      this._session.set(null);
+      this.profile.set(null);
+      this.enrolment.set(null);
+    }
+  }
+
+  private acceptToken(response: AuthResponse): void {
+    if (!response.access) throw new Error('The server did not return an access token.');
+    this.access = response.access;
+    this.accessExpiresAt = Date.now() + (response.expires_in ?? 300) * 1000;
+    this.state.set('authenticated');
+    this.deadlines(response);
+  }
+
+  private deadlines(response: AuthResponse): void {
+    if (response.server_time) this.serverOffset = Date.parse(response.server_time) - Date.now();
+    if (response.idle_expires_at) {
+      this.idleExpiresAt =
+        Math.min(
+          Date.parse(response.idle_expires_at),
+          response.absolute_expires_at ? Date.parse(response.absolute_expires_at) : Infinity,
+        ) - this.serverOffset;
+    }
+  }
+
+  private async loadProfile(): Promise<void> {
+    const me = await this.api<MeProfile>('/me');
+    this.profile.set(me);
+    const name = me.display_name || me.email;
+    const user: AppUser = {
+      id: me.id,
+      name,
+      email: me.email,
+      initials: name
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join('')
+        .toUpperCase(),
+      roleCode: me.platform_roles.includes('PO') ? 'PO' : 'UN',
+      mfaEnabled: !!me.authentication?.mfa_verified_at,
+      mfaMethod: 'authenticator',
+      workspaceIds: me.company_id ? [me.company_id] : [],
     };
-    this._session.set(session);
-    this.persistSession(session);
-    if (trustDevice) {
-      localStorage.setItem(
-        TRUSTED_DEVICE_PREFIX + user.email,
-        JSON.stringify({
-          signature: this.trustSignature(user),
-          expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
-        }),
+    if (me.company_entry_state === 'ready') {
+      const company = await this.api<{
+        company_id: string;
+        name: string;
+        company_entry_state: string;
+      }>('/me/company');
+      this.workspaces.set([
+        {
+          id: company.company_id,
+          name: company.name,
+          code: '',
+          lifecycle: company.company_entry_state,
+        },
+      ]);
+    }
+    this._session.set({
+      user,
+      workspaceId: me.company_entry_state === 'ready' ? me.company_id : null,
+      mfaVerified: !!me.authentication?.mfa_verified_at,
+      signedInAt: null,
+    });
+  }
+
+  private refresh(): Promise<void> {
+    if (!this.refreshInFlight) {
+      const generation = this.generation;
+      this.refreshInFlight = this.request<AuthResponse>('/auth/refresh', {
+        continue_session: false,
+      })
+        .then((response) => {
+          if (generation === this.generation) this.acceptToken(response);
+        })
+        .finally(() => {
+          this.refreshInFlight = undefined;
+        });
+    }
+    return this.refreshInFlight;
+  }
+
+  async api<T>(path: string, body?: unknown, method?: 'POST'): Promise<T> {
+    if (this.access && Date.now() >= this.accessExpiresAt - 10000) {
+      try {
+        await this.refresh();
+      } catch (error) {
+        this.expire();
+        throw error;
+      }
+    }
+    try {
+      return await this.request<T>(path, body, method);
+    } catch (error) {
+      if (
+        error instanceof ApiError &&
+        error.status === 403 &&
+        error.code === 'password_change_required'
+      ) {
+        this.state.set('password_change_required');
+        this.passwordReason.set(error.response?.reason ?? '');
+        this.minPasswordLength.set(error.response?.password_policy?.min_length ?? 8);
+        void this.router.navigateByUrl('/auth/change-password');
+      } else if (error instanceof ApiError && error.status === 401 && this.access) {
+        try {
+          await this.refresh();
+        } catch (refreshError) {
+          this.expire();
+          throw refreshError;
+        }
+        try {
+          return await this.request<T>(path, body, method);
+        } catch (retryError) {
+          if (retryError instanceof ApiError && retryError.status === 401) this.expire();
+          throw retryError;
+        }
+      }
+      throw error;
+    }
+  }
+
+  private async recordActivity(): Promise<void> {
+    if (!this.isAuthenticated() || Date.now() - this.lastActivity < 60000) return;
+    this.lastActivity = Date.now();
+    try {
+      this.deadlines(await this.api<AuthResponse>('/auth/activity', undefined, 'POST'));
+    } catch {
+      /* Authentication failures are handled by the request path. */
+    }
+  }
+
+  private async request<T>(path: string, body?: unknown, method?: 'POST'): Promise<T> {
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    if (this.access) headers['Authorization'] = `Bearer ${this.access}`;
+    if (body !== undefined) {
+      await this.request('/auth/csrf');
+      const cookie = document.cookie.split('; ').find((value) => value.startsWith('csrftoken='));
+      if (!cookie)
+        throw new Error('Cookies are required to sign in. Check the API proxy configuration.');
+      headers['X-CSRFToken'] = decodeURIComponent(cookie.slice('csrftoken='.length));
+      headers['Content-Type'] = 'application/json';
+    }
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE}${path}`, {
+        method: method ?? (body === undefined ? 'GET' : 'POST'),
+        credentials: 'include',
+        signal: AbortSignal.timeout(15000),
+        headers,
+        cache: 'no-store',
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    } catch {
+      throw new Error('Unable to reach CareVerity. Check your connection and try again.');
+    }
+    if (response.status === 204) return undefined as T;
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      const fields = data?.field_errors ?? {};
+      const details = Object.values(fields).flat().join(' ');
+      throw new ApiError(
+        details || data?.detail || 'CareVerity is temporarily unavailable. Please try again.',
+        response.status,
+        data?.code ?? 'request_failed',
+        fields,
+        data,
       );
     }
-    return session;
+    if (!data) throw new Error('The API returned an invalid response. Check the API proxy.');
+    return data as T;
   }
 
-  private localWorkspaceIds(): string[] {
-    try {
-      return (
-        JSON.parse(localStorage.getItem('cv_custom_workspaces_v1') ?? '[]') as { id: string }[]
-      ).map((w) => w.id);
-    } catch {
-      return [];
-    }
+  private expire(): void {
+    this.clear();
+    void this.router.navigateByUrl('/auth/sign-in');
+  }
+  private clear(): void {
+    this.generation++;
+    this.access = null;
+    this.accessExpiresAt = 0;
+    this.idleExpiresAt = 0;
+    this.lastActivity = 0;
+    this._session.set(null);
+    this.profile.set(null);
+    this.enrolment.set(null);
+    this.workspaces.set([]);
+    this.state.set('signed_out');
   }
 
-  private isDeviceTrusted(user: AppUser): boolean {
-    try {
-      const trusted = JSON.parse(
-        localStorage.getItem(TRUSTED_DEVICE_PREFIX + user.email) ?? 'null',
-      );
-      return trusted?.signature === this.trustSignature(user) && trusted.expiresAt > Date.now();
-    } catch {
-      return false;
-    }
+  acceptInvite(token: string): Observable<void> {
+    return defer(() =>
+      from(
+        (async () => {
+          await this.api(`/auth/invitations/${encodeURIComponent(token)}/accept`, {});
+          await this.loadProfile();
+        })(),
+      ),
+    );
   }
 
-  private persistSession(session: AuthSession): void {
-    try {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    } catch {
-      // Storage unavailable (e.g. private browsing) — session stays in-memory only.
-    }
-  }
-
-  private restoreSession(): AuthSession | null {
-    try {
-      const raw = localStorage.getItem(SESSION_KEY);
-      return raw ? (JSON.parse(raw) as AuthSession) : null;
-    } catch {
-      return null;
-    }
+  signInDemoSession(): Observable<AuthSession> {
+    return throwError(() => new Error('Local sign-in is disabled. Sign in through the API.'));
   }
 }

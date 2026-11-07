@@ -1,5 +1,5 @@
 import type { Person, WorkspaceData } from '../features/management/shared/management.store';
-import { DEMO_EMAIL } from '../core/auth/fixtures';
+import { DEMO_EMAIL } from './business-fixtures';
 import { staffRecord } from '../features/management/people/hr.models';
 import { emptyLocation } from '../features/management/locations/locations.models';
 import {

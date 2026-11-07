@@ -18,7 +18,7 @@ import { seedSystemAcademy } from './system-demo-academy';
 import { seedSystemCompany } from './system-demo-company';
 import { addDays, londonDate } from '../features/management/rota/rota.models';
 import { WorkspaceService } from '../core/auth/workspace.service';
-import { DEMO_EMAIL, WORKSPACES } from '../core/auth/fixtures';
+import { DEMO_EMAIL, WORKSPACES } from './business-fixtures';
 import {
   appendDemo,
   demoAt,

@@ -3,7 +3,7 @@ import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { AuthService } from '../../../core/auth/auth.service';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
-import { DEMO_USER } from '../../../core/auth/fixtures';
+import { DEMO_USER } from '../../../demo/business-fixtures';
 import { ManagementStore } from '../shared/management.store';
 import { emptyRota } from '../rota/rota.models';
 import { ClientInvoice, emptyEcm } from '../ecm/ecm.models';

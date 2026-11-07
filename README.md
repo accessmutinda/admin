@@ -4,10 +4,25 @@ Web admin console for CareVerity, a care management platform. This build covers 
 administration, recruitment, employee onboarding, compliance, training, rota,
 payroll, the Live ECM board, supervisor assessments, quality assurance and the inspector portal.
 
-There is no backend yet. Every sign-in, MFA check, invite, and password reset
-runs against fixed demo data (`src/app/core/auth/fixtures.ts`) and
-`localStorage`. Company and people records are saved on the current device,
-with records isolated by workspace.
+Authentication uses the CareVerity API under `/api/v1`. The development server
+(`proxy.conf.json`) and Docker Nginx (`nginx.conf`) forward these requests to
+`https://9022-105-164-104-38.ngrok-free.app`. Update both targets when the tunnel changes.
+Keep `/api/` on the frontend origin when deploying elsewhere; the HttpOnly refresh
+and pending cookies use SameSite=Lax. The proxy supplies the upstream Origin and
+Referer for CSRF checks. Never cache API responses.
+
+Access tokens stay in memory. Session restoration rotates the refresh cookie;
+background refresh does not extend the 30-minute idle deadline. User interaction
+reports activity at most once per minute. Server validation errors appear on forms.
+MFA uses authenticator codes, including enrolment by setup key. Invitation acceptance calls the API and reloads the profile after joining. Password changes
+revoke sessions and require another sign-in. Google sign-in, password recovery and
+trusted devices are unavailable in the current API and are hidden from sign-in.
+
+Company users enter their assigned company; only Super Admin can select workspaces.
+The documented `/me` response has no company role or permission fields. Such accounts
+are displayed as Company member and are not assigned Company Admin privileges.
+Company module permissions still need a server contract before those workflows are integrated.
+Authentication and account security import no sample records. Security history, trusted devices, Google sign-in and password recovery show unavailable until their endpoints exist. Business sample fixtures live in `src/app/demo/business-fixtures.ts` and cannot establish a session. Business records in the remaining modules still use local sample data and browser storage.
 
 ## Care delivery workspaces
 
@@ -18,7 +33,7 @@ with records isolated by workspace.
 - **Live Visits / ECM** (`/manage/ecm`): a separate sidebar destination and home-screen card for attendance, running visits, delays and missed calls.
 - Each client also has `visits`, `contacts`, `documents`, `family` and `audit` workspace pages. Family previews are linked from active sharing records; direct family views at `/family/:clientId/:accessId` require matching signed-in email, current sharing consent and enabled scopes.
 
-These workflows share the existing workspace-scoped browser store. Document bytes, prescriptions, MAR and messages remain on this device. No backend, external invitation delivery or production family authentication is added. The family view is a permission-scoped demonstration within the existing demo authentication system. Use fictitious records for evaluation.
+These workflows share the existing workspace-scoped browser store. Document bytes, prescriptions, MAR and messages remain on this device. No backend, external invitation delivery or production family authentication is added. The family view is a permission-scoped demonstration within the existing frontend modules. Use fictitious records for evaluation.
 
 ## Inspector portal
 
@@ -35,8 +50,7 @@ Existing saved permission configurations are upgraded once to version 2. Subsequ
 explicit permission edits remain supported. Sign-in, workspace isolation, validation,
 paused workflows and checks against approving one's own work remain in place.
 
-The normal Care Worker demo sign-in can open the portal directly. A separate
-inspector demo is also available at `/auth/invite/inspector-demo` after signing out.
+The previous demo sign-ins and invitation shortcuts no longer establish sessions.
 
 The portal reads existing workspace records without changing care or workforce
 records. Inspection notes, provisional ratings, findings, inspection dates and
@@ -91,8 +105,7 @@ docker build -t careverity-admin .
 docker run --rm -p 8080:8080 --name careverity-admin careverity-admin
 ```
 
-The container health check uses `/health`. This deployment still uses the demo
-authentication and browser storage described above; it does not add a backend.
+The container health check uses `/health`. Authentication requests are proxied to the API; other modules continue to use browser storage.
 
 ## Design reference
 
@@ -103,20 +116,16 @@ by Git.
 
 ## Signing in
 
-| Field    | Value                 |
-| -------- | --------------------- |
-| Email    | `jane.doe@lqcs.co.uk` |
-| Password | `CareVerity123!`      |
-| MFA code | `123456`              |
+Use an account provisioned on the API. Demo passwords and fixed MFA codes no longer
+work. If prompted, enrol an authenticator or change your temporary/expired password.
+The client does not create accounts. Cookie-based authentication requires the proxy;
+serving only the static build without forwarding `/api/` will not work.
 
 ### Care-plan frontend walkthrough
 
 Open `/manage/care-plans` to search the care-plan register and open a service user’s workspace.
 The register uses compact branded summary cards and a combined title, search and status toolbar.
-Select **London Quality Care Services** after sign-in. Use `admin@example.test` for editing,
-`manager@example.test` for independent approval, and `sarah.clarke@example.test` for assigned
-carer views. These demo accounts use `CareVerity123!` and MFA `123456`. Jane Doe is a care-worker
-account and does not open the management editor.
+These sample workflows predate API authentication. Their fixture accounts no longer sign in; use server-provisioned accounts once company permissions are supplied by the API.
 
 Mary Wilson (`care-demo-client-1`) has the editable example; Arthur Bennett
 (`care-demo-client-0`) provides the submitted approval example; Dorothy Clarke

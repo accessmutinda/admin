@@ -11,28 +11,42 @@
       <cv-alert tone="error">{{ errorMessage() }}</cv-alert>
     </div>
   }
+  @if (needsEnrolment()) {
+    <div class="mt-5 rounded-lg border border-line p-4">
+      <h2 class="font-semibold">Set up your authenticator</h2>
+      <p class="mt-2 text-sm text-slate">
+        Add a time-based account named CareVerity in your authenticator app using this setup key.
+        Keep the key private.
+      </p>
+      @if (enrolment(); as device) {
+        <p class="mt-3 break-all select-all font-mono" aria-label="Authenticator setup key">
+          {{ device.secret }}
+        </p>
+        <p class="mt-2 text-sm text-slate">Then enter the six-digit code from your app below.</p>
+      } @else {
+        <button
+          mat-stroked-button
+          type="button"
+          class="!mt-3"
+          [disabled]="loading()"
+          (click)="enrol()"
+        >
+          {{ loading() ? 'Preparing…' : 'Generate setup key' }}
+        </button>
+      }
+    </div>
+  }
   <div class="mt-6">
     <cv-otp-input (valueChange)="onCodeChange($event)" (complete)="verify()" />
   </div>
   <p class="mt-3 text-center text-xs leading-5 text-slate">
     The code updates in your app. You can type or paste it here.
   </p>
-  <div class="cv-auth-device mt-5">
-    <mat-checkbox
-      [checked]="trustDevice()"
-      (change)="trustDevice.set($event.checked)"
-      aria-describedby="trust-device-hint"
-      >Trust this device</mat-checkbox
-    >
-    <p id="trust-device-hint" class="text-xs leading-5 text-slate">
-      Skip this step for 30 days on a device you use privately.
-    </p>
-  </div>
   <button
     mat-flat-button
     type="button"
     class="cv-auth-primary !mt-5 !w-full"
-    [disabled]="code().length !== 6 || loading()"
+    [disabled]="code().length !== 6 || loading() || (needsEnrolment() && !enrolment())"
     (click)="verify()"
   >
     {{ loading() ? 'Verifying…' : 'Verify and continue' }}

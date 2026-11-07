@@ -14,7 +14,7 @@ import { ManagementStore } from '../management/shared/management.store';
 import { WorkspaceService } from '../../core/auth/workspace.service';
 import { ROLES } from '../../core/auth/models/role';
 import { AuthService } from '../../core/auth/auth.service';
-import { DEMO_USER } from '../../core/auth/fixtures';
+import { DEMO_USER } from '../../demo/business-fixtures';
 import { decodeDocument, zip } from './inspector-download';
 import { routes } from '../../app.routes';
 import { RouterTestingHarness } from '@angular/router/testing';

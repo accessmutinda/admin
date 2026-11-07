@@ -12,7 +12,7 @@ import { CarePlan } from './care-plan';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
-import { DEMO_USER } from '../../../core/auth/fixtures';
+import { DEMO_USER } from '../../../demo/business-fixtures';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
 import { ManagementStore } from '../shared/management.store';
 import { RotaService } from '../rota/rota.service';

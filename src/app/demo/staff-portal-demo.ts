@@ -10,7 +10,7 @@ import type {
   PortalEvent,
 } from '../features/management/staff-portal/portal.models';
 import { staffRecord } from '../features/management/people/hr.models';
-import { DEMO_EMAIL } from '../core/auth/fixtures';
+import { DEMO_EMAIL } from './business-fixtures';
 import { addDays } from '../features/management/rota/rota.models';
 import { appendDemo, demoAt, demoId } from './system-demo-utils';
 

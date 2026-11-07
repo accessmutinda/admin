@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { AuthService } from '../../../core/auth/auth.service';
-import { DEMO_USER } from '../../../core/auth/fixtures';
+import { DEMO_USER } from '../../../demo/business-fixtures';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
 import { seedCareDemo } from '../../../demo/care-demo';
 import { ManagementStore } from '../shared/management.store';

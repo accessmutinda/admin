@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
-import { DEMO_USER } from '../../../core/auth/fixtures';
+import { DEMO_USER } from '../../../demo/business-fixtures';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
 import { ManagementStore } from '../shared/management.store';
 import { RotaService } from '../rota/rota.service';

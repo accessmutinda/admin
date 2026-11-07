@@ -2,7 +2,7 @@ import { EnvironmentInjector } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from '../core/auth/auth.service';
 import { WorkspaceService } from '../core/auth/workspace.service';
-import { WORKSPACES } from '../core/auth/fixtures';
+import { WORKSPACES } from './business-fixtures';
 import { ManagementStore } from '../features/management/shared/management.store';
 import { installSystemDemo } from './system-demo';
 import { SYSTEM_DEMO_VERSION } from './system-demo-utils';

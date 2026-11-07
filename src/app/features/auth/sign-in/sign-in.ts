@@ -1,9 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthSplitLayout } from '../../../shared/layouts/auth-split-layout';
@@ -14,10 +13,8 @@ import { AuthService } from '../../../core/auth/auth.service';
   selector: 'cv-sign-in',
   imports: [
     ReactiveFormsModule,
-    RouterLink,
     MatFormFieldModule,
     MatInputModule,
-    MatCheckboxModule,
     MatButtonModule,
     MatProgressSpinnerModule,
     AuthSplitLayout,
@@ -29,7 +26,13 @@ export class SignIn {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly returnTo = this.route.snapshot.queryParamMap.get('redirectTo');
 
+  protected readonly sessionError = this.auth.sessionError;
+  protected retrySignOut(): void {
+    this.auth.signOut();
+  }
   protected readonly hidePassword = signal(true);
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal('');
@@ -37,7 +40,6 @@ export class SignIn {
   protected readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]],
-    rememberMe: [true],
   });
 
   protected submit(): void {
@@ -50,9 +52,11 @@ export class SignIn {
     const { email, password } = this.form.getRawValue();
 
     this.auth.signIn(email, password).subscribe({
-      next: ({ requiresMfa }) => {
+      next: () => {
         this.loading.set(false);
-        this.router.navigateByUrl(requiresMfa ? '/auth/mfa' : '/select-workspace');
+        this.router.navigate([this.auth.nextRoute(this.returnTo)], {
+          queryParams: this.auth.isAuthenticated() ? {} : { redirectTo: this.returnTo },
+        });
       },
       error: (err: Error) => {
         this.loading.set(false);

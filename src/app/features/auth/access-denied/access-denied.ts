@@ -19,6 +19,11 @@ export class AccessDenied {
 
   private readonly state = (history.state ?? {}) as AccessDeniedState;
   protected readonly requiredRoleLabels = this.state.requiredRoleLabels ?? [];
+  protected readonly entryState = this.auth.profile()?.company_entry_state;
+  protected signOut(): void {
+    this.auth.signOut();
+    void this.router.navigateByUrl('/auth/sign-in');
+  }
   protected readonly isSignedIn = this.auth.isAuthenticated();
 
   protected goToDashboard(): void {

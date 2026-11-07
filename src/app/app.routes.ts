@@ -3,6 +3,7 @@ import { Router, Routes } from '@angular/router';
 import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
 import {
   authGuard,
+  passwordChangeGuard,
   guestGuard,
   workspaceGuard,
   workspaceSelectionGuard,
@@ -98,6 +99,12 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'auth/invite/:token',
+    title: 'Accept invitation · CareVerity',
+    loadComponent: () =>
+      import('./features/auth/invite-accept/invite-accept').then((m) => m.InviteAccept),
+  },
+  {
     path: 'auth',
     canActivate: [guestGuard],
     children: [
@@ -114,6 +121,13 @@ export const routes: Routes = [
           import('./features/auth/mfa-verify/mfa-verify').then((m) => m.MfaVerify),
       },
       {
+        path: 'change-password',
+        canActivate: [passwordChangeGuard],
+        title: 'Change password · CareVerity',
+        loadComponent: () =>
+          import('./features/auth/reset-password/reset-password').then((m) => m.ResetPassword),
+      },
+      {
         path: 'forgot-password',
         title: 'Reset your password · CareVerity',
         loadComponent: () =>
@@ -125,12 +139,6 @@ export const routes: Routes = [
         title: 'Sign in with Google · CareVerity',
         loadComponent: () =>
           import('./features/auth/sso-google/sso-google').then((m) => m.SsoGoogle),
-      },
-      {
-        path: 'invite/:token',
-        title: "You're invited · CareVerity",
-        loadComponent: () =>
-          import('./features/auth/invite-accept/invite-accept').then((m) => m.InviteAccept),
       },
     ],
   },

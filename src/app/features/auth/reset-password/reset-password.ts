@@ -7,7 +7,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -38,7 +38,12 @@ export class ResetPassword {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly returnTo = this.route.snapshot.queryParamMap.get('redirectTo');
 
+  protected readonly requiredChange = this.auth.state() === 'password_change_required';
+  protected readonly passwordReason = this.auth.passwordReason;
+  protected readonly minLength = this.auth.minPasswordLength;
   protected readonly loading = signal(false);
   protected readonly done = signal(false);
   protected readonly errorMessage = signal('');
@@ -48,22 +53,17 @@ export class ResetPassword {
   protected readonly form = this.fb.nonNullable.group(
     {
       currentPassword: ['', [Validators.required]],
-      password: [
-        '',
-        [
-          Validators.required,
-          Validators.minLength(8),
-          Validators.pattern(/[0-9]/),
-          Validators.pattern(/[A-Z]/),
-        ],
-      ],
+      password: ['', [Validators.required, Validators.minLength(this.auth.minPasswordLength())]],
       confirmPassword: ['', [Validators.required]],
     },
     { validators: passwordsMatch() },
   );
 
   protected readonly rules = [
-    { label: 'At least 8 characters', test: (v: string) => v.length >= 8 },
+    {
+      label: `At least ${this.minLength()} characters`,
+      test: (v: string) => v.length >= this.minLength(),
+    },
     { label: 'One uppercase letter', test: (v: string) => /[A-Z]/.test(v) },
     { label: 'One number', test: (v: string) => /[0-9]/.test(v) },
     { label: 'One special character', test: (v: string) => /[^A-Za-z0-9]/.test(v) },
@@ -105,12 +105,16 @@ export class ResetPassword {
     }
     this.errorMessage.set('');
     this.loading.set(true);
-    const { currentPassword, password } = this.form.getRawValue();
-    this.auth.resetPassword(currentPassword, password).subscribe({
+    const { currentPassword, password, confirmPassword } = this.form.getRawValue();
+    this.auth.resetPassword(currentPassword, password, confirmPassword).subscribe({
       next: () => {
         this.loading.set(false);
         this.done.set(true);
-        setTimeout(() => this.router.navigateByUrl('/account/security'), 2200);
+        setTimeout(
+          () =>
+            this.router.navigate(['/auth/sign-in'], { queryParams: { redirectTo: this.returnTo } }),
+          2200,
+        );
       },
       error: (err: Error) => {
         this.loading.set(false);

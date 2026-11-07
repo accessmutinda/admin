@@ -1,6 +1,8 @@
 # See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
 # Compiled output
+/output/
+/outputs/
 /dist
 /tmp
 /out-tsc
@@ -46,5 +48,5 @@ Thumbs.db
 # Local design reference
 /BRANDING-DESIGN-GUIDE.md
 
-# Local backend specification
-/backend.md
+# Local backend specifications
+/backend-MD/

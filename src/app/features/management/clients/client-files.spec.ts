@@ -4,7 +4,7 @@ import { BehaviorSubject } from 'rxjs';
 import { signal } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
-import { DEMO_USER } from '../../../core/auth/fixtures';
+import { DEMO_USER } from '../../../demo/business-fixtures';
 import { ManagementStore } from '../shared/management.store';
 import { RotaService } from '../rota/rota.service';
 import { RotaClient } from '../rota/rota.models';

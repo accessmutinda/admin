@@ -2,6 +2,10 @@
   <h1 class="cv-auth-heading">Select your workspace</h1>
   <p class="mt-1.5 text-sm text-slate">Choose the care company you want to work with.</p>
 
+  @if (error()) {
+    <p class="mt-4 text-error" role="alert">{{ error() }}</p>
+    <button type="button" class="cv-auth-link" (click)="load()">Retry</button>
+  }
   <div class="relative mt-5">
     <span
       class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-slate"
@@ -67,9 +71,7 @@
             </span>
             <span class="min-w-0 flex-1">
               <span class="block text-sm font-semibold text-ink">{{ workspace.name }}</span>
-              <span class="block text-xs text-slate"
-                >{{ workspace.careType }} · {{ workspace.serviceUserCount }} service users</span
-              >
+              <span class="block text-xs text-slate">{{ workspace.careType }}</span>
             </span>
             @if (switching() === workspace.id) {
               <span class="shrink-0 text-xs font-medium text-teal">Switching…</span>

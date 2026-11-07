@@ -1,4 +1,4 @@
-import { DEMO_EMAIL, DEMO_USER } from '../core/auth/fixtures';
+import { DEMO_EMAIL, DEMO_USER } from './business-fixtures';
 import type { WorkspaceData } from '../features/management/shared/management.store';
 import { emptyEcm, type CallStyle } from '../features/management/ecm/ecm.models';
 import {

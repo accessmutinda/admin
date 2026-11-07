@@ -16,12 +16,25 @@ export class WorkspaceSelect implements OnInit {
   private readonly router = inject(Router);
 
   protected readonly loading = signal(true);
+  protected readonly error = signal('');
   protected readonly search = signal('');
   protected readonly switching = signal<string | null>(null);
   protected readonly skeletonRows = Array.from({ length: 4 });
 
   ngOnInit(): void {
-    setTimeout(() => this.loading.set(false), 450);
+    void this.load();
+  }
+
+  protected async load(): Promise<void> {
+    this.loading.set(true);
+    this.error.set('');
+    try {
+      await this.workspaceSvc.load();
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : 'Unable to load workspaces.');
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   protected readonly filtered = computed(() => {
@@ -35,11 +48,12 @@ export class WorkspaceSelect implements OnInit {
       return;
     }
     this.switching.set(workspaceId);
-    setTimeout(() => {
-      this.workspaceSvc.switchWorkspace(workspaceId);
-      this.router.navigateByUrl(
-        this.auth.hasRole('IN') ? '/inspector/dashboard' : '/manage/companies',
-      );
-    }, 500);
+    void this.workspaceSvc
+      .switchWorkspace(workspaceId)
+      .then(() => {
+        void this.router.navigateByUrl('/manage/companies');
+      })
+      .catch((error: Error) => this.error.set(error.message))
+      .finally(() => this.switching.set(null));
   }
 }

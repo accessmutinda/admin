@@ -1,4 +1,10 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { AuthService } from './core/auth/auth.service';
+import {
+  ApplicationConfig,
+  provideBrowserGlobalErrorListeners,
+  provideAppInitializer,
+  inject,
+} from '@angular/core';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
@@ -8,6 +14,7 @@ import { routes } from './app.routes';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
+    provideAppInitializer(() => inject(AuthService).initialize()),
     provideRouter(routes, withInMemoryScrolling({ anchorScrolling: 'enabled' })),
     provideAnimationsAsync(),
     {

@@ -6,7 +6,7 @@ import { ACADEMY_ADMIN_ROUTES } from './academy.routes';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from '../../../../core/auth/auth.service';
-import { DEMO_USER } from '../../../../core/auth/fixtures';
+import { DEMO_USER } from '../../../../demo/business-fixtures';
 import { WorkspaceService } from '../../../../core/auth/workspace.service';
 import { ManagementStore } from '../../shared/management.store';
 import { AcademyService } from './academy.service';

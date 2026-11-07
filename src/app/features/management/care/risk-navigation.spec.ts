@@ -3,7 +3,7 @@ import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { AuthService } from '../../../core/auth/auth.service';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
-import { DEMO_USER } from '../../../core/auth/fixtures';
+import { DEMO_USER } from '../../../demo/business-fixtures';
 import { ManagementStore } from '../shared/management.store';
 import { seedCareDemo } from '../../../demo/care-demo';
 import { ManagementLayout } from '../layout/management-layout';

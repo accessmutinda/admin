@@ -6,7 +6,7 @@ import { signal } from '@angular/core';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { AuthService } from '../../../../core/auth/auth.service';
-import { DEMO_USER } from '../../../../core/auth/fixtures';
+import { DEMO_USER } from '../../../../demo/business-fixtures';
 import { WorkspaceService } from '../../../../core/auth/workspace.service';
 import { ManagementStore } from '../../shared/management.store';
 import { ACADEMY_ADMIN_ROUTES, ACADEMY_STAFF_ROUTES } from './academy.routes';

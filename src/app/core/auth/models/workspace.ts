@@ -4,6 +4,6 @@ export interface Workspace {
   shortCode: string;
   logoUrl?: string;
   careType: string;
-  serviceUserCount: number;
+  serviceUserCount?: number;
   colorClass: string;
 }

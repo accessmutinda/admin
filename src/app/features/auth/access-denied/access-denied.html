@@ -7,6 +7,13 @@
     Your account doesn't have permission to access this area. Your organisation’s admin can help you
     check your access.
   </p>
+  @if (entryState && entryState !== 'ready' && entryState !== 'platform') {
+    <p class="mt-4 text-sm" role="status">
+      Company access: {{ entryState.replaceAll('_', ' ') }}. Contact your organisation’s
+      administrator.
+    </p>
+    <button mat-stroked-button type="button" (click)="signOut()">Sign out</button>
+  }
   @if (requiredRoleLabels.length) {
     <div class="mt-6 rounded-xl border border-line bg-cloud p-4 text-sm">
       <p class="flex items-center gap-2 font-medium text-ink">
