@@ -1,11 +1,15 @@
+import { toSignal } from '@angular/core/rxjs-interop';
+import { CompanyComplianceApiService } from './company-compliance-api.service';
+import { CompaniesApiService } from './companies-api.service';
 import {
   Component,
   computed,
   inject,
   signal,
   HostListener,
-  ChangeDetectorRef,
   DestroyRef,
+  effect,
+  untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -34,6 +38,7 @@ import {
   host: { class: 'module-page companies-page company-profile-page company-compliance-page' },
   imports: [FormsModule, RouterLink, MatSelectModule, CvSelect],
   templateUrl: './company-compliance.html',
+  providers: [CompanyComplianceApiService],
 })
 export class CompanyCompliancePage {
   protected readonly store = inject(ManagementStore);
@@ -41,12 +46,78 @@ export class CompanyCompliancePage {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
-  private readonly detector = inject(ChangeDetectorRef);
+  private readonly api = inject(CompanyComplianceApiService);
+  private readonly companiesApi = inject(CompaniesApiService);
   private readonly destroy = inject(DestroyRef);
-  private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
+  private readonly routeParams = toSignal(this.route.paramMap, {
+    initialValue: this.route.snapshot.paramMap,
+  });
+  private get id(): string {
+    return this.routeParams().get('id') ?? '';
+  }
   protected readonly company = computed(() => this.store.companies().find((c) => c.id === this.id));
   protected draft = emptyCompliance(this.company());
   private baseline = JSON.stringify(this.draft);
+  protected readonly loading = signal(true);
+  protected readonly loadError = signal('');
+  protected readonly saving = signal(false);
+  protected readonly busy = computed(() => this.loading() || this.saving() || !!this.uploading());
+  private loadGeneration = 0;
+  constructor() {
+    effect(() => {
+      const id = this.id;
+      const allowed = this.auth.canAccessCompany(id);
+      this.auth.profile()?.id;
+      untracked(() => {
+        if (allowed) void this.load(true);
+        else {
+          this.draft = emptyCompliance();
+          this.baseline = JSON.stringify(this.draft);
+          this.loading.set(false);
+          this.loadError.set('This company is no longer available.');
+        }
+      });
+    });
+  }
+  protected async load(changedContext = false): Promise<void> {
+    if (
+      !changedContext &&
+      this.hasChanges() &&
+      !window.confirm('Discard unsaved changes and reload saved compliance information?')
+    )
+      return;
+    const generation = ++this.loadGeneration;
+    const id = this.id;
+    this.loading.set(true);
+    this.loadError.set('');
+    this.error.set('');
+    this.draft = emptyCompliance();
+    this.baseline = JSON.stringify(this.draft);
+    try {
+      const saved = await this.api.load(id);
+      if (generation !== this.loadGeneration || this.destroy.destroyed || id !== this.id) return;
+      this.draft = saved;
+      this.baseline = JSON.stringify(saved);
+      this.submitted.set(false);
+    } catch (error) {
+      if (generation === this.loadGeneration && !this.destroy.destroyed)
+        this.loadError.set(
+          error instanceof Error ? error.message : 'Unable to load compliance information.',
+        );
+    } finally {
+      if (generation === this.loadGeneration && !this.destroy.destroyed) this.loading.set(false);
+    }
+  }
+  protected options(field: (typeof this.fields)[number]): string[] {
+    const value = this.draft[field.key];
+    return value && field.options && !field.options.includes(value)
+      ? [value, ...field.options]
+      : (field.options ?? []);
+  }
+  private async refreshSummary(id: string): Promise<void> {
+    await this.companiesApi.load(true);
+    await this.companiesApi.loadDetail(id, true);
+  }
   protected readonly modifiedAt = companyModifiedAt;
   protected readonly documentTypes = COMPLIANCE_DOCUMENTS;
   protected readonly error = signal('');
@@ -84,7 +155,7 @@ export class CompanyCompliancePage {
   ];
   protected fieldError(key: string): string {
     return this.submitted()
-      ? (complianceErrors(this.draft, this.company()?.registration ?? '')[key] ?? '')
+      ? (complianceErrors(this.draft, this.company()?.registration ?? '', false)[key] ?? '')
       : '';
   }
   protected checks() {
@@ -149,9 +220,10 @@ export class CompanyCompliancePage {
     return JSON.stringify(this.draft) !== this.baseline;
   }
   canLeave(): boolean {
+    if (!this.auth.canAccessCompany(this.id)) return true;
+    if (this.busy()) return false;
     return (
-      (!this.uploading() && !this.hasChanges()) ||
-      window.confirm('Discard unsaved registration and compliance changes?')
+      !this.hasChanges() || window.confirm('Discard unsaved registration and compliance changes?')
     );
   }
   @HostListener('window:beforeunload', ['$event'])
@@ -163,80 +235,92 @@ export class CompanyCompliancePage {
     element?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
     element?.focus();
   }
+  private documentSaved(
+    key: ComplianceDocumentKey,
+    file?: CompanyCompliance['documents'][ComplianceDocumentKey],
+  ): void {
+    const saved = JSON.parse(this.baseline) as CompanyCompliance;
+    if (file) {
+      this.draft.documents[key] = file;
+      saved.documents[key] = structuredClone(file);
+    } else {
+      delete this.draft.documents[key];
+      delete saved.documents[key];
+    }
+    this.baseline = JSON.stringify(saved);
+  }
   protected async upload(key: ComplianceDocumentKey, event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (!file || this.uploading()) return;
+    if (!file || this.busy()) return;
     const error = complianceFileError(file);
     this.fileErrors.update((errors) => ({ ...errors, [key]: error }));
     if (error) return;
+    const id = this.id;
     this.uploading.set(key);
     try {
-      const content = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () =>
-          typeof reader.result === 'string' ? resolve(reader.result) : reject();
-        reader.onerror = () => reject();
-        reader.readAsDataURL(file);
-      });
-      if (this.destroy.destroyed) return;
-      const previous = this.draft.documents[key];
-      this.draft.documents[key] = {
-        name: file.name,
-        type:
-          file.type ||
-          (file.name.toLowerCase().endsWith('.pdf')
-            ? 'application/pdf'
-            : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
-        size: file.size,
-        content,
-        uploadedAt: new Date().toISOString(),
-        uploadedBy: this.auth.currentUser()?.name ?? 'Company administrator',
-        owner: previous?.owner ?? '',
-        expiry: previous?.expiry ?? '',
-      };
+      const saved = await this.api.upload(id, key, file, this.draft);
+      if (this.destroy.destroyed || id !== this.id) return;
+      this.documentSaved(key, saved);
       this.error.set('');
-    } catch {
+      this.toast.success('Document saved to the server.');
+    } catch (error) {
       if (!this.destroy.destroyed)
         this.fileErrors.update((errors) => ({
           ...errors,
-          [key]: 'File could not be read. Please try again.',
+          [key]: error instanceof Error ? error.message : 'The document could not be saved.',
         }));
     } finally {
-      if (!this.destroy.destroyed) {
-        this.uploading.set(null);
-        this.detector.detectChanges();
-      }
+      if (!this.destroy.destroyed) this.uploading.set(null);
     }
   }
-  protected remove(key: ComplianceDocumentKey): void {
-    if (!window.confirm('Remove this document? The change is applied when you save.')) return;
-    delete this.draft.documents[key];
-    this.fileErrors.update((errors) => ({ ...errors, [key]: '' }));
+  protected async remove(key: ComplianceDocumentKey): Promise<void> {
+    if (
+      this.busy() ||
+      !window.confirm('Delete this saved document? Its audit history will be retained.')
+    )
+      return;
+    this.saving.set(true);
+    try {
+      await this.api.remove(this.id, key, this.draft);
+      this.documentSaved(key);
+      this.fileErrors.update((errors) => ({ ...errors, [key]: '' }));
+      this.toast.success('Document deleted.');
+    } catch (error) {
+      this.fileErrors.update((errors) => ({
+        ...errors,
+        [key]: error instanceof Error ? error.message : 'The document could not be deleted.',
+      }));
+    } finally {
+      this.saving.set(false);
+    }
   }
-  protected download(key: ComplianceDocumentKey): void {
+  protected async download(key: ComplianceDocumentKey): Promise<void> {
+    if (this.busy()) return;
     const file = this.draft.documents[key];
     if (!file) return;
+    this.saving.set(true);
     try {
-      const payload = file.content.split(',')[1];
-      const bytes = Uint8Array.from(atob(payload), (c) => c.charCodeAt(0));
-      const url = URL.createObjectURL(new Blob([bytes], { type: file.type }));
+      const blob = await this.api.download(this.id, key, this.draft);
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = file.name;
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch {
+    } catch (error) {
       this.fileErrors.update((errors) => ({
         ...errors,
-        [key]: 'This stored file could not be downloaded. Replace it and save again.',
+        [key]: error instanceof Error ? error.message : 'The document could not be downloaded.',
       }));
+    } finally {
+      this.saving.set(false);
     }
   }
   protected cancel(): void {
     if (
-      this.uploading() ||
+      this.busy() ||
       (this.hasChanges() && !window.confirm('Discard unsaved registration and compliance changes?'))
     )
       return;
@@ -244,37 +328,53 @@ export class CompanyCompliancePage {
     this.baseline = JSON.stringify(this.draft);
     this.router.navigate(['/manage/companies']);
   }
-  protected save(): void {
+  protected async save(): Promise<void> {
+    if (this.busy()) return;
     this.submitted.set(true);
     this.error.set('');
-    if (this.uploading()) {
-      this.error.set('Wait for the document to finish loading.');
-      return;
-    }
     const company = this.company();
     if (!company) return;
-    if (Object.keys(complianceErrors(this.draft, company.registration)).length) {
+    if (Object.keys(complianceErrors(this.draft, company.registration, false)).length) {
       this.error.set('Check the highlighted registration and document fields.');
       return;
     }
-    const compliance = structuredClone(this.draft);
-    for (const field of this.fields) compliance[field.key] = compliance[field.key].trim();
-    for (const document of Object.values(compliance.documents))
-      document.owner = document.owner.trim();
-    if (
-      !this.store.saveCompany({
-        ...company,
-        compliance,
-        modifiedAt: new Date().toISOString(),
-        modifiedBy: this.auth.currentUser()?.name ?? 'Company administrator',
-      })
-    ) {
-      this.error.set(this.store.companyWriteError());
-      return;
+    const id = this.id;
+    this.saving.set(true);
+    try {
+      const saved = await this.api.save(id, this.draft);
+      this.draft = saved;
+      this.baseline = JSON.stringify(saved);
+      this.submitted.set(false);
+      this.toast.success('Registration and compliance information saved.');
+      await this.refreshSummary(id);
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : 'The changes could not be saved.');
+    } finally {
+      this.saving.set(false);
     }
-    this.draft = structuredClone(compliance);
-    this.baseline = JSON.stringify(this.draft);
-    this.submitted.set(false);
-    this.toast.success('Registration and compliance information saved.');
+  }
+  protected async clear(): Promise<void> {
+    if (
+      this.busy() ||
+      !window.confirm(
+        'Clear all saved compliance details? Company identity and documents will be kept.',
+      )
+    )
+      return;
+    const id = this.id;
+    this.saving.set(true);
+    this.error.set('');
+    try {
+      const saved = await this.api.clear(id);
+      this.draft = saved;
+      this.baseline = JSON.stringify(saved);
+      this.submitted.set(false);
+      this.toast.success('Compliance details cleared.');
+      await this.refreshSummary(id);
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : 'The details could not be cleared.');
+    } finally {
+      this.saving.set(false);
+    }
   }
 }

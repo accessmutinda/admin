@@ -1,224 +1,205 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
+import { vi } from 'vitest';
 import { AuthService } from '../../../core/auth/auth.service';
-import { WorkspaceService } from '../../../core/auth/workspace.service';
+import { ToastService } from '../../../shared/ui/toast.service';
 import { ManagementStore } from '../shared/management.store';
+import { CompaniesApiService } from './companies-api.service';
+import { CompanyComplianceApiService } from './company-compliance-api.service';
 import { CompanyCompliancePage } from './company-compliance';
-import { Companies } from './companies';
-import {
-  CompanyCompliance,
-  ComplianceDocumentKey,
-  COMPLIANCE_DOCUMENTS,
-  complianceChecks,
-  complianceComplete,
-  complianceFileError,
-  daysUntil,
-  emptyCompliance,
-  validDate,
-} from './company-compliance.models';
+import { CompanyCompliance, emptyCompliance } from './company-compliance.models';
 
-type Editor = {
-  draft: CompanyCompliance;
-  save(): void;
-  hasChanges(): boolean;
-  canLeave(): boolean;
-  cancel(): void;
-  error(): string;
-  completion(): number;
-  alerts(): { title: string }[];
-  upload(key: ComplianceDocumentKey, event: Event): Promise<void>;
-  remove(key: ComplianceDocumentKey): void;
-  fileErrors(): Partial<Record<ComplianceDocumentKey, string>>;
+const stored: CompanyCompliance = {
+  ...emptyCompliance(),
+  cqcNumber: 'CQC123',
+  taxNumber: 'TAX123',
+  providerType: 'Saved Provider Type',
+  registrationStatus: 'Registered',
+  insuranceExpiry: '2030-01-01',
+  regulatoryRegion: 'England',
+  dataProtectionNumber: 'ICO123',
+  safeguardingLead: 'Saved Lead',
+  medicationLead: 'Medication Lead',
+  reminders: true,
+  documents: {
+    insurance: {
+      id: 'evidence-1',
+      version: 1,
+      name: 'saved-insurance.pdf',
+      type: 'application/pdf',
+      size: 20,
+      content: '',
+      owner: 'Saved Owner',
+      expiry: '2030-01-01',
+      uploadedAt: '2026-11-07T10:00:00Z',
+      uploadedBy: 'Saved Uploader',
+      scanState: 'not_available',
+    },
+  },
 };
-describe('Company registration and compliance', () => {
-  let store: ManagementStore;
+describe('Registration and compliance API page', () => {
+  let service: {
+    load: ReturnType<typeof vi.fn>;
+    save: ReturnType<typeof vi.fn>;
+    upload: ReturnType<typeof vi.fn>;
+    remove: ReturnType<typeof vi.fn>;
+    clear: ReturnType<typeof vi.fn>;
+  };
   beforeEach(() => {
     localStorage.clear();
+    service = {
+      load: vi.fn().mockResolvedValue(structuredClone(stored)),
+      save: vi.fn(async (_id, value) => structuredClone(value)),
+      upload: vi
+        .fn()
+        .mockResolvedValue({ ...stored.documents.insurance, name: 'new.pdf', id: 'new-evidence' }),
+      remove: vi.fn().mockResolvedValue(undefined),
+      clear: vi.fn().mockResolvedValue({ ...emptyCompliance(), documents: stored.documents }),
+    };
+    const params = convertToParamMap({ id: 'company-1' });
     TestBed.configureTestingModule({
-      imports: [CompanyCompliancePage, Companies],
       providers: [
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap({ id: 'lqcs' }) } },
+          useValue: { snapshot: { paramMap: params }, paramMap: of(params) },
+        },
+        {
+          provide: AuthService,
+          useValue: { profile: () => ({ id: 'admin' }), canAccessCompany: () => true },
+        },
+        { provide: ToastService, useValue: { success: vi.fn(), error: vi.fn() } },
+        {
+          provide: CompaniesApiService,
+          useValue: {
+            load: vi.fn().mockResolvedValue(undefined),
+            loadDetail: vi.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: ManagementStore,
+          useValue: {
+            companies: () => [
+              {
+                id: 'company-1',
+                name: 'Stored Care',
+                code: 'STORED',
+                registration: '12345678',
+                sector: 'Care',
+                modules: [],
+                active: true,
+              },
+            ],
+          },
         },
       ],
     });
-    TestBed.inject(AuthService).signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    store = TestBed.inject(ManagementStore);
+    TestBed.overrideComponent(CompanyCompliancePage, {
+      set: { providers: [{ provide: CompanyComplianceApiService, useValue: service }] },
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
   afterEach(() => vi.restoreAllMocks());
-  function create() {
+  async function create() {
     const fixture = TestBed.createComponent(CompanyCompliancePage);
     fixture.detectChanges();
-    return { fixture, editor: fixture.componentInstance as unknown as Editor };
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
   }
-  function fill(editor: Editor) {
-    Object.assign(editor.draft, {
-      cqcNumber: '1-987654321',
-      providerType: 'Independent Provider',
-      registrationStatus: 'Registered',
-      insuranceExpiry: '2099-12-31',
-      regulatoryRegion: 'London',
-      dataProtectionNumber: 'ZB123456',
-      safeguardingLead: 'Recorded lead',
-      medicationLead: 'Medication lead',
-    });
-  }
-  function documents(editor: Editor) {
-    for (const { key } of COMPLIANCE_DOCUMENTS)
-      editor.draft.documents[key] = {
-        name: `${key}.pdf`,
-        type: 'application/pdf',
-        size: 4,
-        content: 'data:application/pdf;base64,dGVzdA==',
-        uploadedAt: '2026-10-16T10:00:00Z',
-        uploadedBy: 'Uploader',
-        owner: 'Document owner',
-        expiry: '',
-      };
-    editor.draft.reminders = true;
-  }
-  it('renders the shared banner, separate sections and one combined Companies card without tabs', () => {
-    const { fixture, editor } = create();
-    expect(fixture.nativeElement.querySelector('.co-summary').textContent).toContain(
-      store.company()!.name,
+  it('populates saved fields, an existing dropdown value, evidence owner and uploader', async () => {
+    const fixture = await create();
+    const root: HTMLElement = fixture.nativeElement;
+    expect((root.querySelector('#rc-cqcNumber') as HTMLInputElement).value).toBe('CQC123');
+    expect((root.querySelector('#rc-taxNumber') as HTMLInputElement).value).toBe('TAX123');
+    expect(root.querySelector('#rc-providerType')?.textContent).toContain('Saved Provider Type');
+    expect((root.querySelector('#rc-owner-insurance') as HTMLInputElement).value).toBe(
+      'Saved Owner',
     );
-    expect(fixture.nativeElement.textContent).toContain('Registration Details');
-    expect(fixture.nativeElement.textContent).toContain('Compliance Mapping');
-    expect(fixture.nativeElement.querySelector('[role=tab]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('#rc-company-number').textContent).toContain(
-      store.company()!.registration,
-    );
-    expect(editor.draft.cqcNumber).toBe('');
-    expect(editor.alerts()).toHaveLength(4);
-    const overview = TestBed.createComponent(Companies);
-    overview.detectChanges();
-    const links = [...overview.nativeElement.querySelectorAll('.co-check-card')] as HTMLElement[];
-    const matching = links.filter((link) =>
-      link.textContent?.includes('Registration & Compliance'),
-    );
-    expect(matching).toHaveLength(1);
-    expect(matching[0].getAttribute('href')).toBe('/manage/companies/lqcs/compliance');
-    expect(overview.nativeElement.textContent).not.toContain('Compliance Mapping');
+    expect(root.textContent).toContain('Saved Uploader');
+    expect(root.textContent).toContain('Not verified');
+    expect(root.textContent).not.toContain('stored on this device');
   });
-  it('validates required fields and preserves company number and unrelated data on save', () => {
-    const { editor } = create();
-    editor.save();
-    expect(editor.error()).toContain('highlighted');
-    expect(store.company()!.compliance).toBeUndefined();
-    const old = structuredClone(store.company()!);
-    fill(editor);
-    editor.draft.taxNumber = '  GB123  ';
-    editor.save();
-    expect(editor.error()).toBe('');
-    expect(editor.hasChanges()).toBe(false);
-    expect(store.company()!.registration).toBe(old.registration);
-    expect(store.company()!.modules).toEqual(old.modules);
-    expect(store.company()!.compliance!.taxNumber).toBe('GB123');
-    expect(store.company()!.modifiedBy).toBe(TestBed.inject(AuthService).currentUser()!.name);
-    expect(store.company()!.modifiedAt).toBeTruthy();
-    expect(store.companies().find((c) => c.id === 'riverside')!.compliance).toBeUndefined();
-    expect(JSON.parse(localStorage.getItem('cv_companies_v1')!)[0].compliance.cqcNumber).toBe(
-      '1-987654321',
+  it('keeps edits after a failed save and sends them to the backend on retry', async () => {
+    const fixture = await create();
+    const page = fixture.componentInstance as any;
+    page.draft.safeguardingLead = 'Updated Lead';
+    service.save.mockRejectedValueOnce(new Error('Record changed. Reload and retry.'));
+    await page.save();
+    fixture.detectChanges();
+    expect(page.draft.safeguardingLead).toBe('Updated Lead');
+    expect(fixture.nativeElement.textContent).toContain('Record changed.');
+    await page.save();
+    expect(service.save).toHaveBeenLastCalledWith(
+      'company-1',
+      expect.objectContaining({ safeguardingLead: 'Updated Lead' }),
     );
-    expect(complianceComplete(store.company())).toBe(false);
+    expect(page.hasChanges()).toBe(false);
   });
-  it('retains draft and attachments after storage failure and supports retry', () => {
-    const { editor } = create();
-    fill(editor);
-    documents(editor);
-    const save = vi.spyOn(store, 'saveCompany').mockReturnValue(false);
-    editor.save();
-    expect(editor.error()).toContain('still here');
-    expect(editor.hasChanges()).toBe(true);
-    expect(editor.draft.documents.insurance!.content).toContain('base64');
-    save.mockRestore();
-    editor.save();
-    expect(editor.hasChanges()).toBe(false);
-    expect(complianceComplete(store.company())).toBe(true);
-  });
-  it('uploads real file bytes, preserves mapping on replace, rejects unsupported or oversized files', async () => {
-    const { editor } = create();
-    const event = (file: File) =>
-      ({ target: { files: [file], value: 'file' } }) as unknown as Event;
-    await editor.upload(
-      'insurance',
-      event(new File(['%PDF-1.4'], 'insurance.pdf', { type: 'application/pdf' })),
+  it('saves unfinished setup and allows individual fields to be cleared without claiming completion', async () => {
+    const fixture = await create();
+    const page = fixture.componentInstance as any;
+    page.draft.cqcNumber = '';
+    page.draft.medicationLead = '';
+    await page.save();
+    expect(service.save).toHaveBeenCalledWith(
+      'company-1',
+      expect.objectContaining({ cqcNumber: '', medicationLead: '' }),
     );
-    expect(editor.draft.documents.insurance!.content).toContain('data:application/pdf;base64,');
-    expect(editor.draft.documents.insurance!.size).toBe(8);
-    expect(editor.draft.documents.insurance!.uploadedBy).toBe(
-      TestBed.inject(AuthService).currentUser()!.name,
+    expect(page.checks().find((check: { key: string }) => check.key === 'details').complete).toBe(
+      false,
     );
-    editor.draft.documents.insurance!.owner = 'Owner';
-    await editor.upload(
-      'insurance',
-      event(new File(['replacement'], 'new.pdf', { type: 'application/pdf' })),
-    );
-    expect(editor.draft.documents.insurance!.owner).toBe('Owner');
-    await editor.upload('insurance', event(new File(['html'], 'bad.html', { type: 'text/html' })));
-    expect(editor.fileErrors().insurance).toContain('PDF or DOCX');
-    expect(editor.draft.documents.insurance!.name).toBe('new.pdf');
-    expect(
-      complianceFileError({
-        name: 'large.pdf',
-        type: 'application/pdf',
-        size: 10 * 1024 * 1024 + 1,
-      }),
-    ).toContain('10MB');
   });
-  it('requires confirmation before leaving or removing and does not save removed files until Save', () => {
-    const { editor } = create();
-    fill(editor);
-    documents(editor);
-    editor.save();
-    expect(editor.canLeave()).toBe(true);
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    editor.remove('insurance');
-    expect(editor.draft.documents.insurance).toBeDefined();
-    confirm.mockReturnValue(true);
-    editor.remove('insurance');
-    expect(editor.hasChanges()).toBe(true);
-    expect(store.company()!.compliance!.documents.insurance).toBeDefined();
-    confirm.mockReturnValue(false);
-    expect(editor.canLeave()).toBe(false);
-    editor.save();
-    expect(store.company()!.compliance!.documents.insurance).toBeUndefined();
-  });
-  it('calculates current completeness and expiry alerts rather than marking uploads verified', () => {
-    const { editor } = create();
-    fill(editor);
-    documents(editor);
-    expect(editor.completion()).toBe(100);
-    editor.draft.insuranceExpiry = '2020-01-01';
-    expect(editor.alerts().some((a) => a.title === 'Insurance expiry has passed')).toBe(true);
-    expect(editor.completion()).toBe(80);
-    editor.draft.documents.registration!.expiry = '2020-01-01';
-    expect(editor.completion()).toBe(60);
-    editor.draft.documents.continuity!.owner = '';
-    expect(editor.completion()).toBe(40);
-    editor.draft.reminders = false;
-    expect(editor.completion()).toBe(20);
-  });
-  it('uses date-only boundaries, validates dates and leaves empty records independent', () => {
-    expect(daysUntil('2026-10-16', '2026-10-16')).toBe(0);
-    expect(daysUntil('2026-10-15', '2026-10-16')).toBe(-1);
-    expect(validDate('2026-02-30')).toBe(false);
-    expect(daysUntil('')).toBeNull();
-    const first = emptyCompliance();
-    first.documents.insurance = {
-      name: 'x',
-      type: 'application/pdf',
-      size: 1,
-      content: '',
-      uploadedAt: '',
-      uploadedBy: '',
-      owner: '',
-      expiry: '',
+
+  it('uploads and removes through the API without making the form falsely dirty', async () => {
+    const fixture = await create();
+    const page = fixture.componentInstance as any;
+    const input = {
+      files: [new File(['%PDF-1.4'], 'new.pdf', { type: 'application/pdf' })],
+      value: 'new.pdf',
     };
-    expect(emptyCompliance().documents).toEqual({});
-    expect(complianceChecks(emptyCompliance(), '').every((c) => !c.complete)).toBe(true);
+    await page.upload('insurance', { target: input });
+    expect(service.upload).toHaveBeenCalled();
+    expect(page.draft.documents.insurance.id).toBe('new-evidence');
+    expect(page.hasChanges()).toBe(false);
+    await page.remove('insurance');
+    expect(service.remove).toHaveBeenCalledWith('company-1', 'insurance', expect.anything());
+    expect(page.draft.documents.insurance).toBeUndefined();
+    expect(page.hasChanges()).toBe(false);
+  });
+  it('does not discard an unsaved form when document deletion fails', async () => {
+    const fixture = await create();
+    const page = fixture.componentInstance as any;
+    page.draft.safeguardingLead = 'Unsaved Lead';
+    service.remove.mockRejectedValue(new Error('Deletion failed.'));
+    await page.remove('insurance');
+    expect(page.draft.documents.insurance.id).toBe('evidence-1');
+    expect(page.draft.safeguardingLead).toBe('Unsaved Lead');
+    expect(page.hasChanges()).toBe(true);
+  });
+  it('clears saved fields only after confirmation and retains saved document information', async () => {
+    const fixture = await create();
+    const page = fixture.componentInstance as any;
+    vi.mocked(window.confirm).mockReturnValueOnce(false);
+    await page.clear();
+    expect(service.clear).not.toHaveBeenCalled();
+    await page.clear();
+    expect(service.clear).toHaveBeenCalledWith('company-1');
+    expect(page.draft.cqcNumber).toBe('');
+    expect(page.draft.documents.insurance.id).toBe('evidence-1');
+  });
+  it('shows a retry state instead of an empty form after a read failure', async () => {
+    service.load.mockRejectedValueOnce(new Error('Unable to read saved compliance.'));
+    const fixture = await create();
+    expect(fixture.nativeElement.textContent).toContain('Unable to read saved compliance.');
+    expect(fixture.nativeElement.querySelector('form')).toBeNull();
+    await (fixture.componentInstance as any).load();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#rc-cqcNumber').value).toBe('CQC123');
   });
 });

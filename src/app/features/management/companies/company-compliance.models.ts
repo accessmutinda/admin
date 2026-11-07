@@ -28,6 +28,9 @@ export const COMPLIANCE_DOCUMENTS = [
 ] as const;
 export type ComplianceDocumentKey = (typeof COMPLIANCE_DOCUMENTS)[number]['key'];
 export interface ComplianceDocument {
+  id?: string;
+  version?: number;
+  scanState?: string;
   name: string;
   type: string;
   size: number;
@@ -90,6 +93,7 @@ export function daysUntil(value: string, today = todayUk()): number | null {
 export function complianceErrors(
   value: CompanyCompliance,
   companyNumber: string,
+  requireComplete = true,
 ): Record<string, string> {
   const errors: Record<string, string> = {};
   for (const key of [
@@ -102,9 +106,9 @@ export function complianceErrors(
     'safeguardingLead',
     'medicationLead',
   ] as const) {
-    if (!value[key].trim()) errors[key] = 'This field is required.';
+    if (requireComplete && !value[key].trim()) errors[key] = 'This field is required.';
   }
-  if (!companyNumber.trim())
+  if (requireComplete && !companyNumber.trim())
     errors['companyNumber'] = 'Add the company number in General Information.';
   for (const key of [
     'cqcNumber',
@@ -116,12 +120,6 @@ export function complianceErrors(
   ] as const) {
     if (value[key].length > 150) errors[key] = 'Use 150 characters or fewer.';
   }
-  if (value.providerType && !PROVIDER_TYPES.includes(value.providerType))
-    errors['providerType'] = 'Select a listed provider type.';
-  if (value.registrationStatus && !REGISTRATION_STATUSES.includes(value.registrationStatus))
-    errors['registrationStatus'] = 'Select a listed status.';
-  if (value.inspectionType && !INSPECTION_TYPES.includes(value.inspectionType))
-    errors['inspectionType'] = 'Select a listed inspection type.';
   if (value.insuranceExpiry && !validDate(value.insuranceExpiry))
     errors['insuranceExpiry'] = 'Enter a valid date.';
   for (const { key } of COMPLIANCE_DOCUMENTS) {
@@ -152,7 +150,7 @@ export function complianceChecks(
       key: 'insurance',
       title: 'Insurance evidence current',
       complete:
-        !!value.documents.insurance &&
+        value.documents.insurance?.scanState === 'clean' &&
         insuranceDays !== null &&
         insuranceDays >= 0 &&
         (!value.documents.insurance.expiry ||
@@ -167,8 +165,9 @@ export function complianceChecks(
         count === COMPLIANCE_DOCUMENTS.length &&
         COMPLIANCE_DOCUMENTS.every(
           ({ key }) =>
-            !value.documents[key]?.expiry ||
-            (daysUntil(value.documents[key]!.expiry, today) ?? -1) >= 0,
+            value.documents[key]?.scanState === 'clean' &&
+            (!value.documents[key]?.expiry ||
+              (daysUntil(value.documents[key]!.expiry, today) ?? -1) >= 0),
         ),
       detail: `${count}/${COMPLIANCE_DOCUMENTS.length} documents uploaded`,
       target: 'rc-mapping',

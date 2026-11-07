@@ -7,7 +7,16 @@
   <h1>Registration &amp; Compliance</h1>
   <p>Manage registration details, supporting documents and responsible owners.</p>
 </div>
-@if (company(); as current) {
+@if (loading()) {
+  <section class="co-surface rc-panel" role="status">
+    <p>Loading saved registration and compliance information…</p>
+  </section>
+} @else if (loadError()) {
+  <section class="co-surface rc-panel" role="alert">
+    <p>{{ loadError() }}</p>
+    <button type="button" class="rc-button rc-primary" (click)="load()">Retry</button>
+  </section>
+} @else if (company(); as current) {
   <section class="co-summary co-surface" aria-label="Current company overview">
     <div class="co-company-image" [style.background]="current.logo ? '#eef7fa' : null">
       @if (current.logo) {
@@ -78,7 +87,8 @@
           </h2>
         </div>
         <p class="rc-description">
-          Official registration and regulatory information for your organisation.
+          Official registration and regulatory information for your organisation. You can save an
+          unfinished setup; mandatory fields determine completion.
         </p>
         <div class="rc-fields">
           <div class="rc-field">
@@ -110,10 +120,11 @@
                   [aria-label]="field.label"
                   [required]="!!field.required"
                   [(ngModel)]="draft[field.key]"
+                  [disabled]="busy()"
                   [attr.aria-invalid]="!!fieldError(field.key)"
                   [attr.aria-describedby]="fieldError(field.key) ? 'rc-error-' + field.key : null"
                   ><mat-option value="">Select…</mat-option>
-                  @for (option of field.options; track option) {
+                  @for (option of options(field); track option) {
                     <mat-option [value]="option">{{ option }}</mat-option>
                   }
                 </mat-select>
@@ -123,6 +134,7 @@
                   [type]="field.type || 'text'"
                   [name]="field.key"
                   [(ngModel)]="draft[field.key]"
+                  [disabled]="busy()"
                   [required]="!!field.required"
                   [attr.maxlength]="field.type === 'date' ? null : 150"
                   [attr.aria-invalid]="!!fieldError(field.key)"
@@ -175,11 +187,16 @@
                   >{{ file.name }}
                 </button>
                 <small>Added {{ modifiedAt(file.uploadedAt) }} by {{ file.uploadedBy }}</small>
+                <small
+                  >Verification:
+                  {{ file.scanState === 'clean' ? 'Scan passed' : 'Not verified' }}</small
+                >
                 <label [for]="'rc-owner-' + type.key">Responsible owner</label
                 ><input
                   [id]="'rc-owner-' + type.key"
                   [name]="'owner-' + type.key"
                   [(ngModel)]="file.owner"
+                  [disabled]="busy()"
                   maxlength="150"
                   placeholder="Assign an owner"
                 />
@@ -190,20 +207,21 @@
                   [id]="'rc-expiry-' + type.key"
                   [name]="'expiry-' + type.key"
                   [(ngModel)]="file.expiry"
+                  [disabled]="busy()"
                 />
                 <div class="rc-doc-actions">
                   <button
                     type="button"
                     class="rc-link"
                     (click)="fileInput.click()"
-                    [disabled]="!!uploading()"
+                    [disabled]="busy()"
                   >
                     Replace</button
                   ><button
                     type="button"
                     class="rc-link rc-danger"
                     (click)="remove(type.key)"
-                    [disabled]="!!uploading()"
+                    [disabled]="busy()"
                   >
                     Remove
                   </button>
@@ -213,7 +231,7 @@
                   type="button"
                   class="rc-upload"
                   (click)="fileInput.click()"
-                  [disabled]="!!uploading()"
+                  [disabled]="busy()"
                 >
                   <span class="material-symbols-outlined" aria-hidden="true">cloud_upload</span
                   >{{ uploading() === type.key ? 'Loading file…' : 'Click to upload' }}</button
@@ -236,8 +254,9 @@
           }
         </div>
         <p class="rc-storage-note">
-          Files are stored on this device when you save. Adding a file does not verify its contents
-          or regulatory status.
+          Uploads and document deletions are saved to the server immediately. Save Changes stores
+          registration details, owners and expiry dates. Malware scanning is not available; uploaded
+          files are not marked as verified evidence.
         </p>
       </section>
     </div>
@@ -280,8 +299,12 @@
           </button>
         }
         <label class="rc-reminders" id="rc-reminders" tabindex="-1"
-          ><input type="checkbox" name="reminders" [(ngModel)]="draft.reminders" />Track renewal
-          dates</label
+          ><input
+            type="checkbox"
+            name="reminders"
+            [(ngModel)]="draft.reminders"
+            [disabled]="busy()"
+          />Track renewal dates</label
         ><small class="rc-muted"
           >Upcoming dates appear here. Email reminders are not configured.</small
         >
@@ -326,10 +349,22 @@
         <p class="rc-error" role="alert">{{ error() }}</p>
       }
       <span class="rc-save-state">{{
-        uploading() ? 'Loading document…' : hasChanges() ? 'Unsaved changes' : 'All changes saved'
+        saving()
+          ? 'Saving…'
+          : uploading()
+            ? 'Uploading document…'
+            : hasChanges()
+              ? 'Unsaved changes'
+              : 'All changes saved to the server'
       }}</span>
       <div class="rc-footer-actions">
-        <button type="button" class="rc-button" (click)="cancel()" [disabled]="!!uploading()">
+        <button type="button" class="rc-button rc-danger" (click)="clear()" [disabled]="busy()">
+          Clear compliance details
+        </button>
+        <button type="button" class="rc-button" (click)="load()" [disabled]="busy()">
+          Reload saved data
+        </button>
+        <button type="button" class="rc-button" (click)="cancel()" [disabled]="busy()">
           Cancel</button
         ><button
           type="button"
@@ -338,7 +373,7 @@
         >
           <span class="material-symbols-outlined" aria-hidden="true">fact_check</span>Review
           Compliance</button
-        ><button type="submit" class="rc-button rc-primary" [disabled]="!!uploading()">
+        ><button type="submit" class="rc-button rc-primary" [disabled]="busy()">
           <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Changes
         </button>
       </div>
