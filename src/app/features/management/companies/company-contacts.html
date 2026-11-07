@@ -7,18 +7,36 @@
   }
   <span aria-current="page">Contact Information</span>
 </nav>
-@if (company(); as current) {
+@if (loading()) {
+  <section class="co-surface cc-address-card" role="status">
+    <p>Loading saved contact information…</p>
+  </section>
+} @else if (loadError()) {
+  <section class="co-surface cc-address-card" role="alert">
+    <p>{{ loadError() }}</p>
+    <button type="button" class="cp-button cp-primary" (click)="load()">Retry</button>
+  </section>
+} @else if (company(); as current) {
   <div class="cc-page-heading">
     <div class="co-heading">
       <h1>Company Profile Update – Contacts &amp; Addresses</h1>
       <p>
         Manage the company's addresses and key contacts. Keep your information up to date for
-        compliance and communication.
+        compliance and communication. You can save an unfinished setup; mandatory fields determine
+        completion.
       </p>
     </div>
     <div class="cc-page-actions">
-      <button type="button" class="cp-button" (click)="cancel()">Cancel</button
-      ><button type="submit" form="company-contacts-form" class="cp-button cp-primary">
+      <button type="button" class="cp-button" (click)="cancel()" [disabled]="busy()">Cancel</button
+      ><button type="button" class="cp-button" (click)="load()" [disabled]="busy()">
+        Reload saved data
+      </button>
+      <button
+        type="submit"
+        form="company-contacts-form"
+        class="cp-button cp-primary"
+        [disabled]="busy()"
+      >
         <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Changes
       </button>
     </div>
@@ -92,12 +110,22 @@
             <div class="cc-card-heading">
               <span class="material-symbols-outlined" aria-hidden="true">{{ card.icon }}</span>
               <h2 [id]="'title-' + card.key">{{ card.title }}</h2>
+              <button
+                type="button"
+                class="cc-contact-menu"
+                [attr.aria-label]="'Remove ' + card.title"
+                (click)="clearAddress(card.key)"
+                [disabled]="busy()"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+              </button>
               @if (card.key === 'billing') {
                 <label class="cc-same-address"
                   ><input
                     type="checkbox"
                     name="billingSameAsRegistered"
                     [(ngModel)]="draft.billingSameAsRegistered"
+                    [disabled]="busy()"
                   />Same as registered address</label
                 >
               }
@@ -116,7 +144,9 @@
                       [name]="card.key + '-' + field.key"
                       [ngModel]="address(card.key)[field.key]"
                       (ngModelChange)="setAddress(card.key, field.key, $event)"
-                      [disabled]="card.key === 'billing' && draft.billingSameAsRegistered"
+                      [disabled]="
+                        busy() || (card.key === 'billing' && draft.billingSameAsRegistered)
+                      "
                       [required]="!!field.required"
                       [maxlength]="field.key === 'postcode' ? 20 : 150"
                       [attr.autocomplete]="
@@ -206,6 +236,15 @@
           <div class="cc-card-heading">
             <span class="material-symbols-outlined" aria-hidden="true">person</span>
             <h2 id="cc-primary-title">Primary Contact Details</h2>
+            <button
+              type="button"
+              class="cc-contact-menu"
+              aria-label="Clear primary contact details"
+              (click)="clearPrimary()"
+              [disabled]="busy()"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+            </button>
           </div>
           <div class="cc-primary-fields">
             @for (field of primaryFields; track field.key) {
@@ -223,6 +262,7 @@
                     [name]="'primary-' + field.key"
                     [type]="field.type"
                     [(ngModel)]="draft.primary[field.key]"
+                    [disabled]="busy()"
                     [required]="!!field.required"
                     [maxlength]="field.type === 'tel' ? 30 : 200"
                     [attr.aria-invalid]="!!primaryError(field.key)"
@@ -249,7 +289,12 @@
                 <p>Add and manage key contacts for important company communications.</p>
               </div>
             </div>
-            <button type="button" class="cp-button cp-outline" (click)="openContact()">
+            <button
+              type="button"
+              class="cp-button cp-outline"
+              (click)="openContact()"
+              [disabled]="busy()"
+            >
               <span class="material-symbols-outlined" aria-hidden="true">add</span>Add New Contact
             </button>
           </div>
@@ -269,6 +314,7 @@
                       type="button"
                       class="cc-contact-menu"
                       [matMenuTriggerFor]="contactMenu"
+                      [disabled]="busy()"
                       [attr.aria-label]="'Actions for ' + contact.name"
                     >
                       <span class="material-symbols-outlined" aria-hidden="true"
@@ -407,7 +453,11 @@
             <strong>Keep your information up to date</strong>
             <p>Accurate contact and address details help with compliance and communication.</p>
             <small role="status">{{
-              hasChanges() ? 'You have unsaved changes.' : 'Viewing saved contact details.'
+              saving()
+                ? 'Saving contact information…'
+                : hasChanges()
+                  ? 'You have unsaved changes.'
+                  : 'Viewing saved contact details.'
             }}</small>
           </div>
         </section>

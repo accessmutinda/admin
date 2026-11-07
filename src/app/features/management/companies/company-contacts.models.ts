@@ -84,10 +84,11 @@ export function addressSignature(address: CompanyAddress): string {
 }
 export function addressErrors(
   address: CompanyAddress,
+  requireComplete = true,
 ): Partial<Record<keyof CompanyAddress, string>> {
   const errors: Partial<Record<keyof CompanyAddress, string>> = {};
   for (const key of ['line1', 'city', 'postcode', 'country'] as const)
-    if (!address[key].trim()) errors[key] = 'This field is required.';
+    if (requireComplete && !address[key].trim()) errors[key] = 'This field is required.';
   if (
     address.country === 'United Kingdom' &&
     address.postcode.trim() &&

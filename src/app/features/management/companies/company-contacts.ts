@@ -1,3 +1,6 @@
+import { toSignal } from '@angular/core/rxjs-interop';
+import { CompanyContactsApiService } from './company-contacts-api.service';
+import { CompaniesApiService } from './companies-api.service';
 import {
   ChangeDetectorRef,
   Component,
@@ -5,6 +8,9 @@ import {
   computed,
   inject,
   signal,
+  DestroyRef,
+  effect,
+  untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -28,7 +34,6 @@ import {
   CompanyKeyContact,
   CONTACT_CATEGORIES,
   addressErrors,
-  addressSignature,
   completeKeyContact,
   contactsCompletion,
   effectiveAddress,
@@ -43,6 +48,7 @@ import {
   host: { class: 'module-page companies-page company-profile-page company-contacts-page' },
   imports: [FormsModule, RouterLink, MatDialogModule, MatMenuModule],
   templateUrl: './company-contacts.html',
+  providers: [CompanyContactsApiService],
 })
 export class CompanyContactsPage {
   protected readonly store = inject(ManagementStore);
@@ -52,7 +58,20 @@ export class CompanyContactsPage {
   private readonly toast = inject(ToastService);
   private readonly dialog = inject(MatDialog);
   private readonly changeDetector = inject(ChangeDetectorRef);
-  private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
+  private readonly api = inject(CompanyContactsApiService);
+  private readonly companiesApi = inject(CompaniesApiService);
+  private readonly destroy = inject(DestroyRef);
+  private readonly params = toSignal(this.route.paramMap, {
+    initialValue: this.route.snapshot.paramMap,
+  });
+  private get id(): string {
+    return this.params().get('id') ?? '';
+  }
+  protected readonly loading = signal(true);
+  protected readonly loadError = signal('');
+  protected readonly saving = signal(false);
+  protected readonly busy = computed(() => this.loading() || this.saving());
+  private loadGeneration = 0;
   protected readonly company = computed(() => this.store.companies().find((c) => c.id === this.id));
   protected draft = emptyCompanyContacts(this.company() ?? {});
   private baseline = JSON.stringify(this.draft);
@@ -61,6 +80,52 @@ export class CompanyContactsPage {
   protected readonly checked = signal<Partial<Record<AddressKind, boolean>>>({});
   protected readonly categories = CONTACT_CATEGORIES;
   protected readonly modifiedAt = companyModifiedAt;
+  constructor() {
+    effect(() => {
+      const id = this.id;
+      const allowed = this.auth.canAccessCompany(id);
+      this.auth.profile()?.id;
+      untracked(() => {
+        if (allowed) void this.load(true);
+        else {
+          this.draft = emptyCompanyContacts({});
+          this.baseline = JSON.stringify(this.draft);
+          this.loading.set(false);
+          this.loadError.set('This company is no longer available.');
+        }
+      });
+    });
+  }
+  protected async load(changedContext = false): Promise<void> {
+    if (
+      !changedContext &&
+      this.hasChanges() &&
+      !window.confirm('Discard unsaved changes and reload saved contact information?')
+    )
+      return;
+    const generation = ++this.loadGeneration;
+    const id = this.id;
+    this.loading.set(true);
+    this.loadError.set('');
+    this.saveError.set('');
+    this.draft = emptyCompanyContacts({});
+    this.baseline = JSON.stringify(this.draft);
+    this.checked.set({});
+    try {
+      const saved = await this.api.load(id);
+      if (generation !== this.loadGeneration || this.destroy.destroyed || id !== this.id) return;
+      this.draft = saved;
+      this.baseline = JSON.stringify(saved);
+      this.submitted.set(false);
+    } catch (error) {
+      if (generation === this.loadGeneration && !this.destroy.destroyed)
+        this.loadError.set(
+          error instanceof Error ? error.message : 'Unable to load contact information.',
+        );
+    } finally {
+      if (generation === this.loadGeneration && !this.destroy.destroyed) this.loading.set(false);
+    }
+  }
   protected readonly addressCards: { key: AddressKind; title: string; icon: string }[] = [
     { key: 'registered', title: 'Registered Address', icon: 'home' },
     { key: 'headOffice', title: 'Head Office Address', icon: 'apartment' },
@@ -91,7 +156,7 @@ export class CompanyContactsPage {
     { key: 'generalEmail', label: 'General Email', icon: 'mail', type: 'email', required: true },
     { key: 'billingEmail', label: 'Billing Email', icon: 'mail', type: 'email' },
     { key: 'website', label: 'Website', icon: 'language', type: 'url' },
-    { key: 'emergencyContact', label: 'Emergency Contact', icon: 'call', type: 'tel' },
+    { key: 'emergencyContact', label: 'Emergency Contact', icon: 'person', type: 'text' },
     { key: 'outOfHoursNumber', label: 'Out-of-Hours Number', icon: 'call', type: 'tel' },
   ];
   protected address(kind: AddressKind): CompanyAddress {
@@ -100,29 +165,47 @@ export class CompanyContactsPage {
   protected setAddress(kind: AddressKind, field: keyof CompanyAddress, value: string): void {
     if (kind === 'billing' && this.draft.billingSameAsRegistered) return;
     this.draft.addresses[kind][field] = value;
+    this.checked.update((all) => ({
+      ...all,
+      [kind]: false,
+      ...(kind === 'registered' ? { billing: false } : {}),
+    }));
     this.saveError.set('');
   }
   protected addressError(kind: AddressKind, field: keyof CompanyAddress): string {
     return this.submitted() || this.checked()[kind]
-      ? (addressErrors(this.address(kind))[field] ?? '')
+      ? (addressErrors(this.address(kind), !!this.checked()[kind])[field] ?? '')
       : '';
   }
   protected addressComplete(kind: AddressKind): boolean {
     return !Object.keys(addressErrors(this.address(kind))).length;
   }
   protected isChecked(kind: AddressKind): boolean {
-    return (
-      this.draft.addressChecks[kind]?.signature === addressSignature(this.address(kind)) &&
-      this.addressComplete(kind)
-    );
+    return !!this.checked()[kind] && this.addressComplete(kind);
   }
   protected checkAddress(kind: AddressKind): void {
     this.checked.update((all) => ({ ...all, [kind]: true }));
-    if (this.addressComplete(kind))
-      this.draft.addressChecks[kind] = {
-        signature: addressSignature(this.address(kind)),
-        checkedAt: new Date().toISOString(),
-      };
+  }
+  protected clearAddress(kind: AddressKind): void {
+    if (this.busy() || !window.confirm('Remove this address when you save changes?')) return;
+    if (kind === 'billing') this.draft.billingSameAsRegistered = false;
+    this.draft.addresses[kind] = {
+      line1: '',
+      line2: '',
+      city: '',
+      county: '',
+      postcode: '',
+      country: '',
+    };
+    this.checked.update((all) => ({ ...all, [kind]: false }));
+    this.saveError.set('');
+  }
+  protected clearPrimary(): void {
+    if (this.busy() || !window.confirm('Clear primary contact details when you save changes?'))
+      return;
+    for (const key of Object.keys(this.draft.primary) as (keyof CompanyContacts['primary'])[])
+      this.draft.primary[key] = '';
+    this.saveError.set('');
   }
   protected mapUrl(kind: AddressKind): string | null {
     const a = this.address(kind);
@@ -136,7 +219,7 @@ export class CompanyContactsPage {
   protected primaryError(key: keyof CompanyContacts['primary']): string {
     if (!this.submitted()) return '';
     const value = this.draft.primary[key].trim();
-    if (!value && (key === 'mainPhone' || key === 'generalEmail')) return 'This field is required.';
+    if (key === 'emergencyContact') return value.length > 120 ? 'Use 120 characters or fewer.' : '';
     if (!value) return '';
     if (key.toLowerCase().includes('email'))
       return validContactEmail(value) ? '' : 'Enter a valid email address.';
@@ -197,6 +280,8 @@ export class CompanyContactsPage {
     ];
   }
   protected openContact(contact?: CompanyKeyContact, category?: string): void {
+    if (this.busy()) return;
+    const id = this.id;
     this.dialog
       .open(CompanyContactDialog, {
         width: '480px',
@@ -216,7 +301,7 @@ export class CompanyContactsPage {
       })
       .afterClosed()
       .subscribe((result: CompanyKeyContact | undefined) => {
-        if (!result) return;
+        if (!result || this.destroy.destroyed || id !== this.id || this.busy()) return;
         this.draft.keyContacts = [
           ...this.draft.keyContacts.filter((c) => c.id !== result.id),
           result,
@@ -226,12 +311,15 @@ export class CompanyContactsPage {
       });
   }
   protected removeContact(id: string): void {
+    if (this.busy() || !window.confirm('Remove this contact when you save changes?')) return;
     this.draft.keyContacts = this.draft.keyContacts.filter((c) => c.id !== id);
   }
   protected hasChanges(): boolean {
     return this.baseline !== JSON.stringify(this.draft);
   }
   canLeave(): boolean {
+    if (!this.auth.canAccessCompany(this.id)) return true;
+    if (this.busy()) return false;
     return (
       !this.hasChanges() ||
       window.confirm('You have unsaved contact information. Leave without saving?')
@@ -239,54 +327,49 @@ export class CompanyContactsPage {
   }
   @HostListener('window:beforeunload', ['$event'])
   protected beforeUnload(event: BeforeUnloadEvent): void {
-    if (this.hasChanges()) event.preventDefault();
+    if (this.hasChanges() || this.saving()) event.preventDefault();
   }
   protected cancel(): void {
+    if (
+      this.busy() ||
+      (this.hasChanges() && !window.confirm('Discard unsaved contact information?'))
+    )
+      return;
     this.draft = emptyCompanyContacts(this.company() ?? {});
     this.baseline = JSON.stringify(this.draft);
     this.router.navigate(['/manage/companies', this.id]);
   }
-  protected save(): void {
+  protected async save(): Promise<void> {
+    if (this.busy()) return;
     this.submitted.set(true);
     this.saveError.set('');
     if (
-      !this.addressesComplete() ||
+      this.addressCards.some(
+        (card) => Object.keys(addressErrors(this.address(card.key), false)).length,
+      ) ||
       this.primaryFields.some((field) => this.primaryError(field.key))
     ) {
       this.saveError.set('Check the highlighted address and contact fields before saving.');
       return;
     }
-    const company = this.company();
-    if (!company) return;
-    const contacts = structuredClone(this.draft);
-    for (const kind of ['registered', 'headOffice', 'billing'] as const) {
-      for (const field of this.addressFields)
-        contacts.addresses[kind][field.key] = contacts.addresses[kind][field.key].trim();
+    const id = this.id;
+    this.saving.set(true);
+    try {
+      const saved = await this.api.save(id, this.draft);
+      this.draft = saved;
+      this.baseline = JSON.stringify(saved);
+      this.submitted.set(false);
+      this.checked.set({});
+      this.toast.success('Company contact information saved.');
+      await this.companiesApi.load(true);
+      await this.companiesApi.loadDetail(id, true);
+    } catch (error) {
+      this.saveError.set(
+        error instanceof Error ? error.message : 'The contact changes could not be saved.',
+      );
+    } finally {
+      this.saving.set(false);
     }
-    if (contacts.billingSameAsRegistered)
-      contacts.addresses.billing = structuredClone(contacts.addresses.registered);
-    for (const field of this.primaryFields)
-      contacts.primary[field.key] = contacts.primary[field.key].trim();
-    const office = contacts.addresses.headOffice;
-    if (
-      !this.store.saveCompany({
-        ...company,
-        contacts,
-        headOfficeAddress: [office.line1, office.line2, office.city, office.county]
-          .filter(Boolean)
-          .join(', '),
-        postcode: office.postcode,
-        modifiedAt: new Date().toISOString(),
-        modifiedBy: this.auth.currentUser()?.name ?? 'Company administrator',
-      })
-    ) {
-      this.saveError.set(this.store.companyWriteError());
-      return;
-    }
-    this.draft = structuredClone(contacts);
-    this.baseline = JSON.stringify(this.draft);
-    this.submitted.set(false);
-    this.toast.success('Company contact information saved.');
   }
 }
 
