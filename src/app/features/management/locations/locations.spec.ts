@@ -95,7 +95,7 @@ describe('Branches and service locations', () => {
         { provide: ToastService, useValue: toast },
       ],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
     service = TestBed.inject(LocationsService);

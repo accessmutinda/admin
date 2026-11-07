@@ -38,7 +38,7 @@ describe('Company branding and portal customisation', () => {
         },
       ],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
     vi.clearAllMocks();

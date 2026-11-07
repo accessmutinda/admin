@@ -464,7 +464,7 @@
             </div>
             <label class="cb-switch"
               ><span
-                >Show Microsoft sign-in option<small
+                >Show Google sign-in option<small
                   >Preview visibility does not configure an identity provider.</small
                 ></span
               ><input type="checkbox" role="switch" [(ngModel)]="draft.portal.microsoftSignIn"
@@ -547,8 +547,8 @@
                 <div class="cb-faux-button">Sign In</div>
                 @if (draft.portal.microsoftSignIn) {
                   <div class="cb-or">OR</div>
-                  <div class="cb-microsoft">
-                    <span class="cb-microsoft-mark" aria-hidden="true"></span>Sign in with Microsoft
+                  <div class="cb-google">
+                    <span class="cb-google-mark" aria-hidden="true">G</span>Sign in with Google
                   </div>
                 }
                 <div class="cb-login-links">

@@ -33,7 +33,7 @@ describe('Payroll and billing workspaces', () => {
       providers: [provideRouter([{ path: 'manage/finance/:area', component: Payroll }])],
     });
     const auth = TestBed.inject(AuthService);
-    auth.signInWithMicrosoft();
+    auth.signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     vi.spyOn(auth, 'currentUser').mockReturnValue({ ...DEMO_USER, roleCode: 'CA' });
     store = TestBed.inject(ManagementStore);

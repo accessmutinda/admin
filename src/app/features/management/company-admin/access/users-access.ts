@@ -1,3 +1,4 @@
+import { effectiveMfa } from '../../../../core/auth/mfa-policy';
 import { PAYROLL_ACTIONS, payrollDefaults, PayrollAction } from '../../payroll/payroll.models';
 import { ROTA_ACTIONS, rotaDefaults, RotaAction } from '../../rota/rota.models';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -160,6 +161,18 @@ export class UsersAccess {
     () => !this.allSelected() && this.rows().some((member) => this.selection().includes(member.id)),
   );
   protected role = 'Registered Manager';
+  protected roleMfa = this.store.data().roleMfa?.[this.role] ?? true;
+  private readonly mfaDrafts: Record<string, boolean> = {};
+  protected changeMfa(value: boolean): void {
+    this.roleMfa = value;
+    this.mfaDrafts[this.role] = value;
+  }
+  protected memberMfa(member: Member): boolean {
+    return effectiveMfa(member, this.store.data().roleMfa);
+  }
+  protected memberMfaSource(member: Member): string {
+    return !member.mfaPolicy || member.mfaPolicy === 'inherit' ? 'Role default' : 'User override';
+  }
   protected permissions = this.readPermissions();
   private readonly permissionDrafts: Record<string, Record<string, boolean[]>> = {
     [this.role]: this.permissions,
@@ -229,11 +242,10 @@ export class UsersAccess {
           this.level(member.role).label,
           member.status,
           member.lastLoginAt ?? '',
-          member.mfaEnabled === undefined
-            ? 'Not recorded'
-            : member.mfaEnabled
-              ? 'Enabled'
-              : 'Disabled',
+          (this.memberMfa(member) ? 'Required' : 'Not required') +
+            ' (' +
+            this.memberMfaSource(member) +
+            ')',
         ]),
       ]),
     );
@@ -295,7 +307,12 @@ export class UsersAccess {
         this.draftCompanyId = id;
         this.closeDialog?.();
         this.closeDialog = undefined;
-        for (const drafts of [this.permissionDrafts, this.rotaDrafts, this.payrollDrafts])
+        for (const drafts of [
+          this.permissionDrafts,
+          this.rotaDrafts,
+          this.payrollDrafts,
+          this.mfaDrafts,
+        ])
           for (const key of Object.keys(drafts)) delete drafts[key];
         this.role = 'Registered Manager';
         this.changeRole();
@@ -344,6 +361,7 @@ export class UsersAccess {
     this.payrollDrafts[this.role] = this.payrollAccess;
   }
   protected changeRole(): void {
+    this.roleMfa = this.mfaDrafts[this.role] ?? this.store.data().roleMfa?.[this.role] ?? true;
     this.permissions = this.permissionDrafts[this.role] ?? this.readPermissions();
     this.payrollAccess = this.payrollDrafts[this.role] ?? this.readPayrollAccess();
     this.rotaAccess = this.rotaDrafts[this.role] ?? this.readRotaAccess();
@@ -357,6 +375,7 @@ export class UsersAccess {
   }
   protected permissionsChanged(): boolean {
     return (
+      this.roleMfa !== (this.store.data().roleMfa?.[this.role] ?? true) ||
       JSON.stringify(this.permissions) !== JSON.stringify(this.readPermissions()) ||
       JSON.stringify([...this.payrollAccess].sort()) !==
         JSON.stringify(this.readPayrollAccess().sort()) ||
@@ -380,6 +399,8 @@ export class UsersAccess {
     this.permissionDrafts[this.role] = this.permissions;
   }
   protected discardPermissions(): void {
+    this.roleMfa = this.store.data().roleMfa?.[this.role] ?? true;
+    this.mfaDrafts[this.role] = this.roleMfa;
     this.rotaAccess = this.readRotaAccess();
     this.rotaDrafts[this.role] = this.rotaAccess;
     this.payrollAccess = this.readPayrollAccess();
@@ -389,6 +410,9 @@ export class UsersAccess {
   }
   private hasPermissionDrafts(): boolean {
     return (
+      Object.entries(this.mfaDrafts).some(
+        ([role, value]) => value !== (this.store.data().roleMfa?.[role] ?? true),
+      ) ||
       Object.entries(this.permissionDrafts).some(([role, draft]) =>
         this.modules.some(
           (module) =>
@@ -436,13 +460,14 @@ export class UsersAccess {
     if (!this.permissionsChanged()) return;
     const saved = this.store.saveWorkspace((d) => ({
       ...d,
+      roleMfa: { ...d.roleMfa, [this.role]: this.roleMfa },
       accessHistory: [
         ...(d.accessHistory ?? []),
         accessChange(
           this.auth.currentUser(),
           'permissions',
           this.role,
-          'Module, rota and payroll permission configuration updated',
+          `Module, rota and payroll permissions updated; role MFA: ${this.roleMfa ? 'Required' : 'Not required'}`,
         ),
       ],
       payrollPermissions: { ...d.payrollPermissions, [this.role]: [...this.payrollAccess] },

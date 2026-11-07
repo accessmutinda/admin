@@ -12,7 +12,7 @@ describe('ECM date rollover', () => {
     vi.setSystemTime(new Date('2026-10-07T22:59:59Z'));
     TestBed.configureTestingModule({ imports: [Ecm], providers: [provideRouter([])] });
     const auth = TestBed.inject(AuthService);
-    auth.signInWithMicrosoft();
+    auth.signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     vi.spyOn(auth, 'currentUser').mockReturnValue({ ...DEMO_USER, roleCode: 'CA' });
   });

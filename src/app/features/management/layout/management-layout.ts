@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { AcademyGovernanceService } from '../learning/academy/academy-governance.service';
 import { AcademyService } from '../learning/academy/academy.service';
 import { AcademyDemoWorkflow } from '../learning/academy/academy-demo-workflow';
@@ -14,7 +15,6 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { Logo } from '../../../shared/ui/logo';
 import { ManagementStore } from '../shared/management.store';
 import { WallboardLauncher } from '../ecm/wallboard-launcher';
-import { QUALITY_LINKS } from '../quality/quality-navigation';
 import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
 @Component({
   selector: 'cv-management-layout',
@@ -23,9 +23,11 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
     '../people/hr-shell.css',
     '../companies/company-directory.css',
     './quality-submenu.css',
+    './management-layout.css',
   ],
   providers: [{ provide: MAT_SELECT_CONFIG, useValue: { overlayPanelClass: 'cv-select-overlay' } }],
   imports: [
+    NgTemplateOutlet,
     ManagementRole,
     A11yModule,
     RouterOutlet,
@@ -51,9 +53,95 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
       [cdkTrapFocusAutoCapture]="!!mobile()?.matches && menuOpen()"
       (keydown.escape)="menuOpen.set(false)"
     >
-      <a routerLink="/manage/companies" class="sidebar-logo" aria-label="CareVerity home"
+      <a
+        [routerLink]="auth.hasRole('CA') ? '/manage/rota/overview' : '/manage/companies'"
+        class="sidebar-logo"
+        aria-label="CareVerity home"
         ><cv-logo tone="light"
       /></a>
+      @if (auth.hasRole('PO')) {
+        <button
+          type="button"
+          class="workspace-control"
+          [attr.aria-label]="
+            'Switch workspace. Current workspace: ' + (store.company()?.name ?? '')
+          "
+          [title]="store.company()?.name ?? 'Select workspace'"
+          (click)="switchWorkspace()"
+        >
+          <span class="workspace-mark">{{ store.company()?.code ?? 'CV' }}</span
+          ><span class="workspace-text"
+            ><strong>{{ store.company()?.name ?? 'Select workspace' }}</strong
+            ><small>Switch workspace</small></span
+          ><span class="material-symbols-outlined" aria-hidden="true">unfold_more</span>
+        </button>
+      }
+      <ng-template #careDelivery>
+        @if (store.company()?.modules.includes('Care delivery')) {
+          <p class="nav-label">CARE DELIVERY</p>
+          <button
+            type="button"
+            class="visits-submenu-toggle"
+            #visitsMenu
+            [class.active]="routerUrl().startsWith('/manage/rota')"
+            [attr.aria-expanded]="visitsExpanded()"
+            aria-controls="visits-submenu"
+            (click)="visitsExpanded.set(!visitsExpanded())"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+            <span class="visits-menu-label">Visits &amp; Rostering</span>
+            <span class="material-symbols-outlined visits-menu-chevron" aria-hidden="true">{{
+              visitsExpanded() ? 'expand_less' : 'expand_more'
+            }}</span>
+          </button>
+          @if (visitsExpanded()) {
+            <nav
+              class="visits-submenu"
+              id="visits-submenu"
+              aria-label="Visits & Rostering pages"
+              (keydown.escape)="
+                visitsExpanded.set(false); visitsMenu.focus(); $event.stopPropagation()
+              "
+            >
+              @for (item of visitsLinks; track item.path) {
+                <a
+                  [routerLink]="item.path"
+                  [class.selected]="isVisitSection(item.path)"
+                  [attr.aria-current]="isVisitSection(item.path) ? 'page' : null"
+                  (click)="menuOpen.set(false)"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
+                  <span>{{ item.label }}</span>
+                </a>
+              }
+            </nav>
+          }
+          <a routerLink="/manage/clients" routerLinkActive="active" (click)="menuOpen.set(false)"
+            ><span class="material-symbols-outlined" aria-hidden="true">folder_shared</span>Service
+            users</a
+          >
+
+          <a
+            routerLink="/manage/care-plans"
+            routerLinkActive="active"
+            ariaCurrentWhenActive="page"
+            (click)="menuOpen.set(false)"
+            ><span class="material-symbols-outlined" aria-hidden="true">assignment</span>Care
+            Plans</a
+          >
+          <a
+            routerLink="/manage/ecm"
+            routerLinkActive="active"
+            ariaCurrentWhenActive="page"
+            (click)="menuOpen.set(false)"
+            ><span class="material-symbols-outlined" aria-hidden="true">monitor_heart</span>Live
+            Visits / ECM</a
+          >
+        }
+      </ng-template>
+      @if (auth.hasRole('CA')) {
+        <ng-container *ngTemplateOutlet="careDelivery" />
+      }
       <p class="nav-label">ORGANISATION</p>
       @for (item of organisation; track item.path) {
         <a
@@ -109,65 +197,8 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           }
         </nav>
       }
-      @if (store.company()?.modules.includes('Care delivery')) {
-        <p class="nav-label">CARE DELIVERY</p>
-        <a routerLink="/manage/clients" routerLinkActive="active" (click)="menuOpen.set(false)"
-          ><span class="material-symbols-outlined" aria-hidden="true">folder_shared</span>Service
-          users</a
-        >
-
-        <a
-          routerLink="/manage/care-plans"
-          routerLinkActive="active"
-          ariaCurrentWhenActive="page"
-          (click)="menuOpen.set(false)"
-          ><span class="material-symbols-outlined" aria-hidden="true">assignment</span>Care Plans</a
-        >
-        <button
-          type="button"
-          class="visits-submenu-toggle"
-          #visitsMenu
-          [class.active]="routerUrl().startsWith('/manage/rota')"
-          [attr.aria-expanded]="visitsExpanded()"
-          aria-controls="visits-submenu"
-          (click)="visitsExpanded.set(!visitsExpanded())"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
-          <span class="visits-menu-label">Visits &amp; Rostering</span>
-          <span class="material-symbols-outlined visits-menu-chevron" aria-hidden="true">{{
-            visitsExpanded() ? 'expand_less' : 'expand_more'
-          }}</span>
-        </button>
-        @if (visitsExpanded()) {
-          <nav
-            class="visits-submenu"
-            id="visits-submenu"
-            aria-label="Visits & Rostering pages"
-            (keydown.escape)="
-              visitsExpanded.set(false); visitsMenu.focus(); $event.stopPropagation()
-            "
-          >
-            @for (item of visitsLinks; track item.path) {
-              <a
-                [routerLink]="item.path"
-                [class.selected]="isVisitSection(item.path)"
-                [attr.aria-current]="isVisitSection(item.path) ? 'page' : null"
-                (click)="menuOpen.set(false)"
-              >
-                <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
-                <span>{{ item.label }}</span>
-              </a>
-            }
-          </nav>
-        }
-        <a
-          routerLink="/manage/ecm"
-          routerLinkActive="active"
-          ariaCurrentWhenActive="page"
-          (click)="menuOpen.set(false)"
-          ><span class="material-symbols-outlined" aria-hidden="true">monitor_heart</span>Live
-          Visits / ECM</a
-        >
+      @if (!auth.hasRole('CA')) {
+        <ng-container *ngTemplateOutlet="careDelivery" />
       }
       @if (store.company()?.modules.includes('Quality & compliance')) {
         <p class="nav-label">SUPERVISION & QUALITY</p>
@@ -175,53 +206,13 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           ><span class="material-symbols-outlined" aria-hidden="true">supervisor_account</span
           >Supervisor dashboard</a
         >
-        <button
-          type="button"
-          class="quality-submenu-toggle"
-          #richKpiMenu
-          [class.active]="routerUrl().startsWith('/manage/quality')"
-          (click)="qualityExpanded.set(!qualityExpanded())"
-          [attr.aria-expanded]="qualityExpanded()"
-          aria-controls="quality-submenu"
+        <a
+          routerLink="/manage/quality"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          (click)="menuOpen.set(false)"
+          ><span class="material-symbols-outlined" aria-hidden="true">monitoring</span>Rich KPI</a
         >
-          <span class="material-symbols-outlined" aria-hidden="true">monitoring</span>
-          <span class="quality-menu-label">Rich KPI</span>
-          <span class="material-symbols-outlined quality-menu-chevron" aria-hidden="true">{{
-            qualityExpanded() ? 'expand_less' : 'expand_more'
-          }}</span>
-        </button>
-        @if (qualityExpanded()) {
-          <nav
-            class="quality-submenu"
-            id="quality-submenu"
-            aria-label="Rich KPI pages"
-            (keydown.escape)="
-              qualityExpanded.set(false); richKpiMenu.focus(); $event.stopPropagation()
-            "
-          >
-            @for (item of qualityLinks; track item.slug) {
-              <a
-                [routerLink]="item.slug ? ['/manage/quality', item.slug] : ['/manage/quality']"
-                routerLinkActive="selected"
-                [routerLinkActiveOptions]="{ exact: true }"
-                ariaCurrentWhenActive="page"
-                (click)="menuOpen.set(false)"
-                [title]="item.slug ? item.label : 'Executive KPI Command Centre'"
-              >
-                <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span
-                ><span>{{ item.slug ? item.label : 'Executive KPI Command Centre' }}</span>
-              </a>
-            }
-            <a
-              routerLink="/manage/quality/workspace"
-              routerLinkActive="selected"
-              ariaCurrentWhenActive="page"
-              (click)="menuOpen.set(false)"
-              ><span class="material-symbols-outlined" aria-hidden="true">assignment</span
-              ><span>Assessment & action workspace</span></a
-            >
-          </nav>
-        }
       }
       @if (store.company()?.modules.includes('Finance')) {
         <p class="nav-label">FINANCE</p>
@@ -295,21 +286,6 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
               }}</span>
             </div>
           }
-          <button
-            type="button"
-            class="workspace-control"
-            [attr.aria-label]="
-              'Switch workspace. Current workspace: ' + (store.company()?.name ?? '')
-            "
-            [title]="store.company()?.name ?? 'Switch workspace'"
-            (click)="switchWorkspace()"
-          >
-            <span class="workspace-mark">{{ store.company()?.code }}</span
-            ><span class="workspace-text"
-              ><strong>{{ store.company()?.name }}</strong
-              ><small>Switch workspace</small></span
-            ><span class="material-symbols-outlined" aria-hidden="true">unfold_more</span>
-          </button>
         </div>
         @defer (on idle) {
           <cv-workspace-tools />
@@ -444,8 +420,6 @@ export class ManagementLayout {
     const current = this.router.url.split(/[?#]/)[0];
     return current === path || (path.endsWith('/overview') && current === '/manage/rota/planner');
   }
-  protected readonly qualityLinks = QUALITY_LINKS;
-  protected readonly qualityExpanded = signal(this.router.url.startsWith('/manage/quality'));
   protected readonly organisation = [
     { path: '/manage/companies', label: 'Companies', icon: 'domain' },
     { path: '/manage/workflows', label: 'Approval workflows', icon: 'account_tree' },
@@ -461,6 +435,8 @@ export class ManagementLayout {
     );
   }
   protected switchWorkspace(): void {
+    if (!this.auth.hasRole('PO')) return;
+    this.menuOpen.set(false);
     this.router.navigateByUrl('/select-workspace');
   }
   protected signOut(): void {

@@ -24,13 +24,14 @@ describe('Academy navigation within the admin console', () => {
               { path: 'learning/rules/:courseId', component: Destination },
               { path: 'learning/publish/:courseId', component: Destination },
               { path: 'companies', component: Destination },
+              { path: 'rota/overview', component: Destination },
             ],
           },
         ]),
       ],
     });
     const auth = TestBed.inject(AuthService);
-    auth.signInWithMicrosoft();
+    auth.signInDemoSession();
     const user = auth.currentUser()!;
     vi.spyOn(auth, 'currentUser').mockReturnValue({ ...user, roleCode: 'CA' });
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
@@ -49,6 +50,8 @@ describe('Academy navigation within the admin console', () => {
     expect(page.querySelector('.app-sidebar a[href="/manage/people"]')).not.toBeNull();
     expect(page.querySelector('.co-console-heading strong')?.textContent).toBe('Admin Console');
     expect(page.querySelector('.academy-shell')).toBeNull();
+    expect(page.querySelector('.workspace-control')).toBeNull();
+    expect(page.querySelector('.app-sidebar > .nav-label')?.textContent).toBe('CARE DELIVERY');
     await harness.navigateByUrl('/manage/learning/structure/test-course');
     expect(
       page.querySelector('.academy-submenu a[aria-current="page"]')?.getAttribute('href'),
@@ -71,6 +74,30 @@ describe('Academy navigation within the admin console', () => {
     expect(page.querySelector('.academy-submenu-toggle')?.getAttribute('aria-expanded')).toBe(
       'false',
     );
+  });
+  it('places the Super Admin workspace selector above Organisation and removes it from the header', async () => {
+    const auth = TestBed.inject(AuthService);
+    vi.spyOn(auth, 'currentUser').mockReturnValue({ ...auth.currentUser()!, roleCode: 'PO' });
+    const harness = await RouterTestingHarness.create('/manage/companies');
+    const page = harness.routeNativeElement!;
+    const selector = page.querySelector<HTMLButtonElement>('.app-sidebar > .workspace-control')!;
+    expect(selector).not.toBeNull();
+    expect(page.querySelector('.app-sidebar > .nav-label')?.textContent).toBe('ORGANISATION');
+    expect(selector.nextElementSibling?.textContent).toBe('ORGANISATION');
+    expect(selector.textContent).toContain('London Quality Care Services');
+    expect(page.querySelector('.app-header .workspace-control')).toBeNull();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    selector.click();
+    expect(navigate).toHaveBeenCalledWith('/select-workspace');
+  });
+  it('uses Visits & Rostering Overview as the company home destination', async () => {
+    const harness = await RouterTestingHarness.create('/manage/rota/overview');
+    const page = harness.routeNativeElement!;
+    expect(page.querySelector('.sidebar-logo')?.getAttribute('href')).toBe('/manage/rota/overview');
+    expect(page.querySelector('.visits-submenu a[aria-current="page"]')?.getAttribute('href')).toBe(
+      '/manage/rota/overview',
+    );
+    expect(page.querySelector('.app-sidebar > .nav-label')?.textContent).toBe('CARE DELIVERY');
   });
   it('expands on navigation into Academy and allows manual collapse without navigating', async () => {
     const harness = await RouterTestingHarness.create('/manage/companies');

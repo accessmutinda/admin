@@ -37,7 +37,7 @@ describe('Compact admin navigation and disclosure controls', () => {
         },
       ],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
   });
 

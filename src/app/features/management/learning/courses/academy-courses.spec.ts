@@ -9,7 +9,7 @@ describe('Compact academy course catalogue', () => {
   beforeEach(() => {
     localStorage.clear();
     TestBed.configureTestingModule({ imports: [AcademyCourses] });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
   });
 

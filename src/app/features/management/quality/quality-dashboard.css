@@ -700,38 +700,3 @@
     display: flex;
   }
 }
-
-.academy-kpi-projection {
-  padding: 12px;
-  margin-bottom: 12px;
-  border: 1px solid #d8e6f2;
-  border-radius: 9px;
-  background: #fff;
-  font: 12px/1.5 var(--font-sans);
-}
-.academy-kpi-projection summary {
-  cursor: pointer;
-  font-weight: 800;
-  min-height: 28px;
-}
-.academy-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-.academy-kpi-grid a {
-  padding: 8px 12px;
-  border-radius: 7px;
-  background: #eef7ff;
-  color: #093252;
-  font-size: 11px;
-}
-.academy-kpi-grid strong {
-  display: block;
-  font-size: 20px;
-}
-@media (max-width: 700px) {
-  .academy-kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}

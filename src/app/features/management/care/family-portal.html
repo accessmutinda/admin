@@ -19,10 +19,10 @@
     aria-label="Help and support"
     ><span class="material-symbols-outlined" aria-hidden="true">help_outline</span></a
   >
-  <a class="account" routerLink="/account/security"
+  <a class="account" routerLink="/account/security" aria-label="Account settings"
     ><span class="avatar">{{ auth.currentUser()?.initials }}</span
     ><span
-      ><strong>Hello, {{ record()?.access?.name || auth.currentUser()?.name }}</strong
+      ><strong>{{ record()?.access?.name || auth.currentUser()?.name }}</strong
       ><small>{{ record()?.access?.relationship || 'Your family workspace' }}</small></span
     ><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></a
   >
@@ -31,14 +31,20 @@
   <button class="scrim" aria-label="Close navigation" (click)="menuOpen.set(false)"></button>
 }
 <aside
+  aria-label="Family Portal sidebar"
   [class.open]="menuOpen()"
   [attr.inert]="mobile()?.matches && !menuOpen() ? '' : null"
   [cdkTrapFocus]="!!mobile()?.matches && menuOpen()"
   [cdkTrapFocusAutoCapture]="!!mobile()?.matches && menuOpen()"
 >
-  <a class="brand" [routerLink]="href('overview')" [queryParams]="queryParams()"
+  <a
+    class="brand"
+    aria-label="CareVerity home"
+    [routerLink]="href('overview')"
+    [queryParams]="queryParams()"
     ><img src="/brand/logo-full-reversed.png" alt="CareVerity — Secure Care Management"
   /></a>
+  <p class="nav-label">FAMILY PORTAL</p>
   <nav id="family-navigation" aria-label="Family navigation">
     @for (link of links; track link.path) {
       <a
@@ -54,14 +60,22 @@
   </nav>
   <div class="nav-bottom">
     @if (care.rota.can('manage')) {
-      <a routerLink="/manage/companies"
+      <a routerLink="/manage/companies" (click)="menuOpen.set(false)"
         ><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span>Admin
         Console</a
       >
     }
-    <a [routerLink]="href('support')" [queryParams]="queryParams()" (click)="menuOpen.set(false)"
+    <a
+      [routerLink]="href('support')"
+      [queryParams]="queryParams()"
+      [class.active]="page() === 'support'"
+      [attr.aria-current]="page() === 'support' ? 'page' : null"
+      (click)="menuOpen.set(false)"
       ><span class="material-symbols-outlined" aria-hidden="true">help_outline</span>Help &
       support</a
+    >
+    <a routerLink="/account/security" (click)="menuOpen.set(false)"
+      ><span class="material-symbols-outlined" aria-hidden="true">lock</span>Account security</a
     >
     <button (click)="signOut()">
       <span class="material-symbols-outlined" aria-hidden="true">logout</span>Sign out

@@ -100,7 +100,7 @@
           <p>See the work-account sign-in option available in this workspace.</p>
         </div>
         <div class="account-sec-method">
-          <span class="account-sec-status demo">Demo integration</span><span>Microsoft</span>
+          <span class="account-sec-status demo">Demo integration</span><span>Google</span>
         </div>
         <button class="account-sec-action" type="button" (click)="details.set('connections')">
           View details<span class="material-symbols-outlined" aria-hidden="true"
@@ -164,7 +164,7 @@
         <div>
           <p class="eyebrow">ACCOUNT SECURITY</p>
           <h2 id="security-details-title">
-            {{ detail === 'mfa' ? 'Your verification method' : 'Microsoft work-account sign-in' }}
+            {{ detail === 'mfa' ? 'Your verification method' : 'Google work-account sign-in' }}
           </h2>
         </div>
         <button class="icon-button" aria-label="Close security details" (click)="details.set(null)">
@@ -198,13 +198,13 @@
           <div class="security-detail-highlight">
             <span class="material-symbols-outlined" aria-hidden="true">business</span>
             <div>
-              <h3>Microsoft</h3>
+              <h3>Google</h3>
               <p>Work-account sign-in option</p>
             </div>
           </div>
           <p class="security-detail-copy">
-            Microsoft sign-in is demonstrated in the sign-in flow. This page does not establish or
-            manage a live Microsoft account connection.
+            Google sign-in is demonstrated in the sign-in flow. This page does not establish or
+            manage a live Google account connection.
           </p>
         }
       </div>

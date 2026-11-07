@@ -3,6 +3,7 @@
   ><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to
   assessments</a
 >
+<cv-quality-navigation />
 @if (!service.can('view')) {
   <cv-access-required
     feature="Quality & QA"
@@ -14,7 +15,10 @@
   <section class="panel empty-state">
     <h1>Assessment not found</h1>
     <p>This record is unavailable in the current workspace. Choose a form from the library.</p>
-    <a class="button" routerLink="/manage/quality/workspace" [queryParams]="{ tab: 'Assessment library' }"
+    <a
+      class="button"
+      routerLink="/manage/quality/workspace"
+      [queryParams]="{ tab: 'Assessment library' }"
       >Assessment library</a
     >
   </section>

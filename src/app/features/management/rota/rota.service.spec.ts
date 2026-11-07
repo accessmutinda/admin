@@ -48,7 +48,7 @@ describe('Rota allocation and publishing', () => {
     localStorage.clear();
     TestBed.configureTestingModule({});
     const auth = TestBed.inject(AuthService);
-    auth.signInWithMicrosoft();
+    auth.signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     actor.set({ ...DEMO_USER, id: 'rota-admin', roleCode: 'CA', name: 'Rota administrator' });
     vi.spyOn(auth, 'currentUser').mockImplementation(() => actor());

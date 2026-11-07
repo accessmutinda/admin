@@ -15,7 +15,7 @@ describe('CPD entry ownership', () => {
     TestBed.configureTestingModule({ imports: [AcademyCpd] }).overrideComponent(AcademyCpd, {
       set: { template: '' },
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
   });
 

@@ -81,7 +81,7 @@ describe('Company modules and subscription', () => {
         { provide: ToastService, useValue: toast },
       ],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
     harness = await RouterTestingHarness.create();

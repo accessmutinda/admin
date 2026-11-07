@@ -30,7 +30,7 @@ describe('Vacancy applications', () => {
       imports: [Recruitment, ApplicationForm, FormsModule],
       providers: [provideRouter([])],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
   });
@@ -500,7 +500,7 @@ describe('Vacancy applications', () => {
       vi.setSystemTime(new Date('2026-10-07T22:59:00Z'));
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({});
-      TestBed.inject(AuthService).signInWithMicrosoft();
+      TestBed.inject(AuthService).signInDemoSession();
       TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
       store = TestBed.inject(ManagementStore);
       const job = { ...vacancy(), fields: [], goLiveDate: '2026-10-08', closingDate: '2026-10-08' };

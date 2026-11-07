@@ -3,7 +3,8 @@ import { Observable, delay, of, throwError } from 'rxjs';
 import { AppUser } from './models/user';
 import { AuthSession } from './models/session';
 import { Invite } from './models/invite';
-import { RoleCode } from './models/role';
+import { RoleCode, ROLES } from './models/role';
+import { effectiveMfa, MfaWorkspace } from './mfa-policy';
 import {
   DEMO_EMAIL,
   DEMO_MFA_CODE,
@@ -36,13 +37,54 @@ export class AuthService {
     const user =
       address === DEMO_EMAIL
         ? DEMO_USER
-        : DEMO_PORTAL_USERS.find((account) => account.email === address);
+        : (DEMO_PORTAL_USERS.find((account) => account.email === address) ??
+          this.localMemberAccount(address));
     if (!user || password !== DEMO_PASSWORD) {
       return throwError(() => new Error('Incorrect email or password.')).pipe(delay(LATENCY_MS));
     }
 
-    const trusted = this.isDeviceTrusted(user.email);
-    const requiresMfa = user.mfaEnabled && !trusted;
+    return this.beginSignIn(user);
+  }
+
+  private localMemberAccount(email: string): AppUser | undefined {
+    try {
+      const records: Record<string, MfaWorkspace> =
+        JSON.parse(localStorage.getItem('cv_management_v1') ?? '{}') ?? {};
+      const memberships = Object.entries(records).flatMap(([workspace, data]) =>
+        (data.members ?? [])
+          .filter((member) => member.email.toLowerCase() === email && member.status === 'Active')
+          .map((member) => ({ workspace, member })),
+      );
+      const member = memberships[0]?.member;
+      const role = Object.values(ROLES).find((role) => role.label === member?.role);
+      if (!member || !role) return undefined;
+      const name = member.name?.trim() || email;
+      return {
+        id: member.id ?? email,
+        name,
+        initials: name
+          .split(/\s+/)
+          .map((part) => part[0])
+          .slice(0, 2)
+          .join('')
+          .toUpperCase(),
+        email,
+        roleCode: role.code,
+        mfaEnabled: true,
+        mfaMethod: 'authenticator',
+        workspaceIds: memberships.map((membership) => membership.workspace),
+      };
+    } catch {
+      return undefined;
+    }
+  }
+
+  private beginSignIn(account: AppUser): Observable<{ requiresMfa: boolean; user: AppUser }> {
+    const user = { ...account, mfaEnabled: this.requiresMfa(account) };
+    const requiresMfa = user.mfaEnabled && !this.isDeviceTrusted(user);
+    this._session.set(null);
+    this._pendingUser.set(null);
+    localStorage.removeItem(SESSION_KEY);
 
     if (requiresMfa) {
       this._pendingUser.set(user);
@@ -73,7 +115,56 @@ export class AuthService {
     return of(void 0).pipe(delay(LATENCY_MS));
   }
 
-  signInWithMicrosoft(): Observable<AuthSession> {
+  signInWithGoogle(): Observable<{ requiresMfa: boolean; user: AppUser }> {
+    return this.beginSignIn(DEMO_USER);
+  }
+
+  requiresMfa(user: AppUser): boolean {
+    return this.accountPolicies(user).some((policy) => policy.required);
+  }
+
+  private accountPolicies(
+    user: AppUser,
+  ): { workspace: string; required: boolean; policy: string }[] {
+    let records: Record<string, MfaWorkspace> = {};
+    try {
+      records = JSON.parse(localStorage.getItem('cv_management_v1') ?? '{}') ?? {};
+    } catch {
+      /* Use the seeded account policy when storage is unavailable. */
+    }
+    const policies = [...new Set([...user.workspaceIds, ...this.localWorkspaceIds()])].flatMap(
+      (workspace) => {
+        const data = records[workspace];
+        const member = data?.members?.find(
+          (m) => m.email.toLowerCase() === user.email.toLowerCase(),
+        );
+        const role = member?.role ?? ROLES[user.roleCode].label;
+        if (!member && data?.roleMfa?.[role] === undefined) return [];
+        const policy = member ?? { email: user.email, role, mfaPolicy: 'inherit' as const };
+        return [
+          {
+            workspace,
+            required: effectiveMfa(policy, data?.roleMfa),
+            policy: JSON.stringify([
+              role,
+              policy.mfaPolicy,
+              policy.mfaEnabled,
+              data?.roleMfa?.[role],
+            ]),
+          },
+        ];
+      },
+    );
+    return policies.length
+      ? policies
+      : [{ workspace: '', required: user.mfaEnabled, policy: 'account-default' }];
+  }
+
+  private trustSignature(user: AppUser): string {
+    return JSON.stringify(this.accountPolicies(user));
+  }
+
+  signInDemoSession(): Observable<AuthSession> {
     const session = this.establishSession(DEMO_USER, false);
     return of(session).pipe(delay(900));
   }
@@ -159,7 +250,13 @@ export class AuthService {
     this._session.set(session);
     this.persistSession(session);
     if (trustDevice) {
-      localStorage.setItem(TRUSTED_DEVICE_PREFIX + user.email, '1');
+      localStorage.setItem(
+        TRUSTED_DEVICE_PREFIX + user.email,
+        JSON.stringify({
+          signature: this.trustSignature(user),
+          expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        }),
+      );
     }
     return session;
   }
@@ -174,9 +271,12 @@ export class AuthService {
     }
   }
 
-  private isDeviceTrusted(email: string): boolean {
+  private isDeviceTrusted(user: AppUser): boolean {
     try {
-      return localStorage.getItem(TRUSTED_DEVICE_PREFIX + email) === '1';
+      const trusted = JSON.parse(
+        localStorage.getItem(TRUSTED_DEVICE_PREFIX + user.email) ?? 'null',
+      );
+      return trusted?.signature === this.trustSignature(user) && trusted.expiresAt > Date.now();
     } catch {
       return false;
     }

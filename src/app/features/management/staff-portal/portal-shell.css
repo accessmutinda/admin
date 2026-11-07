@@ -5,7 +5,7 @@
 }
 :host .staff-portal-shell .app-sidebar {
   width: 272px;
-  padding: 10px 12px;
+  padding: 10px 9px 12px;
 }
 :host .staff-portal-shell .app-body {
   margin-left: 272px;
@@ -15,11 +15,13 @@
 }
 .staff-portal-shell .nav-label {
   margin: 14px 12px 6px;
-  letter-spacing: 1px;
+  letter-spacing: 1.6px;
+  color: #849daf;
+  font-weight: 600;
 }
 .staff-navigation {
   display: grid;
-  gap: 3px;
+  gap: 0;
 }
 .staff-navigation a {
   display: flex;
@@ -28,17 +30,18 @@
   text-decoration: none;
   min-height: 32px;
   padding: 6px 12px;
-  border-radius: 4px;
-  color: #b4cad9;
-  font-size: 13px;
+  border-radius: 7px;
+  color: #b9c9d6;
+  margin: 1px 0;
+  font: 400 13px/1.5 var(--font-sans, Lato, sans-serif);
 }
 .staff-navigation a.active {
   background: #007caa;
-  box-shadow: inset 3px 0 #17c5de;
+  box-shadow: none;
   color: #fff;
 }
 .staff-navigation a:hover {
-  background: #144460;
+  background: #ffffff08;
   color: #fff;
 }
 .staff-navigation .material-symbols-outlined {
@@ -200,4 +203,9 @@
   .staff-navigation a {
     min-height: 44px;
   }
+}
+
+.staff-navigation a.active:hover {
+  background: #007caa;
+  color: #fff;
 }

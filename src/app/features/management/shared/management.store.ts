@@ -126,6 +126,7 @@ export interface Member {
   department?: string;
   lastLoginAt?: string;
   mfaEnabled?: boolean;
+  mfaPolicy?: import('../../../core/auth/mfa-policy').MfaPolicy;
 }
 export interface Leave {
   personId?: string;
@@ -277,6 +278,7 @@ export interface WorkspaceData {
   inspection?: import('../../inspector/inspector.models').InspectorData;
   staffDrafts?: StaffDraft[];
   accessHistory?: AccessChange[];
+  roleMfa?: Record<string, boolean>;
   locations?: ServiceLocation[];
   permissionDefaultsVersion?: number;
   quality?: QualityData;

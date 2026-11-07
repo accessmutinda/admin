@@ -23,7 +23,7 @@ describe('Training Academy workspace', () => {
     TestBed.configureTestingModule({
       providers: [provideRouter([{ path: 'manage/learning', component: Learning }])],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
   });

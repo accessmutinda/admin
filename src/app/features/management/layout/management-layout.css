@@ -1,0 +1,47 @@
+.cv-management .app-sidebar button.workspace-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  flex-shrink: 0;
+  margin: 4px 0 0;
+  padding: 8px;
+  border: 1px solid #dfe8ed;
+  border-radius: 7px;
+  background: #fafdff;
+  color: #123352;
+  text-align: left;
+}
+.cv-management .app-sidebar button.workspace-control:hover {
+  background: #edf6fc;
+}
+.cv-management .app-sidebar button.workspace-control:focus-visible {
+  outline: 2px solid #17c5de;
+  outline-offset: 2px;
+}
+.cv-management .app-sidebar .workspace-control .material-symbols-outlined {
+  font-size: 18px;
+}
+.cv-management .app-sidebar .workspace-control .workspace-mark {
+  background: #004579;
+}
+.cv-management .app-sidebar .workspace-control .workspace-text small {
+  color: #657184;
+}
+
+.cv-management .app-sidebar {
+  padding-inline: 9px;
+}
+
+.cv-management .app-header .avatar {
+  background: #004579;
+  color: #fff;
+}
+
+.cv-management .app-sidebar > a.active:not(.sidebar-logo),
+.cv-management .app-sidebar > :is(.visits-submenu-toggle, .academy-submenu-toggle).active,
+.cv-management .app-sidebar .sidebar-bottom a.active,
+.cv-management .app-sidebar :is(.visits-submenu, .academy-submenu) a.selected {
+  box-shadow: none;
+}

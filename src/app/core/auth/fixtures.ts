@@ -26,6 +26,7 @@ export const DEMO_PORTAL_USERS: AppUser[] = [
   {
     ...DEMO_USER,
     id: 'demo-admin',
+    workspaceIds: ['lqcs'],
     name: 'Alex Morgan',
     initials: 'AM',
     email: 'admin@example.test',

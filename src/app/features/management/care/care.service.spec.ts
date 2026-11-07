@@ -59,7 +59,7 @@ describe('Structured care records', () => {
     localStorage.clear();
     TestBed.configureTestingModule({});
     const auth = TestBed.inject(AuthService);
-    auth.signInWithMicrosoft();
+    auth.signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace(workspace);
     actor.set({ ...DEMO_USER, roleCode: 'CA', name: 'Care administrator' });
     vi.spyOn(auth, 'currentUser').mockImplementation(() => actor());

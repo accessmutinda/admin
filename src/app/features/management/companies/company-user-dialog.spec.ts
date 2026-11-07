@@ -10,6 +10,7 @@ interface UserEditor {
   email: string;
   role: string;
   status: string;
+  mfaPolicy: 'inherit' | 'required' | 'not-required';
   error(): string;
   save(): void;
 }
@@ -22,7 +23,7 @@ describe('Company membership dialogs', () => {
       imports: [CompanyUserDialog],
       providers: [{ provide: ToastService, useValue: toast }],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
     vi.clearAllMocks();
@@ -60,6 +61,24 @@ describe('Company membership dialogs', () => {
       'Invitation recorded. Email delivery is not connected.',
     );
   });
+  it('saves an individual MFA requirement even when the role does not require it', () => {
+    store.saveWorkspace((data) => ({ ...data, roleMfa: { 'Registered Manager': false } }));
+    const member = store.data().members[0];
+    const { editor, close, element } = open('edit', member);
+    expect(element.textContent).toContain('Role default: Not required');
+    editor.mfaPolicy = 'required';
+    editor.save();
+    expect(store.data().members.find((m) => m.id === member.id)?.mfaPolicy).toBe('required');
+    expect(close).toHaveBeenCalledWith(true);
+    const reopened = open(
+      'edit',
+      store.data().members.find((m) => m.id === member.id),
+    );
+    expect(reopened.editor.mfaPolicy).toBe('required');
+    reopened.editor.mfaPolicy = 'inherit';
+    reopened.editor.save();
+    expect(store.data().members.find((m) => m.id === member.id)?.mfaPolicy).toBe('inherit');
+  });
   it('rejects invalid and duplicate emails and invalid roles without closing', () => {
     const { editor, close } = open('invite');
     editor.email = 'bad';
@@ -89,6 +108,7 @@ describe('Company membership dialogs', () => {
       ...member,
       role: 'Care Worker',
       status: 'Suspended',
+      mfaPolicy: 'inherit',
     });
     expect(store.data().people.length).toBeGreaterThan(0);
   });

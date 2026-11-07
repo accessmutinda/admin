@@ -20,7 +20,7 @@ describe('Academy learning records', () => {
     sessionStorage.clear();
     TestBed.configureTestingModule({});
     const auth = TestBed.inject(AuthService);
-    auth.signInWithMicrosoft();
+    auth.signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
     personId = store.staff()[0].id;

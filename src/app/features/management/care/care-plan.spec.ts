@@ -52,7 +52,7 @@ describe('Electronic care-plan lifecycle', () => {
     });
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const auth = TestBed.inject(AuthService);
-    auth.signInWithMicrosoft();
+    auth.signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace(workspace);
     actor.set({ ...DEMO_USER, roleCode: 'CA' });
     vi.spyOn(auth, 'currentUser').mockImplementation(() => actor());

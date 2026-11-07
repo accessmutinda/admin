@@ -1,3 +1,4 @@
+import { QualityNavigation } from './quality-navigation-bar';
 import { WorkspaceCards } from '../shared/workspace-cards';
 import { QuickActions } from '../shared/quick-actions';
 import { ModuleDesign } from '../shared/module-design';
@@ -24,6 +25,7 @@ import {
 @Component({
   selector: 'cv-quality',
   imports: [
+    QualityNavigation,
     QuickActions,
     WorkspaceCards,
     ModuleDesign,

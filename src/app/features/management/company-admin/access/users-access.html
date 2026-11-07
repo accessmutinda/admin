@@ -204,18 +204,17 @@
               </td>
               <td>{{ modifiedAt(member.lastLoginAt) }}</td>
               <td>
-                <span class="ua-mfa" [class.ua-enabled]="member.mfaEnabled === true"
-                  ><span class="material-symbols-outlined" aria-hidden="true">{{
-                    member.mfaEnabled === true ? 'verified_user' : 'shield'
-                  }}</span
-                  >{{
-                    member.mfaEnabled === undefined
-                      ? 'Not recorded'
-                      : member.mfaEnabled
-                        ? 'Enabled'
-                        : 'Disabled'
-                  }}</span
+                <span
+                  class="ua-mfa"
+                  [class.ua-enabled]="memberMfa(member)"
+                  [title]="memberMfaSource(member)"
                 >
+                  <span class="material-symbols-outlined" aria-hidden="true">{{
+                    memberMfa(member) ? 'verified_user' : 'shield'
+                  }}</span>
+                  {{ memberMfa(member) ? 'Required' : 'Not required' }}
+                </span>
+                <small class="ua-mfa-source">{{ memberMfaSource(member) }}</small>
               </td>
               <td>
                 <button
@@ -336,6 +335,30 @@
       Presets update this role’s draft. Standard Access excludes Delete. Save Changes applies the
       selected role.
     </p>
+    <section class="ua-feature-card ua-mfa-policy" aria-labelledby="ua-mfa-title">
+      <div class="ua-feature-heading">
+        <span class="material-symbols-outlined ua-module-tile" aria-hidden="true">shield_lock</span>
+        <div>
+          <h3 id="ua-mfa-title">Role MFA policy</h3>
+          <p id="ua-mfa-help">
+            Default for {{ role }}. Individual user overrides take precedence. Applies at the next
+            sign-in.
+          </p>
+        </div>
+      </div>
+      <label class="ua-mfa-toggle"
+        ><input
+          type="checkbox"
+          [ngModel]="roleMfa"
+          (ngModelChange)="changeMfa($event)"
+          aria-describedby="ua-mfa-help"
+        />Require MFA for this role</label
+      >
+      <p class="ua-permission-hint">
+        Edit a user to require MFA even when their role does not require it. Accounts in multiple
+        workspaces use the strictest effective policy.
+      </p>
+    </section>
     <div class="ua-module-cards">
       @for (module of modules; track module; let moduleIndex = $index) {
         <section class="ua-module-card" [attr.aria-labelledby]="'ua-module-' + moduleIndex">
@@ -347,7 +370,9 @@
               >{{ moduleIcons[module] }}</span
             >
             <div>
-              <h3 [id]="'ua-module-' + moduleIndex">{{ module === 'Training academy' ? 'CareVerity Academy' : module }}</h3>
+              <h3 [id]="'ua-module-' + moduleIndex">
+                {{ module === 'Training academy' ? 'CareVerity Academy' : module }}
+              </h3>
               <small>{{ enabledActions(module) }}/{{ actions.length }} actions enabled</small>
             </div>
           </div>

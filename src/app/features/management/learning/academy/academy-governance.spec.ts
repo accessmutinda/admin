@@ -39,7 +39,7 @@ describe('Academy governed frontend journeys', () => {
       ],
     });
     const auth = TestBed.inject(AuthService);
-    auth.signInWithMicrosoft();
+    auth.signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
     actor.set({ ...DEMO_USER, roleCode: 'CA', email: store.staff()[0].email });

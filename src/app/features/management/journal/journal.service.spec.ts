@@ -14,7 +14,7 @@ describe('Staff communication journal', () => {
     localStorage.clear();
     TestBed.configureTestingModule({});
     const auth = TestBed.inject(AuthService);
-    auth.signInWithMicrosoft();
+    auth.signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     actor.set({ ...DEMO_USER });
     vi.spyOn(auth, 'currentUser').mockImplementation(() => actor());

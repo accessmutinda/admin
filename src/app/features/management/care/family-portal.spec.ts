@@ -1,3 +1,4 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
@@ -18,15 +19,18 @@ describe('Family portal pages', () => {
     convertToParamMap({ clientId: 'client', accessId: 'family', page: 'overview' }),
   );
   const query = new BehaviorSubject(convertToParamMap({}));
+  const mobile = new BehaviorSubject({ matches: false, breakpoints: {} });
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
     params.next(convertToParamMap({ clientId: 'client', accessId: 'family', page: 'overview' }));
     query.next(convertToParamMap({}));
+    mobile.next({ matches: false, breakpoints: {} });
     TestBed.configureTestingModule({
       imports: [FamilyPortal],
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: 'family/:clientId/:accessId/:page', component: FamilyPortal }]),
+        { provide: BreakpointObserver, useValue: { observe: () => mobile.asObservable() } },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -38,7 +42,7 @@ describe('Family portal pages', () => {
       ],
     });
     const auth = TestBed.inject(AuthService);
-    auth.signInWithMicrosoft();
+    auth.signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     care = TestBed.inject(CareService);
     const file = emptyClientFile();
@@ -317,5 +321,51 @@ describe('Family portal pages', () => {
       'cv_family_draft:' +
       JSON.stringify([care.auth.currentUser()!.id, 'lqcs', 'client', 'family']);
     expect(sessionStorage.getItem(key)).toBeNull();
+  });
+  it('keeps family destinations and active route state within the branded navigation shell', () => {
+    const sidebar = fixture.nativeElement.querySelector('aside') as HTMLElement;
+    expect(sidebar.getAttribute('aria-label')).toBe('Family Portal sidebar');
+    expect(sidebar.querySelector('.nav-label')?.textContent).toContain('FAMILY PORTAL');
+    expect(sidebar.querySelectorAll('#family-navigation a')).toHaveLength(10);
+    page('visits');
+    expect(sidebar.querySelector('#family-navigation a.active')?.getAttribute('href')).toBe(
+      '/family/client/family/visits',
+    );
+    expect(sidebar.querySelector('#family-navigation a.active')?.getAttribute('aria-current')).toBe(
+      'page',
+    );
+    page('support');
+    expect(sidebar.querySelector('.nav-bottom a.active')?.textContent).toContain('Help');
+    expect(sidebar.querySelector('.nav-bottom a[href="/account/security"]')?.textContent).toContain(
+      'Account security',
+    );
+    expect(care.client('client')?.file?.familyAccess?.[0].scopes).toEqual([...FAMILY_SCOPES]);
+  });
+  it('opens the mobile navigation and closes it on Escape or a destination click', async () => {
+    mobile.next({ matches: true, breakpoints: {} });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement,
+      sidebar = root.querySelector('aside')!,
+      toggle = root.querySelector<HTMLButtonElement>('.menu-button')!;
+    expect(sidebar.hasAttribute('inert')).toBe(true);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    toggle.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(sidebar.classList.contains('open')).toBe(true);
+    expect(sidebar.hasAttribute('inert')).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(root.querySelector('.scrim')).not.toBeNull();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(sidebar.hasAttribute('inert')).toBe(true);
+    toggle.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    sidebar.querySelector<HTMLAnchorElement>('#family-navigation a')!.click();
+    fixture.detectChanges();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
   });
 });

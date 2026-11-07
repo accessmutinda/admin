@@ -29,7 +29,7 @@ describe('UsersAccess permission drafts', () => {
       imports: [UsersAccess],
       providers: [provideRouter([])],
     }).overrideComponent(UsersAccess, { set: { template: '' } });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
     editor = TestBed.createComponent(UsersAccess).componentInstance as unknown as PermissionEditor;

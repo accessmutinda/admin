@@ -19,7 +19,7 @@ describe('Standalone staff portal', () => {
         },
       ],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
   });
   it('loads its own layout and dedicated navigation outside the management layout', async () => {

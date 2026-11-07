@@ -14,6 +14,10 @@ import { accessChange, accessCsv } from './access.models';
 class EmptyPage {}
 interface AccessEditor {
   role: string;
+  roleMfa: boolean;
+  changeMfa(value: boolean): void;
+  discardPermissions(): void;
+  permissionsChanged(): boolean;
   permissions: Record<string, boolean[]>;
   error(): string;
   rows(): Member[];
@@ -59,7 +63,7 @@ describe('Company users and roles page', () => {
         ]),
       ],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
     harness = await RouterTestingHarness.create();
@@ -125,16 +129,36 @@ describe('Company users and roles page', () => {
     expect(element.querySelector('#ua-history-title')).toBeNull();
     expect(element.querySelectorAll('.ua-module-card')).toHaveLength(6);
     expect(element.querySelectorAll('.ua-module-actions input[type=checkbox]')).toHaveLength(30);
-    expect(element.querySelectorAll('.ua-feature-card')).toHaveLength(2);
+    expect(element.querySelectorAll('.ua-feature-card')).toHaveLength(3);
     expect(
       [...element.querySelectorAll('button')].some((button) =>
         /^Configure Role$/.test(button.textContent!.trim()),
       ),
     ).toBe(false);
     expect(element.textContent).not.toContain('Close Editor');
-    expect(element.querySelectorAll('.ua-mfa.ua-enabled')).toHaveLength(0);
+    expect(element.querySelectorAll('.ua-mfa.ua-enabled')).toHaveLength(4);
     expect(element.querySelectorAll('[role=tab]')).toHaveLength(0);
     expect(element.textContent).toContain('Role Permissions');
+  });
+  it('saves role MFA defaults, preserves role drafts and discards unsaved changes', async () => {
+    const editor = await open();
+    editor.changeMfa(false);
+    expect(editor.permissionsChanged()).toBe(true);
+    editor.role = 'Care Worker';
+    editor.changeRole();
+    expect(editor.roleMfa).toBe(true);
+    editor.role = 'Registered Manager';
+    editor.changeRole();
+    expect(editor.roleMfa).toBe(false);
+    editor.savePermissions();
+    expect(store.data().roleMfa?.['Registered Manager']).toBe(false);
+    expect(
+      JSON.parse(localStorage.getItem('cv_management_v1')!).lqcs.roleMfa['Registered Manager'],
+    ).toBe(false);
+    editor.changeMfa(true);
+    editor.discardPermissions();
+    expect(editor.roleMfa).toBe(false);
+    expect(editor.permissionsChanged()).toBe(false);
   });
   it('edits and saves module permissions directly from the visible cards', async () => {
     const editor = await open();
@@ -324,7 +348,7 @@ describe('Company users and roles page', () => {
       ],
     }));
     const editor = await open();
-    expect(harness.routeNativeElement!.querySelectorAll('.ua-mfa.ua-enabled')).toHaveLength(1);
+    expect(harness.routeNativeElement!.querySelectorAll('.ua-mfa.ua-enabled')).toHaveLength(4);
     expect(harness.routeNativeElement!.textContent).toContain('Operations');
     expect(editor.history()).toHaveLength(1);
     TestBed.inject(WorkspaceService).switchWorkspace('riverside');

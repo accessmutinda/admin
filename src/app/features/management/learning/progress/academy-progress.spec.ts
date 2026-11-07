@@ -13,7 +13,7 @@ describe('Team learning register', () => {
       imports: [AcademyProgress],
       providers: [provideRouter([])],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     const store = TestBed.inject(ManagementStore);
     const person = store.staff()[0];

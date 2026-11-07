@@ -587,7 +587,7 @@
   font-size: 8px;
   margin: 7px 0;
 }
-.cv-management .company-branding-page .cb-microsoft {
+.cv-management .company-branding-page .cb-google {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -597,11 +597,11 @@
   padding: 6px;
   font-size: 9px;
 }
-.cv-management .company-branding-page .cb-microsoft-mark {
+.cv-management .company-branding-page .cb-google-mark {
   width: 12px;
   height: 12px;
   display: inline-block;
-  background: conic-gradient(#7fba00 0 25%, #ffb900 0 50%, #00a4ef 0 75%, #f25022 0);
+  color: #4285f4; font-weight: 800; font-size: 12px;
 }
 .cv-management .company-branding-page .cb-login-links {
   display: flex;

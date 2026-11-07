@@ -1,3 +1,4 @@
+import { QualityNavigation } from './quality-navigation-bar';
 import { ModuleDesign } from '../shared/module-design';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -13,6 +14,7 @@ import { AccessRequired } from '../shared/access-required';
 @Component({
   selector: 'cv-assessment-editor',
   imports: [
+    QualityNavigation,
     ModuleDesign,
     FormsModule,
     DatePipe,
@@ -150,7 +152,9 @@ export class AssessmentEditor {
     this.record = JSON.parse(this.baseline);
     this.error.set('');
     if (!this.record.revision)
-      this.router.navigate(['/manage/quality/workspace'], { queryParams: { tab: 'Assessment library' } });
+      this.router.navigate(['/manage/quality/workspace'], {
+        queryParams: { tab: 'Assessment library' },
+      });
   }
   protected reload(): void {
     const a = this.current();

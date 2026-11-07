@@ -653,3 +653,20 @@
     min-width: 0;
   }
 }
+
+.cv-management .users-access-page .ua-mfa-policy {
+  margin-bottom: 8px;
+  padding: 8px;
+}
+.cv-management .users-access-page .ua-mfa-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 12px;
+}
+.cv-management .users-access-page .ua-mfa-source {
+  display: block;
+  font-size: 10px;
+  color: #657184;
+}

@@ -24,7 +24,7 @@ describe('Approval workflow configuration', () => {
       imports: [ApprovalWorkflows],
       providers: [provideRouter([])],
     }).overrideComponent(ApprovalWorkflows, { set: { template: '' } });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
     editor = TestBed.createComponent(ApprovalWorkflows)
@@ -66,7 +66,7 @@ describe('Approval workflow cards', () => {
       imports: [ApprovalWorkflows],
       providers: [provideRouter([])],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
   });
 

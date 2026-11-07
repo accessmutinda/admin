@@ -21,7 +21,9 @@ import { SecurityPageHeader } from './security-page-header';
 })
 export class SecuritySettings {
   protected readonly auth = inject(AuthService);
-  protected readonly user = this.auth.currentUser();
+  protected readonly user = this.auth.currentUser()
+    ? { ...this.auth.currentUser()!, mfaEnabled: this.auth.requiresMfa(this.auth.currentUser()!) }
+    : null;
   protected readonly role = this.user ? ROLES[this.user.roleCode].label : '';
   protected readonly trustedDeviceCount = TRUSTED_DEVICES.length;
   protected readonly details = signal<'mfa' | 'connections' | null>(null);

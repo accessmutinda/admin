@@ -45,7 +45,7 @@ describe('People & HR rendered journeys', () => {
         ]),
       ],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
     harness = await RouterTestingHarness.create();
@@ -390,7 +390,7 @@ describe('People & HR application routes', () => {
   it('redirects legacy staff links and bookmarks to the correct new sections', async () => {
     const { routes } = await import('../../../app.routes');
     TestBed.configureTestingModule({ providers: [provideRouter(routes)] });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/manage/staff');

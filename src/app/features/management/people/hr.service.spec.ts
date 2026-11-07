@@ -25,7 +25,7 @@ describe('HR saved records and drafts', () => {
     localStorage.clear();
     TestBed.configureTestingModule({});
     auth = TestBed.inject(AuthService);
-    auth.signInWithMicrosoft();
+    auth.signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     hr = TestBed.inject(HrService);
     store = TestBed.inject(ManagementStore);

@@ -10,13 +10,13 @@
 }
 .cv-management:has(.module-page) .app-sidebar > a.active {
   background: #007caa;
-  box-shadow: inset 3px 0 #17c5de;
+  box-shadow: none;
   color: white;
 }
 .cv-management .app-sidebar > a.active[href='/manage/companies'] .material-symbols-outlined {
   color: #fff;
 }
-.cv-management:has(.module-page) .app-header {
+.cv-management .app-header {
   background: #fff;
   height: 48px;
   border-bottom: 1px solid #e5edf1;
@@ -518,32 +518,32 @@
     transition: none;
   }
 }
-.cv-management:has(.module-page) .co-console-heading {
+.cv-management .co-console-heading {
   display: flex;
   flex-direction: column;
   gap: 2px;
   margin-right: 28px;
 }
-.cv-management:has(.module-page) .co-console-heading strong {
+.cv-management .co-console-heading strong {
   font-size: 14px;
   line-height: 1.2;
   color: #002b60;
   font-weight: 800;
 }
-.cv-management:has(.module-page) .co-console-heading span {
+.cv-management .co-console-heading span {
   color: #63758b;
   font-size: 12px;
 }
 @media (max-width: 1250px) {
-  .cv-management:has(.module-page) .co-console-heading span {
+  .cv-management .co-console-heading span {
     display: none;
   }
-  .cv-management:has(.module-page) .co-console-heading {
+  .cv-management .co-console-heading {
     margin-right: 8px;
   }
 }
 @media (max-width: 760px) {
-  .cv-management:has(.module-page) .co-console-heading {
+  .cv-management .co-console-heading {
     display: none;
   }
 }

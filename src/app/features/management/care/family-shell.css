@@ -38,25 +38,30 @@
 .account {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   max-width: 310px;
-  border-left: 1px solid #e5edf1;
-  padding-left: 12px;
+  flex-shrink: 0;
+  border: 0;
+  padding: 0;
 }
 .account strong {
   display: block;
   overflow-wrap: anywhere;
   font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
 }
 .account small {
   display: block;
+  font-size: 10px;
+  color: #657184;
 }
 .avatar {
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: #004579;
   color: #fff;
@@ -67,37 +72,48 @@
   display: grid;
   place-items: center;
   width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  height: 32px;
+  border: 1px solid #dfe8ed;
+  border-radius: 5px;
 }
 aside {
   position: fixed;
   inset: 0 auto 0 0;
   z-index: 30;
   width: var(--family-sidebar);
-  padding: 10px 12px 12px;
+  padding: 10px 9px 12px;
   display: flex;
   flex-direction: column;
   overflow: auto;
   background: #0b3050;
-  color: #fff;
+  color: #b9c9d6;
 }
 .brand {
   display: block;
-  padding: 0 8px 8px;
-  margin-bottom: 10px;
-  min-height: 44px;
+  padding: 0 10px 8px;
+  margin: 0;
 }
 .brand img {
   display: block;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   height: 36px;
   object-fit: contain;
+  object-position: left center;
+}
+.nav-label {
+  margin: 14px 12px 6px;
+  color: #849daf;
+  font-size: 10px;
+  line-height: 1.5;
+  font-weight: 600;
+  letter-spacing: 1.6px;
 }
 nav,
 .nav-bottom {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 aside nav a,
 .nav-bottom a,
@@ -108,11 +124,13 @@ aside nav a,
   min-height: 32px;
   padding: 6px 12px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
-  color: #fff;
+  color: #b9c9d6;
   text-align: left;
-  font-size: 13px;
+  font: 400 13px/1.5 var(--font-sans, Lato, sans-serif);
+  margin: 0;
+  text-decoration: none;
 }
 aside .material-symbols-outlined {
   font-size: 18px;
@@ -120,17 +138,20 @@ aside .material-symbols-outlined {
 }
 aside a:hover,
 aside button:hover {
-  background: #164a6a;
+  background: #ffffff08;
+  color: #fff;
 }
-aside nav a.active {
+aside nav a.active,
+.nav-bottom a.active {
   background: #007caa;
   color: #fff;
-  box-shadow: inset 3px 0 #17c5de;
-  font-weight: 700;
+  box-shadow: none;
+  font-weight: 400;
 }
 .nav-bottom {
   margin-top: auto;
-  padding-top: 14px;
+  border-top: 1px solid #ffffff13;
+  padding-top: 20px;
 }
 .portal-body {
   margin-left: var(--family-sidebar);
@@ -225,9 +246,30 @@ footer {
   .portal-header {
     gap: 8px;
   }
+  .header-help {
+    width: 44px;
+    height: 44px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   aside {
     transition: none;
+  }
+}
+
+.account > .material-symbols-outlined {
+  color: #657184;
+}
+aside nav a:focus-visible,
+.nav-bottom a:focus-visible,
+.nav-bottom button:focus-visible {
+  outline-color: #17c5de;
+  outline-offset: 2px;
+}
+@media (pointer: coarse) {
+  aside nav a,
+  .nav-bottom a,
+  .nav-bottom button {
+    min-height: 44px;
   }
 }

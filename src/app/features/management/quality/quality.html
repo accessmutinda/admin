@@ -2,6 +2,9 @@
 <nav class="co-breadcrumb" aria-label="Breadcrumb">
   <a routerLink="/manage/quality">Supervision & Quality</a>
 </nav>
+@if (!supervisor) {
+  <cv-quality-navigation />
+}
 <div class="page-heading">
   <div>
     <h1>{{ supervisor ? 'Supervisor dashboard' : 'Quality & QA' }}</h1>

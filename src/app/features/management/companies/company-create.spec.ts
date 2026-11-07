@@ -61,7 +61,7 @@ describe('Create company and duplicate setup', () => {
         ]),
       ],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     workspaces = TestBed.inject(WorkspaceService);
     workspaces.switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);

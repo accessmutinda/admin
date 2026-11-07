@@ -9,7 +9,7 @@ describe('Staff availability matrix and calendar', () => {
   beforeEach(() => {
     localStorage.clear();
     TestBed.configureTestingModule({});
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
   });
   async function open(editable = true) {

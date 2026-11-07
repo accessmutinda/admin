@@ -29,7 +29,7 @@ describe('Risk assessment directory access', () => {
       ],
     });
     const auth = TestBed.inject(AuthService);
-    auth.signInWithMicrosoft();
+    auth.signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     vi.spyOn(auth, 'currentUser').mockReturnValue({ ...DEMO_USER, roleCode: 'CA' });
     TestBed.inject(ManagementStore).saveWorkspace((data) => seedCareDemo(data));

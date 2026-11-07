@@ -1,6 +1,12 @@
+import { AuthService } from './core/auth/auth.service';
 import { Router, Routes } from '@angular/router';
 import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
-import { authGuard, guestGuard, workspaceGuard } from './core/auth/auth.guard';
+import {
+  authGuard,
+  guestGuard,
+  workspaceGuard,
+  workspaceSelectionGuard,
+} from './core/auth/auth.guard';
 
 const peopleGuard = (
   route: import('@angular/router').ActivatedRouteSnapshot,
@@ -113,11 +119,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/auth/forgot-password/forgot-password').then((m) => m.ForgotPassword),
       },
+      { path: 'sso/microsoft', redirectTo: 'sso/google', pathMatch: 'full' },
       {
-        path: 'sso/microsoft',
-        title: 'Sign in with Microsoft · CareVerity',
+        path: 'sso/google',
+        title: 'Sign in with Google · CareVerity',
         loadComponent: () =>
-          import('./features/auth/sso-microsoft/sso-microsoft').then((m) => m.SsoMicrosoft),
+          import('./features/auth/sso-google/sso-google').then((m) => m.SsoGoogle),
       },
       {
         path: 'invite/:token',
@@ -130,7 +137,7 @@ export const routes: Routes = [
   {
     path: 'select-workspace',
     title: 'Select your workspace · CareVerity',
-    canActivate: [authGuard],
+    canActivate: [workspaceSelectionGuard],
     loadComponent: () =>
       import('./features/auth/workspace-select/workspace-select').then((m) => m.WorkspaceSelect),
   },
@@ -570,7 +577,12 @@ export const routes: Routes = [
             (m) => m.ACADEMY_ADMIN_ROUTES,
           ),
       },
-      { path: '', pathMatch: 'full', redirectTo: 'companies' },
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: () =>
+          inject(AuthService).hasRole('CA') ? '/manage/rota/overview' : '/manage/companies',
+      },
     ],
   },
   { path: '', pathMatch: 'full', redirectTo: 'auth/sign-in' },

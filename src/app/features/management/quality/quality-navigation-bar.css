@@ -1,0 +1,53 @@
+:host {
+  display: block;
+  margin-bottom: 12px;
+  min-width: 0;
+  font-family: var(--font-sans, 'Lato', sans-serif);
+}
+:host .quality-top-nav.reference-tabs.workspace-overflow-nav {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.quality-nav-item:focus-visible {
+  outline: 2px solid #008afa;
+  outline-offset: -2px;
+}
+.quality-more-trigger {
+  margin-left: auto;
+}
+.quality-nav-sizer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+  contain: layout;
+}
+.quality-overflow-link.mat-mdc-menu-item {
+  min-height: 40px;
+  font-family: var(--font-sans, 'Lato', sans-serif);
+  --mat-menu-item-label-text-size: 11px;
+}
+.quality-overflow-link.quality-menu-active {
+  background: #e5f3ff;
+  color: #0066ac;
+  box-shadow: inset 3px 0 #008afa;
+}
+.quality-overflow-link .material-symbols-outlined {
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 21px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+@media (max-width: 767px), (pointer: coarse) {
+  :host .reference-tabs .workspace-tab,
+  .quality-overflow-link.mat-mdc-menu-item {
+    min-height: 44px;
+  }
+}

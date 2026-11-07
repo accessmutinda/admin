@@ -44,7 +44,7 @@ describe('Care workspaces', () => {
         },
       ],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     rota = TestBed.inject(RotaService);
     care = TestBed.inject(CareService);
@@ -373,7 +373,7 @@ describe('Nested service-user routes', () => {
     TestBed.configureTestingModule({
       providers: [provideRouter([{ path: 'clients/:id', children: CARE_ROUTES }])],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     TestBed.inject(ManagementStore).saveWorkspace((data) => ({
       ...data,

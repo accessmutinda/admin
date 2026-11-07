@@ -179,13 +179,13 @@
 }
 .cv-management .app-sidebar > a.active,
 .cv-management .sidebar-bottom a.active {
-  background: #ffffff10;
+  background: #007caa;
   color: white;
-  box-shadow: inset 3px 0 #40b9a7;
+  box-shadow: none;
 }
 .cv-management .app-sidebar > a.active .material-symbols-outlined,
 .cv-management .sidebar-bottom a.active .material-symbols-outlined {
-  color: #64d3c3;
+  color: #fff;
 }
 .cv-management .sidebar-bottom {
   border-top: 1px solid #ffffff13;

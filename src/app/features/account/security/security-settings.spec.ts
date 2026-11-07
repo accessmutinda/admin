@@ -12,7 +12,7 @@ describe('Account security overview', () => {
       imports: [SecuritySettings],
       providers: [provideRouter([])],
     });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
   });
 
@@ -72,7 +72,7 @@ describe('Account security overview', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(root.querySelector('[role="dialog"]')!.textContent).toContain(
-      'Microsoft work-account sign-in',
+      'Google work-account sign-in',
     );
     root.querySelector<HTMLButtonElement>('.form-footer button')!.click();
     fixture.detectChanges();

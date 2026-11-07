@@ -16,7 +16,7 @@ describe('Quality & Compliance dashboards', () => {
   beforeEach(() => {
     localStorage.clear();
     TestBed.configureTestingModule({ providers: [provideRouter([{ path: 'manage', children }])] });
-    TestBed.inject(AuthService).signInWithMicrosoft();
+    TestBed.inject(AuthService).signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
   });
   async function open(path = '') {
@@ -37,6 +37,10 @@ describe('Quality & Compliance dashboards', () => {
       await harness.navigateByUrl('/manage/quality' + (page.slug ? '/' + page.slug : ''));
       const root = harness.routeNativeElement!;
       expect(root.querySelector('h1')?.textContent).toContain(page.title);
+      expect(root.querySelectorAll('.quality-top-nav a')).toHaveLength(10);
+      expect(
+        root.querySelector('.quality-top-nav a[aria-current="page"]')?.getAttribute('href'),
+      ).toBe('/manage/quality' + (page.slug ? '/' + page.slug : ''));
       expect(root.querySelectorAll('.qd-metric').length).toBe(page.metrics.length);
       expect(root.querySelectorAll('cv-quality-panel').length).toBe(page.panels.length);
     }
@@ -109,26 +113,25 @@ describe('Quality & Compliance dashboards', () => {
   it('keeps assessment workflows accessible and supports legacy workspace links', async () => {
     const harness = await open('/workspace?tab=Assessments');
     expect(harness.routeNativeElement!.textContent).toContain('Assessments');
+    expect(harness.routeNativeElement!.querySelectorAll('.quality-top-nav a')).toHaveLength(10);
+    expect(
+      harness
+        .routeNativeElement!.querySelector('.quality-top-nav a[aria-current="page"]')
+        ?.getAttribute('href'),
+    ).toBe('/manage/quality/workspace');
     await harness.navigateByUrl('/manage/quality?tab=Review%20schedule');
     expect(TestBed.inject(Router).url).toBe('/manage/quality/workspace?tab=Review%20schedule');
   });
-  it('expands the Rich KPI menu itself with every reference page and the saved workspace', async () => {
+  it('keeps Rich KPI as one sidebar destination without a submenu', () => {
     const fixture = TestBed.createComponent(ManagementLayout);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
-    const menu = button(root, 'Rich KPI');
-    expect(menu.getAttribute('aria-expanded')).toBe('false');
-    menu.click();
-    fixture.detectChanges();
-    const links = Array.from(root.querySelectorAll('.quality-submenu a'));
-    expect(links).toHaveLength(10);
-    expect(links[0].textContent).toContain('Executive KPI Command Centre');
-    expect(links[0].getAttribute('href')).toBe('/manage/quality');
-    expect(links[9].getAttribute('href')).toBe('/manage/quality/workspace');
-    expect(menu.getAttribute('aria-expanded')).toBe('true');
-    menu.click();
-    fixture.detectChanges();
+    const link = root.querySelector('.app-sidebar > a[href="/manage/quality"]');
+    expect(link?.textContent).toContain('Rich KPI');
+    expect(link?.hasAttribute('aria-expanded')).toBe(false);
     expect(root.querySelector('.quality-submenu')).toBeNull();
+    expect(root.querySelector('.quality-submenu-toggle')).toBeNull();
+    expect(root.querySelectorAll('.app-sidebar a[href^="/manage/quality"]')).toHaveLength(1);
   });
   it('does not render dashboard data without the view permission', async () => {
     vi.spyOn(TestBed.inject(QualityService), 'can').mockReturnValue(false);

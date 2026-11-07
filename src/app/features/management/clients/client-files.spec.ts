@@ -49,7 +49,7 @@ describe('Client files and care records', () => {
       ],
     });
     const auth = TestBed.inject(AuthService);
-    auth.signInWithMicrosoft();
+    auth.signInDemoSession();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     actor.set({ ...DEMO_USER, roleCode: 'CA' });
     vi.spyOn(auth, 'currentUser').mockImplementation(() => actor());

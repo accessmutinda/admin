@@ -1,3 +1,4 @@
+import { effectiveMfa, MfaPolicy } from '../../../core/auth/mfa-policy';
 import { AuthService } from '../../../core/auth/auth.service';
 import { accessChange } from '../company-admin/access/access.models';
 import { Component, inject, signal } from '@angular/core';
@@ -92,6 +93,23 @@ export const COMPANY_USER_ROLES = Object.values(ROLES)
               <mat-option [value]="option">{{ option }}</mat-option>
             }
           </mat-select>
+          <label for="cm-user-mfa">MFA policy</label>
+          <mat-select
+            cvSelect
+            id="cm-user-mfa"
+            name="mfaPolicy"
+            aria-label="User MFA policy"
+            [(ngModel)]="mfaPolicy"
+          >
+            <mat-option value="inherit">Use role default</mat-option>
+            <mat-option value="required">Require MFA for this user</mat-option>
+            <mat-option value="not-required">Do not require MFA for this user</mat-option>
+          </mat-select>
+          <small
+            >Role default: {{ roleRequiresMfa() ? 'Required' : 'Not required' }}. Effective:
+            {{ userRequiresMfa() ? 'Required' : 'Not required' }}. A user override takes
+            precedence.</small
+          >
           @if (data.mode === 'edit') {
             <label for="cm-user-status">Status</label>
             <mat-select
@@ -157,6 +175,16 @@ export class CompanyUserDialog {
       ...(this.data.member?.status ? [this.data.member.status] : []),
     ]),
   ];
+  protected mfaPolicy: MfaPolicy = this.data.member?.mfaPolicy ?? 'inherit';
+  protected roleRequiresMfa(): boolean {
+    return this.store.data().roleMfa?.[this.role] ?? true;
+  }
+  protected userRequiresMfa(): boolean {
+    return effectiveMfa(
+      { email: this.email, role: this.role, mfaPolicy: this.mfaPolicy },
+      this.store.data().roleMfa,
+    );
+  }
   protected email = '';
   protected role =
     this.data.member?.role ??
@@ -186,7 +214,9 @@ export class CompanyUserDialog {
     }
     if (
       this.data.mode !== 'delete' &&
-      (!this.roles.includes(this.role) || !this.statuses.includes(this.status))
+      (!this.roles.includes(this.role) ||
+        !this.statuses.includes(this.status) ||
+        !['inherit', 'required', 'not-required'].includes(this.mfaPolicy))
     ) {
       this.error.set('Choose a valid role and status.');
       return;
@@ -206,7 +236,14 @@ export class CompanyUserDialog {
           ],
           members: [
             ...data.members,
-            { id: crypto.randomUUID(), name: '', email, role: this.role, status: 'Invited' },
+            {
+              id: crypto.randomUUID(),
+              name: '',
+              email,
+              role: this.role,
+              status: 'Invited',
+              mfaPolicy: this.mfaPolicy,
+            },
           ],
         };
       }
@@ -215,7 +252,12 @@ export class CompanyUserDialog {
         this.error.set('This user no longer exists. Close the popup and refresh the table.');
         return data;
       }
-      if (this.data.mode === 'edit' && member.role === this.role && member.status === this.status)
+      if (
+        this.data.mode === 'edit' &&
+        member.role === this.role &&
+        member.status === this.status &&
+        (member.mfaPolicy ?? 'inherit') === this.mfaPolicy
+      )
         return data;
       return {
         ...data,
@@ -227,14 +269,16 @@ export class CompanyUserDialog {
             member.name || member.email,
             this.data.mode === 'delete'
               ? 'Company membership removed'
-              : `Role: ${member.role} → ${this.role}; Status: ${member.status} → ${this.status}`,
+              : `Role: ${member.role} → ${this.role}; Status: ${member.status} → ${this.status}; MFA: ${this.mfaPolicy}`,
           ),
         ],
         members:
           this.data.mode === 'delete'
             ? data.members.filter((m) => m.id !== member.id)
             : data.members.map((m) =>
-                m.id === member.id ? { ...m, role: this.role, status: this.status } : m,
+                m.id === member.id
+                  ? { ...m, role: this.role, status: this.status, mfaPolicy: this.mfaPolicy }
+                  : m,
               ),
       };
     });
@@ -250,7 +294,7 @@ export class CompanyUserDialog {
         ? 'Invitation recorded. Email delivery is not connected.'
         : this.data.mode === 'delete'
           ? 'Company membership removed.'
-          : 'User role and status saved.',
+          : 'User role, status and MFA policy saved.',
     );
     this.dialog.close(true);
   }
