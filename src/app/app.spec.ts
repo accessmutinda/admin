@@ -1,16 +1,30 @@
 import { TestBed } from '@angular/core/testing';
+import { NavigationEnd, NavigationError, Router, provideRouter } from '@angular/router';
+import { Subject } from 'rxjs';
+import { vi } from 'vitest';
+import { AuthService } from './core/auth/auth.service';
 import { App } from './app';
-
-describe('App', () => {
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [App],
-    }).compileComponents();
-  });
-
-  it('should create the app', () => {
+describe('Application session skeleton', () => {
+  it('renders the branded shell before session restoration and defers routing until authority is known', async () => {
+    let restore!: () => void;
+    const initialize = vi.fn(() => new Promise<void>((resolve) => (restore = resolve)));
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: AuthService, useValue: { initialize } }],
+    });
+    const router = TestBed.inject(Router);
+    const events = new Subject<NavigationEnd | NavigationError>();
+    vi.spyOn(router, 'events', 'get').mockReturnValue(events);
+    const navigate = vi.spyOn(router, 'initialNavigation').mockImplementation(() => {});
     const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance;
-    expect(app).toBeTruthy();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[aria-busy=true]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('mat-spinner')).toBeNull();
+    expect(navigate).not.toHaveBeenCalled();
+    restore();
+    await Promise.resolve();
+    expect(navigate).toHaveBeenCalledOnce();
+    events.next(new NavigationEnd(1, '/auth/sign-in', '/auth/sign-in'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('cv-auth-loading')).toBeNull();
   });
 });

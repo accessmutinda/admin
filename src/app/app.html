@@ -1,1 +1,25 @@
 <router-outlet />
+@if (!ready()) {
+  @if (management) {
+    <div class="cv-startup-shell">
+      <aside aria-hidden="true">
+        <cv-logo tone="light" />
+        @for (row of [0, 1, 2, 3, 4, 5, 6, 7]; track row) {
+          <cv-skeleton sizeClass="mt-6 h-4 w-full" />
+        }
+      </aside>
+      <main>
+        <header><cv-logo /><span>Admin Console</span></header>
+        <cv-company-loading [view]="view" />
+      </main>
+    </div>
+  } @else {
+    <cv-auth-loading [path]="initialPath" />
+  }
+}
+@if (failed()) {
+  <div role="alert" class="p-6">
+    <p>This page could not be loaded.</p>
+    <button type="button" (click)="retry()">Retry</button>
+  </div>
+}

@@ -1,3 +1,4 @@
+import { Skeleton } from '../../../shared/ui/skeleton';
 import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,7 +9,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'cv-mfa-verify',
-  imports: [RouterLink, MatButtonModule, AuthCenteredLayout, Alert, OtpInput],
+  imports: [Skeleton, RouterLink, MatButtonModule, AuthCenteredLayout, Alert, OtpInput],
   templateUrl: './mfa-verify.html',
 })
 export class MfaVerify implements OnInit {

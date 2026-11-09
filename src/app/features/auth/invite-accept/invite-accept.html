@@ -17,6 +17,9 @@
       [disabled]="loading()"
       (click)="accept()"
     >
+      @if (loading()) {
+        <cv-skeleton sizeClass="mr-2 h-3 w-8 !bg-white/30" />
+      }
       {{ loading() ? 'Joining…' : 'Accept invitation' }}
     </button>
   } @else {

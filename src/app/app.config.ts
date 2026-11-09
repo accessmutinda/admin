@@ -1,11 +1,9 @@
-import { AuthService } from './core/auth/auth.service';
+import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import {
-  ApplicationConfig,
-  provideBrowserGlobalErrorListeners,
-  provideAppInitializer,
-  inject,
-} from '@angular/core';
-import { provideRouter, withInMemoryScrolling } from '@angular/router';
+  provideRouter,
+  withInMemoryScrolling,
+  withDisabledInitialNavigation,
+} from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { MAT_SNACK_BAR_DEFAULT_OPTIONS } from '@angular/material/snack-bar';
@@ -14,8 +12,11 @@ import { routes } from './app.routes';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideAppInitializer(() => inject(AuthService).initialize()),
-    provideRouter(routes, withInMemoryScrolling({ anchorScrolling: 'enabled' })),
+    provideRouter(
+      routes,
+      withDisabledInitialNavigation(),
+      withInMemoryScrolling({ anchorScrolling: 'enabled' }),
+    ),
     provideAnimationsAsync(),
     {
       provide: MAT_FORM_FIELD_DEFAULT_OPTIONS,

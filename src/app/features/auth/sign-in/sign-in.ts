@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Skeleton } from '../../../shared/ui/skeleton';
 import { AuthSplitLayout } from '../../../shared/layouts/auth-split-layout';
 import { Alert } from '../../../shared/ui/alert';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -16,7 +16,7 @@ import { AuthService } from '../../../core/auth/auth.service';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
+    Skeleton,
     AuthSplitLayout,
     Alert,
   ],

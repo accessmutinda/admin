@@ -1,0 +1,33 @@
+.cv-startup-shell {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  min-height: 100svh;
+  background: #eff7fb;
+}
+.cv-startup-shell > aside {
+  padding: 24px;
+  background: #0b3050;
+}
+.cv-startup-shell > main {
+  padding: 16px;
+  min-width: 0;
+}
+.cv-startup-shell header {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 24px;
+  color: #0b3050;
+  font-size: 14px;
+}
+@media (max-width: 767px) {
+  .cv-startup-shell {
+    display: block;
+  }
+  .cv-startup-shell > aside {
+    display: none;
+  }
+  .cv-startup-shell > main {
+    padding: 12px;
+  }
+}

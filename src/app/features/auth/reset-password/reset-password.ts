@@ -12,7 +12,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Skeleton } from '../../../shared/ui/skeleton';
 import { AuthCenteredLayout } from '../../../shared/layouts/auth-centered-layout';
 import { Alert } from '../../../shared/ui/alert';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -30,7 +30,7 @@ function passwordsMatch(): ValidatorFn {
   imports: [
     NgTemplateOutlet,
     AuthCenteredLayout,
-    MatProgressSpinnerModule,
+    Skeleton,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,

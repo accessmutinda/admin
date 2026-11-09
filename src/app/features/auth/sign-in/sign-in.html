@@ -69,10 +69,11 @@
       type="submit"
       class="cv-auth-primary"
       [disabled]="loading()"
+      [attr.aria-busy]="loading()"
     >
       @if (loading()) {
         <span class="flex items-center justify-center gap-2"
-          ><mat-spinner diameter="18" />Signing in…</span
+          ><cv-skeleton sizeClass="h-3 w-8 !bg-white/30" />Signing in…</span
         >
       } @else {
         <span class="flex w-full items-center justify-center gap-2"
