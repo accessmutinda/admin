@@ -1,23 +1,32 @@
 import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, effect, untracked, DestroyRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { HrService } from './hr.service';
-import { onboardingRow } from './hr-queues.models';
-import { staffRecord } from './hr.models';
-
+import { OnboardingApi } from './onboarding-api.service';
+import { PageLoading } from '../../../shared/layouts/page-loading';
+import { CompanyUnavailable } from '../shared/company-unavailable';
 @Component({
   selector: 'cv-hr-onboarding',
   host: { class: 'module-page people-page hr-workspace-page' },
-  imports: [CardTonePipe, FormsModule, RouterLink, MatSelectModule, CvSelect],
+  imports: [
+    CardTonePipe,
+    FormsModule,
+    RouterLink,
+    MatSelectModule,
+    CvSelect,
+    PageLoading,
+    CompanyUnavailable,
+  ],
   templateUrl: './hr-onboarding.html',
   styleUrls: ['./hr.css', './hr-directory.css', './hr-tables.css', './hr-queues.css'],
 })
 export class HrOnboarding {
   protected readonly hr = inject(HrService);
+  protected readonly api = inject(OnboardingApi);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly params = toSignal(this.route.queryParamMap, {
@@ -26,49 +35,15 @@ export class HrOnboarding {
   protected readonly q = computed(() => this.params().get('q') ?? '');
   protected readonly lane = computed(() => this.params().get('lane') ?? 'in-progress');
   protected readonly branch = computed(() => this.params().get('branch') ?? '');
-  protected readonly error = signal('');
+  protected readonly error = this.api.error;
   protected readonly notice = signal('');
-  protected readonly starters = computed(() =>
-    this.hr
-      .staff()
-      .filter((person) => person.hr.status === 'Onboarding')
-      .map(onboardingRow),
-  );
-  protected readonly branches = computed(() =>
-    [
-      ...new Set(
-        [
-          ...this.starters().map((row) => row.person.location),
-          ...this.hr.drafts().map((draft) => draft.person.location),
-        ].filter(Boolean),
-      ),
-    ].sort(),
-  );
-  protected readonly rows = computed(() =>
-    this.starters().filter(
-      (row) =>
-        `${row.person.name} ${row.person.hr.reference}`
-          .toLowerCase()
-          .includes(this.q().trim().toLowerCase()) &&
-        (!this.branch() || row.person.location === this.branch()) &&
-        (this.lane() === 'ready' ? row.ready : this.lane() === 'in-progress' ? !row.ready : true),
-    ),
-  );
-  protected readonly drafts = computed(() =>
-    this.hr
-      .drafts()
-      .filter(
-        (draft) =>
-          `${draft.person.hr?.personal.firstName ?? ''} ${draft.person.hr?.personal.surname ?? ''} ${draft.person.email}`
-            .toLowerCase()
-            .includes(this.q().trim().toLowerCase()) &&
-          (!this.branch() || draft.person.location === this.branch()),
-      ),
-  );
+  protected readonly branches = computed(() => this.api.meta()?.branches ?? []);
+  protected readonly rows = computed(() => this.api.rows().filter((row) => row.kind === 'starter'));
+  protected readonly drafts = computed(() => this.api.rows().filter((row) => row.kind === 'draft'));
   protected readonly stats = computed(() => [
     {
       label: 'Saved Drafts',
-      value: this.hr.drafts().length,
+      value: this.api.meta()?.counts.drafts ?? '—',
       caption: 'Staff setup not submitted',
       icon: 'draft',
       lane: 'drafts',
@@ -76,21 +51,38 @@ export class HrOnboarding {
     },
     {
       label: 'In Progress',
-      value: this.starters().filter((row) => !row.ready).length,
-      caption: 'Checklists in progress',
+      value: this.api.meta()?.counts.in_progress ?? '—',
+      caption: 'Recruitment onboarding handoffs',
       icon: 'assignment_ind',
       lane: 'in-progress',
       color: '#ff8a00',
     },
     {
       label: 'Ready to Activate',
-      value: this.starters().filter((row) => row.ready).length,
-      caption: 'All required tasks complete',
+      value: this.api.meta()?.counts.ready ?? '—',
+      caption: 'HR evidence verification required',
       icon: 'person_check',
       lane: 'ready',
       color: '#00a34e',
     },
   ]);
+  constructor() {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    effect(() => {
+      this.api.scope();
+      const lane = this.lane(),
+        q = this.q(),
+        branch = this.branch();
+      untracked(() => {
+        clearTimeout(timer);
+        timer = setTimeout(() => void this.api.load(lane, q, branch), 150);
+      });
+    });
+    inject(DestroyRef).onDestroy(() => clearTimeout(timer));
+  }
+  protected reload(): void {
+    void this.api.load(this.lane(), this.q(), this.branch());
+  }
   protected set(key: string, value: string): void {
     void this.router.navigate([], {
       relativeTo: this.route,
@@ -101,31 +93,7 @@ export class HrOnboarding {
   protected clear(): void {
     void this.router.navigate([], { relativeTo: this.route, queryParams: { lane: this.lane() } });
   }
-  protected activate(id: string): void {
-    this.error.set('');
-    this.notice.set('');
-    const current = this.hr.staff().find((person) => person.id === id);
-    if (!current || current.hr.status !== 'Onboarding') {
-      this.error.set('This starter is no longer awaiting activation. Refresh the queue.');
-      return;
-    }
-    if (!onboardingRow(current).ready) {
-      this.error.set('Complete the outstanding tasks before activating this employee.');
-      return;
-    }
-    const person = structuredClone(current);
-    person.hr = staffRecord(person);
-    person.hr.status = 'Active';
-    const error = this.hr.savePerson(
-      person,
-      this.hr.store.companyId(),
-      'Onboarding completed and staff activated',
-      { expectedAudit: current.hr.audit.at(-1)?.id ?? '' },
-    );
-    if (error) this.error.set(error);
-    else
-      this.notice.set(
-        person.name + ' is now active. Their record is available in Staff Directory.',
-      );
+  protected activate(_id: string): void {
+    this.error.set('HR evidence verification must be connected before staff can be activated.');
   }
 }

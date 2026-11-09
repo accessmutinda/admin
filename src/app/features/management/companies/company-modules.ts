@@ -193,7 +193,6 @@ export class CompanyModulesPage {
     const id = this.id();
     this.loading.set(true);
     this.error.set('');
-    await this.access.refresh();
     try {
       const state = await this.access.configuration(id);
       if (id === this.id()) this.state.set(state);

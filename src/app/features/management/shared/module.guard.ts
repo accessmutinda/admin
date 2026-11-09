@@ -5,6 +5,6 @@ import { CompanyAccessService } from '../../../core/access/company-access.servic
 export const moduleGuard = async (_route: ActivatedRouteSnapshot, state: RouterStateSnapshot) => {
   const access = inject(CompanyAccessService);
   const router = inject(Router);
-  await access.refresh();
+  await access.refreshForNavigation();
   return access.canPath(state.url) || router.createUrlTree(['/access-denied']);
 };

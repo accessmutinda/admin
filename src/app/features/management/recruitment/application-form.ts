@@ -1,3 +1,9 @@
+import {
+  RecruitmentVacancy,
+  Upload,
+  publicRecruitment,
+  uploadRecruitmentFile,
+} from './recruitment-api.service';
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
@@ -12,12 +18,16 @@ import { Company, ManagementStore, StaffDocument, Vacancy } from '../shared/mana
 })
 export class ApplicationForm {
   readonly vacancy = input.required<Vacancy>();
-  readonly company = input<Company>();
+  readonly company = input<Pick<Company, 'id' | 'name' | 'code'> & Partial<Company>>();
   readonly preview = input(false);
   protected readonly store = inject(ManagementStore);
+  protected consent = false;
+  private readonly submissionKey = crypto.randomUUID();
+  private readonly uploadTokens: Record<string, string> = {};
+  private readonly uploading = signal(false);
   protected readonly sent = signal(false);
   private readonly pendingUploads = signal(0);
-  protected readonly busy = computed(() => this.pendingUploads() > 0);
+  protected readonly busy = computed(() => this.pendingUploads() > 0 || this.uploading());
   private uploadVersions: Record<string, number> = {};
   protected readonly error = signal('');
   protected readonly fileErrors = signal<Record<string, string>>({});
@@ -45,34 +55,40 @@ export class ApplicationForm {
     }
     this.pendingUploads.update((n) => n + 1);
     try {
-      const content = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Could not read document'));
-        reader.readAsDataURL(file);
-      });
+      const vacancy = this.vacancy() as RecruitmentVacancy;
+      const uploaded = await uploadRecruitmentFile(
+        publicRecruitment,
+        '/public/application-uploads',
+        file,
+        vacancy,
+        id,
+      );
       if (this.uploadVersions[id] !== version) return;
+      this.uploadTokens[uploaded.id] = uploaded.upload_token ?? '';
       this.files.update((files) => ({
         ...files,
         [id]: {
-          id: crypto.randomUUID(),
-          name: file.name,
-          type: file.type,
-          content,
+          id: uploaded.id,
+          name: uploaded.name,
+          type: uploaded.type,
+          content: '',
           requirement: label,
           requirementId: id,
         },
       }));
-    } catch {
+    } catch (error) {
       this.fileErrors.update((errors) => ({
         ...errors,
-        [id]: 'Could not read this document. Please choose it again.',
+        [id]:
+          error instanceof Error
+            ? error.message
+            : 'Could not upload this document. Please choose it again.',
       }));
     } finally {
       this.pendingUploads.update((n) => n - 1);
     }
   }
-  protected submit(form: NgForm): void {
+  protected async submit(form: NgForm): Promise<void> {
     if (this.preview() || this.busy()) return;
     this.error.set('');
     const vacancy = this.vacancy();
@@ -82,6 +98,7 @@ export class ApplicationForm {
     );
     if (
       form.invalid ||
+      !this.consent ||
       missing.length ||
       missingAnswers ||
       !this.details.name.trim() ||
@@ -94,33 +111,35 @@ export class ApplicationForm {
     }
     const company = this.company();
     if (!company) return;
-    const error = this.store.submitApplication(company.id, vacancy.id, {
-      id: crypto.randomUUID(),
-      name: this.details.name.trim(),
-      email: this.details.email.trim(),
-      location: this.details.location.trim(),
-      role: vacancy.title,
-      vacancy: vacancy.title,
-      vacancyId: vacancy.id,
-      stage: 'Applied',
-      start: '',
-      notes: [],
-      checks: Array(7).fill(false),
-      onboarding: Array(8).fill(false),
-      learning: [],
-      progress: {},
-      documents: Object.values(this.files()),
-      application: {
-        submitted: new Date().toISOString(),
-        phone: this.details.phone.trim(),
-        answers: (vacancy.fields ?? []).map((f) => ({
-          fieldId: f.id,
-          label: f.label,
-          value: String(this.answers[f.id] ?? '').trim(),
-        })),
-      },
-    });
-    if (error) this.error.set(error);
-    else this.sent.set(true);
+    this.uploading.set(true);
+    try {
+      const vacancy = this.vacancy() as RecruitmentVacancy;
+      await publicRecruitment(
+        `/public/companies/${company.id}/vacancies/${vacancy.id}/applications`,
+        {
+          vacancy_id: vacancy.id,
+          vacancy_version: vacancy.version,
+          name: this.details.name.trim(),
+          email: this.details.email.trim(),
+          phone: this.details.phone.trim(),
+          location: this.details.location.trim(),
+          consent: this.consent,
+          answers: (vacancy.fields ?? []).map((field) => ({
+            field_id: field.id,
+            value: String(this.answers[field.id] ?? '').trim(),
+          })),
+          file_ids: Object.values(this.files()).map((file) => file.id),
+          upload_tokens: this.uploadTokens,
+        },
+        { 'Idempotency-Key': this.submissionKey },
+      );
+      this.sent.set(true);
+    } catch (error) {
+      this.error.set(
+        error instanceof Error ? error.message : 'Your application could not be submitted.',
+      );
+    } finally {
+      this.uploading.set(false);
+    }
   }
 }

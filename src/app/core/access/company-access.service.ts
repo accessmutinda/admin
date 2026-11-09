@@ -63,6 +63,11 @@ export function routeAccess(url: string): [string, string][] {
   }
   if (path.startsWith('/manage/ecm')) return [['care', 'ecm']];
   if (path.startsWith('/manage/rota')) return [['care', 'rostering']];
+  if (
+    /^\/manage\/people\/[^/]+$/.test(path) &&
+    !['staff', 'onboarding', 'compliance'].includes(path.split('/').at(-1)!)
+  )
+    return [['people', 'recruitment']];
   if (path.startsWith('/manage/recruitment')) return [['people', 'recruitment']];
   if (path.startsWith('/manage/leave')) return [['people', 'leave']];
   if (path.startsWith('/manage/reviews')) return [['people', 'performance']];
@@ -207,6 +212,12 @@ export class CompanyAccessService {
   );
   private inFlight?: { id: string; generation: number; promise: Promise<void> };
   private generation = 0;
+  private navigationRefresh?: {
+    navigationId: number;
+    id: string;
+    generation: number;
+    promise: Promise<void>;
+  };
   constructor() {
     effect(() => {
       const id = this.companyId();
@@ -234,9 +245,35 @@ export class CompanyAccessService {
         filter((event) => event instanceof NavigationEnd),
         takeUntilDestroyed(this.destroy),
       )
-      .subscribe(() => {
-        if (this.companyId()) void this.refresh();
+      .subscribe((event) => {
+        if (
+          this.companyId() &&
+          (this.navigationRefresh?.navigationId !== event.id ||
+            this.navigationRefresh.id !== this.companyId() ||
+            this.navigationRefresh.generation !== this.generation)
+        )
+          void this.refresh();
       });
+  }
+  refreshForNavigation(): Promise<void> {
+    const navigation = this.router.currentNavigation();
+    if (!navigation) return this.refresh();
+    const id = this.companyId();
+    const current = this.navigationRefresh;
+    if (
+      current?.navigationId === navigation.id &&
+      current.id === id &&
+      current.generation === this.generation
+    )
+      return current.promise;
+    const promise = this.refresh();
+    this.navigationRefresh = {
+      navigationId: navigation.id,
+      id,
+      generation: this.generation,
+      promise,
+    };
+    return promise;
   }
   refresh(): Promise<void> {
     const id = this.companyId();

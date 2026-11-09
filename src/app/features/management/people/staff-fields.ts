@@ -1,9 +1,10 @@
+import { RecruitmentApi } from '../recruitment/recruitment-api.service';
 import { StaffAvailability } from './staff-availability';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { Component, Input, Output, EventEmitter, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { COURSES, Person } from '../shared/management.store';
+import { COURSES, Person, StaffDocument } from '../shared/management.store';
 import { HrService } from './hr.service';
 import { StaffTraining, checkState, today } from './hr.models';
 @Component({
@@ -16,6 +17,8 @@ import { StaffTraining, checkState, today } from './hr.models';
 export class StaffFields {
   @Input({ required: true }) p!: Person;
   @Input() step = 0;
+  @Input() applicationId = '';
+  private readonly recruitmentApi = inject(RecruitmentApi);
   @Input() compact = false;
   @Output() busyChange = new EventEmitter<boolean>();
   protected readonly hr = inject(HrService);
@@ -69,7 +72,9 @@ export class StaffFields {
     this.busy.set(true);
     this.busyChange.emit(true);
     try {
-      const doc = await this.hr.document(file, this.category);
+      const doc = this.applicationId
+        ? await this.recruitmentDocument(file, this.category)
+        : await this.hr.document(file, this.category);
       const previous = this.p.documents?.find((d) => d.id === this.replacementId);
       if (previous) {
         doc.replacesId = previous.id;
@@ -96,7 +101,11 @@ export class StaffFields {
     this.busy.set(true);
     this.busyChange.emit(true);
     try {
-      this.p.hr!.personal.photo = (await this.hr.document(file, 'Photo')).content;
+      if (this.applicationId) {
+        const document = await this.recruitmentDocument(file, 'Photo');
+        this.p.documents = [...(this.p.documents ?? []), document];
+        this.p.hr!.personal.photo = URL.createObjectURL(file);
+      } else this.p.hr!.personal.photo = (await this.hr.document(file, 'Photo')).content;
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Photo could not be read.');
     } finally {
@@ -104,6 +113,23 @@ export class StaffFields {
       this.busyChange.emit(false);
       input.value = '';
     }
+  }
+  private async recruitmentDocument(file: File, category: string): Promise<StaffDocument> {
+    const application = this.recruitmentApi.record();
+    const vacancy = this.recruitmentApi
+      .vacancies()
+      .find((row) => row.id === application?.vacancyId);
+    if (!vacancy || application?.id !== this.applicationId)
+      throw Error('Reload the application before uploading.');
+    const document = await this.recruitmentApi.upload(file, vacancy, undefined, this.applicationId);
+    return {
+      id: document.id,
+      name: document.name,
+      type: document.type,
+      content: '',
+      category,
+      version: document.version,
+    };
   }
   protected addReference(): void {
     this.p.hr!.references.push({

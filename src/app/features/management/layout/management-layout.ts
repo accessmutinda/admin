@@ -1,3 +1,5 @@
+import { PageNavigation } from '../../../core/navigation/page-navigation.service';
+import { PageLoading } from '../../../shared/layouts/page-loading';
 import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { NgTemplateOutlet } from '@angular/common';
 import { AcademyGovernanceService } from '../learning/academy/academy-governance.service';
@@ -28,6 +30,7 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
   ],
   providers: [{ provide: MAT_SELECT_CONFIG, useValue: { overlayPanelClass: 'cv-select-overlay' } }],
   imports: [
+    PageLoading,
     NgTemplateOutlet,
     ManagementRole,
     A11yModule,
@@ -324,7 +327,23 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           ><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></a
         >
       </header>
-      <main id="main-content" tabindex="-1" class="page-content"><router-outlet /></main>
+      <main
+        id="main-content"
+        tabindex="-1"
+        class="page-content"
+        [attr.aria-busy]="navigationState.localDestination('management') ? 'true' : null"
+      >
+        @if (navigationState.localDestination('management'); as destination) {
+          <cv-page-loading [url]="destination" />
+        }
+        <div
+          class="route-content"
+          [hidden]="!!navigationState.localDestination('management')"
+          [attr.inert]="navigationState.localDestination('management') ? '' : null"
+        >
+          <router-outlet />
+        </div>
+      </main>
       <footer class="app-footer">
         <span>CareVerity <span class="footer-dot">·</span> People. Purpose. Progress.</span>
         @if (
@@ -354,8 +373,9 @@ export class ManagementLayout {
   );
   protected readonly store = inject(ManagementStore);
   private readonly router = inject(Router);
+  protected readonly navigationState = inject(PageNavigation);
   protected routerUrl(): string {
-    return this.router.url;
+    return this.navigationState.localDestination('management') || this.router.url;
   }
   protected readonly mobile = toSignal(inject(BreakpointObserver).observe('(max-width: 1023px)'));
   protected readonly menuOpen = signal(false);
@@ -471,11 +491,11 @@ export class ManagementLayout {
     { path: '/manage/workflows', label: 'Approval workflows', icon: 'account_tree' },
   ]);
   protected isCompaniesOverview(): boolean {
-    const path = this.router.url.split(/[?#]/)[0];
+    const path = this.routerUrl().split(/[?#]/)[0];
     return path.startsWith('/manage/companies') || path === '/manage/locations';
   }
   protected isPeopleArea(): boolean {
-    const path = this.router.url.split(/[?#]/)[0];
+    const path = this.routerUrl().split(/[?#]/)[0];
     return ['/manage/people', '/manage/recruitment', '/manage/leave', '/manage/reviews'].some(
       (area) => path === area || path.startsWith(area + '/'),
     );

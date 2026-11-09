@@ -1,3 +1,6 @@
+import { RecruitmentApi, asPerson } from './recruitment-api.service';
+import { Skeleton } from '../../../shared/ui/skeleton';
+import { CompanyUnavailable } from '../shared/company-unavailable';
 import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import { QuickActions } from '../shared/quick-actions';
 import { DatePipe } from '@angular/common';
@@ -6,7 +9,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { ManagementRole } from '../shared/role-pill';
 import { A11yModule } from '@angular/cdk/a11y';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, effect, untracked, DestroyRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ManagementStore, STAGES, Vacancy } from '../shared/management.store';
@@ -15,6 +18,8 @@ import { ToastService } from '../../../shared/ui/toast.service';
 @Component({
   selector: 'cv-recruitment',
   imports: [
+    Skeleton,
+    CompanyUnavailable,
     CardTonePipe,
     QuickActions,
     DatePipe,
@@ -41,8 +46,10 @@ import { ToastService } from '../../../shared/ui/toast.service';
 })
 export class Recruitment {
   protected readonly store = inject(ManagementStore);
+  protected readonly api = inject(RecruitmentApi);
+  protected readonly saving = signal(false);
   private readonly toast = inject(ToastService);
-  protected readonly stages = STAGES;
+  protected readonly stages = [...STAGES, 'Rejected', 'Withdrawn'];
   protected readonly view = signal('Pipeline');
   protected readonly search = signal('');
   protected readonly vacancyFilter = signal('All vacancies');
@@ -55,22 +62,22 @@ export class Recruitment {
     'Deadline passed',
   ];
   protected readonly vacancies = computed(() =>
-    this.store
-      .data()
-      .vacancies.filter(
+    this.api
+      .vacancies()
+      .filter(
         (vacancy) =>
           `${vacancy.title} ${vacancy.location} ${vacancy.type} ${vacancy.salary}`
             .toLowerCase()
             .includes(this.search().trim().toLowerCase()) &&
           (this.vacancyState() === 'All statuses' ||
-            this.store.vacancyStatus(vacancy) === this.vacancyState()),
+            this.api.vacancyStatus(vacancy) === this.vacancyState()),
       ),
   );
   protected readonly modal = signal('');
   protected readonly summary = computed(() => [
     {
       label: 'Open Vacancies',
-      value: this.store.openVacancies().length,
+      value: this.api.summary()?.open_vacancies ?? 0,
       caption: 'Accepting applications now',
       icon: 'work',
       color: '#008afa',
@@ -80,7 +87,7 @@ export class Recruitment {
     },
     {
       label: 'Active Applicants',
-      value: this.store.applicants().length,
+      value: this.api.summary()?.active_applicants ?? 0,
       caption: 'Applications in progress',
       icon: 'groups',
       color: '#03a6c1',
@@ -90,7 +97,7 @@ export class Recruitment {
     },
     {
       label: 'Offers Made',
-      value: this.store.applicants().filter((person) => person.stage === 'Offer').length,
+      value: this.api.summary()?.offers_made ?? 0,
       caption: 'Awaiting the next hiring step',
       icon: 'handshake',
       color: '#00a34e',
@@ -107,9 +114,10 @@ export class Recruitment {
     this.vacancyState.set(vacancyState);
   }
   protected readonly people = computed(() =>
-    this.store
-      .data()
-      .people.filter(
+    this.api
+      .applications()
+      .map((row) => asPerson(row))
+      .filter(
         (p) =>
           `${p.name} ${p.email} ${p.role} ${p.location}`
             .toLowerCase()
@@ -118,7 +126,7 @@ export class Recruitment {
             p.vacancyId === this.vacancyFilter() ||
             (!p.vacancyId &&
               p.vacancy ===
-                this.store.data().vacancies.find((v) => v.id === this.vacancyFilter())?.title)),
+                this.api.vacancies().find((v) => v.id === this.vacancyFilter())?.title)),
       ),
   );
   protected vacancy: Vacancy | null = null;
@@ -142,15 +150,38 @@ export class Recruitment {
         (person) =>
           this.stageFilter() === 'All stages' ||
           (this.stageFilter() === 'Active applicants'
-            ? person.stage !== 'Hired'
+            ? !['Hired', 'Rejected', 'Withdrawn'].includes(person.stage)
             : person.stage === this.stageFilter()),
       ),
   );
+  constructor() {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let scope = '';
+    effect(() => {
+      const current = this.api.scope();
+      const company = this.api.companyId();
+      const allowed = this.api.allowed();
+      const q = this.search();
+      const vacancy = this.vacancyFilter();
+      untracked(() => {
+        clearTimeout(timer);
+        if (current !== scope) {
+          scope = current;
+          this.vacancy = null;
+          this.savedVacancy.set(null);
+          this.modal.set('');
+        }
+        if (company && allowed)
+          timer = setTimeout(
+            () => void this.api.load(q, vacancy === 'All vacancies' ? '' : vacancy),
+            150,
+          );
+      });
+    });
+    inject(DestroyRef).onDestroy(() => clearTimeout(timer));
+  }
   protected applicantCount(vacancy: Vacancy): number {
-    return this.store
-      .applicants()
-      .filter((p) => (p.vacancyId ? p.vacancyId === vacancy.id : p.vacancy === vacancy.title))
-      .length;
+    return this.api.vacancies().find((row) => row.id === vacancy.id)?.applicant_count ?? 0;
   }
   protected openVacancy(existing?: Vacancy): void {
     this.vacancy = existing
@@ -166,7 +197,7 @@ export class Recruitment {
           type: 'Full time',
           salary: '',
           description: '',
-          published: true,
+          published: this.api.can('publish'),
           closingDate: '',
           goLiveDate: '',
           fields: [],
@@ -204,7 +235,8 @@ export class Recruitment {
       this.savedVacancy.set(vacancy);
     }
   }
-  protected addVacancy(): void {
+  protected async addVacancy(): Promise<void> {
+    if (this.saving()) return;
     if (!this.vacancy) return;
     const vacancy = structuredClone(this.vacancy);
     vacancy.title = vacancy.title.trim();
@@ -234,19 +266,21 @@ export class Recruitment {
       this.editorError.set('The closing date must be on or after the go-live date.');
       return;
     }
-    if (!this.store.saveVacancy(vacancy)) {
-      this.editorError.set(
-        'The vacancy could not be saved. Free some browser storage and try again.',
-      );
-      return;
+    this.saving.set(true);
+    try {
+      const saved = await this.api.saveVacancy(vacancy);
+      this.savedVacancy.set(saved);
+      this.vacancy = null;
+      this.openView('Vacancies');
+      this.toast.success('Vacancy and application form saved.');
+    } catch (error) {
+      this.editorError.set(this.api.message(error));
+    } finally {
+      this.saving.set(false);
     }
-    this.savedVacancy.set(vacancy);
-    this.vacancy = null;
-    this.openView('Vacancies');
-    this.toast.success('Vacancy and application form saved.');
   }
   protected openApplicant(): void {
-    const vacancies = this.store.data().vacancies;
+    const vacancies = this.api.vacancies();
     this.applicant.vacancy =
       (this.view() === 'Pipeline' &&
         vacancies.find((vacancy) => vacancy.id === this.vacancyFilter())?.id) ||
@@ -254,27 +288,19 @@ export class Recruitment {
       '';
     this.modal.set('applicant');
   }
-  protected addApplicant(): void {
-    const vacancy = this.store.data().vacancies.find((v) => v.id === this.applicant.vacancy);
-    if (!vacancy) return;
-    this.store.addPerson({
-      id: crypto.randomUUID(),
-      name: this.applicant.name,
-      email: this.applicant.email,
-      role: vacancy.title,
-      vacancy: vacancy.title,
-      vacancyId: vacancy.id,
-      location: this.applicant.location,
-      stage: 'Applied',
-      start: '',
-      notes: [],
-      checks: Array(7).fill(false),
-      onboarding: Array(8).fill(false),
-      learning: [],
-      progress: {},
-    });
-    this.modal.set('');
-    this.applicant = { name: '', email: '', vacancy: 'Care Worker', location: '' };
-    this.toast.success('Applicant added.');
+  protected async addApplicant(): Promise<void> {
+    if (this.saving()) return;
+    this.saving.set(true);
+    this.editorError.set('');
+    try {
+      await this.api.addApplicant(this.applicant);
+      this.modal.set('');
+      this.applicant = { name: '', email: '', vacancy: '', location: '' };
+      this.toast.success('Applicant added.');
+    } catch (error) {
+      this.editorError.set(this.api.message(error));
+    } finally {
+      this.saving.set(false);
+    }
   }
 }

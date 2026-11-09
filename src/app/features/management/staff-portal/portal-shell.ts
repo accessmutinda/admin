@@ -1,3 +1,5 @@
+import { PageNavigation } from '../../../core/navigation/page-navigation.service';
+import { PageLoading } from '../../../shared/layouts/page-loading';
 import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { AcademyDemoWorkflow } from '../learning/academy/academy-demo-workflow';
 import { Component, computed, effect, inject, signal } from '@angular/core';
@@ -14,7 +16,15 @@ import { ModuleDesign } from '../shared/module-design';
 @Component({
   selector: 'cv-staff-portal',
   host: { '(document:keydown.escape)': 'menuOpen.set(false)' },
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, ModuleDesign, A11yModule, Logo],
+  imports: [
+    PageLoading,
+    RouterLink,
+    RouterLinkActive,
+    RouterOutlet,
+    ModuleDesign,
+    A11yModule,
+    Logo,
+  ],
   providers: [{ provide: MAT_SELECT_CONFIG, useValue: { overlayPanelClass: 'cv-select-overlay' } }],
   styleUrls: ['./portal-shell.css', '../layout/quality-submenu.css'],
   template: `<cv-module-design />
@@ -175,7 +185,14 @@ import { ModuleDesign } from '../shared/module-design';
           </a>
         </header>
         <main id="staff-content" class="page-content" tabindex="-1">
-          <section class="module-page operations-page portal-content">
+          @if (navigationState.localDestination('staff'); as destination) {
+            <cv-page-loading [url]="destination" />
+          }
+          <section
+            class="module-page operations-page portal-content"
+            [hidden]="!!navigationState.localDestination('staff')"
+            [attr.inert]="navigationState.localDestination('staff') ? '' : null"
+          >
             <router-outlet />
           </section>
         </main>
@@ -190,6 +207,7 @@ import { ModuleDesign } from '../shared/module-design';
 })
 export class PortalShell {
   protected readonly access = inject(CompanyAccessService);
+  protected readonly navigationState = inject(PageNavigation);
   protected readonly auth = inject(AuthService);
   protected readonly store = inject(ManagementStore);
   protected readonly router = inject(Router);

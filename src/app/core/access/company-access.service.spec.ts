@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { Navigation, Router, provideRouter } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
 import { AccessContext, CompanyAccessService, routeAccess } from './company-access.service';
 
@@ -76,6 +76,33 @@ describe('Company product access', () => {
     }
     access.context.set({ ...context, company_active: false, enabled_modules: [], permissions: [] });
     expect(access.canPath('/manage/clients/one/medication')).toBe(true);
+  });
+  it('shares the access result across guards in one navigation and refreshes on the next', async () => {
+    TestBed.tick();
+    await access.refresh();
+    api.mockClear();
+    const current = vi.spyOn(TestBed.inject(Router), 'currentNavigation');
+    current.mockReturnValue({ id: 10 } as Navigation);
+    const first = access.refreshForNavigation();
+    expect(access.refreshForNavigation()).toBe(first);
+    await first;
+    await access.refreshForNavigation();
+    expect(api).toHaveBeenCalledTimes(1);
+    current.mockReturnValue({ id: 11 } as Navigation);
+    await access.refreshForNavigation();
+    expect(api).toHaveBeenCalledTimes(2);
+  });
+  it('does not reuse a navigation check after the actor changes in the same company', async () => {
+    TestBed.tick();
+    await access.refresh();
+    vi.spyOn(TestBed.inject(Router), 'currentNavigation').mockReturnValue({ id: 10 } as Navigation);
+    const previous = access.refreshForNavigation();
+    await previous;
+    profile.set({ id: 'another-user', company_id: 'north' });
+    TestBed.tick();
+    const next = access.refreshForNavigation();
+    expect(next).not.toBe(previous);
+    await next;
   });
   it('maps feature routes independently of role labels', () => {
     expect(routeAccess('/manage/learning/certificates')).toEqual([['academy', 'certificates']]);

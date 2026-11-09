@@ -1,27 +1,38 @@
-import { Component, computed, inject } from '@angular/core';
+import { publicRecruitment, PublicVacancy } from './recruitment-api.service';
+import { Skeleton } from '../../../shared/ui/skeleton';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { ManagementStore } from '../shared/management.store';
+
 import { ApplicationForm } from './application-form';
 import { Logo } from '../../../shared/ui/logo';
 
 @Component({
   selector: 'cv-public-application',
-  imports: [ApplicationForm, Logo],
+  imports: [ApplicationForm, Logo, Skeleton],
   template: `
     <main class="cv-management public-application">
       <header><cv-logo /><span>Careers</span></header>
-      <p class="application-demo">
-        Device demo: this link and applications work in the browser where the vacancy was saved.
-        Applications from other devices require a connected recruitment service.
-      </p>
-      @if (vacancy(); as job) {
+      @if (loading()) {
+        <section
+          class="panel panel-body"
+          role="status"
+          aria-label="Loading vacancy"
+          aria-busy="true"
+        >
+          @for (row of [0, 1, 2, 3, 4, 5]; track row) {
+            <cv-skeleton sizeClass="my-5 h-8 w-full" />
+          }
+        </section>
+      } @else if (vacancy(); as job) {
         <cv-application-form [vacancy]="job" [company]="company()" />
       } @else {
         <section class="panel panel-body" role="status">
           <h1>Vacancy unavailable</h1>
           <p>
-            This vacancy is closed, the link is incorrect, or it is not saved in this browser.
-            Contact the employer for an available application link.
+            {{
+              error() ||
+                'This vacancy is closed or the application link is unavailable. Contact the employer for an available link.'
+            }}
           </p>
         </section>
       }
@@ -58,14 +69,27 @@ import { Logo } from '../../../shared/ui/logo';
   `,
 })
 export class PublicApplication {
-  private readonly store = inject(ManagementStore);
   private readonly route = inject(ActivatedRoute);
   private readonly companyId = this.route.snapshot.paramMap.get('companyId') ?? '';
   private readonly vacancyId = this.route.snapshot.paramMap.get('vacancyId') ?? '';
-  protected readonly company = computed(() =>
-    this.store.companies().find((c) => c.id === this.companyId),
-  );
-  protected readonly vacancy = computed(() =>
-    this.store.publicVacancy(this.companyId, this.vacancyId),
-  );
+  protected readonly vacancy = signal<PublicVacancy | null>(null);
+  protected readonly company = computed(() => this.vacancy()?.company);
+  protected readonly loading = signal(true);
+  protected readonly error = signal('');
+  constructor() {
+    void this.load();
+  }
+  private async load(): Promise<void> {
+    try {
+      this.vacancy.set(
+        await publicRecruitment<PublicVacancy>(
+          `/public/companies/${this.companyId}/vacancies/${this.vacancyId}`,
+        ),
+      );
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : 'The vacancy is unavailable.');
+    } finally {
+      this.loading.set(false);
+    }
+  }
 }

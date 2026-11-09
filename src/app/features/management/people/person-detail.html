@@ -1,4 +1,8 @@
-@if (person(); as p) {
+@if (api.recordLoading()) {
+  <cv-page-loading url="/manage/recruitment" />
+} @else if (api.error() && !person()) {
+  <cv-company-unavailable [message]="api.error()" (retry)="reload()" />
+} @else if (person(); as p) {
   <div class="person-record" [attr.data-stage]="p.stage">
     <a
       [routerLink]="
@@ -18,6 +22,9 @@
             : 'Recruitment pipeline'
       }}</a
     >
+    @if (error()) {
+      <p class="hr-error" role="alert">{{ error() }}</p>
+    }
     <section class="profile-header panel person-hero">
       <div class="person-cell">
         <span class="avatar hero-avatar lilac">{{ store.initials(p.name) }}</span>
@@ -30,22 +37,35 @@
         </div>
       </div>
       <div class="profile-actions">
+        @if (api.can('edit') && !['Hired', 'Rejected', 'Withdrawn'].includes(p.stage)) {
+          <button class="button" (click)="terminal.set('Rejected')">Reject application</button>
+          <button class="button" (click)="terminal.set('Withdrawn')">Record withdrawal</button>
+        }
         <span class="badge" [class.success]="p.stage === 'Hired'">{{
           p.stage === 'Hired' ? 'Team member' : p.stage
         }}</span>
-        @if (p.stage !== 'Hired') {
-          <button class="button primary" (click)="advance()">
+        @if (!['Hired', 'Rejected', 'Withdrawn'].includes(p.stage)) {
+          <button
+            class="button primary"
+            [disabled]="
+              busy() ||
+              (stage() === 'Hired'
+                ? !(
+                    api.can('create') &&
+                    api.access.can('people', 'records', 'create') &&
+                    api.access.can('people', 'onboarding', 'create')
+                  )
+                : !api.can('edit'))
+            "
+            (click)="advance()"
+          >
             {{ stage() === 'Hired' ? 'Confirm hire' : 'Move to ' + stage().toLowerCase()
             }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
-          </button>
-        } @else {
-          <button class="button" (click)="startEdit()">
-            <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit profile
           </button>
         }
       </div>
     </section>
-    @if (p.stage !== 'Hired') {
+    @if (!['Hired', 'Rejected', 'Withdrawn'].includes(p.stage)) {
       <ol class="person-journey" aria-label="Recruitment journey">
         @for (stage of stages; track stage; let i = $index) {
           <li
@@ -69,34 +89,7 @@
         }
       </ol>
     }
-    @if (p.stage === 'Hired') {
-      <div class="person-progress-grid">
-        <button class="person-progress-card" data-tone="teal" (click)="tab.set('Onboarding')">
-          <span class="material-symbols-outlined" aria-hidden="true">waving_hand</span>
-          <div>
-            <small>Onboarding</small
-            ><strong>{{ completed(p) }} / {{ checklist.length }} steps</strong>
-            <p>Onboarding completed</p>
-          </div>
-          <span class="person-progress-value">{{ progress(p) }}%</span>
-        </button>
-        <button class="person-progress-card" data-tone="blue" (click)="tab.set('Compliance')">
-          <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>
-          <div>
-            <small>Compliance</small
-            ><strong>{{ verified(p) }} / {{ checks.length }} recorded</strong>
-            <p>{{ checks.length - verified(p) }} checks remaining</p>
-          </div>
-        </button>
-        <button class="person-progress-card" data-tone="purple" (click)="tab.set('Learning')">
-          <span class="material-symbols-outlined" aria-hidden="true">school</span>
-          <div>
-            <small>Learning</small><strong>{{ p.learning.length }} courses</strong>
-            <p>Assigned learning</p>
-          </div>
-        </button>
-      </div>
-    }
+
     <label class="mobile-section-selector"
       >Profile section
       <mat-select
@@ -135,7 +128,13 @@
               <h2>{{ p.stage === 'Hired' ? 'Staff file' : 'Applicant overview' }}</h2>
               <p>The essentials, together in one place.</p>
             </div>
-            <button class="text-link" (click)="startEdit()">Edit details</button>
+            <button
+              class="text-link"
+              [disabled]="!api.can('edit') || ['Hired', 'Rejected', 'Withdrawn'].includes(p.stage)"
+              (click)="startEdit()"
+            >
+              Edit details
+            </button>
           </div>
           <div class="panel-body">
             <dl class="details-list">
@@ -193,9 +192,138 @@
             }
           </div>
         }
-        @if (p.stage === 'Hired' && tab() === 'Onboarding') {
-          <cv-person-onboarding [person]="p" />
+        @if (tab() === 'Profile' && p.stage === 'Interview') {
+          <section class="panel-body">
+            <h3>Interviews</h3>
+            @for (item of api.record()?.interviews ?? []; track item.id) {
+              <div class="list-row">
+                <div>
+                  <strong>{{ item.scheduled_at | date: 'medium' }}</strong>
+                  <p>{{ item.panel }} · {{ item.outcome }}</p>
+                  <p>{{ item.notes }}</p>
+                </div>
+                @if (item.outcome === 'Scheduled' && api.can('edit')) {
+                  <button class="button" (click)="editInterview(item)">Record outcome</button>
+                }
+              </div>
+            }
+            @if (api.can('edit')) {
+              <form #interviewForm="ngForm" (ngSubmit)="interviewForm.valid && saveInterview()">
+                <div class="form-grid">
+                  <label
+                    >Interview date and time<input
+                      type="datetime-local"
+                      [(ngModel)]="interview.scheduled_at"
+                      name="scheduled"
+                      required
+                  /></label>
+                  <label
+                    >Panel / interviewer<input
+                      [(ngModel)]="interview.panel"
+                      name="panel"
+                      maxlength="500"
+                      required
+                  /></label>
+                  <label
+                    >Location or meeting details<input
+                      [(ngModel)]="interview.location"
+                      name="meeting"
+                      maxlength="300"
+                  /></label>
+                  <label
+                    >Outcome<mat-select
+                      cvSelect
+                      [(ngModel)]="interview.outcome"
+                      name="outcome"
+                      aria-label="Interview outcome"
+                    >
+                      @for (
+                        outcome of ['Scheduled', 'Passed', 'Failed', 'Cancelled'];
+                        track outcome
+                      ) {
+                        <mat-option [value]="outcome">{{ outcome }}</mat-option>
+                      }
+                    </mat-select></label
+                  >
+                  <label class="full-width"
+                    >Interview notes<textarea
+                      [(ngModel)]="interview.notes"
+                      name="interviewNotes"
+                      maxlength="4000"
+                      rows="3"
+                    ></textarea>
+                  </label>
+                </div>
+                <button class="button primary" [disabled]="busy() || interviewForm.invalid">
+                  Save interview
+                </button>
+              </form>
+            }
+          </section>
         }
+        @if (tab() === 'Profile' && (p.stage === 'Offer' || p.stage === 'Hired')) {
+          <section class="panel-body">
+            <h3>Offers</h3>
+            @for (item of api.record()?.offers ?? []; track item.id) {
+              <div class="panel panel-body">
+                <p style="white-space: pre-wrap">{{ item.terms }}</p>
+                <p>Start date {{ item.start_date | date: 'mediumDate' }} · {{ item.decision }}</p>
+                @if (item.decision === 'Pending' && p.stage === 'Offer' && api.can('edit')) {
+                  <label
+                    >Decision reason<input
+                      [(ngModel)]="offerReasons[item.id]"
+                      [name]="'offerReason-' + item.id"
+                      maxlength="2000"
+                      required
+                  /></label>
+                  <div class="form-footer">
+                    @for (decision of ['Accepted', 'Declined', 'Withdrawn']; track decision) {
+                      <button
+                        class="button"
+                        [disabled]="
+                          busy() ||
+                          !offerReasons[item.id]?.trim() ||
+                          !api.can(decision === 'Withdrawn' ? 'edit' : 'approve')
+                        "
+                        (click)="decideOffer(item.id, item.etag, decision)"
+                      >
+                        {{ decision }}
+                      </button>
+                    }
+                  </div>
+                } @else {
+                  <p>{{ item.reason }}</p>
+                }
+              </div>
+            }
+            @if (p.stage === 'Offer' && api.can('create')) {
+              <form #offerForm="ngForm" (ngSubmit)="offerForm.valid && saveOffer()">
+                <div class="form-grid">
+                  <label class="full-width"
+                    >Offer terms<textarea
+                      [(ngModel)]="offer.terms"
+                      name="offerTerms"
+                      maxlength="8000"
+                      rows="4"
+                      required
+                    ></textarea>
+                  </label>
+                  <label
+                    >Agreed start date<input
+                      type="date"
+                      [(ngModel)]="offer.start_date"
+                      name="offerStart"
+                      required
+                  /></label>
+                </div>
+                <button class="button primary" [disabled]="busy() || offerForm.invalid">
+                  Record offer
+                </button>
+              </form>
+            }
+          </section>
+        }
+
         @if (tab() === 'Compliance') {
           <cv-person-compliance [person]="p" />
         }
@@ -206,9 +334,9 @@
             }}</span>
             <div>
               <h2>Contract & document hub</h2>
-              <p>Keep supporting records and sample templates together.</p>
+              <p>Upload and manage the applicant’s supporting documents.</p>
             </div>
-            <span class="badge">Samples</span>
+            <span class="badge">Documents</span>
           </div>
           <div class="panel-body">
             <label class="upload-area"
@@ -217,6 +345,7 @@
               ><small>Saved on this device · up to 1 MB</small
               ><input
                 type="file"
+                [disabled]="busy() || !api.can('edit')"
                 (change)="uploadDocument($event)"
                 aria-label="Upload supporting document"
             /></label>
@@ -238,6 +367,7 @@
                   ><button
                     class="icon-button"
                     [attr.aria-label]="'Remove ' + doc.name"
+                    [disabled]="busy() || !api.can('archive')"
                     (click)="removeDocument(doc.id)"
                   >
                     <span class="material-symbols-outlined" aria-hidden="true">close</span>
@@ -260,12 +390,14 @@
                     >description</span
                   ><span
                     ><strong>{{ doc }}</strong
-                    ><small>Sample text document</small></span
+                    ><small>Upload the issued document using the upload area.</small></span
                   >
                 </div>
                 <button
                   class="icon-button"
-                  [attr.aria-label]="'Download sample ' + doc"
+                  [attr.aria-label]="'Document template unavailable: ' + doc"
+                  disabled
+                  title="Document templates are not configured"
                   (click)="downloadDocument(doc)"
                 >
                   <span class="material-symbols-outlined" aria-hidden="true">download</span>
@@ -274,42 +406,7 @@
             }
           </div>
         }
-        @if (p.stage === 'Hired' && tab() === 'Learning') {
-          <div class="panel-toolbar">
-            <span class="section-icon material-symbols-outlined" aria-hidden="true">{{
-              tabIcons[tabs.indexOf(tab())]
-            }}</span>
-            <div>
-              <h2>Assigned learning</h2>
-              <p>Choose the right development for {{ p.name.split(' ')[0] }}.</p>
-            </div>
-            <a routerLink="/manage/learning" class="text-link">CareVerity Academy</a>
-          </div>
-          <div class="panel-body">
-            @for (course of courses; track course.id) {
-              <label class="check-label learning-assignment"
-                ><input
-                  type="checkbox"
-                  [checked]="p.learning.includes(course.id)"
-                  (change)="assign(course.id)"
-                /><span
-                  ><strong>{{ course.title }}</strong
-                  ><small>{{ course.category }} · {{ course.duration }}</small></span
-                ><span
-                  class="badge"
-                  [class.success]="p.learning.includes(course.id) && p.progress[course.id] === 100"
-                  >{{
-                    !p.learning.includes(course.id)
-                      ? 'Not assigned'
-                      : p.progress[course.id] === 100
-                        ? 'Completed'
-                        : (p.progress[course.id] || 0) + '%'
-                  }}</span
-                ></label
-              >
-            }
-          </div>
-        }
+
         @if (tab() === 'Notes') {
           <div class="panel-toolbar">
             <span class="section-icon material-symbols-outlined" aria-hidden="true">{{
@@ -331,7 +428,12 @@
                   rows="4"
                   required
                 ></textarea></label
-              ><button class="button primary" [disabled]="!note().trim()">Save note</button>
+              ><button
+                class="button primary"
+                [disabled]="!note().trim() || busy() || !api.can('edit')"
+              >
+                Save note
+              </button>
             </form>
             <div class="notes-list">
               @for (note of p.notes; track $index) {
@@ -354,8 +456,8 @@
           }}</span>
           <h3>{{ nextStepTitle(p) }}</h3>
           <p>{{ nextStepDescription(p) }}</p>
-          <button class="button" (click)="tab.set(p.stage === 'Hired' ? 'Onboarding' : 'Notes')">
-            {{ p.stage === 'Hired' ? 'View welcome checklist' : 'Review conversations'
+          <button class="button" (click)="tab.set('Notes')">
+            {{ 'Review conversations'
             }}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
           </button>
         </section>
@@ -384,6 +486,43 @@
         </div>
       </aside>
     </div>
+    @if (terminal()) {
+      <div class="modal-backdrop">
+        <section
+          class="panel modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="application-decision-title"
+          cdkTrapFocus
+          [cdkTrapFocusAutoCapture]="true"
+        >
+          <div class="panel-toolbar">
+            <h2 id="application-decision-title">
+              {{ terminal() === 'Rejected' ? 'Reject application' : 'Record withdrawal' }}
+            </h2>
+          </div>
+          <form #decisionForm="ngForm" (ngSubmit)="decisionForm.valid && closeApplication()">
+            <div class="panel-body">
+              <label
+                >Reason<textarea
+                  [(ngModel)]="reason"
+                  name="reason"
+                  rows="4"
+                  maxlength="2000"
+                  required
+                ></textarea>
+              </label>
+            </div>
+            <div class="form-footer">
+              <button type="button" class="button" (click)="terminal.set('')">Cancel</button
+              ><button class="button primary" [disabled]="busy() || decisionForm.invalid">
+                Confirm decision
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
+    }
     @if (edit() && draft; as d) {
       <div class="modal-backdrop" (click)="edit.set(false)">
         <section

@@ -45,3 +45,10 @@
 .cv-management .app-sidebar :is(.visits-submenu, .academy-submenu) a.selected {
   box-shadow: none;
 }
+
+.cv-management .route-content {
+  display: contents;
+}
+.cv-management .route-content[hidden] {
+  display: none !important;
+}

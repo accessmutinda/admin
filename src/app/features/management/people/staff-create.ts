@@ -1,21 +1,25 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, HostListener, inject, signal, effect, untracked } from '@angular/core';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { Person } from '../shared/management.store';
 import { HrService } from './hr.service';
 import { STAFF_STEPS, newStaff, staffRecord, staffErrors, readiness } from './hr.models';
 import { StaffFields } from './staff-fields';
+import { RecruitmentApi, asPerson, HireInput } from '../recruitment/recruitment-api.service';
+import { hireInput, restoreHire } from '../recruitment/recruitment-hire';
+import { PageLoading } from '../../../shared/layouts/page-loading';
 @Component({
   selector: 'cv-staff-create',
   host: { class: 'module-page module-create people-page hr-create-page' },
-  imports: [RouterLink, StaffFields],
+  imports: [RouterLink, StaffFields, PageLoading],
   templateUrl: './staff-create.html',
   styleUrls: ['./hr.css', './hr-create.css'],
 })
 export class StaffCreate {
   protected readonly hr = inject(HrService);
+  protected readonly api = inject(RecruitmentApi);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  protected readonly companyId = this.hr.store.companyId();
+  protected readonly companyId = this.api.companyId();
   protected readonly steps = STAFF_STEPS;
   protected readonly stepHints = [
     'Basic information',
@@ -29,35 +33,55 @@ export class StaffCreate {
   protected readonly error = signal('');
   protected readonly notice = signal('');
   protected readonly busy = signal(false);
+  protected readonly loading = signal(true);
   protected readonly invalid = signal('');
   protected readonly ready = readiness;
   protected p: Person = newStaff();
-  private draftId: string = crypto.randomUUID();
-  private sourceId = this.route.snapshot.queryParamMap.get('source') ?? undefined;
+  protected readonly sourceId = this.route.snapshot.queryParamMap.get('source') ?? '';
   private baseline = '';
   private finished = false;
+  private draftEtag = '"v0"';
+  private readonly hireKey = crypto.randomUUID();
+  private readonly initialScope = this.api.scope();
   constructor() {
-    const draftId = this.route.snapshot.queryParamMap.get('draft');
-    if (draftId) {
-      const d = this.hr.drafts().find((v) => v.id === draftId);
-      if (!d) this.invalid.set('This draft is not available in your account and company.');
-      else {
-        this.p = structuredClone(d.person);
-        this.draftId = d.id;
-        this.sourceId = d.sourceId;
-        this.step.set(Math.min(5, Math.max(0, d.step)));
+    effect(() => {
+      if (this.api.scope() !== this.initialScope)
+        untracked(() => {
+          this.p = newStaff();
+          this.finished = true;
+          this.loading.set(false);
+          this.invalid.set(
+            'The workspace or recruitment access changed. Reopen the accepted offer.',
+          );
+        });
+    });
+    queueMicrotask(() => void this.load());
+  }
+  private async load(): Promise<void> {
+    try {
+      if (!this.sourceId) throw Error('Open an accepted recruitment offer to begin staff setup.');
+      await Promise.all([this.api.detail(this.sourceId), this.api.load()]);
+      const row = this.api.record(),
+        offer = row?.offers?.find((item) => item.decision === 'Accepted');
+      if (!row || row.id !== this.sourceId || row.stage !== 'Offer' || !offer)
+        throw Error('This application must have an accepted offer before staff setup.');
+      this.p = asPerson(row);
+      this.p.hr = staffRecord(this.p);
+      this.p.start = offer.start_date;
+      const saved = await this.api.draft(this.sourceId);
+      if (this.initialScope !== this.api.scope())
+        throw Error('The workspace or recruitment access changed.');
+      if (saved.draft) {
+        this.p = restoreHire(this.p, saved.draft.facts);
+        this.draftEtag = saved.draft.etag;
+        this.step.set(saved.draft.step);
       }
-    } else if (this.sourceId) {
-      const source = this.hr.store
-        .data()
-        .people.find((p) => p.id === this.sourceId && p.stage === 'Offer');
-      if (!source) this.invalid.set('Open an applicant at Offer stage to begin staff setup.');
-      else {
-        this.p = { ...structuredClone(source), hr: staffRecord(source) };
-      }
+      this.baseline = JSON.stringify(this.p);
+    } catch (error) {
+      this.invalid.set(this.api.message(error));
+    } finally {
+      this.loading.set(false);
     }
-    if (!this.hr.can('create')) this.invalid.set('Your role cannot create staff records.');
-    this.baseline = JSON.stringify(this.p);
   }
   protected select(index: number): void {
     this.error.set('');
@@ -70,39 +94,50 @@ export class StaffCreate {
     }
     this.step.set(index);
   }
-  protected saveDraft(): void {
+  protected async saveDraft(): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
     this.error.set('');
-    const result = this.hr.saveDraft({
-      id: this.draftId,
-      companyId: this.companyId,
-      ownerId: this.hr.auth.currentUser()!.id,
-      savedAt: '',
-      step: this.step(),
-      person: this.p,
-      sourceId: this.sourceId,
-    });
-    if (result) this.error.set(result);
-    else {
+    try {
+      if (this.companyId !== this.api.companyId() || this.initialScope !== this.api.scope())
+        throw Error('The workspace changed. Return to the original company.');
+      const saved = await this.api.saveDraft(
+        this.sourceId,
+        hireInput(this.p),
+        this.step(),
+        this.draftEtag,
+      );
+      this.draftEtag = saved.etag;
       this.baseline = JSON.stringify(this.p);
-      this.notice.set('Draft saved on this device. Resume it from Onboarding.');
+      this.notice.set('Draft saved securely. Open this applicant’s accepted offer to resume.');
+    } catch (error) {
+      this.error.set(this.api.message(error));
+    } finally {
+      this.busy.set(false);
     }
   }
-  protected create(): void {
-    const error = this.hr.savePerson(
-      this.p,
-      this.companyId,
-      this.sourceId ? 'Applicant converted to staff' : 'Staff record created',
-      { draftId: this.draftId, sourceId: this.sourceId },
-    );
-    this.error.set(error ?? '');
-    if (!error) {
+  protected async create(): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      if (this.companyId !== this.api.companyId() || this.initialScope !== this.api.scope())
+        throw Error('The workspace changed. Return to the original company.');
+      const errors = staffErrors(this.p).flat();
+      if (errors.length) throw Error(errors[0]);
+      await this.api.command('hire', hireInput(this.p), undefined, this.hireKey);
       this.finished = true;
-      void this.router.navigate(['/manage/people/staff', this.p.id, 'overview']);
+      await this.router.navigate(['/manage/people/staff'], { queryParams: { q: this.p.name } });
+    } catch (error) {
+      this.error.set(this.api.message(error));
+    } finally {
+      this.busy.set(false);
     }
   }
   canLeave(): boolean {
     return (
       this.finished ||
+      this.loading() ||
       this.baseline === JSON.stringify(this.p) ||
       window.confirm('You have unsaved staff details. Leave without saving them?')
     );
@@ -110,6 +145,7 @@ export class StaffCreate {
   @HostListener('window:beforeunload', ['$event']) protected beforeUnload(
     event: BeforeUnloadEvent,
   ): void {
-    if (!this.finished && this.baseline !== JSON.stringify(this.p)) event.preventDefault();
+    if (!this.finished && !this.loading() && this.baseline !== JSON.stringify(this.p))
+      event.preventDefault();
   }
 }

@@ -19,7 +19,9 @@
     <a class="hr-button" routerLink="/manage/people/staff">Cancel</a>
   </div>
 </div>
-@if (invalid()) {
+@if (loading()) {
+  <cv-page-loading url="/manage/people/staff/new" />
+} @else if (invalid()) {
   <p class="hr-error" role="alert">{{ invalid() }}</p>
 } @else {
   <ol class="hr-steps" aria-label="Staff setup steps">
@@ -53,9 +55,14 @@
   <div class="hr-create-layout" [class.availability-step]="step() === 2">
     <main aria-label="Staff setup form">
       @if (step() < 5) {
-        <cv-staff-fields [p]="p" [step]="step()" (busyChange)="busy.set($event)" />
+        <cv-staff-fields
+          [p]="p"
+          [applicationId]="sourceId"
+          [step]="step()"
+          (busyChange)="busy.set($event)"
+        />
         @if (step() === 1) {
-          <cv-staff-fields [p]="p" [step]="6" />
+          <cv-staff-fields [p]="p" [applicationId]="sourceId" [step]="6" />
           <div class="hr-notice">
             You can create an onboarding record before checks are complete. You can also return to
             this step after uploading evidence under Documents.

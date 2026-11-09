@@ -5,16 +5,21 @@
   }}</span>
   <div>
     <h2>Employment checks</h2>
-    <p>Record the checks verified by your HR team.</p>
+    <p>Record declared checks for review by your HR team.</p>
   </div>
   <span class="material-symbols-outlined text-teal-600" aria-hidden="true">verified_user</span>
 </div>
 <div class="panel-body checklist person-compliance">
   @for (item of checks; track item; let i = $index) {
     <label [class.checked]="p.checks[i]"
-      ><input type="checkbox" [checked]="p.checks[i]" (change)="toggle(i)" /><span>{{ item }}</span
+      ><input
+        type="checkbox"
+        [checked]="p.checks[i]"
+        [disabled]="busy() || !api.access.can('people', 'compliance', 'edit')"
+        (change)="toggle(i)"
+      /><span>{{ item }}</span
       ><span class="badge" [class.success]="p.checks[i]">{{
-        p.checks[i] ? 'Verified' : 'Pending'
+        p.checks[i] ? 'Recorded' : 'Pending'
       }}</span></label
     >
   }
@@ -26,21 +31,31 @@
           >{{ check }} · review / expiry date<input
             type="date"
             [ngModel]="p.checkExpiry?.[check] || ''"
-            (ngModelChange)="setExpiry(check, $event)"
+            [disabled]="!api.access.can('people', 'compliance', 'edit')"
+            (change)="setExpiry(check, $any($event.target).value)"
         /></label>
       }
       <label
         >Visa type, if applicable<input
           placeholder="e.g. Skilled Worker"
           [ngModel]="p.visaType || ''"
-          (ngModelChange)="setVisa('visaType', $event)" /></label
+          [disabled]="!api.access.can('people', 'compliance', 'edit')"
+          (change)="setVisa('visaType', $any($event.target).value)" /></label
       ><label
         >Visa valid until<input
           type="date"
           [ngModel]="p.visaExpiry || ''"
-          (ngModelChange)="setVisa('visaExpiry', $event)"
+          [disabled]="!api.access.can('people', 'compliance', 'edit')"
+          (change)="setVisa('visaExpiry', $any($event.target).value)"
       /></label>
     </div>
   </div>
-  <p class="muted">Status markers in this demo do not perform external identity or DBS checks.</p>
+  <p class="muted">
+    Recorded declarations do not verify identity, DBS results or deployment readiness. Evidence
+    verification is a separate HR workflow.
+  </p>
 </div>
+
+@if (error()) {
+  <p class="hr-error" role="alert">{{ error() }}</p>
+}

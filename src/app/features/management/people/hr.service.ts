@@ -302,9 +302,17 @@ export class HrService {
 export const hrGuard: CanActivateFn = async (_route, state) => {
   const access = inject(CompanyAccessService);
   const router = inject(Router);
-  await access.refresh();
+  await access.refreshForNavigation();
   if (!access.canPath(state.url)) return router.createUrlTree(['/access-denied']);
-  if (state.url.split(/[?#]/)[0].startsWith('/manage/people/staff/'))
+  const path = state.url.split(/[?#]/)[0];
+  if (path === '/manage/people/staff/new' && _route.queryParamMap.has('source'))
+    return (
+      (access.can('people', 'recruitment', 'create') &&
+        access.can('people', 'records', 'create') &&
+        access.can('people', 'onboarding', 'create')) ||
+      router.createUrlTree(['/access-denied'])
+    );
+  if (path.startsWith('/manage/people/staff/'))
     return router.createUrlTree(['/manage/people/staff']);
   return true;
 };

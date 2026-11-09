@@ -43,7 +43,7 @@ const portalAccessGuard = async (
     runInInjectionContext(context, async () => {
       const access = inject(m.CompanyAccessService);
       const router = inject(Router);
-      await access.refresh();
+      await access.refreshForNavigation();
       return access.canPath(state.url) || router.createUrlTree(['/access-denied']);
     }),
   );
@@ -59,28 +59,19 @@ const peopleGuard = (
   );
 };
 
-const legacyPersonGuard = (route: import('@angular/router').ActivatedRouteSnapshot) => {
+const legacyPersonGuard = async (
+  _route: import('@angular/router').ActivatedRouteSnapshot,
+  state: import('@angular/router').RouterStateSnapshot,
+) => {
   const context = inject(EnvironmentInjector);
-  return import('./features/management/people/hr.service').then((m) =>
-    runInInjectionContext(context, () => {
-      const hr = inject(m.HrService);
+  return import('./core/access/company-access.service').then((m) =>
+    runInInjectionContext(context, async () => {
+      const access = inject(m.CompanyAccessService);
       const router = inject(Router);
-      if (!hr.can('view')) return router.createUrlTree(['/manage/companies']);
-      const id = route.paramMap.get('id');
-      if (hr.store.data().people.find((p) => p.id === id)?.stage !== 'Hired') return true;
-      const sections: Record<string, string> = {
-        Profile: 'overview',
-        Onboarding: 'employment',
-        Compliance: 'compliance',
-        Documents: 'documents',
-        Learning: 'training',
-        Notes: 'notes',
-      };
-      return router.createUrlTree([
-        '/manage/people/staff',
-        id,
-        sections[route.queryParamMap.get('tab') ?? 'Profile'] ?? 'overview',
-      ]);
+      await access.refreshForNavigation();
+      return (
+        access.can('people', 'recruitment', 'read') || router.createUrlTree(['/access-denied'])
+      );
     }),
   );
 };

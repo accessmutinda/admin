@@ -51,3 +51,7 @@ Thumbs.db
 
 # Local backend specifications
 /backend-MD/
+
+# Local documentation
+/docs/
+/docs-api/

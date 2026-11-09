@@ -209,3 +209,7 @@
   background: #007caa;
   color: #fff;
 }
+
+.portal-content[hidden] {
+  display: none !important;
+}

@@ -1,21 +1,15 @@
-<router-outlet />
+<div
+  class="app-route-content"
+  [hidden]="!ready() || !!navigation.rootDestination()"
+  [attr.inert]="!ready() || navigation.rootDestination() ? '' : null"
+>
+  <router-outlet />
+</div>
+@if (ready() && navigation.rootDestination(); as destination) {
+  <cv-page-transition [url]="destination" />
+}
 @if (!ready()) {
-  @if (management) {
-    <div class="cv-startup-shell">
-      <aside aria-hidden="true">
-        <cv-logo tone="light" />
-        @for (row of [0, 1, 2, 3, 4, 5, 6, 7]; track row) {
-          <cv-skeleton sizeClass="mt-6 h-4 w-full" />
-        }
-      </aside>
-      <main>
-        <header><cv-logo /><span>Admin Console</span></header>
-        <cv-company-loading [view]="view" />
-      </main>
-    </div>
-  } @else {
-    <cv-auth-loading [path]="initialPath" />
-  }
+  <cv-page-transition [url]="initialPath" />
 }
 @if (failed()) {
   <div role="alert" class="p-6">

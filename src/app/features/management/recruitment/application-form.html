@@ -145,6 +145,15 @@
             </label>
           }
         }
+        @if (!preview()) {
+          <label
+            ><span
+              ><input type="checkbox" name="consent" [(ngModel)]="consent" required /> I agree to
+              share my application and supporting documents with
+              {{ company()?.name || 'the recruitment team' }} for this vacancy.</span
+            ></label
+          >
+        }
         @if (error()) {
           <p class="application-error" role="alert">{{ error() }}</p>
         }
@@ -152,7 +161,7 @@
           <span class="button primary preview-submit">Submit application</span>
         } @else {
           <button class="button primary" [disabled]="busy()">
-            {{ busy() ? 'Reading document…' : 'Submit application' }}
+            {{ busy() ? 'Uploading or submitting…' : 'Submit application' }}
           </button>
         }
         <small

@@ -10,7 +10,7 @@
   </div>
   <div class="hr-actions">
     @if (hr.can('create')) {
-      <a class="hr-button primary" routerLink="/manage/people/staff/new"
+      <a class="hr-button primary" routerLink="/manage/recruitment"
         ><span class="material-symbols-outlined" aria-hidden="true">person_add</span>Start Staff
         Setup</a
       >
@@ -18,181 +18,192 @@
     <a class="hr-button" routerLink="/manage/recruitment">Accepted Offers & Recruitment</a>
   </div>
 </div>
-<div class="hr-stats hr-queue-stats">
-  @for (stat of stats(); track stat.label) {
-    <a
-      class="hr-stat"
-      [style.--stat-color]="stat.color"
-      [attr.data-card-tone]="stat.color | cardTone"
-      routerLink="/manage/people/onboarding"
-      [queryParams]="{ lane: stat.lane }"
-      ><span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>
-      <div>
-        <small>{{ stat.label }}</small
-        ><strong>{{ stat.value }}</strong
-        ><small>{{ stat.caption }}</small>
-      </div></a
-    >
+@if (api.loading() && !api.meta()) {
+  <cv-page-loading url="/manage/people/onboarding" />
+} @else if (api.error() && !api.meta()) {
+  <cv-company-unavailable [message]="api.error()" (retry)="reload()" />
+} @else {
+  <div class="hr-stats hr-queue-stats">
+    @for (stat of stats(); track stat.label) {
+      <a
+        class="hr-stat"
+        [style.--stat-color]="stat.color"
+        [attr.data-card-tone]="stat.color | cardTone"
+        routerLink="/manage/people/onboarding"
+        [queryParams]="{ lane: stat.lane }"
+        ><span class="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</span>
+        <div>
+          <small>{{ stat.label }}</small
+          ><strong>{{ stat.value }}</strong
+          ><small>{{ stat.caption }}</small>
+        </div></a
+      >
+    }
+  </div>
+  @if (error()) {
+    <p class="hr-error" role="alert">{{ error() }}</p>
   }
-</div>
-@if (error()) {
-  <p class="hr-error" role="alert">{{ error() }}</p>
-}
-@if (notice()) {
-  <p class="hr-notice" role="status">{{ notice() }}</p>
-}
-<section class="hr-panel hr-filter-panel">
-  <div class="hr-filters">
-    <label class="hr-directory-search"
-      >Search starters or drafts<input
-        type="search"
-        [ngModel]="q()"
-        (ngModelChange)="set('q', $event)"
-        placeholder="Name or staff reference" /></label
-    ><label
-      >Setup stage<mat-select
-        cvSelect
-        aria-label="Setup stage"
-        [ngModel]="lane()"
-        (ngModelChange)="set('lane', $event)"
-        ><mat-option value="starters">All onboarding starters</mat-option
-        ><mat-option value="drafts">Saved drafts</mat-option
-        ><mat-option value="ready">Ready to activate</mat-option></mat-select
-      ></label
-    ><label
-      >Branch<mat-select
-        cvSelect
-        aria-label="Starter branch"
-        [ngModel]="branch()"
-        (ngModelChange)="set('branch', $event)"
-        ><mat-option value="">All branches</mat-option>
-        @for (branch of branches(); track branch) {
-          <mat-option [value]="branch">{{ branch }}</mat-option>
-        }
-      </mat-select></label
-    >
-  </div>
-  <div class="hr-filter-summary">
-    <span>{{
-      lane() === 'drafts' ? drafts().length + ' saved drafts' : rows().length + ' starters'
-    }}</span
-    ><button class="hr-clear" (click)="clear()">Clear filters</button>
-  </div>
-</section>
-@if (lane() === 'drafts') {
-  <section class="hr-panel hr-register">
-    <div class="hr-register-toolbar"><h2>Saved Staff Drafts</h2></div>
-    <div class="hr-table-wrap" tabindex="0" role="region" aria-label="Staff setup drafts">
-      <table class="hr-table">
-        <thead>
-          <tr>
-            <th scope="col">Draft</th>
-            <th scope="col">Setup Step</th>
-            <th scope="col">Last Saved</th>
-            <th scope="col">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (draft of drafts(); track draft.id) {
-            <tr>
-              <td>
-                {{ draft.person.hr?.personal?.firstName || 'New staff member' }}
-                {{ draft.person.hr?.personal?.surname }}<small>{{ draft.person.email }}</small>
-              </td>
-              <td>{{ draft.step + 1 }} of 6</td>
-              <td>{{ draft.savedAt.slice(0, 10) }}</td>
-              <td>
-                <a
-                  class="hr-button outline"
-                  routerLink="/manage/people/staff/new"
-                  [queryParams]="{ draft: draft.id }"
-                  >Resume Draft</a
-                >
-              </td>
-            </tr>
-          } @empty {
-            <tr>
-              <td colspan="4" class="hr-empty">No saved drafts match these filters.</td>
-            </tr>
+  @if (notice()) {
+    <p class="hr-notice" role="status">{{ notice() }}</p>
+  }
+  <section class="hr-panel hr-filter-panel">
+    <div class="hr-filters">
+      <label class="hr-directory-search"
+        >Search starters or drafts<input
+          type="search"
+          [ngModel]="q()"
+          (ngModelChange)="set('q', $event)"
+          placeholder="Name or staff reference" /></label
+      ><label
+        >Setup stage<mat-select
+          cvSelect
+          aria-label="Setup stage"
+          [ngModel]="lane()"
+          (ngModelChange)="set('lane', $event)"
+          ><mat-option value="in-progress">In progress</mat-option
+          ><mat-option value="starters">All onboarding starters</mat-option
+          ><mat-option value="drafts">Saved drafts</mat-option
+          ><mat-option value="ready">Ready to activate</mat-option></mat-select
+        ></label
+      ><label
+        >Branch<mat-select
+          cvSelect
+          aria-label="Starter branch"
+          [ngModel]="branch()"
+          (ngModelChange)="set('branch', $event)"
+          ><mat-option value="">All branches</mat-option>
+          @for (branch of branches(); track branch) {
+            <mat-option [value]="branch">{{ branch }}</mat-option>
           }
-        </tbody>
-      </table>
+        </mat-select></label
+      >
+    </div>
+    <div class="hr-filter-summary">
+      <span>{{
+        lane() === 'drafts' ? drafts().length + ' saved drafts' : rows().length + ' starters'
+      }}</span
+      ><button class="hr-clear" (click)="clear()">Clear filters</button>
     </div>
   </section>
-} @else {
-  <section class="hr-panel hr-register">
-    <div class="hr-register-toolbar">
-      <h2>Starter Checklists ({{ rows().length }})</h2>
-    </div>
-    <div
-      class="hr-table-wrap"
-      tabindex="0"
-      role="region"
-      aria-label="Onboarding starter checklists"
-    >
-      <table class="hr-table hr-onboarding-table">
-        <thead>
-          <tr>
-            <th scope="col">Starter</th>
-            <th scope="col">Start Date</th>
-            <th scope="col">Line Manager</th>
-            <th scope="col">Checklist Progress</th>
-            <th scope="col">Next Task</th>
-            <th scope="col">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (row of rows(); track row.person.id) {
+  @if (lane() === 'drafts') {
+    <section class="hr-panel hr-register">
+      <div class="hr-register-toolbar"><h2>Saved Staff Drafts</h2></div>
+      <div class="hr-table-wrap" tabindex="0" role="region" aria-label="Staff setup drafts">
+        <table class="hr-table">
+          <thead>
             <tr>
-              <td>
-                <a [routerLink]="['/manage/people/staff', row.person.id, 'employment']"
-                  ><strong>{{ row.person.name }}</strong></a
-                ><small>{{ row.person.hr.reference }} · {{ row.person.location }}</small>
-              </td>
-              <td>{{ row.person.start || 'Not set' }}</td>
-              <td>{{ row.person.hr.employment.manager || 'Not assigned' }}</td>
-              <td>
-                <div class="hr-queue-progress">
-                  <progress
-                    [value]="row.completed"
-                    [max]="row.total"
-                    [attr.aria-label]="row.person.name + ' onboarding progress'"
-                  ></progress
-                  ><span>{{ row.completed }} / {{ row.total }} tasks</span>
-                </div>
-              </td>
-              <td>{{ row.next?.title || 'Ready to activate' }}</td>
-              <td>
-                @if (row.ready && hr.can('edit')) {
-                  <button class="hr-button primary" (click)="activate(row.person.id)">
-                    Complete Onboarding
-                  </button>
-                } @else {
+              <th scope="col">Draft</th>
+              <th scope="col">Setup Step</th>
+              <th scope="col">Last Saved</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (draft of drafts(); track draft.id) {
+              <tr>
+                <td>
+                  {{ draft.name || 'New staff member' }}
+                  <small>{{ draft.email }}</small>
+                </td>
+                <td>{{ (draft.step ?? 0) + 1 }} of 6</td>
+                <td>{{ draft.saved_at?.slice(0, 10) }}</td>
+                <td>
                   <a
                     class="hr-button outline"
-                    [routerLink]="[
-                      '/manage/people/staff',
-                      row.person.id,
-                      row.next?.section || 'employment',
-                    ]"
-                    >{{ row.ready ? 'View Checklist' : 'Continue Checklist' }}</a
+                    routerLink="/manage/people/staff/new"
+                    [queryParams]="{ source: draft.source_id }"
+                    >Resume Draft</a
                   >
-                }
-              </td>
-            </tr>
-          } @empty {
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="4" class="hr-empty">
+                  {{ api.meta()?.unavailable?.drafts || 'No saved drafts match these filters.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  } @else {
+    <section class="hr-panel hr-register">
+      <div class="hr-register-toolbar">
+        <h2>Starter Checklists ({{ rows().length }})</h2>
+      </div>
+      <div
+        class="hr-table-wrap"
+        tabindex="0"
+        role="region"
+        aria-label="Onboarding starter checklists"
+      >
+        <table class="hr-table hr-onboarding-table">
+          <thead>
             <tr>
-              <td colspan="6" class="hr-empty">
-                {{
-                  lane() === 'ready'
-                    ? 'No starters are ready to activate.'
-                    : 'No starters are awaiting onboarding.'
-                }}
-              </td>
+              <th scope="col">Starter</th>
+              <th scope="col">Start Date</th>
+              <th scope="col">Line Manager</th>
+              <th scope="col">Checklist Progress</th>
+              <th scope="col">Next Task</th>
+              <th scope="col">Action</th>
             </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </section>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.id) {
+              <tr>
+                <td>
+                  <a routerLink="/manage/people/staff" [queryParams]="{ q: row.name }"
+                    ><strong>{{ row.name }}</strong></a
+                  ><small>{{ row.reference }} · {{ row.branch }}</small>
+                </td>
+                <td>{{ row.start_date || 'Not set' }}</td>
+                <td>{{ row.manager || 'Not assigned' }}</td>
+                <td>
+                  @if (row.completed !== null && row.total !== null) {
+                    <div class="hr-queue-progress">
+                      <progress
+                        [value]="row.completed"
+                        [max]="row.total"
+                        [attr.aria-label]="row.name + ' onboarding progress'"
+                      ></progress
+                      ><span>{{ row.completed }} / {{ row.total }} tasks</span>
+                    </div>
+                  } @else {
+                    <span class="hr-muted">Not available</span>
+                  }
+                </td>
+                <td>{{ row.next_task || 'Complete HR evidence verification' }}</td>
+                <td>
+                  @if (row.ready && hr.can('edit')) {
+                    <button class="hr-button primary" (click)="activate(row.id)">
+                      Complete Onboarding
+                    </button>
+                  } @else {
+                    <a
+                      class="hr-button outline"
+                      [routerLink]="null"
+                      aria-disabled="true"
+                      title="HR checklist verification is not connected yet"
+                      >{{ row.ready ? 'View Checklist' : 'Continue Checklist' }}</a
+                    >
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="hr-empty">
+                  {{
+                    lane() === 'ready'
+                      ? api.meta()?.unavailable?.readiness || 'Readiness is not available.'
+                      : 'No starters are awaiting onboarding.'
+                  }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
 }

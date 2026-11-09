@@ -3,6 +3,7 @@ import {
   provideRouter,
   withInMemoryScrolling,
   withDisabledInitialNavigation,
+  withRouterConfig,
 } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
@@ -15,6 +16,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(
       routes,
       withDisabledInitialNavigation(),
+      withRouterConfig({ urlUpdateStrategy: 'eager' }),
       withInMemoryScrolling({ anchorScrolling: 'enabled' }),
     ),
     provideAnimationsAsync(),

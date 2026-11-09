@@ -75,3 +75,10 @@ workforce_output += "\n\n".join("export type " + name + " = " + render(schemas[n
 workforce_target = root / "src/app/features/management/people/workforce.generated.ts"
 workforce_target.write_text(workforce_output)
 subprocess.run(["npx", "prettier", "--write", str(workforce_target)], cwd=root, check=True, capture_output=True)
+
+recruitment_names = [name for name in schemas if name.startswith('Recruitment')]
+recruitment_output = '// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.\n\n'
+recruitment_output += '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in recruitment_names)+'\n'
+recruitment_target=root/'src/app/features/management/recruitment/recruitment.generated.ts'
+recruitment_target.write_text(recruitment_output)
+subprocess.run(['npx','prettier','--write',str(recruitment_target)],cwd=root,check=True,capture_output=True)

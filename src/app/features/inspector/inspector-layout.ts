@@ -1,3 +1,5 @@
+import { PageNavigation } from '../../core/navigation/page-navigation.service';
+import { PageLoading } from '../../shared/layouts/page-loading';
 import { CompanyAccessService } from '../../core/access/company-access.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -11,7 +13,7 @@ import { InspectorService } from './inspector.service';
 
 @Component({
   selector: 'cv-inspector-layout',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, A11yModule],
+  imports: [PageLoading, RouterLink, RouterLinkActive, RouterOutlet, A11yModule],
   styleUrl: './inspector-layout.css',
   template: `
     <a class="skip" href="#inspector-content">Skip to content</a>
@@ -87,7 +89,18 @@ import { InspectorService } from './inspector.service';
           ></a
         >
       </header>
-      <main id="inspector-content" tabindex="-1"><router-outlet /></main>
+      <main id="inspector-content" tabindex="-1">
+        @if (navigationState.localDestination('inspector'); as destination) {
+          <cv-page-loading [url]="destination" />
+        }
+        <div
+          class="inspector-route-content"
+          [hidden]="!!navigationState.localDestination('inspector')"
+          [attr.inert]="navigationState.localDestination('inspector') ? '' : null"
+        >
+          <router-outlet />
+        </div>
+      </main>
       <footer>
         <span>CareVerity · {{ data.store.company()?.name }}</span
         ><span
@@ -99,6 +112,7 @@ import { InspectorService } from './inspector.service';
   `,
 })
 export class InspectorLayout {
+  readonly navigationState = inject(PageNavigation);
   readonly auth = inject(AuthService);
   readonly data = inject(InspectorService);
   readonly router = inject(Router);

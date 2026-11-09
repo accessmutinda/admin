@@ -281,3 +281,10 @@ footer {
     padding: 0;
   }
 }
+
+.inspector-route-content {
+  display: contents;
+}
+.inspector-route-content[hidden] {
+  display: none !important;
+}
