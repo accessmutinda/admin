@@ -1,3 +1,5 @@
+import { Skeleton } from '../../../shared/ui/skeleton';
+import { CompanyLoading } from './company-loading';
 import { SetupAreaKey } from './companies-api.models';
 import { CompaniesApiService } from './companies-api.service';
 import { QuickActions } from '../shared/quick-actions';
@@ -17,7 +19,7 @@ import {
 @Component({
   selector: 'cv-companies',
   host: { class: 'module-page companies-page' },
-  imports: [FormsModule, RouterLink, QuickActions],
+  imports: [Skeleton, CompanyLoading, FormsModule, RouterLink, QuickActions],
   templateUrl: './companies.html',
 })
 export class Companies {
@@ -41,9 +43,7 @@ export class Companies {
   protected readonly preview = computed(() => this.filtered().slice(0, 5));
   protected readonly completion = companyCompletion;
   protected readonly modifiedAt = companyModifiedAt;
-  protected readonly statsReady = computed(
-    () => this.api.loaded() && !this.api.loading() && !this.api.error(),
-  );
+  protected readonly statsReady = computed(() => this.api.loaded() && !this.api.error());
   protected readonly total = computed(() =>
     this.statsReady()
       ? (this.api.overview()?.authorised_total ?? this.store.companies().length)

@@ -1,4 +1,15 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Skeleton } from '../../../shared/ui/skeleton';
+import { CompanyLoading } from './company-loading';
+import { CompaniesApiService } from './companies-api.service';
+import {
+  Component,
+  HostListener,
+  computed,
+  effect,
+  untracked,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
@@ -23,11 +34,12 @@ import {
 @Component({
   selector: 'cv-company-branding',
   host: { class: 'module-page companies-page company-profile-page company-branding-page' },
-  imports: [FormsModule, RouterLink, MatSelectModule, CvSelect],
+  imports: [Skeleton, CompanyLoading, FormsModule, RouterLink, MatSelectModule, CvSelect],
   templateUrl: './company-branding.html',
 })
 export class CompanyBrandingPage {
   protected readonly store = inject(ManagementStore);
+  protected readonly dataApi = inject(CompaniesApiService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
@@ -94,6 +106,18 @@ export class CompanyBrandingPage {
       accept: 'image/png,image/x-icon,image/vnd.microsoft.icon,.ico',
     },
   ];
+  constructor() {
+    let hydrated = '';
+    effect(() => {
+      const company = this.company();
+      if (!company || hydrated === company.id) return;
+      hydrated = company.id;
+      untracked(() => {
+        this.draft = initialCompanyBranding(company);
+        this.baseline = JSON.stringify(this.draft);
+      });
+    });
+  }
   protected setTab(key: BrandingTab): void {
     this.tab.set(key);
     this.preview.set(key === 'emails' ? 'email' : key === 'documents' ? 'document' : 'login');

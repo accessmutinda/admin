@@ -1,25 +1,30 @@
+import { CompanyLoading } from './company-loading';
+import { CompaniesApiService } from './companies-api.service';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, effect, untracked, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Company, MODULES, ManagementStore } from '../shared/management.store';
 import { ToastService } from '../../../shared/ui/toast.service';
 @Component({
   selector: 'cv-company-editor',
-  imports: [MatSelectModule, CvSelect, FormsModule, RouterLink],
+  imports: [CompanyLoading, MatSelectModule, CvSelect, FormsModule, RouterLink],
   templateUrl: './company-editor.html',
 })
 export class CompanyEditor {
   protected readonly store = inject(ManagementStore);
+  protected readonly dataApi = inject(CompaniesApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   protected readonly isNew = this.route.snapshot.paramMap.get('id') === null;
-  protected readonly existing = this.store
-    .companies()
-    .find((c) => c.id === this.route.snapshot.paramMap.get('id'));
-  protected readonly notFound = !this.isNew && !this.existing;
+  protected get existing() {
+    return this.store.companies().find((c) => c.id === this.route.snapshot.paramMap.get('id'));
+  }
+  protected get notFound() {
+    return !this.isNew && !this.existing;
+  }
   protected readonly steps = ['Company details', 'Branding', 'Modules', 'Review', 'Complete'];
   protected readonly modules = MODULES;
   protected readonly stepIcons = ['domain', 'palette', 'widgets', 'fact_check', 'celebration'];
@@ -99,6 +104,15 @@ export class CompanyEditor {
         modules: ['Care delivery', 'People & HR', 'Training academy'],
       };
   constructor() {
+    let hydrated = !!this.existing;
+    effect(() => {
+      const company = this.existing;
+      if (!company || hydrated) return;
+      hydrated = true;
+      untracked(() => {
+        this.company = structuredClone(company);
+      });
+    });
     if (!this.isNew && this.existing && (this.step() === 1 || this.step() === 2)) {
       this.router.navigate(
         ['/manage/companies', this.existing?.id, this.step() === 1 ? 'branding' : 'modules'],
@@ -141,6 +155,7 @@ export class CompanyEditor {
     this.step.update((v) => v + 1);
   }
   protected hasChanges(): boolean {
+    if (this.dataApi.loading() && !this.dataApi.loaded()) return false;
     return (
       JSON.stringify(this.company) !==
       JSON.stringify(this.store.companies().find((c) => c.id === this.company.id))

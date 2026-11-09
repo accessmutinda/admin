@@ -1,3 +1,5 @@
+import { CompanyLoading } from '../../companies/company-loading';
+import { CompaniesApiService } from '../../companies/companies-api.service';
 import { effectiveMfa } from '../../../../core/auth/mfa-policy';
 import { PAYROLL_ACTIONS, payrollDefaults, PayrollAction } from '../../payroll/payroll.models';
 import { ROTA_ACTIONS, rotaDefaults, RotaAction } from '../../rota/rota.models';
@@ -30,6 +32,7 @@ import { ManagementRole } from '../../shared/role-pill';
 @Component({
   selector: 'cv-users-access',
   imports: [
+    CompanyLoading,
     MatSelectModule,
     CvSelect,
     ManagementRole,
@@ -43,6 +46,7 @@ import { ManagementRole } from '../../shared/role-pill';
 })
 export class UsersAccess {
   protected readonly store = inject(ManagementStore);
+  protected readonly dataApi = inject(CompaniesApiService);
   private readonly toast = inject(ToastService);
   private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);

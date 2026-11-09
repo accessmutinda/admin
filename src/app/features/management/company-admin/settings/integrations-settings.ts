@@ -1,3 +1,5 @@
+import { CompanyLoading } from '../../companies/company-loading';
+import { CompaniesApiService } from '../../companies/companies-api.service';
 import {
   Component,
   computed,
@@ -16,12 +18,13 @@ import { companyModifiedAt } from '../../companies/company-profile.models';
 @Component({
   selector: 'cv-integrations-settings',
   host: { class: 'module-page companies-page integrations-page' },
-  imports: [FormsModule, RouterLink],
+  imports: [CompanyLoading, FormsModule, RouterLink],
   templateUrl: './integrations-settings.html',
   styleUrl: './integrations-settings.css',
 })
 export class IntegrationsSettings {
   protected readonly store = inject(ManagementStore);
+  protected readonly dataApi = inject(CompaniesApiService);
   private readonly toast = inject(ToastService);
   protected readonly company = this.store.company;
   protected readonly modifiedAt = companyModifiedAt;

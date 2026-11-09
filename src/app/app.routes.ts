@@ -18,9 +18,9 @@ const companyDataGuard = (
     return true;
   const context = inject(EnvironmentInjector);
   return import('./features/management/companies/companies-api.service').then((m) =>
-    runInInjectionContext(context, async () => {
+    runInInjectionContext(context, () => {
       const api = inject(m.CompaniesApiService);
-      await api.ensureLoaded();
+      const loaded = api.ensureLoaded();
       const id = route.paramMap.get('id');
       if (
         ['companies/:id', 'companies/:id/compliance', 'companies/:id/contacts'].includes(
@@ -28,7 +28,7 @@ const companyDataGuard = (
         ) &&
         id
       )
-        await api.loadDetail(id);
+        void loaded.then(() => api.loadDetail(id));
       return true;
     }),
   );

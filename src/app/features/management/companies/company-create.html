@@ -13,7 +13,9 @@
     Companies</a
   >
 </div>
-@if (invalidSource) {
+@if (sourceLoading()) {
+  <cv-company-loading view="create" />
+} @else if (invalidSource) {
   <section class="co-surface cn-panel">
     <h2>Setup source not found</h2>
     <p>
@@ -635,6 +637,9 @@
         <button type="button" class="cn-button cn-outline" (click)="saveDraft()">
           <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Draft</button
         ><button type="submit" class="cn-button cn-primary" [disabled]="saving()">
+          @if (saving()) {
+            <cv-skeleton sizeClass="h-3 w-8 !bg-white/30" />
+          }
           {{ saving() ? 'Creating…' : step() === 4 ? 'Create Company' : 'Continue'
           }}<span class="material-symbols-outlined" aria-hidden="true">{{
             step() === 4 ? 'add_business' : 'arrow_forward'

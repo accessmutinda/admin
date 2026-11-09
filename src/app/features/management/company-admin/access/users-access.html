@@ -7,7 +7,15 @@
   <h1>Users &amp; Role Permissions</h1>
   <p>Manage company users and configure the permissions for each role.</p>
 </div>
-@if (company(); as current) {
+@if (dataApi.loading() && !dataApi.loaded()) {
+  <cv-company-loading [company]="company()" view="access" heading="" />
+} @else if (dataApi.error()) {
+  <section class="co-surface cp-not-found" role="alert">
+    <h2>Company information unavailable</h2>
+    <p>{{ dataApi.error() }}</p>
+    <button type="button" class="cp-button" (click)="dataApi.load()">Retry</button>
+  </section>
+} @else if (company(); as current) {
   <section class="co-summary co-surface" aria-label="Current company overview">
     <div class="co-company-image" [style.background]="current.logo ? '#eef7fa' : null">
       @if (current.logo) {

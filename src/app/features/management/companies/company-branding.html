@@ -1,7 +1,19 @@
 <nav class="co-breadcrumb" aria-label="Breadcrumb">
   <a routerLink="/manage/companies">Companies</a
   ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
-  @if (company(); as current) {
+  @if (dataApi.loading() && !dataApi.loaded()) {
+    <cv-company-loading
+      [company]="company()"
+      view="branding"
+      heading="Branding & Portal Customisation"
+    />
+  } @else if (dataApi.error()) {
+    <section class="co-surface cp-not-found" role="alert">
+      <h2>Company information unavailable</h2>
+      <p>{{ dataApi.error() }}</p>
+      <button type="button" class="cp-button" (click)="dataApi.load()">Retry</button>
+    </section>
+  } @else if (company(); as current) {
     <a [routerLink]="['/manage/companies', current.id]">{{ current.name }}</a
     ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
   }
@@ -152,7 +164,9 @@
               <p class="cp-field-error" role="alert">{{ assetError() }}</p>
             }
             @if (uploading()) {
-              <p class="cb-note" role="status">Reading image…</p>
+              <div class="cb-note" role="status" aria-label="Reading image">
+                <cv-skeleton sizeClass="h-3 w-40" />
+              </div>
             }
           </section>
           <section class="co-surface cb-panel" aria-labelledby="cb-colours-title">

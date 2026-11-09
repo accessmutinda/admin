@@ -1,3 +1,5 @@
+import { Skeleton } from '../../../shared/ui/skeleton';
+import { CompanyLoading } from './company-loading';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CompanyContactsApiService } from './company-contacts-api.service';
 import { CompaniesApiService } from './companies-api.service';
@@ -46,7 +48,7 @@ import {
 @Component({
   selector: 'cv-company-contacts',
   host: { class: 'module-page companies-page company-profile-page company-contacts-page' },
-  imports: [FormsModule, RouterLink, MatDialogModule, MatMenuModule],
+  imports: [Skeleton, CompanyLoading, FormsModule, RouterLink, MatDialogModule, MatMenuModule],
   templateUrl: './company-contacts.html',
   providers: [CompanyContactsApiService],
 })
@@ -68,6 +70,15 @@ export class CompanyContactsPage {
     return this.params().get('id') ?? '';
   }
   protected readonly loading = signal(true);
+  protected readonly dataPending = computed(
+    () =>
+      this.loading() ||
+      this.companiesApi.detailLoading(this.id) ||
+      (this.companiesApi.loading() && !this.companiesApi.loaded()),
+  );
+  protected readonly dataError = computed(
+    () => this.loadError() || this.companiesApi.error() || this.companiesApi.detailError(this.id),
+  );
   protected readonly loadError = signal('');
   protected readonly saving = signal(false);
   protected readonly busy = computed(() => this.loading() || this.saving());
@@ -112,6 +123,8 @@ export class CompanyContactsPage {
     this.baseline = JSON.stringify(this.draft);
     this.checked.set({});
     try {
+      if (this.companiesApi.error()) await this.companiesApi.load();
+      if (this.companiesApi.detailError(id)) await this.companiesApi.loadDetail(id);
       const saved = await this.api.load(id);
       if (generation !== this.loadGeneration || this.destroy.destroyed || id !== this.id) return;
       this.draft = saved;
@@ -318,7 +331,7 @@ export class CompanyContactsPage {
     return this.baseline !== JSON.stringify(this.draft);
   }
   canLeave(): boolean {
-    if (!this.auth.canAccessCompany(this.id)) return true;
+    if (!this.auth.canAccessCompany(this.id) || this.loading()) return true;
     if (this.busy()) return false;
     return (
       !this.hasChanges() ||

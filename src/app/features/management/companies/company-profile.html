@@ -6,7 +6,9 @@
   }
   <span aria-current="page">General Information</span>
 </nav>
-@if (profileError()) {
+@if (profilePending()) {
+  <cv-company-loading [company]="company()" view="profile" heading="General Information" />
+} @else if (profileError()) {
   <section class="co-surface cp-not-found" role="alert">
     <h1>Company details unavailable</h1>
     <p>{{ profileError() }}</p>

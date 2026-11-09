@@ -43,6 +43,7 @@ const detail: CompanyDetail = {
 describe('Company profile from the API', () => {
   const details = signal<Record<string, CompanyDetail>>({});
   const error = signal('');
+  const pending = signal(false);
   const params = new BehaviorSubject(convertToParamMap({ id: detail.id }));
   let queryEdit = false;
   let loadDetail: ReturnType<typeof vi.fn>;
@@ -50,6 +51,7 @@ describe('Company profile from the API', () => {
     localStorage.clear();
     details.set({ [detail.id]: structuredClone(detail) });
     error.set('');
+    pending.set(false);
     params.next(convertToParamMap({ id: detail.id }));
     queryEdit = false;
     loadDetail = vi.fn(async () => {
@@ -90,6 +92,10 @@ describe('Company profile from the API', () => {
               { id: detail.id, name: 'Summary name', code: 'STORED', lifecycle: 'active' },
             ],
             details,
+            loading: () => false,
+            loaded: () => true,
+            error: () => '',
+            detailLoading: pending,
             detailError: () => error(),
             loadDetail,
           },
@@ -141,6 +147,24 @@ describe('Company profile from the API', () => {
       root.querySelector('#profile-headOfficeAddress .cp-managed-address')?.textContent,
     ).toContain('10 Stored Road');
   });
+  it('shows a profile skeleton until the detail arrives, then hydrates direct edit fields', async () => {
+    pending.set(true);
+    details.set({});
+    queryEdit = true;
+    const fixture = create();
+    expect(fixture.nativeElement.querySelector('cv-company-loading')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('form')).toBeNull();
+    details.set({ [detail.id]: detail });
+    pending.set(false);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('cv-company-loading')).toBeNull();
+    expect((fixture.nativeElement.querySelector('#input-name') as HTMLInputElement).value).toBe(
+      'Stored Care',
+    );
+  });
+
   it('keeps genuinely absent values empty instead of substituting sample data', async () => {
     details.set({
       [detail.id]: {

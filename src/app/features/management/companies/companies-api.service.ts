@@ -52,6 +52,12 @@ export class CompaniesApiService {
     context: string;
     records: Record<string, string>;
   } | null>(null);
+  private readonly detailPending = signal<{ context: string; id: string; request: number } | null>(
+    null,
+  );
+  detailLoading(id: string): boolean {
+    return this.detailPending()?.context === this.context() && this.detailPending()?.id === id;
+  }
   private detailRequest = 0;
   readonly details = computed(() =>
     this.detailSnapshot()?.context === this.context() ? this.detailSnapshot()!.records : {},
@@ -66,6 +72,7 @@ export class CompaniesApiService {
     const context = this.context();
     const request = ++this.detailRequest;
     if (!context || !this.auth.canAccessCompany(id)) return;
+    this.detailPending.set({ context, id, request });
     this.detailFailures.set({ context, records: {} });
     const records = { ...this.details() };
     if (!retainExisting) delete records[id];
@@ -94,6 +101,8 @@ export class CompaniesApiService {
               : 'Unable to load company details. Please retry.',
         },
       });
+    } finally {
+      if (this.detailPending()?.request === request) this.detailPending.set(null);
     }
   }
 

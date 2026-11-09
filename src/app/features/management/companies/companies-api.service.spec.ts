@@ -121,6 +121,17 @@ describe('Companies API service', () => {
     expect(service.details()).toEqual({});
   });
 
+  it('exposes per-company detail loading until the request completes', async () => {
+    let complete!: (value: unknown) => void;
+    request.mockReturnValue(new Promise((resolve) => (complete = resolve)));
+    const loading = service.loadDetail(company.id);
+    expect(service.detailLoading(company.id)).toBe(true);
+    expect(service.detailLoading('other-company')).toBe(false);
+    complete({ ...company, version: 1, etag: '"v1"' });
+    await loading;
+    expect(service.detailLoading(company.id)).toBe(false);
+  });
+
   it('uses the assigned-company listing for a company account', async () => {
     role.set('CA');
     await service.load();

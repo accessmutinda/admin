@@ -1,7 +1,9 @@
 <a routerLink="/manage/companies" class="back-link"
   ><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Company directory</a
 >
-@if (notFound) {
+@if (dataApi.loading() && !dataApi.loaded()) {
+  <cv-company-loading view="profile" heading="Company settings" />
+} @else if (notFound) {
   <div class="empty-state">
     <h1>Company not found</h1>
     <p>Return to the directory to choose a company.</p>

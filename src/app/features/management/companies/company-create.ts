@@ -1,5 +1,7 @@
+import { Skeleton } from '../../../shared/ui/skeleton';
+import { CompanyLoading } from './company-loading';
 import { CompaniesApiService } from './companies-api.service';
-import { Component, inject, signal, HostListener } from '@angular/core';
+import { Component, effect, untracked, inject, signal, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
@@ -29,7 +31,7 @@ interface SavedCompanyDraft {
 @Component({
   selector: 'cv-company-create',
   host: { class: 'module-page module-create companies-page company-create-page' },
-  imports: [FormsModule, RouterLink, MatSelectModule, CvSelect],
+  imports: [Skeleton, CompanyLoading, FormsModule, RouterLink, MatSelectModule, CvSelect],
   templateUrl: './company-create.html',
 })
 export class CompanyCreatePage {
@@ -40,9 +42,15 @@ export class CompanyCreatePage {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly duplicateId = this.route.snapshot.queryParamMap.get('duplicate');
-  private readonly source = this.store.companies().find((c) => c.id === this.duplicateId);
+  private get source() {
+    return this.store.companies().find((c) => c.id === this.duplicateId);
+  }
   protected readonly duplicating = !!this.duplicateId;
-  protected readonly invalidSource = this.duplicating && !this.source;
+  protected get invalidSource() {
+    return this.duplicating && !this.source;
+  }
+  protected readonly sourceLoading = () =>
+    this.duplicating && this.companiesApi.loading() && !this.companiesApi.loaded();
   protected draft = newCompanySetup(
     this.source,
     this.source
@@ -80,7 +88,24 @@ export class CompanyCreatePage {
     { key: 'country', label: 'Country' },
   ] as const;
   constructor() {
+    let hydrated = !!this.source;
+    effect(() => {
+      const source = this.source;
+      if (!this.duplicating || !source || hydrated) return;
+      hydrated = true;
+      untracked(() => {
+        this.draft = newCompanySetup(source, this.store.records()[source.id]);
+        this.baseline = JSON.stringify(this.draft);
+        this.restoreDraft();
+      });
+    });
     if (this.invalidSource) return;
+    this.restoreDraft();
+  }
+  private draftRestored = false;
+  private restoreDraft(): void {
+    if (this.draftRestored) return;
+    this.draftRestored = true;
     try {
       const saved = JSON.parse(
         localStorage.getItem(this.key) ?? 'null',

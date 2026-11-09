@@ -1,3 +1,5 @@
+import { CompanyLoading } from './company-loading';
+import { Skeleton } from '../../../shared/ui/skeleton';
 import { CompaniesApiService } from './companies-api.service';
 import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import { Component, computed, inject, signal } from '@angular/core';
@@ -20,6 +22,8 @@ type FilterKey = 'status' | 'region' | 'service' | 'plan' | 'completion' | 'upda
   selector: 'cv-company-directory',
   host: { class: 'module-page companies-page company-directory-page' },
   imports: [
+    Skeleton,
+    CompanyLoading,
     CardTonePipe,
     FormsModule,
     RouterLink,

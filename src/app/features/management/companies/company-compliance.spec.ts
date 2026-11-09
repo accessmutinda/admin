@@ -73,6 +73,11 @@ describe('Registration and compliance API page', () => {
         {
           provide: CompaniesApiService,
           useValue: {
+            loading: () => false,
+            loaded: () => true,
+            detailLoading: () => false,
+            detailError: () => '',
+            error: () => '',
             load: vi.fn().mockResolvedValue(undefined),
             loadDetail: vi.fn().mockResolvedValue(undefined),
           },

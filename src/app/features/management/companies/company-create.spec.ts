@@ -36,7 +36,12 @@ describe('Original five-step company creation with API submission', () => {
         provideRouter([]),
         {
           provide: CompaniesApiService,
-          useValue: { create, load: vi.fn().mockResolvedValue(undefined) },
+          useValue: {
+            loading: () => false,
+            loaded: () => true,
+            create,
+            load: vi.fn().mockResolvedValue(undefined),
+          },
         },
         {
           provide: AuthService,

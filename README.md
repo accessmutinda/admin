@@ -29,6 +29,15 @@ Authentication and account security import no sample records. Security history, 
 
 ## Companies API
 
+Authentication and company pages show their branded layouts immediately and use
+skeletons for complete pending cards, including headings, labels and values. The
+ready navigation menu remains visible while page content loads. Existing values
+remain visible during background refresh. Placeholders are non-interactive,
+announce busy regions and respect reduced-motion preferences. Startup defers
+initial routing until session restoration establishes authority while allowing
+the shell to render; company data requests then run without blocking page
+activation. Permission checks remain in the routing boundary.
+
 Contact Information loads saved channels, all address records and key contacts
 from the backend aggregate. Save Changes atomically applies edits, additions and
 confirmed removals using version and idempotency headers. Partial setup can be

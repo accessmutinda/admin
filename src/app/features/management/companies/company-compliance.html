@@ -7,13 +7,11 @@
   <h1>Registration &amp; Compliance</h1>
   <p>Manage registration details, supporting documents and responsible owners.</p>
 </div>
-@if (loading()) {
-  <section class="co-surface rc-panel" role="status">
-    <p>Loading saved registration and compliance information…</p>
-  </section>
-} @else if (loadError()) {
+@if (dataPending()) {
+  <cv-company-loading [company]="company()" view="compliance" />
+} @else if (dataError()) {
   <section class="co-surface rc-panel" role="alert">
-    <p>{{ loadError() }}</p>
+    <p>{{ dataError() }}</p>
     <button type="button" class="rc-button rc-primary" (click)="load()">Retry</button>
   </section>
 } @else if (company(); as current) {
@@ -233,8 +231,12 @@
                   (click)="fileInput.click()"
                   [disabled]="busy()"
                 >
-                  <span class="material-symbols-outlined" aria-hidden="true">cloud_upload</span
-                  >{{ uploading() === type.key ? 'Loading file…' : 'Click to upload' }}</button
+                  <span class="material-symbols-outlined" aria-hidden="true">cloud_upload</span>
+                  @if (uploading() === type.key) {
+                    <cv-skeleton sizeClass="h-3 w-24" />
+                  } @else {
+                    Click to upload
+                  }</button
                 ><small>Not uploaded</small>
               }
               <input
@@ -374,7 +376,12 @@
           <span class="material-symbols-outlined" aria-hidden="true">fact_check</span>Review
           Compliance</button
         ><button type="submit" class="rc-button rc-primary" [disabled]="busy()">
-          <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Changes
+          @if (saving()) {
+            <cv-skeleton sizeClass="h-3 w-8 !bg-white/30" />
+          } @else {
+            <span class="material-symbols-outlined" aria-hidden="true">save</span>
+          }
+          Save Changes
         </button>
       </div>
     </div>

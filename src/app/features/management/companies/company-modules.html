@@ -1,7 +1,19 @@
 <nav class="co-breadcrumb" aria-label="Breadcrumb">
   <a routerLink="/manage/companies">Companies</a
   ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
-  @if (company(); as current) {
+  @if (dataApi.loading() && !dataApi.loaded()) {
+    <cv-company-loading
+      [company]="company()"
+      view="modules"
+      heading="Modules, Subscription & Feature Access"
+    />
+  } @else if (dataApi.error()) {
+    <section class="co-surface cp-not-found" role="alert">
+      <h2>Company information unavailable</h2>
+      <p>{{ dataApi.error() }}</p>
+      <button type="button" class="cp-button" (click)="dataApi.load()">Retry</button>
+    </section>
+  } @else if (company(); as current) {
     <a [routerLink]="['/manage/companies', current.id]">{{ current.name }}</a
     ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
   }
@@ -194,9 +206,7 @@
                 <span class="material-symbols-outlined" aria-hidden="true">{{ module.icon }}</span>
                 <div>
                   <h2>
-                    {{
-                      module.name === 'Training academy' ? 'CareVerity Academy' : module.name
-                    }}
+                    {{ module.name === 'Training academy' ? 'CareVerity Academy' : module.name }}
                     Configuration
                   </h2>
                   <p>{{ module.description }}</p>

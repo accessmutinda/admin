@@ -1,3 +1,5 @@
+import { CompanyLoading } from './company-loading';
+import { CompaniesApiService } from './companies-api.service';
 import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import {
   Component,
@@ -42,6 +44,7 @@ import {
     '[attr.data-section]': 'section()',
   },
   imports: [
+    CompanyLoading,
     CardTonePipe,
     FormsModule,
     RouterLink,
@@ -58,6 +61,7 @@ import {
 })
 export class CompanyModulesPage {
   protected readonly store = inject(ManagementStore);
+  protected readonly dataApi = inject(CompaniesApiService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly dialog = inject(MatDialog);
@@ -337,10 +341,11 @@ export class CompanyModulesPage {
     this.invoiceForm.set(true);
   }
   constructor() {
-    let currentId = this.id;
+    let currentId = this.company() ? this.id : '';
     effect(() => {
       const nextId = this.params().get('id') ?? '';
-      if (nextId === currentId) return;
+      const company = this.company();
+      if (!company || nextId === currentId) return;
       currentId = nextId;
       untracked(() => {
         this.draft = initialSubscription(this.company());

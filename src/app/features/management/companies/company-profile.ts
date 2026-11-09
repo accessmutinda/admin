@@ -1,3 +1,4 @@
+import { CompanyLoading } from './company-loading';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CompaniesApiService } from './companies-api.service';
 import { complianceChecks, complianceComplete, emptyCompliance } from './company-compliance.models';
@@ -39,7 +40,7 @@ interface ProfileField {
 @Component({
   selector: 'cv-company-profile',
   host: { class: 'module-page companies-page company-profile-page' },
-  imports: [FormsModule, RouterLink, MatSelectModule, CvSelect],
+  imports: [CompanyLoading, FormsModule, RouterLink, MatSelectModule, CvSelect],
   templateUrl: './company-profile.html',
 })
 export class CompanyProfile {
@@ -54,7 +55,12 @@ export class CompanyProfile {
   private get id(): string {
     return this.routeParams().get('id') ?? '';
   }
-  protected readonly profileError = computed(() => this.api.detailError(this.id));
+  protected readonly profileError = computed(
+    () => this.api.detailError(this.id) || this.api.error(),
+  );
+  protected readonly profilePending = computed(
+    () => (this.api.loading() && !this.api.loaded()) || this.api.detailLoading(this.id),
+  );
   protected readonly company = computed(() => this.store.companies().find((c) => c.id === this.id));
   protected readonly editing = signal(this.route.snapshot.queryParamMap.get('edit') === 'true');
   protected readonly submitted = signal(false);
@@ -222,7 +228,7 @@ export class CompanyProfile {
     let previousId = '';
     effect(() => {
       const company = this.company();
-      if (!company || previousId === this.id) return;
+      if (!company || this.profilePending() || previousId === this.id) return;
       previousId = this.id;
       untracked(() => {
         this.draft = this.newDraft();
@@ -234,6 +240,7 @@ export class CompanyProfile {
     });
   }
   protected async retryProfile(): Promise<void> {
+    if (this.api.error()) await this.api.load();
     await this.api.loadDetail(this.id);
     if (!this.api.detailError(this.id)) this.draft = this.newDraft();
   }
@@ -311,6 +318,7 @@ export class CompanyProfile {
     this.draftSaved.set(false);
   }
   protected hasChanges(): boolean {
+    if (this.profilePending()) return false;
     return this.editing() && JSON.stringify(this.draft) !== JSON.stringify(this.newDraft());
   }
   canLeave(): boolean {

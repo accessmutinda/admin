@@ -1,3 +1,5 @@
+import { Skeleton } from '../../../shared/ui/skeleton';
+import { CompanyLoading } from './company-loading';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CompanyComplianceApiService } from './company-compliance-api.service';
 import { CompaniesApiService } from './companies-api.service';
@@ -36,7 +38,7 @@ import {
 @Component({
   selector: 'cv-company-compliance',
   host: { class: 'module-page companies-page company-profile-page company-compliance-page' },
-  imports: [FormsModule, RouterLink, MatSelectModule, CvSelect],
+  imports: [Skeleton, CompanyLoading, FormsModule, RouterLink, MatSelectModule, CvSelect],
   templateUrl: './company-compliance.html',
   providers: [CompanyComplianceApiService],
 })
@@ -59,6 +61,15 @@ export class CompanyCompliancePage {
   protected draft = emptyCompliance(this.company());
   private baseline = JSON.stringify(this.draft);
   protected readonly loading = signal(true);
+  protected readonly dataPending = computed(
+    () =>
+      this.loading() ||
+      this.companiesApi.detailLoading(this.id) ||
+      (this.companiesApi.loading() && !this.companiesApi.loaded()),
+  );
+  protected readonly dataError = computed(
+    () => this.loadError() || this.companiesApi.error() || this.companiesApi.detailError(this.id),
+  );
   protected readonly loadError = signal('');
   protected readonly saving = signal(false);
   protected readonly busy = computed(() => this.loading() || this.saving() || !!this.uploading());
@@ -94,6 +105,8 @@ export class CompanyCompliancePage {
     this.draft = emptyCompliance();
     this.baseline = JSON.stringify(this.draft);
     try {
+      if (this.companiesApi.error()) await this.companiesApi.load();
+      if (this.companiesApi.detailError(id)) await this.companiesApi.loadDetail(id);
       const saved = await this.api.load(id);
       if (generation !== this.loadGeneration || this.destroy.destroyed || id !== this.id) return;
       this.draft = saved;
@@ -220,7 +233,7 @@ export class CompanyCompliancePage {
     return JSON.stringify(this.draft) !== this.baseline;
   }
   canLeave(): boolean {
-    if (!this.auth.canAccessCompany(this.id)) return true;
+    if (!this.auth.canAccessCompany(this.id) || this.loading()) return true;
     if (this.busy()) return false;
     return (
       !this.hasChanges() || window.confirm('Discard unsaved registration and compliance changes?')

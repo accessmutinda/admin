@@ -1,3 +1,5 @@
+import { CompanyLoading } from '../companies/company-loading';
+import { CompaniesApiService } from '../companies/companies-api.service';
 import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -25,6 +27,7 @@ type LocationSort =
   selector: 'cv-locations',
   host: { class: 'module-page companies-page locations-page' },
   imports: [
+    CompanyLoading,
     CardTonePipe,
     FormsModule,
     RouterLink,
@@ -38,6 +41,7 @@ type LocationSort =
 })
 export class LocationsPage {
   protected readonly store = inject(ManagementStore);
+  protected readonly dataApi = inject(CompaniesApiService);
   private readonly dialog = inject(MatDialog);
   private readonly service = inject(LocationsService);
   private readonly toast = inject(ToastService);

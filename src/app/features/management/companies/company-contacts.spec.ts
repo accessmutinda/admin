@@ -78,6 +78,11 @@ describe('Contact information from the backend', () => {
         {
           provide: CompaniesApiService,
           useValue: {
+            loading: () => false,
+            loaded: () => true,
+            detailLoading: () => false,
+            detailError: () => '',
+            error: () => '',
             load: vi.fn().mockResolvedValue(undefined),
             loadDetail: vi.fn().mockResolvedValue(undefined),
           },
@@ -114,6 +119,23 @@ describe('Contact information from the backend', () => {
     ).toBe(true);
     expect(root.textContent).not.toContain('Details checked locally');
   }, 30000);
+  it('keeps the contact layout visible as skeletons while its response is pending', async () => {
+    let complete!: (value: CompanyContacts) => void;
+    service.load.mockReturnValue(new Promise((resolve) => (complete = resolve)));
+    const fixture = TestBed.createComponent(CompanyContactsPage);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('cv-company-loading')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).not.toContain('Primary Contact Details');
+    expect(fixture.nativeElement.querySelector('form')).toBeNull();
+    complete(structuredClone(stored));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('cv-company-loading')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Stored Manager');
+  });
+
   it('saves partial setup and retains edits after a failed save', async () => {
     const fixture = await create();
     const page = fixture.componentInstance as any;
