@@ -1,3 +1,5 @@
+import { Skeleton } from '../../../shared/ui/skeleton';
+import { CompanyModulesLoading } from './company-modules-loading';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -13,7 +15,7 @@ import { companyModifiedAt } from './company-profile.models';
 @Component({
   selector: 'cv-company-modules',
   host: { class: 'module-page companies-page company-profile-page company-modules-page' },
-  imports: [RouterLink],
+  imports: [RouterLink, Skeleton, CompanyModulesLoading],
   templateUrl: './company-modules.html',
 })
 export class CompanyModulesPage {
@@ -31,7 +33,7 @@ export class CompanyModulesPage {
     this.store.companies().find((c) => c.id === this.id()),
   );
   protected readonly state = signal<ModuleConfiguration | null>(null);
-  protected readonly loading = signal(false);
+  protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly error = signal('');
   protected readonly saved = signal(false);
@@ -69,6 +71,95 @@ export class CompanyModulesPage {
     family_portal: 'family_restroom',
     inspector_portal: 'fact_check',
   };
+  private readonly submoduleIcons: Record<string, Record<string, string>> = {
+    care: {
+      records: 'folder_shared',
+      planning: 'assignment',
+      risks: 'health_and_safety',
+      medication: 'pill',
+      rostering: 'calendar_month',
+      ecm: 'monitor_heart',
+      recording: 'clinical_notes',
+      communications: 'forum',
+      documents: 'description',
+      incidents: 'report',
+      family: 'family_restroom',
+    },
+    people: {
+      recruitment: 'person_search',
+      onboarding: 'person_add',
+      records: 'badge',
+      compliance: 'verified_user',
+      leave: 'event_busy',
+      performance: 'trending_up',
+      documents: 'folder',
+    },
+    academy: {
+      courses: 'menu_book',
+      assessments: 'quiz',
+      assignments: 'assignment_ind',
+      results: 'fact_check',
+      certificates: 'workspace_premium',
+      learner: 'school',
+      reports: 'bar_chart',
+      governance: 'admin_panel_settings',
+    },
+    quality: {
+      supervision: 'groups',
+      assessments: 'checklist',
+      actions: 'task_alt',
+      scorecards: 'query_stats',
+      dashboards: 'dashboard',
+      inspection: 'fact_check',
+      workforce: 'groups',
+      reports: 'assessment',
+    },
+    finance: {
+      payroll: 'payments',
+      timesheets: 'schedule',
+      clients: 'receipt_long',
+      suppliers: 'inventory_2',
+      overview: 'account_balance_wallet',
+      settings: 'settings',
+    },
+    reports: { reporting: 'bar_chart', exports: 'download', insights: 'insights' },
+    staff_portal: {
+      dashboard: 'dashboard',
+      tasks: 'task_alt',
+      journal: 'forum',
+      concerns: 'health_and_safety',
+      clients: 'folder_shared',
+      oversight: 'monitoring',
+    },
+    family_portal: {
+      care: 'favorite',
+      visits: 'calendar_month',
+      medication: 'pill',
+      documents: 'description',
+      messages: 'forum',
+      invoices: 'receipt_long',
+    },
+    inspector_portal: {
+      provider: 'domain',
+      clients: 'folder_shared',
+      staff: 'groups',
+      medication: 'pill',
+      incidents: 'report',
+      quality: 'verified_user',
+      visits: 'calendar_month',
+      reports: 'assessment',
+    },
+  };
+  protected moduleColor(module: ProductModule): string {
+    const index = this.state()?.modules.findIndex((item) => item.code === module.code) ?? 0;
+    return this.colors[Math.max(0, index) % this.colors.length];
+  }
+  protected submoduleIcon(module: string, submodule: string): string {
+    return this.submoduleIcons[module]?.[submodule] ?? this.icons[module] ?? 'widgets';
+  }
+  protected activeSubmoduleCount(module: ProductModule): number {
+    return module.submodules.filter((submodule) => submodule.effective_enabled).length;
+  }
   constructor() {
     effect(() => {
       const id = this.id();

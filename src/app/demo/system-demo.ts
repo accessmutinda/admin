@@ -7,7 +7,6 @@ import {
   type WorkspaceData,
   type Vacancy,
 } from '../features/management/shared/management.store';
-import { seedHrDemo } from '../features/management/people/hr-demo-data';
 import { seedCareDemo } from './care-demo';
 import { seedSystemOperations } from './system-demo-operations';
 import { seedSystemFinance } from './system-demo-finance';
@@ -47,7 +46,7 @@ export function seedSystemDemo(
       },
     };
   }
-  let next = seedHrDemo(seedCareDemo(data, today), today);
+  let next = seedCareDemo(data, today);
   next = seedSystemOperations(next, today, now);
   next = seedSystemFinance(next, today);
   next = seedSystemQuality(next, today);

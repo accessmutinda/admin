@@ -13,9 +13,13 @@
     <p>Choose the modules and features available to this company.</p>
   </div>
   <p class="cm-save-state" role="status">
-    {{
-      saving() ? 'Saving changes…' : saved() ? 'All changes saved' : 'Changes save automatically'
-    }}
+    @if (loading()) {
+      <cv-skeleton sizeClass="h-3 w-36" />
+    } @else {
+      {{
+        saving() ? 'Saving changes…' : saved() ? 'All changes saved' : 'Changes save automatically'
+      }}
+    }
   </p>
 </div>
 @if (company(); as current) {
@@ -68,7 +72,14 @@
         </div>
         <div>
           <span class="material-symbols-outlined" aria-hidden="true">person</span
-          ><span><small>Module access</small>{{ enabledModuleCount() }} modules enabled</span>
+          ><span
+            ><small>Module access</small>
+            @if (loading()) {
+              <cv-skeleton sizeClass="h-3 w-28" />
+            } @else {
+              {{ enabledModuleCount() }} modules enabled
+            }
+          </span>
         </div>
       </div>
     </div>
@@ -83,32 +94,45 @@
   </div>
 }
 @if (loading()) {
-  <section class="co-surface cm-panel" role="status">Loading modules and feature access…</section>
-}
-@if (state(); as configuration) {
+  <cv-company-modules-loading [configuration]="configuring()" [showCompany]="!company()" />
+} @else if (state(); as configuration) {
   <div class="cm-layout cm-modules-only">
     <div class="cm-main">
       @if (configuring()) {
         @if (selected(); as module) {
-          <section class="co-surface cm-panel">
+          <section
+            class="co-surface cm-panel cm-configuration"
+            aria-labelledby="cm-configuration-title"
+          >
             <div class="cm-panel-heading">
-              <span class="material-symbols-outlined" aria-hidden="true">{{
-                icons[module.code]
-              }}</span>
+              <span
+                class="cm-tile cm-configuration-icon material-symbols-outlined"
+                [style.background]="moduleColor(module)"
+                aria-hidden="true"
+                >{{ icons[module.code] }}</span
+              >
               <div>
-                <h2>{{ display(module) }} Configuration</h2>
-                <p>Activate the features this company can use.</p>
+                <h2 id="cm-configuration-title">{{ display(module) }} Configuration</h2>
+                <p>Choose the features available to company users.</p>
               </div>
-              <a class="cm-button" [routerLink]="link()">Back to Modules</a>
+              <a class="cm-button" [routerLink]="link()"
+                ><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to
+                Modules</a
+              >
             </div>
-            <div class="cm-setting-row">
-              <div>
-                <strong>Module access</strong>
+            <div class="cm-configuration-access">
+              <div class="cm-configuration-access-copy">
+                <div class="cm-configuration-access-title">
+                  <strong>Module access</strong
+                  ><span class="cm-badge" [class.cm-neutral]="!module.enabled">{{
+                    module.enabled ? 'Active' : 'Not enabled'
+                  }}</span>
+                </div>
                 <p>
                   {{
                     module.enabled
-                      ? 'Module is active. Configure individual features below.'
-                      : 'Activate this module to enable its features.'
+                      ? 'Configure individual features below. Changes save automatically.'
+                      : 'Enable this module to make its features available. Saved feature selections are retained.'
                   }}
                 </p>
               </div>
@@ -125,33 +149,54 @@
                 <span></span>
               </button>
             </div>
-            <div class="cm-submodule-list">
+            <div class="cm-submodule-heading">
+              <h3 id="cm-submodules-title">Submodules &amp; features</h3>
+              <span
+                >{{ activeSubmoduleCount(module) }} of {{ module.submodules.length }} active</span
+              >
+            </div>
+            <div
+              class="cm-module-grid cm-submodule-grid"
+              role="group"
+              aria-labelledby="cm-submodules-title"
+            >
               @for (sub of module.submodules; track sub.code) {
-                <div class="cm-setting-row">
-                  <div>
-                    <strong>{{ sub.name }}</strong>
-                    <p>{{ sub.description }}</p>
-                    <small>{{
-                      !module.enabled
-                        ? 'Parent module is inactive'
-                        : sub.enabled
-                          ? 'Active'
-                          : 'Inactive'
-                    }}</small>
+                <article class="cm-module cm-submodule-card">
+                  <div class="cm-module-top">
+                    <span
+                      class="cm-tile material-symbols-outlined"
+                      [style.background]="moduleColor(module)"
+                      aria-hidden="true"
+                      >{{ submoduleIcon(module.code, sub.code) }}</span
+                    >
+                    <div>
+                      <h3 [id]="'cm-submodule-' + sub.code">{{ sub.name }}</h3>
+                    </div>
+                    <button
+                      type="button"
+                      class="cm-switch"
+                      role="switch"
+                      [class.on]="sub.effective_enabled"
+                      [attr.aria-checked]="sub.effective_enabled"
+                      [attr.aria-label]="'Enable ' + sub.name"
+                      [attr.aria-describedby]="'cm-submodule-description-' + sub.code"
+                      [disabled]="saving() || !writable() || !module.enabled"
+                      (click)="toggle(module, sub.code)"
+                    >
+                      <span></span>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    class="cm-switch"
-                    role="switch"
-                    [class.on]="sub.effective_enabled"
-                    [attr.aria-checked]="sub.effective_enabled"
-                    [attr.aria-label]="'Enable ' + sub.name"
-                    [disabled]="saving() || !writable() || !module.enabled"
-                    (click)="toggle(module, sub.code)"
-                  >
-                    <span></span>
-                  </button>
-                </div>
+                  <p [id]="'cm-submodule-description-' + sub.code">{{ sub.description }}</p>
+                  <div class="cm-submodule-footer">
+                    <span class="cm-badge" [class.cm-neutral]="!sub.effective_enabled">{{
+                      !module.enabled
+                        ? 'Module inactive'
+                        : sub.effective_enabled
+                          ? 'Active'
+                          : 'Not enabled'
+                    }}</span>
+                  </div>
+                </article>
               }
             </div>
             <div class="cm-callout">

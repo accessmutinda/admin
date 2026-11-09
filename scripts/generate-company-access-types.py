@@ -25,6 +25,9 @@ def render(schema):
         result = " | ".join(json.dumps(value) for value in schema["enum"])
     elif schema.get("type") == "array":
         result = "(" + render(schema["items"]) + ")[]"
+    elif schema.get("type") == "object" and "additionalProperties" in schema and not schema.get("properties"):
+        extra = schema["additionalProperties"]
+        result = "Record<string, " + (render(extra) if isinstance(extra, dict) else "unknown") + ">"
     elif schema.get("type") == "object" or "properties" in schema:
         required = schema.get("required", [])
         result = (
@@ -65,3 +68,10 @@ subprocess.run(
     check=True,
     capture_output=True,
 )
+
+workforce_names = ["WorkforceStaff", "WorkforceSummary", "WorkforcePage"]
+workforce_output = "// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.\n\n"
+workforce_output += "\n\n".join("export type " + name + " = " + render(schemas[name]) + ";" for name in workforce_names) + "\n"
+workforce_target = root / "src/app/features/management/people/workforce.generated.ts"
+workforce_target.write_text(workforce_output)
+subprocess.run(["npx", "prettier", "--write", str(workforce_target)], cwd=root, check=True, capture_output=True)

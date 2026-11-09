@@ -1,20 +1,23 @@
+import { PeopleApiService, DirectoryStaff } from './people-api.service';
+import { Skeleton } from '../../../shared/ui/skeleton';
+import { CompanyUnavailable } from '../shared/company-unavailable';
 import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import { QuickActions } from '../shared/quick-actions';
 import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { CvSelect } from '../../../shared/ui/select';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, effect, untracked, DestroyRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HrService } from './hr.service';
-import { complianceRows } from './hr-queues.models';
-import { checkState, staffRecord, today, DAYS } from './hr.models';
 
 @Component({
   selector: 'cv-hr-workspace',
   host: { class: 'module-page people-page hr-workspace-page' },
   imports: [
+    Skeleton,
+    CompanyUnavailable,
     CardTonePipe,
     QuickActions,
     MatSelectModule,
@@ -28,6 +31,20 @@ import { checkState, staffRecord, today, DAYS } from './hr.models';
 })
 export class HrWorkspace {
   protected readonly hr = inject(HrService);
+  protected readonly api = inject(PeopleApiService);
+  protected readonly company = computed(() => {
+    const value = this.api.summary()?.company;
+    return value
+      ? {
+          ...value,
+          logo:
+            this.hr.store.company()?.id === value.id
+              ? (this.hr.store.company()?.logo ?? null)
+              : null,
+          headOfficeAddress: value.head_office_address,
+        }
+      : null;
+  });
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly params = toSignal(this.route.queryParamMap, {
@@ -47,46 +64,67 @@ export class HrWorkspace {
   protected readonly view = computed(() => this.params().get('view') ?? 'table');
   protected readonly sort = computed(() => this.params().get('sort') ?? 'az');
   protected readonly page = computed(() => Math.max(1, Number(this.params().get('page')) || 1));
-  protected readonly branches = computed(() =>
-    [...new Set(this.hr.staff().map((p) => p.location))].sort(),
-  );
-  protected readonly roles = computed(() =>
-    [...new Set(this.hr.staff().map((p) => p.role))].sort(),
-  );
-  protected readonly filtered = computed(() =>
-    this.hr
-      .staff()
-      .filter((p) => {
-        const text = `${p.name} ${p.hr.reference} ${p.email} ${p.hr.personal.phone}`.toLowerCase();
-        return (
-          text.includes(this.q().trim().toLowerCase()) &&
-          (!this.branch() || p.location === this.branch()) &&
-          (!this.role() || p.role === this.role()) &&
-          (!this.driver() ||
-            (this.driver() === 'yes' ? p.hr.personal.driver : !p.hr.personal.driver)) &&
-          (!this.status() ||
-            (this.status() === 'archived'
-              ? ['Inactive', 'Left'].includes(p.hr.status)
-              : p.hr.status === this.status()))
-        );
-      })
-      .sort((a, b) =>
-        this.sort() === 'za' ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name),
-      ),
-  );
-  protected readonly pages = computed(() => Math.max(1, Math.ceil(this.filtered().length / 10)));
-  protected readonly currentPage = computed(() => Math.min(this.page(), this.pages()));
+  protected readonly branches = computed(() => this.api.directory()?.meta.branches ?? []);
+  protected readonly roles = computed(() => this.api.directory()?.meta.roles ?? []);
+  protected readonly filtered = computed(() => this.api.directory()?.results ?? []);
+  protected readonly count = computed(() => this.api.directory()?.count ?? 0);
+  protected readonly total = computed(() => this.api.summary()?.totals.staff ?? 0);
+  protected readonly pages = computed(() => Math.max(1, Math.ceil(this.count() / 10)));
+  protected readonly currentPage = computed(() => this.api.directory()?.meta.page ?? 1);
   protected readonly pageNumbers = computed(() => {
     const start = Math.max(1, Math.min(this.currentPage() - 2, this.pages() - 4));
     return Array.from({ length: Math.min(5, this.pages()) }, (_, i) => start + i);
   });
-  protected readonly visible = computed(() =>
-    this.filtered().slice((this.currentPage() - 1) * 10, this.currentPage() * 10),
-  );
+  protected readonly visible = this.filtered;
+  protected readonly apiQuery = computed(() => {
+    const query = new URLSearchParams({
+      page: String(this.page()),
+      page_size: this.mode === 'overview' ? '5' : '10',
+      ordering: this.sort() === 'za' ? '-name' : 'name',
+    });
+    for (const [key, value] of Object.entries({
+      q: this.q(),
+      branch: this.branch(),
+      role: this.role(),
+      status: this.status(),
+      driver: this.driver(),
+    }))
+      if (value) query.set(key, value);
+    return query.toString();
+  });
+  constructor() {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let lastFilters = '';
+    effect(() => {
+      const company = this.api.companyId();
+      const query = this.apiQuery();
+      const allowed = this.api.allowed();
+      const filters = new URLSearchParams(query);
+      filters.delete('page');
+      untracked(() => {
+        const filterKey = company + ':' + filters.toString();
+        if (filterKey !== lastFilters) this.selectedIds.set([]);
+        lastFilters = filterKey;
+        clearTimeout(timer);
+        this.api.reset();
+        if (allowed && company) timer = setTimeout(() => void this.api.load(query), 150);
+      });
+    });
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(timer);
+      this.api.reset();
+    });
+  }
+  protected reload(): void {
+    void this.api.load(this.apiQuery());
+  }
+  protected exportAll(): void {
+    void this.api.export(this.apiQuery());
+  }
   protected readonly directoryStats = computed(() => [
     {
       label: 'Staff Records',
-      value: this.hr.staff().length,
+      value: this.total(),
       caption: 'Saved employee records',
       icon: 'groups',
       color: '#008afa',
@@ -95,7 +133,7 @@ export class HrWorkspace {
     },
     {
       label: 'Active Staff',
-      value: this.hr.staff().filter((person) => person.hr.status === 'Active').length,
+      value: this.api.summary()?.totals.active ?? 0,
       caption: 'Currently employed',
       icon: 'person_check',
       color: '#00a34e',
@@ -104,8 +142,7 @@ export class HrWorkspace {
     },
     {
       label: 'Inactive / Left',
-      value: this.hr.staff().filter((person) => ['Inactive', 'Left'].includes(person.hr.status))
-        .length,
+      value: (this.api.summary()?.totals.inactive ?? 0) + (this.api.summary()?.totals.left ?? 0),
       caption: 'Archived employment records',
       icon: 'person_off',
       color: '#677488',
@@ -114,49 +151,11 @@ export class HrWorkspace {
     },
   ]);
   protected complianceRate(): string {
-    const checks = this.hr
-      .staff()
-      .flatMap((p) => p.hr.checks)
-      .filter((c) => c.status !== 'Not required');
-    return checks.length
-      ? Math.round(
-          (checks.filter((c) => c.status === 'Verified' && checkState(c) !== 'Expired').length /
-            checks.length) *
-            100,
-        ) + '%'
-      : this.hr.staff().length
-        ? 'N/A'
-        : '—';
+    const value = this.api.summary()?.totals.compliance_percent;
+    return value == null ? 'Not available' : value + '%';
   }
-  protected availabilityLabel(p: import('../shared/management.store').Person): string {
-    if (
-      this.hr.store
-        .data()
-        .leaves.some(
-          (l) =>
-            (l.personId === p.id || (!l.personId && l.person === p.name)) &&
-            (!l.status || l.status === 'Approved') &&
-            l.start <= today() &&
-            l.end >= today(),
-        )
-    )
-      return 'On leave';
-    if (!this.hr.store.data().people.find((v) => v.id === p.id)?.hr) return 'Not recorded';
-    const day = new Intl.DateTimeFormat('en-GB', {
-      weekday: 'long',
-      timeZone: 'Africa/Nairobi',
-    }).format(new Date());
-    const record = staffRecord(p);
-    if (record.weeklySlots && record.availabilityMode !== 'Custom times') {
-      const index = DAYS.indexOf(day);
-      const states = record.weeklySlots.map((slot) => slot.days[index]);
-      return states.includes('Preferred')
-        ? 'Preferred'
-        : states.includes('Available')
-          ? 'Available'
-          : 'Unavailable';
-    }
-    return record.availability.find((a) => a.day === day)?.preference || 'Not recorded';
+  protected availabilityLabel(person: DirectoryStaff): string {
+    return person.availability ?? 'Not recorded';
   }
   protected toggleSelected(id: string, checked: boolean): void {
     this.selectedIds.update((ids) =>
@@ -175,15 +174,15 @@ export class HrWorkspace {
     for (const p of this.visible()) this.toggleSelected(p.id, checked);
   }
   protected selectedCount(): number {
-    return this.filtered().filter((p) => this.selectedIds().includes(p.id)).length;
+    return this.selectedIds().length;
   }
   protected exportSelected(): void {
-    this.hr.export(this.filtered().filter((p) => this.selectedIds().includes(p.id)));
+    void this.api.export(this.apiQuery(), this.selectedIds());
   }
   protected readonly stats = computed(() => [
     {
       label: 'Staff Records',
-      value: this.hr.staff().length,
+      value: this.total(),
       icon: 'groups',
       link: '/manage/people/staff',
       query: {},
@@ -191,21 +190,19 @@ export class HrWorkspace {
     },
     {
       label: 'Onboarding',
-      value:
-        this.hr.staff().filter((person) => person.hr.status === 'Onboarding').length +
-        this.hr.drafts().length,
+      value: this.api.summary()?.totals.onboarding ?? 0,
       icon: 'assignment_ind',
       link: '/manage/people/onboarding',
       query: {},
-      caption: 'Starters and saved drafts',
+      caption: 'Staff in onboarding',
     },
     {
       label: 'Compliance Actions',
-      value: complianceRows(this.hr.staff()).filter((row) => row.state !== 'Verified').length,
+      value: this.api.summary()?.totals.compliance_actions ?? '—',
       icon: 'verified_user',
       link: '/manage/people/compliance',
       query: {},
-      caption: 'Outstanding check records',
+      caption: 'Not available',
     },
   ]);
   protected set(key: string, value: string | number | boolean): void {
@@ -218,7 +215,7 @@ export class HrWorkspace {
   protected clear(): void {
     void this.router.navigate([], { relativeTo: this.route, queryParams: {} });
   }
-  protected readonly overviewLinks = [
+  private readonly allOverviewLinks = [
     {
       title: 'Staff Directory',
       description: 'Find employees, manage records and view readiness.',
@@ -262,4 +259,7 @@ export class HrWorkspace {
       path: '/manage/learning',
     },
   ];
+  protected readonly overviewLinks = computed(() =>
+    this.allOverviewLinks.filter((item) => this.api.access.canPath(item.path)),
+  );
 }

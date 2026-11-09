@@ -1,5 +1,5 @@
 import { CompanyAccessService } from '../../../core/access/company-access.service';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ROLES } from '../../../core/auth/models/role';
@@ -29,18 +29,6 @@ export class HrService {
   );
   can(action: 'view' | 'create' | 'edit' | 'export'): boolean {
     return this.access.canPath(this.router.url, action) && this.access.can('people', '*', action);
-  }
-  readonly sampleError = signal('');
-  async loadSampleData(): Promise<void> {
-    if (!this.can('create') || this.store.data().hrDemoVersion === 1) return;
-    const workspace = this.store.companyId();
-    const { seedHrDemo } = await import('./hr-demo-data');
-    if (workspace !== this.store.companyId() || !this.can('create')) return;
-    this.sampleError.set(
-      this.store.saveWorkspace((data) => seedHrDemo(data))
-        ? ''
-        : 'Sample HR records could not be saved on this device. Free some storage and try again.',
-    );
   }
   canPay(edit = false): boolean {
     return this.access.can('finance', 'payroll', edit ? 'edit' : 'read');
@@ -311,11 +299,12 @@ export class HrService {
     );
   }
 }
-export const hrGuard: CanActivateFn = async () => {
-  const hr = inject(HrService),
-    router = inject(Router);
-  if (!hr.can('view')) return router.createUrlTree(['/manage/companies']);
-  if (hr.store.companyId() === 'lqcs' && hr.store.data().hrDemoVersion !== 1)
-    await hr.loadSampleData();
+export const hrGuard: CanActivateFn = async (_route, state) => {
+  const access = inject(CompanyAccessService);
+  const router = inject(Router);
+  await access.refresh();
+  if (!access.canPath(state.url)) return router.createUrlTree(['/access-denied']);
+  if (state.url.split(/[?#]/)[0].startsWith('/manage/people/staff/'))
+    return router.createUrlTree(['/manage/people/staff']);
   return true;
 };

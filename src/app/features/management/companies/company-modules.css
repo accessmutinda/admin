@@ -1211,3 +1211,98 @@
   outline: 2px solid #008bd9;
   outline-offset: 2px;
 }
+
+/* Configure uses the same compact cards as the module overview. */
+.cv-management .company-modules-page .cm-panel-heading > .cm-configuration-icon {
+  width: 32px;
+  height: 32px;
+  color: #fff;
+  font-size: 22px;
+}
+.cv-management .company-modules-page .cm-configuration-access {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid #e0eaf1;
+  border-radius: 7px;
+  background: #f5faff;
+}
+.cv-management .company-modules-page .cm-configuration-access-copy {
+  min-width: 0;
+}
+.cv-management .company-modules-page .cm-configuration-access-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cv-management .company-modules-page .cm-configuration-access-title strong {
+  color: #123352;
+  font-size: 12px;
+}
+.cv-management .company-modules-page .cm-configuration-access .cm-badge {
+  margin-top: 0;
+}
+.cv-management .company-modules-page .cm-configuration-access p {
+  margin: 4px 0 0;
+}
+.cv-management .company-modules-page .cm-submodule-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 12px 0 8px;
+}
+.cv-management .company-modules-page .cm-submodule-heading h3 {
+  margin: 0;
+}
+.cv-management .company-modules-page .cm-submodule-heading > span {
+  color: #657184;
+  font-size: 11px;
+}
+.cv-management .company-modules-page .cm-submodule-card .cm-module-top {
+  align-items: center;
+}
+.cv-management .company-modules-page .cm-submodule-card h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.cv-management .company-modules-page .cm-submodule-card > p {
+  flex: 1;
+  margin: 8px 0;
+}
+.cv-management .company-modules-page .cm-submodule-footer {
+  padding-top: 7px;
+  border-top: 1px solid #edf2f5;
+}
+.cv-management .company-modules-page .cm-submodule-footer .cm-badge {
+  margin-top: 0;
+}
+.cv-management .company-modules-page .cm-configuration > .cm-callout {
+  margin-top: 12px;
+}
+.cv-management .company-modules-page .cm-configuration .cm-switch {
+  position: relative;
+}
+.cv-management .company-modules-page .cm-configuration .cm-switch::before {
+  content: '';
+  position: absolute;
+  inset: -7px -4px;
+}
+.cv-management .company-modules-page .cm-configuration .cm-switch:focus-visible {
+  outline: 2px solid #008afa;
+  outline-offset: 4px;
+}
+@media (max-width: 600px) {
+  .cv-management .company-modules-page .cm-submodule-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (pointer: coarse) {
+  .cv-management .company-modules-page .cm-configuration .cm-switch::before {
+    inset: -14px -8px;
+  }
+}

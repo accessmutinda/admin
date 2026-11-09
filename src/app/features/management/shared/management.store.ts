@@ -1,3 +1,4 @@
+import { removeWorkforceSamples } from '../people/workforce-cache-cleanup';
 import { CompanyAccessService, MODULE_CODES } from '../../../core/access/company-access.service';
 import { companyProfileFields } from '../companies/company-profile.models';
 import { CompaniesApiService } from '../companies/companies-api.service';
@@ -248,7 +249,6 @@ export const MODULES = [
 ];
 export interface WorkspaceData {
   systemDemoVersion?: number;
-  hrDemoVersion?: number;
   careDemoVersion?: number;
   careDemoImagesVersion?: number;
   academy?: import('../learning/academy/academy.models').AcademyData;
@@ -327,7 +327,11 @@ export class ManagementStore {
         accent: '#3b82f6',
         tagline: '',
         logo: '',
-        modules: Object.keys(MODULE_CODES).filter(name => this.productAccess.context()?.company_id === company.id && this.productAccess.context()?.enabled_modules.includes(MODULE_CODES[name])),
+        modules: Object.keys(MODULE_CODES).filter(
+          (name) =>
+            this.productAccess.context()?.company_id === company.id &&
+            this.productAccess.context()?.enabled_modules.includes(MODULE_CODES[name]),
+        ),
         ...(this.companyApi.details()[company.id]
           ? companyProfileFields(this.companyApi.details()[company.id])
           : {}),
@@ -471,7 +475,10 @@ export class ManagementStore {
       this.records(),
     );
     const data = all[this.companyId()] ?? this.data();
-    const next = { ...all, [this.companyId()]: structuredClone(change(data)) };
+    const next = {
+      ...all,
+      [this.companyId()]: removeWorkforceSamples(structuredClone(change(data))),
+    };
     if (!this.persist('cv_api_company_data_v1', next)) return false;
     this.storedRecords.set(next);
     return true;
@@ -530,6 +537,11 @@ export class ManagementStore {
       if (key !== 'cv_api_company_data_v1') return restored;
       return Object.fromEntries(
         Object.entries(restored as Record<string, WorkspaceData>).map(([id, data]) => {
+          const cleaned = removeWorkforceSamples(data);
+          if (cleaned !== data) {
+            this.accessMigrationPending = true;
+            data = cleaned;
+          }
           if (data.permissionDefaultsVersion === 2) return [id, data];
           this.accessMigrationPending = true;
           const roles = new Set([
