@@ -30,7 +30,7 @@ export function rolePermissions(data: WorkspaceData, role: string, module: strin
   const saved = data.permissions[role + ':' + module];
   return [
     ...(saved ??
-      (module === 'Quality & compliance' ? qualityDefaults(role) : [true, true, true, true, true])),
+      [false, false, false, false, false]),
   ];
 }
 export function permissionLevel(values: boolean[]): { label: string; icon: string; tone: string } {

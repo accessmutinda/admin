@@ -1,3 +1,4 @@
+import { CompanyAccessService } from '../../core/access/company-access.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { A11yModule } from '@angular/cdk/a11y';
@@ -29,7 +30,7 @@ import { InspectorService } from './inspector.service';
       /></a>
       <p class="nav-label">INSPECTOR PORTAL</p>
       <nav aria-label="Inspector navigation">
-        @for (page of pages; track page.path) {
+        @for (page of pages(); track page.path) {
           <a
             [routerLink]="['/inspector', page.path]"
             routerLinkActive="active"
@@ -101,7 +102,10 @@ export class InspectorLayout {
   readonly auth = inject(AuthService);
   readonly data = inject(InspectorService);
   readonly router = inject(Router);
-  readonly pages = INSPECTOR_PAGES;
+  readonly access = inject(CompanyAccessService);
+  readonly pages = computed(() =>
+    INSPECTOR_PAGES.filter((page) => this.access.canPath('/inspector/' + page.path)),
+  );
   readonly menuOpen = signal(false);
   readonly mobile = toSignal(inject(BreakpointObserver).observe('(max-width: 1023px)'));
   readonly canManage = computed(() => this.auth.isAuthenticated());

@@ -1,3 +1,4 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import {
   Component,
   computed,
@@ -39,6 +40,7 @@ import { londonDate, addDays } from '../rota/rota.models';
 })
 export class FamilyPortal {
   protected readonly care = inject(CareService);
+  protected readonly companyAccess = inject(CompanyAccessService);
   protected readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);

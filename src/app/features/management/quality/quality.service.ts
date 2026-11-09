@@ -1,3 +1,5 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { Router } from '@angular/router';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ROLES } from '../../../core/auth/models/role';
@@ -17,6 +19,8 @@ import {
 type QualityPermission = 'view' | 'create' | 'edit' | 'export';
 @Injectable({ providedIn: 'root' })
 export class QualityService {
+  private readonly access = inject(CompanyAccessService);
+  private readonly router = inject(Router);
   readonly store = inject(ManagementStore);
   readonly auth = inject(AuthService);
   readonly data = computed(() => this.store.data().quality ?? emptyQuality());
@@ -30,12 +34,7 @@ export class QualityService {
     inject(DestroyRef).onDestroy(() => window.clearInterval(timer));
   }
   can(action: QualityPermission): boolean {
-    if (this.auth.isSuperAdmin() || this.auth.hasRole('CA')) return true;
-    if (!this.auth.currentUser() || !this.store.company()?.modules.includes('Quality & compliance'))
-      return false;
-    const saved = this.store.data().permissions[this.role() + ':Quality & compliance'];
-    const permissions = saved ?? qualityDefaults(this.role());
-    return !!permissions[0] && !!permissions[{ view: 0, create: 1, edit: 2, export: 4 }[action]];
+    return this.access.canPath(this.router.url, action) && this.access.can('quality', '*', action);
   }
   private entry(action: string, detail = ''): QualityAudit {
     return {

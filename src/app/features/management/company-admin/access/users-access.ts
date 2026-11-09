@@ -1,142 +1,166 @@
-import { CompanyLoading } from '../../companies/company-loading';
-import { CompaniesApiService } from '../../companies/companies-api.service';
-import { effectiveMfa } from '../../../../core/auth/mfa-policy';
-import { PAYROLL_ACTIONS, payrollDefaults, PayrollAction } from '../../payroll/payroll.models';
-import { ROTA_ACTIONS, rotaDefaults, RotaAction } from '../../rota/rota.models';
-import { ActivatedRoute, RouterLink } from '@angular/router';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatMenuModule } from '@angular/material/menu';
-import { AuthService } from '../../../../core/auth/auth.service';
-import { CompanyUserDialog } from '../../companies/company-user-dialog';
-import { companyModifiedAt } from '../../companies/company-profile.models';
-import { Member } from '../../shared/management.store';
-import { accessChange, accessCsv, rolePermissions, permissionLevel } from './access.models';
+import { CompanyUnavailable } from '../../shared/company-unavailable';
 import {
   Component,
   computed,
+  effect,
   inject,
   signal,
-  effect,
   untracked,
   HostListener,
-  DestroyRef,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ManagementStore, MODULES } from '../../shared/management.store';
-import { ToastService } from '../../../../shared/ui/toast.service';
-import { MatSelectModule } from '@angular/material/select';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../../shared/ui/select';
 import { ManagementRole } from '../../shared/role-pill';
+import { CompanyLoading } from '../../companies/company-loading';
+import { companyModifiedAt } from '../../companies/company-profile.models';
+import { PAYROLL_ACTIONS, PayrollAction } from '../../payroll/payroll.models';
+import { ROTA_ACTIONS, RotaAction } from '../../rota/rota.models';
+import { accessCsv, permissionLevel } from './access.models';
+import { ProductModule, ProductSubmodule } from '../../../../core/access/company-access.service';
+import { AuthService } from '../../../../core/auth/auth.service';
+import {
+  CompanyAccessService,
+  CompanyRole,
+  ModuleConfiguration,
+} from '../../../../core/access/company-access.service';
+import { ManagementStore, Member } from '../../shared/management.store';
+import { CompanyUserDialog } from '../../companies/company-user-dialog';
+
+interface ApiMember {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  role_codes: string[];
+  version: number;
+  department?: string;
+  last_login_at?: string;
+  latest_access_change?: {
+    at: string;
+    actor: { name: string } | null;
+    action: string;
+    subject: string;
+  };
+  mfa: { required: boolean; confirmed: boolean; override: string };
+}
+
 @Component({
   selector: 'cv-users-access',
   imports: [
-    CompanyLoading,
-    MatSelectModule,
-    CvSelect,
-    ManagementRole,
+    CompanyUnavailable,
     FormsModule,
     RouterLink,
     MatDialogModule,
     MatMenuModule,
+    MatSelectModule,
+    CvSelect,
+    ManagementRole,
+    CompanyLoading,
   ],
   host: { class: 'module-page companies-page users-access-page' },
   templateUrl: './users-access.html',
 })
 export class UsersAccess {
+  protected readonly access = inject(CompanyAccessService);
   protected readonly store = inject(ManagementStore);
-  protected readonly dataApi = inject(CompaniesApiService);
-  private readonly toast = inject(ToastService);
   private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
-  private readonly destroy = inject(DestroyRef);
-  private draftCompanyId = this.store.companyId();
-  private closeDialog?: () => void;
+  private readonly route = inject(ActivatedRoute);
+  private invitedCompany = '';
   protected readonly company = this.store.company;
-  protected readonly modifiedAt = companyModifiedAt;
+  protected readonly loading = signal(false);
+  protected readonly saving = signal(false);
   protected readonly error = signal('');
-  protected readonly pageSize = 5;
+  protected readonly notice = signal('');
+  protected readonly roles = signal<CompanyRole[]>([]);
+  protected readonly configuration = signal<ModuleConfiguration | null>(null);
+  protected readonly members = signal<ApiMember[]>([]);
+  protected readonly invitations = signal<
+    { id: string; email: string; role_code: string; status: string; delivery_state: string }[]
+  >([]);
+  protected readonly selectedId = signal('');
+  protected readonly selected = computed(() =>
+    this.roles().find((role) => role.id === this.selectedId()),
+  );
+  protected readonly selectedModule = signal('care');
+  protected readonly module = computed(() =>
+    this.configuration()?.modules.find((module) => module.code === this.selectedModule()),
+  );
+  protected readonly permissionCodes = signal<string[]>([]);
+  protected readonly coreCodes = signal<string[]>([]);
+  protected readonly search = signal('');
+  protected readonly modifiedAt = companyModifiedAt;
+  protected readonly compact = toSignal(inject(BreakpointObserver).observe('(max-width: 767px)'));
   protected readonly page = signal(1);
+  protected readonly pageSize = 5;
   protected readonly selection = signal<string[]>([]);
   protected readonly statusFilter = signal('all');
   protected readonly roleFilter = signal('all');
-  protected readonly history = computed(() =>
-    [...(this.store.data().accessHistory ?? [])].reverse().sort((a, b) => b.at.localeCompare(a.at)),
-  );
-  protected readonly search = signal('');
-  protected readonly compact = toSignal(inject(BreakpointObserver).observe('(max-width: 767px)'));
-  protected readonly roles = [
-    'Company Admin',
-    'Registered Manager',
-    'Care Coordinator',
-    'Field Supervisor',
-    'Quality Assurance',
-    'Care Worker',
-    'HR Officer',
-    'Training Manager',
-    'Compliance Officer',
-    'Finance Officer',
-  ];
-  protected readonly modules = MODULES;
-  protected readonly moduleColors = [
-    '#008afa',
-    '#00a34e',
-    '#ff8a00',
-    '#7c3aed',
-    '#03a6c1',
-    '#ed3988',
-  ];
-  protected readonly roleDescriptions: Record<string, string> = {
-    'Company Admin': 'Company setup, team access and workspace administration',
-    'Registered Manager': 'Care operations, service oversight and team leadership',
-    'Care Coordinator': 'Day-to-day scheduling and care coordination',
-    'Field Supervisor': 'Care visits, staff supervision and field oversight',
-    'Quality Assurance': 'Quality assessments, service reviews and corrective actions',
-    'Care Worker': 'Care delivery and assigned person-centred records',
-    'HR Officer': 'Recruitment, staff records and employment processes',
-    'Training Manager': 'Learning, development and training records',
-    'Compliance Officer': 'Quality checks, audits and compliance evidence',
-    'Finance Officer': 'Financial records, reporting and invoicing',
-  };
-  protected readonly moduleIcons: Record<string, string> = {
-    'Care delivery': 'favorite',
-    'People & HR': 'groups',
-    'Training academy': 'school',
-    'Quality & compliance': 'verified_user',
-    Finance: 'account_balance_wallet',
-    'Reports & insights': 'monitoring',
-  };
-  protected readonly actionDescriptions = [
-    'Read records',
-    'Add records',
-    'Update records',
-    'Remove records',
-    'Download data',
-  ];
-  protected readonly actions = ['View', 'Create', 'Edit', 'Delete', 'Export'];
-  protected readonly filtered = computed(() =>
-    this.store
-      .data()
-      .members.filter(
-        (member) =>
-          `${member.name} ${member.email} ${member.role} ${member.department ?? ''}`
-            .toLowerCase()
-            .includes(this.search().trim().toLowerCase()) &&
-          (this.statusFilter() === 'all' || member.status === this.statusFilter()) &&
-          (this.roleFilter() === 'all' || member.role === this.roleFilter()),
+  protected readonly tableMembers = computed(() => [
+    ...this.members().map(
+      (member) =>
+        ({
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          role: this.roleNames(member.role_codes),
+          roleCode: member.role_codes[0],
+          status:
+            member.status === 'active'
+              ? 'Active'
+              : member.status === 'revoked'
+                ? 'Revoked'
+                : 'Suspended',
+          version: member.version,
+          department: member.department,
+          lastLoginAt: member.last_login_at,
+          mfaPolicy: member.mfa.override,
+          required: member.mfa.required,
+        }) as Member & { required?: boolean },
+    ),
+    ...this.invitations()
+      .filter((invite) => invite.status === 'pending')
+      .map(
+        (invite) =>
+          ({
+            id: invite.id,
+            name: '',
+            email: invite.email,
+            role: this.roleNames([invite.role_code]),
+            roleCode: invite.role_code,
+            status: 'Invited',
+          }) as Member & { required?: boolean },
       ),
+  ]);
+  protected readonly filtered = computed(() =>
+    this.tableMembers().filter(
+      (member) =>
+        `${member.name} ${member.email} ${member.role} ${member.department ?? ''}`
+          .toLowerCase()
+          .includes(this.search().trim().toLowerCase()) &&
+        (this.statusFilter() === 'all' || member.status === this.statusFilter()) &&
+        (this.roleFilter() === 'all' || member.role === this.roleFilter()),
+    ),
   );
   protected readonly memberRoles = computed(() => [
-    ...new Set([...this.roles, ...this.store.data().members.map((member) => member.role)]),
+    ...new Set([
+      ...this.roles().map((role) => role.name),
+      ...this.tableMembers().map((member) => member.role),
+    ]),
   ]);
   protected readonly statuses = computed(() => [
     ...new Set([
       'Active',
       'Invited',
       'Suspended',
-      'Inactive',
-      ...this.store.data().members.map((member) => member.status),
+      'Revoked',
+      ...this.tableMembers().map((member) => member.status),
     ]),
   ]);
   protected readonly pageCount = computed(() =>
@@ -164,23 +188,289 @@ export class UsersAccess {
   protected readonly someSelected = computed(
     () => !this.allSelected() && this.rows().some((member) => this.selection().includes(member.id)),
   );
-  protected role = 'Registered Manager';
-  protected roleMfa = this.store.data().roleMfa?.[this.role] ?? true;
-  private readonly mfaDrafts: Record<string, boolean> = {};
-  protected changeMfa(value: boolean): void {
-    this.roleMfa = value;
-    this.mfaDrafts[this.role] = value;
-  }
-  protected memberMfa(member: Member): boolean {
-    return effectiveMfa(member, this.store.data().roleMfa);
-  }
-  protected memberMfaSource(member: Member): string {
-    return !member.mfaPolicy || member.mfaPolicy === 'inherit' ? 'Role default' : 'User override';
-  }
-  protected permissions = this.readPermissions();
-  private readonly permissionDrafts: Record<string, Record<string, boolean[]>> = {
-    [this.role]: this.permissions,
+  protected readonly history = computed(() =>
+    this.members()
+      .filter((member) => !!member.latest_access_change)
+      .map((member) => ({
+        at: member.latest_access_change!.at,
+        actor: member.latest_access_change!.actor?.name || 'Not recorded',
+        action: member.latest_access_change!.action,
+        subject: member.name || member.email,
+        detail: 'Company membership changed',
+      })),
+  );
+  protected readonly modules = computed(() => this.configuration()?.modules ?? []);
+  protected readonly moduleColors = [
+    '#008afa',
+    '#00a34e',
+    '#ff8a00',
+    '#7c3aed',
+    '#03a6c1',
+    '#ed3988',
+  ];
+  protected readonly moduleIcons: Record<string, string> = {
+    care: 'favorite',
+    people: 'groups',
+    academy: 'school',
+    quality: 'verified_user',
+    finance: 'account_balance_wallet',
+    reports: 'monitoring',
+    staff_portal: 'badge',
+    family_portal: 'family_restroom',
+    inspector_portal: 'fact_check',
   };
+  protected readonly rotaActions = ROTA_ACTIONS;
+  protected readonly payrollActions = PAYROLL_ACTIONS;
+  protected readonly payrollActionDescriptions: Record<PayrollAction, string> = {
+    view: 'Read pay runs, overtime and invoices',
+    manage: 'Maintain staff pay, work records and invoices',
+    approve: 'Review overtime and contractor invoices',
+    finalise: 'Lock approved pay runs for payment',
+    export: 'Download payroll reports and payment files',
+    pay: 'Record pay-run and invoice payments',
+  };
+  protected readonly rotaAccess = computed(() =>
+    this.rotaActions.filter((action) => this.hasRotaAction(action.key)).map((action) => action.key),
+  );
+  protected readonly payrollAccess = computed(() =>
+    this.payrollActions
+      .filter((action) => this.hasPayrollAction(action.key))
+      .map((action) => action.key),
+  );
+  private readonly drafts = new Map<string, { permissions: string[]; core: string[] }>();
+  private closeDialog?: () => void;
+  protected readonly creating = signal(false);
+  protected name = '';
+  protected code = '';
+  protected description = '';
+  private roleCreateKey = crypto.randomUUID();
+  protected readonly actions = [
+    { code: 'read', label: 'View' },
+    { code: 'create', label: 'Create' },
+    { code: 'edit', label: 'Edit' },
+    { code: 'archive', label: 'Delete' },
+    { code: 'export', label: 'Export' },
+    { code: 'approve', label: 'Approve' },
+    { code: 'finalise', label: 'Finalise' },
+    { code: 'pay', label: 'Pay' },
+    { code: 'publish', label: 'Publish' },
+  ];
+  protected readonly writable = computed(
+    () =>
+      this.access.context()?.company_id === this.access.companyId() &&
+      !!this.access.context()?.can_manage_roles,
+  );
+  constructor() {
+    effect(() => {
+      const id = this.access.companyId();
+      untracked(() => {
+        this.closeDialog?.();
+        this.drafts.clear();
+        this.selection.set([]);
+        this.search.set('');
+        this.statusFilter.set('all');
+        this.roleFilter.set('all');
+        this.page.set(1);
+        this.roles.set([]);
+        this.members.set([]);
+        this.invitations.set([]);
+        this.selectedId.set('');
+        this.permissionCodes.set([]);
+        this.coreCodes.set([]);
+        this.configuration.set(null);
+        if (id) void this.load();
+      });
+    });
+  }
+  protected async load(): Promise<void> {
+    const id = this.access.companyId();
+    if (!id) return;
+    this.loading.set(true);
+    this.error.set('');
+    try {
+      const [roles, configuration] = await Promise.all([
+        this.access.roles(id),
+        this.access.configuration(id),
+      ]);
+      if (id !== this.access.companyId()) return;
+      this.roles.set(roles.results);
+      this.configuration.set(configuration);
+      const requestedRole = this.route.snapshot.queryParamMap.get('role');
+      this.choose(
+        this.selectedId() ||
+          roles.results.find((role) => role.code === requestedRole || role.name === requestedRole)
+            ?.id ||
+          roles.results.find((role) => role.code === 'RM')?.id ||
+          roles.results[0]?.id ||
+          '',
+      );
+      if (
+        this.route.snapshot.queryParamMap.get('invite') === 'true' &&
+        this.invitedCompany !== id
+      ) {
+        this.invitedCompany = id;
+        this.openMember('invite', undefined, 'Company Admin');
+      }
+      if (this.access.core('company.memberships.read')) {
+        const [members, invitations] = await Promise.all([
+          this.auth.api<{ results: ApiMember[] }>(`/companies/${id}/memberships`),
+          this.auth.api<{ results: any[] }>(`/companies/${id}/invitations`),
+        ]);
+        if (id === this.access.companyId()) {
+          this.members.set(members.results);
+          this.invitations.set(invitations.results);
+        }
+      }
+    } catch (error) {
+      if (id === this.access.companyId())
+        this.error.set(error instanceof Error ? error.message : 'Company access unavailable.');
+    } finally {
+      if (id === this.access.companyId()) this.loading.set(false);
+    }
+  }
+  protected choose(id: string): void {
+    const previous = this.selectedId();
+    if (previous && previous !== id)
+      this.drafts.set(previous, {
+        permissions: [...this.permissionCodes()],
+        core: [...this.coreCodes()],
+      });
+    this.selectedId.set(id);
+    const role = this.selected();
+    const draft = this.drafts.get(id);
+    this.permissionCodes.set(draft?.permissions ?? role?.permissions.map((p) => p.code) ?? []);
+    this.coreCodes.set(draft?.core ?? [...(role?.core_permissions ?? [])]);
+    this.notice.set('');
+  }
+  protected has(module: string, sub: string, action: string): boolean {
+    return this.permissionCodes().includes(`${module}.${sub}.${action}`);
+  }
+  protected toggle(module: string, sub: string, action: string): void {
+    const code = `${module}.${sub}.${action}`;
+    const codes = new Set(this.permissionCodes());
+    if (codes.has(code)) codes.delete(code);
+    else codes.add(code);
+    this.permissionCodes.set([...codes]);
+    this.notice.set('');
+  }
+  protected coreToggle(code: string): void {
+    this.coreCodes.update((codes) =>
+      codes.includes(code) ? codes.filter((c) => c !== code) : [...codes, code],
+    );
+  }
+  protected dirty(): boolean {
+    const role = this.selected();
+    return (
+      !!role &&
+      (JSON.stringify([...this.permissionCodes()].sort()) !==
+        JSON.stringify(role.permissions.map((p) => p.code).sort()) ||
+        JSON.stringify([...this.coreCodes()].sort()) !==
+          JSON.stringify([...role.core_permissions].sort()))
+    );
+  }
+  protected async save(): Promise<void> {
+    const role = this.selected();
+    const id = this.access.companyId();
+    if (!role || this.saving() || !this.writable()) return;
+    this.saving.set(true);
+    this.error.set('');
+    try {
+      const saved = await this.access.saveRole(
+        id,
+        role,
+        this.permissionCodes(),
+        this.coreCodes(),
+        role.mfa_required,
+      );
+      if (id === this.access.companyId()) {
+        this.roles.update((roles) => roles.map((r) => (r.id === saved.id ? saved : r)));
+        this.drafts.delete(saved.id);
+        this.choose(saved.id);
+        this.notice.set('Role permissions saved.');
+        await this.access.refresh();
+      }
+    } catch (error) {
+      if (id === this.access.companyId())
+        this.error.set(error instanceof Error ? error.message : 'Permissions could not be saved.');
+    } finally {
+      this.saving.set(false);
+    }
+  }
+  protected async create(): Promise<void> {
+    const id = this.access.companyId();
+    if (this.saving() || !this.access.context()?.can_create_roles) return;
+    this.saving.set(true);
+    this.error.set('');
+    try {
+      const role = await this.access.createRole(
+        id,
+        {
+          code: this.code.trim().toUpperCase(),
+          name: this.name.trim(),
+          description: this.description.trim(),
+        },
+        this.roleCreateKey,
+      );
+      if (id === this.access.companyId()) {
+        this.roles.update((roles) => [...roles, role]);
+        this.choose(role.id);
+        this.creating.set(false);
+        this.roleCreateKey = crypto.randomUUID();
+        this.name = this.code = this.description = '';
+        this.notice.set('Company role created. Choose its permissions below.');
+        await this.access.refresh();
+      }
+    } catch (error) {
+      if (id === this.access.companyId())
+        this.error.set(error instanceof Error ? error.message : 'Role could not be created.');
+    } finally {
+      this.saving.set(false);
+    }
+  }
+  protected roleNames(codes: string[]): string {
+    return codes
+      .map((code) => this.roles().find((role) => role.code === code)?.name ?? code)
+      .join(', ');
+  }
+  protected member(mode: 'invite' | 'edit' | 'delete', record?: ApiMember): void {
+    this.openMember(
+      mode,
+      record ? this.tableMembers().find((member) => member.id === record.id) : undefined,
+    );
+  }
+  protected openMember(
+    mode: 'invite' | 'edit' | 'delete',
+    member?: Member,
+    initialRole?: string,
+  ): void {
+    if (!this.access.core('company.memberships.manage')) return;
+    const id = this.access.companyId();
+    const ref = this.dialog.open(CompanyUserDialog, {
+      width: '440px',
+      maxWidth: 'calc(100vw - 24px)',
+      data: { companyId: id, mode, member, initialRole },
+    });
+    this.closeDialog = () => ref.close();
+    ref.afterClosed().subscribe(() => {
+      if (id === this.access.companyId()) void this.loadMembers(id);
+    });
+  }
+  private async loadMembers(id: string): Promise<void> {
+    if (!this.access.core('company.memberships.read')) return;
+    try {
+      const [members, invitations] = await Promise.all([
+        this.auth.api<{ results: ApiMember[] }>(`/companies/${id}/memberships`),
+        this.auth.api<{ results: any[] }>(`/companies/${id}/invitations`),
+      ]);
+      if (id === this.access.companyId()) {
+        this.members.set(members.results);
+        this.invitations.set(invitations.results);
+      }
+    } catch (error) {
+      if (id === this.access.companyId())
+        this.error.set(error instanceof Error ? error.message : 'Memberships unavailable.');
+    }
+  }
   protected setFilter(key: 'search' | 'statusFilter' | 'roleFilter', value: string): void {
     this[key].set(value);
     this.page.set(1);
@@ -199,62 +489,39 @@ export class UsersAccess {
         : [...new Set([...ids, ...visible])],
     );
   }
-  protected level(role: string, module?: string) {
-    if (module) return permissionLevel(rolePermissions(this.store.data(), role, module));
-    const levels = this.modules
-      .filter((name) => this.company()?.modules.includes(name))
-      .map((name) => permissionLevel(rolePermissions(this.store.data(), role, name)));
-    if (!levels.length || levels.every((value) => value.tone === 'none'))
-      return permissionLevel([]);
-    if (levels.every((value) => value.tone === 'full'))
-      return permissionLevel([true, true, true, true, true]);
-    if (levels.every((value) => value.tone === 'view'))
-      return permissionLevel([true, false, false, false, false]);
-    return permissionLevel([true, true, false, false, false]);
+  protected memberMfa(member: Member): boolean {
+    return !!(member as Member & { required?: boolean }).required;
   }
-  protected openMember(
-    mode: 'invite' | 'edit' | 'delete',
-    member?: Member,
-    initialRole?: string,
-  ): void {
-    if (!this.company()) return;
-    const ref = this.dialog.open(CompanyUserDialog, {
-      width: '440px',
-      maxWidth: 'calc(100vw - 24px)',
-      data: {
-        companyId: this.store.companyId(),
-        mode,
-        initialRole,
-        member: member ? structuredClone(member) : undefined,
-      },
-    });
-    this.closeDialog = () => ref.close();
+  protected memberMfaLabel(member: Member): string {
+    const required = (member as Member & { required?: boolean }).required;
+    return required === undefined ? 'Not recorded' : required ? 'Required' : 'Not required';
+  }
+  protected memberMfaSource(member: Member): string {
+    return !member.mfaPolicy || member.mfaPolicy === 'inherit' ? 'Role default' : 'User override';
   }
   protected exportUsers(): void {
-    const members = this.filtered().filter(
-      (member) => !this.selection().length || this.selection().includes(member.id),
-    );
+    if (!this.access.core('company.access.export')) return;
     this.store.download(
       'company-users.csv',
       accessCsv([
         ['Name', 'Email', 'Role', 'Department', 'Access', 'Status', 'Last login', 'MFA'],
-        ...members.map((member) => [
-          member.name,
-          member.email,
-          member.role,
-          member.department ?? '',
-          this.level(member.role).label,
-          member.status,
-          member.lastLoginAt ?? '',
-          (this.memberMfa(member) ? 'Required' : 'Not required') +
-            ' (' +
-            this.memberMfaSource(member) +
-            ')',
-        ]),
+        ...this.filtered()
+          .filter((member) => !this.selection().length || this.selection().includes(member.id))
+          .map((member) => [
+            member.name,
+            member.email,
+            member.role,
+            member.department ?? '',
+            this.level(member.role).label,
+            member.status,
+            member.lastLoginAt ?? '',
+            this.memberMfaLabel(member),
+          ]),
       ]),
     );
   }
   protected exportHistory(): void {
+    if (!this.access.core('company.access.export')) return;
     this.store.download(
       'company-access-history.csv',
       accessCsv([
@@ -269,225 +536,130 @@ export class UsersAccess {
       ]),
     );
   }
-  protected readPermissions(): Record<string, boolean[]> {
-    return Object.fromEntries(
-      MODULES.map((module) => [module, rolePermissions(this.store.data(), this.role, module)]),
+  protected displayModule(module: ProductModule): string {
+    return module.code === 'academy' ? 'CareVerity Academy' : module.name;
+  }
+  protected availableAction(sub: ProductSubmodule, action: string): boolean {
+    return sub.permissions.some((permission) => permission.action === action);
+  }
+  private moduleCodes(module: ProductModule, action: string): string[] {
+    return module.submodules.flatMap((sub) =>
+      sub.permissions
+        .filter((permission) => permission.action === action)
+        .map((permission) => permission.code),
     );
   }
-  protected readonly payrollActions = PAYROLL_ACTIONS;
-  protected readonly payrollActionDescriptions: Record<PayrollAction, string> = {
-    view: 'Read pay runs, overtime and invoices',
-    manage: 'Maintain staff pay, work records and invoices',
-    approve: 'Review overtime and contractor invoices',
-    finalise: 'Lock approved pay runs for payment',
-    export: 'Download payroll reports and payment files',
-    pay: 'Record pay-run and invoice payments',
-  };
-  protected payrollAccess: PayrollAction[] = this.readPayrollAccess();
-  protected readonly rotaActions = ROTA_ACTIONS;
-  protected rotaAccess: RotaAction[] = this.readRotaAccess();
-  private readonly rotaDrafts: Record<string, RotaAction[]> = {};
-  private readRotaAccess(): RotaAction[] {
-    return [...(this.store.data().rotaPermissions?.[this.role] ?? rotaDefaults(this.role))];
+  protected moduleHas(module: ProductModule, action: string): boolean {
+    const codes = this.moduleCodes(module, action);
+    return !!codes.length && codes.every((code) => this.permissionCodes().includes(code));
   }
-  protected hasRotaAction(action: RotaAction): boolean {
-    return this.rotaAccess.includes(action);
+  protected modulePartial(module: ProductModule, action: string): boolean {
+    return (
+      !this.moduleHas(module, action) &&
+      this.moduleCodes(module, action).some((code) => this.permissionCodes().includes(code))
+    );
   }
-  protected toggleRotaAction(action: RotaAction): void {
-    this.rotaAccess = this.rotaAccess.includes(action)
-      ? this.rotaAccess.filter((a) => a !== action)
-      : [...this.rotaAccess, action];
-    this.rotaDrafts[this.role] = this.rotaAccess;
+  protected toggleModuleAction(module: ProductModule, action: string): void {
+    if (!this.writable() || this.saving()) return;
+    const codes = new Set(this.permissionCodes());
+    const remove = this.moduleHas(module, action);
+    for (const code of this.moduleCodes(module, action)) {
+      if (remove) codes.delete(code);
+      else codes.add(code);
+    }
+    this.permissionCodes.set([...codes]);
   }
-  constructor() {
-    effect(() => {
-      const ids = new Set(this.store.data().members.map((member) => member.id));
-      untracked(() => this.selection.update((selected) => selected.filter((id) => ids.has(id))));
-    });
-    effect(() => {
-      const id = this.store.companyId();
-      if (id === this.draftCompanyId) return;
-      untracked(() => {
-        this.draftCompanyId = id;
-        this.closeDialog?.();
-        this.closeDialog = undefined;
-        for (const drafts of [
-          this.permissionDrafts,
-          this.rotaDrafts,
-          this.payrollDrafts,
-          this.mfaDrafts,
-        ])
-          for (const key of Object.keys(drafts)) delete drafts[key];
-        this.role = 'Registered Manager';
-        this.changeRole();
-        this.search.set('');
-        this.statusFilter.set('all');
-        this.roleFilter.set('all');
-        this.selection.set([]);
-        this.page.set(1);
-        this.error.set('');
-      });
-    });
-    let inviteRequested = false;
-    inject(ActivatedRoute)
-      .queryParamMap.pipe(takeUntilDestroyed(this.destroy))
-      .subscribe((params) => {
-        const invite = params.get('invite') === 'true';
-        if (invite && !inviteRequested) {
-          const companyId = this.store.companyId();
-          queueMicrotask(() => {
-            if (!this.destroy.destroyed && companyId === this.store.companyId())
-              this.openMember('invite', undefined, 'Company Admin');
-          });
-        }
-        inviteRequested = invite;
-        if (params.get('tab') === 'permissions') {
-          const role = params.get('role');
-          if (role && this.roles.includes(role)) {
-            this.role = role;
-            this.changeRole();
-          }
-        }
-      });
-  }
-
-  private readonly payrollDrafts: Record<string, PayrollAction[]> = {};
-  private readPayrollAccess(): PayrollAction[] {
-    return [...(this.store.data().payrollPermissions?.[this.role] ?? payrollDefaults(this.role))];
-  }
-  protected hasPayrollAction(action: PayrollAction): boolean {
-    return this.payrollAccess.includes(action);
-  }
-  protected togglePayrollAction(action: PayrollAction): void {
-    this.payrollAccess = this.payrollAccess.includes(action)
-      ? this.payrollAccess.filter((a) => a !== action)
-      : [...this.payrollAccess, action];
-    this.payrollDrafts[this.role] = this.payrollAccess;
-  }
-  protected changeRole(): void {
-    this.roleMfa = this.mfaDrafts[this.role] ?? this.store.data().roleMfa?.[this.role] ?? true;
-    this.permissions = this.permissionDrafts[this.role] ?? this.readPermissions();
-    this.payrollAccess = this.payrollDrafts[this.role] ?? this.readPayrollAccess();
-    this.rotaAccess = this.rotaDrafts[this.role] ?? this.readRotaAccess();
-    this.permissionDrafts[this.role] = this.permissions;
+  protected enabledActions(module: ProductModule): number {
+    return this.actions.slice(0, 5).filter((action) => this.moduleHas(module, action.code)).length;
   }
   protected permissionCount(): number {
-    return Object.values(this.permissions).flat().filter(Boolean).length;
+    return this.modules().reduce((count, module) => count + this.enabledActions(module), 0);
   }
-  protected enabledActions(module: string): number {
-    return this.permissions[module].filter(Boolean).length;
+  protected level(name: string) {
+    const role = this.roles().find((role) => role.name === name);
+    return permissionLevel(
+      ['read', 'create', 'edit', 'archive', 'export'].map(
+        (action) =>
+          !!role?.permissions.some((permission) => permission.code.endsWith('.' + action)),
+      ),
+    );
+  }
+  protected hasRotaAction(action: RotaAction): boolean {
+    return this.has(
+      'care',
+      'rostering',
+      action === 'view' ? 'read' : action === 'manage' || action === 'attendance' ? 'edit' : action,
+    );
+  }
+  protected toggleRotaAction(action: RotaAction): void {
+    this.toggle(
+      'care',
+      'rostering',
+      action === 'view' ? 'read' : action === 'manage' || action === 'attendance' ? 'edit' : action,
+    );
+  }
+  protected hasPayrollAction(action: PayrollAction): boolean {
+    return this.has(
+      'finance',
+      'payroll',
+      action === 'view' ? 'read' : action === 'manage' ? 'edit' : action,
+    );
+  }
+  protected togglePayrollAction(action: PayrollAction): void {
+    this.toggle(
+      'finance',
+      'payroll',
+      action === 'view' ? 'read' : action === 'manage' ? 'edit' : action,
+    );
   }
   protected permissionsChanged(): boolean {
-    return (
-      this.roleMfa !== (this.store.data().roleMfa?.[this.role] ?? true) ||
-      JSON.stringify(this.permissions) !== JSON.stringify(this.readPermissions()) ||
-      JSON.stringify([...this.payrollAccess].sort()) !==
-        JSON.stringify(this.readPayrollAccess().sort()) ||
-      JSON.stringify([...this.rotaAccess].sort()) !== JSON.stringify(this.readRotaAccess().sort())
-    );
-  }
-  protected applyPermissionPreset(preset: 'view' | 'standard' | 'none'): void {
-    const values =
-      preset === 'view'
-        ? [true, false, false, false, false]
-        : preset === 'standard'
-          ? [true, true, true, false, true]
-          : [false, false, false, false, false];
-    this.payrollAccess =
-      preset === 'none' ? [] : preset === 'view' ? ['view'] : payrollDefaults(this.role);
-    this.payrollDrafts[this.role] = this.payrollAccess;
-    this.rotaAccess =
-      preset === 'none' ? [] : preset === 'view' ? ['view'] : rotaDefaults(this.role);
-    this.rotaDrafts[this.role] = this.rotaAccess;
-    this.permissions = Object.fromEntries(MODULES.map((m) => [m, [...values]]));
-    this.permissionDrafts[this.role] = this.permissions;
+    return this.dirty();
   }
   protected discardPermissions(): void {
-    this.roleMfa = this.store.data().roleMfa?.[this.role] ?? true;
-    this.mfaDrafts[this.role] = this.roleMfa;
-    this.rotaAccess = this.readRotaAccess();
-    this.rotaDrafts[this.role] = this.rotaAccess;
-    this.payrollAccess = this.readPayrollAccess();
-    this.payrollDrafts[this.role] = this.payrollAccess;
-    this.permissions = this.readPermissions();
-    this.permissionDrafts[this.role] = this.permissions;
+    this.drafts.delete(this.selectedId());
+    this.choose(this.selectedId());
   }
-  private hasPermissionDrafts(): boolean {
-    return (
-      Object.entries(this.mfaDrafts).some(
-        ([role, value]) => value !== (this.store.data().roleMfa?.[role] ?? true),
-      ) ||
-      Object.entries(this.permissionDrafts).some(([role, draft]) =>
-        this.modules.some(
-          (module) =>
-            JSON.stringify(draft[module]) !==
-            JSON.stringify(rolePermissions(this.store.data(), role, module)),
+  protected savePermissions(): Promise<void> {
+    return this.save();
+  }
+  protected applyPermissionPreset(preset: 'view' | 'standard' | 'none'): void {
+    if (!this.writable() || this.saving()) return;
+    const actions =
+      preset === 'none' ? [] : preset === 'view' ? ['read'] : ['read', 'create', 'edit', 'export'];
+    this.permissionCodes.set(
+      this.modules().flatMap((module) =>
+        module.submodules.flatMap((sub) =>
+          sub.permissions
+            .filter((permission) => actions.includes(permission.action))
+            .map((permission) => permission.code),
         ),
-      ) ||
-      Object.entries(this.rotaDrafts).some(
-        ([role, draft]) =>
-          JSON.stringify([...draft].sort()) !==
-          JSON.stringify(
-            [...(this.store.data().rotaPermissions?.[role] ?? rotaDefaults(role))].sort(),
-          ),
-      ) ||
-      Object.entries(this.payrollDrafts).some(
-        ([role, draft]) =>
-          JSON.stringify([...draft].sort()) !==
-          JSON.stringify(
-            [...(this.store.data().payrollPermissions?.[role] ?? payrollDefaults(role))].sort(),
-          ),
-      ) ||
-      this.permissionsChanged()
+      ),
     );
   }
-  canLeave(): boolean {
+  private hasDirtyDrafts(): boolean {
     return (
-      !this.hasPermissionDrafts() || window.confirm('Leave without saving role permission changes?')
+      this.dirty() ||
+      [...this.drafts.entries()].some(([id, draft]) => {
+        const role = this.roles().find((role) => role.id === id);
+        return (
+          !!role &&
+          (JSON.stringify([...draft.permissions].sort()) !==
+            JSON.stringify(role.permissions.map((permission) => permission.code).sort()) ||
+            JSON.stringify([...draft.core].sort()) !==
+              JSON.stringify([...role.core_permissions].sort()))
+        );
+      })
     );
   }
   @HostListener('window:beforeunload', ['$event']) protected beforeUnload(
     event: BeforeUnloadEvent,
   ): void {
-    if (this.hasPermissionDrafts()) event.preventDefault();
+    if (this.hasDirtyDrafts() || this.saving()) event.preventDefault();
   }
-  protected savePermissions(): void {
-    this.error.set('');
-    if (this.draftCompanyId !== this.store.companyId()) {
-      this.error.set('The workspace changed. Reopen this role before saving.');
-      return;
-    }
-    if (!this.roles.includes(this.role)) {
-      this.error.set('Select an existing company role.');
-      return;
-    }
-    if (!this.permissionsChanged()) return;
-    const saved = this.store.saveWorkspace((d) => ({
-      ...d,
-      roleMfa: { ...d.roleMfa, [this.role]: this.roleMfa },
-      accessHistory: [
-        ...(d.accessHistory ?? []),
-        accessChange(
-          this.auth.currentUser(),
-          'permissions',
-          this.role,
-          `Module, rota and payroll permissions updated; role MFA: ${this.roleMfa ? 'Required' : 'Not required'}`,
-        ),
-      ],
-      payrollPermissions: { ...d.payrollPermissions, [this.role]: [...this.payrollAccess] },
-      rotaPermissions: { ...d.rotaPermissions, [this.role]: [...this.rotaAccess] },
-      permissions: {
-        ...d.permissions,
-        ...Object.fromEntries(MODULES.map((m) => [this.role + ':' + m, [...this.permissions[m]]])),
-      },
-    }));
-    if (!saved) {
-      this.error.set(
-        'Could not save permissions. Your edits are still here; free browser storage and try again.',
-      );
-      this.toast.error('Could not save permissions. Free some browser storage and try again.');
-      return;
-    }
-    this.toast.success('Permission configuration saved.');
+  canLeave(): boolean {
+    return (
+      !this.saving() &&
+      (!this.hasDirtyDrafts() || window.confirm('Leave without saving role permission changes?'))
+    );
   }
 }

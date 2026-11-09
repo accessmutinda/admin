@@ -1,3 +1,5 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { Router } from '@angular/router';
 import { evidenceCurrent, requirementsFor } from '../learning/academy/academy-governance.models';
 import { RecurringAllocationOptions } from './rota.models';
 import { readiness, availabilityCovers } from '../people/hr.models';
@@ -28,6 +30,8 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class RotaService {
+  private readonly access = inject(CompanyAccessService);
+  private readonly router = inject(Router);
   private readonly store = inject(ManagementStore);
   private readonly auth = inject(AuthService);
   private readonly payroll = inject(PayrollService);
@@ -37,17 +41,7 @@ export class RotaService {
     () => this.store.data().rotaPermissions?.[this.role()] ?? rotaDefaults(this.role()),
   );
   can(action: RotaAction): boolean {
-    if (this.auth.isSuperAdmin() || this.auth.hasRole('CA')) return true;
-    const permissions = this.store.data().permissions[this.role() + ':Care delivery'];
-    const index = { view: 0, manage: 2, publish: 2, attendance: 2, export: 4 }[action];
-    return (
-      !!this.auth.currentUser() &&
-      !!this.store.company()?.modules.includes('Care delivery') &&
-      this.permissions().includes('view') &&
-      this.permissions().includes(action) &&
-      (!permissions ||
-        (!!permissions[0] && !!permissions[index] && (action !== 'manage' || !!permissions[1])))
-    );
+    return this.access.canPath(this.router.url, action === 'attendance' ? 'edit' : action) && this.access.can('care', '*', action === 'attendance' ? 'edit' : action);
   }
   private entry(action: string, detail: string) {
     return {

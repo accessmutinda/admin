@@ -1,3 +1,4 @@
+import { CompanyUnavailable } from '../shared/company-unavailable';
 import { Skeleton } from '../../../shared/ui/skeleton';
 import { CompanyLoading } from './company-loading';
 import { CompaniesApiService } from './companies-api.service';
@@ -34,7 +35,15 @@ import {
 @Component({
   selector: 'cv-company-branding',
   host: { class: 'module-page companies-page company-profile-page company-branding-page' },
-  imports: [Skeleton, CompanyLoading, FormsModule, RouterLink, MatSelectModule, CvSelect],
+  imports: [
+    CompanyUnavailable,
+    Skeleton,
+    CompanyLoading,
+    FormsModule,
+    RouterLink,
+    MatSelectModule,
+    CvSelect,
+  ],
   templateUrl: './company-branding.html',
 })
 export class CompanyBrandingPage {

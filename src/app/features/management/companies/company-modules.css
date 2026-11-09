@@ -60,6 +60,9 @@
   gap: 8px;
   align-items: start;
 }
+.cv-management .company-modules-page .cm-layout.cm-modules-only {
+  grid-template-columns: minmax(0, 1fr);
+}
 .cv-management .company-modules-page :is(.cm-main, .cm-sidebar) {
   display: grid;
   gap: 12px;

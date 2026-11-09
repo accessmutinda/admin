@@ -34,6 +34,21 @@ const companyDataGuard = (
   );
 };
 
+const portalAccessGuard = async (
+  _route: unknown,
+  state: import('@angular/router').RouterStateSnapshot,
+) => {
+  const context = inject(EnvironmentInjector);
+  return import('./core/access/company-access.service').then((m) =>
+    runInInjectionContext(context, async () => {
+      const access = inject(m.CompanyAccessService);
+      const router = inject(Router);
+      await access.refresh();
+      return access.canPath(state.url) || router.createUrlTree(['/access-denied']);
+    }),
+  );
+};
+
 const peopleGuard = (
   route: import('@angular/router').ActivatedRouteSnapshot,
   state: import('@angular/router').RouterStateSnapshot,
@@ -73,14 +88,15 @@ const legacyPersonGuard = (route: import('@angular/router').ActivatedRouteSnapsh
 export const routes: Routes = [
   ...['family-portal', 'family-portal/:page', 'family/:clientId/:accessId/:page'].map((path) => ({
     path,
-    canActivate: [workspaceGuard],
+    canActivate: [workspaceGuard, portalAccessGuard],
     title: 'Family Portal · CareVerity',
     loadComponent: () =>
       import('./features/management/care/family-portal').then((m) => m.FamilyPortal),
   })),
   {
     path: 'staff-portal',
-    canActivate: [workspaceGuard],
+    canActivate: [workspaceGuard, portalAccessGuard],
+    canActivateChild: [portalAccessGuard],
     loadComponent: () =>
       import('./features/management/staff-portal/portal-shell').then((m) => m.PortalShell),
     loadChildren: () =>
@@ -88,7 +104,8 @@ export const routes: Routes = [
   },
   {
     path: 'inspector',
-    canActivate: [workspaceGuard],
+    canActivate: [workspaceGuard, portalAccessGuard],
+    canActivateChild: [portalAccessGuard],
     loadComponent: () =>
       import('./features/inspector/inspector-layout').then((m) => m.InspectorLayout),
     children: [
@@ -199,7 +216,7 @@ export const routes: Routes = [
   },
   {
     path: 'account',
-    canActivate: [workspaceGuard],
+    canActivate: [workspaceGuard, portalAccessGuard],
     children: [
       {
         path: 'security',
@@ -227,14 +244,14 @@ export const routes: Routes = [
   },
   {
     path: 'family/:clientId/:accessId',
-    canActivate: [workspaceGuard],
+    canActivate: [workspaceGuard, portalAccessGuard],
     title: 'Family Portal · CareVerity',
     loadComponent: () =>
       import('./features/management/care/family-portal').then((m) => m.FamilyPortal),
   },
   {
     path: 'manage',
-    canActivate: [workspaceGuard],
+    canActivate: [workspaceGuard, portalAccessGuard],
     canActivateChild: [
       managementAccessGuard,
       companyDataGuard,
@@ -321,7 +338,7 @@ export const routes: Routes = [
       },
       {
         path: 'companies/:id/modules/:section',
-        title: 'Modules & subscription · CareVerity',
+        title: 'Modules & Feature Access · CareVerity',
         canDeactivate: [
           (component: { canLeave: (url?: string) => boolean }, _route, _state, next) =>
             component.canLeave(next.url),
@@ -627,3 +644,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/not-found/not-found').then((m) => m.NotFound),
   },
 ];
+
+function refreshAccessOnNavigation(entries: Routes): void {
+  for (const entry of entries) {
+    if (entry.canActivate || entry.canActivateChild) entry.runGuardsAndResolvers = 'always';
+    if (entry.children) refreshAccessOnNavigation(entry.children);
+  }
+}
+refreshAccessOnNavigation(routes);

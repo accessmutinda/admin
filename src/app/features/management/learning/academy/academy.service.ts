@@ -1,3 +1,4 @@
+import { CompanyAccessService } from '../../../../core/access/company-access.service';
 import {
   AcademyCapability,
   requirementsFor,
@@ -37,6 +38,7 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class AcademyService {
+  private readonly access = inject(CompanyAccessService);
   readonly store = inject(ManagementStore);
   readonly auth = inject(AuthService);
   readonly state = computed(() => {
@@ -61,111 +63,16 @@ export class AcademyService {
       (q) => !this.state().questionDrafts.some((d) => d.id === q.id),
     ),
   ]);
-  readonly enabled = computed(
-    () =>
-      this.auth.isSuperAdmin() ||
-      this.auth.hasRole('CA') ||
-      (!!this.auth.currentUser() && !!this.store.company()?.modules.includes('Training academy')),
-  );
+  readonly enabled = computed(() => this.access.can('academy'));
   readonly canManage = computed(() =>
     (['author', 'publish', 'assign', 'review', 'correct', 'configure'] as AcademyCapability[]).some(
       (cap) => this.can(cap),
     ),
   );
-  readonly canViewEvidence = computed(() => {
-    if (this.auth.isSuperAdmin() || this.auth.hasRole('CA')) return true;
-    const user = this.auth.currentUser();
-    if (!user || !this.enabled()) return false;
-    const grants =
-      this.state().governance?.grants.filter(
-        (g) => g.email.toLowerCase() === user.email.toLowerCase(),
-      ) ?? [];
-    if (grants.length)
-      return grants.some(
-        (g) =>
-          !g.revokedAt &&
-          g.capabilities.includes('evidence') &&
-          Date.parse(g.startsAt) <= Date.now() &&
-          Date.parse(g.expiresAt) > Date.now(),
-      );
-    if (this.can('evidence')) return true;
-    if (!['QA', 'CO'].includes(user.roleCode)) return false;
-    const permission =
-      this.store.data().permissions[ROLES[user.roleCode].label + ':Training academy'];
-    return !permission || !!permission[0];
-  });
+  readonly canViewEvidence = computed(() => this.access.can('academy', 'results') || this.access.can('academy', 'certificates'));
   can(capability: AcademyCapability, personId = ''): boolean {
-    if (this.auth.isSuperAdmin() || this.auth.hasRole('CA')) return true;
-    if (!this.enabled()) return false;
-    const user = this.auth.currentUser();
-    if (!user) return false;
-    const grants =
-      this.state().governance?.grants.filter(
-        (g) => g.email.toLowerCase() === user.email.toLowerCase(),
-      ) ?? [];
-    if (grants.length)
-      return grants.some(
-        (g) =>
-          !g.revokedAt &&
-          Date.parse(g.startsAt) <= Date.now() &&
-          Date.parse(g.expiresAt) > Date.now() &&
-          g.capabilities.includes(capability) &&
-          (!g.personIds.length || (!!personId && g.personIds.includes(personId))),
-      );
-    const defaults: Record<string, AcademyCapability[]> = {
-      PO: [
-        'author',
-        'publish',
-        'assign',
-        'review',
-        'correct',
-        'configure',
-        'export',
-        'evidence',
-        'diagnostics',
-      ],
-      CA: [
-        'author',
-        'publish',
-        'assign',
-        'review',
-        'correct',
-        'configure',
-        'export',
-        'evidence',
-        'diagnostics',
-      ],
-      RM: [
-        'author',
-        'publish',
-        'assign',
-        'review',
-        'correct',
-        'configure',
-        'export',
-        'evidence',
-        'diagnostics',
-      ],
-      TM: ['author', 'publish', 'assign', 'review', 'export', 'evidence'],
-      HR: ['assign', 'review', 'correct', 'export', 'evidence'],
-      QA: ['evidence', 'export'],
-      CO: ['evidence', 'export'],
-    };
-    if (capability === 'diagnostics' && ['CA', 'PO', 'RM'].includes(user.roleCode)) return true;
-    const configured =
-      this.state().governance?.capabilityRoles?.[user.roleCode] ?? defaults[user.roleCode] ?? [];
-    const permission =
-      this.store.data().permissions[ROLES[user.roleCode].label + ':Training academy'];
-    return (
-      configured.includes(capability) &&
-      (!permission ||
-        (!!permission[0] &&
-          (['evidence', 'export', 'review'].includes(capability) ||
-            (!!permission[1] && !!permission[2])))) &&
-      (this.state().governance?.capabilityRoles?.[user.roleCode] !== undefined ||
-        ['PO', 'CA', 'QA', 'CO'].includes(user.roleCode) ||
-        this.state().settings.adminRoles.includes(user.roleCode))
-    );
+    const features: Record<string,string> = {author:'courses',publish:'governance',assign:'assignments',review:'results',correct:'results',configure:'governance',export:'reports',evidence:'results',diagnostics:'governance'};
+    return this.access.can('academy', features[capability] ?? 'learner', capability);
   }
   feedbackVisible(attempt: AcademyAttempt): boolean {
     if (this.can('author') || this.can('review', attempt.personId)) return true;

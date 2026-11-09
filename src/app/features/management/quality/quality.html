@@ -76,6 +76,7 @@
         <button
           [class.active]="tab() === t"
           [attr.aria-current]="tab() === t ? 'page' : null"
+          [hidden]="!canTab(t)"
           (click)="switchTab(t)"
         >
           {{ t }}
@@ -92,7 +93,11 @@
         icon="fact_check"
       >
         @for (destination of destinations; track destination.view; let i = $index) {
-          <button class="co-check-card" (click)="switchTab(destination.view)">
+          <button
+            [hidden]="!canTab(destination.view)"
+            class="co-check-card"
+            (click)="switchTab(destination.view)"
+          >
             <span
               class="material-symbols-outlined"
               [style.color]="['#008d9f', '#008eff', '#00aac4', '#ff8a00'][i % 4]"

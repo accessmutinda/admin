@@ -200,6 +200,7 @@
     >
     @for (t of tabs; track t.key) {
       <a
+        [hidden]="!access.canPath('/manage/people/staff/' + id + '/' + t.key)"
         [routerLink]="['/manage/people/staff', id, t.key]"
         queryParamsHandling="merge"
         [queryParams]="{ edit: null }"

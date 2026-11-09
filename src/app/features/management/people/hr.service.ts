@@ -1,3 +1,4 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -14,6 +15,8 @@ import { StaffDraft, staffErrors, staffRecord, readiness, today, dateValid } fro
 
 @Injectable({ providedIn: 'root' })
 export class HrService {
+  private readonly access = inject(CompanyAccessService);
+  private readonly router = inject(Router);
   readonly store = inject(ManagementStore);
   readonly auth = inject(AuthService);
   readonly staff = computed(() =>
@@ -25,14 +28,7 @@ export class HrService {
     ),
   );
   can(action: 'view' | 'create' | 'edit' | 'export'): boolean {
-    if (this.auth.isSuperAdmin() || this.auth.hasRole('CA')) return true;
-    const role = ROLES[this.auth.currentUser()?.roleCode ?? 'CW'].label;
-    const flags = this.store.data().permissions[role + ':People & HR'];
-    return (
-      !!this.auth.currentUser() &&
-      !!this.store.company()?.modules.includes('People & HR') &&
-      (!flags || (!!flags[0] && !!flags[{ view: 0, create: 1, edit: 2, export: 4 }[action]]))
-    );
+    return this.access.canPath(this.router.url, action) && this.access.can('people', '*', action);
   }
   readonly sampleError = signal('');
   async loadSampleData(): Promise<void> {
@@ -47,13 +43,7 @@ export class HrService {
     );
   }
   canPay(edit = false): boolean {
-    const role = ROLES[this.auth.currentUser()?.roleCode ?? 'CW'].label;
-    const flags = this.store.data().permissions[role + ':Finance'];
-    return (
-      !!this.auth.currentUser() &&
-      !!this.store.company()?.modules.includes('Finance') &&
-      (!flags || (!!flags[0] && (!edit || !!flags[2])))
-    );
+    return this.access.can('finance', 'payroll', edit ? 'edit' : 'read');
   }
   saveDraft(draft: StaffDraft): string | null {
     if (

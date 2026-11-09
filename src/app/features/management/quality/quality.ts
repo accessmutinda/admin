@@ -1,3 +1,4 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { QualityNavigation } from './quality-navigation-bar';
 import { WorkspaceCards } from '../shared/workspace-cards';
 import { QuickActions } from '../shared/quick-actions';
@@ -43,6 +44,7 @@ import {
 })
 export class Quality {
   protected readonly service = inject(QualityService);
+  protected readonly access = inject(CompanyAccessService);
   protected readonly store = this.service.store;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -251,7 +253,20 @@ export class Quality {
   protected events(date: string) {
     return this.monthEvents().filter((e) => e.date === date);
   }
+  protected canTab(tab: string): boolean {
+    return this.access.can(
+      'quality',
+      this.supervisor
+        ? 'supervision'
+        : tab === 'Corrective actions'
+          ? 'actions'
+          : tab === 'Reports'
+            ? 'reports'
+            : 'assessments',
+    );
+  }
   protected switchTab(tab: string): void {
+    if (!this.canTab(tab)) return;
     this.tab.set(tab);
     this.search.set('');
     this.status.set('All');

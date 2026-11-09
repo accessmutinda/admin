@@ -1,0 +1,108 @@
+:host {
+  display: block;
+  margin-bottom: 12px;
+}
+.cu-card {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #e0e9ef;
+  border-radius: 9px;
+  box-shadow: 0 2px 6px #0b305008;
+}
+.cu-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 7px;
+  background: #eaf5ff;
+  color: #008afa;
+  font-size: 23px;
+}
+.cu-content {
+  min-width: 0;
+}
+.cu-content h2 {
+  margin: 0 0 4px;
+  color: #123352;
+  font: 700 14px/1.4 var(--font-sans);
+}
+.cu-content .cu-message {
+  margin: 0;
+  color: #53657a;
+  font: 400 12px/1.5 var(--font-sans);
+  overflow-wrap: anywhere;
+}
+.cu-content .cu-help {
+  margin: 8px 0 0;
+  color: #748295;
+  font: 400 11px/1.5 var(--font-sans);
+}
+.cu-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.cu-retry {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 7px 14px;
+  border: 1px solid #008afa;
+  border-radius: 5px;
+  background: #008afa;
+  color: #fff;
+  font: 700 12px/1.4 var(--font-sans);
+  cursor: pointer;
+}
+.cu-retry .material-symbols-outlined {
+  font-size: 18px;
+}
+.cu-retry:hover:not(:disabled) {
+  background: #0078dc;
+  border-color: #0078dc;
+}
+.cu-retry:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.cu-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  color: #0066ac;
+  font: 700 12px/1.4 var(--font-sans);
+  text-decoration: none;
+}
+.cu-back:hover {
+  text-decoration: underline;
+}
+.cu-actions :is(button, a):focus-visible {
+  outline: 2px solid #008afa;
+  outline-offset: 3px;
+}
+@media (max-width: 900px) {
+  .cu-actions {
+    grid-column: 2;
+  }
+}
+@media (max-width: 480px) {
+  .cu-card {
+    padding: 14px;
+    gap: 10px;
+  }
+  .cu-actions {
+    grid-column: 1 / -1;
+  }
+  .cu-retry,
+  .cu-back {
+    min-height: 44px;
+  }
+}

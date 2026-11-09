@@ -1,3 +1,4 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { AcademyDemoWorkflow } from '../learning/academy/academy-demo-workflow';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -104,7 +105,10 @@ import { ModuleDesign } from '../shared/module-design';
             ><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span
             >Admin Console</a
           >
-          <a routerLink="/inspector/dashboard" (click)="menuOpen.set(false)"
+          <a
+            [hidden]="!access.canPath('/inspector/dashboard')"
+            routerLink="/inspector/dashboard"
+            (click)="menuOpen.set(false)"
             ><span class="material-symbols-outlined" aria-hidden="true">policy</span>Inspector
             portal</a
           >
@@ -185,6 +189,7 @@ import { ModuleDesign } from '../shared/module-design';
     </div>`,
 })
 export class PortalShell {
+  protected readonly access = inject(CompanyAccessService);
   protected readonly auth = inject(AuthService);
   protected readonly store = inject(ManagementStore);
   protected readonly router = inject(Router);
@@ -203,7 +208,11 @@ export class PortalShell {
   protected readonly menuOpen = signal(false);
   protected readonly mobile = toSignal(inject(BreakpointObserver).observe('(max-width: 1023px)'));
   protected readonly userRole = computed(
-    () => ROLES[this.auth.currentUser()?.roleCode ?? 'CW'].label,
+    () =>
+      this.access
+        .context()
+        ?.roles.map((role) => role.name)
+        .join(', ') || ROLES[this.auth.currentUser()?.roleCode ?? 'CW'].label,
   );
   protected readonly links = [
     { path: 'dashboard', label: 'My dashboard', icon: 'space_dashboard' },
@@ -226,10 +235,7 @@ export class PortalShell {
     return ['/staff-portal', ...path.split('/')];
   }
   protected visibleLinks() {
-    return this.links.filter(
-      (item) =>
-        item.path !== 'training' || this.store.company()?.modules.includes('Training academy'),
-    );
+    return this.links.filter((item) => this.access.canPath('/staff-portal/' + item.path));
   }
   protected search(event: Event, term: string): void {
     event.preventDefault();

@@ -1,168 +1,92 @@
 import { TestBed } from '@angular/core/testing';
-import { MatDialog } from '@angular/material/dialog';
+import { signal } from '@angular/core';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { AuthService } from '../../../core/auth/auth.service';
-import { WorkspaceService } from '../../../core/auth/workspace.service';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { ToastService } from '../../../shared/ui/toast.service';
-import { ManagementStore, Member } from '../shared/management.store';
-import { CompanyUserDialog, CompanyUserDialogData } from './company-user-dialog';
+import { ManagementStore } from '../shared/management.store';
+import { CompanyUserDialog } from './company-user-dialog';
+import { testRole } from '../company-admin/access/access-test-fixtures.test-support';
 
-interface UserEditor {
-  email: string;
-  role: string;
-  status: string;
-  mfaPolicy: 'inherit' | 'required' | 'not-required';
-  error(): string;
-  save(): void;
-}
-describe('Company membership dialogs', () => {
-  let store: ManagementStore;
-  const toast = { success: vi.fn(), info: vi.fn(), error: vi.fn() };
-  beforeEach(() => {
-    localStorage.clear();
+describe('Company membership API dialog', () => {
+  const api = vi.fn();
+  const close = vi.fn();
+  async function open(mode: 'invite' | 'edit' | 'delete') {
+    api.mockReset().mockResolvedValue({});
+    close.mockReset();
     TestBed.configureTestingModule({
       imports: [CompanyUserDialog],
-      providers: [{ provide: ToastService, useValue: toast }],
+      providers: [
+        {
+          provide: MAT_DIALOG_DATA,
+          useValue: {
+            companyId: 'north',
+            mode,
+            member:
+              mode === 'invite'
+                ? undefined
+                : {
+                    id: 'member-one',
+                    name: 'Nurse',
+                    email: 'nurse@example.com',
+                    role: 'Company nurse',
+                    roleCode: 'NURSE',
+                    status: 'Active',
+                    version: 3,
+                  },
+          },
+        },
+        { provide: MatDialogRef, useValue: { close, disableClose: false } },
+        {
+          provide: CompanyAccessService,
+          useValue: {
+            companyId: signal('north'),
+            roles: vi.fn().mockResolvedValue({ results: [testRole] }),
+            refresh: vi.fn().mockResolvedValue(undefined),
+          },
+        },
+        { provide: AuthService, useValue: { api } },
+        {
+          provide: ManagementStore,
+          useValue: { companies: signal([{ id: 'north', name: 'North' }]) },
+        },
+        { provide: ToastService, useValue: { success: vi.fn() } },
+      ],
     });
-    TestBed.inject(AuthService).signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    store = TestBed.inject(ManagementStore);
-    vi.clearAllMocks();
-  });
-  afterEach(() => {
-    TestBed.inject(MatDialog).closeAll();
-    vi.restoreAllMocks();
-  });
-  function open(mode: CompanyUserDialogData['mode'], member?: Member) {
-    const ref = TestBed.inject(MatDialog).open(CompanyUserDialog, {
-      data: { companyId: 'lqcs', mode, member: member ? structuredClone(member) : undefined },
-      autoFocus: false,
-    });
-    TestBed.tick();
-    return {
-      editor: ref.componentInstance as unknown as UserEditor,
-      close: vi.spyOn(ref, 'close'),
-      element: document.querySelector('cv-company-user-dialog')!,
-    };
+    const fixture = TestBed.createComponent(CompanyUserDialog);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    return fixture.componentInstance as any;
   }
-  it('records an invitation with normalised email and an explicit delivery limitation', () => {
-    const { editor, close, element } = open('invite');
-    expect(element.textContent).toContain('Send Invite');
-    expect(element.textContent).toContain('Email delivery is not connected');
-    editor.email = '  NEW.User@Example.co.uk  ';
-    editor.role = 'Care Coordinator';
-    editor.save();
-    const member = store.data().members.find((m) => m.email === 'new.user@example.co.uk');
-    expect(member?.status).toBe('Invited');
-    expect(member?.role).toBe('Care Coordinator');
-    expect(member?.name).toBe('');
+  it('uses company custom role codes and a membership precondition', async () => {
+    const editor = await open('edit');
+    await editor.save();
+    expect(api).toHaveBeenCalledWith(
+      '/companies/north/memberships/member-one',
+      { role_code: 'NURSE', status: 'active' },
+      'PATCH',
+      { 'If-Match': '"v3"' },
+    );
     expect(close).toHaveBeenCalledWith(true);
-    expect(JSON.parse(localStorage.getItem('cv_management_v1')!).lqcs.members).toHaveLength(5);
-    expect(toast.success).toHaveBeenCalledWith(
-      'Invitation recorded. Email delivery is not connected.',
+  });
+  it('queues an invitation with an idempotency key', async () => {
+    const editor = await open('invite');
+    editor.email = 'nurse@example.com';
+    editor.role = 'NURSE';
+    await editor.save();
+    expect(api).toHaveBeenCalledWith(
+      '/companies/north/invitations',
+      { email: 'nurse@example.com', role_code: 'NURSE' },
+      'POST',
+      { 'Idempotency-Key': expect.any(String) },
     );
   });
-  it('saves an individual MFA requirement even when the role does not require it', () => {
-    store.saveWorkspace((data) => ({ ...data, roleMfa: { 'Registered Manager': false } }));
-    const member = store.data().members[0];
-    const { editor, close, element } = open('edit', member);
-    expect(element.textContent).toContain('Role default: Not required');
-    editor.mfaPolicy = 'required';
-    editor.save();
-    expect(store.data().members.find((m) => m.id === member.id)?.mfaPolicy).toBe('required');
-    expect(close).toHaveBeenCalledWith(true);
-    const reopened = open(
-      'edit',
-      store.data().members.find((m) => m.id === member.id),
-    );
-    expect(reopened.editor.mfaPolicy).toBe('required');
-    reopened.editor.mfaPolicy = 'inherit';
-    reopened.editor.save();
-    expect(store.data().members.find((m) => m.id === member.id)?.mfaPolicy).toBe('inherit');
-  });
-  it('rejects invalid and duplicate emails and invalid roles without closing', () => {
-    const { editor, close } = open('invite');
-    editor.email = 'bad';
-    editor.save();
-    expect(editor.error()).toContain('valid email');
-    editor.email = 'ARTHUR.BENNETT@example.co.uk';
-    editor.save();
-    expect(editor.error()).toContain('already exists');
-    editor.email = 'new@example.co.uk';
-    editor.role = 'Unsupported';
-    editor.save();
-    expect(editor.error()).toContain('valid role');
-    expect(store.data().members).toHaveLength(4);
+  it('retains the dialog and displays a rejected membership change', async () => {
+    const editor = await open('delete');
+    api.mockRejectedValue(new Error('Last active Company Admin cannot be removed.'));
+    await editor.save();
     expect(close).not.toHaveBeenCalled();
-  });
-  it('edits role and status while preserving the original email and identity', () => {
-    const member = structuredClone(store.data().members[0]);
-    const { editor, element } = open('edit', member);
-    expect(element.querySelector('input[type="email"]')).toBeNull();
-    expect(element.textContent).toContain(member.email);
-    expect(element.textContent).toContain('read-only');
-    editor.email = 'changed@example.co.uk';
-    editor.role = 'Care Worker';
-    editor.status = 'Suspended';
-    editor.save();
-    expect(store.data().members.find((m) => m.id === member.id)).toEqual({
-      ...member,
-      role: 'Care Worker',
-      status: 'Suspended',
-      mfaPolicy: 'inherit',
-    });
-    expect(store.data().people.length).toBeGreaterThan(0);
-  });
-  it('does not change membership when cancelled and requires the delete confirmation', () => {
-    const member = structuredClone(store.data().members[0]);
-    const before = structuredClone(store.data());
-    const { editor, element, close } = open('delete', member);
-    expect(element.textContent).toContain('Remove this user');
-    expect(element.textContent).toContain(member.email);
-    expect(element.querySelector('mat-select')).toBeNull();
-    const cancel = Array.from(element.querySelectorAll('button')).find(
-      (button) => button.textContent?.trim() === 'Cancel',
-    )!;
-    cancel.click();
-    expect(store.data()).toEqual(before);
-    const confirm = open('delete', member);
-    confirm.editor.save();
-    expect(store.data().members.some((m) => m.id === member.id)).toBe(false);
-    expect(store.data().people).toEqual(before.people);
-    expect(store.data().permissions).toEqual(before.permissions);
-  });
-  it('retains the popup and edits when storage fails', () => {
-    const { editor, close } = open('invite');
-    editor.email = 'retry@example.co.uk';
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('Full');
-    });
-    editor.save();
-    expect(editor.error()).toContain('could not be saved');
-    expect(editor.email).toBe('retry@example.co.uk');
-    expect(close).not.toHaveBeenCalled();
-    expect(store.data().members).toHaveLength(4);
-    expect(toast.success).not.toHaveBeenCalled();
-  });
-  it('blocks saving after the selected workspace changes', () => {
-    const { editor, close } = open('invite');
-    editor.email = 'new@example.co.uk';
-    TestBed.inject(WorkspaceService).switchWorkspace('riverside');
-    editor.save();
-    expect(editor.error()).toContain('workspace');
-    expect(close).not.toHaveBeenCalled();
-    expect(store.records()['riverside']).toBeUndefined();
-  });
-  it('checks member existence again before applying an edit', () => {
-    const member = structuredClone(store.data().members[0]);
-    const { editor, close } = open('edit', member);
-    store.saveWorkspace((data) => ({
-      ...data,
-      members: data.members.filter((m) => m.id !== member.id),
-    }));
-    editor.role = 'Care Worker';
-    editor.save();
-    expect(editor.error()).toContain('no longer exists');
-    expect(close).not.toHaveBeenCalled();
-    expect(store.data().members).toHaveLength(3);
+    expect(editor.error()).toContain('Last active');
   });
 });

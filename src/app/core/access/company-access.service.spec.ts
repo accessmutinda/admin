@@ -1,0 +1,88 @@
+import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { AuthService } from '../auth/auth.service';
+import { AccessContext, CompanyAccessService, routeAccess } from './company-access.service';
+
+describe('Company product access', () => {
+  let access: CompanyAccessService;
+  const api = vi.fn();
+  const profile = signal({ id: 'user', company_id: 'north' });
+  const context: AccessContext = {
+    company_id: 'north',
+    company_active: true,
+    platform: false,
+    revision: 1,
+    enabled_modules: ['care'],
+    roles: [],
+    permissions: ['care.records.read'],
+    core_permissions: [],
+    can_manage_modules: false,
+    can_manage_roles: false,
+    can_create_roles: false,
+  };
+  beforeEach(() => {
+    api.mockReset().mockResolvedValue(context);
+    profile.set({ id: 'user', company_id: 'north' });
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: { isAuthenticated: () => true, isSuperAdmin: () => false, profile, api },
+        },
+      ],
+    });
+    access = TestBed.inject(CompanyAccessService);
+  });
+  it('denies missing grants, actions and other-company contexts', () => {
+    expect(access.can('care', 'records')).toBe(false);
+    access.context.set(context);
+    expect(access.canPath('/manage/clients')).toBe(true);
+    expect(access.canPath('/manage/clients/one/medication')).toBe(false);
+    expect(access.can('care', 'records', 'edit')).toBe(false);
+    expect(access.canPath('/manage/companies/north/modules/overview')).toBe(false);
+    access.context.set({ ...context, company_id: 'south' });
+    expect(access.can('care', 'records')).toBe(false);
+  });
+  it('denies inactive companies even when a role grant exists', () => {
+    access.context.set({ ...context, company_active: false });
+    expect(access.can('care', 'records')).toBe(false);
+  });
+  it('refreshes authority from server and clears it on failure', async () => {
+    await access.refresh();
+    expect(access.can('care', 'records')).toBe(true);
+    api.mockRejectedValue(new Error('Unavailable'));
+    await access.refresh();
+    expect(access.context()).toBeNull();
+    expect(access.can('care', 'records')).toBe(false);
+  });
+  it('gives Super Admin every module and submodule independently of company activation', () => {
+    vi.spyOn(TestBed.inject(AuthService), 'isSuperAdmin').mockReturnValue(true);
+    access.context.set(null);
+    for (const module of [
+      'care',
+      'people',
+      'academy',
+      'quality',
+      'finance',
+      'reports',
+      'staff_portal',
+      'family_portal',
+      'inspector_portal',
+    ]) {
+      expect(access.can(module)).toBe(true);
+      expect(access.can(module, 'any-submodule', 'edit')).toBe(true);
+    }
+    access.context.set({ ...context, company_active: false, enabled_modules: [], permissions: [] });
+    expect(access.canPath('/manage/clients/one/medication')).toBe(true);
+  });
+  it('maps feature routes independently of role labels', () => {
+    expect(routeAccess('/manage/learning/certificates')).toEqual([['academy', 'certificates']]);
+    expect(routeAccess('/manage/people/staff/one/documents')).toEqual([['people', 'documents']]);
+    expect(routeAccess('/staff-portal/training')).toEqual([
+      ['staff_portal', '*'],
+      ['academy', 'learner'],
+    ]);
+  });
+});

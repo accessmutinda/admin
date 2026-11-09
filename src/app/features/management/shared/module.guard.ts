@@ -1,17 +1,10 @@
-import { AuthService } from '../../../core/auth/auth.service';
 import { inject } from '@angular/core';
 import { ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
-import { ManagementStore } from './management.store';
-import { ToastService } from '../../../shared/ui/toast.service';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 
-export const moduleGuard = (route: ActivatedRouteSnapshot, _state: RouterStateSnapshot) => {
-  const auth = inject(AuthService);
-  if (auth.isSuperAdmin() || auth.hasRole('CA')) return true;
-  const module = route.data['module'] as string | undefined;
-  const store = inject(ManagementStore);
+export const moduleGuard = async (_route: ActivatedRouteSnapshot, state: RouterStateSnapshot) => {
+  const access = inject(CompanyAccessService);
   const router = inject(Router);
-  const toast = inject(ToastService);
-  if (!module || store.company()?.modules.includes(module)) return true;
-  toast.info(`${module} is not enabled for this company. Update its module settings to continue.`);
-  return router.createUrlTree(['/manage/companies']);
+  await access.refresh();
+  return access.canPath(state.url) || router.createUrlTree(['/access-denied']);
 };

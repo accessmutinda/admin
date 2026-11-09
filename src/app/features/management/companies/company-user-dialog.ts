@@ -1,12 +1,12 @@
-import { effectiveMfa, MfaPolicy } from '../../../core/auth/mfa-policy';
+import { CompanyAccessService, CompanyRole } from '../../../core/access/company-access.service';
 import { AuthService } from '../../../core/auth/auth.service';
-import { accessChange } from '../company-admin/access/access.models';
+
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
-import { ROLES } from '../../../core/auth/models/role';
+
 import { ToastService } from '../../../shared/ui/toast.service';
 import { ManagementStore, Member } from '../shared/management.store';
 import { validContactEmail } from './company-contacts.models';
@@ -17,10 +17,6 @@ export interface CompanyUserDialogData {
   initialRole?: string;
   member?: Member;
 }
-export const COMPANY_USER_ROLES = Object.values(ROLES)
-  .filter((role) => !['PO', 'IN'].includes(role.code))
-  .map((role) => role.label);
-
 @Component({
   selector: 'cv-company-user-dialog',
   imports: [FormsModule, MatDialogModule, MatSelectModule, CvSelect],
@@ -76,8 +72,8 @@ export const COMPANY_USER_ROLES = Object.values(ROLES)
         }
         @if (data.mode === 'delete') {
           <p class="cm-user-delete-note">
-            Remove this user's membership from {{ companyName() }}? This removes the local
-            membership record. It does not delete staff records or a connected sign-in account.
+            Remove this user's membership from {{ companyName() }}? This revokes their company
+            access. It does not delete staff records or a connected sign-in account.
           </p>
         } @else {
           <label for="cm-user-role">Role <span aria-hidden="true">*</span></label>
@@ -89,8 +85,8 @@ export const COMPANY_USER_ROLES = Object.values(ROLES)
             [(ngModel)]="role"
             required
           >
-            @for (option of roles; track option) {
-              <mat-option [value]="option">{{ option }}</mat-option>
+            @for (option of roles(); track option.id) {
+              <mat-option [value]="option.code">{{ option.name }}</mat-option>
             }
           </mat-select>
           <label for="cm-user-mfa">MFA policy</label>
@@ -99,17 +95,15 @@ export const COMPANY_USER_ROLES = Object.values(ROLES)
             id="cm-user-mfa"
             name="mfaPolicy"
             aria-label="User MFA policy"
-            [(ngModel)]="mfaPolicy"
+            [ngModel]="data.member?.mfaPolicy ?? 'inherit'"
+            [disabled]="true"
+            title="Managed through the company security policy"
           >
             <mat-option value="inherit">Use role default</mat-option>
             <mat-option value="required">Require MFA for this user</mat-option>
             <mat-option value="not-required">Do not require MFA for this user</mat-option>
           </mat-select>
-          <small
-            >Role default: {{ roleRequiresMfa() ? 'Required' : 'Not required' }}. Effective:
-            {{ userRequiresMfa() ? 'Required' : 'Not required' }}. A user override takes
-            precedence.</small
-          >
+          <small>MFA follows the saved role and company security policies.</small>
           @if (data.mode === 'edit') {
             <label for="cm-user-status">Status</label>
             <mat-select
@@ -123,11 +117,11 @@ export const COMPANY_USER_ROLES = Object.values(ROLES)
                 <mat-option [value]="option">{{ option }}</mat-option>
               }
             </mat-select>
-            <p>Changes update this company's local role and membership status.</p>
+            <p>Changes update this company's role and membership status.</p>
           } @else {
             <p class="cm-user-delivery-note">
-              <span class="material-symbols-outlined" aria-hidden="true">info</span>Saves an
-              invitation on this device. Email delivery is not connected.
+              <span class="material-symbols-outlined" aria-hidden="true">info</span>Queues a company
+              invitation for email delivery.
             </p>
           }
         }
@@ -136,9 +130,17 @@ export const COMPANY_USER_ROLES = Object.values(ROLES)
         }
       </mat-dialog-content>
       <mat-dialog-actions align="end">
-        <button type="button" class="cm-user-dialog-button" (click)="dialog.close()">Cancel</button>
+        <button
+          type="button"
+          class="cm-user-dialog-button"
+          [disabled]="saving()"
+          (click)="dialog.close()"
+        >
+          Cancel
+        </button>
         <button
           type="submit"
+          [disabled]="saving() || loading()"
           class="cm-user-dialog-button"
           [class.cm-user-dialog-primary]="data.mode !== 'delete'"
           [class.cm-user-dialog-delete]="data.mode === 'delete'"
@@ -163,48 +165,44 @@ export class CompanyUserDialog {
   private readonly auth = inject(AuthService);
   protected readonly submitted = signal(false);
   protected readonly error = signal('');
-  protected readonly roles = [
-    ...new Set([...COMPANY_USER_ROLES, ...(this.data.member?.role ? [this.data.member.role] : [])]),
-  ];
-  protected readonly statuses = [
-    ...new Set([
-      'Active',
-      'Invited',
-      'Suspended',
-      'Inactive',
-      ...(this.data.member?.status ? [this.data.member.status] : []),
-    ]),
-  ];
-  protected mfaPolicy: MfaPolicy = this.data.member?.mfaPolicy ?? 'inherit';
-  protected roleRequiresMfa(): boolean {
-    return this.store.data().roleMfa?.[this.role] ?? true;
-  }
-  protected userRequiresMfa(): boolean {
-    return effectiveMfa(
-      { email: this.email, role: this.role, mfaPolicy: this.mfaPolicy },
-      this.store.data().roleMfa,
-    );
-  }
+  private readonly access = inject(CompanyAccessService);
+  protected readonly roles = signal<CompanyRole[]>([]);
+  protected readonly loading = signal(true);
+  protected readonly saving = signal(false);
+  protected readonly statuses = ['Active', 'Suspended'];
   protected email = '';
-  protected role =
-    this.data.member?.role ??
-    (COMPANY_USER_ROLES.includes(this.data.initialRole ?? '')
-      ? this.data.initialRole!
-      : 'Care Worker');
-  protected status = this.data.member?.status ?? 'Invited';
+  protected role = '';
+  protected status = this.data.member?.status === 'Active' ? 'Active' : 'Suspended';
+  private readonly invitationKey = crypto.randomUUID();
+  constructor() {
+    this.dialog.disableClose = false;
+    void this.access
+      .roles(this.data.companyId)
+      .then((value) => {
+        this.roles.set(value.results);
+        this.role =
+          this.data.member?.roleCode ??
+          value.results.find((r) => r.name === (this.data.member?.role ?? this.data.initialRole))
+            ?.code ??
+          value.results.find((role) => role.code === 'CW')?.code ??
+          '';
+      })
+      .catch((error) =>
+        this.error.set(error instanceof Error ? error.message : 'Company roles unavailable.'),
+      )
+      .finally(() => this.loading.set(false));
+  }
   protected companyName(): string {
     return this.store.companies().find((c) => c.id === this.data.companyId)?.name ?? 'this company';
   }
   protected validEmail(): boolean {
     return this.email.trim().length <= 254 && validContactEmail(this.email.trim());
   }
-  protected save(): void {
+  protected async save(): Promise<void> {
+    if (this.saving() || this.loading()) return;
     this.submitted.set(true);
     this.error.set('');
-    if (
-      this.data.companyId !== this.store.companyId() ||
-      !this.store.companies().some((c) => c.id === this.data.companyId)
-    ) {
+    if (this.data.companyId !== this.access.companyId()) {
       this.error.set('Select this company’s workspace before changing its users.');
       return;
     }
@@ -212,90 +210,51 @@ export class CompanyUserDialog {
       this.error.set('Enter a valid email address.');
       return;
     }
-    if (
-      this.data.mode !== 'delete' &&
-      (!this.roles.includes(this.role) ||
-        !this.statuses.includes(this.status) ||
-        !['inherit', 'required', 'not-required'].includes(this.mfaPolicy))
-    ) {
-      this.error.set('Choose a valid role and status.');
+    if (this.data.mode !== 'delete' && !this.roles().some((r) => r.code === this.role)) {
+      this.error.set('Choose a company role.');
       return;
     }
-    const email = this.email.trim().toLowerCase();
-    const saved = this.store.saveWorkspace((data) => {
+    const base = `/companies/${this.data.companyId}`;
+    this.saving.set(true);
+    this.dialog.disableClose = true;
+    try {
       if (this.data.mode === 'invite') {
-        if (data.members.some((m) => m.email.trim().toLowerCase() === email)) {
-          this.error.set('A user or invitation with this email already exists in this company.');
-          return data;
+        await this.auth.api(
+          `${base}/invitations`,
+          { email: this.email.trim().toLowerCase(), role_code: this.role },
+          'POST',
+          { 'Idempotency-Key': this.invitationKey },
+        );
+      } else {
+        const member = this.data.member;
+        if (!member?.version)
+          throw new Error('Reload the company membership before changing access.');
+        const headers = { 'If-Match': `"v${member.version}"` };
+        if (this.data.mode === 'delete') {
+          await this.auth.api(`${base}/memberships/${member.id}/revoke`, {}, 'POST', headers);
+        } else {
+          await this.auth.api(
+            `${base}/memberships/${member.id}`,
+            { role_code: this.role, status: this.status.toLowerCase() },
+            'PATCH',
+            headers,
+          );
         }
-        return {
-          ...data,
-          accessHistory: [
-            ...(data.accessHistory ?? []),
-            accessChange(this.auth.currentUser(), 'invited', email, `Invited as ${this.role}`),
-          ],
-          members: [
-            ...data.members,
-            {
-              id: crypto.randomUUID(),
-              name: '',
-              email,
-              role: this.role,
-              status: 'Invited',
-              mfaPolicy: this.mfaPolicy,
-            },
-          ],
-        };
       }
-      const member = data.members.find((m) => m.id === this.data.member?.id);
-      if (!member) {
-        this.error.set('This user no longer exists. Close the popup and refresh the table.');
-        return data;
-      }
-      if (
-        this.data.mode === 'edit' &&
-        member.role === this.role &&
-        member.status === this.status &&
-        (member.mfaPolicy ?? 'inherit') === this.mfaPolicy
-      )
-        return data;
-      return {
-        ...data,
-        accessHistory: [
-          ...(data.accessHistory ?? []),
-          accessChange(
-            this.auth.currentUser(),
-            this.data.mode === 'delete' ? 'removed' : 'updated',
-            member.name || member.email,
-            this.data.mode === 'delete'
-              ? 'Company membership removed'
-              : `Role: ${member.role} → ${this.role}; Status: ${member.status} → ${this.status}; MFA: ${this.mfaPolicy}`,
-          ),
-        ],
-        members:
-          this.data.mode === 'delete'
-            ? data.members.filter((m) => m.id !== member.id)
-            : data.members.map((m) =>
-                m.id === member.id
-                  ? { ...m, role: this.role, status: this.status, mfaPolicy: this.mfaPolicy }
-                  : m,
-              ),
-      };
-    });
-    if (this.error()) return;
-    if (!saved) {
-      this.error.set(
-        'Changes could not be saved. Your edits are still here; free some browser storage and try again.',
+      await this.access.refresh();
+      this.toast.success(
+        this.data.mode === 'invite'
+          ? 'Invitation queued.'
+          : this.data.mode === 'delete'
+            ? 'Company membership removed.'
+            : 'Company membership saved.',
       );
-      return;
+      this.dialog.close(true);
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : 'Changes could not be saved.');
+    } finally {
+      this.saving.set(false);
+      this.dialog.disableClose = false;
     }
-    this.toast.success(
-      this.data.mode === 'invite'
-        ? 'Invitation recorded. Email delivery is not connected.'
-        : this.data.mode === 'delete'
-          ? 'Company membership removed.'
-          : 'User role, status and MFA policy saved.',
-    );
-    this.dialog.close(true);
   }
 }

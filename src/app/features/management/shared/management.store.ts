@@ -1,3 +1,4 @@
+import { CompanyAccessService, MODULE_CODES } from '../../../core/access/company-access.service';
 import { companyProfileFields } from '../companies/company-profile.models';
 import { CompaniesApiService } from '../companies/companies-api.service';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -124,6 +125,8 @@ export interface Vacancy {
   documents?: DocumentRequirement[];
 }
 export interface Member {
+  version?: number;
+  roleCode?: string;
   id: string;
   name: string;
   email: string;
@@ -297,6 +300,7 @@ function emptyWorkspace(): WorkspaceData {
 }
 @Injectable({ providedIn: 'root' })
 export class ManagementStore {
+  private readonly productAccess = inject(CompanyAccessService);
   private accessMigrationPending = false;
   private readonly auth = inject(AuthService);
   private readonly companyApi = inject(CompaniesApiService);
@@ -323,7 +327,7 @@ export class ManagementStore {
         accent: '#3b82f6',
         tagline: '',
         logo: '',
-        modules: company.enabled_modules ?? [],
+        modules: Object.keys(MODULE_CODES).filter(name => this.productAccess.context()?.company_id === company.id && this.productAccess.context()?.enabled_modules.includes(MODULE_CODES[name])),
         ...(this.companyApi.details()[company.id]
           ? companyProfileFields(this.companyApi.details()[company.id])
           : {}),

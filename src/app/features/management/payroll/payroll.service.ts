@@ -1,3 +1,5 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { Router } from '@angular/router';
 import { Injectable, computed, inject } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ROLES } from '../../../core/auth/models/role';
@@ -22,6 +24,8 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class PayrollService {
+  private readonly access = inject(CompanyAccessService);
+  private readonly router = inject(Router);
   private readonly store = inject(ManagementStore);
   private readonly auth = inject(AuthService);
   readonly data = computed(() => this.store.data().payroll ?? emptyPayroll());
@@ -30,16 +34,7 @@ export class PayrollService {
     () => this.store.data().payrollPermissions?.[this.role()] ?? payrollDefaults(this.role()),
   );
   can(action: PayrollAction): boolean {
-    if (this.auth.isSuperAdmin() || this.auth.hasRole('CA')) return true;
-    const index = { view: 0, manage: 2, approve: 2, finalise: 2, export: 4, pay: 2 }[action];
-    const finance = this.store.data().permissions[this.role() + ':Finance'];
-    return (
-      !!this.auth.currentUser() &&
-      !!this.store.company()?.modules.includes('Finance') &&
-      (!finance || (finance[0] && finance[index] && (action !== 'manage' || finance[1]))) &&
-      this.permissions().includes('view') &&
-      this.permissions().includes(action)
-    );
+    return this.access.canPath(this.router.url, action) && this.access.can('finance', '*', action);
   }
   private actor(): string {
     return this.auth.currentUser()?.id ?? '';

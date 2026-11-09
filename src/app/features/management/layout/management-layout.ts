@@ -1,3 +1,4 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { NgTemplateOutlet } from '@angular/common';
 import { AcademyGovernanceService } from '../learning/academy/academy-governance.service';
 import { AcademyService } from '../learning/academy/academy.service';
@@ -77,15 +78,12 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
         </button>
       }
       <ng-template #careDelivery>
-        @if (
-          auth.isSuperAdmin() ||
-          auth.hasRole('CA') ||
-          store.company()?.modules.includes('Care delivery')
-        ) {
+        @if (access.can('Care delivery')) {
           <p class="nav-label">CARE DELIVERY</p>
           <button
             type="button"
             class="visits-submenu-toggle"
+            [hidden]="!access.can('care', 'rostering')"
             #visitsMenu
             [class.active]="routerUrl().startsWith('/manage/rota')"
             [attr.aria-expanded]="visitsExpanded()"
@@ -110,6 +108,7 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
               @for (item of visitsLinks; track item.path) {
                 <a
                   [routerLink]="item.path"
+                  [hidden]="!access.canPath(item.path)"
                   [class.selected]="isVisitSection(item.path)"
                   [attr.aria-current]="isVisitSection(item.path) ? 'page' : null"
                   (click)="menuOpen.set(false)"
@@ -120,13 +119,18 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
               }
             </nav>
           }
-          <a routerLink="/manage/clients" routerLinkActive="active" (click)="menuOpen.set(false)"
+          <a
+            routerLink="/manage/clients"
+            [hidden]="!access.canPath('/manage/clients')"
+            routerLinkActive="active"
+            (click)="menuOpen.set(false)"
             ><span class="material-symbols-outlined" aria-hidden="true">folder_shared</span>Service
             users</a
           >
 
           <a
             routerLink="/manage/care-plans"
+            [hidden]="!access.canPath('/manage/care-plans')"
             routerLinkActive="active"
             ariaCurrentWhenActive="page"
             (click)="menuOpen.set(false)"
@@ -135,6 +139,7 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           >
           <a
             routerLink="/manage/ecm"
+            [hidden]="!access.canPath('/manage/ecm')"
             routerLinkActive="active"
             ariaCurrentWhenActive="page"
             (click)="menuOpen.set(false)"
@@ -150,6 +155,7 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
       @for (item of organisation(); track item.path) {
         <a
           [routerLink]="item.path"
+          [hidden]="!access.canPath(item.path)"
           routerLinkActive="active"
           ariaCurrentWhenActive="page"
           (click)="menuOpen.set(false)"
@@ -159,6 +165,7 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
       }
       <a
         routerLink="/manage/people"
+        [hidden]="!access.canPath('/manage/people')"
         [class.active]="isPeopleArea()"
         [attr.aria-current]="isPeopleArea() ? 'page' : null"
         (click)="menuOpen.set(false)"
@@ -167,6 +174,7 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
       <button
         type="button"
         class="academy-submenu-toggle"
+        [hidden]="!access.can('academy')"
         #academyMenu
         [class.active]="routerUrl().startsWith('/manage/learning')"
         [attr.aria-expanded]="academyExpanded()"
@@ -191,6 +199,7 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           @for (item of academyVisibleLinks(); track item.path) {
             <a
               [routerLink]="item.path"
+              [hidden]="!access.canPath(item.path)"
               [class.selected]="isAcademySection(item.path)"
               [attr.aria-current]="isAcademySection(item.path) ? 'page' : null"
               (click)="menuOpen.set(false)"
@@ -204,31 +213,31 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
       @if (!auth.hasRole('CA')) {
         <ng-container *ngTemplateOutlet="careDelivery" />
       }
-      @if (
-        auth.isSuperAdmin() ||
-        auth.hasRole('CA') ||
-        store.company()?.modules.includes('Quality & compliance')
-      ) {
+      @if (access.can('Quality & compliance')) {
         <p class="nav-label">SUPERVISION & QUALITY</p>
-        <a routerLink="/manage/supervisor" routerLinkActive="active" (click)="menuOpen.set(false)"
+        <a
+          routerLink="/manage/supervisor"
+          [hidden]="!access.canPath('/manage/supervisor')"
+          routerLinkActive="active"
+          (click)="menuOpen.set(false)"
           ><span class="material-symbols-outlined" aria-hidden="true">supervisor_account</span
           >Supervisor dashboard</a
         >
         <a
           routerLink="/manage/quality"
+          [hidden]="!access.canPath('/manage/quality')"
           routerLinkActive="active"
           ariaCurrentWhenActive="page"
           (click)="menuOpen.set(false)"
           ><span class="material-symbols-outlined" aria-hidden="true">monitoring</span>Rich KPI</a
         >
       }
-      @if (
-        auth.isSuperAdmin() || auth.hasRole('CA') || store.company()?.modules.includes('Finance')
-      ) {
+      @if (access.can('Finance')) {
         <p class="nav-label">FINANCE</p>
         @for (item of finance; track item.key) {
           <a
             [routerLink]="['/manage/finance', item.key]"
+            [hidden]="!access.canPath('/manage/finance/' + item.key)"
             [attr.data-finance-area]="item.key"
             routerLinkActive="active"
             ariaCurrentWhenActive="page"
@@ -238,12 +247,12 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           >
         }
       }
-      @if (
-        auth.isSuperAdmin() ||
-        auth.hasRole('CA') ||
-        store.company()?.modules.includes('Care delivery')
-      ) {
-        <button class="sidebar-tv" (click)="menuOpen.set(false); tv.open()">
+      @if (access.can('Care delivery')) {
+        <button
+          [hidden]="!access.can('care', 'ecm')"
+          class="sidebar-tv"
+          (click)="menuOpen.set(false); tv.open()"
+        >
           <span class="material-symbols-outlined" aria-hidden="true">connected_tv</span>
           <span>ECM TV wallboard<small>Open full screen</small></span>
           <span class="material-symbols-outlined" aria-hidden="true">north_east</span>
@@ -252,13 +261,17 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
       <div class="sidebar-bottom">
         <a
           routerLink="/staff-portal"
+          [hidden]="!access.canPath('/staff-portal')"
           routerLinkActive="active"
           ariaCurrentWhenActive="page"
           (click)="menuOpen.set(false)"
         >
           <span class="material-symbols-outlined" aria-hidden="true">forum</span>Staff portal
         </a>
-        <a routerLink="/inspector/dashboard" (click)="menuOpen.set(false)"
+        <a
+          routerLink="/inspector/dashboard"
+          [hidden]="!access.canPath('/inspector/dashboard')"
+          (click)="menuOpen.set(false)"
           ><span class="material-symbols-outlined" aria-hidden="true">policy</span>Inspector
           Portal</a
         >
@@ -313,21 +326,31 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
       </header>
       <main id="main-content" tabindex="-1" class="page-content"><router-outlet /></main>
       <footer class="app-footer">
-        <span>CareVerity <span class="footer-dot">·</span> People. Purpose. Progress.</span
-        ><span role="status">{{
-          store.storageAvailable()
-            ? 'Changes saved on this device'
-            : 'Storage is full · changes are held for this session'
-        }}</span>
+        <span>CareVerity <span class="footer-dot">·</span> People. Purpose. Progress.</span>
+        @if (
+          !routerUrl().startsWith('/manage/companies') &&
+          !routerUrl().startsWith('/manage/locations')
+        ) {
+          <span role="status">{{
+            store.storageAvailable()
+              ? 'Changes saved on this device'
+              : 'Storage is full · changes are held for this session'
+          }}</span>
+        }
       </footer>
     </div>
   </div>`,
 })
 export class ManagementLayout {
+  protected readonly access = inject(CompanyAccessService);
   protected readonly tv = inject(WallboardLauncher);
   protected readonly auth = inject(AuthService);
   protected readonly userRole = computed(
-    () => ROLES[this.auth.currentUser()?.roleCode ?? 'UN'].label,
+    () =>
+      this.access
+        .context()
+        ?.roles.map((role) => role.name)
+        .join(', ') || ROLES[this.auth.currentUser()?.roleCode ?? 'UN'].label,
   );
   protected readonly store = inject(ManagementStore);
   private readonly router = inject(Router);

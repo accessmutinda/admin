@@ -1,3 +1,4 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { visibleWorkspaceTabCount } from './workspace-tab-overflow';
 import {
   Component,
@@ -70,6 +71,7 @@ export class CareHeader {
   }
   protected select(section: string): void {
     if (this.disabled()) return;
+    if (section === 'plan' && !this.access.can('care', 'planning')) return;
     if (section === 'plan') {
       void this.router.navigate(['/manage/care-plans', this.client().id]);
       return;
@@ -80,7 +82,8 @@ export class CareHeader {
         queryParams: section === 'plan' ? { section: 'plan' } : {},
       });
   }
-  protected readonly tabs = [
+  protected readonly access = inject(CompanyAccessService);
+  private readonly allTabs = [
     { label: 'Client Journal', path: 'journal' },
     { label: 'Professional Communications', path: 'communications' },
     { label: 'Medication & MAR', path: 'medication' },
@@ -94,8 +97,13 @@ export class CareHeader {
     { label: 'Family Portal', path: 'family' },
     { label: 'Audit Trail', path: 'audit' },
   ];
-  protected readonly visibleTabCount = signal(this.tabs.length);
-  protected readonly overflowTabs = computed(() => this.tabs.slice(this.visibleTabCount()));
+  protected readonly tabs = computed(() =>
+    this.allTabs.filter((tab) =>
+      this.access.canPath(`/manage/clients/${this.client().id}/${tab.path}`),
+    ),
+  );
+  protected readonly visibleTabCount = signal(this.allTabs.length);
+  protected readonly overflowTabs = computed(() => this.tabs().slice(this.visibleTabCount()));
   protected readonly overflowSelected = computed(() =>
     this.overflowTabs().some((tab) => tab.path === this.active()),
   );

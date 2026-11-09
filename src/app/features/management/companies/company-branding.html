@@ -1,25 +1,25 @@
 <nav class="co-breadcrumb" aria-label="Breadcrumb">
   <a routerLink="/manage/companies">Companies</a
   ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
-  @if (dataApi.loading() && !dataApi.loaded()) {
-    <cv-company-loading
-      [company]="company()"
-      view="branding"
-      heading="Branding & Portal Customisation"
-    />
-  } @else if (dataApi.error()) {
-    <section class="co-surface cp-not-found" role="alert">
-      <h2>Company information unavailable</h2>
-      <p>{{ dataApi.error() }}</p>
-      <button type="button" class="cp-button" (click)="dataApi.load()">Retry</button>
-    </section>
-  } @else if (company(); as current) {
+  @if (company(); as current) {
     <a [routerLink]="['/manage/companies', current.id]">{{ current.name }}</a
     ><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
   }
   <span aria-current="page">Branding</span>
 </nav>
-@if (company(); as current) {
+@if (dataApi.loading() && !dataApi.loaded()) {
+  <cv-company-loading
+    [company]="company()"
+    view="branding"
+    heading="Branding & Portal Customisation"
+  />
+} @else if (dataApi.error()) {
+  <cv-company-unavailable
+    [message]="dataApi.error()"
+    [busy]="dataApi.loading()"
+    (retry)="dataApi.load()"
+  />
+} @else if (company(); as current) {
   <div class="co-heading">
     <h1>Branding &amp; Portal Customisation</h1>
     <p>Configure your company's visual identity across the CareVerity platform.</p>

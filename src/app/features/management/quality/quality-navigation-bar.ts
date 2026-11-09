@@ -11,6 +11,7 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { QUALITY_LINKS } from './quality-navigation';
 
 const SHORT_LABELS = [
@@ -84,7 +85,7 @@ interface QualityLink {
       }
     </mat-menu>
     <span #sizer class="quality-nav-sizer" aria-hidden="true" inert>
-      @for (item of links; track item.path) {
+      @for (item of links(); track item.path) {
         <span class="quality-nav-item workspace-tab" data-measure-item>
           <span class="material-symbols-outlined">{{ item.icon }}</span
           ><span>{{ item.label }}</span>
@@ -108,7 +109,8 @@ export class QualityNavigation {
   private readonly navigation = viewChild<ElementRef<HTMLElement>>('navigation');
   private readonly sizer = viewChild<ElementRef<HTMLElement>>('sizer');
   private readonly menuTrigger = viewChild(MatMenuTrigger);
-  protected readonly links: QualityLink[] = [
+  private readonly access = inject(CompanyAccessService);
+  private readonly allLinks: QualityLink[] = [
     ...QUALITY_LINKS.map((item, index) => ({
       path: '/manage/quality' + (item.slug ? '/' + item.slug : ''),
       icon: item.icon,
@@ -122,9 +124,12 @@ export class QualityNavigation {
       title: 'Assessment & action workspace',
     },
   ];
-  protected readonly visibleCount = signal(this.links.length);
-  protected readonly visibleLinks = computed(() => this.links.slice(0, this.visibleCount()));
-  protected readonly overflowLinks = computed(() => this.links.slice(this.visibleCount()));
+  protected readonly links = computed(() =>
+    this.allLinks.filter((item) => this.access.canPath(item.path)),
+  );
+  protected readonly visibleCount = signal(this.allLinks.length);
+  protected readonly visibleLinks = computed(() => this.links().slice(0, this.visibleCount()));
+  protected readonly overflowLinks = computed(() => this.links().slice(this.visibleCount()));
   protected readonly overflowActive = computed(() =>
     this.overflowLinks().some((item) => this.isActive(item)),
   );

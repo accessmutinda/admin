@@ -51,7 +51,7 @@ import { Skeleton } from '../../../shared/ui/skeleton';
                 'Contact Information',
                 'Branches & Locations',
                 'Branding',
-                'Modules & Subscription',
+                'Modules & Feature Access',
                 'Roles & Permissions',
                 'Integrations',
               ];
@@ -384,10 +384,6 @@ export class CompanyLoading {
           {
             title: 'Modules & Access',
             fields: ['Care delivery', 'People & HR', 'Finance', 'Reports & insights'],
-          },
-          {
-            title: 'Subscription Details',
-            fields: ['Plan', 'Billing cycle', 'Renewal date', 'Users & Limits'],
           },
         ];
       case 'access':

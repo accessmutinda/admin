@@ -670,3 +670,45 @@
   font-size: 10px;
   color: #657184;
 }
+
+.cv-management .users-access-page .ua-new-role {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.cv-management .users-access-page .ua-new-role label {
+  display: grid;
+  gap: 4px;
+  flex: 1 1 180px;
+  font-size: 11px;
+}
+.cv-management .users-access-page .ua-new-role input {
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  font: inherit;
+}
+.cv-management .users-access-page .ua-submodules {
+  margin-top: 8px;
+  border-top: 1px solid #e5edf2;
+  padding-top: 8px;
+  font-size: 11px;
+}
+.cv-management .users-access-page .ua-submodules summary {
+  cursor: pointer;
+  color: #0066ac;
+}
+.cv-management .users-access-page .ua-submodule {
+  margin-top: 8px;
+}
+.cv-management .users-access-page .ua-submodule > small {
+  display: block;
+  color: #6c7587;
+  margin: 3px 0 6px;
+}
+.cv-management .users-access-page .ua-core-permissions {
+  margin-top: 8px;
+}

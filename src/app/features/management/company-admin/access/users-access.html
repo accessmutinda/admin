@@ -7,14 +7,10 @@
   <h1>Users &amp; Role Permissions</h1>
   <p>Manage company users and configure the permissions for each role.</p>
 </div>
-@if (dataApi.loading() && !dataApi.loaded()) {
+@if (loading()) {
   <cv-company-loading [company]="company()" view="access" heading="" />
-} @else if (dataApi.error()) {
-  <section class="co-surface cp-not-found" role="alert">
-    <h2>Company information unavailable</h2>
-    <p>{{ dataApi.error() }}</p>
-    <button type="button" class="cp-button" (click)="dataApi.load()">Retry</button>
-  </section>
+} @else if (error() && !configuration()) {
+  <cv-company-unavailable [message]="error()" [busy]="loading()" (retry)="load()" />
 } @else if (company(); as current) {
   <section class="co-summary co-surface" aria-label="Current company overview">
     <div class="co-company-image" [style.background]="current.logo ? '#eef7fa' : null">
@@ -28,11 +24,9 @@
       <div class="co-summary-header">
         <div class="co-company-title">
           <h2>{{ current.name }}</h2>
-          <span
-            class="co-active"
-            [class.co-inactive]="!(current.active ?? !!current.modules.length)"
-            >{{ (current.active ?? !!current.modules.length) ? 'Active' : 'Inactive' }}</span
-          >
+          <span class="co-active" [class.co-inactive]="!current.active">{{
+            current.active ? 'Active' : 'Inactive'
+          }}</span>
         </div>
         <a class="co-profile-button" [routerLink]="['/manage/companies', current.id]"
           >View Company Profile
@@ -65,7 +59,7 @@
         </div>
         <div>
           <span class="material-symbols-outlined" aria-hidden="true">person</span
-          ><span><small>Assigned plan</small>{{ current.modules.length }} modules enabled</span>
+          ><span><small>Module access</small>{{ current.modules.length }} modules enabled</span>
         </div>
       </div>
     </div>
@@ -87,7 +81,12 @@
             placeholder="Search name, email, role or department…"
             [ngModel]="search()"
             (ngModelChange)="setFilter('search', $event)" /></label
-        ><button type="button" class="ua-button ua-outline" [matMenuTriggerFor]="exportMenu">
+        ><button
+          type="button"
+          class="ua-button ua-outline"
+          [disabled]="!access.core('company.access.export')"
+          [matMenuTriggerFor]="exportMenu"
+        >
           <span class="material-symbols-outlined" aria-hidden="true">download</span>Export
           Access<span class="material-symbols-outlined" aria-hidden="true"
             >expand_more</span
@@ -100,7 +99,12 @@
             <span class="material-symbols-outlined" aria-hidden="true">history</span>Export access
             log
           </button></mat-menu
-        ><button type="button" class="ua-button ua-primary" (click)="openMember('invite')">
+        ><button
+          type="button"
+          class="ua-button ua-primary"
+          [disabled]="!access.core('company.memberships.manage')"
+          (click)="openMember('invite')"
+        >
           <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Invite User
         </button>
       </div>
@@ -125,7 +129,7 @@
           (ngModelChange)="setFilter('roleFilter', $event)"
           ><mat-option value="all">All roles</mat-option>
           @for (role of memberRoles(); track role) {
-            <mat-option [value]="role">{{ role }}</mat-option>
+            <mat-option [value]="role">{{ selected()?.name }}</mat-option>
           }
         </mat-select></label
       >
@@ -220,7 +224,7 @@
                   <span class="material-symbols-outlined" aria-hidden="true">{{
                     memberMfa(member) ? 'verified_user' : 'shield'
                   }}</span>
-                  {{ memberMfa(member) ? 'Required' : 'Not required' }}
+                  {{ memberMfaLabel(member) }}
                 </span>
                 <small class="ua-mfa-source">{{ memberMfaSource(member) }}</small>
               </td>
@@ -228,6 +232,11 @@
                 <button
                   type="button"
                   class="ua-icon-button"
+                  [disabled]="
+                    !access.core('company.memberships.manage') ||
+                    member.status === 'Invited' ||
+                    member.status === 'Revoked'
+                  "
                   [matMenuTriggerFor]="memberMenu"
                   [attr.aria-label]="'Actions for ' + (member.name || member.email)"
                 >
@@ -249,7 +258,7 @@
             <tr>
               <td colspan="9" class="ua-empty">
                 {{
-                  store.data().members.length
+                  tableMembers().length
                     ? 'No users match these filters.'
                     : 'No users recorded. Invite a user to get started.'
                 }}
@@ -297,19 +306,32 @@
           <p>Select a role, then configure its module and action permissions.</p>
         </div>
       </div>
+      @if (access.context()?.can_create_roles) {
+        <button
+          type="button"
+          class="ua-button ua-primary"
+          [disabled]="saving()"
+          (click)="creating.set(!creating())"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">add</span
+          >{{ creating() ? 'Cancel new role' : 'Add company role' }}
+        </button>
+      }
       <label class="ua-role-select"
         >Role<mat-select
           cvSelect
-          [(ngModel)]="role"
-          (ngModelChange)="changeRole()"
+          [ngModel]="selectedId()"
+          (ngModelChange)="choose($event)"
           aria-label="Permission role"
           [panelWidth]="compact()?.matches ? 'auto' : 360"
-          ><mat-select-trigger><cv-management-role [label]="role" /></mat-select-trigger>
-          @for (item of roles; track item) {
-            <mat-option [value]="item"
+          ><mat-select-trigger
+            ><cv-management-role [label]="selected()?.name ?? 'Choose a role'"
+          /></mat-select-trigger>
+          @for (item of roles(); track item.id) {
+            <mat-option [value]="item.id"
               ><span class="role-option"
-                ><cv-management-role [label]="item" /><small>{{
-                  roleDescriptions[item]
+                ><cv-management-role [label]="item.name" /><small>{{
+                  item.description
                 }}</small></span
               ></mat-option
             >
@@ -317,24 +339,54 @@
         </mat-select></label
       >
     </div>
+    @if (creating()) {
+      <form class="ua-new-role" (ngSubmit)="create()">
+        <label>Role name<input name="roleName" [(ngModel)]="name" required maxlength="80" /></label
+        ><label>Role code<input name="roleCode" [(ngModel)]="code" required maxlength="16" /></label
+        ><label
+          >Description<input
+            name="roleDescription"
+            [(ngModel)]="description"
+            maxlength="1000" /></label
+        ><button
+          type="submit"
+          class="ua-button ua-primary"
+          [disabled]="saving() || !name.trim() || !code.trim()"
+        >
+          Create role
+        </button>
+      </form>
+    }
+    @if (notice()) {
+      <p class="ua-permission-hint" role="status">{{ notice() }}</p>
+    }
     <div class="ua-presets">
       <div class="ua-permission-count">
-        <strong
-          >{{ permissionCount() }}/{{ modules.length * actions.length }} actions enabled</strong
-        >
-        <p>{{ roleDescriptions[role] }}</p>
+        <strong>{{ permissionCount() }}/{{ modules().length * 5 }} actions enabled</strong>
+        <p>{{ selected()?.description }}</p>
       </div>
       <div class="ua-preset-buttons">
-        <button type="button" class="ua-button ua-outline" (click)="applyPermissionPreset('view')">
+        <button
+          type="button"
+          class="ua-button ua-outline"
+          [disabled]="saving() || !writable()"
+          (click)="applyPermissionPreset('view')"
+        >
           <span class="material-symbols-outlined" aria-hidden="true">visibility</span>View Only</button
         ><button
           type="button"
           class="ua-button ua-outline"
+          [disabled]="saving() || !writable()"
           (click)="applyPermissionPreset('standard')"
         >
           <span class="material-symbols-outlined" aria-hidden="true">edit_square</span>Standard
           Access</button
-        ><button type="button" class="ua-button" (click)="applyPermissionPreset('none')">
+        ><button
+          type="button"
+          class="ua-button"
+          [disabled]="saving() || !writable()"
+          (click)="applyPermissionPreset('none')"
+        >
           <span class="material-symbols-outlined" aria-hidden="true">block</span>No Access
         </button>
       </div>
@@ -349,52 +401,84 @@
         <div>
           <h3 id="ua-mfa-title">Role MFA policy</h3>
           <p id="ua-mfa-help">
-            Default for {{ role }}. Individual user overrides take precedence. Applies at the next
-            sign-in.
+            Saved default for {{ selected()?.name }}. Individual user overrides take precedence.
           </p>
         </div>
       </div>
       <label class="ua-mfa-toggle"
         ><input
           type="checkbox"
-          [ngModel]="roleMfa"
-          (ngModelChange)="changeMfa($event)"
+          [ngModel]="selected()?.mfa_required"
+          [disabled]="true"
+          title="Managed through the company security policy"
           aria-describedby="ua-mfa-help"
         />Require MFA for this role</label
       >
       <p class="ua-permission-hint">
-        Edit a user to require MFA even when their role does not require it. Accounts in multiple
-        workspaces use the strictest effective policy.
+        MFA requirements are managed through the company security policy.
       </p>
     </section>
     <div class="ua-module-cards">
-      @for (module of modules; track module; let moduleIndex = $index) {
+      @for (module of modules(); track module.code; let moduleIndex = $index) {
         <section class="ua-module-card" [attr.aria-labelledby]="'ua-module-' + moduleIndex">
           <div class="ua-module-card-heading">
             <span
               class="material-symbols-outlined ua-module-tile"
-              [style.background]="moduleColors[moduleIndex]"
+              [style.background]="moduleColors[moduleIndex % moduleColors.length]"
               aria-hidden="true"
-              >{{ moduleIcons[module] }}</span
+              >{{ moduleIcons[module.code] }}</span
             >
             <div>
-              <h3 [id]="'ua-module-' + moduleIndex">
-                {{ module === 'Training academy' ? 'CareVerity Academy' : module }}
-              </h3>
-              <small>{{ enabledActions(module) }}/{{ actions.length }} actions enabled</small>
+              <h3 [id]="'ua-module-' + moduleIndex">{{ displayModule(module) }}</h3>
+              <small>{{ enabledActions(module) }}/5 actions enabled</small>
             </div>
           </div>
-          <div class="ua-module-actions" role="group" [attr.aria-label]="module + ' permissions'">
-            @for (action of actions; track action; let i = $index) {
-              <label [class.ua-checked]="permissions[module][i]" [title]="actionDescriptions[i]"
+          <div
+            class="ua-module-actions"
+            role="group"
+            [attr.aria-label]="displayModule(module) + ' permissions'"
+          >
+            @for (action of actions.slice(0, 5); track action.code) {
+              <label [class.ua-checked]="moduleHas(module, action.code)"
                 ><input
                   type="checkbox"
-                  [(ngModel)]="permissions[module][i]"
-                  [attr.aria-label]="action + ' ' + module"
-                /><span>{{ action }}</span></label
+                  [checked]="moduleHas(module, action.code)"
+                  [indeterminate]="modulePartial(module, action.code)"
+                  [disabled]="saving() || !writable()"
+                  (change)="toggleModuleAction(module, action.code)"
+                  [attr.aria-label]="action.label + ' ' + displayModule(module)"
+                /><span>{{ action.code === 'archive' ? 'Delete' : action.label }}</span></label
               >
             }
           </div>
+          <details class="ua-submodules">
+            <summary>Submodule permissions</summary>
+            @for (sub of module.submodules; track sub.code) {
+              <section class="ua-submodule" [attr.aria-label]="sub.name + ' permissions'">
+                <strong>{{ sub.name }}</strong
+                ><small>{{
+                  sub.effective_enabled ? 'Active for company' : 'Inactive for company'
+                }}</small>
+                <div class="ua-module-actions">
+                  @for (action of actions; track action.code) {
+                    @if (availableAction(sub, action.code)) {
+                      <label [class.ua-checked]="has(module.code, sub.code, action.code)"
+                        ><input
+                          type="checkbox"
+                          [checked]="has(module.code, sub.code, action.code)"
+                          [disabled]="saving() || !writable()"
+                          [attr.aria-label]="action.label + ' ' + sub.name"
+                          (change)="toggle(module.code, sub.code, action.code)"
+                        /><span>{{
+                          action.code === 'archive' ? 'Delete' : action.label
+                        }}</span></label
+                      >
+                    }
+                  }
+                </div>
+              </section>
+            }
+          </details>
         </section>
       }
     </div>
@@ -410,7 +494,7 @@
               Works alongside Care delivery. Enable View rota to use other actions.
             </p>
           </div>
-          <span class="ua-feature-count">{{ rotaAccess.length }}/{{ rotaActions.length }}</span>
+          <span class="ua-feature-count">{{ rotaAccess().length }}/{{ rotaActions.length }}</span>
         </div>
         <div class="ua-feature-actions" role="group" aria-describedby="ua-rota-help">
           @for (action of rotaActions; track action.key) {
@@ -418,6 +502,9 @@
               ><input
                 type="checkbox"
                 [checked]="hasRotaAction(action.key)"
+                [disabled]="
+                  saving() || !writable() || (action.key !== 'view' && !hasRotaAction('view'))
+                "
                 (change)="toggleRotaAction(action.key)"
                 [attr.aria-label]="action.label"
               /><span
@@ -440,7 +527,7 @@
             </p>
           </div>
           <span class="ua-feature-count"
-            >{{ payrollAccess.length }}/{{ payrollActions.length }}</span
+            >{{ payrollAccess().length }}/{{ payrollActions.length }}</span
           >
         </div>
         <div class="ua-feature-actions" role="group" aria-describedby="ua-payroll-help">
@@ -449,6 +536,9 @@
               ><input
                 type="checkbox"
                 [checked]="hasPayrollAction(action.key)"
+                [disabled]="
+                  saving() || !writable() || (action.key !== 'view' && !hasPayrollAction('view'))
+                "
                 (change)="togglePayrollAction(action.key)"
                 [attr.aria-label]="action.label"
               /><span
@@ -460,6 +550,32 @@
         </div>
       </section>
     </div>
+    <section
+      class="ua-feature-card ua-core-permissions"
+      aria-label="Company administration permissions"
+    >
+      <div class="ua-feature-heading">
+        <span class="material-symbols-outlined ua-module-tile" aria-hidden="true"
+          >admin_panel_settings</span
+        >
+        <div>
+          <h3>Company administration permissions</h3>
+          <p>Protected Company Admin permissions are retained.</p>
+        </div>
+      </div>
+      <div class="ua-feature-actions">
+        @for (permission of configuration()?.core_permissions; track permission.code) {
+          <label [class.ua-checked]="coreCodes().includes(permission.code)"
+            ><input
+              type="checkbox"
+              [checked]="coreCodes().includes(permission.code)"
+              [disabled]="saving() || !writable() || !!selected()?.protected"
+              (change)="coreToggle(permission.code)"
+            /><span>{{ permission.label }}</span></label
+          >
+        }
+      </div>
+    </section>
     <div class="ua-permission-footer">
       @if (error()) {
         <p class="ua-error" role="alert">{{ error() }}</p>
@@ -469,21 +585,23 @@
           permissionsChanged() ? 'edit_note' : 'check_circle'
         }}</span
         >{{
-          permissionsChanged() ? 'Unsaved changes for ' + role : 'Permissions are up to date'
+          permissionsChanged()
+            ? 'Unsaved changes for ' + selected()?.name
+            : 'Permissions are up to date'
         }}</span
       >
       <div>
         <button
           type="button"
           class="ua-button ua-outline"
-          [disabled]="!permissionsChanged()"
+          [disabled]="saving() || !writable() || !permissionsChanged()"
           (click)="discardPermissions()"
         >
           Discard Changes</button
         ><button
           type="button"
           class="ua-button ua-primary"
-          [disabled]="!permissionsChanged()"
+          [disabled]="saving() || !writable() || !permissionsChanged()"
           (click)="savePermissions()"
         >
           <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Changes
@@ -491,7 +609,8 @@
       </div>
     </div>
     <p class="ua-permission-hint ua-local-note">
-      Permission settings are saved on this device. Disabled company modules remain unavailable.
+      Permission changes save to this company. Disabled modules remain unavailable to company users.
+      Super Admin can access all modules and submodules.
     </p>
   </section>
 } @else {

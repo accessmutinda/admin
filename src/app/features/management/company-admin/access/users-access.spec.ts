@@ -1,128 +1,85 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { CompanyAccessService } from '../../../../core/access/company-access.service';
 import { AuthService } from '../../../../core/auth/auth.service';
-import { WorkspaceService } from '../../../../core/auth/workspace.service';
-import { UsersAccess } from './users-access';
 import { ManagementStore } from '../../shared/management.store';
+import { UsersAccess } from './users-access';
+import { accessFixture, testRole } from './access-test-fixtures.test-support';
 
-interface PermissionEditor {
-  role: string;
-  permissions: Record<string, boolean[]>;
-  changeRole(): void;
-  applyPermissionPreset(preset: 'view' | 'standard' | 'none'): void;
-  discardPermissions(): void;
-  savePermissions(): void;
-  permissionsChanged(): boolean;
-  togglePayrollAction(action: 'view' | 'manage' | 'approve' | 'finalise' | 'export' | 'pay'): void;
-  hasPayrollAction(action: 'view' | 'manage'): boolean;
-  toggleRotaAction(action: 'view' | 'manage' | 'publish' | 'attendance' | 'export'): void;
-  hasRotaAction(action: 'view' | 'manage' | 'publish' | 'attendance' | 'export'): boolean;
-}
-
-describe('UsersAccess permission drafts', () => {
-  let editor: PermissionEditor;
-  let store: ManagementStore;
-
-  beforeEach(() => {
-    localStorage.clear();
+describe('Company role permission editor', () => {
+  let access: ReturnType<typeof accessFixture>;
+  let editor: any;
+  beforeEach(async () => {
+    access = accessFixture();
     TestBed.configureTestingModule({
       imports: [UsersAccess],
-      providers: [provideRouter([])],
-    }).overrideComponent(UsersAccess, { set: { template: '' } });
-    TestBed.inject(AuthService).signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    store = TestBed.inject(ManagementStore);
-    editor = TestBed.createComponent(UsersAccess).componentInstance as unknown as PermissionEditor;
+      providers: [
+        provideRouter([]),
+        { provide: CompanyAccessService, useValue: access },
+        { provide: AuthService, useValue: { api: vi.fn() } },
+        { provide: MatDialog, useValue: { open: vi.fn() } },
+        {
+          provide: ManagementStore,
+          useValue: {
+            company: signal({ id: 'north', name: 'North', code: 'N', modules: [], active: true }),
+          },
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(UsersAccess);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    editor = fixture.componentInstance;
   });
-
-  it('keeps separate unsaved drafts when switching roles', () => {
-    editor.applyPermissionPreset('view');
-    editor.permissions['Care delivery'][3] = true;
-    editor.role = 'HR Officer';
-    editor.changeRole();
-    editor.applyPermissionPreset('none');
-    editor.role = 'Registered Manager';
-    editor.changeRole();
-    expect(editor.permissions['Care delivery']).toEqual([true, false, false, true, false]);
-    expect(store.data().permissions['Registered Manager:Care delivery']).toBeUndefined();
-    editor.role = 'HR Officer';
-    editor.changeRole();
-    expect(editor.permissions['Care delivery']).toEqual([false, false, false, false, false]);
+  it('keeps a failed permission edit available to retry', async () => {
+    access.saveRole.mockRejectedValue(new Error('Record changed. Reload and retry.'));
+    editor.toggle('care', 'records', 'edit');
+    await editor.save();
+    expect(editor.dirty()).toBe(true);
+    expect(editor.has('care', 'records', 'edit')).toBe(true);
+    expect(editor.selected().version).toBe(1);
+    expect(editor.error()).toContain('Reload');
   });
-
-  it('saves only the selected role and restores its saved settings on discard', () => {
-    editor.applyPermissionPreset('view');
-    editor.role = 'HR Officer';
-    editor.changeRole();
-    editor.applyPermissionPreset('none');
-    editor.savePermissions();
-    expect(store.data().permissions['Registered Manager:Care delivery']).toBeUndefined();
-    expect(store.data().permissions['HR Officer:Care delivery']).toEqual([
-      false,
-      false,
-      false,
-      false,
-      false,
+  it('accepts confirmed role permissions and clears the draft after save', async () => {
+    access.saveRole.mockResolvedValue({ ...testRole, version: 2, etag: '"v2"', permissions: [] });
+    editor.toggle('care', 'records', 'read');
+    await editor.save();
+    expect(access.saveRole).toHaveBeenCalledWith(
+      'north',
+      expect.objectContaining({ etag: '"v1"' }),
+      [],
+      [],
+      true,
+    );
+    expect(editor.dirty()).toBe(false);
+    expect(editor.selected().etag).toBe('"v2"');
+    expect(access.refresh).toHaveBeenCalled();
+  });
+  it('preserves each role draft when switching the original role selector', () => {
+    editor.roles.update((roles: (typeof testRole)[]) => [
+      ...roles,
+      { ...testRole, id: 'role-two', code: 'VIEWER', name: 'Viewer', permissions: [] },
     ]);
-    expect(editor.permissionsChanged()).toBe(false);
-    editor.applyPermissionPreset('standard');
-    expect(editor.permissionsChanged()).toBe(true);
-    editor.discardPermissions();
-    expect(editor.permissions['Care delivery']).toEqual([false, false, false, false, false]);
-    expect(editor.permissionsChanged()).toBe(false);
+    editor.toggle('care', 'records', 'edit');
+    editor.choose('role-two');
+    expect(editor.has('care', 'records', 'edit')).toBe(false);
+    editor.choose(testRole.id);
+    expect(editor.has('care', 'records', 'edit')).toBe(true);
+    editor.choose('role-two');
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    expect(editor.canLeave()).toBe(false);
+    vi.restoreAllMocks();
   });
-  it('keeps payroll access drafts by role and persists only the selected role', () => {
-    editor.togglePayrollAction('manage');
-    expect(editor.hasPayrollAction('manage')).toBe(false);
-    editor.role = 'Care Worker';
-    editor.changeRole();
-    editor.applyPermissionPreset('none');
-    editor.togglePayrollAction('view');
-    editor.savePermissions();
-    expect(store.data().payrollPermissions?.['Care Worker']).toEqual(['view']);
-    expect(store.data().payrollPermissions?.['Registered Manager']).toBeUndefined();
-    editor.role = 'Registered Manager';
-    editor.changeRole();
-    expect(editor.hasPayrollAction('manage')).toBe(false);
-    editor.discardPermissions();
-    expect(editor.hasPayrollAction('manage')).toBe(true);
-  });
-  it('keeps rota access drafts per role and saves only the selected role', () => {
-    editor.toggleRotaAction('publish');
-    expect(editor.hasRotaAction('publish')).toBe(false);
-    editor.role = 'Care Worker';
-    editor.changeRole();
-    editor.applyPermissionPreset('none');
-    editor.toggleRotaAction('view');
-    editor.toggleRotaAction('attendance');
-    editor.savePermissions();
-    expect(store.data().rotaPermissions?.['Care Worker']).toEqual(['view', 'attendance']);
-    expect(store.data().rotaPermissions?.['Registered Manager']).toBeUndefined();
-    editor.role = 'Registered Manager';
-    editor.changeRole();
-    expect(editor.hasRotaAction('publish')).toBe(false);
-    editor.discardPermissions();
-    expect(editor.hasRotaAction('publish')).toBe(true);
-  });
-  it('applies presets to rota permissions and restores the saved draft on discard', () => {
-    editor.applyPermissionPreset('none');
-    expect(editor.hasRotaAction('view')).toBe(false);
-    expect(editor.permissionsChanged()).toBe(true);
-    editor.discardPermissions();
-    expect(editor.hasRotaAction('view')).toBe(true);
-    editor.applyPermissionPreset('view');
-    expect(editor.hasRotaAction('view')).toBe(true);
-    expect(editor.hasRotaAction('attendance')).toBe(false);
-    editor.savePermissions();
-    expect(store.data().rotaPermissions?.['Registered Manager']).toEqual(['view']);
-    editor.applyPermissionPreset('standard');
-    expect(editor.hasRotaAction('attendance')).toBe(true);
-  });
-  it('retains permission drafts when saving fails', () => {
-    editor.applyPermissionPreset('none');
-    vi.spyOn(store, 'saveWorkspace').mockReturnValue(false);
-    editor.savePermissions();
-    expect(editor.permissionsChanged()).toBe(true);
-    expect(store.data().rotaPermissions?.['Registered Manager']).toBeUndefined();
+  it('creates an empty custom role using a stable retry key', async () => {
+    editor.name = 'Company nurse';
+    editor.code = 'nurse';
+    editor.description = '';
+    access.createRole.mockRejectedValue(new Error('Unavailable'));
+    await editor.create();
+    await editor.create();
+    expect(access.createRole.mock.calls[0][2]).toBe(access.createRole.mock.calls[1][2]);
+    expect(access.createRole.mock.calls[0][1].code).toBe('NURSE');
   });
 });

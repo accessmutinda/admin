@@ -132,7 +132,7 @@ export class Companies {
       },
       {
         key: 'modules',
-        title: 'Modules & Subscription',
+        title: 'Modules & Feature Access',
         description: 'Select and configure modules',
         icon: 'deployed_code',
         tone: 'orange',

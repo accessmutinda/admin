@@ -28,7 +28,10 @@
         </summary>
         <div>
           <a [routerLink]="['/manage/clients', c.id, 'audit']">View audit trail</a
-          ><a [routerLink]="['/manage/clients', c.id, 'family']">Family access settings</a
+          ><a
+            [hidden]="!access.can('care', 'family')"
+            [routerLink]="['/manage/clients', c.id, 'family']"
+            >Family access settings</a
           ><a routerLink="/manage/rota/call-packages" [queryParams]="{ client: c.id }"
             >Manage services</a
           >
@@ -112,7 +115,7 @@
     >
       <span class="material-symbols-outlined" aria-hidden="true">home</span>Overview
     </button>
-    @for (tab of tabs.slice(0, visibleTabCount()); track tab.path) {
+    @for (tab of tabs().slice(0, visibleTabCount()); track tab.path) {
       <a
         class="workspace-tab"
         [class.selected]="active() === tab.path"
@@ -170,7 +173,7 @@
       <span class="workspace-tab" data-measure-tab="overview"
         ><span class="material-symbols-outlined">home</span>Overview</span
       >
-      @for (tab of tabs; track tab.path) {
+      @for (tab of tabs(); track tab.path) {
         <span class="workspace-tab" [attr.data-measure-tab]="tab.path"
           ><span class="material-symbols-outlined">{{ tabIcon(tab.path) }}</span
           >{{ tab.label }}</span

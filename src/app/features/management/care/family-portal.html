@@ -48,6 +48,7 @@
   <nav id="family-navigation" aria-label="Family navigation">
     @for (link of links; track link.path) {
       <a
+        [hidden]="!companyAccess.canPath(href(link.path).join('/'))"
         [routerLink]="href(link.path)"
         [queryParams]="queryParams()"
         [class.active]="page() === link.path"
@@ -1015,7 +1016,8 @@
                     @for (l of links.slice(1, 9); track l.path) {
                       <tr>
                         <td>
-                          <a [routerLink]="href(l.path)" [queryParams]="queryParams()">{{
+                          <a [hidden]="!companyAccess.canPath(href(l.path).join('/'))"
+        [routerLink]="href(l.path)" [queryParams]="queryParams()">{{
                             l.label
                           }}</a>
                         </td>

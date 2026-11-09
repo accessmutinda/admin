@@ -1,3 +1,4 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { AcademyService } from '../learning/academy/academy.service';
 import { AcademyStaffTraining } from '../learning/academy/academy-staff-training';
 import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
@@ -396,6 +397,7 @@ export class StaffProfile {
       },
     ];
   });
+  protected readonly access = inject(CompanyAccessService);
   protected readonly tabs = STAFF_TABS;
   protected readonly editing = signal(false);
   protected readonly error = signal('');
