@@ -38,6 +38,20 @@ initial routing until session restoration establishes authority while allowing
 the shell to render; company data requests then run without blocking page
 activation. Permission checks remain in the routing boundary.
 
+Branches & Locations uses Leaflet 1.9.4 to display saved coordinates on a geographic
+map in the existing overview card and expanded dialog. Pins select the existing
+location details, support keyboard selection and follow filters. Locations without
+coordinates stay in the register and are excluded from the map. Tile failures
+show an unavailable message while retaining coordinate pins. No geocoding or
+device-location request is performed.
+
+The default tile source is `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, with
+visible OpenStreetMap attribution and normal browser caching. `LOCATION_MAP_TILES`
+in `locations/location-map.ts` is an injectable provider configuration for a
+replacement URL, attribution and maximum zoom. Choose a provider suitable for
+production traffic and retain its attribution; follow the
+[OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/).
+
 Contact Information loads saved channels, all address records and key contacts
 from the backend aggregate. Save Changes atomically applies edits, additions and
 confirmed removals using version and idempotency headers. Partial setup can be

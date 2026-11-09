@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'leaflet/dist/leaflet.css';
 @import './app/features/management/shared/management.css';
 @import './app/shared/ui/select.css';
 @import './app/features/management/shared/admin-panel.css';
