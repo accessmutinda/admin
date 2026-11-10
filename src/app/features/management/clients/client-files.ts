@@ -203,6 +203,11 @@ export class ClientFiles {
     this.profileDialogOpen.set(true);
     const ref = this.dialogs.open(this.profileEditor, {
       width: photoOnly ? '560px' : '960px',
+      panelClass: [
+        'service-user-dialog',
+        photoOnly ? 'service-user-photo-dialog' : 'service-user-profile-dialog',
+      ],
+      backdropClass: 'service-user-dialog-backdrop',
       maxWidth: 'calc(100vw - 24px)',
       maxHeight: '90vh',
       autoFocus: 'first-tabbable',
@@ -247,6 +252,8 @@ export class ClientFiles {
     if (!['health', 'support', 'communication', 'preferences', 'contact'].includes(card)) return;
     this.overviewDialog = this.dialogs.open(ServiceUserOverviewDialog, {
       width: '800px',
+      panelClass: ['service-user-dialog', 'service-user-card-dialog'],
+      backdropClass: 'service-user-dialog-backdrop',
       maxWidth: 'calc(100vw - 24px)',
       maxHeight: '90vh',
       autoFocus: 'first-tabbable',

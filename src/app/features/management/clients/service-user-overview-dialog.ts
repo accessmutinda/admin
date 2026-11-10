@@ -93,8 +93,14 @@ const FIELDS: Record<OverviewCard, Field[]> = {
   imports: [FormsModule, MatDialogModule, MatSelectModule, CvSelect],
   host: { class: 'module-page clients-page' },
   styleUrls: ['./client-files.css', './client-profile-editor.css'],
-  template: `<div class="client-files">
-    <h2 mat-dialog-title>{{ title }}</h2>
+  template: `<div class="client-files service-user-popup">
+    <div class="su-dialog-heading">
+      <span class="material-symbols-outlined" aria-hidden="true">{{ icon }}</span>
+      <div>
+        <h2 mat-dialog-title>{{ title }}</h2>
+        <p class="su-dialog-subtitle">{{ personName }}</p>
+      </div>
+    </div>
     <form class="client-profile-editor" (ngSubmit)="save()" [inert]="busy()">
       <mat-dialog-content>
         <div class="form-grid">
@@ -180,6 +186,14 @@ export class ServiceUserOverviewDialog {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly errors = signal<Record<string, string>>({});
+  readonly personName = this.data.person.name;
+  readonly icon = {
+    health: 'cardiology',
+    support: 'volunteer_activism',
+    communication: 'chat',
+    preferences: 'sentiment_satisfied',
+    contact: 'group',
+  }[this.data.card];
   readonly title = {
     health: 'Health Conditions',
     support: 'Support Needs',
