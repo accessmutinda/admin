@@ -1,0 +1,267 @@
+/* Shared Service User dialogs follow the Companies palette and compact form rhythm. */
+.cdk-overlay-container
+  .cdk-overlay-pane.service-user-dialog
+  .mat-mdc-dialog-container
+  .mat-mdc-dialog-surface {
+  border: 1px solid #e9eff3;
+  border-radius: 9px;
+  background: linear-gradient(120deg, #fff, #fcfefe);
+  box-shadow: 0 2px 7px #123c541f;
+}
+.service-user-dialog .service-user-popup {
+  display: flex;
+  flex-direction: column;
+  max-height: min(85vh, calc(100dvh - 24px));
+  overflow: hidden;
+}
+.service-user-dialog-backdrop {
+  background: #07153666;
+}
+.client-files .profile-form-content {
+  display: contents;
+}
+:is(
+  .cdk-overlay-container
+    .cdk-overlay-pane.service-user-dialog
+    .mat-mdc-dialog-container
+    .mat-mdc-dialog-surface
+    .service-user-popup,
+  .service-user-popup[role='dialog']
+) {
+  box-sizing: border-box;
+  color: #123352;
+  font: 12px/1.4 var(--font-sans, 'Lato', Arial, sans-serif);
+  min-width: 0;
+
+  &.profile-dialog-body {
+    display: flex;
+    flex-direction: column;
+    max-height: min(85vh, calc(100dvh - 24px));
+    overflow: hidden;
+    padding: 0;
+  }
+  &.care-drawer,
+  &.note-dialog,
+  &.workspace-dialog,
+  &.document-preview {
+    border: 1px solid #e9eff3;
+    border-radius: 9px;
+    background: linear-gradient(120deg, #fff, #fcfefe);
+    box-shadow: 0 2px 7px #123c541f;
+    padding: 10px;
+  }
+  &.care-drawer {
+    border-radius: 9px 0 0 9px;
+  }
+  & > .su-dialog-heading,
+  & > .care-toolbar,
+  & > .note-panel-heading {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 9px;
+    margin: 0;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid #edf2f5;
+  }
+  & .su-dialog-heading > .material-symbols-outlined {
+    display: grid;
+    place-items: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    background: #008afa;
+    color: #fff;
+    font-size: 22px;
+  }
+  & :is(h1, h2, .mat-mdc-dialog-title) {
+    margin: 0;
+    padding: 0;
+    color: #002b60;
+    font: 800 16px/1.4 var(--font-sans, 'Lato', Arial, sans-serif);
+    letter-spacing: -0.35px;
+  }
+  & .mat-mdc-dialog-title::before {
+    display: none;
+  }
+  & :is(h3, .client-form-title) {
+    color: #002b60;
+    font: 700 14px/1.4 var(--font-sans, 'Lato', Arial, sans-serif);
+    margin: 10px 0 6px;
+  }
+  & :is(p, small) {
+    overflow-wrap: anywhere;
+  }
+  & :is(small, .su-dialog-subtitle, .client-form-hint) {
+    display: block;
+    color: #657184;
+    font: 400 11px/1.5 var(--font-sans, 'Lato', Arial, sans-serif);
+    margin: 3px 0 0;
+  }
+  & .client-profile-editor {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  & :is(mat-dialog-content, .su-dialog-content) {
+    flex: 1 1 auto;
+    display: block;
+    min-height: 0;
+    max-height: none;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 12px 14px;
+    color: #123352;
+    font: inherit;
+  }
+  & :is(.form-grid, .care-fields) {
+    display: grid;
+    grid-template-columns: var(--su-dialog-columns, repeat(2, minmax(0, 1fr)));
+    gap: 8px 10px;
+  }
+  & .form-grid > label,
+  & .care-fields > label,
+  & .note-editor > label,
+  & > label {
+    display: block;
+    min-width: 0;
+    color: #10355e;
+    font: 700 12px/1.4 var(--font-sans, 'Lato', Arial, sans-serif);
+  }
+  & :is(input:not([type='checkbox']):not([type='radio']), textarea, mat-select.cv-select) {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: var(--su-dialog-control-height, 36px);
+    margin: 3px 0 0;
+    padding: 6px 8px;
+    border: 1px solid #dfe6eb;
+    border-radius: 5px;
+    background: #fff;
+    color: #123352;
+    font: 400 12px/1.4 var(--font-sans, 'Lato', Arial, sans-serif);
+  }
+  & textarea {
+    min-height: 72px;
+    resize: vertical;
+  }
+  & :is(input, textarea)[readonly] {
+    background: #fafdff;
+    color: #657184;
+  }
+  & :is(input, textarea, mat-select, button):focus-visible {
+    outline: 2px solid #008bd9;
+    outline-offset: 2px;
+  }
+  & :is(.form-grid, .client-profile-tools, .client-checks, .care-fields) [aria-invalid='true'] {
+    border-color: #d62b41 !important;
+    box-shadow: 0 0 0 1px #d62b41;
+  }
+  & :is(.client-field-error, .care-field-error) {
+    color: #b42334;
+  }
+  & :is(.client-error, .care-error) {
+    padding: 8px 10px;
+    border: 1px solid #f2c8cf;
+    border-radius: 5px;
+    background: #fff5f6;
+    color: #b42334 !important;
+    font-size: 12px;
+  }
+  & :is(mat-dialog-actions, .client-save, footer) {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 8px;
+    margin: 0;
+    padding: 10px 14px;
+    border-top: 1px solid #edf2f5;
+    background: #fafdff;
+  }
+  & :is(.button, .care-button) {
+    min-height: var(--su-dialog-control-height, 36px);
+    padding: 6px 12px;
+    border: 1px solid #dfe6eb;
+    border-radius: 5px;
+    background: linear-gradient(#fff, #f9fcfd);
+    color: #16375b;
+    font: 700 12px/1.4 var(--font-sans, 'Lato', Arial, sans-serif);
+    cursor: pointer;
+  }
+  & :is(.button.primary, .care-button.primary) {
+    border-color: #008afa;
+    background: #008afa;
+    color: #fff;
+  }
+  & :is(.button.primary, .care-button.primary):hover:not(:disabled) {
+    border-color: #0079dc;
+    background: #0079dc;
+  }
+  & :is(.button, .care-button):hover:not(:disabled) {
+    box-shadow: 0 0 0 2px #00a4ce30;
+  }
+  & button:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+}
+.service-user-profile-dialog .service-user-popup .client-profile-editor .form-grid {
+  --su-dialog-columns: repeat(4, minmax(0, 1fr));
+}
+.service-user-profile-dialog .service-user-popup .client-profile-editor .client-profile-narratives {
+  --su-dialog-columns: repeat(3, minmax(0, 1fr));
+}
+@container (max-width: 899px) {
+  .service-user-profile-dialog .service-user-popup .client-profile-editor .form-grid {
+    --su-dialog-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@container (max-width: 679px) {
+  .service-user-profile-dialog .service-user-popup .client-profile-editor .form-grid {
+    --su-dialog-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (max-width: 439px) {
+  .service-user-dialog .service-user-popup .client-profile-editor .form-grid {
+    --su-dialog-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .service-user-dialog .service-user-popup .client-profile-editor .form-grid {
+    --su-dialog-columns: minmax(0, 1fr);
+  }
+  .service-user-popup[role='dialog'] :is(.care-fields, .form-grid) {
+    --su-dialog-columns: minmax(0, 1fr);
+  }
+}
+@media (pointer: coarse) {
+  .service-user-popup
+    :is(input:not([type='checkbox']), mat-select.cv-select, .button, .care-button) {
+    min-height: 44px;
+  }
+  .service-user-popup .check-label {
+    min-height: 44px;
+  }
+}
+
+.service-user-popup input::file-selector-button {
+  min-height: 30px;
+  margin-inline-end: 8px;
+  padding: 4px 10px;
+  border: 1px solid #008afa;
+  border-radius: 5px;
+  background: #fff;
+  color: #008afa;
+  font: 700 12px/1.4 var(--font-sans, 'Lato', Arial, sans-serif);
+  cursor: pointer;
+}
