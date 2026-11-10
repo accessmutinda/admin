@@ -1,9 +1,21 @@
+import { ServiceUsersApi, DirectoryUser } from './service-users-api.service';
+import { PageLoading } from '../../../shared/layouts/page-loading';
+import { CompanyUnavailable } from '../shared/company-unavailable';
 import { ServiceUserDirectory } from '../care/service-user-directory';
 import { ClientOverview } from './client-overview';
 import { CareHeader } from '../care/care-header';
 import { age } from '../care/care.models';
 import { ModuleDesign } from '../shared/module-design';
-import { HostListener, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import {
+  HostListener,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  untracked,
+  inject,
+  signal,
+} from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -25,7 +37,10 @@ import {
 
 @Component({
   selector: 'cv-client-files',
+  providers: [ServiceUsersApi],
   imports: [
+    PageLoading,
+    CompanyUnavailable,
     ModuleDesign,
     ServiceUserDirectory,
     ClientOverview,
@@ -47,7 +62,34 @@ import {
   ],
 })
 export class ClientFiles {
+  protected readonly api = inject(ServiceUsersApi);
   protected readonly service = inject(RotaService);
+  private profileScope = '';
+  private original: DirectoryUser | null = null;
+  constructor() {
+    effect(() => {
+      const scope = this.api.scope(),
+        id = this.id();
+      untracked(() => {
+        this.editing.set('');
+        this.error.set('');
+        this.photoLoading.set(false);
+        this.draft = this.blankClient();
+        this.original = null;
+        if (id)
+          void this.api.detail(id).then(() => {
+            if (
+              scope === this.api.scope() &&
+              id === this.id() &&
+              this.client() &&
+              this.route.snapshot.queryParamMap.get('edit') === 'profile' &&
+              this.api.access.can('care', 'records', 'edit')
+            )
+              this.startProfile();
+          });
+      });
+    });
+  }
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
@@ -68,42 +110,22 @@ export class ClientFiles {
     if (
       this.route.snapshot.queryParamMap.get('edit') === 'profile' &&
       this.client() &&
-      this.service.can('manage')
+      this.api.access.can('care', 'records', 'edit')
     )
       this.startProfile();
   }
   protected readonly id = computed(() => this.params().get('id'));
   protected readonly client = computed(() =>
-    this.service.data().clients.find((c) => c.id === this.id()),
+    this.api.selected()?.id === this.id() ? this.api.selected()! : undefined,
   );
   protected readonly file = computed(() => this.client()?.file ?? emptyClientFile());
-  protected readonly today = londonDate();
+  protected get today(): string {
+    return this.api.summary()?.local_date ?? this.api.directory()?.meta.local_date ?? londonDate();
+  }
   protected readonly age = age;
   protected readonly photoLoading = signal(false);
-  protected readonly timeSensitive = computed(
-    () =>
-      this.service
-        .data()
-        .visits.filter(
-          (v) =>
-            v.state !== 'Cancelled' &&
-            v.timeSensitive &&
-            v.date >= this.today &&
-            v.date <= new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-        ).length,
-  );
-  protected readonly capacityAlerts = computed(
-    () =>
-      this.service
-        .data()
-        .clients.filter(
-          (c) =>
-            c.active &&
-            ['Lacks capacity', 'Fluctuates'].includes(
-              c.file?.sections['capacity']?.['status'] ?? '',
-            ),
-        ).length,
-  );
+  protected readonly timeSensitive = computed(() => this.api.summary()?.time_sensitive ?? '—');
+  protected readonly capacityAlerts = computed(() => this.api.summary()?.capacity_reviews ?? '—');
   @HostListener('window:beforeunload', ['$event'])
   protected beforeUnload(event: BeforeUnloadEvent): void {
     if (this.editing() || this.photoLoading()) {
@@ -148,7 +170,7 @@ export class ClientFiles {
       return;
     }
     const draft = this.draft;
-    const workspace = this.store.companyId();
+    const workspace = this.api.scope();
     this.photoLoading.set(true);
     try {
       const data = await new Promise<string>((resolve, reject) => {
@@ -157,11 +179,7 @@ export class ClientFiles {
         reader.onerror = () => reject(new Error('Could not read photo.'));
         reader.readAsDataURL(photo);
       });
-      if (
-        this.editing() !== 'profile' ||
-        this.draft !== draft ||
-        workspace !== this.store.companyId()
-      )
+      if (this.editing() !== 'profile' || this.draft !== draft || workspace !== this.api.scope())
         return;
       draft.file!.photo = data;
     } catch {
@@ -240,26 +258,10 @@ export class ClientFiles {
       )
       .sort((a, b) => a.name.localeCompare(b.name)),
   );
-  protected readonly active = computed(
-    () => this.service.data().clients.filter((c) => c.active).length,
-  );
-  protected readonly reviews = computed(
-    () =>
-      this.service.data().clients.filter((c) => {
-        const date = c.file?.sections['plan']?.['review'];
-        return c.active && date && date <= this.today;
-      }).length,
-  );
+  protected readonly active = computed(() => this.api.summary()?.active ?? '—');
+  protected readonly reviews = computed(() => null);
   protected readonly highRisk = computed(
-    () =>
-      this.service
-        .data()
-        .clients.filter(
-          (c) =>
-            c.active &&
-            (c.priority === 'High' ||
-              c.file?.entries['risks']?.some((r) => r.status === 'Active' && r.level === 'High')),
-        ).length,
+    () => this.api.summary()?.high_risk ?? this.api.summary()?.high_priority ?? '—',
   );
   protected readonly calls = computed(() =>
     this.service.data().calls.filter((c) => c.clientId === this.id()),
@@ -331,6 +333,7 @@ export class ClientFiles {
     this.showCode.set(false);
   }
   protected discard(): void {
+    if (this.api.saving()) return;
     this.editing.set('');
     this.error.set('');
   }
@@ -366,7 +369,9 @@ export class ClientFiles {
     this.draft.file ??= emptyClientFile();
     this.draft.representative ??= { name: '', relationship: '', phone: '', email: '' };
     this.sourceId = create ? '' : this.draft.id;
-    this.sourceWorkspace = this.store.companyId();
+    this.sourceWorkspace = this.api.companyId();
+    this.profileScope = this.api.scope();
+    this.original = create ? null : this.api.selected();
     this.error.set('');
     this.editing.set('profile');
   }
@@ -389,49 +394,26 @@ export class ClientFiles {
       ? this.draft.riskFlags.filter((f) => f !== flag)
       : [...(this.draft.riskFlags ?? []), flag];
   }
-  protected save(): void {
-    if (this.photoLoading()) {
-      this.error.set('Wait for the photo to finish loading.');
-      return;
-    }
-    if (this.sourceWorkspace !== this.store.companyId()) {
-      this.error.set(
-        'The workspace changed. Discard this draft before editing the current workspace.',
-      );
-      return;
-    }
-    if (this.sourceId && this.sourceId !== this.id()) {
-      this.error.set('The selected client changed. Discard this draft and reopen the editor.');
-      return;
-    }
-    let client: RotaClient;
-    if (this.editing() === 'profile') client = structuredClone(this.draft);
-    else {
-      if (!this.client()) return;
-      client = structuredClone(this.client()!);
-      client.file ??= emptyClientFile();
-      if (this.editing() === 'section')
-        client.file.sections[this.sectionKey()] = structuredClone(this.values);
-      if (this.editing() === 'entry') {
-        if (!this.entry.name.trim()) {
-          this.error.set('Enter a name for this record.');
-          return;
-        }
-        client.file.entries[this.sectionKey()] = [
-          ...(client.file.entries[this.sectionKey()] ?? []).filter((e) => e.id !== this.entry.id),
-          { ...this.entry, name: this.entry.name.trim() },
-        ];
+  protected async save(): Promise<void> {
+    if (this.editing() === 'profile') {
+      if (this.photoLoading() || this.api.saving()) return;
+      const scope = this.profileScope;
+      try {
+        const row = await this.api.save(this.draft, this.original, scope);
+        if (scope !== this.api.scope()) return;
+        this.discard();
+        this.toast.success('Client record saved.');
+        if (!this.id()) void this.router.navigate(['/manage/clients', row.id]);
+      } catch (error) {
+        if (scope === this.api.scope())
+          this.error.set(
+            error instanceof Error ? error.message : 'The service user could not be saved.',
+          );
       }
-    }
-    client.file!.updatedAt = new Date().toISOString();
-    const error = this.service.saveClient(client);
-    if (error) {
-      this.error.set(error);
       return;
     }
-    this.discard();
-    this.toast.success('Client record saved.');
-    if (!this.id()) void this.router.navigate(['/manage/clients', client.id]);
+    this.error.set('This record section is not connected to the backend yet.');
+    return;
   }
   protected print(): void {
     if (this.service.can('export')) window.print();

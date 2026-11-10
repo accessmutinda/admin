@@ -1,10 +1,10 @@
 <cv-module-design />
-@if (!service.can('view')) {
+@if (!api.allowed()) {
   <cv-access-required
-    feature="Client files"
+    feature="Service users"
     module="Care delivery"
-    viewPermission="View rota"
-    permissionsTitle="Visits & Rota access"
+    viewPermission="Read service user records"
+    permissionsTitle="Service user record access"
   />
 } @else {
   <div class="client-files">
@@ -21,7 +21,11 @@
           <p>Build a person-centred record with clear contacts and care priorities.</p>
         </div>
       </div>
-      <form class="panel client-editor client-profile-editor" (ngSubmit)="save()">
+      <form
+        class="panel client-editor client-profile-editor"
+        (ngSubmit)="save()"
+        [inert]="api.saving()"
+      >
         <div class="client-profile-form-header">
           <div>
             <h2>Personal details</h2>
@@ -64,6 +68,7 @@
                 }}<input
                   [type]="field.type || 'text'"
                   [name]="field.key"
+                  [attr.name]="field.key"
                   [(ngModel)]="draft.file!.details[field.key]"
                   [max]="field.key === 'dob' ? today : null"
               /></label>
@@ -119,6 +124,7 @@
                 >{{ field.label
                 }}<textarea
                   [name]="field.key"
+                  [attr.name]="field.key"
                   [(ngModel)]="draft.file!.details[field.key]"
                   rows="2"
                 ></textarea>
@@ -165,8 +171,11 @@
           <p class="client-error" role="alert">{{ error() }}</p>
         }
         <div class="client-save">
-          <button class="button primary" type="submit">Save client</button
-          ><button class="button" type="button" (click)="discard()">Discard</button>
+          <button class="button primary" type="submit" [disabled]="api.saving() || photoLoading()">
+            {{ api.saving() ? 'Saving…' : 'Save client' }}</button
+          ><button class="button" type="button" (click)="discard()" [disabled]="api.saving()">
+            Discard
+          </button>
         </div>
       </form>
     } @else if (!id()) {
@@ -175,7 +184,7 @@
           <h1>Service Users</h1>
           <p>Connected information for personalised care, from first contact to daily delivery.</p>
         </div>
-        @if (service.can('manage')) {
+        @if (api.access.can('care', 'records', 'create')) {
           <button class="button primary" (click)="startProfile(true)">
             <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add service
             user
@@ -190,7 +199,9 @@
           <div>
             <h2>Time-sensitive visits</h2>
             <strong>{{ timeSensitive() }}</strong
-            ><small>Today and tomorrow</small>
+            ><small>{{
+              api.summary()?.unavailable?.['time_sensitive'] || 'Today and tomorrow'
+            }}</small>
           </div>
         </article>
         <article class="metric co-stat co-surface" data-tone="green">
@@ -210,7 +221,9 @@
           <div>
             <h2>Capacity / LPA review</h2>
             <strong>{{ capacityAlerts() }}</strong
-            ><small>Recorded capacity needs review</small>
+            ><small>{{
+              api.summary()?.unavailable?.['capacity_reviews'] || 'Recorded capacity needs review'
+            }}</small>
           </div>
         </article>
         <article class="metric co-stat co-surface" data-tone="red">
@@ -220,11 +233,17 @@
           <div>
             <h2>High priority / risk</h2>
             <strong>{{ highRisk() }}</strong
-            ><small>Active clients needing attention</small>
+            ><small>{{
+              api.summary()?.unavailable?.['high_risk'] || 'Active clients needing attention'
+            }}</small>
           </div>
         </article>
       </div>
       <cv-service-user-directory />
+    } @else if (api.detailLoading()) {
+      <cv-page-loading url="/manage/clients" />
+    } @else if (api.error()) {
+      <cv-company-unavailable [message]="api.error()" (retry)="api.detail(id()!)" />
     } @else if (client(); as c) {
       <cv-care-header
         [client]="c"
@@ -372,7 +391,7 @@
                 }
               </div>
               @if (editing() === 'section') {
-                <form class="client-editor" (ngSubmit)="save()">
+                <form class="client-editor" (ngSubmit)="save()" [inert]="api.saving()">
                   <div class="form-grid">
                     @for (field of section().fields; track field.key) {
                       <label [class.client-wide]="field.type === 'textarea'"
@@ -382,6 +401,7 @@
                             cvSelect
                             multiple
                             [name]="field.key"
+                            [attr.name]="field.key"
                             aria-label="Preferred carers"
                             [ngModel]="preferredStaff()"
                             (ngModelChange)="setPreferredStaff($event)"
@@ -394,6 +414,7 @@
                           <mat-select
                             cvSelect
                             [name]="field.key"
+                            [attr.name]="field.key"
                             aria-label="Backup carer"
                             [(ngModel)]="values[field.key]"
                             ><mat-option value="">None</mat-option>
@@ -405,6 +426,7 @@
                           <mat-select
                             cvSelect
                             [name]="field.key"
+                            [attr.name]="field.key"
                             [attr.aria-label]="field.label"
                             [(ngModel)]="values[field.key]"
                           >
@@ -415,6 +437,7 @@
                         } @else if (field.type === 'textarea') {
                           <textarea
                             [name]="field.key"
+                            [attr.name]="field.key"
                             [(ngModel)]="values[field.key]"
                             rows="3"
                           ></textarea>
@@ -422,6 +445,7 @@
                           <input
                             [type]="field.type || 'text'"
                             [name]="field.key"
+                            [attr.name]="field.key"
                             [(ngModel)]="values[field.key]"
                           />
                         }
@@ -433,7 +457,14 @@
                   }
                   <div class="client-save">
                     <button class="button primary" type="submit">Save changes</button
-                    ><button class="button" type="button" (click)="discard()">Discard</button>
+                    ><button
+                      class="button"
+                      type="button"
+                      (click)="discard()"
+                      [disabled]="api.saving()"
+                    >
+                      Discard
+                    </button>
                   </div>
                 </form>
               } @else {
@@ -527,7 +558,9 @@
               }
             </section>
             @if (sectionKey() === 'risks') {
-              <a class="button primary" [routerLink]="['/manage/clients', client()!.id, 'risks']">Open structured Risk Assessments →</a>
+              <a class="button primary" [routerLink]="['/manage/clients', client()!.id, 'risks']"
+                >Open structured Risk Assessments →</a
+              >
             }
             @if (section().entryLabel) {
               <section class="panel client-entry-panel">
@@ -546,7 +579,7 @@
                   }
                 </div>
                 @if (editing() === 'entry') {
-                  <form class="client-editor" (ngSubmit)="save()">
+                  <form class="client-editor" (ngSubmit)="save()" [inert]="api.saving()">
                     <div class="form-grid">
                       <label class="client-wide"
                         >{{ section().nameLabel }} *<input
@@ -596,7 +629,14 @@
                     }
                     <div class="client-save">
                       <button class="button primary" type="submit">Save record</button
-                      ><button class="button" type="button" (click)="discard()">Discard</button>
+                      ><button
+                        class="button"
+                        type="button"
+                        (click)="discard()"
+                        [disabled]="api.saving()"
+                      >
+                        Discard
+                      </button>
                     </div>
                   </form>
                 } @else {
