@@ -78,7 +78,7 @@ import { londonDate } from '../rota/rota.models';
     @if (open()) {
       <div class="care-overlay" (click)="open.set('')">
         <section
-          class="workspace-dialog"
+          class="workspace-dialog service-user-popup"
           role="dialog"
           aria-modal="true"
           aria-labelledby="workspace-tools-title"
