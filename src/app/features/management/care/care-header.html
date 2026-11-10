@@ -46,7 +46,7 @@
     <button
       class="profile-photo-button"
       [disabled]="!service.can('manage') || disabled()"
-      (click)="editProfile()"
+      (click)="editPhoto()"
       aria-label="Edit profile photo"
     >
       @if (c.file?.photo) {

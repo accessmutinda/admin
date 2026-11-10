@@ -9,6 +9,7 @@ import type {
   ServiceUserFacets,
   ServiceUserWrite,
   ServiceUserPhoto,
+  ServiceUserOverview,
 } from './service-users.generated';
 export type DirectoryUser = RotaClient & {
   company_id: string;
@@ -119,6 +120,95 @@ export class ServiceUsersApi {
       },
     };
   }
+  private projectOverview(value: ServiceUserOverview): DirectoryUser {
+    const row = this.project(value.record),
+      c = value.clinical;
+    row.overview = value;
+    row.file!.sections = {
+      diagnoses: {
+        primary: c.primary_diagnosis,
+        diet: c.diet,
+        ongoing: c.ongoing,
+        communication: c.communication,
+        hearing: c.hearing,
+        vision: c.vision,
+        sensory: c.sensory,
+      },
+      moving: {
+        equipment: c.equipment,
+        support: c.mobility_support,
+        instructions: c.mobility_instructions,
+      },
+      capacity: {
+        status: value.capacity.status,
+        assessed: value.capacity.assessed_on ?? '',
+        support: c.decision_support,
+        welfareLpa: c.welfare_lpa,
+        financeLpa: c.finance_lpa,
+      },
+      support: {
+        personal: c.personal,
+        nutrition: c.nutrition,
+        continence: c.continence,
+        safety: c.safety,
+        behaviour: c.behaviour,
+        continuity: c.continuity,
+      },
+      access: { location: c.key_safe_location },
+    };
+    return row;
+  }
+  async saveCard(
+    card: string,
+    body: unknown,
+    original: DirectoryUser,
+    scope: string,
+  ): Promise<DirectoryUser> {
+    if (!this.current(scope)) throw Error('The workspace changed. Reopen the form.');
+    if (!this.access.can('care', 'records', 'edit'))
+      throw Error('You do not have permission to edit this service user.');
+    const value = await this.auth.api<ServiceUserOverview>(
+      `${this.root()}/service-users/${original.id}/overview/${card}`,
+      body,
+      'PATCH',
+      { 'If-Match': original.etag },
+    );
+    if (!this.current(scope)) throw Error('The workspace changed. Reload the record.');
+    if (value.record.id !== original.id)
+      throw Error('The saved service user does not match the requested record.');
+    const row = this.projectOverview(value);
+    if (row.photo_id === original.photo_id && original.file?.photo)
+      row.file!.photo = original.file.photo;
+    this.selected.set(row);
+    if (row.photo_id && !row.file?.photo)
+      void this.loadPhoto(
+        row,
+        scope,
+        () => this.selected()?.id === row.id && this.selected()?.photo_id === row.photo_id,
+      );
+    return row;
+  }
+  async savePhoto(
+    draft: RotaClient,
+    original: DirectoryUser,
+    scope: string,
+  ): Promise<DirectoryUser> {
+    if (!this.current(scope)) throw Error('The workspace changed. Reopen the form.');
+    if (this.saving()) throw Error('A save is already in progress.');
+    if (!this.access.can('care', 'records', 'edit'))
+      throw Error('You do not have permission to change this photo.');
+    const image = draft.file?.photo;
+    this.saving.set(true);
+    try {
+      let photo = original.photo_id;
+      if (image === '') photo = null;
+      else if (image?.startsWith('data:')) photo = await this.upload(image, scope, draft.id);
+      return await this.saveCard('photo', { photo_id: photo }, original, scope);
+    } finally {
+      if (this.current(scope)) this.saving.set(false);
+    }
+  }
+
   async load(query: string): Promise<void> {
     const scope = this.scope(),
       generation = ++this.generation;
@@ -162,11 +252,13 @@ export class ServiceUsersApi {
     this.error.set('');
     this.detailLoading.set(true);
     try {
-      const value = await this.auth.api<ServiceUser>(`${this.root()}/service-users/${id}`);
+      const value = await this.auth.api<ServiceUserOverview>(
+        `${this.root()}/service-users/${id}/overview`,
+      );
       if (!this.current(scope) || generation !== this.detailGeneration) return;
-      if (value.id !== id)
+      if (value.record.id !== id)
         throw Error('The returned service user does not match the requested record.');
-      const row = this.project(value);
+      const row = this.projectOverview(value);
       this.selected.set(row);
       if (row.photo_id) void this.loadPhoto(row, scope, () => generation === this.detailGeneration);
     } catch (error) {
@@ -193,11 +285,23 @@ export class ServiceUsersApi {
         'blob',
       );
       if (!this.current(scope) || !current()) return;
+      const matches = (candidate: DirectoryUser | null) =>
+        !!candidate &&
+        candidate.id === row.id &&
+        candidate.photo_id === row.photo_id &&
+        candidate.version === row.version;
+      if (!matches(this.selected()) && !this.rows().some(matches)) return;
       const url = URL.createObjectURL(blob);
       this.photoUrls.add(url);
-      const updated = { ...row, file: { ...row.file!, photo: url } };
-      this.rows.update((rows) => rows.map((r) => (r.id === row.id ? updated : r)));
-      if (this.selected()?.id === row.id) this.selected.set(updated);
+      const withPhoto = (candidate: DirectoryUser) => ({
+        ...candidate,
+        file: { ...candidate.file!, photo: url },
+      });
+      this.rows.update((rows) =>
+        rows.map((candidate) => (matches(candidate) ? withPhoto(candidate) : candidate)),
+      );
+      const selected = this.selected();
+      if (matches(selected)) this.selected.set(withPhoto(selected!));
     } catch {
       /* The record remains available using its initials. */
     }
@@ -305,8 +409,18 @@ export class ServiceUsersApi {
         throw Error('The workspace changed. Reload to see the saved record.');
       if (original && value.id !== original.id)
         throw Error('The saved record does not match the requested service user.');
-      const row = this.project(value);
+      const row = original?.overview
+        ? this.projectOverview({ ...original.overview, record: value })
+        : this.project(value);
+      if (row.photo_id === original?.photo_id && original?.file?.photo)
+        row.file!.photo = original.file.photo;
       this.selected.set(row);
+      if (row.photo_id && !row.file?.photo)
+        void this.loadPhoto(
+          row,
+          scope,
+          () => this.selected()?.id === row.id && this.selected()?.photo_id === row.photo_id,
+        );
       return row;
     } finally {
       if (this.current(scope)) this.saving.set(false);

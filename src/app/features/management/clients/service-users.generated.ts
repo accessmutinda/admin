@@ -1,5 +1,149 @@
 // Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.
 
+export type ServiceUserOverview = {
+  record: {
+    id: string;
+    company_id: string;
+    version: number;
+    etag: string;
+    name: string;
+    reference: string;
+    address: string;
+    postcode: string;
+    funding: string;
+    priority: string;
+    active: boolean;
+    phone: string;
+    email: string;
+    details: {
+      dob?: string | null;
+      gender?: string;
+      preferredName?: string;
+      language?: string;
+      nhs?: string;
+      religion?: string;
+      ethnicity?: string;
+      gp?: string;
+      living?: string;
+      sexuality?: string;
+      likes?: string;
+      dislikes?: string;
+      about?: string;
+    };
+    representative: {
+      name?: string;
+      relationship?: string;
+      phone?: string;
+      email?: string;
+    };
+    riskFlags: string[];
+    photo_id: string | null;
+    primary_needs: string[];
+    packages: {
+      id: string;
+      name: string;
+    }[];
+    next_visit: {
+      id: string;
+      date: string;
+      start: string;
+    } | null;
+  };
+  clinical: {
+    primary_diagnosis: string;
+    other_conditions: string;
+    allergies: string;
+    diet: string;
+    ongoing: string;
+    equipment: string;
+    mobility_support: string;
+    mobility_instructions: string;
+    communication: string;
+    hearing: string;
+    vision: string;
+    sensory: string;
+    decision_support: string;
+    welfare_lpa: string;
+    finance_lpa: string;
+    personal: string;
+    nutrition: string;
+    continence: string;
+    safety: string;
+    behaviour: string;
+    continuity: string;
+    key_safe_location: string;
+  };
+  capacity: {
+    status: string;
+    assessed_on: string | null;
+    reason: string;
+  };
+  medication_reference: string | null;
+  medication_read: boolean;
+  medication_edit: boolean;
+  risks: {
+    title: string;
+    level: string;
+  }[];
+  risks_read: boolean;
+  services_read: boolean;
+  local_date: string;
+};
+
+export type ServiceUserOverviewHealthWrite = {
+  primary_diagnosis?: string;
+  other_conditions?: string;
+  allergies?: string;
+  diet?: string;
+  ongoing?: string;
+  equipment?: string;
+  mobility_support?:
+    '' | 'Independent' | 'One person' | 'Two people' | 'Specialist assessment required';
+  mobility_instructions?: string;
+  welfare_lpa?: string;
+  finance_lpa?: string;
+  capacity_status?: '' | 'Has capacity' | 'Lacks capacity' | 'Fluctuates' | 'Not assessed';
+  capacity_assessed_on?: string | null;
+  capacity_reason?: string;
+  medication_reference?: string;
+};
+
+export type ServiceUserOverviewSupportWrite = {
+  personal?: string;
+  nutrition?: string;
+  mobility_instructions?: string;
+  continence?: string;
+  safety?: string;
+  behaviour?: string;
+  continuity?: string;
+};
+
+export type ServiceUserOverviewCommunicationWrite = {
+  communication?: string;
+  language?: string;
+  hearing?: string;
+  vision?: string;
+  sensory?: string;
+  decision_support?: string;
+};
+
+export type ServiceUserOverviewPreferencesWrite = {
+  likes?: string;
+  dislikes?: string;
+  about?: string;
+};
+
+export type ServiceUserOverviewContactWrite = {
+  name?: string;
+  relationship?: string;
+  phone?: string;
+  email?: string;
+};
+
+export type ServiceUserOverviewPhotoWrite = {
+  photo_id: string | null;
+};
+
 export type ServiceUser = {
   id: string;
   company_id: string;

@@ -26,6 +26,7 @@ export function rotaDefaults(_role: string): RotaAction[] {
   return ROTA_ACTIONS.map((action) => action.key);
 }
 export interface RotaClient {
+  overview?: import('../clients/service-users.generated').ServiceUserOverview;
   file?: import('../clients/client-file.models').ClientFile;
   riskFlags?: RiskFlag[];
   representative?: { name: string; relationship: string; phone: string; email: string };

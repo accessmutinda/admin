@@ -1,3 +1,6 @@
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { NgTemplateOutlet } from '@angular/common';
+import { ServiceUserOverviewDialog, OverviewCard } from './service-user-overview-dialog';
 import { ServiceUsersApi, DirectoryUser } from './service-users-api.service';
 import { PageLoading } from '../../../shared/layouts/page-loading';
 import { CompanyUnavailable } from '../shared/company-unavailable';
@@ -9,6 +12,8 @@ import { ApiError } from '../../../core/auth/auth-api';
 import { ModuleDesign } from '../shared/module-design';
 import {
   HostListener,
+  TemplateRef,
+  ViewChild,
   ElementRef,
   ChangeDetectorRef,
   Component,
@@ -27,7 +32,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { RotaService } from '../rota/rota.service';
-import { RISK_FLAGS, RotaClient, completedVisit, londonDate } from '../rota/rota.models';
+import { RISK_FLAGS, RotaCall, RotaClient, completedVisit, londonDate } from '../rota/rota.models';
 import { AccessRequired } from '../shared/access-required';
 import { ManagementStore } from '../shared/management.store';
 import {
@@ -62,6 +67,7 @@ const PROFILE_FIELD_LABELS: Record<string, string> = {
   selector: 'cv-client-files',
   providers: [ServiceUsersApi],
   imports: [
+    NgTemplateOutlet,
     PageLoading,
     CompanyUnavailable,
     ModuleDesign,
@@ -90,13 +96,27 @@ export class ClientFiles {
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly changeDetector = inject(ChangeDetectorRef);
   protected readonly fieldErrors = signal<Record<string, string>>({});
+  @ViewChild('profileEditor') private profileEditor!: TemplateRef<unknown>;
+  private readonly dialogs = inject(MatDialog);
+  private profileDialog?: MatDialogRef<unknown>;
+  private overviewDialog?: MatDialogRef<ServiceUserOverviewDialog>;
+  protected readonly profileDialogOpen = signal(false);
+  protected readonly photoOnly = signal(false);
   private profileScope = '';
   private original: DirectoryUser | null = null;
   constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      this.profileDialog?.close();
+      this.overviewDialog?.close();
+    });
     effect(() => {
       const scope = this.api.scope(),
         id = this.id();
       untracked(() => {
+        this.profileDialog?.close();
+        this.overviewDialog?.close();
+        this.profileDialogOpen.set(false);
+        this.photoOnly.set(false);
         this.editing.set('');
         this.error.set('');
         this.fieldErrors.set({});
@@ -112,7 +132,7 @@ export class ClientFiles {
               this.route.snapshot.queryParamMap.get('edit') === 'profile' &&
               this.api.access.can('care', 'records', 'edit')
             )
-              this.startProfile();
+              this.openProfileDialog();
           });
       });
     });
@@ -139,7 +159,7 @@ export class ClientFiles {
       this.client() &&
       this.api.access.can('care', 'records', 'edit')
     )
-      this.startProfile();
+      this.openProfileDialog();
   }
   protected readonly id = computed(() => this.params().get('id'));
   protected readonly client = computed(() =>
@@ -147,7 +167,12 @@ export class ClientFiles {
   );
   protected readonly file = computed(() => this.client()?.file ?? emptyClientFile());
   protected get today(): string {
-    return this.api.summary()?.local_date ?? this.api.directory()?.meta.local_date ?? londonDate();
+    return (
+      this.client()?.overview?.local_date ??
+      this.api.summary()?.local_date ??
+      this.api.directory()?.meta.local_date ??
+      londonDate()
+    );
   }
   protected readonly age = age;
   protected readonly photoLoading = signal(false);
@@ -166,13 +191,68 @@ export class ClientFiles {
       window.confirm('Discard the unsaved client record?')
     );
   }
+  protected openProfileDialog(photoOnly = false): void {
+    if (
+      !this.client() ||
+      !this.api.access.can('care', 'records', 'edit') ||
+      this.profileDialogOpen()
+    )
+      return;
+    this.startProfile();
+    this.photoOnly.set(photoOnly);
+    this.profileDialogOpen.set(true);
+    const ref = this.dialogs.open(this.profileEditor, {
+      width: photoOnly ? '560px' : '960px',
+      maxWidth: 'calc(100vw - 24px)',
+      maxHeight: '90vh',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+      disableClose: true,
+      ariaLabel: photoOnly ? 'Edit profile photo' : 'Edit client details',
+    });
+    this.profileDialog = ref;
+    const cancel = () => {
+      if (!this.api.saving() && !this.photoLoading() && window.confirm('Discard unsaved changes?'))
+        this.discard();
+    };
+    ref.backdropClick().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(cancel);
+    ref
+      .keydownEvents()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        if (event.key === 'Escape') cancel();
+      });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (this.profileDialog === ref) {
+          this.profileDialog = undefined;
+          this.profileDialogOpen.set(false);
+          this.photoOnly.set(false);
+          this.editing.set('');
+          this.fieldErrors.set({});
+          this.error.set('');
+        }
+      });
+  }
   protected editOverviewSection(key: string): void {
     if (key === 'details') {
-      this.startProfile();
+      this.openProfileDialog();
       return;
     }
-    this.setSection(key);
-    this.editSection();
+    const person = this.api.selected();
+    if (!person?.overview || !this.api.access.can('care', 'records', 'edit')) return;
+    const card = key as OverviewCard;
+    if (!['health', 'support', 'communication', 'preferences', 'contact'].includes(card)) return;
+    this.overviewDialog = this.dialogs.open(ServiceUserOverviewDialog, {
+      width: '800px',
+      maxWidth: 'calc(100vw - 24px)',
+      maxHeight: '90vh',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+      data: { card, person: structuredClone(person), api: this.api },
+    });
   }
   protected preferredStaff(): string[] {
     return (this.values['preferredStaff'] ?? '').split(',').filter(Boolean);
@@ -194,9 +274,7 @@ export class ClientFiles {
       photo.size <= 0 ||
       photo.size > 1024 * 1024
     ) {
-      this.showFieldErrors({
-        photo: 'Choose a nonempty JPEG or PNG up to 1 MB.',
-      });
+      this.showFieldErrors({ photo: 'Choose a nonempty JPEG or PNG up to 1 MB.' });
       return;
     }
     const draft = this.draft;
@@ -293,8 +371,10 @@ export class ClientFiles {
   protected readonly highRisk = computed(
     () => this.api.summary()?.high_risk ?? this.api.summary()?.high_priority ?? '—',
   );
-  protected readonly calls = computed(() =>
-    this.service.data().calls.filter((c) => c.clientId === this.id()),
+  protected readonly calls = computed<Partial<RotaCall>[]>(() =>
+    this.client()?.overview
+      ? this.client()!.overview!.record.packages.map((call) => ({ ...call, active: true }))
+      : this.service.data().calls.filter((c) => c.clientId === this.id()),
   );
   protected readonly visits = computed(() =>
     this.service
@@ -367,6 +447,7 @@ export class ClientFiles {
     this.editing.set('');
     this.error.set('');
     this.fieldErrors.set({});
+    this.profileDialog?.close();
   }
   private blankEntry(): ClientEntry {
     return {
@@ -396,14 +477,13 @@ export class ClientFiles {
     };
   }
   protected startProfile(create = false): void {
+    if (create) {
+      this.photoOnly.set(false);
+      this.profileDialogOpen.set(false);
+    }
     this.draft = create ? this.blankClient() : structuredClone(this.client()!);
     this.draft.file ??= emptyClientFile();
-    this.draft.representative ??= {
-      name: '',
-      relationship: '',
-      phone: '',
-      email: '',
-    };
+    this.draft.representative ??= { name: '', relationship: '', phone: '', email: '' };
     this.sourceId = create ? '' : this.draft.id;
     this.sourceWorkspace = this.api.companyId();
     this.profileScope = this.api.scope();
@@ -448,7 +528,9 @@ export class ClientFiles {
     this.fieldErrors.set(errors);
     this.error.set('Please check the highlighted fields.');
     this.changeDetector.detectChanges();
-    const host = this.element.nativeElement;
+    const host = this.profileDialog
+      ? document.getElementById(this.profileDialog.id)
+      : this.element.nativeElement;
     const control = host?.querySelector<HTMLElement>(
       '.client-profile-editor :is(input, textarea, mat-select)[aria-invalid="true"]',
     );
@@ -507,7 +589,10 @@ export class ClientFiles {
       if (!this.validateProfile()) return;
       const scope = this.profileScope;
       try {
-        const row = await this.api.save(this.draft, this.original, scope);
+        const row =
+          this.photoOnly() && this.original
+            ? await this.api.savePhoto(this.draft, this.original, scope)
+            : await this.api.save(this.draft, this.original, scope);
         if (scope !== this.api.scope()) return;
         this.discard();
         this.toast.success('Client record saved.');

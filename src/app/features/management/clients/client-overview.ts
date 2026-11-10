@@ -23,9 +23,15 @@ export class ClientOverview {
   readonly edit = output<string>();
   readonly open = output<string>();
   protected readonly rota = inject(RotaService);
-  protected readonly age = age;
+  protected readonly age = (dob: string) => age(dob, this.client().overview?.local_date);
   protected readonly calls = computed(() =>
-    this.rota.data().calls.filter((c) => c.clientId === this.client().id && c.active),
+    this.client().overview
+      ? this.client().overview!.record.packages.map((p) => ({
+          ...p,
+          weekdays: [] as number[],
+          start: '',
+        }))
+      : this.rota.data().calls.filter((c) => c.clientId === this.client().id && c.active),
   );
   protected readonly contact = computed(
     () => this.client().file?.contacts?.find((c) => c.nextOfKin) ?? this.client().representative,
@@ -38,6 +44,19 @@ export class ClientOverview {
     return this.file()?.sections[section]?.[key] || 'Not recorded';
   }
   protected entries(key: string): string {
+    const overview = this.client().overview;
+    if (overview) {
+      if (key === 'diagnoses') return overview.clinical.other_conditions || 'Not recorded';
+      if (key === 'allergies') return overview.clinical.allergies || 'Not recorded';
+      if (key === 'medication')
+        return overview.medication_read
+          ? overview.medication_reference || 'Not recorded'
+          : 'Unavailable';
+      if (key === 'risks')
+        return overview.risks_read
+          ? overview.risks.map((r) => r.title + ' · ' + r.level).join('\n') || 'Not recorded'
+          : 'Unavailable';
+    }
     return (
       this.file()
         ?.entries[key]?.filter((e) => e.status === 'Active')
@@ -45,21 +64,22 @@ export class ClientOverview {
         .join('\n') || 'Not recorded'
     );
   }
-  protected readonly medication = computed(
-    () =>
-      [
-        ...(this.file()?.entries['medication'] ?? [])
-          .filter((e) => e.status === 'Active')
-          .map((e) => e.name),
-        ...(this.file()?.medications ?? [])
-          .filter(
-            (m) =>
-              !m.discontinuedAt &&
-              m.start <= this.rotaToday() &&
-              (!m.end || m.end >= this.rotaToday()),
-          )
-          .map((m) => `${m.name} ${m.strength} · ${m.dose}`),
-      ].join('\n') || 'Not recorded',
+  protected readonly medication = computed(() =>
+    this.client().overview
+      ? this.entries('medication')
+      : [
+          ...(this.file()?.entries['medication'] ?? [])
+            .filter((e) => e.status === 'Active')
+            .map((e) => e.name),
+          ...(this.file()?.medications ?? [])
+            .filter(
+              (m) =>
+                !m.discontinuedAt &&
+                m.start <= this.rotaToday() &&
+                (!m.end || m.end >= this.rotaToday()),
+            )
+            .map((m) => `${m.name} ${m.strength} · ${m.dose}`),
+        ].join('\n') || 'Not recorded',
   );
   private rotaToday(): string {
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());

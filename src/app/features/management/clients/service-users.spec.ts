@@ -1,3 +1,4 @@
+import { MatDialog, MatDialogConfig, MAT_DIALOG_DEFAULT_OPTIONS } from '@angular/material/dialog';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
@@ -11,7 +12,7 @@ import { ToastService } from '../../../shared/ui/toast.service';
 import { ClientFiles } from './client-files';
 import { ServiceUserDirectory } from '../care/service-user-directory';
 import { ServiceUsersApi } from './service-users-api.service';
-import { ServiceUser, ServiceUserPage } from './service-users.generated';
+import { ServiceUser, ServiceUserPage, ServiceUserOverview } from './service-users.generated';
 import { RotaClient } from '../rota/rota.models';
 
 function row(): ServiceUser {
@@ -46,6 +47,43 @@ function row(): ServiceUser {
     primary_needs: [],
     packages: [],
     next_visit: null,
+  };
+}
+function overview(record: ServiceUser = row()): ServiceUserOverview {
+  return {
+    record,
+    clinical: {
+      primary_diagnosis: 'Recorded diagnosis',
+      other_conditions: '',
+      allergies: 'Recorded allergy',
+      diet: 'Dietary guidance',
+      ongoing: '',
+      equipment: 'Walking frame',
+      mobility_support: 'One person',
+      mobility_instructions: 'Support with transfers',
+      communication: 'Speak clearly',
+      hearing: '',
+      vision: '',
+      sensory: '',
+      decision_support: 'Give time to respond',
+      welfare_lpa: 'Named attorney',
+      finance_lpa: '',
+      personal: 'Morning support',
+      nutrition: 'Regular drinks',
+      continence: '',
+      safety: '',
+      behaviour: '',
+      continuity: 'Familiar team',
+      key_safe_location: '',
+    },
+    capacity: { status: 'Has capacity', assessed_on: '2026-11-01', reason: 'Recorded assessment' },
+    medication_reference: 'Recorded medicine reference',
+    medication_read: true,
+    medication_edit: true,
+    risks: [],
+    risks_read: true,
+    services_read: true,
+    local_date: '2026-11-10',
   };
 }
 const unavailable = {
@@ -109,7 +147,8 @@ describe('Service user landing and creation', () => {
     grant: ReturnType<typeof signal<boolean>>,
     context: ReturnType<typeof signal<ReturnType<typeof accessContext>>>,
     request: ReturnType<typeof vi.fn>,
-    browser: ReturnType<typeof vi.fn>;
+    browser: ReturnType<typeof vi.fn>,
+    params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
   beforeEach(() => {
     company = signal('north');
     grant = signal(true);
@@ -140,29 +179,47 @@ describe('Service user landing and creation', () => {
         };
       if (path.includes('/export?'))
         return new Blob(['Name\r\nAlex Citizen\r\n'], { type: 'text/csv' });
+      if (path.endsWith('/overview')) return overview();
+      if (body && path.includes('/overview/')) {
+        const value = overview(),
+          card = path.split('/').at(-1),
+          changes = body as Record<string, any>;
+        value.record.version = 2;
+        value.record.etag = '"v2"';
+        if (card === 'contact') value.record.representative = changes;
+        else if (card === 'preferences') Object.assign(value.record.details, changes);
+        else if (card === 'photo') value.record.photo_id = changes['photo_id'];
+        else {
+          Object.assign(value.clinical, changes);
+          if (changes['language'] !== undefined)
+            value.record.details['language'] = changes['language'];
+        }
+        return value;
+      }
       if (body) return row();
       return page();
     });
-    const params = new BehaviorSubject(convertToParamMap({}));
+    params = new BehaviorSubject(convertToParamMap({}));
     TestBed.configureTestingModule({
       providers: [
+        {
+          provide: MAT_DIALOG_DEFAULT_OPTIONS,
+          useValue: {
+            ...new MatDialogConfig(),
+            enterAnimationDuration: 0,
+            exitAnimationDuration: 0,
+          },
+        },
         provideRouter([]),
         {
           provide: ActivatedRoute,
           useValue: {
             paramMap: params.asObservable(),
             queryParamMap: params.asObservable(),
-            snapshot: {
-              paramMap: params.value,
-              queryParamMap: params.value,
-              data: {},
-            },
+            snapshot: { paramMap: params.value, queryParamMap: params.value, data: {} },
           },
         },
-        {
-          provide: AuthService,
-          useValue: { profile: () => ({ id: 'actor' }), api: request },
-        },
+        { provide: AuthService, useValue: { profile: () => ({ id: 'actor' }), api: request } },
         {
           provide: CompanyAccessService,
           useValue: {
@@ -172,10 +229,7 @@ describe('Service user landing and creation', () => {
             canPath: () => grant(),
           },
         },
-        {
-          provide: RotaService,
-          useValue: { can: () => grant(), data: browser },
-        },
+        { provide: RotaService, useValue: { can: () => grant(), data: browser } },
         {
           provide: ManagementStore,
           useValue: { companyId: company, data: browser, staff: () => [] },
@@ -304,7 +358,7 @@ describe('Service user landing and creation', () => {
     const loading = api.detail('user-1');
     company.set('south');
     TestBed.tick();
-    resolve(row());
+    resolve(overview());
     await loading;
     expect(api.selected()).toBeNull();
   });
@@ -323,12 +377,7 @@ describe('Service user landing and creation', () => {
         phone: '0701',
         email: 'sam@example.com',
       },
-      file: {
-        details: { dob: '1950-01-01' },
-        sections: {},
-        entries: {},
-        updatedAt: '',
-      },
+      file: { details: { dob: '1950-01-01' }, sections: {}, entries: {}, updatedAt: '' },
     };
     request.mockRejectedValueOnce(Error('Network lost')).mockResolvedValue(row());
     await expect(api.save(draft, null, api.scope())).rejects.toThrow('Network lost');
@@ -338,9 +387,7 @@ describe('Service user landing and creation', () => {
     );
     const original = api.selected()!;
     await api.save(draft, original, api.scope());
-    expect((request.mock.calls.at(-1) as any)[3]).toEqual({
-      'If-Match': '"v1"',
-    });
+    expect((request.mock.calls.at(-1) as any)[3]).toEqual({ 'If-Match': '"v1"' });
   });
   it('renders recorded needs, care packages and next visits in both existing views', async () => {
     const result = page();
@@ -379,7 +426,11 @@ describe('Service user landing and creation', () => {
   it('preserves a saved photo before its preview loads and removes it only on explicit removal', async () => {
     const api = TestBed.inject(ServiceUsersApi);
     TestBed.tick();
-    request.mockResolvedValue({ ...row(), photo_id: 'photo-1' });
+    request.mockImplementation(async (path: string) =>
+      path.endsWith('/overview')
+        ? overview({ ...row(), photo_id: 'photo-1' })
+        : { ...row(), photo_id: 'photo-1' },
+    );
     await api.detail('user-1');
     const original = api.selected()!;
     const draft = structuredClone(original);
@@ -430,10 +481,7 @@ describe('Service user landing and creation', () => {
     const form = fixture.nativeElement.querySelector('form');
     request.mockClear();
     for (let index = 2; index <= 4; index++) {
-      context.update((value) => ({
-        ...value,
-        request_id: 'access-request-' + index,
-      }));
+      context.update((value) => ({ ...value, request_id: 'access-request-' + index }));
       await settle(fixture);
       expect(fixture.nativeElement.querySelector('form')).toBe(form);
       expect((fixture.nativeElement.querySelector('[name="name"]') as HTMLInputElement).value).toBe(
@@ -561,5 +609,231 @@ describe('Service user landing and creation', () => {
     expect(fixture.nativeElement.querySelector('#su-reference-error').textContent).toContain(
       'already in use',
     );
+  });
+  async function openOverview() {
+    params.next(convertToParamMap({ id: 'user-1' }));
+    const fixture = TestBed.createComponent(ClientFiles);
+    await settle(fixture);
+    return fixture;
+  }
+  it('opens each existing overview card in a prefilled dialog without changing the page', async () => {
+    const fixture = await openOverview();
+    const panels = [
+      ...fixture.nativeElement.querySelectorAll('cv-client-overview .profile-panel'),
+    ] as HTMLElement[];
+    for (const [title, name, value] of [
+      ['Personal Details', 'name', 'Alex Citizen'],
+      ['Next of Kin', 'name', 'Sam'],
+      ['Health Conditions', 'primary_diagnosis', 'Recorded diagnosis'],
+      ['Support Needs', 'personal', 'Morning support'],
+      ['Communication', 'communication', 'Speak clearly'],
+      ['Likes, Dislikes', 'likes', ''],
+    ]) {
+      const panel = panels.find((panel) =>
+        panel.querySelector('h2')?.textContent?.includes(title),
+      )!;
+      expect(panel).toBeTruthy();
+      (panel.querySelector('header button') as HTMLButtonElement).click();
+      await settle(fixture);
+      const dialog = document.querySelector('[role="dialog"]')!;
+      expect(dialog).toBeTruthy();
+      expect((dialog.querySelector(`[name="${name}"]`) as HTMLInputElement).value).toBe(value);
+      expect(fixture.nativeElement.querySelector('cv-client-overview')).toBeTruthy();
+      expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+      TestBed.inject(MatDialog).closeAll();
+      await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+      await settle(fixture);
+    }
+    expect(browser).not.toHaveBeenCalled();
+  });
+  it('saves support to the backend and updates the existing overview without navigation', async () => {
+    const fixture = await openOverview();
+    const panel = (
+      [
+        ...fixture.nativeElement.querySelectorAll('cv-client-overview .profile-panel'),
+      ] as HTMLElement[]
+    ).find((panel) => panel.querySelector('h2')?.textContent?.includes('Support Needs'))!;
+    (panel.querySelector('header button') as HTMLButtonElement).click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    const input = dialog.querySelector('[name="personal"]') as HTMLTextAreaElement;
+    input.value = 'Updated personal support';
+    input.dispatchEvent(new Event('input'));
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    const call = request.mock.calls.find(
+      ([path, body]) => path.endsWith('/overview/support') && !!body,
+    )!;
+    expect(call[1]).toMatchObject({ personal: 'Updated personal support' });
+    expect((call as any)[3]).toEqual({ 'If-Match': '"v1"' });
+    await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+    expect(panel.textContent).toContain('Updated personal support');
+    expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+  });
+  it('keeps the dialog and entered values when a source revision is stale', async () => {
+    const fixture = await openOverview();
+    const panel = (
+      [
+        ...fixture.nativeElement.querySelectorAll('cv-client-overview .profile-panel'),
+      ] as HTMLElement[]
+    ).find((panel) => panel.querySelector('h2')?.textContent?.includes('Communication'))!;
+    (panel.querySelector('header button') as HTMLButtonElement).click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    const input = dialog.querySelector('[name="communication"]') as HTMLTextAreaElement;
+    input.value = 'Retain this draft';
+    input.dispatchEvent(new Event('input'));
+    context.update((value) => ({ ...value, request_id: 'background-overview-check' }));
+    await settle(fixture);
+    expect(document.querySelector('[role="dialog"]')).toBe(dialog);
+    expect(input.value).toBe('Retain this draft');
+    request.mockRejectedValueOnce(
+      new ApiError('This record changed. Reload before saving.', 412, 'stale_version'),
+    );
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    expect(document.querySelector('[role="dialog"]')).toBe(dialog);
+    expect(input.value).toBe('Retain this draft');
+    expect(dialog.textContent).toContain('This record changed');
+  });
+  it('opens a photo-only popup and removes the photo through its own scoped command', async () => {
+    const fixture = await openOverview();
+    (fixture.nativeElement.querySelector('.profile-photo-button') as HTMLButtonElement).click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('Edit profile photo');
+    expect(dialog.querySelector('[name="name"]')).toBeNull();
+    expect(dialog.querySelector('input[type="file"]')).toBeTruthy();
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    const call = request.mock.calls.find(
+      ([path, body]) => path.endsWith('/overview/photo') && !!body,
+    )!;
+    expect(call[1]).toEqual({ photo_id: null });
+    expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+  });
+  it('does not let a delayed old photo response restore the earlier record or image', async () => {
+    const api = TestBed.inject(ServiceUsersApi);
+    TestBed.tick();
+    let resolveOld!: (value: Blob) => void;
+    let photoReads = 0;
+    const old = overview({ ...row(), photo_id: 'old-photo' }),
+      fresh = overview({ ...row(), photo_id: 'new-photo', version: 2, etag: '"v2"' });
+    request.mockImplementation(async (path: string, body?: unknown) => {
+      if (path.endsWith('/overview')) return old;
+      if (path.endsWith('/overview/photo')) return fresh;
+      if (path.endsWith('/photo')) {
+        photoReads++;
+        if (photoReads === 1)
+          return new Promise<Blob>((resolve) => {
+            resolveOld = resolve;
+          });
+        return new Blob(['new'], { type: 'image/png' });
+      }
+      throw Error('Unexpected operation');
+    });
+    await api.detail('user-1');
+    const original = api.selected()!;
+    await api.saveCard('photo', { photo_id: 'new-photo' }, original, api.scope());
+    await Promise.resolve();
+    const selected = api.selected()!;
+    resolveOld(new Blob(['old'], { type: 'image/png' }));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(api.selected()?.version).toBe(2);
+    expect(api.selected()?.photo_id).toBe('new-photo');
+    expect(api.selected()?.file?.photo).toBe(selected.file?.photo);
+  });
+  it('previews a changed profile photo, uploads it and refreshes the top card in place', async () => {
+    let state = overview({ ...row(), photo_id: 'photo-old' }),
+      imageNumber = 0;
+    vi.spyOn(URL, 'createObjectURL').mockImplementation(() => `blob:profile-${++imageNumber}`);
+    request.mockImplementation(async (path: string, body?: any) => {
+      if (path.endsWith('/overview')) return state;
+      if (path.endsWith('/overview/photo')) {
+        state = {
+          ...state,
+          record: { ...state.record, photo_id: body.photo_id, version: 2, etag: '"v2"' },
+        };
+        return state;
+      }
+      if (path.endsWith('/photo')) return new Blob([state.record.photo_id!], { type: 'image/png' });
+      if (path.endsWith('/service-user-photos'))
+        return { id: 'photo-new', company_id: 'north', state: 'Uploading', etag: '"v1"' };
+      if (path.includes('/chunks/'))
+        return { id: 'photo-new', company_id: 'north', state: 'Uploading', etag: '"v1"' };
+      if (path.endsWith('/finalise'))
+        return { id: 'photo-new', company_id: 'north', state: 'Clean', etag: '"v2"' };
+      throw Error('Unexpected operation ' + path);
+    });
+    const fixture = await openOverview();
+    const oldSource = (
+      fixture.nativeElement.querySelector('.client-profile-photo') as HTMLImageElement
+    ).src;
+    (fixture.nativeElement.querySelector('.profile-photo-button') as HTMLButtonElement).click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect((dialog.querySelector('.client-photo-preview') as HTMLImageElement).src).toBe(oldSource);
+    const input = dialog.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [new File([new Uint8Array([137, 80, 78, 71])], 'portrait.png', { type: 'image/png' })],
+      configurable: true,
+    });
+    input.dispatchEvent(new Event('change'));
+    await vi.waitFor(() =>
+      expect((dialog.querySelector('.client-photo-preview') as HTMLImageElement).src).toMatch(
+        /^data:image\/png;base64,/,
+      ),
+    );
+    await settle(fixture);
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    await vi.waitFor(() =>
+      expect(request.mock.calls.find(([path]) => path.endsWith('/overview/photo'))?.[1]).toEqual({
+        photo_id: 'photo-new',
+      }),
+    );
+    await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+    expect(
+      (fixture.nativeElement.querySelector('.client-profile-photo') as HTMLImageElement).src,
+    ).not.toBe(oldSource);
+    expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+    expect(browser).not.toHaveBeenCalled();
+  });
+  it('excludes medication fields from the health popup when the owning feature is unavailable', async () => {
+    const value = overview();
+    value.medication_read = false;
+    value.medication_edit = false;
+    value.medication_reference = null;
+    request.mockImplementation(async (path: string, body?: unknown) => {
+      if (path.endsWith('/overview') || path.endsWith('/overview/health')) return value;
+      throw Error('Unexpected request');
+    });
+    const fixture = await openOverview();
+    const panel = (
+      [
+        ...fixture.nativeElement.querySelectorAll('cv-client-overview .profile-panel'),
+      ] as HTMLElement[]
+    ).find((panel) => panel.querySelector('h2')?.textContent?.includes('Health Conditions'))!;
+    expect(panel.textContent).toContain('Unavailable');
+    (panel.querySelector('header button') as HTMLButtonElement).click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.querySelector('[name="medication_reference"]')).toBeNull();
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    const body = request.mock.calls.find(([path]) => path.endsWith('/overview/health'))?.[1] as any;
+    expect(body).toBeTruthy();
+    expect(body).not.toHaveProperty('medication_reference');
   });
 });

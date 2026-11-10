@@ -1,10 +1,13 @@
-<cv-portal-record-summary [clientId]="client().id" />
+<cv-portal-record-summary [connected]="!client().overview" [clientId]="client().id" />
 <section class="profile-panel services-panel">
   <header>
     <h2>
       <span class="material-symbols-outlined" aria-hidden="true">settings</span>Services Required
     </h2>
-    <a routerLink="/manage/rota/call-packages" [queryParams]="{ client: client().id }"
+    <a
+      [hidden]="client().overview && !client().overview!.services_read"
+      routerLink="/manage/rota/call-packages"
+      [queryParams]="{ client: client().id }"
       ><span class="material-symbols-outlined" aria-hidden="true">settings</span>Manage Services</a
     >
   </header>
@@ -19,11 +22,17 @@
         >
         <div>
           <strong>{{ call.name }}</strong
-          ><small>{{ frequency(call.weekdays) }} · {{ call.start }}</small>
+          ><small>{{ frequency(call.weekdays ?? []) }} · {{ call.start }}</small>
         </div></a
       >
     } @empty {
-      <p class="empty">No services recorded. Add a call package to set up care services.</p>
+      <p class="empty">
+        {{
+          client().overview && !client().overview!.services_read
+            ? 'Service information is unavailable with your current access.'
+            : 'No services recorded. Add a call package to set up care services.'
+        }}
+      </p>
     }
   </div>
 </section>
@@ -83,9 +92,9 @@
           Emergency Contact
         </h2>
         @if (rota.can('manage')) {
-          <a [routerLink]="['/manage/clients', client().id, 'contacts']"
-            ><span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit</a
-          >
+          <button (click)="edit.emit('contact')">
+            <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
+          </button>
         }
       </header>
       <dl>
@@ -134,7 +143,7 @@
           Conditions
         </h2>
         @if (rota.can('manage')) {
-          <button (click)="edit.emit('diagnoses')">
+          <button (click)="edit.emit('health')">
             <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
           </button>
         }
@@ -199,7 +208,7 @@
       <header>
         <h2><span class="material-symbols-outlined" aria-hidden="true">chat</span>Communication</h2>
         @if (rota.can('manage')) {
-          <button (click)="edit.emit('diagnoses')">
+          <button (click)="edit.emit('communication')">
             <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
           </button>
         }
@@ -220,7 +229,7 @@
           >Likes, Dislikes & Personal Information
         </h2>
         @if (rota.can('manage')) {
-          <button (click)="edit.emit('details')">
+          <button (click)="edit.emit('preferences')">
             <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
           </button>
         }

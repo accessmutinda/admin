@@ -43,13 +43,16 @@ export class CareHeader {
   readonly local = input(false);
   readonly disabled = input(false);
   readonly edit = output<void>();
+  readonly photo = output<void>();
   readonly sectionChange = output<string>();
   protected readonly service = inject(RotaService);
   private readonly router = inject(Router);
-  protected readonly age = age;
+  protected readonly age = (dob: string) => age(dob, this.client().overview?.local_date);
   protected readonly file = computed(() => this.client().file ?? emptyClientFile());
   protected readonly calls = computed(() =>
-    this.service.data().calls.filter((c) => c.clientId === this.client().id && c.active),
+    this.client().overview
+      ? []
+      : this.service.data().calls.filter((c) => c.clientId === this.client().id && c.active),
   );
   protected initials(name: string): string {
     return name
@@ -65,6 +68,11 @@ export class CareHeader {
       void this.router.navigate(['/manage/clients', this.client().id], {
         queryParams: { edit: 'profile' },
       });
+  }
+  protected editPhoto(): void {
+    if (!this.service.can('manage') || this.disabled()) return;
+    if (this.local()) this.photo.emit();
+    else this.editProfile();
   }
   protected printProfile(): void {
     if (this.service.can('export')) window.print();

@@ -121,3 +121,9 @@
   font-size: 11px;
   line-height: 1.35;
 }
+
+.client-files.profile-dialog-body {
+  padding: 16px;
+  max-height: 85vh;
+  overflow: auto;
+}
