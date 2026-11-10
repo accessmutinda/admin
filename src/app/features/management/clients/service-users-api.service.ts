@@ -25,10 +25,25 @@ export class ServiceUsersApi {
   private readonly auth = inject(AuthService);
   readonly companyId = this.access.companyId;
   readonly allowed = computed(() => this.access.can('care', 'records', 'read'));
-  readonly scope = computed(
-    () =>
-      `${this.auth.profile()?.id ?? ''}:${this.companyId()}:${JSON.stringify(this.access.context())}:${this.allowed()}`,
-  );
+  readonly scope = computed(() => {
+    const context = this.access.context();
+    return JSON.stringify({
+      actor: this.auth.profile()?.id ?? '',
+      company: this.companyId(),
+      allowed: this.allowed(),
+      context: context
+        ? {
+            company: context.company_id,
+            active: context.company_active,
+            platform: context.platform,
+            revision: context.revision,
+            modules: [...(context.enabled_modules ?? [])].sort(),
+            permissions: [...(context.permissions ?? [])].sort(),
+            roles: (context.roles ?? []).map((role) => role.id).sort(),
+          }
+        : null,
+    });
+  });
   readonly directory = signal<ServiceUserPage | null>(null);
   readonly rows = signal<DirectoryUser[]>([]);
   readonly selected = signal<DirectoryUser | null>(null);

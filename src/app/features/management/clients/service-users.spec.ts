@@ -71,6 +71,30 @@ function page(): ServiceUserPage {
     },
   };
 }
+function accessContext() {
+  return {
+    company_id: 'north',
+    company_active: true,
+    platform: false,
+    revision: 1,
+    enabled_modules: ['care', 'people'],
+    roles: [
+      { id: 'role-1', code: 'CA', name: 'Company Admin' },
+      { id: 'role-2', code: 'CC', name: 'Coordinator' },
+    ],
+    permissions: [
+      'care.records.read',
+      'care.records.create',
+      'care.records.edit',
+      'care.records.export',
+    ],
+    core_permissions: [],
+    can_manage_modules: false,
+    can_manage_roles: false,
+    can_create_roles: false,
+    request_id: 'access-request-1',
+  };
+}
 async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
   for (let i = 0; i < 4; i++) {
     fixture.detectChanges();
@@ -82,11 +106,13 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 describe('Service user landing and creation', () => {
   let company: ReturnType<typeof signal<string>>,
     grant: ReturnType<typeof signal<boolean>>,
+    context: ReturnType<typeof signal<ReturnType<typeof accessContext>>>,
     request: ReturnType<typeof vi.fn>,
     browser: ReturnType<typeof vi.fn>;
   beforeEach(() => {
     company = signal('north');
     grant = signal(true);
+    context = signal(accessContext());
     browser = vi.fn(() => {
       throw Error('Browser records must not be read by the landing page');
     });
@@ -133,7 +159,7 @@ describe('Service user landing and creation', () => {
           provide: CompanyAccessService,
           useValue: {
             companyId: company,
-            context: () => ({ revision: 1 }),
+            context,
             can: () => grant(),
             canPath: () => grant(),
           },
@@ -346,5 +372,80 @@ describe('Service user landing and creation', () => {
     await api.save(draft, original, api.scope());
     saved = request.mock.calls.filter((call: any[]) => call[2] === 'PATCH').at(-1)!;
     expect((saved[1] as any).photo_id).toBeNull();
+  });
+  it('does not reload the directory for access polling metadata or equivalent reordered grants', async () => {
+    const fixture = TestBed.createComponent(ServiceUserDirectory);
+    await settle(fixture);
+    const api = TestBed.inject(ServiceUsersApi),
+      scope = api.scope();
+    request.mockClear();
+    context.update((value) => ({
+      ...value,
+      request_id: 'access-request-2',
+      permissions: [...value.permissions].reverse(),
+      enabled_modules: [...value.enabled_modules].reverse(),
+      roles: [...value.roles].reverse(),
+    }));
+    await settle(fixture);
+    expect(api.scope()).toBe(scope);
+    expect(api.rows()).toHaveLength(1);
+    expect(request).not.toHaveBeenCalled();
+  });
+  it('keeps the new service user form and entered data through access polling and then submits it', async () => {
+    const fixture = TestBed.createComponent(ClientFiles);
+    await settle(fixture);
+    const add = [...fixture.nativeElement.querySelectorAll('button')].find((button: any) =>
+      button.textContent.includes('Add service'),
+    ) as HTMLButtonElement;
+    add.click();
+    await settle(fixture);
+    for (const [name, value] of Object.entries({
+      name: 'Alex Citizen',
+      reference: 'SU-1',
+      address: '1 Real Road',
+      postcode: 'AB1 2CD',
+    })) {
+      const input = fixture.nativeElement.querySelector(`[name="${name}"]`) as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    }
+    const form = fixture.nativeElement.querySelector('form');
+    request.mockClear();
+    for (let index = 2; index <= 4; index++) {
+      context.update((value) => ({ ...value, request_id: 'access-request-' + index }));
+      await settle(fixture);
+      expect(fixture.nativeElement.querySelector('form')).toBe(form);
+      expect((fixture.nativeElement.querySelector('[name="name"]') as HTMLInputElement).value).toBe(
+        'Alex Citizen',
+      );
+    }
+    expect(request).not.toHaveBeenCalled();
+    expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    expect(
+      request.mock.calls.find(
+        ([path, body]) => path === '/companies/north/service-users' && !!body,
+      )?.[1],
+    ).toMatchObject({ name: 'Alex Citizen', reference: 'SU-1' });
+    expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/manage/clients', 'user-1']);
+  });
+  it('still closes a draft when the effective access grant changes', async () => {
+    const fixture = TestBed.createComponent(ClientFiles);
+    await settle(fixture);
+    (
+      [...fixture.nativeElement.querySelectorAll('button')].find((button: any) =>
+        button.textContent.includes('Add service'),
+      ) as HTMLButtonElement
+    ).click();
+    await settle(fixture);
+    expect(fixture.nativeElement.querySelector('form')).toBeTruthy();
+    context.update((value) => ({
+      ...value,
+      permissions: ['care.records.read'],
+      request_id: 'changed-permissions',
+    }));
+    await settle(fixture);
+    expect(fixture.nativeElement.querySelector('form')).toBeNull();
   });
 });
