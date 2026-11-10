@@ -1,5 +1,5 @@
 import { Person } from '../shared/management.store';
-import { DAYS, staffRecord } from '../people/hr.models';
+import { DAYS, staffRecord, weeklySlots } from '../people/hr.models';
 import { HireInput } from './recruitment-api.service';
 
 export function hireInput(person: Person): HireInput & { status: string } {
@@ -98,6 +98,33 @@ export function restoreHire(person: Person, source: HireInput): Person {
   Object.assign(h.preferences, facts['preferences'] ?? {});
   h.availabilityMode = 'Custom times';
   h.availability = facts['availability'] ?? h.availability;
+  const entered = facts['availability'] as
+    | {
+        day: string;
+        start: string;
+        end: string;
+        preference: 'Available' | 'Preferred' | 'Unavailable';
+      }[]
+    | undefined;
+  if (entered?.length === 42) {
+    const slots = weeklySlots({
+      ...person,
+      hr: { ...h, weeklySlots: undefined, availability: [] },
+    });
+    if (
+      entered.every(
+        (row) =>
+          DAYS.includes(row.day) && slots.some((s) => s.start === row.start && s.end === row.end),
+      )
+    ) {
+      for (const row of entered)
+        slots.find((s) => s.start === row.start && s.end === row.end)!.days[DAYS.indexOf(row.day)] =
+          row.preference;
+      h.weeklySlots = slots;
+      h.availabilityMode = 'Weekly slots';
+    }
+  }
+
   if (facts['checks']) h.checks = facts['checks'];
   if (facts['training']) h.training = facts['training'];
   if (facts['induction']) h.induction = facts['induction'];

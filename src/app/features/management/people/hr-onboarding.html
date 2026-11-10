@@ -9,13 +9,15 @@
     <p>Resume staff setup, complete starter checklists and activate employees when ready.</p>
   </div>
   <div class="hr-actions">
-    @if (hr.can('create')) {
+    @if (canSetup()) {
       <a class="hr-button primary" routerLink="/manage/recruitment"
         ><span class="material-symbols-outlined" aria-hidden="true">person_add</span>Start Staff
         Setup</a
       >
     }
-    <a class="hr-button" routerLink="/manage/recruitment">Accepted Offers & Recruitment</a>
+    @if (api.access.can('people', 'recruitment', 'read')) {
+      <a class="hr-button" routerLink="/manage/recruitment">Accepted Offers & Recruitment</a>
+    }
   </div>
 </div>
 @if (api.loading() && !api.meta()) {
@@ -110,7 +112,8 @@
                 <td>
                   <a
                     class="hr-button outline"
-                    routerLink="/manage/people/staff/new"
+                    [routerLink]="canSetup() ? '/manage/people/staff/new' : null"
+                    [attr.aria-disabled]="canSetup() ? null : true"
                     [queryParams]="{ source: draft.source_id }"
                     >Resume Draft</a
                   >
@@ -153,7 +156,11 @@
             @for (row of rows(); track row.id) {
               <tr>
                 <td>
-                  <a routerLink="/manage/people/staff" [queryParams]="{ q: row.name }"
+                  <a
+                    [routerLink]="
+                      canOpenRecord() ? ['/manage/people/staff', row.id, 'overview'] : null
+                    "
+                    [attr.aria-disabled]="canOpenRecord() ? null : true"
                     ><strong>{{ row.name }}</strong></a
                   ><small>{{ row.reference }} · {{ row.branch }}</small>
                 </td>
@@ -173,18 +180,36 @@
                     <span class="hr-muted">Not available</span>
                   }
                 </td>
-                <td>{{ row.next_task || 'Complete HR evidence verification' }}</td>
                 <td>
-                  @if (row.ready && hr.can('edit')) {
-                    <button class="hr-button primary" (click)="activate(row.id)">
+                  {{
+                    row.next_task ||
+                      (row.ready
+                        ? 'All requirements complete'
+                        : 'Complete HR evidence verification')
+                  }}
+                </td>
+                <td>
+                  @if (
+                    row.ready &&
+                    canOpenRecord() &&
+                    api.access.can('people', 'onboarding', 'approve')
+                  ) {
+                    <button
+                      class="hr-button primary"
+                      [disabled]="api.activationBusy()"
+                      (click)="activate(row.id, row.etag)"
+                    >
                       Complete Onboarding
                     </button>
                   } @else {
                     <a
                       class="hr-button outline"
-                      [routerLink]="null"
-                      aria-disabled="true"
-                      title="HR checklist verification is not connected yet"
+                      [routerLink]="
+                        canOpenRecord()
+                          ? ['/manage/people/staff', row.id, row.next_section || 'employment']
+                          : null
+                      "
+                      [attr.aria-disabled]="canOpenRecord() ? null : true"
                       >{{ row.ready ? 'View Checklist' : 'Continue Checklist' }}</a
                     >
                   }

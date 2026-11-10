@@ -381,7 +381,7 @@ describe('People & HR rendered journeys', () => {
     expect(text()).toContain('Supervision & Appraisals');
     await harness.navigateByUrl('/manage/leave');
     expect(text()).toContain('Availability & Leave');
-    expect(text()).toContain('Request leave for a team member');
+    expect(text()).toContain('Request Leave');
   });
 });
 

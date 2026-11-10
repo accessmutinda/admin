@@ -81,6 +81,7 @@ export type RecruitmentApplication = {
     author: string;
   }[];
   documents?: {
+    staff_etag?: string;
     id: string;
     name: string;
     type: string;
@@ -196,6 +197,7 @@ export type RecruitmentSummary = {
 };
 
 export type RecruitmentUpload = {
+  staff_etag?: string;
   id: string;
   name: string;
   type: string;
@@ -465,6 +467,7 @@ export type RecruitmentApplicationPage = {
       author: string;
     }[];
     documents?: {
+      staff_etag?: string;
       id: string;
       name: string;
       type: string;
@@ -530,6 +533,8 @@ export type RecruitmentOnboardingItem = {
   total: number | null;
   ready: boolean | null;
   next_task: string | null;
+  next_section?: string;
+  etag?: string | null;
 };
 
 export type RecruitmentOnboardingPage = {
@@ -552,6 +557,8 @@ export type RecruitmentOnboardingPage = {
     total: number | null;
     ready: boolean | null;
     next_task: string | null;
+    next_section?: string;
+    etag?: string | null;
   }[];
   meta: {
     company_id: string;
@@ -567,7 +574,7 @@ export type RecruitmentOnboardingPage = {
     };
     branches: string[];
     unavailable: {
-      readiness: string;
+      readiness: string | null;
       drafts: string | null;
     };
   };

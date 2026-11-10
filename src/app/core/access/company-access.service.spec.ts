@@ -106,10 +106,30 @@ describe('Company product access', () => {
   });
   it('maps feature routes independently of role labels', () => {
     expect(routeAccess('/manage/learning/certificates')).toEqual([['academy', 'certificates']]);
-    expect(routeAccess('/manage/people/staff/one/documents')).toEqual([['people', 'documents']]);
+    expect(routeAccess('/manage/people/staff/one/documents')).toEqual([['people', 'records']]);
     expect(routeAccess('/staff-portal/training')).toEqual([
       ['staff_portal', '*'],
       ['academy', 'learner'],
     ]);
+  });
+  it('requires staff records and an owning workflow grant for compliance evidence pages', () => {
+    access.context.set({ ...context, permissions: ['people.records.read'] });
+    expect(access.canPath('/manage/people/staff/one/documents')).toBe(false);
+    expect(access.canPath('/manage/people/compliance')).toBe(false);
+    access.context.set({
+      ...context,
+      permissions: ['people.records.read', 'people.compliance.read'],
+    });
+    expect(access.canPath('/manage/people/compliance')).toBe(true);
+    expect(access.canPath('/manage/people/staff/one/compliance')).toBe(true);
+    expect(access.canPath('/manage/people/staff/one/documents')).toBe(true);
+    expect(access.canPath('/manage/people/staff/one/personal')).toBe(false);
+    expect(access.canPath('/manage/people/staff/one/documents', 'edit')).toBe(false);
+    access.context.set({
+      ...context,
+      permissions: ['people.records.read', 'people.onboarding.read'],
+    });
+    expect(access.canPath('/manage/people/staff/one/compliance')).toBe(true);
+    expect(access.canPath('/manage/people/compliance')).toBe(false);
   });
 });

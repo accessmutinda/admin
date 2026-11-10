@@ -312,7 +312,30 @@ export const hrGuard: CanActivateFn = async (_route, state) => {
         access.can('people', 'onboarding', 'create')) ||
       router.createUrlTree(['/access-denied'])
     );
-  if (path.startsWith('/manage/people/staff/'))
-    return router.createUrlTree(['/manage/people/staff']);
+  if (/^\/manage\/people\/staff\/[^/]+\/(compliance|documents|employment|audit)$/.test(path))
+    return (
+      ((access.can('people', 'compliance', 'read') ||
+        access.can('people', 'onboarding', 'read') ||
+        (path.endsWith('/audit') && access.can('people', 'performance', 'read'))) &&
+        access.can('people', 'records', 'read')) ||
+      router.createUrlTree(['/access-denied'])
+    );
+  if (/^\/manage\/people\/staff\/[^/]+\/availability$/.test(path))
+    return (
+      (access.can('people', 'leave', 'read') && access.can('people', 'records', 'read')) ||
+      router.createUrlTree(['/access-denied'])
+    );
+  if (/^\/manage\/people\/staff\/[^/]+\/(reviews|notes)$/.test(path))
+    return (
+      (access.can('people', 'records', 'read') &&
+        (access.can('people', 'performance', 'read') ||
+          (path.endsWith('/notes') && access.can('people', 'onboarding', 'read')))) ||
+      router.createUrlTree(['/access-denied'])
+    );
+  if (path.startsWith('/manage/people/staff/') && path !== '/manage/people/staff/new')
+    return (
+      (access.can('people', 'onboarding', 'read') && access.can('people', 'records', 'read')) ||
+      router.createUrlTree(['/access-denied'])
+    );
   return true;
 };

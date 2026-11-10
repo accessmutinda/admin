@@ -7,6 +7,13 @@
   <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
   <span aria-current="page">{{ person()?.name || 'Staff record' }}</span>
 </nav>
+@if (staffApi.loading() && !person()) {
+  <cv-page-loading
+    [url]="section === 'availability' ? '/manage/leave' : '/manage/people/onboarding'"
+  />
+} @else if (staffApi.error() && !person()) {
+  <cv-company-unavailable [message]="staffApi.error()" (retry)="staffApi.load(id)" />
+}
 @if (person(); as p) {
   <div class="hr-heading">
     <div>
@@ -38,7 +45,11 @@
       <p>Manage employment, evidence and professional development.</p>
     </div>
     <div class="hr-actions">
-      @if ((section === 'overview' || section === 'reviews') && hr.can('edit')) {
+      @if (
+        (section === 'overview' || section === 'reviews') &&
+        canEdit() &&
+        access.canPath('/manage/people/staff/' + id + '/personal')
+      ) {
         <a
           class="hr-button primary"
           [routerLink]="['/manage/people/staff', id, 'personal']"
@@ -55,7 +66,7 @@
           >View Staff Record</a
         >
       }
-      @if (steps[section] !== undefined && !editing() && hr.can('edit')) {
+      @if (steps[section] !== undefined && !editing() && canEdit()) {
         <button
           class="hr-button primary"
           (click)="section === 'documents' ? chooseDocument() : edit()"
@@ -67,7 +78,10 @@
         class="hr-button"
         [routerLink]="['/manage/people/staff', id, 'audit']"
         queryParamsHandling="merge"
-        [queryParams]="{ edit: null }"
+        [queryParams]="{
+          edit: null,
+          context: staffApi.area() === 'performance' ? 'reviews' : null,
+        }"
         >View Audit Trail</a
       >
     </div>
@@ -92,7 +106,13 @@
       <p>
         {{ p.role }}
         @if (section === 'documents' || section === 'training') {
-          <span class="hr-badge">{{ p.hr.personal.driver ? 'Driver' : 'Non-driver' }}</span>
+          <span class="hr-badge">{{
+            p.hr.personal.driver === null
+              ? 'Not recorded'
+              : p.hr.personal.driver
+                ? 'Driver'
+                : 'Non-driver'
+          }}</span>
         }
       </p>
       <small>Staff Reference: {{ p.hr.reference }}</small>
@@ -150,7 +170,13 @@
       <div class="hr-profile-checks">
         <span class="hr-banner-chip"
           ><span class="material-symbols-outlined" aria-hidden="true">directions_car</span
-          >{{ p.hr.personal.driver ? 'Driver' : 'Non-driver' }}</span
+          >{{
+            p.hr.personal.driver === null
+              ? 'Not recorded'
+              : p.hr.personal.driver
+                ? 'Driver'
+                : 'Non-driver'
+          }}</span
         ><a
           [routerLink]="['/manage/people/staff', id, 'compliance']"
           class="hr-banner-chip"
@@ -210,26 +236,33 @@
       >
     }
   </nav>
-  @if (error()) {
-    <p class="hr-error" role="alert">{{ error() }}</p>
+  @if (error() || staffApi.error() || reviewApi.error()) {
+    <p class="hr-error" role="alert">{{ error() || staffApi.error() || reviewApi.error() }}</p>
   }
   @if (notice()) {
     <p class="hr-notice" role="status">{{ notice() }}</p>
   }
-  @if (editing() && draft) {
+  @if (!supported.includes(section)) {
+    <cv-company-unavailable message="This staff section is not connected yet." />
+  } @else if (editing() && draft) {
     <cv-staff-fields
       [p]="draft"
+      [staffId]="id"
+      [approvedLeaves]="leaves()"
+      [localDate]="staffApi.localDate()"
+      [courses]="courses"
       [step]="steps[section]"
       [compact]="true"
       (busyChange)="busy.set($event)"
+      (savedVersion)="uploaded($event)"
     />
     <div class="hr-footer hr-edit-footer">
-      <button class="hr-button" (click)="cancel()">Cancel changes</button
+      <button class="hr-button" (click)="cancel(true)">Cancel changes</button
       ><button class="hr-button primary" [disabled]="busy()" (click)="save()">Save Changes</button>
     </div>
   } @else {
     @if (section === 'overview') {
-      <cv-portal-record-summary [staffId]="id" />
+      <cv-portal-record-summary [staffId]="id" [connected]="false" />
       <div class="hr-overview-layout">
         <div class="hr-overview-main">
           <div class="hr-overview-primary">
@@ -344,7 +377,9 @@
                 <p class="hr-muted">
                   {{
                     ready(p).ready
-                      ? 'All configured readiness requirements are complete.'
+                      ? staffApi.area() === 'compliance'
+                        ? 'All applicable workforce checks are current.'
+                        : 'All configured readiness requirements are complete.'
                       : ready(p).missing.length + ' readiness requirements remain.'
                   }}
                 </p>
@@ -381,7 +416,15 @@
                 <div class="hr-panel-body">
                   <dl class="hr-detail">
                     <dt>Driver</dt>
-                    <dd>{{ p.hr.personal.driver ? 'Yes' : 'No' }}</dd>
+                    <dd>
+                      {{
+                        p.hr.personal.driver === null
+                          ? 'Not recorded'
+                          : p.hr.personal.driver
+                            ? 'Yes'
+                            : 'No'
+                      }}
+                    </dd>
                     <dt>Vehicle</dt>
                     <dd>{{ p.hr.personal.vehicle || 'Not recorded' }}</dd>
                   </dl>
@@ -455,7 +498,7 @@
                 ><span class="material-symbols-outlined" aria-hidden="true">upload_file</span>Upload
                 Document</a
               >
-              @if (payroll.can('view')) {
+              @if (access.can('finance', 'payroll', 'read')) {
                 <a
                   class="hr-button"
                   routerLink="/manage/finance/payroll"
@@ -547,7 +590,15 @@
               <dt>Languages</dt>
               <dd>{{ p.hr.personal.languages || 'Not recorded' }}</dd>
               <dt>Driver</dt>
-              <dd>{{ p.hr.personal.driver ? 'Yes' : 'No' }}</dd>
+              <dd>
+                {{
+                  p.hr.personal.driver === null
+                    ? 'Not recorded'
+                    : p.hr.personal.driver
+                      ? 'Yes'
+                      : 'No'
+                }}
+              </dd>
               <dt>Vehicle</dt>
               <dd>{{ p.hr.personal.vehicle || 'Not recorded' }}</dd>
             } @else {
@@ -878,7 +929,9 @@
       <div class="hr-notice">
         {{
           ready(p).ready
-            ? 'All configured readiness requirements are complete.'
+            ? staffApi.area() === 'compliance'
+              ? 'All applicable workforce checks are current.'
+              : 'All configured readiness requirements are complete.'
             : 'Outstanding: ' + ready(p).missing.join(', ')
         }}
       </div>
@@ -955,7 +1008,7 @@
           </button>
         }
       </div>
-      <cv-academy-staff-training [personId]="id" />
+      <cv-academy-staff-training [personId]="id" [connected]="false" />
       <section class="hr-panel">
         <div class="hr-panel-head">
           <h2>
@@ -1054,7 +1107,7 @@
                   </td>
                   <td>{{ t.reassessmentDue || 'Not scheduled' }}</td>
                   <td>
-                    @if (hr.can('edit')) {
+                    @if (canEdit()) {
                       <button
                         class="hr-button"
                         [class.primary]="
@@ -1137,7 +1190,7 @@
                       <span class="hr-badge">{{ b.status }}</span>
                     </td>
                     <td>
-                      @if (b.status === 'Scheduled' && hr.can('edit')) {
+                      @if (b.status === 'Scheduled' && canEdit()) {
                         <button class="hr-button" (click)="cancelBooking(b.id)">Cancel</button>
                       }
                     </td>
@@ -1161,7 +1214,7 @@
             </h2>
           </div>
           <div class="hr-panel-body">
-            @if (hr.can('edit')) {
+            @if (canEdit()) {
               <form class="hr-form" (ngSubmit)="bookTraining()">
                 <label
                   >Course<mat-select
@@ -1259,7 +1312,7 @@
                 <span class="material-symbols-outlined" aria-hidden="true">folder_open</span
                 >Document Records ({{ documents().length }})
               </h2>
-              @if (hr.can('edit')) {
+              @if (canEdit()) {
                 <button class="hr-button" (click)="edit()">Manage Records</button>
               }
             </div>
@@ -1315,7 +1368,9 @@
                         <div class="hr-actions">
                           <button class="hr-button" (click)="previewDocument(d.id)">Preview</button
                           ><button class="hr-button" (click)="download(d.id)">Download</button>
-                          @if (hr.can('edit') && d.status !== 'Verified') {
+                          @if (
+                            staffApi.value()?.capabilities?.['approve'] && d.status !== 'Verified'
+                          ) {
                             <button class="hr-button" (click)="verifyDocument(d.id)">Verify</button>
                           }
                         </div>
@@ -1333,7 +1388,7 @@
           <section class="hr-panel">
             <div class="hr-panel-head"><h2 id="document-requests">Document Requests</h2></div>
             <div class="hr-panel-body">
-              @if (hr.can('edit')) {
+              @if (canEdit()) {
                 <form class="hr-form" (ngSubmit)="requestDocument()">
                   <label
                     >Requested document<input
@@ -1352,7 +1407,7 @@
               @for (r of p.hr.requests; track r.id) {
                 <div class="hr-row">
                   <span>{{ r.title }} · {{ r.status }}</span>
-                  @if (r.status === 'Open' && hr.can('edit')) {
+                  @if (r.status === 'Open' && canEdit()) {
                     <button class="hr-button" (click)="fulfill(r.id)">Mark fulfilled</button>
                   }
                 </div>
@@ -1369,7 +1424,7 @@
               </h2>
             </div>
             <div class="hr-panel-body hr-form">
-              @if (hr.can('edit')) {
+              @if (canEdit()) {
                 <label class="wide"
                   >Category<mat-select
                     cvSelect
@@ -1453,14 +1508,20 @@
       </div>
     }
     @if (section === 'availability') {
-      <cv-staff-availability [p]="p" [editable]="false" />
+      <cv-staff-availability
+        [p]="p"
+        [editable]="false"
+        [staffId]="id"
+        [revision]="staffApi.value()?.version ?? 0"
+        [localDate]="staffApi.localDate()"
+      />
       <section class="hr-panel">
         <div class="hr-panel-head">
           <h2>Leave Requests</h2>
           <a class="hr-button" routerLink="/manage/leave">Team leave →</a>
         </div>
         <div class="hr-panel-body">
-          @if (hr.can('edit')) {
+          @if (canRequestLeave()) {
             <form class="hr-form" (ngSubmit)="requestLeave()">
               <label
                 >Leave type<mat-select
@@ -1469,10 +1530,10 @@
                   [(ngModel)]="leave.type"
                   aria-label="Leave type"
                 >
-                  <mat-option value="Annual leave">Annual leave</mat-option>
-                  <mat-option value="Sick leave">Sick leave</mat-option>
-                  <mat-option value="Training">Training</mat-option>
-                  <mat-option value="Other">Other</mat-option>
+                  <mat-option value="">Choose leave type</mat-option>
+                  @for (type of leaveTypes(); track type.id) {
+                    <mat-option [value]="type.id">{{ type.name }}</mat-option>
+                  }
                 </mat-select></label
               ><label
                 >From<input
@@ -1489,9 +1550,12 @@
                   required
               /></label>
               <div class="hr-actions">
-                <button class="hr-button" type="submit">Request Leave</button>
+                <button class="hr-button" type="submit" [disabled]="busy()">Request Leave</button>
               </div>
             </form>
+          }
+          @if (leaveApi.error()) {
+            <p class="hr-error" role="alert">{{ leaveApi.error() }}</p>
           }
           @for (l of leaves(); track l.id) {
             <div class="hr-row">
@@ -1499,17 +1563,29 @@
                 {{ l.type
                 }}<small> {{ l.start }} – {{ l.end }} · {{ l.status || 'Legacy record' }}</small>
               </div>
-              @if (hr.can('edit')) {
+              @if (l.can_approve || l.can_cancel) {
                 <div class="hr-actions">
-                  @if (l.status === 'Pending') {
-                    <button class="hr-button" (click)="leaveStatus(l.id, 'Approved')">
+                  @if (l.can_approve) {
+                    <button
+                      class="hr-button"
+                      [disabled]="busy()"
+                      (click)="leaveStatus(l.id, 'Approved')"
+                    >
                       Approve</button
-                    ><button class="hr-button" (click)="leaveStatus(l.id, 'Rejected')">
+                    ><button
+                      class="hr-button"
+                      [disabled]="busy()"
+                      (click)="leaveStatus(l.id, 'Rejected')"
+                    >
                       Reject
                     </button>
                   }
-                  @if (l.status === 'Pending' || l.status === 'Approved') {
-                    <button class="hr-button" (click)="leaveStatus(l.id, 'Cancelled')">
+                  @if (l.can_cancel) {
+                    <button
+                      class="hr-button"
+                      [disabled]="busy()"
+                      (click)="leaveStatus(l.id, 'Cancelled')"
+                    >
                       Cancel
                     </button>
                   }
@@ -1517,7 +1593,15 @@
               }
             </div>
           } @empty {
-            <p class="hr-empty">No leave recorded.</p>
+            <p class="hr-empty">
+              {{
+                leaveApi.loading()
+                  ? 'Loading leave records…'
+                  : leaveApi.error()
+                    ? 'Leave records are unavailable.'
+                    : 'No leave recorded.'
+              }}
+            </p>
           }
         </div>
       </section>
@@ -1631,7 +1715,15 @@
               </dl>
               <p class="hr-appraisal-comment">{{ appraisal.discussion }}</p>
             } @else {
-              <p class="hr-empty">No completed appraisal recorded.</p>
+              <p class="hr-empty">
+                {{
+                  reviewApi.error()
+                    ? 'Review history is unavailable.'
+                    : reviewApi.loading()
+                      ? 'Loading review history…'
+                      : 'No completed appraisal recorded.'
+                }}
+              </p>
             }
           </div>
         </section>
@@ -1654,7 +1746,7 @@
             <section class="hr-panel">
               <div class="hr-panel-head">
                 <h2>{{ reviewTab === 'Supervision' ? 'Supervision History' : reviewTab }}</h2>
-                @if (hr.can('edit')) {
+                @if (canScheduleReview()) {
                   <button
                     class="hr-button"
                     (click)="showReviewForm = !showReviewForm; review.type = reviewTab"
@@ -1695,7 +1787,13 @@
                     } @empty {
                       <tr>
                         <td colspan="7" class="hr-empty">
-                          No {{ reviewTab.toLowerCase() }} records.
+                          {{
+                            reviewApi.error()
+                              ? 'Review history is unavailable.'
+                              : reviewApi.loading()
+                                ? 'Loading review history…'
+                                : 'No ' + reviewTab.toLowerCase() + ' records.'
+                          }}
                         </td>
                       </tr>
                     }
@@ -1713,7 +1811,7 @@
                       @if (r.score !== undefined) {
                         <p>Manager appraisal rating: {{ r.score }} / 5</p>
                       }
-                      @if (r.status !== 'Completed' && hr.can('edit')) {
+                      @if (r.can_complete) {
                         <div class="hr-form">
                           @if (r.type === 'Annual appraisal') {
                             <div class="hr-form wide hr-appraisal-dimensions">
@@ -1745,6 +1843,7 @@
                             ></label
                           ><button
                             class="hr-button"
+                            [disabled]="busy()"
                             (click)="
                               completeReview(
                                 r.id,
@@ -1770,7 +1869,7 @@
             <section class="hr-panel">
               <div class="hr-panel-head"><h2>Schedule a Review</h2></div>
               <div class="hr-panel-body">
-                @if (hr.can('edit')) {
+                @if (canScheduleReview()) {
                   <form class="hr-form" (ngSubmit)="scheduleReview()">
                     <label
                       >Type<mat-select
@@ -1779,15 +1878,9 @@
                         [(ngModel)]="review.type"
                         aria-label="Type"
                       >
-                        <mat-option value="Supervision">Supervision</mat-option>
-                        <mat-option value="Annual appraisal">Annual appraisal</mat-option>
-                        <mat-option value="Field spot check">Field spot check</mat-option>
-                        <mat-option value="Medication observation"
-                          >Medication observation</mat-option
-                        >
-                        <mat-option value="Care practice observation"
-                          >Care practice observation</mat-option
-                        >
+                        @for (type of reviewTypes; track type.id) {
+                          <mat-option [value]="type.title">{{ type.title }}</mat-option>
+                        }
                       </mat-select></label
                     ><label
                       >Date<input
@@ -1799,7 +1892,9 @@
                       >Assessor<input name="assessor" [(ngModel)]="review.assessor" required
                     /></label>
                     <div class="hr-actions">
-                      <button class="hr-button" type="submit">Schedule Review</button>
+                      <button class="hr-button" type="submit" [disabled]="busy()">
+                        Schedule Review
+                      </button>
                     </div>
                   </form>
                 } @else {
@@ -1812,7 +1907,7 @@
             <section class="hr-panel">
               <div class="hr-panel-head"><h2>Action Plans</h2></div>
               <div class="hr-panel-body">
-                @if (hr.can('edit')) {
+                @if (canEdit()) {
                   <form class="hr-form" (ngSubmit)="addAction()">
                     <label
                       >Action<input name="actionTitle" [(ngModel)]="action.title" required /></label
@@ -1836,7 +1931,7 @@
                       <strong>{{ a.title }}</strong>
                       <p>{{ a.owner }} · {{ a.due }} · {{ a.status }}</p>
                       <p>{{ a.evidence }}</p>
-                      @if (a.status !== 'Completed' && hr.can('edit')) {
+                      @if (a.status !== 'Completed' && canEdit()) {
                         <div class="hr-form">
                           <label>Completion evidence<input #evidence /></label
                           ><button class="hr-button" (click)="completeAction(a.id, evidence.value)">
@@ -1880,7 +1975,11 @@
                 <span class="material-symbols-outlined" aria-hidden="true">description</span
                 >Reflective Practice Notes
               </h2>
-              <a [routerLink]="['/manage/people/staff', id, 'notes']">View all</a>
+              <a
+                [routerLink]="['/manage/people/staff', id, 'notes']"
+                [queryParams]="{ context: 'reviews' }"
+                >View all</a
+              >
             </div>
             <div class="hr-panel-body">
               @for (note of p.hr.notes; track note.id) {
@@ -2190,7 +2289,7 @@
       <section class="hr-panel">
         <div class="hr-panel-head"><h2>Notes & Reflective Practice</h2></div>
         <div class="hr-panel-body">
-          @if (hr.can('edit')) {
+          @if (canEdit()) {
             <form (ngSubmit)="addNote()">
               <div class="hr-form">
                 <label class="wide"
@@ -2198,8 +2297,12 @@
                 </label>
               </div>
               <label class="hr-check"
-                ><input type="checkbox" name="reflective" [(ngModel)]="reflective" />Reflective
-                practice</label
+                ><input
+                  type="checkbox"
+                  name="reflective"
+                  [(ngModel)]="reflective"
+                  [disabled]="staffApi.area() === 'performance'"
+                />Reflective practice</label
               ><button class="hr-button primary" type="submit">Add Note</button>
             </form>
           }
@@ -2221,7 +2324,7 @@
       </section>
     }
     @if (section === 'audit') {
-      <cv-portal-record-summary [staffId]="id" />
+      <cv-portal-record-summary [staffId]="id" [connected]="false" />
       <section class="hr-panel">
         <div class="hr-panel-head"><h2>Record History</h2></div>
         <div class="hr-panel-body">

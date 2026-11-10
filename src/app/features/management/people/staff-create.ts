@@ -127,7 +127,9 @@ export class StaffCreate {
       if (errors.length) throw Error(errors[0]);
       await this.api.command('hire', hireInput(this.p), undefined, this.hireKey);
       this.finished = true;
-      await this.router.navigate(['/manage/people/staff'], { queryParams: { q: this.p.name } });
+      await this.router.navigate(['/manage/people/onboarding'], {
+        queryParams: { q: this.p.name },
+      });
     } catch (error) {
       this.error.set(this.api.message(error));
     } finally {

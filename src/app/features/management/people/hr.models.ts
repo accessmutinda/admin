@@ -5,6 +5,7 @@ import { CHECKS, COURSES, ONBOARDING, Person } from '../shared/management.store'
 export type StaffStatus = 'Onboarding' | 'Active' | 'Inactive' | 'Left';
 export type CheckStatus = 'Not started' | 'Pending' | 'Recorded' | 'Verified' | 'Not required';
 export interface StaffCheck {
+  effectiveState?: string;
   id: string;
   title: string;
   status: CheckStatus;
@@ -57,6 +58,7 @@ export interface StaffReference {
   status: 'Requested' | 'Received' | 'Verified';
 }
 export interface StaffRecord {
+  onboardingComplete?: boolean;
   version: 1;
   reference: string;
   status: StaffStatus;
@@ -76,6 +78,7 @@ export interface StaffRecord {
     kinAlternative?: string;
     additionalNotes?: string;
     photo?: string;
+    photoFileId?: string;
     middleName?: string;
     gender?: string;
     nationality?: string;
@@ -89,7 +92,7 @@ export interface StaffRecord {
     emergencyName: string;
     emergencyPhone: string;
     languages: string;
-    driver: boolean;
+    driver: boolean | null;
     vehicle: string;
   };
   employment: {
@@ -114,6 +117,7 @@ export interface StaffRecord {
     gaps: string;
   };
   checks: StaffCheck[];
+  availabilityRecorded?: boolean;
   availabilityMode?: 'Weekly slots' | 'Custom times';
   weeklySlots?: {
     title: string;
@@ -137,7 +141,7 @@ export interface StaffRecord {
   };
   training: StaffTraining[];
   trainingHistory?: StaffTraining[];
-  induction: { id: string; title: string; complete: boolean }[];
+  induction: { id: string; title: string; complete: boolean; evidenceId?: string }[];
   bookings?: {
     id: string;
     courseId: string;

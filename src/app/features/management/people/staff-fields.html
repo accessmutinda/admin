@@ -79,7 +79,10 @@
             ><label
               ><span>Surname <em>*</em></span
               ><input [(ngModel)]="h.personal.surname" autocomplete="family-name" required /></label
-            ><label>Staff reference number<input [(ngModel)]="h.reference" /></label
+            ><label
+              >Staff reference number<input
+                [readonly]="!!staffId"
+                [(ngModel)]="h.reference" /></label
             ><label>Date of birth<input type="date" [(ngModel)]="h.personal.birthDate" /></label
             ><label
               >Age<input
@@ -273,6 +276,7 @@
               cvSelect
               [(ngModel)]="h.status"
               aria-label="Employment status"
+              [disabled]="!!staffId"
             >
               <mat-option value="Onboarding">Onboarding</mat-option>
               <mat-option value="Active">Active</mat-option>
@@ -335,7 +339,11 @@
                 >Status<mat-select cvSelect [(ngModel)]="r.status" aria-label="Status">
                   <mat-option value="Requested">Requested</mat-option>
                   <mat-option value="Received">Received</mat-option>
-                  <mat-option value="Verified">Verified</mat-option>
+                  <mat-option
+                    value="Verified"
+                    [disabled]="!!staffId && !staffApi.value()?.capabilities?.['approve']"
+                    >Verified</mat-option
+                  >
                 </mat-select></label
               >
             </div>
@@ -355,13 +363,28 @@
         @if (recruitment(); as r) {
           <div class="hr-panel-body hr-form hr-employment-fields">
             <label>Advertisement source<input [(ngModel)]="r.source" /></label
-            ><label>Application date<input type="date" [(ngModel)]="r.applicationDate" /></label
-            ><label>Interview date<input type="date" [(ngModel)]="r.interviewDate" /></label
-            ><label>Offer date<input type="date" [(ngModel)]="r.offerDate" /></label
+            ><label
+              >Application date<input
+                type="date"
+                [(ngModel)]="r.applicationDate"
+                [readonly]="!!staffId || !!applicationId" /></label
+            ><label
+              >Interview date<input
+                type="date"
+                [(ngModel)]="r.interviewDate"
+                [readonly]="!!staffId || !!applicationId" /></label
+            ><label
+              >Offer date<input
+                type="date"
+                [(ngModel)]="r.offerDate"
+                [readonly]="!!staffId || !!applicationId" /></label
             ><label
               >Next probation / review date<input type="date" [(ngModel)]="r.nextReview" /></label
             ><label class="wide"
-              >Interview notes<textarea [(ngModel)]="r.interviewNotes"></textarea>
+              >Interview notes<textarea
+                [(ngModel)]="r.interviewNotes"
+                [readonly]="!!staffId || !!applicationId"
+              ></textarea>
             </label>
           </div>
         }
@@ -386,8 +409,16 @@
                 <mat-option value="Not started">Not started</mat-option>
                 <mat-option value="Pending">Pending</mat-option>
                 <mat-option value="Recorded">Recorded</mat-option>
-                <mat-option value="Verified">Verified</mat-option>
-                <mat-option value="Not required">Not required</mat-option>
+                <mat-option
+                  value="Verified"
+                  [disabled]="!!staffId && !staffApi.value()?.capabilities?.['approve']"
+                  >Verified</mat-option
+                >
+                <mat-option
+                  value="Not required"
+                  [disabled]="!!staffId && !staffApi.value()?.capabilities?.['approve']"
+                  >Not required</mat-option
+                >
               </mat-select></label
             ><label>Completed date<input type="date" [(ngModel)]="c.completed" /></label
             ><label>Review / Renewal date<input type="date" [(ngModel)]="c.expiry" /></label
@@ -400,7 +431,7 @@
               >
                 <mat-option value="">No evidence attached</mat-option>
                 @for (d of p.documents ?? []; track d.id) {
-                  <mat-option [value]="d.id">{{ d.name }}</mat-option>
+                  <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option>
                 }
               </mat-select></label
             ><label>Review notes<input [(ngModel)]="c.note" /></label>
@@ -410,7 +441,14 @@
     </div>
   }
   @if (step === 2) {
-    <cv-staff-availability [p]="p" [editable]="true" />
+    <cv-staff-availability
+      [p]="p"
+      [editable]="true"
+      [approvedLeaves]="approvedLeaves"
+      [localDate]="localDate"
+      [staffId]="staffId"
+      [personalEditable]="!staffId || !!staffApi.value()?.capabilities?.['personal']"
+    />
   }
   @if (step === 3) {
     <div class="hr-training-editor">
@@ -422,6 +460,7 @@
               ><input
                 type="checkbox"
                 [checked]="p.learning.includes(c.id)"
+                [disabled]="!!staffId && c.category === 'Mandatory'"
                 (change)="toggleCourse(c.id, $any($event.target).checked)"
               />{{ c.title }} <span class="hr-badge">{{ c.category }}</span></label
             >
@@ -457,7 +496,7 @@
               >
                 <mat-option value="">Not attached</mat-option>
                 @for (d of p.documents ?? []; track d.id) {
-                  <mat-option [value]="d.id">{{ d.name }}</mat-option>
+                  <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option>
                 }
               </mat-select></label
             >
@@ -509,8 +548,8 @@
             [disabled]="busy()"
         /></label>
         <p class="hr-muted wide">
-          Documents are saved on this device when you save the staff record. Uploading a file does
-          not verify its contents.
+          Documents are saved securely and scanned before verification. Uploading a file does not
+          verify its contents.
         </p>
         @if (error()) {
           <p class="hr-error wide" role="alert">{{ error() }}</p>

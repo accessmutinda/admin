@@ -1,11 +1,11 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, Injector, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AcademyService } from './academy.service';
 import { AcademyDate } from './academy-date';
 @Component({
   selector: 'cv-academy-staff-training',
   imports: [RouterLink, AcademyDate],
-  template: `@if (academy.canManage()) {
+  template: `@if (!connected() || academy.canManage()) {
     <section class="panel">
       <div class="heading">
         <div>
@@ -16,13 +16,14 @@ import { AcademyDate } from './academy-date';
         </div>
         <div class="actions">
           <a
+            [attr.aria-disabled]="!connected()"
             class="academy-button primary"
-            routerLink="/manage/learning/rules"
+            [routerLink]="connected() ? '/manage/learning/rules' : null"
             [queryParams]="{ person: personId(), action: 'assign' }"
             >Assign course</a
           ><a
             class="academy-button"
-            routerLink="/manage/learning/rules"
+            [routerLink]="connected() ? '/manage/learning/rules' : null"
             [queryParams]="{ person: personId(), action: 'refresher' }"
             >Send refresher</a
           >
@@ -39,7 +40,7 @@ import { AcademyDate } from './academy-date';
             </tr>
           </thead>
           <tbody>
-            @for (a of assignments(); track a.id) {
+            @for (a of connected() ? assignments() : []; track a.id) {
               <tr>
                 <td>
                   {{ academy.assignedCourse(a)?.title
@@ -63,7 +64,13 @@ import { AcademyDate } from './academy-date';
               </tr>
             } @empty {
               <tr>
-                <td colspan="4">No Academy assignments for this staff record.</td>
+                <td colspan="4">
+                  {{
+                    connected()
+                      ? 'No Academy assignments for this staff record.'
+                      : 'Academy assignments are not connected. Record external training evidence in the existing training editor.'
+                  }}
+                </td>
               </tr>
             }
           </tbody>
@@ -74,8 +81,12 @@ import { AcademyDate } from './academy-date';
   styleUrl: './academy.css',
 })
 export class AcademyStaffTraining {
-  protected readonly academy = inject(AcademyService);
+  private readonly injector = inject(Injector);
+  protected get academy() {
+    return this.injector.get(AcademyService);
+  }
   readonly personId = input.required<string>();
+  readonly connected = input(true);
   protected certificateId(id: string) {
     return (
       this.academy

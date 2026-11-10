@@ -71,6 +71,24 @@ export function routeAccess(url: string): [string, string][] {
   if (path.startsWith('/manage/recruitment')) return [['people', 'recruitment']];
   if (path.startsWith('/manage/leave')) return [['people', 'leave']];
   if (path.startsWith('/manage/reviews')) return [['people', 'performance']];
+  if (/^\/manage\/people\/staff\/[^/]+\/reviews$/.test(path))
+    return [
+      ['people', 'performance'],
+      ['people', 'records'],
+    ];
+  if (/^\/manage\/people\/staff\/[^/]+\/notes$/.test(path)) return [['people', 'records']];
+  if (/^\/manage\/people\/staff\/[^/]+\/availability$/.test(path))
+    return [
+      ['people', 'leave'],
+      ['people', 'records'],
+    ];
+  if (/^\/manage\/people\/staff\/[^/]+\/(compliance|documents|employment|audit)$/.test(path))
+    return [['people', 'records']];
+  if (/^\/manage\/people\/staff\/[^/]+\//.test(path))
+    return [
+      ['people', 'onboarding'],
+      ['people', 'records'],
+    ];
   if (path.startsWith('/manage/people')) {
     const area = path.split('/').at(-1) ?? '';
     const map: Record<string, string> = {
@@ -321,6 +339,27 @@ export class CompanyAccessService {
   }
   canPath(url: string, action = 'read'): boolean {
     const path = url.split(/[?#]/)[0];
+    if (path === '/manage/reviews' || /^\/manage\/people\/staff\/[^/]+\/reviews$/.test(path))
+      return this.can('people', 'records', 'read') && this.can('people', 'performance', action);
+    if (/^\/manage\/people\/staff\/[^/]+\/(notes|audit)$/.test(path))
+      return (
+        this.can('people', 'records', 'read') &&
+        (this.can('people', 'onboarding', action) ||
+          this.can('people', 'performance', action) ||
+          (path.endsWith('/audit') && this.can('people', 'compliance', action)))
+      );
+    if (/^\/manage\/people\/staff\/[^/]+\/(compliance|documents|employment|audit)$/.test(path))
+      return (
+        this.can('people', 'records', 'read') &&
+        (this.can('people', 'compliance', action) || this.can('people', 'onboarding', action)) &&
+        (!(path.endsWith('/employment') && action === 'edit') ||
+          this.can('people', 'records', 'edit'))
+      );
+    if (path === '/manage/leave' || /^\/manage\/people\/staff\/[^/]+\/availability$/.test(path))
+      return this.can('people', 'records', 'read') && this.can('people', 'leave', action);
+    if (path === '/manage/people/compliance')
+      return this.can('people', 'records', 'read') && this.can('people', 'compliance', action);
+
     if (path.startsWith('/manage/companies') || path.startsWith('/manage/locations')) {
       if (this.auth.isSuperAdmin()) return true;
       const permission = path.includes('/access')

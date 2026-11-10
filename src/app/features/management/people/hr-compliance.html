@@ -11,13 +11,31 @@
     </p>
   </div>
   <div class="hr-actions">
-    @if (hr.can('export')) {
-      <button class="hr-button outline" [disabled]="!rows().length" (click)="export()">
+    @if (api.access.can('people', 'compliance', 'export') && api.allowed()) {
+      <button
+        class="hr-button outline"
+        [disabled]="!total() || api.exportBusy()"
+        (click)="export()"
+      >
         <span class="material-symbols-outlined" aria-hidden="true">download</span>Export Checks
       </button>
     }
   </div>
 </div>
+@if (api.loading() && !api.page()) {
+  <cv-page-loading url="/manage/people/compliance" />
+} @else if (api.error() && !api.page()) {
+  <cv-company-unavailable [message]="api.error()" (retry)="api.load(query())" />
+}
+@if (api.error() && api.page()) {
+  <p class="hr-error" role="alert">{{ api.error() }}</p>
+}
+@if (api.page()?.meta?.unavailable_staff) {
+  <p class="hr-error" role="status">
+    {{ api.page()!.meta.unavailable_staff }} staff records have no connected compliance
+    requirements. Their compliance cannot be assessed.
+  </p>
+}
 <div class="hr-stats">
   @for (stat of stats(); track stat.label) {
     <a
@@ -86,13 +104,13 @@
     >
   </div>
   <div class="hr-filter-summary">
-    <span>{{ rows().length }} checks match these filters</span
+    <span>{{ total() }} checks match these filters</span
     ><button class="hr-clear" (click)="clear()">Clear filters</button>
   </div>
 </section>
 <section class="hr-panel hr-register">
   <div class="hr-register-toolbar">
-    <h2>Check Actions ({{ rows().length }})</h2>
+    <h2>Check Actions ({{ total() }})</h2>
     <span class="hr-muted">Expired checks first · Current workforce only</span>
   </div>
   <div
@@ -147,7 +165,7 @@
             <td>
               <a
                 class="hr-button outline"
-                [routerLink]="['/manage/people/staff', row.person.id, 'compliance']"
+                [routerLink]="['/manage/people/staff', row.person.id, row.review_section]"
                 [fragment]="'check-' + row.check.id"
                 >{{ row.state === 'Verified' ? 'View Check' : 'Review Check' }}</a
               >
@@ -155,7 +173,15 @@
           </tr>
         } @empty {
           <tr>
-            <td colspan="8" class="hr-empty">No compliance checks match these filters.</td>
+            <td colspan="8" class="hr-empty">
+              {{
+                api.loading()
+                  ? 'Loading compliance checks…'
+                  : api.error()
+                    ? 'Compliance checks are unavailable.'
+                    : 'No compliance checks match these filters.'
+              }}
+            </td>
           </tr>
         }
       </tbody>
@@ -163,8 +189,8 @@
   </div>
   <div class="hr-footer">
     <span role="status"
-      >Showing {{ rows().length ? (currentPage() - 1) * pageSize + 1 : 0 }} to
-      {{ (currentPage() - 1) * pageSize + visible().length }} of {{ rows().length }} checks</span
+      >Showing {{ total() ? (currentPage() - 1) * pageSize + 1 : 0 }} to
+      {{ (currentPage() - 1) * pageSize + visible().length }} of {{ total() }} checks</span
     >
     <nav class="hr-page-nav" aria-label="Compliance queue pages">
       <button

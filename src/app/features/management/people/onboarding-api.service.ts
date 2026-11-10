@@ -1,3 +1,4 @@
+import { OnboardingStaffApi } from './onboarding-staff-api.service';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CompanyAccessService } from '../../../core/access/company-access.service';
@@ -11,12 +12,29 @@ type QueuePage = RecruitmentOnboardingPage;
 @Injectable({ providedIn: 'root' })
 export class OnboardingApi {
   private readonly auth = inject(AuthService);
+  private readonly staff = inject(OnboardingStaffApi);
   readonly access = inject(CompanyAccessService);
   readonly companyId = this.access.companyId;
   readonly rows = signal<OnboardingItem[]>([]);
   readonly meta = signal<QueuePage['meta'] | null>(null);
   readonly loading = signal(true);
   readonly error = signal('');
+  readonly activationBusy = signal(false);
+  async activate(id: string, etag: string): Promise<string> {
+    if (this.activationBusy()) throw Error('Activation is already in progress.');
+    this.activationBusy.set(true);
+    try {
+      const staff = this.staff;
+      await staff.load(id);
+      if (staff.error() || !staff.value())
+        throw Error(staff.error() || 'Reload this staff record.');
+      const name = staff.person()!.name;
+      await staff.activate(id, etag);
+      return name;
+    } finally {
+      this.activationBusy.set(false);
+    }
+  }
   readonly allowed = computed(() => this.access.can('people', 'onboarding', 'read'));
   readonly scope = computed(
     () =>
@@ -37,6 +55,7 @@ export class OnboardingApi {
   }
   async load(lane: string, q: string, branch: string): Promise<void> {
     const company = this.companyId(),
+      scope = this.scope(),
       generation = ++this.generation;
     this.rows.set([]);
     this.loading.set(true);
@@ -76,17 +95,23 @@ export class OnboardingApi {
           path = next.pathname.slice(base.pathname.length) + next.search;
         } else path = null;
       }
-      if (generation !== this.generation || company !== this.companyId() || !this.allowed()) return;
+      if (
+        generation !== this.generation ||
+        scope !== this.scope() ||
+        company !== this.companyId() ||
+        !this.allowed()
+      )
+        return;
       this.rows.set(rows);
       this.meta.set(meta);
     } catch (error) {
-      if (generation === this.generation) {
+      if (generation === this.generation && scope === this.scope()) {
         this.rows.set([]);
         this.meta.set(null);
         this.error.set(error instanceof Error ? error.message : 'Onboarding is unavailable.');
       }
     } finally {
-      if (generation === this.generation) this.loading.set(false);
+      if (generation === this.generation && scope === this.scope()) this.loading.set(false);
     }
   }
 }

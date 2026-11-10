@@ -1,9 +1,7 @@
 import { Component, input, output } from '@angular/core';
-import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'cv-company-unavailable',
-  imports: [RouterLink],
   template: `
     <section class="cu-card" role="alert" aria-labelledby="company-unavailable-title">
       <span class="cu-icon material-symbols-outlined" aria-hidden="true">cloud_off</span>
@@ -17,7 +15,6 @@ import { RouterLink } from '@angular/router';
           <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
           {{ busy() ? 'Retrying…' : 'Retry' }}
         </button>
-        <a routerLink="/manage/companies" class="cu-back">Back to companies</a>
       </div>
     </section>
   `,

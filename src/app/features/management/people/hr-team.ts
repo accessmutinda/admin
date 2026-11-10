@@ -1,16 +1,24 @@
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, untracked, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HrService } from './hr.service';
 import { today } from './hr.models';
+import { MatDialog } from '@angular/material/dialog';
+import { AvailabilityLeaveApi } from './availability-leave-api.service';
+import { StaffReviewsApi } from './staff-reviews-api.service';
+import { ReviewRequestDialog } from './review-request-dialog';
+import { LeaveRequestDialog } from './leave-request-dialog';
+import { PageLoading } from '../../../shared/layouts/page-loading';
+import { CompanyUnavailable } from '../shared/company-unavailable';
 @Component({
   selector: 'cv-hr-team',
   host: { class: 'module-page people-page hr-team-page' },
-  imports: [MatSelectModule, CvSelect, FormsModule, RouterLink],
+  imports: [PageLoading, CompanyUnavailable, MatSelectModule, CvSelect, FormsModule, RouterLink],
   styleUrls: ['./hr.css', './hr-directory.css', './hr-tables.css'],
-  template: ` <nav class="hr-breadcrumb" aria-label="Breadcrumb">
+  template: `
+    <nav class="hr-breadcrumb" aria-label="Breadcrumb">
       <a routerLink="/manage/people">People & HR</a>
       <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
       <span aria-current="page">{{ title }}</span>
@@ -23,7 +31,32 @@ import { today } from './hr.models';
           follow-up.
         </p>
       </div>
+      @if (mode === 'leave' && leaveApi.access.can('people', 'leave', 'create')) {
+        <button class="hr-button primary" (click)="requestLeave()">
+          <span class="material-symbols-outlined" aria-hidden="true">add</span>Request Leave
+        </button>
+      }
+      @if (mode === 'reviews' && reviewApi.access.can('people', 'performance', 'create')) {
+        <button class="hr-button primary" (click)="addReview()">
+          <span class="material-symbols-outlined" aria-hidden="true">add</span>Add Review
+        </button>
+      }
     </div>
+    @if (mode === 'reviews' && reviewApi.loading()) {
+      <cv-page-loading url="/manage/reviews" />
+    }
+    @if (mode === 'reviews' && reviewApi.error()) {
+      <cv-company-unavailable [message]="reviewApi.error()" (retry)="reload()" />
+    }
+    @if (mode === 'leave' && leaveApi.loading()) {
+      <cv-page-loading url="/manage/leave" />
+    }
+    @if (mode === 'leave' && leaveApi.error()) {
+      <cv-company-unavailable [message]="leaveApi.error()" (retry)="reload()" />
+    }
+    @if (notice()) {
+      <p class="hr-notice" role="status">{{ notice() }}</p>
+    }
     <section class="hr-panel">
       <div class="hr-filters">
         <label
@@ -87,7 +120,15 @@ import { today } from './hr.models';
               </tr>
             } @empty {
               <tr>
-                <td colspan="5" class="hr-empty">No matching records.</td>
+                <td colspan="5" class="hr-empty">
+                  {{
+                    mode === 'leave' && leaveApi.loading()
+                      ? 'Loading leave records…'
+                      : mode === 'leave' && leaveApi.error()
+                        ? 'Leave records are unavailable.'
+                        : 'No matching records.'
+                  }}
+                </td>
               </tr>
             }
           </tbody>
@@ -97,59 +138,82 @@ import { today } from './hr.models';
         <span class="hr-muted" aria-live="polite">{{ records().length }} records</span>
       </div>
     </section>
-    <section class="hr-panel">
-      <div class="hr-panel-head">
-        <h2>
-          {{ mode === 'leave' ? 'Request leave for a team member' : 'Schedule or record a review' }}
-        </h2>
-      </div>
-      <div class="hr-filters">
-        <label
-          >Staff member<mat-select
-            cvSelect
-            [ngModel]="selected()"
-            (ngModelChange)="selected.set($event)"
-          >
-            <mat-option value="">Choose staff member</mat-option>
-            @for (p of hr.staff(); track p.id) {
-              <mat-option [value]="p.id">{{ p.name }} · {{ p.location }}</mat-option>
-            }
-          </mat-select></label
-        >
-        @if (selected()) {
-          <a
-            class="hr-button primary"
-            [routerLink]="[
-              '/manage/people/staff',
-              selected(),
-              mode === 'leave' ? 'availability' : 'reviews',
-            ]"
-            >Continue →</a
-          >
-        }
-      </div>
-    </section>`,
+  `,
 })
 export class HrTeam {
   protected readonly hr = inject(HrService);
+  protected readonly leaveApi = inject(AvailabilityLeaveApi);
+  protected readonly reviewApi = inject(StaffReviewsApi);
+  private readonly dialog = inject(MatDialog);
+  protected readonly notice = signal('');
+  constructor() {
+    effect(() => {
+      const q = this.query(),
+        status = this.status(),
+        api = this.mode === 'leave' ? this.leaveApi : this.reviewApi;
+      api.scope();
+      untracked(() => {
+        this.notice.set('');
+        void api.load(q, status);
+      });
+    });
+  }
+  protected reload(): void {
+    void (this.mode === 'leave' ? this.leaveApi : this.reviewApi).load(this.query(), this.status());
+  }
+  protected addReview(): void {
+    this.dialog
+      .open(ReviewRequestDialog, {
+        width: '720px',
+        maxWidth: 'calc(100vw - 24px)',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      })
+      .afterClosed()
+      .subscribe((result) => {
+        if (result) {
+          this.notice.set(
+            result.status === 'Completed' ? 'Completed review recorded.' : 'Review scheduled.',
+          );
+          this.reload();
+        }
+      });
+  }
+  protected requestLeave(): void {
+    this.dialog
+      .open(LeaveRequestDialog, {
+        width: '640px',
+        maxWidth: 'calc(100vw - 24px)',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      })
+      .afterClosed()
+      .subscribe((result) => {
+        if (result) {
+          this.notice.set('Leave request submitted.');
+          this.reload();
+        }
+      });
+  }
+
   protected readonly mode = inject(ActivatedRoute).snapshot.data['section'] as string;
   protected readonly title =
     this.mode === 'leave' ? 'Availability & Leave' : 'Supervision & Appraisals';
   protected readonly statuses =
     this.mode === 'leave'
-      ? ['Pending', 'Approved', 'Rejected', 'Cancelled', 'Legacy record']
+      ? ['Draft', 'Pending', 'Approved', 'Rejected', 'Cancelled']
       : ['Scheduled', 'Completed'];
-  protected readonly today = today();
+  protected get today(): string {
+    return this.mode === 'leave' ? today() : this.reviewApi.localDate();
+  }
   protected readonly query = signal('');
   protected readonly status = signal('');
   protected readonly selected = signal('');
   protected readonly records = computed(() => {
     const rows =
       this.mode === 'leave'
-        ? this.hr.store
-            .data()
-            .leaves.map((r) => ({ ...r, date: r.start, status: r.status ?? 'Legacy record' }))
-        : this.hr.store.data().reviews.map((r) => ({ ...r, end: '' }));
+        ? this.leaveApi.rows().map((r) => ({ ...r, date: r.start }))
+        : this.reviewApi.rows().map((r) => ({ ...r, end: '' }));
     return rows
       .filter(
         (r) =>
@@ -161,9 +225,6 @@ export class HrTeam {
       .sort((a, b) => a.date.localeCompare(b.date));
   });
   protected personId(record: { person: string; personId?: string }): string {
-    if (record.personId)
-      return this.hr.staff().some((p) => p.id === record.personId) ? record.personId : '';
-    const matches = this.hr.staff().filter((p) => p.name === record.person);
-    return matches.length === 1 ? matches[0].id : '';
+    return record.personId ?? '';
   }
 }

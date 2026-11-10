@@ -82,7 +82,15 @@
                         <button
                           type="button"
                           [disabled]="!editable"
-                          [attr.aria-label]="day + ' ' + slot.title + ': ' + slot.days[j]"
+                          [attr.aria-label]="
+                            day +
+                            ' ' +
+                            slot.title +
+                            ': ' +
+                            (!editable && p.hr?.availabilityRecorded === false
+                              ? 'Not recorded'
+                              : slot.days[j])
+                          "
                           [class.available]="slot.days[j] === 'Available'"
                           [class.preferred]="slot.days[j] === 'Preferred'"
                           [class.unavailable]="slot.days[j] === 'Unavailable'"
@@ -91,7 +99,11 @@
                           <span class="material-symbols-outlined" aria-hidden="true">{{
                             slot.days[j] === 'Unavailable' ? 'check_box_outline_blank' : 'check_box'
                           }}</span
-                          >{{ slot.days[j] }}
+                          >{{
+                            !editable && p.hr?.availabilityRecorded === false
+                              ? 'Not recorded'
+                              : slot.days[j]
+                          }}
                         </button>
                       </td>
                     }
@@ -111,6 +123,9 @@
         </h2>
       </div>
       <div class="hr-panel-body">
+        @if (calendarError()) {
+          <p class="hr-error" role="alert">{{ calendarError() }}</p>
+        }
         <div class="hr-calendar-heading">
           <button class="hr-icon-action" aria-label="Previous month" (click)="moveMonth(-1)">
             ‹</button
@@ -150,7 +165,11 @@
           </tbody>
         </table>
         <p class="hr-muted">
-          Recurring availability and approved leave. This is not a rota or a booking.
+          {{
+            editable
+              ? 'Preview of this working pattern and recorded approved leave. Check dated exceptions in the saved calendar.'
+              : 'Recurring availability and approved leave. This is not a rota or a booking.'
+          }}
         </p>
       </div>
     </section>
@@ -175,13 +194,15 @@
           >Driver<mat-select
             cvSelect
             [(ngModel)]="h.personal.driver"
-            [disabled]="!editable"
+            [disabled]="!editable || !personalEditable"
             aria-label="Driver preference"
             ><mat-option [value]="true">Yes</mat-option
             ><mat-option [value]="false">No</mat-option></mat-select
           ></label
         ><label
-          >Vehicle access<input [(ngModel)]="h.personal.vehicle" [readonly]="!editable" /></label
+          >Vehicle access<input
+            [(ngModel)]="h.personal.vehicle"
+            [readonly]="!editable || !personalEditable" /></label
         ><label
           >Shift preference<input
             [(ngModel)]="h.preferences.shifts"

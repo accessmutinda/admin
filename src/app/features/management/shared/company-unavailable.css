@@ -73,18 +73,7 @@
   opacity: 0.65;
   cursor: wait;
 }
-.cu-back {
-  display: inline-flex;
-  align-items: center;
-  min-height: 36px;
-  color: #0066ac;
-  font: 700 12px/1.4 var(--font-sans);
-  text-decoration: none;
-}
-.cu-back:hover {
-  text-decoration: underline;
-}
-.cu-actions :is(button, a):focus-visible {
+.cu-actions button:focus-visible {
   outline: 2px solid #008afa;
   outline-offset: 3px;
 }
@@ -101,8 +90,7 @@
   .cu-actions {
     grid-column: 1 / -1;
   }
-  .cu-retry,
-  .cu-back {
+  .cu-retry {
     min-height: 44px;
   }
 }

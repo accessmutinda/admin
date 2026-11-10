@@ -5,7 +5,6 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
-import { HrService } from './hr.service';
 import { OnboardingApi } from './onboarding-api.service';
 import { PageLoading } from '../../../shared/layouts/page-loading';
 import { CompanyUnavailable } from '../shared/company-unavailable';
@@ -25,8 +24,19 @@ import { CompanyUnavailable } from '../shared/company-unavailable';
   styleUrls: ['./hr.css', './hr-directory.css', './hr-tables.css', './hr-queues.css'],
 })
 export class HrOnboarding {
-  protected readonly hr = inject(HrService);
   protected readonly api = inject(OnboardingApi);
+  protected readonly canOpenRecord = computed(() =>
+    this.api.access.can('people', 'records', 'read'),
+  );
+  protected readonly canSetup = computed(
+    () =>
+      this.canOpenRecord() &&
+      this.api.access.can('people', 'recruitment', 'read') &&
+      this.api.access.can('people', 'recruitment', 'create') &&
+      this.api.access.can('people', 'records', 'create') &&
+      this.api.access.can('people', 'onboarding', 'create'),
+  );
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly params = toSignal(this.route.queryParamMap, {
@@ -93,7 +103,16 @@ export class HrOnboarding {
   protected clear(): void {
     void this.router.navigate([], { relativeTo: this.route, queryParams: { lane: this.lane() } });
   }
-  protected activate(_id: string): void {
-    this.error.set('HR evidence verification must be connected before staff can be activated.');
+  protected async activate(id: string, etag: string | null | undefined): Promise<void> {
+    if (!etag || this.api.activationBusy()) return;
+    this.error.set('');
+    this.notice.set('');
+    try {
+      const name = await this.api.activate(id, etag);
+      await this.api.load(this.lane(), this.q(), this.branch());
+      this.notice.set(name + ' is now active.');
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : 'Activation failed.');
+    }
   }
 }

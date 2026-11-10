@@ -293,9 +293,12 @@
                     </span>
                     <div>
                       <a
-                        [routerLink]="null"
-                        aria-disabled="true"
-                        title="Staff profiles are not available yet"
+                        [routerLink]="
+                          api.access.can('people', 'onboarding', 'read')
+                            ? ['/manage/people/staff', p.id, 'overview']
+                            : null
+                        "
+                        [attr.aria-disabled]="!api.access.can('people', 'onboarding', 'read')"
                         ><strong>{{ p.name }}</strong></a
                       ><small>{{ p.reference || 'Not recorded' }}</small>
                     </div>
@@ -309,9 +312,12 @@
                 </td>
                 <td>
                   <a
-                    [routerLink]="null"
-                    aria-disabled="true"
-                    title="Staff profiles are not available yet"
+                    [routerLink]="
+                      api.access.can('people', 'onboarding', 'read')
+                        ? ['/manage/people/staff', p.id, 'overview']
+                        : null
+                    "
+                    [attr.aria-disabled]="!api.access.can('people', 'onboarding', 'read')"
                     >Open profile →</a
                   >
                 </td>
@@ -462,9 +468,12 @@
             <article class="hr-card">
               <h2>
                 <a
-                  [routerLink]="null"
-                  aria-disabled="true"
-                  title="Staff profiles are not available yet"
+                  [routerLink]="
+                    api.access.can('people', 'onboarding', 'read')
+                      ? ['/manage/people/staff', p.id, 'overview']
+                      : null
+                  "
+                  [attr.aria-disabled]="!api.access.can('people', 'onboarding', 'read')"
                   queryParamsHandling="preserve"
                   >{{ p.name }}</a
                 >
@@ -477,9 +486,12 @@
                 <span class="hr-badge">{{ p.status }}</span>
               </p>
               <a
-                [routerLink]="null"
-                aria-disabled="true"
-                title="Staff profiles are not available yet"
+                [routerLink]="
+                  api.access.can('people', 'onboarding', 'read')
+                    ? ['/manage/people/staff', p.id, 'employment']
+                    : null
+                "
+                [attr.aria-disabled]="!api.access.can('people', 'onboarding', 'read')"
                 queryParamsHandling="preserve"
                 >View Employment Details →</a
               >
@@ -529,9 +541,12 @@
                       </span>
                       <div>
                         <a
-                          [routerLink]="null"
-                          aria-disabled="true"
-                          title="Staff profiles are not available yet"
+                          [routerLink]="
+                            api.access.can('people', 'onboarding', 'read')
+                              ? ['/manage/people/staff', p.id, 'overview']
+                              : null
+                          "
+                          [attr.aria-disabled]="!api.access.can('people', 'onboarding', 'read')"
                           queryParamsHandling="preserve"
                           ><strong>{{ p.name }}</strong></a
                         ><small>{{ p.reference || 'Not recorded' }}</small>
@@ -567,9 +582,12 @@
                   </td>
                   <td>
                     <a
-                      [routerLink]="null"
-                      aria-disabled="true"
-                      title="Staff profiles are not available yet"
+                      [routerLink]="
+                        api.access.can('people', 'onboarding', 'read')
+                          ? ['/manage/people/staff', p.id, 'overview']
+                          : null
+                      "
+                      [attr.aria-disabled]="!api.access.can('people', 'onboarding', 'read')"
                       queryParamsHandling="preserve"
                       ><span
                         class="hr-badge"
@@ -583,7 +601,7 @@
                     <button
                       type="button"
                       class="hr-icon-action"
-                      [disabled]="!api.summary()?.capabilities?.staff_profile"
+                      [disabled]="!api.access.can('people', 'onboarding', 'read')"
                       [matMenuTriggerFor]="staffActions"
                       [attr.aria-label]="'Actions for ' + p.name"
                     >
@@ -592,18 +610,24 @@
                     <mat-menu #staffActions="matMenu">
                       <a
                         mat-menu-item
-                        [routerLink]="null"
-                        aria-disabled="true"
-                        title="Staff profiles are not available yet"
+                        [routerLink]="
+                          api.access.can('people', 'onboarding', 'read')
+                            ? ['/manage/people/staff', p.id, 'overview']
+                            : null
+                        "
+                        [attr.aria-disabled]="!api.access.can('people', 'onboarding', 'read')"
                         queryParamsHandling="preserve"
                         >View Staff Profile</a
                       >
                       @if (hr.can('edit')) {
                         <a
                           mat-menu-item
-                          [routerLink]="null"
-                          aria-disabled="true"
-                          title="Staff profiles are not available yet"
+                          [routerLink]="
+                            api.access.can('people', 'onboarding', 'read')
+                              ? ['/manage/people/staff', p.id, 'personal']
+                              : null
+                          "
+                          [attr.aria-disabled]="!api.access.can('people', 'onboarding', 'read')"
                           queryParamsHandling="merge"
                           [queryParams]="{ edit: true }"
                           >Edit Personal Details</a
@@ -611,33 +635,45 @@
                       }
                       <a
                         mat-menu-item
-                        [routerLink]="null"
-                        aria-disabled="true"
-                        title="Staff profiles are not available yet"
+                        [routerLink]="
+                          api.access.can('people', 'onboarding', 'read')
+                            ? ['/manage/people/staff', p.id, 'employment']
+                            : null
+                        "
+                        [attr.aria-disabled]="!api.access.can('people', 'onboarding', 'read')"
                         queryParamsHandling="preserve"
                         >Employment & Recruitment</a
                       >
                       <a
                         mat-menu-item
-                        [routerLink]="null"
-                        aria-disabled="true"
-                        title="Staff profiles are not available yet"
+                        [routerLink]="
+                          api.access.can('people', 'onboarding', 'read')
+                            ? ['/manage/people/staff', p.id, 'documents']
+                            : null
+                        "
+                        [attr.aria-disabled]="!api.access.can('people', 'onboarding', 'read')"
                         queryParamsHandling="preserve"
                         >Documents & Compliance Records</a
                       >
                       <a
                         mat-menu-item
-                        [routerLink]="null"
-                        aria-disabled="true"
-                        title="Staff profiles are not available yet"
+                        [routerLink]="
+                          api.access.can('people', 'onboarding', 'read')
+                            ? ['/manage/people/staff', p.id, 'training']
+                            : null
+                        "
+                        [attr.aria-disabled]="!api.access.can('people', 'onboarding', 'read')"
                         queryParamsHandling="preserve"
                         >Training & Competency</a
                       >
                       <a
                         mat-menu-item
-                        [routerLink]="null"
-                        aria-disabled="true"
-                        title="Staff profiles are not available yet"
+                        [routerLink]="
+                          api.access.canPath('/manage/people/staff/' + p.id + '/reviews')
+                            ? ['/manage/people/staff', p.id, 'reviews']
+                            : null
+                        "
+                        [attr.aria-disabled]="!api.access.canPath('/manage/people/staff/' + p.id + '/reviews')"
                         queryParamsHandling="preserve"
                         >Supervision & Appraisal</a
                       >

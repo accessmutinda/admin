@@ -1,12 +1,14 @@
+import type { WorkforceLeave } from './availability-leave.generated';
+import { OnboardingStaffApi } from './onboarding-staff-api.service';
 import { RecruitmentApi } from '../recruitment/recruitment-api.service';
 import { StaffAvailability } from './staff-availability';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
-import { Component, Input, Output, EventEmitter, inject, signal } from '@angular/core';
+import { Component, DestroyRef, Input, Output, EventEmitter, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { COURSES, Person, StaffDocument } from '../shared/management.store';
 import { HrService } from './hr.service';
-import { StaffTraining, checkState, today } from './hr.models';
+import { StaffTraining, StaffCheck, checkState, today } from './hr.models';
 @Component({
   selector: 'cv-staff-fields',
   host: { '[class.hr-compact-editor]': 'compact' },
@@ -17,13 +19,23 @@ import { StaffTraining, checkState, today } from './hr.models';
 export class StaffFields {
   @Input({ required: true }) p!: Person;
   @Input() step = 0;
+  @Input() staffId = '';
+  @Input() approvedLeaves: WorkforceLeave[] = [];
+  @Input() localDate = '';
+  protected readonly staffApi = inject(OnboardingStaffApi);
   @Input() applicationId = '';
   private readonly recruitmentApi = inject(RecruitmentApi);
   @Input() compact = false;
+  @Output() savedVersion = new EventEmitter<string>();
   @Output() busyChange = new EventEmitter<boolean>();
   protected readonly hr = inject(HrService);
-  protected readonly courses = COURSES;
-  protected readonly checkState = checkState;
+  @Input() courses = COURSES;
+  protected readonly checkState = (check: StaffCheck) =>
+    checkState(check, this.staffId ? this.staffApi.localDate() : today());
+  private readonly photoUrls: string[] = [];
+  constructor() {
+    inject(DestroyRef).onDestroy(() => this.photoUrls.forEach((url) => URL.revokeObjectURL(url)));
+  }
   protected replacementId = '';
   protected category = 'Employment & HR';
   protected readonly error = signal('');
@@ -40,7 +52,7 @@ export class StaffFields {
   protected age(): string {
     const birth = this.p.hr!.personal.birthDate;
     if (!birth) return 'Not recorded';
-    const now = today();
+    const now = this.staffId ? this.staffApi.localDate() : today();
     const years =
       Number(now.slice(0, 4)) - Number(birth.slice(0, 4)) - (now.slice(5) < birth.slice(5) ? 1 : 0);
     return years >= 0 && Number.isFinite(years) ? String(years) : 'Not recorded';
@@ -62,7 +74,7 @@ export class StaffFields {
     this.p.learning = this.p.hr!.training.map((t) => t.courseId);
   }
   protected title(id: string): string {
-    return COURSES.find((c) => c.id === id)?.title ?? id;
+    return this.courses.find((c) => c.id === id)?.title ?? id;
   }
   protected async upload(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
@@ -72,11 +84,13 @@ export class StaffFields {
     this.busy.set(true);
     this.busyChange.emit(true);
     try {
-      const doc = this.applicationId
-        ? await this.recruitmentDocument(file, this.category)
-        : await this.hr.document(file, this.category);
+      const doc = this.staffId
+        ? await this.staffApi.upload(file, this.category, this.replacementId)
+        : this.applicationId
+          ? await this.recruitmentDocument(file, this.category)
+          : await this.hr.document(file, this.category);
       const previous = this.p.documents?.find((d) => d.id === this.replacementId);
-      if (previous) {
+      if (previous && !this.staffId) {
         doc.replacesId = previous.id;
         doc.version = (previous.version ?? 1) + 1;
       }
@@ -85,6 +99,8 @@ export class StaffFields {
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Upload failed.');
     } finally {
+      if (this.staffId && this.staffApi.lastUploadEtag === this.staffApi.value()?.etag)
+        this.savedVersion.emit(this.staffApi.lastUploadEtag);
       this.busy.set(false);
       this.busyChange.emit(false);
       input.value = '';
@@ -101,7 +117,13 @@ export class StaffFields {
     this.busy.set(true);
     this.busyChange.emit(true);
     try {
-      if (this.applicationId) {
+      if (this.staffId) {
+        const document = await this.staffApi.upload(file, 'Photo');
+        this.p.hr!.personal.photoFileId = document.id;
+        this.p.documents = [...(this.p.documents ?? []), document];
+        this.p.hr!.personal.photo = URL.createObjectURL(file);
+        this.photoUrls.push(this.p.hr!.personal.photo);
+      } else if (this.applicationId) {
         const document = await this.recruitmentDocument(file, 'Photo');
         this.p.documents = [...(this.p.documents ?? []), document];
         this.p.hr!.personal.photo = URL.createObjectURL(file);
@@ -109,6 +131,8 @@ export class StaffFields {
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Photo could not be read.');
     } finally {
+      if (this.staffId && this.staffApi.lastUploadEtag === this.staffApi.value()?.etag)
+        this.savedVersion.emit(this.staffApi.lastUploadEtag);
       this.busy.set(false);
       this.busyChange.emit(false);
       input.value = '';

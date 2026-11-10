@@ -1,12 +1,27 @@
+import { StaffReviewsApi } from './staff-reviews-api.service';
+import type { StaffReview } from './staff-reviews.generated';
+import { AvailabilityLeaveApi } from './availability-leave-api.service';
+import type { WorkforceLeave } from './availability-leave.generated';
+import { OnboardingStaffApi, OnboardingPerson } from './onboarding-staff-api.service';
+import { CompanyUnavailable } from '../shared/company-unavailable';
+import { PageLoading } from '../../../shared/layouts/page-loading';
 import { CompanyAccessService } from '../../../core/access/company-access.service';
-import { AcademyService } from '../learning/academy/academy.service';
 import { AcademyStaffTraining } from '../learning/academy/academy-staff-training';
 import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
 import { PortalRecordSummary } from '../staff-portal/portal-record-summary';
 import { StaffAvailability } from './staff-availability';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
-import { Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  HostListener,
+  computed,
+  effect,
+  untracked,
+  inject,
+  signal,
+} from '@angular/core';
 import { A11yModule } from '@angular/cdk/a11y';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { DatePipe } from '@angular/common';
@@ -15,19 +30,20 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { HrService } from './hr.service';
 import { StaffFields } from './staff-fields';
-import { STAFF_TABS } from './hr.models';
+import { STAFF_TABS, StaffCheck } from './hr.models';
 import { Person, StaffDocument } from '../shared/management.store';
-import { readiness, staffRecord, checkState, today, dateValid } from './hr.models';
+import { staffRecord, checkState, dateValid } from './hr.models';
 import { londonInstant } from '../rota/rota.models';
-import { PayrollService } from '../payroll/payroll.service';
-import { COURSES } from '../shared/management.store';
 @Component({
   selector: 'cv-staff-profile',
   host: {
     class: 'module-page module-record-tabs people-page hr-profile-page',
     '[class.hr-profile-editing]': 'editing()',
   },
+  providers: [OnboardingStaffApi, AvailabilityLeaveApi, StaffReviewsApi],
   imports: [
+    CompanyUnavailable,
+    PageLoading,
     AcademyStaffTraining,
     CardTonePipe,
     PortalRecordSummary,
@@ -55,9 +71,12 @@ import { COURSES } from '../shared/management.store';
   ],
 })
 export class StaffProfile {
-  private readonly academy = inject(AcademyService);
+  protected readonly staffApi = inject(OnboardingStaffApi);
+  protected readonly leaveApi = inject(AvailabilityLeaveApi);
+  protected readonly reviewApi = inject(StaffReviewsApi);
+  private reviewKey = crypto.randomUUID();
+  private leaveKey = crypto.randomUUID();
   protected readonly hr = inject(HrService);
-  protected readonly payroll = inject(PayrollService);
   private readonly sanitizer = inject(DomSanitizer);
   protected readonly preview = signal<{
     url: string;
@@ -66,15 +85,66 @@ export class StaffProfile {
     name: string;
   } | null>(null);
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.closePreview());
     if (
-      this.route.snapshot.queryParamMap.get('edit') === 'true' &&
-      this.steps[this.section] !== undefined
+      this.section === 'reviews' ||
+      (['notes', 'audit'].includes(this.section) &&
+        this.staffApi.access.can('people', 'performance', 'read') &&
+        (this.route.snapshot.queryParamMap.get('context') === 'reviews' ||
+          (!this.staffApi.access.can('people', 'onboarding', 'read') &&
+            (this.section === 'notes' ||
+              !this.staffApi.access.can('people', 'compliance', 'read')))))
     )
-      this.edit();
+      this.staffApi.area.set('performance');
+
+    if (this.section === 'availability') this.staffApi.area.set('leave');
+    if (
+      (['compliance', 'documents', 'employment'].includes(this.section) ||
+        (this.section === 'audit' && !this.staffApi.access.can('people', 'onboarding', 'read'))) &&
+      this.staffApi.access.can('people', 'compliance', 'read')
+    )
+      if (this.staffApi.area() !== 'performance') this.staffApi.area.set('compliance');
+    inject(DestroyRef).onDestroy(() => this.closePreview());
+    effect(() => {
+      const id = this.id;
+      const scope = this.staffApi.scope();
+      untracked(() => {
+        this.cancel();
+        this.closePreview();
+        this.pendingDocument.set(null);
+        this.notice.set('');
+        this.note = '';
+        this.review = { type: 'Supervision', date: '', assessor: '', discussion: '', outcome: '' };
+        this.reviewKey = crypto.randomUUID();
+        this.competencyDrafts = {};
+        this.showReviewForm = false;
+        this.leave = { type: '', start: '', end: '' };
+        this.leaveKey = crypto.randomUUID();
+        this.requestTitle = '';
+        this.reflective = this.staffApi.area() === 'performance';
+        this.action = { title: '', owner: '', due: '' };
+        this.booking = { courseId: '', date: '', provider: '', type: 'Training' };
+        void this.staffApi.load(id).then(() => {
+          if (
+            id !== this.id ||
+            scope !== this.staffApi.scope() ||
+            this.staffApi.person()?.id !== id
+          )
+            return;
+          if (this.reviewApi.allowed() && ['reviews', 'overview'].includes(this.section))
+            void this.reviewApi.load('', '', id);
+          if (!this.period) this.period = this.staffApi.localDate().slice(0, 7);
+          if (this.section === 'availability') void this.leaveApi.load('', '', id);
+          if (
+            this.route.snapshot.queryParamMap.get('edit') === 'true' &&
+            this.steps[this.section] !== undefined
+          )
+            this.edit();
+        });
+      });
+    });
   }
   private readonly route = inject(ActivatedRoute);
-  protected readonly companyId = this.hr.store.companyId();
+  protected readonly companyId = this.staffApi.companyId();
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
   });
@@ -82,11 +152,27 @@ export class StaffProfile {
     return this.params().get('id') ?? '';
   }
   protected readonly section = this.route.snapshot.data['staffSection'] as string;
-  protected readonly person = computed(() =>
-    this.hr.store.companyId() === this.companyId
-      ? this.hr.staff().find((p) => p.id === this.id)
-      : undefined,
-  );
+  protected readonly person = this.staffApi.person;
+  protected readonly supported = [
+    'overview',
+    'personal',
+    'employment',
+    'compliance',
+    'training',
+    'documents',
+    'notes',
+    'audit',
+    'availability',
+    'reviews',
+  ];
+  protected canEdit(): boolean {
+    return (
+      this.supported.includes(this.section) &&
+      this.staffApi.access.can('people', this.staffApi.area(), 'edit') &&
+      (!['personal', 'employment'].includes(this.section) ||
+        !!this.staffApi.value()?.capabilities['personal'])
+    );
+  }
   protected readonly inductionComplete = (task: { complete: boolean }) => task.complete;
   protected recruitmentStages() {
     const p = this.person();
@@ -105,7 +191,7 @@ export class StaffProfile {
         date: '',
       },
       { title: 'Offer', complete: !!r?.offerDate, date: r?.offerDate || '' },
-      { title: 'Onboarded', complete: p.hr.induction.every((t) => t.complete), date: '' },
+      { title: 'Onboarded', complete: !!p.hr.onboardingComplete, date: '' },
     ];
   }
   protected ringValue(value: string | number): number {
@@ -120,7 +206,7 @@ export class StaffProfile {
     const c = this.person()?.hr.checks.find((c) => c.title === title);
     return c?.status === 'Not required'
       ? 'N/A'
-      : c?.status === 'Verified' && checkState(c) !== 'Expired'
+      : c?.status === 'Verified' && ['Verified', 'Due soon'].includes(this.checkState(c))
         ? '100%'
         : '0%';
   }
@@ -128,8 +214,9 @@ export class StaffProfile {
     const docs = this.documents();
     return docs.length
       ? Math.round(
-          (docs.filter((d) => d.status === 'Verified' && (!d.expiry || d.expiry >= today()))
-            .length /
+          (docs.filter(
+            (d) => d.status === 'Verified' && (!d.expiry || d.expiry >= this.staffApi.localDate()),
+          ).length /
             docs.length) *
             100,
         ) + '%'
@@ -172,7 +259,7 @@ export class StaffProfile {
   protected staffCheck(title: string): string {
     const c = this.person()?.hr.checks.find((c) => c.title === title);
     if (!c) return 'Not recorded';
-    const state = checkState(c);
+    const state = this.checkState(c);
     return state === 'Verified' ? (title === 'DBS check' ? 'Cleared' : 'Valid') : state;
   }
   protected nextReview(type: string): string {
@@ -183,18 +270,24 @@ export class StaffProfile {
     );
   }
   protected appraisalScore(): string {
+    if (!this.reviewApi.loaded()) return 'Unavailable';
     const r = this.reviews()
       .filter(
         (r) => r.type === 'Annual appraisal' && r.status === 'Completed' && r.score !== undefined,
       )
-      .sort((a, b) => b.date.localeCompare(a.date))[0];
+      .sort(
+        (a, b) =>
+          b.date.localeCompare(a.date) ||
+          (b.completedAt ?? '').localeCompare(a.completedAt ?? '') ||
+          b.id.localeCompare(a.id),
+      )[0];
     return r?.score === undefined ? 'Not recorded' : r.score.toFixed(1) + ' / 5';
   }
   protected reviewTiming(date: string): string {
     if (!dateValid(date)) return 'Not scheduled';
-    if (date < today()) return 'Overdue';
-    if (date === today()) return 'Due today';
-    const soon = new Date(today() + 'T12:00:00Z');
+    if (date < this.staffApi.localDate()) return 'Overdue';
+    if (date === this.staffApi.localDate()) return 'Due today';
+    const soon = new Date(this.staffApi.localDate() + 'T12:00:00Z');
     soon.setUTCDate(soon.getUTCDate() + 30);
     return date <= soon.toISOString().slice(0, 10) ? 'Due soon' : 'Scheduled';
   }
@@ -276,8 +369,10 @@ export class StaffProfile {
       return [
         {
           label: 'Supervisions Completed',
-          value: this.reviews().filter((r) => r.type === 'Supervision' && r.status === 'Completed')
-            .length,
+          value: this.reviewApi.loaded()
+            ? this.reviews().filter((r) => r.type === 'Supervision' && r.status === 'Completed')
+                .length
+            : '—',
           caption: 'Recorded history',
           icon: 'supervisor_account',
           color: '#008afa',
@@ -285,9 +380,11 @@ export class StaffProfile {
         },
         {
           label: 'Spot Checks Completed',
-          value: this.reviews().filter(
-            (r) => r.type === 'Field spot check' && r.status === 'Completed',
-          ).length,
+          value: this.reviewApi.loaded()
+            ? this.reviews().filter(
+                (r) => r.type === 'Field spot check' && r.status === 'Completed',
+              ).length
+            : '—',
           caption: 'Recorded history',
           icon: 'fact_check',
           color: '#00a34e',
@@ -295,7 +392,9 @@ export class StaffProfile {
         },
         {
           label: 'Overdue Actions',
-          value: p.hr.actions.filter((a) => a.status !== 'Completed' && a.due < today()).length,
+          value: p.hr.actions.filter(
+            (a) => a.status !== 'Completed' && a.due < this.staffApi.localDate(),
+          ).length,
           caption: 'Awaiting completion',
           icon: 'warning',
           color: '#ff3047',
@@ -349,7 +448,7 @@ export class StaffProfile {
       },
       {
         label: 'Next Supervision',
-        value: this.nextReview('Supervision') || 'Not scheduled',
+        value: 'Unavailable',
         caption: this.reviewTiming(this.nextReview('Supervision')),
         icon: 'supervisor_account',
         color: '#9553dc',
@@ -357,7 +456,7 @@ export class StaffProfile {
       },
       {
         label: 'Next Appraisal',
-        value: this.nextReview('Annual appraisal') || 'Not scheduled',
+        value: 'Unavailable',
         caption: this.reviewTiming(this.nextReview('Annual appraisal')),
         icon: 'event',
         color: '#ff3047',
@@ -365,9 +464,7 @@ export class StaffProfile {
       },
       {
         label: 'Spot Checks',
-        value: this.reviews().filter(
-          (r) => r.type === 'Field spot check' && r.status === 'Completed',
-        ).length,
+        value: 'Unavailable',
         caption: 'Completed observations',
         icon: 'fact_check',
         color: '#00a34e',
@@ -375,14 +472,8 @@ export class StaffProfile {
       },
       {
         label: 'Availability',
-        value: (
-          p.hr.weeklySlots && p.hr.availabilityMode !== 'Custom times'
-            ? p.hr.weeklySlots.some((s) => s.days.some((v) => v !== 'Unavailable'))
-            : p.hr.availability.some((a) => a.preference !== 'Unavailable')
-        )
-          ? 'Recorded'
-          : 'Not recorded',
-        caption: 'Recurring working pattern',
+        value: 'Unavailable',
+        caption: 'Availability is not connected',
         icon: 'calendar_month',
         color: '#008afa',
         section: 'availability',
@@ -403,8 +494,9 @@ export class StaffProfile {
   protected readonly error = signal('');
   protected readonly notice = signal('');
   protected readonly busy = signal(false);
-  protected readonly ready = readiness;
-  protected readonly checkState = checkState;
+  protected readonly ready = (_p: Person) => this.staffApi.readiness();
+  protected readonly checkState = (check: StaffCheck) =>
+    check.effectiveState ?? checkState(check, this.staffApi.localDate());
   protected readonly record = staffRecord;
   protected readonly steps: Record<string, number> = {
     personal: 0,
@@ -417,6 +509,9 @@ export class StaffProfile {
   protected draft: Person | null = null;
   private baseline = '';
   private audit = '';
+  protected uploaded(etag: string): void {
+    this.audit = etag;
+  }
   protected note = '';
   protected reflective = false;
   protected trainingQuery = '';
@@ -426,10 +521,10 @@ export class StaffProfile {
     expiry: string;
     evidenceStatus?: string;
   }): string {
-    if (t.evidenceStatus === 'Revoked') return 'Evidence revoked';
+    if (t.evidenceStatus === 'Revoked') return t.completed ? 'Needs verification' : 'Assigned';
     if (!t.completed) return 'Assigned';
-    if (t.expiry && t.expiry < today()) return 'Expired';
-    const soon = new Date(today() + 'T12:00:00Z');
+    if (t.expiry && t.expiry < this.staffApi.localDate()) return 'Expired';
+    const soon = new Date(this.staffApi.localDate() + 'T12:00:00Z');
     soon.setUTCDate(soon.getUTCDate() + 30);
     return t.expiry && t.expiry <= soon.toISOString().slice(0, 10) ? 'Due soon' : 'Completed';
   }
@@ -437,7 +532,7 @@ export class StaffProfile {
     return this.person()?.hr.training.find((t) => t.courseId === id);
   }
   protected courseCategory(id: string): string {
-    return COURSES.find((c) => c.id === id)?.category || 'Training';
+    return this.courses.find((c) => c.id === id)?.category || 'Training';
   }
   protected prepareBooking(id: string, type: 'Training' | 'Reassessment'): void {
     this.booking.courseId = id;
@@ -456,7 +551,7 @@ export class StaffProfile {
     );
   }
   protected mandatoryTraining(): string {
-    const required = COURSES.filter((c) => c.category === 'Mandatory');
+    const required = this.courses.filter((c) => c.category === 'Mandatory');
     const valid = required.filter((c) =>
       this.person()?.hr.training.some(
         (t) => t.courseId === c.id && ['Completed', 'Due soon'].includes(this.trainingState(t)),
@@ -464,7 +559,7 @@ export class StaffProfile {
     );
     return required.length
       ? Math.round((valid.length / required.length) * 100) + '%'
-      : 'Not required';
+      : 'Unavailable';
   }
   protected competencyRate(): string {
     const assessed =
@@ -504,16 +599,16 @@ export class StaffProfile {
     if (file) await this.uploadFile(file);
   }
   private async uploadFile(file: File): Promise<void> {
-    if (!this.hr.can('edit') || this.uploadBusy()) return;
+    if (!this.canEdit() || this.uploadBusy()) return;
     const id = this.id;
     this.uploadBusy.set(true);
     this.error.set('');
     try {
-      const doc = await this.hr.document(file, this.uploadCategory);
+      const doc = await this.staffApi.upload(file, this.uploadCategory);
       if (id !== this.id || this.companyId !== this.hr.store.companyId())
         throw new Error('The staff selection changed. Choose the document again.');
-      this.pendingDocument.set(doc);
-      this.savePendingDocument();
+      this.pendingDocument.set(null);
+      this.notice.set('Document uploaded securely.');
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'The file could not be uploaded.');
     } finally {
@@ -521,14 +616,7 @@ export class StaffProfile {
     }
   }
   protected savePendingDocument(): void {
-    const doc = this.pendingDocument();
-    if (
-      doc &&
-      this.commit((p) => {
-        p.documents = [...(p.documents ?? []), doc];
-      }, 'Document uploaded')
-    )
-      this.pendingDocument.set(null);
+    this.pendingDocument.set(null);
   }
   protected categoryCount(category: string): number {
     return this.documents().filter((d) => (d.category || 'Other Records') === category).length;
@@ -545,13 +633,13 @@ export class StaffProfile {
     const alerts = [];
     for (const title of ['Right to work', 'DBS check']) {
       const c = p.hr.checks.find((c) => c.title === title);
-      if (c && ['Due soon', 'Expired'].includes(checkState(c)))
+      if (c && ['Due soon', 'Expired'].includes(this.checkState(c)))
         alerts.push({
-          title: title + ' ' + (checkState(c) === 'Expired' ? 'expired' : 'expiring soon'),
+          title: title + ' ' + (this.checkState(c) === 'Expired' ? 'expired' : 'expiring soon'),
           detail: 'Renewal date: ' + c.expiry,
           section: 'compliance',
           button: 'View check',
-          tone: checkState(c) === 'Expired' ? 'bad' : 'warn',
+          tone: this.checkState(c) === 'Expired' ? 'bad' : 'warn',
         });
     }
     const refs = p.hr.checks.find((c) => c.title === 'References');
@@ -591,7 +679,9 @@ export class StaffProfile {
     return [...new Set(this.documents().map((d) => d.category || 'Other Records'))];
   }
   protected documentState(d: { expiry?: string; status?: string }): string {
-    return d.expiry && d.expiry < today() ? 'Expired' : d.status || 'Pending review';
+    return d.expiry && d.expiry < this.staffApi.localDate()
+      ? 'Expired'
+      : d.status || 'Pending review';
   }
   protected requestTitle = '';
   protected action = { title: '', owner: '', due: '' };
@@ -601,14 +691,12 @@ export class StaffProfile {
     provider: '',
     type: 'Training' as 'Training' | 'Reassessment',
   };
-  protected readonly courses = COURSES;
+  protected get courses() {
+    return this.staffApi.courses();
+  }
   protected review = { type: 'Supervision', date: '', assessor: '', discussion: '', outcome: '' };
-  protected leave = { type: 'Annual leave', start: '', end: '' };
-  protected readonly documents = computed(() =>
-    (this.person()?.documents ?? []).filter(
-      (d) => !d.id.startsWith('academy-document:') || this.academy.canReadCertificate(),
-    ),
-  );
+  protected leave = { type: '', start: '', end: '' };
+  protected readonly documents = computed(() => this.person()?.documents ?? []);
   protected showReviewForm = false;
   protected reviewTab = 'Supervision';
   protected readonly reviewTabs = [
@@ -619,16 +707,24 @@ export class StaffProfile {
     { key: 'Action plans', label: 'Action Plans', icon: 'assignment_turned_in' },
     { key: 'Annual appraisal', label: 'Annual Appraisal', icon: 'workspace_premium' },
   ];
-  protected readonly dimensions = [
-    'Communication',
-    'Dignity & Respect',
-    'Documentation',
-    'Punctuality',
-    'Medication Practice',
-    'Manual Handling',
-    'Safeguarding Awareness',
-    'Person-Centred Care',
-  ];
+  protected get dimensions(): string[] {
+    return (
+      (this.staffApi.value() as unknown as { review_dimensions?: { title: string }[] })
+        ?.review_dimensions ?? []
+    ).map((d) => d.title);
+  }
+  protected get reviewTypes() {
+    return (
+      (
+        this.staffApi.value() as unknown as {
+          review_types?: { id: string; title: string; requires_rating: boolean }[];
+        }
+      )?.review_types ?? []
+    );
+  }
+  protected canScheduleReview(): boolean {
+    return this.staffApi.access.can('people', 'performance', 'create');
+  }
   protected competencyDrafts: Record<string, Record<string, number | null>> = {};
   protected dimensionDraft(id: string) {
     return (this.competencyDrafts[id] ??= Object.fromEntries(
@@ -638,7 +734,12 @@ export class StaffProfile {
   protected latestAppraisal() {
     return this.reviews()
       .filter((r) => r.type === 'Annual appraisal' && r.status === 'Completed')
-      .sort((a, b) => b.date.localeCompare(a.date))[0];
+      .sort(
+        (a, b) =>
+          b.date.localeCompare(a.date) ||
+          (b.completedAt ?? '').localeCompare(a.completedAt ?? '') ||
+          b.id.localeCompare(a.id),
+      )[0];
   }
   protected radarPoints(level?: number): string {
     const ratings = this.latestAppraisal()?.competencies;
@@ -662,6 +763,7 @@ export class StaffProfile {
       .sort((a, b) => b.date.localeCompare(a.date));
   }
   protected reviewTrend() {
+    if (!this.reviewApi.loaded()) return [];
     return this.monthlyTrend().map((m) => ({
       month: m.month,
       supervision: this.reviews().filter(
@@ -678,21 +780,15 @@ export class StaffProfile {
     const max = Math.max(1, ...values.flatMap((v) => [v.supervision, v.spots]));
     return values.map((v, i) => 30 + i * 48 + ',' + (150 - (v[key] / max) * 115)).join(' ');
   }
-  protected readonly reviews = computed(() =>
-    this.hr.store
-      .data()
-      .reviews.filter(
-        (r) => r.personId === this.id || (!r.personId && r.person === this.person()?.name),
-      ),
+  protected readonly reviews = this.reviewApi.rows;
+  protected readonly leaves = this.leaveApi.rows;
+  protected readonly canRequestLeave = () => this.staffApi.access.can('people', 'leave', 'create');
+  protected readonly leaveTypes = computed(
+    () =>
+      (this.staffApi.value() as unknown as { leave_types?: { id: string; name: string }[] })
+        ?.leave_types ?? [],
   );
-  protected readonly leaves = computed(() =>
-    this.hr.store
-      .data()
-      .leaves.filter(
-        (r) => r.personId === this.id || (!r.personId && r.person === this.person()?.name),
-      ),
-  );
-  protected period = today().slice(0, 7);
+  protected period = this.staffApi.localDate().slice(0, 7);
   protected movePeriod(delta: number): void {
     const d = new Date(this.period + '-01T12:00:00Z');
     if (Number.isNaN(d.getTime())) return;
@@ -706,7 +802,7 @@ export class StaffProfile {
       : new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' }).format(d);
   }
   protected performanceKpis() {
-    const all = (this.hr.store.data().rota?.visits ?? []).filter(
+    const all = ([] as NonNullable<ReturnType<typeof this.hr.store.data>['rota']>['visits']).filter(
       (v) => v.staffIds.includes(this.id) && v.date.startsWith(this.period),
     );
     const cancellations = all.length
@@ -861,13 +957,13 @@ export class StaffProfile {
   }
   protected periodEnd(): string {
     const d = new Date(this.period + '-01T12:00:00Z');
-    if (Number.isNaN(d.getTime())) return today();
+    if (Number.isNaN(d.getTime())) return this.staffApi.localDate();
     d.setUTCMonth(d.getUTCMonth() + 1);
     d.setUTCDate(0);
     return d.toISOString().slice(0, 10);
   }
   protected performanceVisits() {
-    return (this.hr.store.data().rota?.visits ?? []).filter(
+    return ([] as NonNullable<ReturnType<typeof this.hr.store.data>['rota']>['visits']).filter(
       (v) =>
         v.staffIds.includes(this.id) && v.date.startsWith(this.period) && v.state !== 'Cancelled',
     );
@@ -890,53 +986,63 @@ export class StaffProfile {
     return Math.round((onTime / visits.length) * 100) + '%';
   }
   protected course(id: string): string {
-    return COURSES.find((c) => c.id === id)?.title ?? id;
+    return this.courses.find((c) => c.id === id)?.title ?? id;
   }
   protected edit(): void {
     const p = this.person();
-    if (!p || !this.hr.can('edit')) return;
+    if (!p || !this.canEdit()) return;
     this.draft = structuredClone(p);
     this.baseline = JSON.stringify(this.draft);
-    this.audit = p.hr.audit.at(-1)?.id ?? '';
+    this.audit = this.staffApi.value()?.etag ?? '';
     this.editing.set(true);
     this.error.set('');
   }
-  protected cancel(): void {
+  protected cancel(reload = false): void {
     this.editing.set(false);
     this.draft = null;
     this.error.set('');
+    if (reload) void this.staffApi.load(this.id, true);
   }
-  protected save(): void {
-    if (!this.draft) return;
+  protected async save(): Promise<void> {
+    if (!this.draft || this.busy()) return;
     if (this.draft.id !== this.id) {
       this.error.set('The selected employee changed. Cancel these edits before continuing.');
       return;
     }
-    const result = this.hr.savePerson(this.draft, this.companyId, 'Updated ' + this.section, {
-      expectedAudit: this.audit,
-    });
-    this.error.set(result ?? '');
-    if (!result) {
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.staffApi.save(this.draft as OnboardingPerson, this.section, this.audit);
       this.cancel();
-      this.notice.set('Staff details saved on this device.');
+      this.notice.set('Staff details saved securely.');
+    } catch (error) {
+      this.error.set(this.staffApi.message(error));
+    } finally {
+      this.busy.set(false);
     }
   }
-  private commit(change: (p: Person) => void, action: string): boolean {
+  private async commit(change: (p: Person) => void, action: string): Promise<boolean> {
     const person = this.person();
-    if (!person) return false;
+    if (!person || this.busy()) return false;
     const p = structuredClone(person);
     change(p);
-    const result = this.hr.savePerson(p, this.companyId, action, {
-      expectedAudit: person.hr.audit.at(-1)?.id ?? '',
-    });
-    this.error.set(result ?? '');
-    if (!result) this.notice.set('Changes saved on this device.');
-    return !result;
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.staffApi.commit(person, p);
+      this.notice.set('Changes saved securely.');
+      return true;
+    } catch (error) {
+      this.error.set(this.staffApi.message(error));
+      return false;
+    } finally {
+      this.busy.set(false);
+    }
   }
-  protected addNote(): void {
+  protected async addNote(): Promise<void> {
     if (!this.note.trim()) return;
     if (
-      this.commit(
+      await this.commit(
         (p) => {
           p.hr!.notes.push({
             id: crypto.randomUUID(),
@@ -951,10 +1057,10 @@ export class StaffProfile {
     )
       this.note = '';
   }
-  protected requestDocument(): void {
+  protected async requestDocument(): Promise<void> {
     if (!this.requestTitle.trim()) return;
     if (
-      this.commit((p) => {
+      await this.commit((p) => {
         p.hr!.requests.push({
           id: crypto.randomUUID(),
           title: this.requestTitle.trim(),
@@ -964,58 +1070,46 @@ export class StaffProfile {
       }, 'Document request recorded')
     ) {
       this.requestTitle = '';
-      this.notice.set('Request recorded on this device. No message has been sent.');
+      this.notice.set('Request saved securely. No message has been sent.');
     }
   }
-  protected fulfill(id: string): void {
-    this.commit((p) => {
+  protected async fulfill(id: string): Promise<void> {
+    await this.commit((p) => {
       p.hr!.requests = p.hr!.requests.map((r) => (r.id === id ? { ...r, status: 'Fulfilled' } : r));
     }, 'Document request fulfilled');
   }
-  protected verifyDocument(id: string): void {
-    this.commit((p) => {
-      p.documents = p.documents?.map((d) =>
-        d.id === id
-          ? {
-              ...d,
-              status: 'Verified',
-              reviewedBy: this.hr.auth.currentUser()!.name,
-              reviewedAt: new Date().toISOString(),
-            }
-          : d,
-      );
-    }, 'Document reviewed');
+  protected async verifyDocument(id: string): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.staffApi.verify(id);
+      this.notice.set('Document verification saved.');
+    } catch (error) {
+      this.error.set(this.staffApi.message(error));
+    } finally {
+      this.busy.set(false);
+    }
   }
-  private auditAcademyDocument(documentId: string) {
-    const c = this.academy.state().certificates.find((c) => c.documentId === documentId);
-    if (!c) return true;
-    const error = this.academy.recordCertificateAccess(
-      c.id,
-      'Filed PDF',
-      this.academy.store.companyId(),
-    );
-    if (error) this.error.set(error);
-    return !error;
-  }
-  protected previewDocument(id: string): void {
+  protected async previewDocument(id: string): Promise<void> {
     const d = this.documents().find((doc) => doc.id === id);
-    if (!d || !/^data:(application\/pdf|image\/(jpeg|png));base64,/.test(d.content)) {
+    if (!d) return;
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(d.type)) {
       this.notice.set('Use Download to open this document in its supported application.');
       return;
     }
-    if (!this.auditAcademyDocument(d.id)) return;
     try {
-      const bytes = Uint8Array.from(atob(d.content.split(',')[1]), (char) => char.charCodeAt(0));
+      const blob = await this.staffApi.file(id);
       this.closePreview();
-      const url = URL.createObjectURL(new Blob([bytes], { type: d.type }));
+      const url = URL.createObjectURL(blob);
       this.preview.set({
         url,
         safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url),
         type: d.type,
         name: d.name,
       });
-    } catch {
-      this.error.set('This document could not be previewed.');
+    } catch (error) {
+      this.error.set(this.staffApi.message(error));
     }
   }
   protected closePreview(): void {
@@ -1023,30 +1117,28 @@ export class StaffProfile {
     if (p) URL.revokeObjectURL(p.url);
     this.preview.set(null);
   }
-  protected download(id: string): void {
-    const d = this.documents().find((v) => v.id === id);
-    if (
-      !d ||
-      !/^data:(application\/pdf|image\/(jpeg|png)|application\/msword|application\/vnd.openxmlformats-officedocument.wordprocessingml.document);base64,/.test(
-        d.content,
-      )
-    ) {
-      this.error.set('This document format cannot be downloaded here.');
-      return;
+  protected async download(id: string): Promise<void> {
+    const d = this.documents().find((doc) => doc.id === id);
+    if (!d) return;
+    try {
+      const blob = await this.staffApi.file(id),
+        url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = d.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      this.error.set(this.staffApi.message(error));
     }
-    if (!this.auditAcademyDocument(d.id)) return;
-    const a = document.createElement('a');
-    a.href = d.content;
-    a.download = d.name;
-    a.click();
   }
-  protected addAction(): void {
+  protected async addAction(): Promise<void> {
     if (!this.action.title.trim() || !this.action.owner.trim() || !dateValid(this.action.due)) {
       this.error.set('Enter action, owner and due date.');
       return;
     }
     if (
-      this.commit((p) => {
+      await this.commit((p) => {
         p.hr!.actions.push({
           id: crypto.randomUUID(),
           ...this.action,
@@ -1057,22 +1149,22 @@ export class StaffProfile {
     )
       this.action = { title: '', owner: '', due: '' };
   }
-  protected completeAction(id: string, evidence: string): void {
+  protected async completeAction(id: string, evidence: string): Promise<void> {
     if (!evidence.trim()) {
       this.error.set('Record completion evidence before closing the action.');
       return;
     }
-    this.commit((p) => {
+    await this.commit((p) => {
       p.hr!.actions = p.hr!.actions.map((a) =>
         a.id === id ? { ...a, status: 'Completed', evidence } : a,
       );
     }, 'Action plan item completed');
   }
-  protected bookTraining(): void {
+  protected async bookTraining(): Promise<void> {
     if (
       !this.booking.courseId ||
       !dateValid(this.booking.date) ||
-      this.booking.date < today() ||
+      this.booking.date < this.staffApi.localDate() ||
       !this.booking.provider.trim()
     ) {
       this.error.set('Choose a course, a date from today onward and a provider or assessor.');
@@ -1091,16 +1183,16 @@ export class StaffProfile {
       return;
     }
     if (
-      this.commit((p) => {
+      await this.commit((p) => {
         p.hr!.bookings!.push({ id: crypto.randomUUID(), ...this.booking, status: 'Scheduled' });
       }, this.booking.type + ' scheduled')
     ) {
       this.booking = { courseId: '', date: '', provider: '', type: 'Training' };
-      this.notice.set('Session recorded on this device. No provider notification has been sent.');
+      this.notice.set('Session saved securely. No provider notification has been sent.');
     }
   }
-  protected cancelBooking(id: string): void {
-    this.commit((p) => {
+  protected async cancelBooking(id: string): Promise<void> {
+    await this.commit((p) => {
       p.hr!.bookings = p.hr!.bookings!.map((b) =>
         b.id === id ? { ...b, status: 'Cancelled' } : b,
       );
@@ -1114,7 +1206,9 @@ export class StaffProfile {
       const date = new Date(now);
       date.setUTCMonth(date.getUTCMonth() - offset);
       const month = date.toISOString().slice(0, 7);
-      const visits = (this.hr.store.data().rota?.visits ?? []).filter(
+      const visits = (
+        [] as NonNullable<ReturnType<typeof this.hr.store.data>['rota']>['visits']
+      ).filter(
         (v) => v.staffIds.includes(this.id) && v.date.startsWith(month) && v.state !== 'Cancelled',
       );
       months.push({
@@ -1143,126 +1237,131 @@ export class StaffProfile {
     }
     return [...groups.values()];
   }
-  protected scheduleReview(): void {
-    if (
-      !this.hr.can('edit') ||
-      !dateValid(this.review.date) ||
-      !this.review.assessor.trim() ||
-      this.companyId !== this.hr.store.companyId()
-    ) {
-      this.error.set('Enter a review date and assessor.');
+  protected async scheduleReview(): Promise<void> {
+    if (this.busy() || !this.canScheduleReview()) return;
+    const kind = this.reviewTypes.find((t) => t.title === this.review.type);
+    if (!kind || !dateValid(this.review.date) || !this.review.assessor.trim()) {
+      this.error.set('Choose a review type, date and assessor.');
       return;
     }
-    const result = this.hr.related(this.companyId, this.id, 'Review scheduled', (d) => ({
-      ...d,
-      reviews: [
-        ...d.reviews,
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.reviewApi.create(
         {
-          id: crypto.randomUUID(),
-          personId: this.id,
-          person: this.person()!.name,
-          ...this.review,
-          status: 'Scheduled',
+          staff_id: this.id,
+          type_id: kind.id,
+          date: this.review.date,
+          assessor: this.review.assessor.trim(),
+          reason: '',
         },
-      ],
-    }));
-    this.error.set(result ?? '');
-    if (!result)
+        this.reviewKey,
+      );
+      this.reviewKey = crypto.randomUUID();
       this.review = { type: 'Supervision', date: '', assessor: '', discussion: '', outcome: '' };
+      this.showReviewForm = false;
+      this.notice.set('Review scheduled.');
+      await Promise.all([this.reviewApi.load('', '', this.id), this.staffApi.load(this.id, true)]);
+    } catch (error) {
+      this.error.set(this.reviewApi.message(error));
+    } finally {
+      this.busy.set(false);
+    }
   }
-  protected completeReview(id: string, discussion: string, outcome: string, rating = ''): void {
-    const record = this.reviews().find((r) => r.id === id);
+  protected async completeReview(
+    id: string,
+    discussion: string,
+    outcome: string,
+    rating = '',
+  ): Promise<void> {
+    const row = this.reviews().find((r) => r.id === id);
+    if (!row || !row.can_complete || this.busy()) return;
     const competencies = Object.entries(this.competencyDrafts[id] ?? {})
       .filter(([, v]) => v !== null)
-      .map(([title, score]) => ({ title, score: score! }));
-    if (competencies.some((c) => !Number.isFinite(c.score) || c.score < 1 || c.score > 5)) {
-      this.error.set('Competency ratings must be from 1 to 5.');
-      return;
-    }
-    const score = rating.trim() ? Number(rating) : undefined;
+      .map(([title, score]) => ({ title, score: score!, observation: '' }));
+    const score = rating.trim() ? Number(rating) : null;
     if (
-      (record?.type === 'Annual appraisal' && score === undefined) ||
-      (score !== undefined && (!Number.isFinite(score) || score < 1 || score > 5))
-    ) {
-      this.error.set('Enter an appraisal rating from 1 to 5.');
-      return;
-    }
-    if (
-      !this.hr.can('edit') ||
       !discussion.trim() ||
       !outcome.trim() ||
-      this.companyId !== this.hr.store.companyId()
+      (row.type === 'Annual appraisal' && score === null) ||
+      (score !== null && (!Number.isFinite(score) || score < 1 || score > 5)) ||
+      competencies.some((c) => !Number.isFinite(c.score) || c.score < 1 || c.score > 5)
     ) {
-      this.error.set('Record the discussion and outcome before completing the review.');
+      this.error.set('Record the discussion, outcome and valid ratings before completion.');
       return;
     }
-    const result = this.hr.related(this.companyId, this.id, 'Review completed', (d) => ({
-      ...d,
-      reviews: d.reviews.map((r) =>
-        r.id === id && (r.personId === this.id || (!r.personId && r.person === this.person()?.name))
-          ? {
-              ...r,
-              discussion,
-              outcome,
-              status: 'Completed',
-              score,
-              competencies,
-              completedAt: new Date().toISOString(),
-            }
-          : r,
-      ),
-    }));
-    this.error.set(result ?? '');
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.reviewApi.complete(row, {
+        discussion: discussion.trim(),
+        outcome: outcome.trim(),
+        score: score === null ? null : String(score),
+        competencies: competencies.map((c) => ({ ...c, score: String(c.score) })),
+        reason: 'Completed following recorded discussion and outcome.',
+      });
+      this.notice.set('Completed review saved and locked.');
+      await Promise.all([this.reviewApi.load('', '', this.id), this.staffApi.load(this.id, true)]);
+    } catch (error) {
+      this.error.set(this.reviewApi.message(error));
+    } finally {
+      this.busy.set(false);
+    }
   }
-  protected requestLeave(): void {
+  protected async requestLeave(): Promise<void> {
+    if (this.busy() || !this.canRequestLeave()) return;
     if (
-      !this.hr.can('edit') ||
+      !this.leave.type ||
       !dateValid(this.leave.start) ||
       !dateValid(this.leave.end) ||
-      this.leave.end < this.leave.start ||
-      this.companyId !== this.hr.store.companyId()
+      this.leave.end < this.leave.start
     ) {
-      this.error.set('Enter valid leave dates with the end on or after the start.');
+      this.error.set('Choose a leave type and valid dates.');
       return;
     }
-    const overlap = this.leaves().some(
-      (l) =>
-        (l.status === 'Pending' || l.status === 'Approved' || !l.status) &&
-        l.start <= this.leave.end &&
-        l.end >= this.leave.start,
-    );
-    if (overlap) {
-      this.error.set('These dates overlap an existing leave entry.');
-      return;
-    }
-    const result = this.hr.related(this.companyId, this.id, 'Leave requested', (d) => ({
-      ...d,
-      leaves: [
-        ...d.leaves,
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.leaveApi.request(
         {
-          id: crypto.randomUUID(),
-          personId: this.id,
-          person: this.person()!.name,
-          ...this.leave,
-          status: 'Pending',
+          staff_id: this.id,
+          type_id: this.leave.type,
+          start: this.leave.start,
+          end: this.leave.end,
+          reason: '',
         },
-      ],
-    }));
-    this.error.set(result ?? '');
-    if (!result) this.leave = { type: 'Annual leave', start: '', end: '' };
+        this.leaveKey,
+      );
+      this.leaveKey = crypto.randomUUID();
+      this.leave = { type: '', start: '', end: '' };
+      this.notice.set('Leave request submitted.');
+      await Promise.all([this.staffApi.load(this.id, true), this.leaveApi.load('', '', this.id)]);
+    } catch (error) {
+      this.error.set(this.leaveApi.message(error));
+    } finally {
+      this.busy.set(false);
+    }
   }
-  protected leaveStatus(id: string, status: 'Approved' | 'Rejected' | 'Cancelled'): void {
-    if (!this.hr.can('edit') || this.companyId !== this.hr.store.companyId()) return;
-    const result = this.hr.related(
-      this.companyId,
-      this.id,
-      'Leave ' + status.toLowerCase(),
-      (d) => ({
-        ...d,
-        leaves: d.leaves.map((l) => (l.id === id && l.personId === this.id ? { ...l, status } : l)),
-      }),
-    );
-    this.error.set(result ?? '');
+  protected async leaveStatus(
+    id: string,
+    status: 'Approved' | 'Rejected' | 'Cancelled',
+  ): Promise<void> {
+    const row = this.leaves().find((r) => r.id === id);
+    if (!row || this.busy()) return;
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.leaveApi.transition(
+        row,
+        ({ Approved: 'approve', Rejected: 'reject', Cancelled: 'cancel' } as const)[status],
+      );
+      this.notice.set('Leave ' + status.toLowerCase() + '.');
+      await Promise.all([this.staffApi.load(this.id, true), this.leaveApi.load('', '', this.id)]);
+    } catch (error) {
+      this.error.set(this.leaveApi.message(error));
+    } finally {
+      this.busy.set(false);
+    }
   }
   protected exportPerformance(): void {
     if (!this.hr.can('export') || !this.person()) return;

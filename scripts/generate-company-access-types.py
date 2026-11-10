@@ -82,3 +82,25 @@ recruitment_output += '\n\n'.join('export type '+name+' = '+render(schemas[name]
 recruitment_target=root/'src/app/features/management/recruitment/recruitment.generated.ts'
 recruitment_target.write_text(recruitment_output)
 subprocess.run(['npx','prettier','--write',str(recruitment_target)],cwd=root,check=True,capture_output=True)
+
+
+onboarding_names = [name for name in schemas if name.startswith('Onboarding') or name == 'StaffOnboarding']
+onboarding_output = '// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.\n\n'
+onboarding_output += '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in onboarding_names)+'\n'
+onboarding_target=root/'src/app/features/management/people/onboarding.generated.ts'
+onboarding_target.write_text(onboarding_output)
+subprocess.run(['npx','prettier','--write',str(onboarding_target)],cwd=root,check=True,capture_output=True)
+
+compliance_target = root / 'src/app/features/management/people/workforce-compliance.generated.ts'
+compliance_target.write_text('// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.\n\nexport type WorkforceCompliancePage = ' + render(schemas['WorkforceCompliancePage']) + ';\n')
+subprocess.run(['npx','prettier','--write',str(compliance_target)],cwd=root,check=True,capture_output=True)
+
+leave_names = [name for name in schemas if name.startswith('WorkforceLeave') or name.startswith('WorkforceAvailability') or name == 'WorkforceCalendar']
+leave_target = root / 'src/app/features/management/people/availability-leave.generated.ts'
+leave_target.write_text('// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in leave_names)+'\n')
+subprocess.run(['npx','prettier','--write',str(leave_target)],cwd=root,check=True,capture_output=True)
+
+review_names = [name for name in schemas if name.startswith('StaffReview')]
+review_target = root / 'src/app/features/management/people/staff-reviews.generated.ts'
+review_target.write_text('// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.\n\n'+'\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in review_names)+'\n')
+subprocess.run(['npx','prettier','--write',str(review_target)],cwd=root,check=True,capture_output=True)
