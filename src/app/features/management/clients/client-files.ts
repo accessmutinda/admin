@@ -4,10 +4,13 @@ import { CompanyUnavailable } from '../shared/company-unavailable';
 import { ServiceUserDirectory } from '../care/service-user-directory';
 import { ClientOverview } from './client-overview';
 import { CareHeader } from '../care/care-header';
-import { age } from '../care/care.models';
+import { age, validDate } from '../care/care.models';
+import { ApiError } from '../../../core/auth/auth-api';
 import { ModuleDesign } from '../shared/module-design';
 import {
   HostListener,
+  ElementRef,
+  ChangeDetectorRef,
   Component,
   DestroyRef,
   computed,
@@ -34,6 +37,26 @@ import {
   ClientEntry,
   emptyClientFile,
 } from './client-file.models';
+
+const PROFILE_FIELD_LABELS: Record<string, string> = {
+  name: 'Full name',
+  reference: 'Client reference',
+  address: 'Address',
+  postcode: 'Postcode',
+  phone: 'Phone',
+  email: 'Email',
+  funding: 'Funding',
+  priority: 'Care priority',
+  active: 'Record status',
+  photo: 'Profile photo',
+  photo_id: 'Profile photo',
+  riskFlags: 'Care alerts',
+  'representative.name': 'Contact name',
+  'representative.relationship': 'Relationship',
+  'representative.phone': 'Contact phone',
+  'representative.email': 'Contact email',
+  ...Object.fromEntries(PERSONAL_FIELDS.map((field) => ['details.' + field.key, field.label])),
+};
 
 @Component({
   selector: 'cv-client-files',
@@ -64,6 +87,9 @@ import {
 export class ClientFiles {
   protected readonly api = inject(ServiceUsersApi);
   protected readonly service = inject(RotaService);
+  private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly changeDetector = inject(ChangeDetectorRef);
+  protected readonly fieldErrors = signal<Record<string, string>>({});
   private profileScope = '';
   private original: DirectoryUser | null = null;
   constructor() {
@@ -73,6 +99,7 @@ export class ClientFiles {
       untracked(() => {
         this.editing.set('');
         this.error.set('');
+        this.fieldErrors.set({});
         this.photoLoading.set(false);
         this.draft = this.blankClient();
         this.original = null;
@@ -157,6 +184,7 @@ export class ClientFiles {
     return this.store.staff();
   }
   protected async uploadPhoto(event: Event): Promise<void> {
+    this.clearFieldError('photo');
     const input = event.target as HTMLInputElement,
       photo = input.files?.[0];
     input.value = '';
@@ -166,7 +194,9 @@ export class ClientFiles {
       photo.size <= 0 ||
       photo.size > 1024 * 1024
     ) {
-      this.error.set('Choose a nonempty JPEG or PNG up to 1 MB.');
+      this.showFieldErrors({
+        photo: 'Choose a nonempty JPEG or PNG up to 1 MB.',
+      });
       return;
     }
     const draft = this.draft;
@@ -183,7 +213,7 @@ export class ClientFiles {
         return;
       draft.file!.photo = data;
     } catch {
-      this.error.set('Could not read photo. Try again.');
+      this.showFieldErrors({ photo: 'Could not read photo. Try again.' });
     } finally {
       this.photoLoading.set(false);
     }
@@ -336,6 +366,7 @@ export class ClientFiles {
     if (this.api.saving()) return;
     this.editing.set('');
     this.error.set('');
+    this.fieldErrors.set({});
   }
   private blankEntry(): ClientEntry {
     return {
@@ -367,12 +398,18 @@ export class ClientFiles {
   protected startProfile(create = false): void {
     this.draft = create ? this.blankClient() : structuredClone(this.client()!);
     this.draft.file ??= emptyClientFile();
-    this.draft.representative ??= { name: '', relationship: '', phone: '', email: '' };
+    this.draft.representative ??= {
+      name: '',
+      relationship: '',
+      phone: '',
+      email: '',
+    };
     this.sourceId = create ? '' : this.draft.id;
     this.sourceWorkspace = this.api.companyId();
     this.profileScope = this.api.scope();
     this.original = create ? null : this.api.selected();
     this.error.set('');
+    this.fieldErrors.set({});
     this.editing.set('profile');
   }
   protected editSection(): void {
@@ -390,13 +427,84 @@ export class ClientFiles {
     this.editing.set('entry');
   }
   protected toggleRisk(flag: (typeof RISK_FLAGS)[number]): void {
+    this.clearFieldError('riskFlags');
     this.draft.riskFlags = this.draft.riskFlags?.includes(flag)
       ? this.draft.riskFlags.filter((f) => f !== flag)
       : [...(this.draft.riskFlags ?? []), flag];
   }
+  protected fieldError(key: string): string {
+    return this.fieldErrors()[key] ?? '';
+  }
+  protected clearFieldError(key: string): void {
+    if (!this.fieldErrors()[key]) return;
+    this.fieldErrors.update((errors) => {
+      const next = { ...errors };
+      delete next[key];
+      return next;
+    });
+    if (!Object.keys(this.fieldErrors()).length) this.error.set('');
+  }
+  private showFieldErrors(errors: Record<string, string>): void {
+    this.fieldErrors.set(errors);
+    this.error.set('Please check the highlighted fields.');
+    this.changeDetector.detectChanges();
+    const host = this.element.nativeElement;
+    const control = host?.querySelector<HTMLElement>(
+      '.client-profile-editor :is(input, textarea, mat-select)[aria-invalid="true"]',
+    );
+    control?.focus({ preventScroll: true });
+    control?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  }
+  private validateProfile(): boolean {
+    const errors: Record<string, string> = {};
+    for (const key of ['name', 'reference', 'address', 'postcode'] as const) {
+      if (!this.draft[key].trim()) errors[key] = PROFILE_FIELD_LABELS[key] + ' is required.';
+    }
+    const email = this.draft.email?.trim(),
+      contactEmail = this.draft.representative?.email?.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      errors['email'] = 'Enter a valid email address.';
+    if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail))
+      errors['representative.email'] = 'Enter a valid contact email address.';
+    const contact = this.draft.representative;
+    if (contact && Object.values(contact).some((value) => value.trim()) && !contact.name.trim())
+      errors['representative.name'] =
+        'Contact name is required when entering representative details.';
+    const dob = this.draft.file?.details['dob'];
+    if (dob && (!validDate(dob) || dob > this.today))
+      errors['details.dob'] = 'Enter a valid date of birth on or before today.';
+    if (Object.keys(errors).length) {
+      this.showFieldErrors(errors);
+      return false;
+    }
+    return true;
+  }
+  private profileError(error: unknown): void {
+    const errors: Record<string, string> = {};
+    if (error instanceof ApiError) {
+      for (const [path, messages] of Object.entries(error.fieldErrors)) {
+        const field =
+          path === 'photo_id' ? 'photo' : path.startsWith('riskFlags.') ? 'riskFlags' : path;
+        if (PROFILE_FIELD_LABELS[field]) {
+          errors[field] = messages.some((message) => /may not be blank|is required/i.test(message))
+            ? PROFILE_FIELD_LABELS[field] + ' is required.'
+            : messages.join(' ');
+        }
+      }
+      if (error.code === 'reference_conflict') errors['reference'] = error.message;
+    }
+    if (Object.keys(errors).length) this.showFieldErrors(errors);
+    else
+      this.error.set(
+        error instanceof Error ? error.message : 'The service user could not be saved.',
+      );
+  }
   protected async save(): Promise<void> {
     if (this.editing() === 'profile') {
       if (this.photoLoading() || this.api.saving()) return;
+      this.fieldErrors.set({});
+      this.error.set('');
+      if (!this.validateProfile()) return;
       const scope = this.profileScope;
       try {
         const row = await this.api.save(this.draft, this.original, scope);
@@ -405,10 +513,7 @@ export class ClientFiles {
         this.toast.success('Client record saved.');
         if (!this.id()) void this.router.navigate(['/manage/clients', row.id]);
       } catch (error) {
-        if (scope === this.api.scope())
-          this.error.set(
-            error instanceof Error ? error.message : 'The service user could not be saved.',
-          );
+        if (scope === this.api.scope()) this.profileError(error);
       }
       return;
     }

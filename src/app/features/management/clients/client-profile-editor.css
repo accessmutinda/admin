@@ -109,3 +109,15 @@
     min-height: 44px;
   }
 }
+
+.client-files .client-profile-editor :is(input, textarea, mat-select)[aria-invalid='true'] {
+  border-color: #b91c1c !important;
+  box-shadow: 0 0 0 1px #b91c1c;
+}
+.client-files .client-profile-editor .client-field-error {
+  display: block;
+  margin-top: 3px;
+  color: #b91c1c;
+  font-size: 11px;
+  line-height: 1.35;
+}

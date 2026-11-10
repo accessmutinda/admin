@@ -45,9 +45,21 @@
                 accept="image/png,image/jpeg"
                 (change)="uploadPhoto($event)"
                 [disabled]="photoLoading()"
-            /></label>
+                [attr.aria-invalid]="!!fieldError('photo')"
+                [attr.aria-describedby]="fieldError('photo') ? 'su-photo-error' : null"
+              />
+              @if (fieldError('photo')) {
+                <small class="client-field-error" [id]="'su-photo-error'">{{
+                  fieldError('photo')
+                }}</small>
+              }
+            </label>
             @if (draft.file?.photo) {
-              <button type="button" class="button" (click)="draft.file!.photo = ''">
+              <button
+                type="button"
+                class="button"
+                (click)="draft.file!.photo = ''; clearFieldError('photo')"
+              >
                 Remove photo
               </button>
             }
@@ -57,10 +69,36 @@
           </div>
         </div>
         <div class="form-grid">
-          <label>Full name *<input name="name" [(ngModel)]="draft.name" required /></label>
           <label
-            >Client reference *<input name="reference" [(ngModel)]="draft.reference" required
-          /></label>
+            >Full name *<input
+              name="name"
+              [(ngModel)]="draft.name"
+              required
+              [attr.aria-invalid]="!!fieldError('name')"
+              [attr.aria-describedby]="fieldError('name') ? 'su-name-error' : null"
+              (ngModelChange)="clearFieldError('name')"
+            />
+            @if (fieldError('name')) {
+              <small class="client-field-error" [id]="'su-name-error'">{{
+                fieldError('name')
+              }}</small>
+            }
+          </label>
+          <label
+            >Client reference *<input
+              name="reference"
+              [(ngModel)]="draft.reference"
+              required
+              [attr.aria-invalid]="!!fieldError('reference')"
+              [attr.aria-describedby]="fieldError('reference') ? 'su-reference-error' : null"
+              (ngModelChange)="clearFieldError('reference')"
+            />
+            @if (fieldError('reference')) {
+              <small class="client-field-error" [id]="'su-reference-error'">{{
+                fieldError('reference')
+              }}</small>
+            }
+          </label>
           @for (field of personalFields; track field.key) {
             @if (field.type !== 'textarea') {
               <label
@@ -71,51 +109,138 @@
                   [attr.name]="field.key"
                   [(ngModel)]="draft.file!.details[field.key]"
                   [max]="field.key === 'dob' ? today : null"
-              /></label>
+                  [attr.aria-invalid]="!!fieldError('details.' + field.key)"
+                  [attr.aria-describedby]="
+                    fieldError('details.' + field.key) ? 'su-details-' + field.key + '-error' : null
+                  "
+                  (ngModelChange)="clearFieldError('details.' + field.key)"
+                />
+                @if (fieldError('details.' + field.key)) {
+                  <small class="client-field-error" [id]="'su-details-' + field.key + '-error'">{{
+                    fieldError('details.' + field.key)
+                  }}</small>
+                }
+              </label>
               @if (field.key === 'gp') {
                 <label
-                  >Address *<input name="address" [(ngModel)]="draft.address" required
-                /></label>
+                  >Address *<input
+                    name="address"
+                    [(ngModel)]="draft.address"
+                    required
+                    [attr.aria-invalid]="!!fieldError('address')"
+                    [attr.aria-describedby]="fieldError('address') ? 'su-address-error' : null"
+                    (ngModelChange)="clearFieldError('address')"
+                  />
+                  @if (fieldError('address')) {
+                    <small class="client-field-error" [id]="'su-address-error'">{{
+                      fieldError('address')
+                    }}</small>
+                  }
+                </label>
                 <label
-                  >Postcode *<input name="postcode" [(ngModel)]="draft.postcode" required
-                /></label>
+                  >Postcode *<input
+                    name="postcode"
+                    [(ngModel)]="draft.postcode"
+                    required
+                    [attr.aria-invalid]="!!fieldError('postcode')"
+                    [attr.aria-describedby]="fieldError('postcode') ? 'su-postcode-error' : null"
+                    (ngModelChange)="clearFieldError('postcode')"
+                  />
+                  @if (fieldError('postcode')) {
+                    <small class="client-field-error" [id]="'su-postcode-error'">{{
+                      fieldError('postcode')
+                    }}</small>
+                  }
+                </label>
               }
             }
           }
-          <label>Phone<input name="phone" [(ngModel)]="draft.phone" type="tel" /></label>
-          <label>Email<input name="email" [(ngModel)]="draft.email" type="email" /></label>
+          <label
+            >Phone<input
+              name="phone"
+              [(ngModel)]="draft.phone"
+              type="tel"
+              [attr.aria-invalid]="!!fieldError('phone')"
+              [attr.aria-describedby]="fieldError('phone') ? 'su-phone-error' : null"
+              (ngModelChange)="clearFieldError('phone')"
+            />
+            @if (fieldError('phone')) {
+              <small class="client-field-error" [id]="'su-phone-error'">{{
+                fieldError('phone')
+              }}</small>
+            }
+          </label>
+          <label
+            >Email<input
+              name="email"
+              [(ngModel)]="draft.email"
+              type="email"
+              [attr.aria-invalid]="!!fieldError('email')"
+              [attr.aria-describedby]="fieldError('email') ? 'su-email-error' : null"
+              (ngModelChange)="clearFieldError('email')"
+            />
+            @if (fieldError('email')) {
+              <small class="client-field-error" [id]="'su-email-error'">{{
+                fieldError('email')
+              }}</small>
+            }
+          </label>
           <label
             >Funding<mat-select
               cvSelect
               name="funding"
               aria-label="Funding"
               [(ngModel)]="draft.funding"
+              [attr.aria-invalid]="!!fieldError('funding')"
+              [attr.aria-describedby]="fieldError('funding') ? 'su-funding-error' : null"
+              (ngModelChange)="clearFieldError('funding')"
             >
               @for (value of ['Local authority', 'Private', 'NHS']; track value) {
                 <mat-option [value]="value">{{ value }}</mat-option>
               }
-            </mat-select></label
-          >
+            </mat-select>
+            @if (fieldError('funding')) {
+              <small class="client-field-error" [id]="'su-funding-error'">{{
+                fieldError('funding')
+              }}</small>
+            }
+          </label>
           <label
             >Care priority<mat-select
               cvSelect
               name="priority"
               aria-label="Care priority"
               [(ngModel)]="draft.priority"
+              [attr.aria-invalid]="!!fieldError('priority')"
+              [attr.aria-describedby]="fieldError('priority') ? 'su-priority-error' : null"
+              (ngModelChange)="clearFieldError('priority')"
               ><mat-option value="Standard">Standard</mat-option
               ><mat-option value="High">High</mat-option></mat-select
-            ></label
-          >
+            >
+            @if (fieldError('priority')) {
+              <small class="client-field-error" [id]="'su-priority-error'">{{
+                fieldError('priority')
+              }}</small>
+            }
+          </label>
           <label
             >Record status<mat-select
               cvSelect
               name="active"
               aria-label="Record status"
               [(ngModel)]="draft.active"
+              [attr.aria-invalid]="!!fieldError('active')"
+              [attr.aria-describedby]="fieldError('active') ? 'su-active-error' : null"
+              (ngModelChange)="clearFieldError('active')"
               ><mat-option [value]="true">Active</mat-option
               ><mat-option [value]="false">Inactive</mat-option></mat-select
-            ></label
-          >
+            >
+            @if (fieldError('active')) {
+              <small class="client-field-error" [id]="'su-active-error'">{{
+                fieldError('active')
+              }}</small>
+            }
+          </label>
         </div>
         <div class="form-grid client-profile-narratives">
           @for (field of personalFields; track field.key) {
@@ -127,7 +252,17 @@
                   [attr.name]="field.key"
                   [(ngModel)]="draft.file!.details[field.key]"
                   rows="2"
+                  [attr.aria-invalid]="!!fieldError('details.' + field.key)"
+                  [attr.aria-describedby]="
+                    fieldError('details.' + field.key) ? 'su-details-' + field.key + '-error' : null
+                  "
+                  (ngModelChange)="clearFieldError('details.' + field.key)"
                 ></textarea>
+                @if (fieldError('details.' + field.key)) {
+                  <small class="client-field-error" [id]="'su-details-' + field.key + '-error'">{{
+                    fieldError('details.' + field.key)
+                  }}</small>
+                }
               </label>
             }
           }
@@ -140,32 +275,87 @@
                 type="checkbox"
                 [checked]="draft.riskFlags?.includes(flag)"
                 (change)="toggleRisk(flag)"
+                [attr.aria-invalid]="!!fieldError('riskFlags')"
+                [attr.aria-describedby]="fieldError('riskFlags') ? 'su-care-alerts-error' : null"
               />{{ flag }}</label
             >
           }
         </div>
+        @if (fieldError('riskFlags')) {
+          <small class="client-field-error" id="su-care-alerts-error">{{
+            fieldError('riskFlags')
+          }}</small>
+        }
         <h2 class="client-form-title">Family / representative</h2>
         <div class="form-grid">
           <label
-            >Contact name<input name="representativeName" [(ngModel)]="draft.representative!.name"
-          /></label>
+            >Contact name<input
+              name="representativeName"
+              [(ngModel)]="draft.representative!.name"
+              [attr.aria-invalid]="!!fieldError('representative.name')"
+              [attr.aria-describedby]="
+                fieldError('representative.name') ? 'su-representative-name-error' : null
+              "
+              (ngModelChange)="clearFieldError('representative.name')"
+            />
+            @if (fieldError('representative.name')) {
+              <small class="client-field-error" [id]="'su-representative-name-error'">{{
+                fieldError('representative.name')
+              }}</small>
+            }
+          </label>
           <label
             >Relationship<input
               name="relationship"
               [(ngModel)]="draft.representative!.relationship"
-          /></label>
+              [attr.aria-invalid]="!!fieldError('representative.relationship')"
+              [attr.aria-describedby]="
+                fieldError('representative.relationship')
+                  ? 'su-representative-relationship-error'
+                  : null
+              "
+              (ngModelChange)="clearFieldError('representative.relationship')"
+            />
+            @if (fieldError('representative.relationship')) {
+              <small class="client-field-error" [id]="'su-representative-relationship-error'">{{
+                fieldError('representative.relationship')
+              }}</small>
+            }
+          </label>
           <label
             >Contact phone<input
               name="representativePhone"
               [(ngModel)]="draft.representative!.phone"
               type="tel"
-          /></label>
+              [attr.aria-invalid]="!!fieldError('representative.phone')"
+              [attr.aria-describedby]="
+                fieldError('representative.phone') ? 'su-representative-phone-error' : null
+              "
+              (ngModelChange)="clearFieldError('representative.phone')"
+            />
+            @if (fieldError('representative.phone')) {
+              <small class="client-field-error" [id]="'su-representative-phone-error'">{{
+                fieldError('representative.phone')
+              }}</small>
+            }
+          </label>
           <label class="client-contact-email"
             >Contact email<input
               name="representativeEmail"
               [(ngModel)]="draft.representative!.email"
               type="email"
-          /></label>
+              [attr.aria-invalid]="!!fieldError('representative.email')"
+              [attr.aria-describedby]="
+                fieldError('representative.email') ? 'su-representative-email-error' : null
+              "
+              (ngModelChange)="clearFieldError('representative.email')"
+            />
+            @if (fieldError('representative.email')) {
+              <small class="client-field-error" [id]="'su-representative-email-error'">{{
+                fieldError('representative.email')
+              }}</small>
+            }
+          </label>
         </div>
         @if (error()) {
           <p class="client-error" role="alert">{{ error() }}</p>
@@ -200,7 +390,9 @@
             <h2>Time-sensitive visits</h2>
             <strong>{{ timeSensitive() }}</strong
             ><small>{{
-              api.summary()?.unavailable?.['time_sensitive'] || 'Today and tomorrow'
+              api.summary()?.unavailable?.['time_sensitive'] ||
+                'Today and
+          tomorrow'
             }}</small>
           </div>
         </article>
@@ -222,7 +414,9 @@
             <h2>Capacity / LPA review</h2>
             <strong>{{ capacityAlerts() }}</strong
             ><small>{{
-              api.summary()?.unavailable?.['capacity_reviews'] || 'Recorded capacity needs review'
+              api.summary()?.unavailable?.['capacity_reviews'] ||
+                'Recorded
+          capacity needs review'
             }}</small>
           </div>
         </article>
@@ -234,7 +428,9 @@
             <h2>High priority / risk</h2>
             <strong>{{ highRisk() }}</strong
             ><small>{{
-              api.summary()?.unavailable?.['high_risk'] || 'Active clients needing attention'
+              api.summary()?.unavailable?.['high_risk'] ||
+                'Active clients
+          needing attention'
             }}</small>
           </div>
         </article>
@@ -488,7 +684,8 @@
                                 ? field.type === 'date'
                                   ? (value(field.key) | date: 'dd MMM yyyy')
                                   : value(field.key)
-                                : 'Not recorded'
+                                : 'Not
+              recorded'
                             }}
                           }
                         </dd>
@@ -546,7 +743,9 @@
                     </div>
                     <div class="client-wide">
                       <dt>Sharing consent</dt>
-                      <dd>{{ file().sections['consent']?.['family'] || 'Not recorded' }}</dd>
+                      <dd>
+                        {{ file().sections['consent']?.['family'] || 'Not recorded' }}
+                      </dd>
                     </div>
                   </dl>
                   <p class="client-info">
@@ -597,7 +796,8 @@
                         >{{
                           sectionKey() === 'tasks'
                             ? 'Due / completion date'
-                            : 'Record / review date'
+                            : 'Record /
+              review date'
                         }}<input name="entryDate" type="date" [(ngModel)]="entry.date" /></label
                       ><label
                         >{{ section().risk ? 'Risk level' : 'Priority'
@@ -653,7 +853,10 @@
                           <h3>{{ e.name }}</h3>
                           <p>{{ e.detail || 'No additional instructions recorded.' }}</p>
                           <small>{{
-                            e.date ? (e.date | date: 'dd MMM yyyy') : 'Date not recorded'
+                            e.date
+                              ? (e.date | date: 'dd MMM yyyy')
+                              : 'Date not
+                recorded'
                           }}</small>
                         </div>
                         <div class="client-entry-actions">

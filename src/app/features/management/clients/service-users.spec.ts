@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
+import { ApiError } from '../../../core/auth/auth-api';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { ManagementStore } from '../shared/management.store';
@@ -151,10 +152,17 @@ describe('Service user landing and creation', () => {
           useValue: {
             paramMap: params.asObservable(),
             queryParamMap: params.asObservable(),
-            snapshot: { paramMap: params.value, queryParamMap: params.value, data: {} },
+            snapshot: {
+              paramMap: params.value,
+              queryParamMap: params.value,
+              data: {},
+            },
           },
         },
-        { provide: AuthService, useValue: { profile: () => ({ id: 'actor' }), api: request } },
+        {
+          provide: AuthService,
+          useValue: { profile: () => ({ id: 'actor' }), api: request },
+        },
         {
           provide: CompanyAccessService,
           useValue: {
@@ -164,7 +172,10 @@ describe('Service user landing and creation', () => {
             canPath: () => grant(),
           },
         },
-        { provide: RotaService, useValue: { can: () => grant(), data: browser } },
+        {
+          provide: RotaService,
+          useValue: { can: () => grant(), data: browser },
+        },
         {
           provide: ManagementStore,
           useValue: { companyId: company, data: browser, staff: () => [] },
@@ -312,7 +323,12 @@ describe('Service user landing and creation', () => {
         phone: '0701',
         email: 'sam@example.com',
       },
-      file: { details: { dob: '1950-01-01' }, sections: {}, entries: {}, updatedAt: '' },
+      file: {
+        details: { dob: '1950-01-01' },
+        sections: {},
+        entries: {},
+        updatedAt: '',
+      },
     };
     request.mockRejectedValueOnce(Error('Network lost')).mockResolvedValue(row());
     await expect(api.save(draft, null, api.scope())).rejects.toThrow('Network lost');
@@ -322,7 +338,9 @@ describe('Service user landing and creation', () => {
     );
     const original = api.selected()!;
     await api.save(draft, original, api.scope());
-    expect((request.mock.calls.at(-1) as any)[3]).toEqual({ 'If-Match': '"v1"' });
+    expect((request.mock.calls.at(-1) as any)[3]).toEqual({
+      'If-Match': '"v1"',
+    });
   });
   it('renders recorded needs, care packages and next visits in both existing views', async () => {
     const result = page();
@@ -412,7 +430,10 @@ describe('Service user landing and creation', () => {
     const form = fixture.nativeElement.querySelector('form');
     request.mockClear();
     for (let index = 2; index <= 4; index++) {
-      context.update((value) => ({ ...value, request_id: 'access-request-' + index }));
+      context.update((value) => ({
+        ...value,
+        request_id: 'access-request-' + index,
+      }));
       await settle(fixture);
       expect(fixture.nativeElement.querySelector('form')).toBe(form);
       expect((fixture.nativeElement.querySelector('[name="name"]') as HTMLInputElement).value).toBe(
@@ -447,5 +468,98 @@ describe('Service user landing and creation', () => {
     }));
     await settle(fixture);
     expect(fixture.nativeElement.querySelector('form')).toBeNull();
+  });
+  async function openCreateForm() {
+    const fixture = TestBed.createComponent(ClientFiles);
+    await settle(fixture);
+    (
+      [...fixture.nativeElement.querySelectorAll('button')].find((button: any) =>
+        button.textContent.includes('Add service'),
+      ) as HTMLButtonElement
+    ).click();
+    await settle(fixture);
+    return fixture;
+  }
+  function fillRequired(fixture: ComponentFixture<ClientFiles>) {
+    for (const [name, value] of Object.entries({
+      name: 'Alex Citizen',
+      reference: 'SU-1',
+      address: '1 Real Road',
+      postcode: 'AB1 2CD',
+    })) {
+      const input = fixture.nativeElement.querySelector(`[name="${name}"]`) as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    }
+  }
+  it('identifies each missing required field, highlights it and focuses the first error', async () => {
+    const fixture = await openCreateForm();
+    request.mockClear();
+    fixture.nativeElement
+      .querySelector('form')
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    for (const name of ['name', 'reference', 'address', 'postcode']) {
+      const input = fixture.nativeElement.querySelector(`[name="${name}"]`) as HTMLInputElement;
+      expect(input.getAttribute('aria-invalid')).toBe('true');
+      expect(
+        document.getElementById(input.getAttribute('aria-describedby')!)?.textContent,
+      ).toContain('is required.');
+      expect(getComputedStyle(input).borderColor).toBe('rgb(185, 28, 28)');
+    }
+    const first = fixture.nativeElement.querySelector('[name="name"]') as HTMLInputElement;
+    expect(document.activeElement).toBe(first);
+    expect(request).not.toHaveBeenCalled();
+    first.value = 'Alex';
+    first.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(first.getAttribute('aria-invalid')).toBe('false');
+    expect(first.hasAttribute('aria-describedby')).toBe(false);
+    expect(
+      fixture.nativeElement.querySelector('[name="reference"]').getAttribute('aria-invalid'),
+    ).toBe('true');
+  });
+  it('shows nested backend errors beside GP and contact email while preserving the draft', async () => {
+    const fixture = await openCreateForm();
+    fillRequired(fixture);
+    request.mockRejectedValueOnce(
+      new ApiError('This field may not be blank.', 400, 'validation_error', {
+        'details.gp': ['This field may not be blank.'],
+        'representative.email': ['Enter a valid email address.'],
+      }),
+    );
+    fixture.nativeElement
+      .querySelector('form')
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    for (const name of ['gp', 'representativeEmail']) {
+      const input = fixture.nativeElement.querySelector(`[name="${name}"]`) as HTMLInputElement;
+      expect(input.getAttribute('aria-invalid')).toBe('true');
+      expect(document.getElementById(input.getAttribute('aria-describedby')!)).toBeTruthy();
+    }
+    expect(fixture.nativeElement.querySelector('#su-details-gp-error').textContent).toContain(
+      'GP / practice and contact is required.',
+    );
+    expect((fixture.nativeElement.querySelector('[name="name"]') as HTMLInputElement).value).toBe(
+      'Alex Citizen',
+    );
+    expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+  });
+  it('marks the reference field when the backend rejects a duplicate reference', async () => {
+    const fixture = await openCreateForm();
+    fillRequired(fixture);
+    request.mockRejectedValueOnce(
+      new ApiError('That service user reference is already in use.', 409, 'reference_conflict'),
+    );
+    fixture.nativeElement
+      .querySelector('form')
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    expect(
+      fixture.nativeElement.querySelector('[name="reference"]').getAttribute('aria-invalid'),
+    ).toBe('true');
+    expect(fixture.nativeElement.querySelector('#su-reference-error').textContent).toContain(
+      'already in use',
+    );
   });
 });
