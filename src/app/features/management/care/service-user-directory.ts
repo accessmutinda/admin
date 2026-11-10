@@ -1,16 +1,26 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, untracked, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
-import { CareService } from './care.service';
-import { age, csv } from './care.models';
-import { RotaClient, londonDate } from '../rota/rota.models';
+import { ServiceUsersApi, DirectoryUser } from '../clients/service-users-api.service';
+import { PageLoading } from '../../../shared/layouts/page-loading';
+import { CompanyUnavailable } from '../shared/company-unavailable';
+import { age } from './care.models';
+import { RotaClient } from '../rota/rota.models';
 @Component({
   selector: 'cv-service-user-directory',
-  imports: [DatePipe, FormsModule, RouterLink, MatSelectModule, CvSelect],
+  imports: [
+    PageLoading,
+    CompanyUnavailable,
+    DatePipe,
+    FormsModule,
+    RouterLink,
+    MatSelectModule,
+    CvSelect,
+  ],
   styleUrls: ['./care-shared.css', './care-controls.css', './service-user-directory.css'],
   styles: [
     `
@@ -41,7 +51,7 @@ import { RotaClient, londonDate } from '../rota/rota.models';
   templateUrl: './service-user-directory.html',
 })
 export class ServiceUserDirectory {
-  protected readonly care = inject(CareService);
+  protected readonly api = inject(ServiceUsersApi);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly queryParams = toSignal(this.route.queryParamMap, {
@@ -60,89 +70,51 @@ export class ServiceUserDirectory {
   protected readonly page = signal(1);
   protected readonly pageSize = 8;
   protected readonly sort = signal('name');
-  protected readonly needs = computed(() =>
-    [...new Set(this.care.clients().flatMap((c) => this.primaryNeeds(c)))].sort(),
-  );
-  protected readonly clients = computed(() =>
-    this.care
-      .clients()
-      .filter(
-        (c) =>
-          (this.status() === 'All' || c.active === (this.status() === 'Active')) &&
-          (!this.funding() || c.funding === this.funding()) &&
-          (!this.need() || this.primaryNeeds(c).includes(this.need())) &&
-          (!this.packageFilter() ||
-            this.calls(c).some((call) => call.name === this.packageFilter())) &&
-          `${c.name} ${c.address} ${c.postcode} ${c.reference} ${c.file?.details['gp'] ?? ''} ${c.representative?.name ?? ''} ${(c.file?.contacts ?? []).map((p) => p.name).join(' ')} ${Object.values(c.file?.details ?? {}).join(' ')}`
-            .toLowerCase()
-            .includes(this.query().trim().toLowerCase()),
-      )
-      .sort((a, b) =>
-        this.sort() === 'name'
-          ? a.name.localeCompare(b.name)
-          : (this.nextVisit(a)?.date ?? '9999').localeCompare(this.nextVisit(b)?.date ?? '9999'),
-      ),
-  );
-  protected readonly packages = computed(() =>
-    [...new Set(this.care.rota.data().calls.map((c) => c.name))].sort(),
-  );
+  protected readonly needs = computed(() => this.api.facets()?.needs ?? []);
+  protected readonly packages = computed(() => this.api.facets()?.packages ?? []);
+  protected readonly count = computed(() => this.api.directory()?.count ?? 0);
   protected readonly pageCount = computed(() =>
-    Math.max(1, Math.ceil(this.clients().length / this.pageSize)),
+    Math.max(1, Math.ceil(this.count() / this.pageSize)),
   );
-  protected readonly currentPage = computed(() => Math.min(this.page(), this.pageCount()));
-  protected readonly rows = computed(() =>
-    this.clients().slice(
-      (this.currentPage() - 1) * this.pageSize,
-      this.currentPage() * this.pageSize,
-    ),
+  protected readonly currentPage = computed(() => this.page());
+  protected readonly rows = this.api.rows;
+  protected readonly requestQuery = computed(() =>
+    new URLSearchParams({
+      q: this.query(),
+      status: this.status(),
+      funding: this.funding(),
+      need: this.need(),
+      package: this.packageFilter(),
+      sort: this.sort(),
+      page: String(this.page()),
+      page_size: String(this.pageSize),
+    }).toString(),
   );
-  protected age = age;
-  protected readonly today = londonDate();
+  constructor() {
+    effect(() => {
+      const query = this.requestQuery();
+      this.api.scope();
+      untracked(() => void this.api.load(query));
+    });
+  }
+  protected reload(): void {
+    void this.api.load(this.requestQuery());
+  }
+  protected age = (dob: string) => age(dob, this.api.directory()?.meta.local_date);
   protected calls(c: RotaClient) {
-    return this.care.rota.data().calls.filter((call) => call.clientId === c.id && call.active);
+    return (c as DirectoryUser).packages ?? [];
   }
   protected primaryNeeds(c: RotaClient): string[] {
-    return [
-      ...new Set(
-        [
-          c.file?.sections['diagnoses']?.['primary'],
-          ...(c.file?.entries['diagnoses'] ?? [])
-            .filter((e) => e.status === 'Active')
-            .map((e) => e.name),
-        ].filter(Boolean),
-      ),
-    ] as string[];
+    return (c as DirectoryUser).primary_needs ?? [];
   }
   protected nextVisit(c: RotaClient) {
-    return this.care.rota
-      .data()
-      .visits.filter(
-        (v) =>
-          v.clientId === c.id &&
-          v.state !== 'Cancelled' &&
-          (v.date > this.today ||
-            (v.date === this.today &&
-              v.start >=
-                new Intl.DateTimeFormat('en-GB', {
-                  timeZone: 'Europe/London',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hourCycle: 'h23',
-                }).format(new Date()))),
-      )
-      .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))[0];
+    return (c as DirectoryUser).next_visit;
   }
   protected kin(c: RotaClient) {
-    return c.file?.contacts?.find((p) => p.nextOfKin) ?? c.representative;
+    return c.representative;
   }
   protected alerts(c: RotaClient): string[] {
-    const result: string[] = [...(c.riskFlags ?? [])];
-    if (c.priority === 'High') result.push('High priority');
-    if (c.file?.sections['capacity']?.['status'] === 'Fluctuates') result.push('Review capacity');
-    if (this.calls(c).some((call) => call.timeSensitive)) result.push('Time-sensitive');
-    if (c.file?.sections['plan']?.['review'] && c.file.sections['plan']['review'] < this.today)
-      result.push('Care plan review overdue');
-    return result;
+    return [...(c.riskFlags ?? []), ...(c.priority === 'High' ? ['High priority'] : [])];
   }
   protected initials(name: string): string {
     return name
@@ -170,37 +142,6 @@ export class ServiceUserDirectory {
     this.page.set(1);
   }
   protected export(): void {
-    if (!this.care.rota.can('export')) return;
-    const rows = this.clients();
-    this.care.store.download(
-      'service-users.csv',
-      csv([
-        [
-          'Name',
-          'DOB',
-          'NHS number',
-          'Address',
-          'Postcode',
-          'Primary needs',
-          'Funding',
-          'Next of kin',
-          'GP',
-          'Status',
-        ],
-        ...rows.map((c) => [
-          c.name,
-          c.file?.details['dob'],
-          c.file?.details['nhs'],
-          c.address,
-          c.postcode,
-          this.primaryNeeds(c).join('; '),
-          c.funding,
-          this.kin(c)?.name,
-          c.file?.details['gp'],
-          c.active ? 'Active' : 'Inactive',
-        ]),
-      ]),
-      'text/csv',
-    );
+    void this.api.export(this.requestQuery());
   }
 }
