@@ -1,4 +1,3 @@
-import { RiskAssessment, RiskStatus, riskError } from './risk-assessment.models';
 import { approvedInstructions } from './care-plan.models';
 import {
   DocumentMetadata,
@@ -361,88 +360,6 @@ export class CareService {
       if (file.carePlan?.revision !== revision)
         return 'This care plan changed. Reload before saving.';
       file.carePlan = structuredClone(record);
-      return null;
-    });
-  }
-  saveRiskAssessment(
-    id: string,
-    workspace: string,
-    draft: RiskAssessment,
-    revision: number,
-    status: RiskStatus,
-    reason: string,
-  ): string | null {
-    const actor = this.auth.currentUser();
-    const manager = ['PO', 'CA', 'RM'].includes(actor?.roleCode ?? '');
-    if (!actor || !['PO', 'CA', 'RM', 'CC', 'FS'].includes(actor.roleCode))
-      return 'Care management permission is required.';
-    return this.change(id, workspace, 'Risk assessment ' + status.toLowerCase(), reason, (file) => {
-      const register = file.riskRegister ?? { revision: 0, assessments: [], history: [] };
-      if (register.revision !== revision)
-        return 'This risk register changed. Reopen the assessment before saving.';
-      const old = register.assessments.find((a) => a.id === draft.id);
-      if (old?.status === 'Approved') return 'Start a new review to change an approved assessment.';
-      if (old?.status === 'In review' && status === 'In review')
-        return 'Return this assessment to draft before editing.';
-      if (
-        status === 'Approved' &&
-        (!manager || old?.status !== 'In review' || old.authorId === actor.id)
-      )
-        return 'A different authorised manager must approve a submitted assessment.';
-      if (old?.status === 'In review' && status === 'Draft' && !manager)
-        return 'An authorised manager must return this assessment to draft.';
-      if (!reason.trim()) return 'Record a reason for this change.';
-      const next = structuredClone(status === 'Approved' ? old! : draft);
-      const previous = register.assessments
-        .filter((a) => a.groupId === next.groupId)
-        .sort((a, b) => b.version - a.version)[0];
-      if (!old) {
-        if (
-          (previous && (previous.status !== 'Approved' || next.version !== previous.version + 1)) ||
-          (!previous && (next.groupId !== next.id || next.version !== 1))
-        )
-          return 'Reopen the current assessment before starting a review.';
-        next.author = actor.name;
-        next.authorId = actor.id;
-      } else {
-        next.author = old.author;
-        next.authorId = old.authorId;
-        next.groupId = old.groupId;
-        next.version = old.version;
-      }
-      if (
-        !manager &&
-        JSON.stringify(next.visibility) !==
-          JSON.stringify(
-            old?.visibility ??
-              previous?.visibility ?? { staff: false, family: false, inspector: false },
-          )
-      )
-        return 'Only senior management can change visibility.';
-      const error = riskError(next, status !== 'Draft');
-      if (error) return error;
-      next.status = status;
-      if (status === 'Approved') {
-        next.approver = actor.name;
-        next.approvedAt = new Date().toISOString();
-      } else {
-        next.approver = '';
-        next.approvedAt = '';
-      }
-      file.riskRegister = {
-        revision: register.revision + 1,
-        assessments: [...register.assessments.filter((a) => a.id !== next.id), next],
-        history: [
-          ...register.history,
-          {
-            at: new Date().toISOString(),
-            by: actor.name,
-            action: status,
-            reason: reason.trim(),
-            assessment: structuredClone(next),
-          },
-        ],
-      };
       return null;
     });
   }

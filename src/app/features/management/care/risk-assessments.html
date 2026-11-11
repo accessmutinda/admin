@@ -1,7 +1,15 @@
 <cv-module-design />
 @if (client(); as c) {
   @if (allowed()) {
-    <div class="screen-header"><cv-care-header [client]="c" active="risks" /></div>
+    <div class="screen-header">
+      <cv-care-header
+        [client]="c"
+        active="risks"
+        [printManaged]="true"
+        [printBusy]="printBusy()"
+        (printRequested)="print()"
+      />
+    </div>
     <section class="risk-workspace">
       <header class="risk-heading">
         <div>
@@ -21,7 +29,7 @@
             <span class="material-symbols-outlined" aria-hidden="true">manage_search</span>Risk
             review
           </button>
-          <button [disabled]="!canEdit()" class="primary" (click)="go('new')">
+          <button [disabled]="!canCreate() || saving()" class="primary" (click)="go('new')">
             <span class="material-symbols-outlined" aria-hidden="true">add</span>New risk assessment
           </button>
         </div>
@@ -34,1052 +42,538 @@
       }
       @if (error()) {
         <p class="error" role="alert">{{ error() }}</p>
+        @for (field of errorFields(); track field) {
+          <p class="error">{{ field }}: {{ fieldErrors()[field].join('; ') }}</p>
+        }
       }
-      <div class="risk-layout">
-        <aside class="risk-sidebar" aria-label="Risk assessment sections">
-          <h2>Risk Assessments</h2>
-          <nav class="risk-nav" aria-label="Risk assessment navigation">
-            @for (item of navigation; track item[0]) {
+      @if (loading() && !data()) {
+        <p role="status">Loading risk assessments…</p>
+      } @else if (!data()) {
+        <p class="error" role="alert">Risk assessments are unavailable.</p>
+        <button (click)="load()">Retry</button>
+      } @else {
+        <div class="risk-layout">
+          <aside class="risk-sidebar" aria-label="Risk assessment sections">
+            <h2>Risk Assessments</h2>
+            <nav class="risk-nav" aria-label="Risk assessment navigation">
+              @for (item of navigation; track item[0]) {
+                <button
+                  [class.active]="page() === item[0]"
+                  [attr.aria-current]="page() === item[0] ? 'page' : null"
+                  (click)="go(item[0])"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">{{ item[2] }}</span
+                  ><span class="risk-link-label">{{ item[1] }}</span>
+                  <span class="material-symbols-outlined risk-link-arrow" aria-hidden="true"
+                    >chevron_right</span
+                  >
+                </button>
+              }
               <button
-                [class.active]="page() === item[0]"
-                [attr.aria-current]="page() === item[0] ? 'page' : null"
-                (click)="go(item[0])"
+                [class.active]="page() === 'pdf'"
+                [attr.aria-current]="page() === 'pdf' ? 'page' : null"
+                (click)="go('pdf')"
               >
-                <span class="material-symbols-outlined" aria-hidden="true">{{ item[2] }}</span
-                ><span class="risk-link-label">{{ item[1] }}</span>
+                <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span
+                ><span class="risk-link-label">Print preview</span>
                 <span class="material-symbols-outlined risk-link-arrow" aria-hidden="true"
                   >chevron_right</span
                 >
               </button>
-            }
-            <button
-              [class.active]="page() === 'pdf'"
-              [attr.aria-current]="page() === 'pdf' ? 'page' : null"
-              (click)="go('pdf')"
-            >
-              <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span
-              ><span class="risk-link-label">Print preview</span>
-              <span class="material-symbols-outlined risk-link-arrow" aria-hidden="true"
-                >chevron_right</span
-              >
-            </button>
-          </nav>
-        </aside>
-        <div class="risk-content">
-          @switch (page()) {
-            @case ('overview') {
-              <section class="profile-panel">
-                <div class="panel-title">
-                  <h2>Overall Risk Profile</h2>
-                  <span class="muted">Current assessments · residual risk after controls</span>
-                </div>
-                <div class="metrics">
-                  @for (l of levels; track l) {
-                    <button
-                      class="metric"
-                      [class]="'metric ' + l.toLowerCase()"
-                      (click)="levelFilter = levelFilter === l ? '' : l"
-                    >
-                      <div>
-                        <strong>{{ count(l) }}</strong
-                        ><span>{{ l }} risks</span>
-                      </div>
-                      <span class="material-symbols-outlined" aria-hidden="true">{{
-                        l === 'Critical'
-                          ? 'report'
-                          : l === 'High'
-                            ? 'warning'
-                            : l === 'Medium'
-                              ? 'shield'
-                              : 'verified_user'
-                      }}</span>
-                    </button>
-                  }
-                  <button class="metric overdue" (click)="go('summary')">
-                    <div>
-                      <strong>{{ overdue }}</strong
-                      ><span>Overdue reviews</span>
-                    </div>
-                    <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
-                  </button>
-                </div>
-              </section>
-              <section class="panel">
-                <div class="panel-title">
-                  <h2>
-                    Risk Assessment Overview <span class="count">{{ risks().length }}</span>
-                  </h2>
-                  <a [routerLink]="bodyLink()" [queryParams]="{ view: 'body' }"
-                    ><span class="material-symbols-outlined" aria-hidden="true"
-                      >accessibility_new</span
-                    >Body chart</a
-                  >
-                </div>
-                <div class="filters">
-                  <label class="search"
-                    ><span class="material-symbols-outlined" aria-hidden="true">search</span
-                    ><input
-                      aria-label="Search risks"
-                      placeholder="Search risk domain or specific risk…"
-                      [(ngModel)]="search" /></label
-                  ><select aria-label="Filter risk level" [(ngModel)]="levelFilter">
-                    <option value="">All risk levels</option>
+            </nav>
+          </aside>
+          <div class="risk-content">
+            @switch (page()) {
+              @case ('overview') {
+                <section class="profile-panel">
+                  <div class="panel-title">
+                    <h2>Overall Risk Profile</h2>
+                    <span class="muted">Current assessments · residual risk after controls</span>
+                  </div>
+                  <div class="metrics">
                     @for (l of levels; track l) {
-                      <option>{{ l }}</option>
-                    }</select
-                  ><select aria-label="Filter status" [(ngModel)]="statusFilter">
-                    <option value="">All statuses</option>
-                    <option>Draft</option>
-                    <option>In review</option>
-                    <option>Approved</option>
-                  </select>
-                </div>
-                <div class="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Risk domain</th>
-                        <th>Current level</th>
-                        <th>Initial score</th>
-                        <th>Residual score</th>
-                        <th>Last reviewed</th>
-                        <th>Next review</th>
-                        <th>Status</th>
-                        <th>Actions due</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (r of filtered; track r.id) {
-                        <tr>
-                          <td>
-                            <strong>{{ r.domain }}</strong
-                            ><small>{{ r.specific }}</small>
-                          </td>
-                          <td>
-                            <span
-                              [class]="
-                                'badge ' +
-                                level(r.residualLikelihood * r.residualSeverity).toLowerCase()
-                              "
-                              >{{ level(r.residualLikelihood * r.residualSeverity) }}</span
-                            >
-                          </td>
-                          <td>{{ r.likelihood * r.severity }}</td>
-                          <td>{{ r.residualLikelihood * r.residualSeverity }}</td>
-                          <td>{{ r.date | date: 'dd/MM/yyyy' }}</td>
-                          <td [class.overdue-text]="r.review && r.review < today">
-                            {{ r.review ? (r.review | date: 'dd/MM/yyyy') : 'Not set' }}
-                          </td>
-                          <td>
-                            <span class="status" [class.approved]="r.status === 'Approved'">{{
-                              r.status
-                            }}</span>
-                          </td>
-                          <td>{{ pendingActions(r) }} open</td>
-                          <td>
-                            <button class="small-button" (click)="open(r)">
-                              View<span class="material-symbols-outlined" aria-hidden="true"
-                                >chevron_right</span
-                              >
-                            </button>
-                          </td>
-                        </tr>
-                      } @empty {
-                        <tr>
-                          <td colspan="9">
-                            <div class="empty">
-                              <span class="material-symbols-outlined" aria-hidden="true"
-                                >health_and_safety</span
-                              >
-                              <h3>
-                                {{
-                                  risks().length
-                                    ? 'No matching assessments'
-                                    : 'Build a clear picture of risk'
-                                }}
-                              </h3>
-                              <p>
-                                {{
-                                  risks().length
-                                    ? 'Try a different search or filter.'
-                                    : 'Create individual assessments and bring them together in one service user risk profile.'
-                                }}
-                              </p>
-                              @if (!risks().length) {
-                                <button class="primary" (click)="go('new')">
-                                  Start first risk assessment
-                                </button>
-                              }
-                            </div>
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-              @if (legacy().length) {
+                      <button
+                        class="metric"
+                        [class]="'metric ' + l.toLowerCase()"
+                        (click)="levelFilter = levelFilter === l ? '' : l"
+                      >
+                        <div>
+                          <strong>{{ count(l) }}</strong
+                          ><span>{{ l }} risks</span>
+                        </div>
+                        <span class="material-symbols-outlined" aria-hidden="true">{{
+                          l === 'Critical'
+                            ? 'report'
+                            : l === 'High'
+                              ? 'warning'
+                              : l === 'Medium'
+                                ? 'shield'
+                                : 'verified_user'
+                        }}</span>
+                      </button>
+                    }
+                    <button class="metric overdue" (click)="go('summary')">
+                      <div>
+                        <strong>{{ overdue }}</strong
+                        ><span>Overdue reviews</span>
+                      </div>
+                      <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
+                    </button>
+                  </div>
+                </section>
                 <section class="panel">
                   <div class="panel-title">
-                    <h2>Existing risk records</h2>
-                    <span class="muted">Original records retained</span>
-                  </div>
-                  <p class="muted">
-                    These records have not been scored using the new matrix. Review them before
-                    creating a structured assessment.
-                  </p>
-                  @for (r of legacy(); track r.id) {
-                    <div class="legacy-row">
-                      <div>
-                        <strong>{{ r.name }}</strong>
-                        <p>{{ r.detail }}</p>
-                      </div>
-                      <span class="status">{{ r.status }}</span
-                      ><a
-                        [routerLink]="['/manage/clients', id()]"
-                        [queryParams]="{ section: 'risks', entry: r.id }"
-                        >Open original →</a
-                      >
-                    </div>
-                  }
-                </section>
-              }
-              <div class="workflow-strip">
-                <span class="material-symbols-outlined" aria-hidden="true">account_tree</span>Risk
-                assessment <b>→</b> Controls <b>→</b> Care plan <b>→</b> Carer instructions
-                <b>→</b> Visit <b>→</b> Observation <b>→</b> Risk review
-              </div>
-            }
-            @case ('new') {
-              <section class="panel type-panel">
-                <div class="panel-title">
-                  <div>
-                    <h2>New Risk Assessment</h2>
-                    <p class="muted">Select the risk domain you want to assess.</p>
-                  </div>
-                  <span class="step-count">STEP 1 OF 5</span>
-                </div>
-                <ol class="stepper">
-                  <li class="current">Select risk type</li>
-                  <li>Assessment</li>
-                  <li>Risk rating</li>
-                  <li>Action plan</li>
-                  <li>Review</li>
-                </ol>
-                <label class="search"
-                  ><span class="material-symbols-outlined" aria-hidden="true">search</span
-                  ><input
-                    [(ngModel)]="typeSearch"
-                    placeholder="Search risk assessment…"
-                    aria-label="Search assessment types"
-                /></label>
-                <div class="domain-grid">
-                  @for (d of domains; track d[0]) {
-                    @if (d[0].toLowerCase().includes(typeSearch.toLowerCase())) {
-                      <button class="domain-option" (click)="start(d[0])">
-                        <span class="domain-icon material-symbols-outlined" aria-hidden="true">{{
-                          d[1]
-                        }}</span
-                        ><span
-                          ><strong>{{ d[0] }}</strong
-                          ><small>Individual risk assessment and support plan</small></span
-                        ><span class="material-symbols-outlined" aria-hidden="true"
-                          >chevron_right</span
-                        >
-                      </button>
-                    }
-                  }
-                </div>
-              </section>
-            }
-            @case ('assessment') {
-              @if (selected(); as r) {
-                <section class="panel assessment-panel">
-                  <div class="panel-title">
-                    <div>
-                      <button class="back-link" (click)="go('overview')">
-                        ← Back to risk overview
-                      </button>
-                      <h2>
-                        {{
-                          r.domain === 'Behaviour / PBS'
-                            ? 'Behaviour and Positive Behaviour Support'
-                            : r.domain
-                        }}
-                        Risk Assessment
-                      </h2>
-                    </div>
-                    <span class="status" [class.approved]="r.status === 'Approved'"
-                      >v{{ r.version }}.0 · {{ r.status }}</span
+                    <h2>
+                      Risk Assessment Overview <span class="count">{{ risks().length }}</span>
+                    </h2>
+                    <a [routerLink]="bodyLink()" [queryParams]="{ view: 'body' }"
+                      ><span class="material-symbols-outlined" aria-hidden="true"
+                        >accessibility_new</span
+                      >Body chart</a
                     >
                   </div>
-                  <div class="assessment-meta">
-                    <span
-                      >Current risk level:
-                      <span
-                        [class]="
-                          'badge ' + level(r.residualLikelihood * r.residualSeverity).toLowerCase()
-                        "
-                        >{{ level(r.residualLikelihood * r.residualSeverity) }}</span
-                      ></span
-                    ><span>Assessment: {{ r.date | date: 'dd/MM/yyyy' }}</span
-                    ><span
-                      >Next review:
-                      {{ r.review ? (r.review | date: 'dd/MM/yyyy') : 'Not set' }}</span
-                    >
+                  <div class="filters">
+                    <label class="search"
+                      ><span class="material-symbols-outlined" aria-hidden="true">search</span
+                      ><input
+                        aria-label="Search risks"
+                        placeholder="Search risk domain or specific risk…"
+                        [(ngModel)]="search" /></label
+                    ><select aria-label="Filter risk level" [(ngModel)]="levelFilter">
+                      <option value="">All risk levels</option>
+                      @for (l of levels; track l) {
+                        <option>{{ l }}</option>
+                      }</select
+                    ><select aria-label="Filter status" [(ngModel)]="statusFilter">
+                      <option value="">All statuses</option>
+                      <option>Draft</option>
+                      <option>In review</option>
+                      <option>Approved</option>
+                    </select>
                   </div>
-                  <nav class="subnav" aria-label="Assessment sections">
-                    @for (t of assessmentTabs; track t) {
-                      <button [class.active]="tab() === t" (click)="tab.set(t)">{{ t }}</button>
-                    }
-                  </nav>
-                  @if (r.status === 'Approved') {
-                    <div class="notice">
-                      This approved version is preserved.<button
-                        [disabled]="!canEdit()"
-                        (click)="review()"
-                      >
-                        Start new review
-                      </button>
-                    </div>
-                  }
-                  <fieldset [disabled]="!editable">
-                    @switch (tab()) {
-                      @case ('General details') {
-                        <h3 class="section-bar">Service User Details</h3>
-                        <dl class="details-list">
-                          @for (detail of personDetails; track detail[0]) {
-                            <dt>{{ detail[0] }}</dt>
-                            <dd>{{ detail[1] || 'Not recorded' }}</dd>
-                          }
-                        </dl>
-                        <h3 class="section-bar">Assessment Details</h3>
-                        <div class="form-grid">
-                          <label
-                            >Assessment type<select [(ngModel)]="r.fields['assessmentType']">
-                              <option value="">Select assessment type</option>
-                              <option>New Assessment</option>
-                              <option>Scheduled Review</option>
-                              <option>Event-triggered Review</option>
-                            </select></label
-                          >
-                          <label>Assessment date<input type="date" [(ngModel)]="r.date" /></label>
-                          <label
-                            >Review date<input type="date" [(ngModel)]="r.review" [min]="r.date"
-                          /></label>
-                        </div>
-                        <h3 class="section-bar">Assessor Details</h3>
-                        <div class="form-grid">
-                          <label
-                            >Name<input
-                              [(ngModel)]="r.fields['assessorName']"
-                              [placeholder]="r.author || 'Assessor name'"
-                          /></label>
-                          <label>Designation<input [(ngModel)]="r.fields['designation']" /></label>
-                          <label
-                            >Signature<input
-                              [(ngModel)]="r.fields['signature']"
-                              placeholder="Type assessor name"
-                          /></label>
-                        </div>
-                      }
-                      @case ('Risk analysis') {
-                        <div class="panel-title">
-                          <h3>Identified Risks and Controls</h3>
-                          <button (click)="addHandlingRisk()">
-                            <span class="material-symbols-outlined" aria-hidden="true">add</span>Add
-                            identified risk
-                          </button>
-                        </div>
-                        <div class="table-scroll">
-                          <table>
-                            <thead>
-                              <tr>
-                                <th>Task / Activity</th>
-                                <th>Risk Identified</th>
-                                <th>Risk Level</th>
-                                <th>Existing Controls</th>
-                                <th></th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              @for (item of r.handlingRisks; track item.id; let i = $index) {
-                                <tr>
-                                  <td>
-                                    <input
-                                      aria-label="Handling task or activity"
-                                      [(ngModel)]="item.task"
-                                    />
-                                  </td>
-                                  <td>
-                                    <textarea
-                                      aria-label="Handling risk identified"
-                                      rows="3"
-                                      [(ngModel)]="item.risk"
-                                    ></textarea>
-                                  </td>
-                                  <td>
-                                    <select
-                                      aria-label="Handling risk level"
-                                      [(ngModel)]="item.level"
-                                    >
-                                      @for (l of levels; track l) {
-                                        <option>{{ l }}</option>
-                                      }
-                                    </select>
-                                  </td>
-                                  <td>
-                                    <textarea
-                                      aria-label="Handling existing controls"
-                                      rows="3"
-                                      [(ngModel)]="item.controls"
-                                    ></textarea>
-                                  </td>
-                                  <td>
-                                    <button
-                                      class="icon-button"
-                                      aria-label="Remove identified handling risk"
-                                      (click)="r.handlingRisks!.splice(i, 1)"
-                                    >
-                                      <span class="material-symbols-outlined" aria-hidden="true"
-                                        >delete</span
-                                      >
-                                    </button>
-                                  </td>
-                                </tr>
-                              } @empty {
-                                <tr>
-                                  <td colspan="5" class="empty-cell">
-                                    No task-specific risks recorded.
-                                  </td>
-                                </tr>
-                              }
-                            </tbody>
-                          </table>
-                        </div>
-                        <h3 class="section-bar">Additional Actions</h3>
-                        <div class="table-scroll">
-                          <table>
-                            <thead>
-                              <tr>
-                                <th>Action</th>
-                                <th>Owner</th>
-                                <th>Due Date</th>
-                                <th>Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              @for (a of r.actions; track a.id) {
-                                <tr>
-                                  <td>{{ a.text }}</td>
-                                  <td>{{ a.owner }}</td>
-                                  <td>{{ a.due | date: 'dd/MM/yyyy' }}</td>
-                                  <td>{{ a.status }}</td>
-                                </tr>
-                              } @empty {
-                                <tr>
-                                  <td colspan="4" class="empty-cell">
-                                    No additional actions recorded.
-                                  </td>
-                                </tr>
-                              }
-                            </tbody>
-                          </table>
-                        </div>
-                        <button (click)="tab.set('Action plan')">
-                          Manage additional actions →
-                        </button>
-                      }
-                      @case ('Assessment') {
-                        <h3 class="section-bar">Assessment Details</h3>
-                        <div class="form-grid">
-                          <label
-                            >Risk domain
-                            @if (r.domain === 'General') {
-                              <select [ngModel]="r.domain" (ngModelChange)="changeDomain($event)">
-                                @for (d of domains; track d[0]) {
-                                  <option>{{ d[0] }}</option>
-                                }
-                              </select>
-                            } @else {
-                              <input [value]="r.domain" readonly />
-                            }</label
-                          ><label
-                            >Specific risk <span class="required">*</span
-                            ><input
-                              [(ngModel)]="r.specific"
-                              placeholder="Describe the specific risk" /></label
-                          ><label
-                            >Assessment date <span class="required">*</span
-                            ><input type="date" [(ngModel)]="r.date" /></label
-                          ><label
-                            >Next review date <span class="required">*</span
-                            ><input type="date" [(ngModel)]="r.review" [min]="r.date"
-                          /></label>
-                        </div>
-                        <h3>Who may be harmed? <span class="required">*</span></h3>
-                        <div class="checks">
-                          @for (p of harmed; track p) {
-                            <label
-                              ><input
-                                type="checkbox"
-                                [checked]="r.harmed.includes(p)"
-                                (change)="toggle(r.harmed, p)"
-                              />{{ p }}</label
-                            >
-                          }
-                        </div>
-                        @if (r.domain === 'Moving & Handling' || r.domain === 'Falls & Mobility') {
-                          <h3 class="section-bar">Part 1 – Mobility Checklist</h3>
-                          <p class="muted">
-                            Select one support level per task and record the equipment, technique
-                            and instructions required.
-                          </p>
-                          <div class="table-scroll">
-                            <table class="handling-table">
-                              <thead>
-                                <tr>
-                                  <th>Task</th>
-                                  @for (a of assistance; track a) {
-                                    <th>{{ a }}</th>
-                                  }
-                                  <th>Equipment</th>
-                                  <th>Technique / instructions</th>
-                                  <th>Comments</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                @for (task of r.tasks; track task.task) {
-                                  <tr>
-                                    <td>{{ task.task }}</td>
-                                    @for (a of assistance; track a) {
-                                      <td>
-                                        <input
-                                          type="radio"
-                                          [name]="task.task"
-                                          [value]="a"
-                                          [(ngModel)]="task.support"
-                                          [attr.aria-label]="task.task + ': ' + a"
-                                        />
-                                      </td>
-                                    }
-                                    <td>
-                                      <input
-                                        [(ngModel)]="task.equipment"
-                                        [attr.aria-label]="task.task + ' equipment'"
-                                      />
-                                    </td>
-                                    <td>
-                                      <input
-                                        [(ngModel)]="task.technique"
-                                        [attr.aria-label]="task.task + ' technique'"
-                                      />
-                                    </td>
-                                    <td>
-                                      <input
-                                        [(ngModel)]="task.notes"
-                                        [attr.aria-label]="task.task + ' comments'"
-                                      />
-                                    </td>
-                                  </tr>
-                                }
-                              </tbody>
-                            </table>
-                          </div>
-                          <h3 class="section-bar">Part 2 – Additional Details</h3>
-                        } @else {
-                          <h3 class="section-bar">{{ r.domain }} Profile</h3>
-                        }
-                        @if (checkOptions.length) {
-                          <div class="checks check-grid">
-                            @for (option of checkOptions; track option) {
-                              <label
-                                ><input
-                                  type="checkbox"
-                                  [checked]="r.checks.includes(option)"
-                                  (change)="toggle(r.checks, option)"
-                                />{{ option }}</label
-                              >
-                            }
-                          </div>
-                        }
-                        <div class="form-grid">
-                          @for (field of domainFields; track field[0]) {
-                            <label
-                              >{{ field[1]
-                              }}<textarea rows="3" [(ngModel)]="r.fields[field[0]]"></textarea>
-                            </label>
-                          }
-                        </div>
-                        @if (r.domain === 'Behaviour / PBS') {
-                          <div class="support-stages">
-                            @for (
-                              stage of [
-                                ['green', 'GREEN · Baseline', 'baseline'],
-                                ['amber', 'AMBER · Early escalation', 'deescalation'],
-                                ['red', 'RED · Crisis', 'crisis'],
-                                ['blue', 'RECOVERY · Post-incident', 'recovery'],
-                              ];
-                              track stage[0]
-                            ) {
-                              <article [class]="'support-stage ' + stage[0]">
-                                <h3>{{ stage[1] }}</h3>
-                                <p>
-                                  {{
-                                    r.fields[stage[2]] ||
-                                      'Record individual support guidance above.'
-                                  }}
-                                </p>
-                              </article>
-                            }
-                          </div>
-                          <div class="guidance-grid">
-                            <article class="should">
-                              <h3>What carers SHOULD do</h3>
-                              <ul>
-                                @for (line of lineItems(r.fields['should']); track $index) {
-                                  <li>{{ line }}</li>
-                                } @empty {
-                                  <li>Record approved guidance in the fields above.</li>
-                                }
-                              </ul>
-                            </article>
-                            <article class="must-not">
-                              <h3>What carers MUST NOT do</h3>
-                              <ul>
-                                @for (line of lineItems(r.fields['mustNot']); track $index) {
-                                  <li>{{ line }}</li>
-                                } @empty {
-                                  <li>Record individual restrictions in the fields above.</li>
-                                }
-                              </ul>
-                            </article>
-                          </div>
-                        }
-                        <h3 class="section-bar">Risk, Controls & Carer Guidance</h3>
-                        <div class="form-grid">
-                          @for (field of commonFields; track field[0]) {
-                            <label [class.full-width]="field[0] === 'description'"
-                              >{{ field[1] }}
-                              <span class="required">{{
-                                field[0] !== 'circumstances' ? '*' : ''
-                              }}</span
-                              ><textarea rows="3" [(ngModel)]="r.fields[field[0]]"></textarea>
-                            </label>
-                          }
-                        </div>
-                      }
-                      @case ('Risk rating') {
-                        <h3 class="section-bar">Risk Assessment – Likelihood × Severity</h3>
-                        <div class="rating-grid">
-                          @for (kind of ['initial', 'residual']; track kind) {
-                            <section class="rating-card">
-                              <h3>
-                                {{
-                                  kind === 'initial'
-                                    ? 'Initial Risk (Before Controls)'
-                                    : 'Residual Risk (After Controls)'
-                                }}
-                              </h3>
-                              <label
-                                >Likelihood<select
-                                  [ngModel]="
-                                    kind === 'initial' ? r.likelihood : r.residualLikelihood
-                                  "
-                                  (ngModelChange)="
-                                    kind === 'initial'
-                                      ? (r.likelihood = +$event)
-                                      : (r.residualLikelihood = +$event)
-                                  "
-                                >
-                                  @for (v of likelihood; track v; let i = $index) {
-                                    <option [ngValue]="i + 1">{{ i + 1 }} – {{ v }}</option>
-                                  }
-                                </select></label
-                              ><label
-                                >Severity<select
-                                  [ngModel]="kind === 'initial' ? r.severity : r.residualSeverity"
-                                  (ngModelChange)="
-                                    kind === 'initial'
-                                      ? (r.severity = +$event)
-                                      : (r.residualSeverity = +$event)
-                                  "
-                                >
-                                  @for (v of severity; track v; let i = $index) {
-                                    <option [ngValue]="i + 1">{{ i + 1 }} – {{ v }}</option>
-                                  }
-                                </select></label
-                              >
-                              <div class="score">
-                                <span>Risk score</span
-                                ><strong
-                                  [class]="
-                                    'badge ' +
-                                    level(
-                                      kind === 'initial'
-                                        ? r.likelihood * r.severity
-                                        : r.residualLikelihood * r.residualSeverity
-                                    ).toLowerCase()
-                                  "
-                                  >{{
-                                    kind === 'initial'
-                                      ? r.likelihood * r.severity
-                                      : r.residualLikelihood * r.residualSeverity
-                                  }}
-                                  –
-                                  {{
-                                    level(
-                                      kind === 'initial'
-                                        ? r.likelihood * r.severity
-                                        : r.residualLikelihood * r.residualSeverity
-                                    )
-                                  }}</strong
-                                >
-                              </div>
-                            </section>
-                          }
-                        </div>
-                        <p class="muted">
-                          Risk levels: 1–4 Low · 5–9 Medium · 10–15 High · 16–25 Critical
-                        </p>
-                        <label
-                          >Scoring rationale<textarea
-                            rows="4"
-                            [(ngModel)]="r.fields['rationale']"
-                            placeholder="Explain the likelihood, severity and effect of the controls"
-                          ></textarea>
-                        </label>
-                      }
-                      @case ('Action plan') {
-                        <div class="panel-title">
-                          <h3>Additional Actions Required</h3>
-                          <button (click)="addAction()">
-                            <span class="material-symbols-outlined" aria-hidden="true">add</span>Add
-                            action
-                          </button>
-                        </div>
-                        <div class="table-scroll">
-                          <table>
-                            <thead>
-                              <tr>
-                                <th>Action</th>
-                                <th>Owner</th>
-                                <th>Due date</th>
-                                <th>Status</th>
-                                <th></th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              @for (a of r.actions; track a.id; let i = $index) {
-                                <tr>
-                                  <td>
-                                    <textarea
-                                      aria-label="Action required"
-                                      rows="2"
-                                      [(ngModel)]="a.text"
-                                    ></textarea>
-                                  </td>
-                                  <td><input aria-label="Action owner" [(ngModel)]="a.owner" /></td>
-                                  <td>
-                                    <input
-                                      aria-label="Action due date"
-                                      type="date"
-                                      [(ngModel)]="a.due"
-                                    />
-                                  </td>
-                                  <td>
-                                    <select aria-label="Action status" [(ngModel)]="a.status">
-                                      <option>Open</option>
-                                      <option>In progress</option>
-                                      <option>Completed</option>
-                                    </select>
-                                  </td>
-                                  <td>
-                                    <button
-                                      class="icon-button"
-                                      aria-label="Remove action"
-                                      (click)="r.actions.splice(i, 1)"
-                                    >
-                                      <span class="material-symbols-outlined" aria-hidden="true"
-                                        >delete</span
-                                      >
-                                    </button>
-                                  </td>
-                                </tr>
-                              } @empty {
-                                <tr>
-                                  <td colspan="5" class="empty-cell">
-                                    No additional actions recorded.
-                                  </td>
-                                </tr>
-                              }
-                            </tbody>
-                          </table>
-                        </div>
-                        <h3 class="section-bar">Review Triggers</h3>
-                        <p class="muted">
-                          Review after significant events as well as on the scheduled date.
-                        </p>
-                        <div class="checks check-grid">
-                          @for (trigger of triggers; track trigger) {
-                            <label
-                              ><input
-                                type="checkbox"
-                                [checked]="r.triggers.includes(trigger)"
-                                (change)="toggle(r.triggers, trigger)"
-                              />{{ trigger }}</label
-                            >
-                          }
-                        </div>
-                        <label
-                          >Additional review instructions<textarea
-                            rows="3"
-                            [(ngModel)]="r.fields['reviewInstructions']"
-                          ></textarea>
-                        </label>
-                      }
-                      @case ('Linked records') {
-                        <h3 class="section-bar">Related Care Plan</h3>
-                        <label
-                          >Linked care-plan section<select [(ngModel)]="r.careArea">
-                            <option value="">Select care-plan section</option>
-                            @for (area of careAreas; track area) {
-                              <option>{{ area }}</option>
-                            }
-                          </select></label
-                        >
-                        <p class="muted">
-                          The link provides context. Review and update the care plan separately when
-                          controls change.
-                        </p>
-                        <h3 class="section-bar">Related Incidents</h3>
-                        <div class="checks check-grid">
-                          @for (incident of incidents(); track incident.id) {
-                            <label
-                              ><input
-                                type="checkbox"
-                                [checked]="r.incidentIds.includes(incident.id)"
-                                (change)="toggle(r.incidentIds, incident.id)"
-                              />{{ incident.name }} ·
-                              {{ incident.date | date: 'dd/MM/yyyy' }}</label
-                            >
-                          } @empty {
-                            <p class="muted">
-                              No incident records available for this service user.
-                            </p>
-                          }
-                        </div>
-                        <h3 class="section-bar">Supporting Documents</h3>
-                        <div class="checks check-grid">
-                          @for (doc of documents(); track doc.id) {
-                            <label
-                              ><input
-                                type="checkbox"
-                                [checked]="r.documentIds.includes(doc.id)"
-                                (change)="toggle(r.documentIds, doc.id)"
-                              />{{ doc.name }}</label
-                            >
-                          } @empty {
-                            <p class="muted">No supporting documents available.</p>
-                          }
-                        </div>
-                      }
-                      @case ('Review & approval') {
-                        <h3 class="section-bar">Review Summary</h3>
-                        <label
-                          >Review outcome<textarea
-                            rows="4"
-                            [(ngModel)]="r.fields['outcome']"
-                            placeholder="Record changes, the effectiveness of controls and the outcome of this review"
-                          ></textarea>
-                        </label>
-                        <h3 class="section-bar">Visibility Controls</h3>
-                        <p class="muted">
-                          Senior management only. Sharing applies to approved carer guidance;
-                          sensitive assessment details stay internal.
-                        </p>
-                        <div class="visibility-controls">
-                          @for (
-                            v of [
-                              ['staff', 'Show to Staff / Carers'],
-                              ['family', 'Show to Family Portal'],
-                              ['inspector', 'Show to Inspector Portal'],
-                            ];
-                            track v[0]
-                          ) {
-                            <label
-                              ><span>{{ v[1] }}</span
-                              ><input
-                                type="checkbox"
-                                role="switch"
-                                [disabled]="!manager() || !editable"
-                                [ngModel]="$any(r.visibility)[v[0]]"
-                                (ngModelChange)="$any(r.visibility)[v[0]] = $event"
-                            /></label>
-                          }
-                        </div>
-                        <h3 class="section-bar">Version Control</h3>
-                        <dl class="details-list">
-                          <dt>Current version</dt>
-                          <dd>v{{ r.version }}.0 · {{ r.status }}</dd>
-                          <dt>Author</dt>
-                          <dd>{{ r.author || 'Recorded on first save' }}</dd>
-                          <dt>Approver</dt>
-                          <dd>{{ r.approver || 'Awaiting management approval' }}</dd>
-                          <dt>Approved at</dt>
-                          <dd>
-                            {{ r.approvedAt ? (r.approvedAt | date: 'dd/MM/yyyy, HH:mm') : '—' }}
-                          </dd>
-                        </dl>
-                      }
-                    }
-                  </fieldset>
-                  @if (tab() === 'Linked records') {
-                    <div class="actions related-links">
-                      <a [routerLink]="bodyLink()">Open Care Plan →</a
-                      ><a [routerLink]="['/manage/clients', id(), 'incidents']">Incidents →</a
-                      ><a [routerLink]="['/manage/clients', id(), 'medication']"
-                        >Medication / eMAR →</a
-                      ><a [routerLink]="bodyLink()" [queryParams]="{ view: 'body' }">Body Chart →</a
-                      ><a [routerLink]="['/manage/clients', id(), 'visit-notes']">Visit Notes →</a>
-                    </div>
-                  }
-                  @if (r.status !== 'Approved') {
-                    <div class="assessment-footer">
-                      <label class="reason"
-                        >Reason for change <span class="required">*</span
-                        ><input
-                          [(ngModel)]="reason"
-                          placeholder="Record why this assessment is being updated"
-                      /></label>
-                      <div class="actions">
-                        @if (editable) {
-                          <button (click)="save()">Save as Draft</button
-                          ><button class="primary" (click)="save('In review')">
-                            Submit for Review<span
-                              class="material-symbols-outlined"
-                              aria-hidden="true"
-                              >arrow_forward</span
-                            >
-                          </button>
-                        }
-                        @if (r.status === 'In review' && manager()) {
-                          <button (click)="save('Draft')">Return to Draft</button
-                          ><button
-                            class="primary"
-                            [disabled]="r.authorId === care.auth.currentUser()?.id"
-                            (click)="save('Approved')"
-                          >
-                            Approve Assessment
-                          </button>
-                        }
-                      </div>
-                    </div>
-                    @if (r.status === 'In review') {
-                      <p class="muted">
-                        A different authorised manager must review and approve. Return to draft to
-                        edit.
-                      </p>
-                    }
-                  }
-                </section>
-              }
-            }
-            @case ('matrix') {
-              <section class="panel matrix-panel">
-                <div class="panel-title">
-                  <div>
-                    <h2>Risk Matrix and Scoring</h2>
-                    <p class="muted">Risk score = Likelihood × Severity</p>
-                  </div>
-                  <span class="status">5 × 5 matrix</span>
-                </div>
-                <div class="matrix-layout">
                   <div class="table-scroll">
-                    <table class="matrix">
-                      <caption>
-                        Severity →
-                      </caption>
+                    <table>
                       <thead>
                         <tr>
-                          <th>Likelihood ↓</th>
-                          @for (s of severity; track s; let i = $index) {
-                            <th>
-                              {{ i + 1 }}<small>{{ s }}</small>
-                            </th>
-                          }
+                          <th>Risk domain</th>
+                          <th>Current level</th>
+                          <th>Initial score</th>
+                          <th>Residual score</th>
+                          <th>Last reviewed</th>
+                          <th>Next review</th>
+                          <th>Status</th>
+                          <th>Actions due</th>
+                          <th>Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        @for (l of descending; track l) {
+                        @for (r of filtered; track r.id) {
                           <tr>
-                            <th>{{ l }} · {{ likelihood[l - 1] }}</th>
-                            @for (s of numbers; track s) {
-                              <td [class]="level(l * s).toLowerCase()">{{ l * s }}</td>
-                            }
+                            <td>
+                              <strong>{{ r.domain }}</strong
+                              ><small>{{ r.specific }}</small>
+                            </td>
+                            <td>
+                              <span
+                                [class]="
+                                  'badge ' +
+                                  level(r.residualLikelihood * r.residualSeverity).toLowerCase()
+                                "
+                                >{{ level(r.residualLikelihood * r.residualSeverity) }}</span
+                              >
+                            </td>
+                            <td>{{ r.likelihood * r.severity }}</td>
+                            <td>{{ r.residualLikelihood * r.residualSeverity }}</td>
+                            <td>{{ r.date | date: 'dd/MM/yyyy' }}</td>
+                            <td [class.overdue-text]="r.review && r.review < today">
+                              {{ r.review ? (r.review | date: 'dd/MM/yyyy') : 'Not set' }}
+                            </td>
+                            <td>
+                              <span class="status" [class.approved]="r.status === 'Approved'">{{
+                                r.status
+                              }}</span>
+                            </td>
+                            <td>{{ pendingActions(r) }} open</td>
+                            <td>
+                              <button class="small-button" (click)="open(r)">
+                                View<span class="material-symbols-outlined" aria-hidden="true"
+                                  >chevron_right</span
+                                >
+                              </button>
+                            </td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="9">
+                              <div class="empty">
+                                <span class="material-symbols-outlined" aria-hidden="true"
+                                  >health_and_safety</span
+                                >
+                                <h3>
+                                  {{
+                                    risks().length
+                                      ? 'No matching assessments'
+                                      : 'Build a clear picture of risk'
+                                  }}
+                                </h3>
+                                <p>
+                                  {{
+                                    risks().length
+                                      ? 'Try a different search or filter.'
+                                      : 'Create individual assessments and bring them together in one service user risk profile.'
+                                  }}
+                                </p>
+                                @if (!risks().length) {
+                                  <button class="primary" (click)="go('new')">
+                                    Start first risk assessment
+                                  </button>
+                                }
+                              </div>
+                            </td>
                           </tr>
                         }
                       </tbody>
                     </table>
                   </div>
-                  <div>
-                    <h3 class="section-bar">Risk Level Guide</h3>
-                    @for (
-                      guide of [
-                        ['Low', '1–4', 'Manage with routine controls'],
-                        ['Medium', '5–9', 'Additional controls required'],
-                        ['High', '10–15', 'Urgent action required'],
-                        ['Critical', '16–25', 'Immediate action required'],
-                      ];
-                      track guide[0]
-                    ) {
-                      <div class="level-guide">
-                        <span [class]="'badge ' + guide[0].toLowerCase()">{{ guide[1] }}</span>
+                </section>
+                @if (legacy().length) {
+                  <section class="panel">
+                    <div class="panel-title">
+                      <h2>Existing risk records</h2>
+                      <span class="muted">Original records retained</span>
+                    </div>
+                    <p class="muted">
+                      These records have not been scored using the new matrix. Review them before
+                      creating a structured assessment.
+                    </p>
+                    @for (r of legacy(); track r.id) {
+                      <div class="legacy-row">
                         <div>
-                          <strong>{{ guide[0] }} Risk</strong><small>{{ guide[2] }}</small>
+                          <strong>{{ r.name }}</strong>
+                          <p>{{ r.detail }}</p>
                         </div>
+                        <span class="status">{{ r.status }}</span
+                        ><a
+                          [routerLink]="['/manage/clients', id()]"
+                          [queryParams]="{ section: 'risks', entry: r.id }"
+                          >Open original →</a
+                        >
                       </div>
                     }
+                  </section>
+                }
+                <div class="workflow-strip">
+                  <span class="material-symbols-outlined" aria-hidden="true">account_tree</span>Risk
+                  assessment <b>→</b> Controls <b>→</b> Care plan <b>→</b> Carer instructions
+                  <b>→</b> Visit <b>→</b> Observation <b>→</b> Risk review
+                </div>
+              }
+              @case ('new') {
+                <section class="panel type-panel">
+                  <div class="panel-title">
+                    <div>
+                      <h2>New Risk Assessment</h2>
+                      <p class="muted">Select the risk domain you want to assess.</p>
+                    </div>
+                    <span class="step-count">STEP 1 OF 5</span>
                   </div>
-                </div>
-              </section>
-            }
-            @case ('summary') {
-              <section class="panel">
-                <div class="panel-title">
-                  <h2>Risk Summary and Action Plan</h2>
-                  <span class="muted"
-                    >{{ outstanding.length }} outstanding actions · {{ overdue }} overdue
-                    reviews</span
-                  >
-                </div>
-                <div class="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Risk</th>
-                        <th>Initial score</th>
-                        <th>Initial level</th>
-                        <th>Residual score</th>
-                        <th>Current level</th>
-                        <th>Status</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (r of risks(); track r.id) {
+                  <ol class="stepper">
+                    <li class="current">Select risk type</li>
+                    <li>Assessment</li>
+                    <li>Risk rating</li>
+                    <li>Action plan</li>
+                    <li>Review</li>
+                  </ol>
+                  <label class="search"
+                    ><span class="material-symbols-outlined" aria-hidden="true">search</span
+                    ><input
+                      [(ngModel)]="typeSearch"
+                      placeholder="Search risk assessment…"
+                      aria-label="Search assessment types"
+                  /></label>
+                  <div class="domain-grid">
+                    @for (d of domains; track d[0]) {
+                      @if (d[0].toLowerCase().includes(typeSearch.toLowerCase())) {
+                        <button class="domain-option" (click)="start(d[0])">
+                          <span class="domain-icon material-symbols-outlined" aria-hidden="true">{{
+                            d[1]
+                          }}</span
+                          ><span
+                            ><strong>{{ d[0] }}</strong
+                            ><small>Individual risk assessment and support plan</small></span
+                          ><span class="material-symbols-outlined" aria-hidden="true"
+                            >chevron_right</span
+                          >
+                        </button>
+                      }
+                    }
+                  </div>
+                </section>
+              }
+              @case ('assessment') {
+                @if (!popupOpen()) {
+                  <ng-container [ngTemplateOutlet]="assessmentForm" />
+                }
+              }
+              @case ('matrix') {
+                <section class="panel matrix-panel">
+                  <div class="panel-title">
+                    <div>
+                      <h2>Risk Matrix and Scoring</h2>
+                      <p class="muted">Risk score = Likelihood × Severity</p>
+                    </div>
+                    <span class="status">5 × 5 matrix</span>
+                  </div>
+                  <div class="matrix-layout">
+                    <div class="table-scroll">
+                      <table class="matrix">
+                        <caption>
+                          Severity →
+                        </caption>
+                        <thead>
+                          <tr>
+                            <th>Likelihood ↓</th>
+                            @for (s of severity; track s; let i = $index) {
+                              <th>
+                                {{ i + 1 }}<small>{{ s }}</small>
+                              </th>
+                            }
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (l of descending; track l) {
+                            <tr>
+                              <th>{{ l }} · {{ likelihood[l - 1] }}</th>
+                              @for (s of numbers; track s) {
+                                <td [class]="level(l * s).toLowerCase()">{{ l * s }}</td>
+                              }
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                    <div>
+                      <h3 class="section-bar">Risk Level Guide</h3>
+                      @for (
+                        guide of [
+                          ['Low', '1–4', 'Manage with routine controls'],
+                          ['Medium', '5–9', 'Additional controls required'],
+                          ['High', '10–15', 'Urgent action required'],
+                          ['Critical', '16–25', 'Immediate action required'],
+                        ];
+                        track guide[0]
+                      ) {
+                        <div class="level-guide">
+                          <span [class]="'badge ' + guide[0].toLowerCase()">{{ guide[1] }}</span>
+                          <div>
+                            <strong>{{ guide[0] }} Risk</strong><small>{{ guide[2] }}</small>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </section>
+              }
+              @case ('summary') {
+                <section class="panel">
+                  <div class="panel-title">
+                    <h2>Risk Summary and Action Plan</h2>
+                    <span class="muted"
+                      >{{ outstanding.length }} outstanding actions · {{ overdue }} overdue
+                      reviews</span
+                    >
+                  </div>
+                  <div class="table-scroll">
+                    <table>
+                      <thead>
                         <tr>
-                          <td>{{ r.domain }}</td>
-                          <td>{{ r.likelihood * r.severity }}</td>
-                          <td>
-                            <span
-                              [class]="'badge ' + level(r.likelihood * r.severity).toLowerCase()"
-                              >{{ level(r.likelihood * r.severity) }}</span
-                            >
-                          </td>
-                          <td>{{ r.residualLikelihood * r.residualSeverity }}</td>
-                          <td>
+                          <th>Risk</th>
+                          <th>Initial score</th>
+                          <th>Initial level</th>
+                          <th>Residual score</th>
+                          <th>Current level</th>
+                          <th>Status</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (r of risks(); track r.id) {
+                          <tr>
+                            <td>{{ r.domain }}</td>
+                            <td>{{ r.likelihood * r.severity }}</td>
+                            <td>
+                              <span
+                                [class]="'badge ' + level(r.likelihood * r.severity).toLowerCase()"
+                                >{{ level(r.likelihood * r.severity) }}</span
+                              >
+                            </td>
+                            <td>{{ r.residualLikelihood * r.residualSeverity }}</td>
+                            <td>
+                              <span
+                                [class]="
+                                  'badge ' +
+                                  level(r.residualLikelihood * r.residualSeverity).toLowerCase()
+                                "
+                                >{{ level(r.residualLikelihood * r.residualSeverity) }}</span
+                              >
+                            </td>
+                            <td>{{ r.status }}</td>
+                            <td><button (click)="open(r)">View</button></td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="7" class="empty-cell">
+                              No structured risk assessments yet.
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <h3 class="section-bar">Outstanding Actions</h3>
+                  <div class="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Risk domain</th>
+                          <th>Action required</th>
+                          <th>Owner</th>
+                          <th>Due date</th>
+                          <th>Status</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (a of outstanding; track a.id) {
+                          <tr>
+                            <td>{{ a.domain }}</td>
+                            <td>{{ a.text }}</td>
+                            <td>{{ a.owner }}</td>
+                            <td [class.overdue-text]="a.due < today">
+                              {{ a.due | date: 'dd/MM/yyyy' }}
+                            </td>
+                            <td>{{ a.status }}</td>
+                            <td>
+                              <button (click)="open(a.risk); tab.set('Action plan')">Update</button>
+                            </td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="6" class="empty-cell">No outstanding actions recorded.</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              }
+              @case ('history') {
+                <section class="panel">
+                  <div class="panel-title">
+                    <h2>Review, Approval & Version History</h2>
+                    <span class="muted">{{ register().history.length }} recorded changes</span>
+                  </div>
+                  <div class="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Date / time</th>
+                          <th>Risk domain</th>
+                          <th>Version</th>
+                          <th>Action</th>
+                          <th>By</th>
+                          <th>Reason for change</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (event of register().history.slice().reverse(); track $index) {
+                          <tr>
+                            <td>{{ event.at | date: 'dd/MM/yyyy, HH:mm' }}</td>
+                            <td>{{ event.assessment.domain }}</td>
+                            <td>v{{ event.assessment.version }}.0</td>
+                            <td>{{ event.action }}</td>
+                            <td>{{ event.by }}</td>
+                            <td>{{ event.reason }}</td>
+                            <td>
+                              <details>
+                                <summary>View snapshot</summary>
+                                <div class="snapshot">
+                                  <strong>{{ event.assessment.specific }}</strong>
+                                  <p>{{ event.assessment.fields['description'] }}</p>
+                                  <p>
+                                    Initial:
+                                    {{ event.assessment.likelihood * event.assessment.severity }} ·
+                                    Residual:
+                                    {{
+                                      event.assessment.residualLikelihood *
+                                        event.assessment.residualSeverity
+                                    }}
+                                  </p>
+                                  <p>
+                                    Controls:
+                                    {{ event.assessment.fields['controls'] || 'Not recorded' }}
+                                  </p>
+                                  <p>
+                                    Carer instructions:
+                                    {{ event.assessment.fields['instructions'] || 'Not recorded' }}
+                                  </p>
+                                  <p>
+                                    Escalation:
+                                    {{ event.assessment.fields['escalation'] || 'Not recorded' }}
+                                  </p>
+                                </div>
+                              </details>
+                            </td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="7" class="empty-cell">
+                              Saved changes, reviews and approvals will appear here.
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              }
+              @case ('carer') {
+                <section class="panel">
+                  <div class="panel-title">
+                    <div>
+                      <h2>Carer Mobile View – Key Risks for Visit</h2>
+                      <p class="muted">Preview of approved guidance shared with staff.</p>
+                    </div>
+                    <span class="status">Approved information only</span>
+                  </div>
+                  <div class="phone-preview">
+                    <div class="phone-top">
+                      <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span
+                      ><strong>CareVerity</strong
+                      ><span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>
+                    </div>
+                    <div class="phone-person">
+                      <strong>{{ c.name }}</strong
+                      ><small>{{ c.address }}</small>
+                    </div>
+                    <div class="phone-tabs">
+                      <strong>Key Risks</strong><span>Visit guidance</span>
+                    </div>
+                    <div
+                      class="phone-content"
+                      tabindex="0"
+                      role="region"
+                      aria-label="Approved carer guidance"
+                    >
+                      @for (r of sharedApproved; track r.id) {
+                        @if (r.visibility.staff) {
+                          <article
+                            [class]="
+                              'mobile-risk ' +
+                              level(r.residualLikelihood * r.residualSeverity).toLowerCase()
+                            "
+                          >
                             <span
                               [class]="
                                 'badge ' +
@@ -1087,381 +581,379 @@
                               "
                               >{{ level(r.residualLikelihood * r.residualSeverity) }}</span
                             >
-                          </td>
-                          <td>{{ r.status }}</td>
-                          <td><button (click)="open(r)">View</button></td>
-                        </tr>
-                      } @empty {
-                        <tr>
-                          <td colspan="7" class="empty-cell">
-                            No structured risk assessments yet.
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-                <h3 class="section-bar">Outstanding Actions</h3>
-                <div class="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Risk domain</th>
-                        <th>Action required</th>
-                        <th>Owner</th>
-                        <th>Due date</th>
-                        <th>Status</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (a of outstanding; track a.id) {
-                        <tr>
-                          <td>{{ a.domain }}</td>
-                          <td>{{ a.text }}</td>
-                          <td>{{ a.owner }}</td>
-                          <td [class.overdue-text]="a.due < today">
-                            {{ a.due | date: 'dd/MM/yyyy' }}
-                          </td>
-                          <td>{{ a.status }}</td>
-                          <td>
-                            <button (click)="open(a.risk); tab.set('Action plan')">Update</button>
-                          </td>
-                        </tr>
-                      } @empty {
-                        <tr>
-                          <td colspan="6" class="empty-cell">No outstanding actions recorded.</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            }
-            @case ('history') {
-              <section class="panel">
-                <div class="panel-title">
-                  <h2>Review, Approval & Version History</h2>
-                  <span class="muted">{{ register().history.length }} recorded changes</span>
-                </div>
-                <div class="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Date / time</th>
-                        <th>Risk domain</th>
-                        <th>Version</th>
-                        <th>Action</th>
-                        <th>By</th>
-                        <th>Reason for change</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (event of register().history.slice().reverse(); track $index) {
-                        <tr>
-                          <td>{{ event.at | date: 'dd/MM/yyyy, HH:mm' }}</td>
-                          <td>{{ event.assessment.domain }}</td>
-                          <td>v{{ event.assessment.version }}.0</td>
-                          <td>{{ event.action }}</td>
-                          <td>{{ event.by }}</td>
-                          <td>{{ event.reason }}</td>
-                          <td>
-                            <details>
-                              <summary>View snapshot</summary>
-                              <div class="snapshot">
-                                <strong>{{ event.assessment.specific }}</strong>
-                                <p>{{ event.assessment.fields['description'] }}</p>
-                                <p>
-                                  Initial:
-                                  {{ event.assessment.likelihood * event.assessment.severity }} ·
-                                  Residual:
-                                  {{
-                                    event.assessment.residualLikelihood *
-                                      event.assessment.residualSeverity
-                                  }}
-                                </p>
-                                <p>
-                                  Controls:
-                                  {{ event.assessment.fields['controls'] || 'Not recorded' }}
-                                </p>
-                                <p>
-                                  Carer instructions:
-                                  {{ event.assessment.fields['instructions'] || 'Not recorded' }}
-                                </p>
-                                <p>
-                                  Escalation:
-                                  {{ event.assessment.fields['escalation'] || 'Not recorded' }}
-                                </p>
-                              </div>
-                            </details>
-                          </td>
-                        </tr>
-                      } @empty {
-                        <tr>
-                          <td colspan="7" class="empty-cell">
-                            Saved changes, reviews and approvals will appear here.
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            }
-            @case ('carer') {
-              <section class="panel">
-                <div class="panel-title">
-                  <div>
-                    <h2>Carer Mobile View – Key Risks for Visit</h2>
-                    <p class="muted">Preview of approved guidance shared with staff.</p>
-                  </div>
-                  <span class="status">Approved information only</span>
-                </div>
-                <div class="phone-preview">
-                  <div class="phone-top">
-                    <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span
-                    ><strong>CareVerity</strong
-                    ><span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>
-                  </div>
-                  <div class="phone-person">
-                    <strong>{{ c.name }}</strong
-                    ><small>{{ c.address }}</small>
-                  </div>
-                  <div class="phone-tabs">
-                    <strong>Key Risks</strong><span>Visit guidance</span>
-                  </div>
-                  <div
-                    class="phone-content"
-                    tabindex="0"
-                    role="region"
-                    aria-label="Approved carer guidance"
-                  >
-                    @for (r of sharedApproved; track r.id) {
-                      @if (r.visibility.staff) {
-                        <article
-                          [class]="
-                            'mobile-risk ' +
-                            level(r.residualLikelihood * r.residualSeverity).toLowerCase()
-                          "
-                        >
-                          <span
-                            [class]="
-                              'badge ' +
-                              level(r.residualLikelihood * r.residualSeverity).toLowerCase()
-                            "
-                            >{{ level(r.residualLikelihood * r.residualSeverity) }}</span
-                          >
-                          <div>
-                            <h3>{{ r.domain }}</h3>
-                            @if (r.fields['triggers']) {
-                              <p><strong>Triggers:</strong> {{ r.fields['triggers'] }}</p>
-                            }
-                            <ul>
-                              @for (line of lineItems(r.fields['instructions']); track $index) {
-                                <li>{{ line }}</li>
+                            <div>
+                              <h3>{{ r.domain }}</h3>
+                              @if (r.fields['triggers']) {
+                                <p><strong>Triggers:</strong> {{ r.fields['triggers'] }}</p>
                               }
-                            </ul>
-                            <p><strong>Escalation:</strong> {{ r.fields['escalation'] }}</p>
-                          </div>
-                        </article>
-                      }
-                    }
-                    @if (!sharedApproved.length) {
-                      <div class="empty">
-                        <span class="material-symbols-outlined" aria-hidden="true"
-                          >verified_user</span
-                        >
-                        <h3>No approved guidance yet</h3>
-                        <p>
-                          Approve an assessment and enable staff visibility to preview guidance
-                          here.
-                        </p>
-                      </div>
-                    }
-                  </div>
-                  <footer class="phone-bottom">
-                    <span class="material-symbols-outlined" aria-hidden="true">home</span
-                    ><span class="material-symbols-outlined" aria-hidden="true">clinical_notes</span
-                    ><span class="material-symbols-outlined" aria-hidden="true">notifications</span
-                    ><span class="material-symbols-outlined" aria-hidden="true">menu</span>
-                  </footer>
-                </div>
-              </section>
-            }
-            @case ('pdf') {
-              <section class="panel print-intro">
-                <div class="panel-title">
-                  <div>
-                    <h2>Individual Risk Assessment & Management Plan</h2>
-                    <p class="muted">
-                      Approved assessments only. Use your browser’s Save as PDF option.
-                    </p>
-                  </div>
-                  <button
-                    class="primary"
-                    [disabled]="!care.rota.can('export') || !approved().length"
-                    (click)="print()"
-                  >
-                    <span class="material-symbols-outlined" aria-hidden="true">print</span>Print /
-                    Save as PDF
-                  </button>
-                </div>
-              </section>
-              <cv-risk-print-preview>
-                <article class="print-document">
-                  <header>
-                    <strong>London Quality Care Services</strong><span>CareVerity</span>
-                  </header>
-                  <h1>INDIVIDUAL RISK ASSESSMENT<br />& MANAGEMENT PLAN</h1>
-                  <dl class="details-list">
-                    <dt>Service user</dt>
-                    <dd>{{ c.name }}</dd>
-                    <dt>Date of birth</dt>
-                    <dd>{{ c.file?.details?.['dob'] || 'Not recorded' }}</dd>
-                    <dt>NHS number</dt>
-                    <dd>{{ c.file?.details?.['nhs'] || 'Not recorded' }}</dd>
-                    <dt>Address</dt>
-                    <dd>{{ c.address }} {{ c.postcode }}</dd>
-                  </dl>
-                  <p>
-                    This risk assessment identifies potential risks, current controls and required
-                    actions to keep the service user, staff and others safe.
-                  </p>
-                  <h2 class="section-bar">Risk Assessment Summary</h2>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Risk domain</th>
-                        <th>Initial</th>
-                        <th>Residual</th>
-                        <th>Next review</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (r of approved(); track r.id) {
-                        <tr>
-                          <td>{{ r.domain }}</td>
-                          <td>
-                            {{ r.likelihood * r.severity }} · {{ level(r.likelihood * r.severity) }}
-                          </td>
-                          <td>
-                            {{ r.residualLikelihood * r.residualSeverity }} ·
-                            {{ level(r.residualLikelihood * r.residualSeverity) }}
-                          </td>
-                          <td>{{ r.review | date: 'dd/MM/yyyy' }}</td>
-                        </tr>
-                      } @empty {
-                        <tr>
-                          <td colspan="4" class="empty-cell">No approved assessments available.</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                  @for (r of approved(); track r.id) {
-                    <section class="print-risk">
-                      <h2 class="section-bar">{{ r.domain }} Risk Assessment</h2>
-                      <p>
-                        <strong>{{ r.specific }}</strong> · v{{ r.version }}.0 · Approved
-                      </p>
-                      @for (field of commonFields; track field[0]) {
-                        <h3>{{ field[1] }}</h3>
-                        <p>{{ r.fields[field[0]] || 'Not recorded' }}</p>
-                      }
-                      @for (field of fieldsFor(r.domain); track field[0]) {
-                        @if (r.fields[field[0]]) {
-                          <h3>{{ field[1] }}</h3>
-                          <p>{{ r.fields[field[0]] }}</p>
+                              <ul>
+                                @for (line of lineItems(r.fields['instructions']); track $index) {
+                                  <li>{{ line }}</li>
+                                }
+                              </ul>
+                              <p><strong>Escalation:</strong> {{ r.fields['escalation'] }}</p>
+                            </div>
+                          </article>
                         }
                       }
-                      @if (r.domain === 'Moving & Handling' || r.domain === 'Falls & Mobility') {
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Task</th>
-                              <th>Support</th>
-                              <th>Equipment / technique</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            @for (task of r.tasks; track task.task) {
-                              <tr>
-                                <td>{{ task.task }}</td>
-                                <td>{{ task.support }}</td>
-                                <td>{{ task.equipment }} {{ task.technique }} {{ task.notes }}</td>
-                              </tr>
-                            }
-                          </tbody>
-                        </table>
+                      @if (!sharedApproved.length) {
+                        <div class="empty">
+                          <span class="material-symbols-outlined" aria-hidden="true"
+                            >verified_user</span
+                          >
+                          <h3>No approved guidance yet</h3>
+                          <p>
+                            Approve an assessment and enable staff visibility to preview guidance
+                            here.
+                          </p>
+                        </div>
                       }
-                      <h3>Action plan</h3>
-                      @for (a of r.actions; track a.id) {
+                    </div>
+                    <footer class="phone-bottom">
+                      <span class="material-symbols-outlined" aria-hidden="true">home</span
+                      ><span class="material-symbols-outlined" aria-hidden="true"
+                        >clinical_notes</span
+                      ><span class="material-symbols-outlined" aria-hidden="true"
+                        >notifications</span
+                      ><span class="material-symbols-outlined" aria-hidden="true">menu</span>
+                    </footer>
+                  </div>
+                </section>
+              }
+              @case ('pdf') {
+                <section class="panel print-intro">
+                  <div class="panel-title">
+                    <div>
+                      <h2>Individual Risk Assessment & Management Plan</h2>
+                      <p class="muted">
+                        Approved assessments only. Use your browser’s Save as PDF option.
+                      </p>
+                    </div>
+                    <button
+                      class="primary"
+                      [disabled]="!api.can('export') || printBusy() || !approved().length"
+                      (click)="print()"
+                    >
+                      <span class="material-symbols-outlined" aria-hidden="true">print</span>Print /
+                      Save as PDF
+                    </button>
+                  </div>
+                </section>
+                <cv-risk-print-preview>
+                  <article class="print-document">
+                    <header>
+                      <strong>{{ data()?.company_name }}</strong
+                      ><span>CareVerity</span>
+                    </header>
+                    <h1>INDIVIDUAL RISK ASSESSMENT<br />& MANAGEMENT PLAN</h1>
+                    <dl class="details-list">
+                      <dt>Service user</dt>
+                      <dd>{{ c.name }}</dd>
+                      <dt>Date of birth</dt>
+                      <dd>{{ c.file?.details?.['dob'] || 'Not recorded' }}</dd>
+                      <dt>NHS number</dt>
+                      <dd>{{ c.file?.details?.['nhs'] || 'Not recorded' }}</dd>
+                      <dt>Address</dt>
+                      <dd>{{ c.address }} {{ c.postcode }}</dd>
+                    </dl>
+                    <p>
+                      This risk assessment identifies potential risks, current controls and required
+                      actions to keep the service user, staff and others safe.
+                    </p>
+                    <h2 class="section-bar">Risk Assessment Summary</h2>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Risk domain</th>
+                          <th>Initial</th>
+                          <th>Residual</th>
+                          <th>Next review</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (r of approved(); track r.id) {
+                          <tr>
+                            <td>{{ r.domain }}</td>
+                            <td>
+                              {{ r.likelihood * r.severity }} ·
+                              {{ level(r.likelihood * r.severity) }}
+                            </td>
+                            <td>
+                              {{ r.residualLikelihood * r.residualSeverity }} ·
+                              {{ level(r.residualLikelihood * r.residualSeverity) }}
+                            </td>
+                            <td>{{ r.review | date: 'dd/MM/yyyy' }}</td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="4" class="empty-cell">
+                              No approved assessments available.
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                    @for (r of approved(); track r.id) {
+                      <section class="print-risk">
+                        <h2 class="section-bar">{{ r.domain }} Risk Assessment</h2>
                         <p>
-                          {{ a.text }} · {{ a.owner }} · {{ a.due | date: 'dd/MM/yyyy' }} ·
-                          {{ a.status }}
+                          <strong>{{ r.specific }}</strong> · v{{ r.version }}.0 · Approved
                         </p>
-                      } @empty {
-                        <p>No additional actions recorded.</p>
-                      }
-                      <p><strong>Care-plan section:</strong> {{ r.careArea || 'Not linked' }}</p>
-                      <p>
-                        <strong>Review triggers:</strong>
-                        {{ r.triggers.join(', ') || 'Not recorded' }}
+                        @for (field of commonFields; track field[0]) {
+                          <h3>{{ field[1] }}</h3>
+                          <p>{{ r.fields[field[0]] || 'Not recorded' }}</p>
+                        }
+                        @for (field of fieldsFor(r.domain); track field[0]) {
+                          @if (r.fields[field[0]]) {
+                            <h3>{{ field[1] }}</h3>
+                            <p>{{ r.fields[field[0]] }}</p>
+                          }
+                        }
+                        @if (r.domain === 'Moving & Handling' || r.domain === 'Falls & Mobility') {
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Task</th>
+                                <th>Support</th>
+                                <th>Equipment / technique</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              @for (task of r.tasks; track task.task) {
+                                <tr>
+                                  <td>{{ task.task }}</td>
+                                  <td>{{ task.support }}</td>
+                                  <td>
+                                    {{ task.equipment }} {{ task.technique }} {{ task.notes }}
+                                  </td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        }
+                        <h3>Action plan</h3>
+                        @for (a of r.actions; track a.id) {
+                          <p>
+                            {{ a.text }} · {{ a.owner }} · {{ a.due | date: 'dd/MM/yyyy' }} ·
+                            {{ a.status }}
+                          </p>
+                        } @empty {
+                          <p>No additional actions recorded.</p>
+                        }
+                        <p><strong>Care-plan section:</strong> {{ r.careArea || 'Not linked' }}</p>
+                        <p>
+                          <strong>Review triggers:</strong>
+                          {{ r.triggers.join(', ') || 'Not recorded' }}
+                        </p>
+                        <p>
+                          <strong>Review:</strong> {{ r.review | date: 'dd/MM/yyyy' }} ·
+                          <strong>Assessed by:</strong> {{ r.author }}
+                        </p>
+                        <p>
+                          <strong>Approved by:</strong> {{ r.approver }} ·
+                          {{ r.approvedAt | date: 'dd/MM/yyyy, HH:mm' }}
+                        </p>
+                      </section>
+                    }
+                  </article>
+                </cv-risk-print-preview>
+              }
+
+              @case ('voice') {
+                <section class="panel">
+                  <div class="panel-title">
+                    <div>
+                      <h2>Record a risk review</h2>
+                      <p class="muted">
+                        Record or dictate your observations, check the transcript, then create an
+                        assessment draft.
                       </p>
-                      <p>
-                        <strong>Review:</strong> {{ r.review | date: 'dd/MM/yyyy' }} ·
-                        <strong>Assessed by:</strong> {{ r.author }}
-                      </p>
-                      <p>
-                        <strong>Approved by:</strong> {{ r.approver }} ·
-                        {{ r.approvedAt | date: 'dd/MM/yyyy, HH:mm' }}
-                      </p>
-                    </section>
+                    </div>
+                  </div>
+                  <div class="fields-grid">
+                    <label
+                      >Risk domain<select
+                        [(ngModel)]="voiceDomain"
+                        [disabled]="voiceBusy() || voiceRecording()"
+                      >
+                        @for (domain of domains; track domain[0]) {
+                          <option>{{ domain[0] }}</option>
+                        }
+                      </select></label
+                    ><label
+                      >Specific risk <span class="required">*</span
+                      ><input [(ngModel)]="voiceSpecific" maxlength="250" [disabled]="voiceBusy()"
+                    /></label>
+                  </div>
+                  <div class="actions">
+                    <button
+                      class="primary"
+                      [disabled]="!canCreate() || voiceBusy() || voiceRecording()"
+                      (click)="recordVoice()"
+                    >
+                      <span class="material-symbols-outlined" aria-hidden="true">mic</span>Record
+                      audio</button
+                    ><button [disabled]="!voiceRecording() && !dictating()" (click)="stopVoice()">
+                      Stop</button
+                    ><button
+                      [disabled]="!canCreate() || dictating() || voiceBusy()"
+                      (click)="dictate()"
+                    >
+                      Dictate</button
+                    ><button [disabled]="voiceBusy()" (click)="installDictation()">
+                      Install dictation
+                    </button>
+                  </div>
+                  <p class="muted">
+                    Dictation uses an available on-device English (UK) language pack. You can also
+                    listen to the recording and enter the transcript.
+                  </p>
+                  @if (voiceAudio) {
+                    <audio controls [src]="voiceAudio" aria-label="Recorded risk review"></audio
+                    ><label class="voice-include"
+                      ><input
+                        type="checkbox"
+                        [(ngModel)]="voiceIncludeAudio"
+                        (ngModelChange)="voiceNote.set(null)"
+                        [disabled]="voiceBusy()"
+                      />Retain the audio with the checked transcript</label
+                    >
                   }
-                </article>
-              </cv-risk-print-preview>
+                  <label
+                    >Checked transcript <span class="required">*</span
+                    ><textarea
+                      rows="8"
+                      maxlength="20000"
+                      [(ngModel)]="voiceTranscript"
+                      [disabled]="voiceBusy() || dictating()"
+                      placeholder="Check the words and remove any transcription errors before continuing"
+                    ></textarea>
+                  </label>
+                  @if (voiceStatus()) {
+                    <p role="status" class="notice">{{ voiceStatus() }}</p>
+                  }
+                  <div class="actions">
+                    <button
+                      class="primary"
+                      [disabled]="!canCreate() || voiceBusy() || voiceRecording() || dictating()"
+                      (click)="voiceDraft()"
+                    >
+                      {{
+                        voiceBusy()
+                          ? 'Saving…'
+                          : voiceNote()?.state === 'quarantined'
+                            ? 'Check scan and create draft'
+                            : 'Create assessment draft'
+                      }}</button
+                    ><button [disabled]="voiceBusy() || voiceRecording()" (click)="resetVoice()">
+                      Clear
+                    </button>
+                  </div>
+                  <p class="muted">
+                    The draft needs checked risk ratings, controls and review details before
+                    submission. Approval remains a separate action.
+                  </p>
+                </section>
+              }
+              @case ('automated') {
+                <section class="panel">
+                  <div class="panel-title">
+                    <div>
+                      <h2>Risk review</h2>
+                      <p class="muted">
+                        Recommendations from current assessment dates, action plans and recent
+                        authorised care records.
+                      </p>
+                    </div>
+                    <button [disabled]="reviewBusy()" (click)="loadReview()">Refresh review</button>
+                  </div>
+                  @if (reviewBusy() && !reviewData()) {
+                    <p role="status">Checking current records…</p>
+                  }
+                  @if (reviewData(); as review) {
+                    <p class="muted">
+                      Checked {{ review.as_of | date: 'dd/MM/yyyy, HH:mm' }}. Up to 50 recent
+                      records per linked source are considered.
+                    </p>
+                    @for (message of review.unavailable_sources; track message) {
+                      <p class="muted">{{ message }}</p>
+                    }
+                    <label
+                      >Decision reason <span class="required">*</span
+                      ><textarea
+                        rows="2"
+                        [(ngModel)]="reviewReason"
+                        [disabled]="reviewBusy()"
+                        placeholder="Explain why a recommendation is being accepted or dismissed"
+                      ></textarea>
+                    </label>
+                    @for (suggestion of review.suggestions; track suggestion.id) {
+                      <article class="review-suggestion">
+                        <div>
+                          <h3>{{ suggestion.title }}</h3>
+                          <p>{{ suggestion.detail }}</p>
+                          <small class="muted"
+                            >{{ suggestion.source_kind }} · source revision
+                            {{ suggestion.source_version }}</small
+                          >
+                        </div>
+                        <div class="actions">
+                          <button
+                            class="primary"
+                            [disabled]="!api.can('edit') || reviewBusy()"
+                            (click)="decide(suggestion, 'accepted')"
+                          >
+                            Review draft</button
+                          ><button
+                            [disabled]="!api.can('edit') || reviewBusy()"
+                            (click)="decide(suggestion, 'dismissed')"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      </article>
+                    } @empty {
+                      <p class="empty-cell">
+                        No outstanding recommendations from the available sources.
+                      </p>
+                      @if (review.decisions?.length) {
+                        <h3 class="section-bar">Recent review decisions</h3>
+                        <div class="table-scroll">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Date</th>
+                                <th>Reviewer</th>
+                                <th>Source</th>
+                                <th>Decision</th>
+                                <th>Reason</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              @for (decision of review.decisions; track decision.id) {
+                                <tr>
+                                  <td>{{ decision.at | date: 'dd/MM/yyyy, HH:mm' }}</td>
+                                  <td>{{ decision.by }}</td>
+                                  <td>
+                                    {{ decision.source_kind }} · revision
+                                    {{ decision.source_version }}
+                                  </td>
+                                  <td>{{ decision.decision }}</td>
+                                  <td>{{ decision.reason }}</td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      }
+                    }
+                  }
+                </section>
+              }
             }
-            @default {
-              <section class="panel coming-soon">
-                <div class="coming-icon">
-                  <span class="material-symbols-outlined" aria-hidden="true">{{
-                    page() === 'voice'
-                      ? 'mic'
-                      : page() === 'automated'
-                        ? 'manage_search'
-                        : 'construction'
-                  }}</span>
-                </div>
-                <span class="eyebrow">RISK ASSESSMENTS</span>
-                <h2>
-                  {{
-                    page() === 'voice'
-                      ? 'Voice-Assisted Risk Review'
-                      : page() === 'automated'
-                        ? 'Automated Risk Review'
-                        : selected()?.domain + ' Risk Assessment'
-                  }}
-                </h2>
-                <span class="coming-badge">Coming soon</span>
-                <p>
-                  {{
-                    page() === 'voice'
-                      ? 'Record a review, check the transcript and review a proposed structured update before accepting, editing or rejecting it.'
-                      : page() === 'automated'
-                        ? 'Review recommendations from visit notes, incidents and other permitted records, with every change subject to management approval.'
-                        : 'This specialist assessment is being prepared. Your existing risk records remain available in the service user profile.'
-                  }}
-                </p>
-                <div class="coming-note">
-                  <span class="material-symbols-outlined" aria-hidden="true">verified_user</span
-                  >Approved assessments remain protected. Updates require review and approval.
-                </div>
-                <button class="primary" (click)="go('overview')">Back to Risk Overview</button>
-              </section>
-            }
-          }
+          </div>
         </div>
-      </div>
+      }
     </section>
   } @else {
     <section class="panel empty">
@@ -1476,3 +968,702 @@
     <a routerLink="/manage/clients">Return to Service Users</a>
   </section>
 }
+
+<ng-template #assessmentForm>
+  @if (selected(); as r) {
+    <section class="panel assessment-panel">
+      <div class="panel-title">
+        <div>
+          <button class="back-link" (click)="go('overview')">← Back to risk overview</button>
+          <h2>
+            {{
+              r.domain === 'Behaviour / PBS' ? 'Behaviour and Positive Behaviour Support' : r.domain
+            }}
+            Risk Assessment
+          </h2>
+        </div>
+        <span class="status" [class.approved]="r.status === 'Approved'"
+          >v{{ r.version }}.0 · {{ r.status }}</span
+        >
+      </div>
+      <div class="assessment-meta">
+        <span
+          >Current risk level:
+          <span
+            [class]="'badge ' + level(r.residualLikelihood * r.residualSeverity).toLowerCase()"
+            >{{ level(r.residualLikelihood * r.residualSeverity) }}</span
+          ></span
+        ><span>Assessment: {{ r.date | date: 'dd/MM/yyyy' }}</span
+        ><span>Next review: {{ r.review ? (r.review | date: 'dd/MM/yyyy') : 'Not set' }}</span>
+      </div>
+      <nav class="subnav" aria-label="Assessment sections">
+        @for (t of assessmentTabs; track t) {
+          <button [class.active]="tab() === t" (click)="tab.set(t)">{{ t }}</button>
+        }
+      </nav>
+      @if (r.status === 'Approved') {
+        <div class="notice">
+          This approved version is preserved.<button
+            [disabled]="!canCreate() || saving()"
+            (click)="review()"
+          >
+            Start new review
+          </button>
+        </div>
+      }
+      <fieldset [disabled]="saving() || (!editable && tab() !== 'Linked records')">
+        @switch (tab()) {
+          @case ('General details') {
+            <h3 class="section-bar">Service User Details</h3>
+            <dl class="details-list">
+              @for (detail of personDetails; track detail[0]) {
+                <dt>{{ detail[0] }}</dt>
+                <dd>{{ detail[1] || 'Not recorded' }}</dd>
+              }
+            </dl>
+            <h3 class="section-bar">Assessment Details</h3>
+            <div class="form-grid">
+              <label
+                >Assessment type<select [(ngModel)]="r.fields['assessmentType']">
+                  <option value="">Select assessment type</option>
+                  <option>New Assessment</option>
+                  <option>Scheduled Review</option>
+                  <option>Event-triggered Review</option>
+                </select></label
+              >
+              <label>Assessment date<input type="date" [(ngModel)]="r.date" /></label>
+              <label
+                >Review date<input
+                  type="date"
+                  [class.invalid]="fieldErrors()['review']"
+                  [attr.aria-invalid]="!!fieldErrors()['review']"
+                  [(ngModel)]="r.review"
+                  [min]="r.date"
+              /></label>
+            </div>
+            <h3 class="section-bar">Assessor Details</h3>
+            <div class="form-grid">
+              <label
+                >Name<input
+                  [(ngModel)]="r.fields['assessorName']"
+                  [placeholder]="r.author || 'Assessor name'"
+              /></label>
+              <label>Designation<input [(ngModel)]="r.fields['designation']" /></label>
+              <label
+                >Signature<input
+                  [(ngModel)]="r.fields['signature']"
+                  placeholder="Type assessor name"
+              /></label>
+            </div>
+          }
+          @case ('Risk analysis') {
+            <div class="panel-title">
+              <h3>Identified Risks and Controls</h3>
+              <button (click)="addHandlingRisk()">
+                <span class="material-symbols-outlined" aria-hidden="true">add</span>Add identified
+                risk
+              </button>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Task / Activity</th>
+                    <th>Risk Identified</th>
+                    <th>Risk Level</th>
+                    <th>Existing Controls</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of r.handlingRisks; track item.id; let i = $index) {
+                    <tr>
+                      <td>
+                        <input aria-label="Handling task or activity" [(ngModel)]="item.task" />
+                      </td>
+                      <td>
+                        <textarea
+                          aria-label="Handling risk identified"
+                          rows="3"
+                          [(ngModel)]="item.risk"
+                        ></textarea>
+                      </td>
+                      <td>
+                        <select aria-label="Handling risk level" [(ngModel)]="item.level">
+                          @for (l of levels; track l) {
+                            <option>{{ l }}</option>
+                          }
+                        </select>
+                      </td>
+                      <td>
+                        <textarea
+                          aria-label="Handling existing controls"
+                          rows="3"
+                          [(ngModel)]="item.controls"
+                        ></textarea>
+                      </td>
+                      <td>
+                        <button
+                          class="icon-button"
+                          aria-label="Remove identified handling risk"
+                          (click)="r.handlingRisks!.splice(i, 1)"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                        </button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="5" class="empty-cell">No task-specific risks recorded.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <h3 class="section-bar">Additional Actions</h3>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Action</th>
+                    <th>Owner</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (a of r.actions; track a.id) {
+                    <tr>
+                      <td>{{ a.text }}</td>
+                      <td>{{ a.owner }}</td>
+                      <td>{{ a.due | date: 'dd/MM/yyyy' }}</td>
+                      <td>{{ a.status }}</td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="4" class="empty-cell">No additional actions recorded.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <button (click)="tab.set('Action plan')">Manage additional actions →</button>
+          }
+          @case ('Assessment') {
+            <h3 class="section-bar">Assessment Details</h3>
+            <div class="form-grid">
+              <label
+                >Risk domain
+                @if (r.domain === 'General') {
+                  <select [ngModel]="r.domain" (ngModelChange)="changeDomain($event)">
+                    @for (d of domains; track d[0]) {
+                      <option>{{ d[0] }}</option>
+                    }
+                  </select>
+                } @else {
+                  <input [value]="r.domain" readonly />
+                }</label
+              ><label
+                >Specific risk <span class="required">*</span
+                ><input
+                  [class.invalid]="fieldErrors()['specific']"
+                  [attr.aria-invalid]="!!fieldErrors()['specific']"
+                  [(ngModel)]="r.specific"
+                  placeholder="Describe the specific risk" /></label
+              ><label
+                >Assessment date <span class="required">*</span
+                ><input type="date" [(ngModel)]="r.date" /></label
+              ><label
+                >Next review date <span class="required">*</span
+                ><input
+                  type="date"
+                  [class.invalid]="fieldErrors()['review']"
+                  [attr.aria-invalid]="!!fieldErrors()['review']"
+                  [(ngModel)]="r.review"
+                  [min]="r.date"
+              /></label>
+            </div>
+            <h3>Who may be harmed? <span class="required">*</span></h3>
+            <div class="checks">
+              @for (p of harmed; track p) {
+                <label
+                  ><input
+                    type="checkbox"
+                    [checked]="r.harmed.includes(p)"
+                    (change)="toggle(r.harmed, p)"
+                  />{{ p }}</label
+                >
+              }
+            </div>
+            @if (r.domain === 'Moving & Handling' || r.domain === 'Falls & Mobility') {
+              <h3 class="section-bar">Part 1 – Mobility Checklist</h3>
+              <p class="muted">
+                Select one support level per task and record the equipment, technique and
+                instructions required.
+              </p>
+              <div class="table-scroll">
+                <table class="handling-table">
+                  <thead>
+                    <tr>
+                      <th>Task</th>
+                      @for (a of assistance; track a) {
+                        <th>{{ a }}</th>
+                      }
+                      <th>Equipment</th>
+                      <th>Technique / instructions</th>
+                      <th>Comments</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (task of r.tasks; track task.task) {
+                      <tr>
+                        <td>{{ task.task }}</td>
+                        @for (a of assistance; track a) {
+                          <td>
+                            <input
+                              type="radio"
+                              [name]="task.task"
+                              [value]="a"
+                              [(ngModel)]="task.support"
+                              [attr.aria-label]="task.task + ': ' + a"
+                            />
+                          </td>
+                        }
+                        <td>
+                          <input
+                            [(ngModel)]="task.equipment"
+                            [attr.aria-label]="task.task + ' equipment'"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            [(ngModel)]="task.technique"
+                            [attr.aria-label]="task.task + ' technique'"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            [(ngModel)]="task.notes"
+                            [attr.aria-label]="task.task + ' comments'"
+                          />
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <h3 class="section-bar">Part 2 – Additional Details</h3>
+            } @else {
+              <h3 class="section-bar">{{ r.domain }} Profile</h3>
+            }
+            @if (checkOptions.length) {
+              <div class="checks check-grid">
+                @for (option of checkOptions; track option) {
+                  <label
+                    ><input
+                      type="checkbox"
+                      [checked]="r.checks.includes(option)"
+                      (change)="toggle(r.checks, option)"
+                    />{{ option }}</label
+                  >
+                }
+              </div>
+            }
+            <div class="form-grid">
+              @for (field of domainFields; track field[0]) {
+                <label
+                  >{{ field[1]
+                  }}<textarea
+                    rows="3"
+                    [readOnly]="field[0] === 'bmi'"
+                    [(ngModel)]="r.fields[field[0]]"
+                    (ngModelChange)="updateBmi()"
+                  ></textarea>
+                </label>
+              }
+            </div>
+            @if (r.domain === 'Behaviour / PBS') {
+              <div class="support-stages">
+                @for (
+                  stage of [
+                    ['green', 'GREEN · Baseline', 'baseline'],
+                    ['amber', 'AMBER · Early escalation', 'deescalation'],
+                    ['red', 'RED · Crisis', 'crisis'],
+                    ['blue', 'RECOVERY · Post-incident', 'recovery'],
+                  ];
+                  track stage[0]
+                ) {
+                  <article [class]="'support-stage ' + stage[0]">
+                    <h3>{{ stage[1] }}</h3>
+                    <p>
+                      {{ r.fields[stage[2]] || 'Record individual support guidance above.' }}
+                    </p>
+                  </article>
+                }
+              </div>
+              <div class="guidance-grid">
+                <article class="should">
+                  <h3>What carers SHOULD do</h3>
+                  <ul>
+                    @for (line of lineItems(r.fields['should']); track $index) {
+                      <li>{{ line }}</li>
+                    } @empty {
+                      <li>Record approved guidance in the fields above.</li>
+                    }
+                  </ul>
+                </article>
+                <article class="must-not">
+                  <h3>What carers MUST NOT do</h3>
+                  <ul>
+                    @for (line of lineItems(r.fields['mustNot']); track $index) {
+                      <li>{{ line }}</li>
+                    } @empty {
+                      <li>Record individual restrictions in the fields above.</li>
+                    }
+                  </ul>
+                </article>
+              </div>
+            }
+            <h3 class="section-bar">Risk, Controls & Carer Guidance</h3>
+            <div class="form-grid">
+              @for (field of commonFields; track field[0]) {
+                <label [class.full-width]="field[0] === 'description'"
+                  >{{ field[1] }}
+                  <span class="required">{{ field[0] !== 'circumstances' ? '*' : '' }}</span
+                  ><textarea
+                    rows="3"
+                    [readOnly]="field[0] === 'bmi'"
+                    [(ngModel)]="r.fields[field[0]]"
+                    (ngModelChange)="updateBmi()"
+                  ></textarea>
+                </label>
+              }
+            </div>
+          }
+          @case ('Risk rating') {
+            <h3 class="section-bar">Risk Assessment – Likelihood × Severity</h3>
+            <div class="rating-grid">
+              @for (kind of ['initial', 'residual']; track kind) {
+                <section class="rating-card">
+                  <h3>
+                    {{
+                      kind === 'initial'
+                        ? 'Initial Risk (Before Controls)'
+                        : 'Residual Risk (After Controls)'
+                    }}
+                  </h3>
+                  <label
+                    >Likelihood<select
+                      [ngModel]="kind === 'initial' ? r.likelihood : r.residualLikelihood"
+                      (ngModelChange)="
+                        kind === 'initial'
+                          ? (r.likelihood = +$event)
+                          : (r.residualLikelihood = +$event)
+                      "
+                    >
+                      @for (v of likelihood; track v; let i = $index) {
+                        <option [ngValue]="i + 1">{{ i + 1 }} – {{ v }}</option>
+                      }
+                    </select></label
+                  ><label
+                    >Severity<select
+                      [ngModel]="kind === 'initial' ? r.severity : r.residualSeverity"
+                      (ngModelChange)="
+                        kind === 'initial' ? (r.severity = +$event) : (r.residualSeverity = +$event)
+                      "
+                    >
+                      @for (v of severity; track v; let i = $index) {
+                        <option [ngValue]="i + 1">{{ i + 1 }} – {{ v }}</option>
+                      }
+                    </select></label
+                  >
+                  <div class="score">
+                    <span>Risk score</span
+                    ><strong
+                      [class]="
+                        'badge ' +
+                        level(
+                          kind === 'initial'
+                            ? r.likelihood * r.severity
+                            : r.residualLikelihood * r.residualSeverity
+                        ).toLowerCase()
+                      "
+                      >{{
+                        kind === 'initial'
+                          ? r.likelihood * r.severity
+                          : r.residualLikelihood * r.residualSeverity
+                      }}
+                      –
+                      {{
+                        level(
+                          kind === 'initial'
+                            ? r.likelihood * r.severity
+                            : r.residualLikelihood * r.residualSeverity
+                        )
+                      }}</strong
+                    >
+                  </div>
+                </section>
+              }
+            </div>
+            <p class="muted">Risk levels: 1–4 Low · 5–9 Medium · 10–15 High · 16–25 Critical</p>
+            <label
+              >Scoring rationale<textarea
+                rows="4"
+                [(ngModel)]="r.fields['rationale']"
+                placeholder="Explain the likelihood, severity and effect of the controls"
+              ></textarea>
+            </label>
+          }
+          @case ('Action plan') {
+            <div class="panel-title">
+              <h3>Additional Actions Required</h3>
+              <button (click)="addAction()">
+                <span class="material-symbols-outlined" aria-hidden="true">add</span>Add action
+              </button>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Action</th>
+                    <th>Owner</th>
+                    <th>Due date</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (a of r.actions; track a.id; let i = $index) {
+                    <tr>
+                      <td>
+                        <textarea
+                          aria-label="Action required"
+                          rows="2"
+                          [(ngModel)]="a.text"
+                        ></textarea>
+                      </td>
+                      <td><input aria-label="Action owner" [(ngModel)]="a.owner" /></td>
+                      <td>
+                        <input aria-label="Action due date" type="date" [(ngModel)]="a.due" />
+                      </td>
+                      <td>
+                        <select aria-label="Action status" [(ngModel)]="a.status">
+                          <option>Open</option>
+                          <option>In progress</option>
+                          <option>Completed</option>
+                        </select>
+                      </td>
+                      <td>
+                        <button
+                          class="icon-button"
+                          aria-label="Remove action"
+                          (click)="r.actions.splice(i, 1)"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                        </button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="5" class="empty-cell">No additional actions recorded.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <h3 class="section-bar">Review Triggers</h3>
+            <p class="muted">Review after significant events as well as on the scheduled date.</p>
+            <div class="checks check-grid">
+              @for (trigger of triggers; track trigger) {
+                <label
+                  ><input
+                    type="checkbox"
+                    [checked]="r.triggers.includes(trigger)"
+                    (change)="toggle(r.triggers, trigger)"
+                  />{{ trigger }}</label
+                >
+              }
+            </div>
+            <label
+              >Additional review instructions<textarea
+                rows="3"
+                [(ngModel)]="r.fields['reviewInstructions']"
+              ></textarea>
+            </label>
+          }
+          @case ('Linked records') {
+            <h3 class="section-bar">Related Care Plan</h3>
+            <label
+              >Linked care-plan section<select [disabled]="!editable" [(ngModel)]="r.careArea">
+                <option value="">Select care-plan section</option>
+                @for (area of careAreas; track area) {
+                  <option>{{ area }}</option>
+                }
+              </select></label
+            >
+            <p class="muted">
+              The link provides context. Review and update the care plan separately when controls
+              change.
+            </p>
+            @if (r.voice_note_id) {
+              <h3 class="section-bar">Voice review source</h3>
+              <p class="muted">{{ r.voice_transcript }}</p>
+              @if (r.voice_audio) {
+                <button [disabled]="!api.can('export')" (click)="downloadVoice()">
+                  Download retained audio
+                </button>
+              }
+            }
+            <h3 class="section-bar">Related Incidents</h3>
+            <div class="checks check-grid">
+              @for (incident of incidents(); track incident.id) {
+                <label
+                  ><input
+                    type="checkbox"
+                    [disabled]="!editable"
+                    [checked]="r.incidentIds.includes(incident.id)"
+                    (change)="toggle(r.incidentIds, incident.id)"
+                  />{{ incident.name }} · {{ incident.date | date: 'dd/MM/yyyy' }}</label
+                >
+              } @empty {
+                <p class="muted">
+                  Incident linking is unavailable until incident records are connected to a backend
+                  source.
+                </p>
+              }
+            </div>
+            <h3 class="section-bar">Supporting Documents</h3>
+            <div class="checks check-grid">
+              @for (doc of documents(); track doc.id) {
+                <label
+                  ><input
+                    type="checkbox"
+                    [disabled]="!editable"
+                    [checked]="r.documentIds.includes(doc.id)"
+                    (change)="toggle(r.documentIds, doc.id)"
+                  />{{ doc.name }}</label
+                >
+              } @empty {
+                <p class="muted">No supporting documents available.</p>
+              }
+            </div>
+          }
+          @case ('Review & approval') {
+            <h3 class="section-bar">Review Summary</h3>
+            <label
+              >Review outcome<textarea
+                rows="4"
+                [(ngModel)]="r.fields['outcome']"
+                placeholder="Record changes, the effectiveness of controls and the outcome of this review"
+              ></textarea>
+            </label>
+            <h3 class="section-bar">Visibility Controls</h3>
+            <p class="muted">
+              Senior management only. Sharing applies to approved carer guidance; sensitive
+              assessment details stay internal.
+            </p>
+            <div class="visibility-controls">
+              @for (
+                v of [
+                  ['staff', 'Show to Staff / Carers'],
+                  ['family', 'Show to Family Portal'],
+                  ['inspector', 'Show to Inspector Portal'],
+                ];
+                track v[0]
+              ) {
+                <label
+                  ><span>{{ v[1] }}</span
+                  ><input
+                    type="checkbox"
+                    role="switch"
+                    [disabled]="!manager() || !editable"
+                    [ngModel]="$any(r.visibility)[v[0]]"
+                    (ngModelChange)="$any(r.visibility)[v[0]] = $event"
+                /></label>
+              }
+            </div>
+            <h3 class="section-bar">Version Control</h3>
+            <dl class="details-list">
+              <dt>Current version</dt>
+              <dd>v{{ r.version }}.0 · {{ r.status }}</dd>
+              <dt>Author</dt>
+              <dd>{{ r.author || 'Recorded on first save' }}</dd>
+              <dt>Approver</dt>
+              <dd>{{ r.approver || 'Awaiting management approval' }}</dd>
+              <dt>Approved at</dt>
+              <dd>
+                {{ r.approvedAt ? (r.approvedAt | date: 'dd/MM/yyyy, HH:mm') : '—' }}
+              </dd>
+            </dl>
+          }
+        }
+      </fieldset>
+      @if (tab() === 'Linked records') {
+        <div class="actions related-links">
+          <a [routerLink]="bodyLink()">Open Care Plan →</a
+          ><a [routerLink]="['/manage/clients', id(), 'incidents']">Incidents →</a
+          ><a [routerLink]="['/manage/clients', id(), 'medication']">Medication / eMAR →</a
+          ><a [routerLink]="bodyLink()" [queryParams]="{ view: 'body' }">Body Chart →</a
+          ><a [routerLink]="['/manage/clients', id(), 'visit-notes']">Visit Notes →</a>
+        </div>
+      }
+      @if (api.can('edit') || api.can('approve') || api.can('create')) {
+        <div class="assessment-footer">
+          <label class="reason"
+            >Reason for change <span class="required">*</span
+            ><input
+              [disabled]="saving()"
+              [(ngModel)]="reason"
+              placeholder="Record why this assessment is being updated"
+          /></label>
+          <div class="actions">
+            @if (editable) {
+              <button (click)="save()">Save as Draft</button
+              ><button class="primary" (click)="save('In review')">
+                Submit for Review<span class="material-symbols-outlined" aria-hidden="true"
+                  >arrow_forward</span
+                >
+              </button>
+            }
+            @if (r.status === 'In review' && manager()) {
+              <button [disabled]="saving()" (click)="save('Draft')">Return to Draft</button
+              ><button
+                class="primary"
+                [disabled]="saving() || r.authorId === api.auth.currentUser()?.id"
+                (click)="save('Approved')"
+              >
+                Approve Assessment
+              </button>
+            }
+          </div>
+        </div>
+        @if (r.status === 'In review') {
+          <p class="muted">
+            A different authorised manager must review and approve. Return to draft to edit.
+          </p>
+        }
+      }
+    </section>
+  }
+</ng-template>
+<ng-template #editorPopup>
+  <div class="dialog-heading">
+    <div>
+      <p class="dialog-eyebrow">SERVICE USER</p>
+      <h2>Risk assessment</h2>
+    </div>
+    <button aria-label="Close risk assessment" [disabled]="saving()" (click)="cancelEditor()">
+      ×
+    </button>
+  </div>
+  <mat-dialog-content class="risk-dialog-body">
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+      @for (field of errorFields(); track field) {
+        <p class="error">{{ field }}: {{ fieldErrors()[field].join('; ') }}</p>
+      }
+    }
+    <ng-container [ngTemplateOutlet]="assessmentForm" />
+  </mat-dialog-content>
+</ng-template>

@@ -23,17 +23,7 @@ export const RISK_DOMAINS = [
   ['Equipment Safety', 'medical_services'],
   ['Other condition-specific risks', 'clinical_notes'],
 ] as const;
-export const DESIGNED_DOMAINS: readonly string[] = [
-  'General',
-  'Falls & Mobility',
-  'Moving & Handling',
-  'Mental Health',
-  'Behaviour / PBS',
-  'Medication',
-  'Substance / Alcohol',
-  'Community / Outreach',
-  'Environmental / Fire',
-];
+export const DESIGNED_DOMAINS: readonly string[] = RISK_DOMAINS.map((d) => d[0]);
 export const HANDLING_TASKS = [
   'Turning in bed',
   'Rolling in bed',
@@ -101,6 +91,10 @@ export interface HandlingRisk {
   controls: string;
 }
 export interface RiskAssessment {
+  voice_transcript?: string;
+  voice_audio?: boolean;
+  voice_note_id?: string | null;
+  review_decision_id?: string | null;
   id: string;
   groupId: string;
   version: number;
