@@ -461,10 +461,10 @@ export class ServiceUsersApi {
       if (this.current(scope) && generation === this.generation) this.loading.set(false);
     }
   }
-  async detail(id: string): Promise<void> {
+  async detail(id: string, retainCurrent = false): Promise<void> {
     const scope = this.scope(),
       generation = ++this.detailGeneration;
-    this.selected.set(null);
+    if (!retainCurrent || this.selected()?.id !== id) this.selected.set(null);
     this.error.set('');
     this.detailLoading.set(true);
     try {
@@ -478,10 +478,12 @@ export class ServiceUsersApi {
       this.selected.set(row);
       if (row.photo_id) void this.loadPhoto(row, scope, () => generation === this.detailGeneration);
     } catch (error) {
-      if (this.current(scope) && generation === this.detailGeneration)
+      if (this.current(scope) && generation === this.detailGeneration) {
+        this.selected.set(null);
         this.error.set(
           error instanceof Error ? error.message : 'This service user is unavailable.',
         );
+      }
     } finally {
       if (this.current(scope) && generation === this.detailGeneration)
         this.detailLoading.set(false);

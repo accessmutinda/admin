@@ -38,8 +38,10 @@ import { CompanyUnavailable } from '../shared/company-unavailable';
       <cv-care-header
         [client]="client"
         [active]="section()"
-        [printManaged]="section() === 'journal'"
-        [printBusy]="journalService.printBusy()"
+        [printManaged]="true"
+        [printBusy]="
+          section() === 'journal' ? journalService.printBusy() : communicationsPrintBusy()
+        "
         (printRequested)="printJournal()"
       />
       @if (section() === 'journal') {
@@ -47,9 +49,9 @@ import { CompanyUnavailable } from '../shared/company-unavailable';
       } @else {
         <cv-portal-communications />
       }
-    } @else if (section() === 'journal' && records.detailLoading()) {
+    } @else if (records.detailLoading()) {
       <cv-page-loading url="/manage/clients" />
-    } @else if (section() === 'journal' && records.error()) {
+    } @else if (records.error()) {
       <cv-company-unavailable [message]="records.error()" (retry)="records.detail(context.id())" />
     } @else {
       <p class="care-empty">Service user unavailable or access restricted.</p>
@@ -67,6 +69,10 @@ export class CareCommunications {
   private readonly toast = inject(ToastService);
   protected async printJournal(): Promise<void> {
     try {
+      if (this.section() !== 'journal') {
+        await this.communications()?.print();
+        return;
+      }
       await this.journalService.preparePrint();
       this.changeDetector.detectChanges();
       window.print();
@@ -78,19 +84,18 @@ export class CareCommunications {
   }
   protected readonly records = inject(ServiceUsersApi);
   protected readonly client = computed(() =>
-    this.section() === 'journal'
-      ? this.records.selected()?.id === this.context.id()
-        ? this.records.selected()
-        : null
-      : this.context.client(),
+    this.records.selected()?.id === this.context.id() ? this.records.selected() : null,
   );
+  protected communicationsPrintBusy(): boolean {
+    return this.communications()?.printBusy() ?? false;
+  }
   constructor() {
     effect(() => {
       const section = this.section(),
         id = this.context.id(),
         scope = this.records.scope();
       untracked(() => {
-        if (section === 'journal' && id) void this.records.detail(id);
+        if (id) void this.records.detail(id);
       });
     });
   }

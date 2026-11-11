@@ -3,7 +3,7 @@ import { JournalAttachment } from '../journal/journal.models';
 @Component({
   selector: 'cv-portal-evidence',
   template: `<div class="evidence">
-    @if (!readonly()) {
+    @if (!readonly() && uploadEnabled()) {
       <label class="evidence-upload" (dragover)="$event.preventDefault()" (drop)="drop($event)"
         ><span class="material-symbols-outlined" aria-hidden="true">attach_file</span
         >{{ busy() ? 'Reading files…' : 'Attach evidence' }}<small>Up to 5 MB total</small
@@ -20,7 +20,7 @@ import { JournalAttachment } from '../journal/journal.models';
     }
     @for (file of files(); track file.id) {
       <div class="evidence-file">
-        <button type="button" (click)="download(file)">
+        <button type="button" [disabled]="!downloadEnabled()" (click)="download(file)">
           <span class="material-symbols-outlined" aria-hidden="true">description</span
           ><span
             >{{ file.name }}<small>{{ (file.size / 1024).toFixed(1) }} KB</small></span
@@ -115,6 +115,8 @@ export class PortalEvidence {
   readonly filesChange = output<JournalAttachment[]>();
   readonly loading = output<boolean>();
   readonly readonly = input(false);
+  readonly downloadEnabled = input(true);
+  readonly uploadEnabled = input(true);
   readonly uploadHandler = input<((file: File) => Promise<JournalAttachment>) | null>(null);
   readonly downloadHandler = input<((file: JournalAttachment) => Promise<void>) | null>(null);
   protected readonly busy = signal(false);
@@ -130,7 +132,7 @@ export class PortalEvidence {
     await this.addFiles(Array.from(event.dataTransfer?.files ?? []));
   }
   private async addFiles(selected: File[]): Promise<void> {
-    if (!selected.length || this.busy() || this.readonly()) return;
+    if (!selected.length || this.busy() || this.readonly() || !this.uploadEnabled()) return;
     if (
       selected.reduce(
         (s, f) => s + f.size,
@@ -195,8 +197,8 @@ export class PortalEvidence {
       a.download = file.name;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      this.error.set('This file could not be downloaded.');
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : 'This file could not be downloaded.');
     }
   }
 }

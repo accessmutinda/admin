@@ -84,7 +84,8 @@ export class CareHeader {
     return (
       this.access.can('care', 'records', 'export') &&
       (this.active() !== 'journal' || this.access.can('care', 'recording', 'export')) &&
-      (this.active() !== 'medication' || this.access.can('care', 'medication', 'export'))
+      (this.active() !== 'medication' || this.access.can('care', 'medication', 'export')) &&
+      (this.active() !== 'communications' || this.access.can('care', 'communications', 'export'))
     );
   }
   protected printProfile(): void {

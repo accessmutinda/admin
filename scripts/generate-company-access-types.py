@@ -120,3 +120,8 @@ medication_names = [name for name in schemas if name.startswith('Medication') or
 medication_target = root / 'src/app/features/management/care/medication.generated.ts'
 medication_target.write_text('// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.\n\n'+'\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in medication_names)+'\n')
 subprocess.run(['npx','prettier','--write',str(medication_target)],cwd=root,check=True,capture_output=True)
+
+professional_names = [name for name in schemas if name.startswith('Professional')]
+professional_target = root / 'src/app/features/management/staff-portal/professional.generated.ts'
+professional_target.write_text('// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.\n\n'+'\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in professional_names)+'\n')
+subprocess.run(['npx','prettier','--write',str(professional_target)],cwd=root,check=True,capture_output=True)

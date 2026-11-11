@@ -110,3 +110,26 @@
   background: #fff6db;
   color: #b28522;
 }
+
+.professional-form-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+.professional-popup .su-dialog-heading {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.professional-popup .su-dialog-heading h2 {
+  flex: 1;
+}
+.professional-popup .su-dialog-content {
+  overflow: auto;
+}
+.professional-form-fields [aria-invalid='true'] {
+  border-color: #d62b41;
+}
