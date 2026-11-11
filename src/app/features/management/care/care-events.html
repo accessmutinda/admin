@@ -10,7 +10,15 @@
   <div class="care-heading event-heading">
     <div>
       <h1>{{ page() === 'feedback' ? 'Reviews & Feedback' : 'Incidents & Complaints' }}</h1>
-      <p>Record what happened, document follow-up and retain a clear history for {{ c.name }}.</p>
+      <p>
+        {{
+          page() === 'feedback'
+            ? 'Manage reviews, compliments, suggestions and concerns for ' + c.name + '.'
+            : 'Record what happened, document follow-up and retain a clear history for ' +
+              c.name +
+              '.'
+        }}
+      </p>
     </div>
     @if (api.can('create')) {
       <button
@@ -40,7 +48,7 @@
         <div>
           <h2>{{ metric.label }}</h2>
           <strong>{{ api.loading() || api.error() ? '—' : metric.value }}</strong>
-          <p>Current category · all dates</p>
+          <p>{{ metricNote(metric.label) }}</p>
         </div>
         <span class="material-symbols-outlined" aria-hidden="true">{{ metric.icon }}</span>
       </article>
@@ -69,7 +77,10 @@
             <span class="material-symbols-outlined" aria-hidden="true">forum</span>Complaints
           </button>
         } @else {
-          <h2>Reviews & Feedback register</h2>
+          <h2 class="feedback-register-title">
+            <span class="material-symbols-outlined" aria-hidden="true">reviews</span>Feedback
+            register
+          </h2>
         }
       </nav>
       <button
@@ -83,6 +94,7 @@
     <div class="event-filters">
       <label class="event-search"
         >Search records<input
+          [disabled]="printing()"
           type="search"
           [ngModel]="search()"
           (ngModelChange)="search.set($event); pageNumber.set(1)"
@@ -90,6 +102,7 @@
       /></label>
       <label
         >Status<mat-select
+          [disabled]="printing()"
           cvSelect
           aria-label="Filter by status"
           [ngModel]="status()"
@@ -100,27 +113,49 @@
           }
         </mat-select></label
       >
-      <label
-        >Risk level<mat-select
-          cvSelect
-          aria-label="Filter by risk level"
-          [ngModel]="level()"
-          (ngModelChange)="level.set($event); pageNumber.set(1)"
-          ><mat-option value="">All levels</mat-option>
-          @for (s of ['Low', 'Medium', 'High']; track s) {
-            <mat-option [value]="s">{{ s }}</mat-option>
-          }
-        </mat-select></label
-      >
-      <button class="care-button" (click)="clearFilters()">Clear filters</button>
+      @if (page() === 'feedback') {
+        <label
+          >Feedback type<mat-select
+            [disabled]="printing()"
+            cvSelect
+            aria-label="Filter by feedback type"
+            [ngModel]="feedbackType()"
+            (ngModelChange)="feedbackType.set($event); pageNumber.set(1)"
+            ><mat-option value="">All types</mat-option>
+            @for (t of feedbackTypes; track t) {
+              <mat-option [value]="t">{{ t }}</mat-option>
+            }
+          </mat-select></label
+        >
+      } @else {
+        <label
+          >Risk level<mat-select
+            [disabled]="printing()"
+            cvSelect
+            aria-label="Filter by risk level"
+            [ngModel]="level()"
+            (ngModelChange)="level.set($event); pageNumber.set(1)"
+            ><mat-option value="">All levels</mat-option>
+            @for (s of ['Low', 'Medium', 'High']; track s) {
+              <mat-option [value]="s">{{ s }}</mat-option>
+            }
+          </mat-select></label
+        >
+      }
+      <button class="care-button" [disabled]="printing()" (click)="clearFilters()">
+        Clear filters
+      </button>
     </div>
     <div class="care-scroll" role="region" aria-label="Service user records" tabindex="0">
       <table class="care-table event-table">
         <thead>
           <tr>
             <th scope="col">Record</th>
+            @if (page() === 'feedback') {
+              <th scope="col">Feedback type</th>
+            }
             <th scope="col">Date</th>
-            <th scope="col">Risk level</th>
+            <th scope="col">{{ page() === 'feedback' ? 'Rating' : 'Risk level' }}</th>
             <th scope="col">Status</th>
             <th scope="col">Last updated</th>
             <th scope="col">Actions</th>
@@ -138,16 +173,39 @@
                   {{ entry.name }}
                 </button>
                 <p class="event-excerpt">{{ entry.detail }}</p>
+                @if (page() === 'feedback') {
+                  <small class="feedback-source"
+                    >From: {{ entry.receivedFrom || 'Not recorded' }}</small
+                  >
+                }
               </td>
+              @if (page() === 'feedback') {
+                <td>
+                  <span class="event-badge" [attr.data-feedback-type]="entry.feedbackType">{{
+                    entry.feedbackType || 'Not recorded'
+                  }}</span>
+                </td>
+              }
               <td>{{ calendarDate(entry.date) }}</td>
-              <td>
-                <span
-                  class="event-badge"
-                  [class.high]="entry.level === 'High'"
-                  [class.medium]="entry.level === 'Medium'"
-                  >{{ entry.level }}</span
-                >
-              </td>
+              @if (page() === 'feedback') {
+                <td>
+                  <span class="feedback-rating" [class.unrated]="entry.rating == null"
+                    ><span class="material-symbols-outlined" aria-hidden="true">{{
+                      entry.rating == null ? 'star_border' : 'star'
+                    }}</span
+                    >{{ ratingText(entry.rating) }}</span
+                  >
+                </td>
+              } @else {
+                <td>
+                  <span
+                    class="event-badge"
+                    [class.high]="entry.level === 'High'"
+                    [class.medium]="entry.level === 'Medium'"
+                    >{{ entry.level }}</span
+                  >
+                </td>
+              }
               <td>
                 <span
                   class="event-badge"
@@ -203,13 +261,13 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="6" class="event-empty">
+              <td [attr.colspan]="page() === 'feedback' ? 7 : 6" class="event-empty">
                 {{
                   api.loading()
                     ? 'Loading records…'
                     : api.error()
                       ? 'Records are unavailable.'
-                      : search() || status() || level()
+                      : search() || status() || level() || feedbackType()
                         ? 'No records match these filters.'
                         : 'No ' + label() + ' records have been added.'
                 }}
@@ -224,13 +282,13 @@
       <nav aria-label="Record pages">
         <button
           class="care-button"
-          [disabled]="currentPage() === 1"
+          [disabled]="printing() || currentPage() === 1"
           (click)="pageNumber.set(currentPage() - 1)"
         >
           Previous</button
         ><button
           class="care-button"
-          [disabled]="currentPage() === pageCount()"
+          [disabled]="printing() || currentPage() === pageCount()"
           (click)="pageNumber.set(currentPage() + 1)"
         >
           Next
@@ -262,13 +320,21 @@
           <h2 id="event-dialog-title">
             {{
               mode() === 'remove'
-                ? 'Remove record'
+                ? page() === 'feedback'
+                  ? 'Remove feedback'
+                  : 'Remove record'
                 : mode() === 'history'
-                  ? 'Record history'
+                  ? page() === 'feedback'
+                    ? 'Feedback history'
+                    : 'Record history'
                   : mode() === 'view'
-                    ? 'Record details'
+                    ? page() === 'feedback'
+                      ? 'Feedback details'
+                      : 'Record details'
                     : selected()
-                      ? 'Edit record'
+                      ? page() === 'feedback'
+                        ? 'Edit feedback'
+                        : 'Edit record'
                       : 'New ' + label()
             }}
           </h2>
@@ -292,6 +358,7 @@
         <form class="note-editor" (ngSubmit)="save()">
           <label
             >Title *<input
+              [disabled]="busy()"
               name="name"
               [(ngModel)]="draft.name"
               required
@@ -304,6 +371,7 @@
           </label>
           <label
             >Date *<input
+              [disabled]="busy()"
               type="date"
               name="date"
               [(ngModel)]="draft.date"
@@ -315,20 +383,45 @@
               <small class="care-error">{{ fieldErrors()['date'].join(' ') }}</small>
             }
           </label>
-          <label
-            >Risk level<mat-select
-              cvSelect
-              aria-label="Record risk level"
-              name="level"
-              [(ngModel)]="draft.level"
-            >
-              @for (s of ['Low', 'Medium', 'High']; track s) {
-                <mat-option [value]="s">{{ s }}</mat-option>
+          @if (page() === 'feedback') {
+            <label
+              >Feedback type<mat-select
+                [disabled]="busy()"
+                cvSelect
+                name="feedbackType"
+                aria-label="Feedback type"
+                [ngModel]="draft.feedbackType"
+                (ngModelChange)="chooseFeedbackType($event)"
+              >
+                @if (!draft.feedbackType) {
+                  <mat-option value="">Not recorded</mat-option>
+                }
+                @for (t of feedbackTypes; track t) {
+                  <mat-option [value]="t">{{ t }}</mat-option>
+                }
+              </mat-select>
+              @if (fieldErrors()['feedbackType']) {
+                <small class="care-error">{{ fieldErrors()['feedbackType'].join(' ') }}</small>
               }
-            </mat-select></label
-          >
+            </label>
+          } @else {
+            <label
+              >Risk level<mat-select
+                [disabled]="busy()"
+                cvSelect
+                aria-label="Record risk level"
+                name="level"
+                [(ngModel)]="draft.level"
+              >
+                @for (s of ['Low', 'Medium', 'High']; track s) {
+                  <mat-option [value]="s">{{ s }}</mat-option>
+                }
+              </mat-select></label
+            >
+          }
           <label
             >Status<mat-select
+              [disabled]="busy()"
               cvSelect
               aria-label="Record status"
               name="status"
@@ -339,8 +432,43 @@
               }
             </mat-select></label
           >
+          @if (page() === 'feedback') {
+            <label [class.full-width]="draft.feedbackType !== 'Review'"
+              >Received from<input
+                [disabled]="busy()"
+                name="receivedFrom"
+                [(ngModel)]="draft.receivedFrom"
+                maxlength="200"
+                placeholder="Service user, relative or representative"
+                [attr.aria-invalid]="fieldErrors()['receivedFrom'] ? true : null"
+              /><small>Record who provided the feedback, if known.</small>
+              @if (fieldErrors()['receivedFrom']) {
+                <small class="care-error">{{ fieldErrors()['receivedFrom'].join(' ') }}</small>
+              }
+            </label>
+            @if (draft.feedbackType === 'Review') {
+              <label
+                >Review rating<mat-select
+                  [disabled]="busy()"
+                  cvSelect
+                  name="rating"
+                  aria-label="Review rating"
+                  [(ngModel)]="draft.rating"
+                  ><mat-option [value]="null">Not rated</mat-option>
+                  @for (r of [1, 2, 3, 4, 5]; track r) {
+                    <mat-option [value]="r">{{ r }} / 5</mat-option>
+                  }
+                </mat-select>
+                @if (fieldErrors()['rating']) {
+                  <small class="care-error">{{ fieldErrors()['rating'].join(' ') }}</small>
+                }
+              </label>
+            }
+          }
           <label class="full-width"
-            >Details and follow-up *<textarea
+            >{{ page() === 'feedback' ? 'Feedback and follow-up *' : 'Details and follow-up *'
+            }}<textarea
+              [disabled]="busy()"
               name="detail"
               [(ngModel)]="draft.detail"
               rows="6"
@@ -355,6 +483,7 @@
           @if (selected()) {
             <label class="full-width"
               >Reason for change *<textarea
+                [disabled]="busy()"
                 name="reason"
                 [(ngModel)]="reason"
                 rows="2"
@@ -371,7 +500,7 @@
             <button type="button" class="care-button" [disabled]="busy()" (click)="close()">
               Cancel</button
             ><button class="care-button primary" type="submit" [disabled]="busy()">
-              {{ busy() ? 'Saving…' : 'Save record' }}
+              {{ busy() ? 'Saving…' : page() === 'feedback' ? 'Save feedback' : 'Save record' }}
             </button>
           </div>
         </form>
@@ -383,6 +512,7 @@
         <form class="note-editor" (ngSubmit)="save()">
           <label class="full-width"
             >Reason for removal *<textarea
+              [disabled]="busy()"
               name="reason"
               [(ngModel)]="reason"
               rows="3"
@@ -398,7 +528,9 @@
             <button class="care-button" type="button" [disabled]="busy()" (click)="close()">
               Cancel</button
             ><button class="care-button event-danger" type="submit" [disabled]="busy()">
-              {{ busy() ? 'Removing…' : 'Remove record' }}
+              {{
+                busy() ? 'Removing…' : page() === 'feedback' ? 'Remove feedback' : 'Remove record'
+              }}
             </button>
           </div>
         </form>
@@ -417,7 +549,18 @@
               </div>
               <h3>{{ revision.name }}</h3>
               <p class="event-full-text">{{ revision.detail }}</p>
-              <p>{{ calendarDate(revision.date) }} · {{ revision.level }} risk</p>
+              <p>
+                {{ calendarDate(revision.date) }} ·
+                @if (page() === 'feedback') {
+                  {{ revision.feedbackType || 'Type not recorded' }} ·
+                  {{ ratingText(revision.rating) }}
+                } @else {
+                  {{ revision.level }} risk
+                }
+              </p>
+              @if (page() === 'feedback') {
+                <small>From: {{ revision.receivedFrom || 'Not recorded' }}</small>
+              }
               <small>Reason: {{ revision.changeReason }}</small>
             </li>
           }
@@ -435,10 +578,25 @@
             <dt>Date</dt>
             <dd>{{ calendarDate(record.date) }}</dd>
           </div>
-          <div>
-            <dt>Risk level</dt>
-            <dd>{{ record.level }}</dd>
-          </div>
+          @if (page() === 'feedback') {
+            <div>
+              <dt>Feedback type</dt>
+              <dd>{{ record.feedbackType || 'Not recorded' }}</dd>
+            </div>
+            <div>
+              <dt>Review rating</dt>
+              <dd>{{ ratingText(record.rating) }}</dd>
+            </div>
+            <div>
+              <dt>Received from</dt>
+              <dd>{{ record.receivedFrom || 'Not recorded' }}</dd>
+            </div>
+          } @else {
+            <div>
+              <dt>Risk level</dt>
+              <dd>{{ record.level }}</dd>
+            </div>
+          }
           <div>
             <dt>Status</dt>
             <dd>{{ record.status }}</dd>
@@ -455,7 +613,7 @@
             </dd>
           </div>
         </dl>
-        <h3>Details and follow-up</h3>
+        <h3>{{ page() === 'feedback' ? 'Feedback and follow-up' : 'Details and follow-up' }}</h3>
         <p class="event-full-text">{{ record.detail }}</p>
         <div class="note-editor-footer">
           <button class="care-button" (click)="open(record, 'history')">History</button>

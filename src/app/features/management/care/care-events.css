@@ -289,3 +289,48 @@
     display: none;
   }
 }
+
+.feedback-register-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #123352;
+}
+.feedback-register-title .material-symbols-outlined {
+  font-size: 20px;
+  color: #008afa;
+}
+.feedback-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  color: #986000;
+}
+.feedback-rating .material-symbols-outlined {
+  font-size: 17px;
+  color: #e4a218;
+}
+.feedback-rating.unrated {
+  font-weight: 400;
+  color: #62798b;
+}
+.feedback-rating.unrated .material-symbols-outlined {
+  color: #8ca0af;
+}
+.event-badge[data-feedback-type='Compliment'] {
+  background: #e8f8f0;
+  color: #007347;
+}
+.event-badge[data-feedback-type='Concern'] {
+  background: #fff3e5;
+  color: #985310;
+}
+.feedback-source {
+  color: #62798b;
+}
+.event-table .feedback-source {
+  margin-top: 6px;
+}

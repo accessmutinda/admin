@@ -1,11 +1,21 @@
 import { Injectable, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
+import { ActivatedRoute } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { computed } from '@angular/core';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
 import { CareEventRead, CareEventPage, CareEventWrite } from './care-events.generated';
 export type EventKind = CareEventRead['kind'];
 
 @Injectable()
 export class CareEventsApi {
+  private readonly route = inject(ActivatedRoute);
+  private readonly routeData = toSignal(this.route.data, {
+    initialValue: this.route.snapshot.data,
+  });
+  private readonly feedbackMode = computed(
+    () => this.routeData()['careEventSection'] === 'feedback',
+  );
   readonly records = inject(ServiceUsersApi);
   private readonly auth = inject(AuthService);
   readonly scope = this.records.scope;
@@ -48,7 +58,7 @@ export class CareEventsApi {
   }
   private root(id: string): string {
     if (!id || !this.can('read')) throw Error('Records are unavailable.');
-    return `/companies/${this.records.companyId()}/service-users/${id}/care-events`;
+    return `/companies/${this.records.companyId()}/service-users/${id}/${this.feedbackMode() ? 'feedback' : 'care-events'}`;
   }
   private async request<T>(
     path: string,
@@ -109,7 +119,14 @@ export class CareEventsApi {
           scope,
         );
         if (typeof value.meta['today'] === 'string') this.today.set(value.meta['today']);
-        rows.push(...value.results.map((r) => this.check(r, id, scope)));
+        rows.push(
+          ...value.results.map((r) => {
+            this.check(r, id, scope);
+            if (r.kind !== kind)
+              throw Error('The returned records do not match the selected category.');
+            return r;
+          }),
+        );
         page = value.next;
         if (generation !== this.generation) return [];
       }
@@ -154,6 +171,7 @@ export class CareEventsApi {
     );
     if (original && row.id !== original.id)
       throw Error('The returned record does not match this editor.');
+    if (!original) this.intents.delete(scope + path + JSON.stringify(draft));
     return row;
   }
   async history(id: string, record: string): Promise<CareEventRead[]> {

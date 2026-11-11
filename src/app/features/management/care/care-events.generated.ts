@@ -15,6 +15,9 @@ export type CareEventHistory = {
     date: string;
     level: 'Low' | 'Medium' | 'High';
     status: 'Active' | 'Completed' | 'Inactive';
+    feedbackType?: '' | 'Feedback' | 'Review' | 'Compliment' | 'Suggestion' | 'Concern';
+    rating?: number | null;
+    receivedFrom?: string;
     changeReason: string;
     createdAt: string;
     createdBy: string;
@@ -41,6 +44,9 @@ export type CareEventPage = {
     date: string;
     level: 'Low' | 'Medium' | 'High';
     status: 'Active' | 'Completed' | 'Inactive';
+    feedbackType?: '' | 'Feedback' | 'Review' | 'Compliment' | 'Suggestion' | 'Concern';
+    rating?: number | null;
+    receivedFrom?: string;
     changeReason: string;
     createdAt: string;
     createdBy: string;
@@ -68,6 +74,9 @@ export type CareEventRead = {
   date: string;
   level: 'Low' | 'Medium' | 'High';
   status: 'Active' | 'Completed' | 'Inactive';
+  feedbackType?: '' | 'Feedback' | 'Review' | 'Compliment' | 'Suggestion' | 'Concern';
+  rating?: number | null;
+  receivedFrom?: string;
   changeReason: string;
   createdAt: string;
   createdBy: string;
@@ -87,4 +96,7 @@ export type CareEventWrite = {
   level: 'Low' | 'Medium' | 'High';
   status: 'Active' | 'Completed' | 'Inactive';
   reason: string;
+  feedbackType?: '' | 'Feedback' | 'Review' | 'Compliment' | 'Suggestion' | 'Concern';
+  rating?: number | null;
+  receivedFrom?: string;
 };

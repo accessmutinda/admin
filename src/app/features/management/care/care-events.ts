@@ -79,6 +79,8 @@ export class CareEvents {
   protected readonly search = signal('');
   protected readonly status = signal('');
   protected readonly level = signal('');
+  protected readonly feedbackType = signal('');
+  protected readonly feedbackTypes = ['Feedback', 'Review', 'Compliment', 'Suggestion', 'Concern'];
   protected readonly pageNumber = signal(1);
   protected readonly printRows = signal<CareEventRead[] | null>(null);
   protected readonly entries = computed(() => {
@@ -93,7 +95,8 @@ export class CareEvents {
       (e) =>
         (!search || (e.name + ' ' + e.detail).toLowerCase().includes(search)) &&
         (!this.status() || e.status === this.status()) &&
-        (!this.level() || e.level === this.level()),
+        (!this.level() || e.level === this.level()) &&
+        (!this.feedbackType() || e.feedbackType === this.feedbackType()),
     );
   });
   protected readonly pageCount = computed(() => Math.max(1, Math.ceil(this.filtered().length / 8)));
@@ -103,27 +106,58 @@ export class CareEvents {
       ? this.filtered()
       : this.filtered().slice((this.currentPage() - 1) * 8, this.currentPage() * 8),
   );
-  protected readonly metrics = computed(() => [
-    { label: 'Total records', value: this.entries().length, icon: 'description', tone: 'blue' },
-    {
-      label: 'Active',
-      value: this.entries().filter((e) => e.status === 'Active').length,
-      icon: 'pending_actions',
-      tone: 'purple',
-    },
-    {
-      label: 'High risk · active',
-      value: this.entries().filter((e) => e.status === 'Active' && e.level === 'High').length,
-      icon: 'priority_high',
-      tone: 'orange',
-    },
-    {
-      label: 'Completed',
-      value: this.entries().filter((e) => e.status === 'Completed').length,
-      icon: 'task_alt',
-      tone: 'green',
-    },
-  ]);
+  protected readonly metrics = computed(() => {
+    if (this.page() === 'feedback') {
+      const rows = this.entries(),
+        ratings = rows
+          .filter((r) => r.feedbackType === 'Review' && r.rating != null)
+          .map((r) => r.rating!);
+      return [
+        { label: 'Feedback received', value: rows.length, icon: 'forum', tone: 'blue' },
+        {
+          label: 'Open feedback',
+          value: rows.filter((r) => r.status === 'Active').length,
+          icon: 'pending_actions',
+          tone: 'purple',
+        },
+        {
+          label: 'Compliments',
+          value: rows.filter((r) => r.feedbackType === 'Compliment').length,
+          icon: 'favorite',
+          tone: 'green',
+        },
+        {
+          label: 'Average review rating',
+          value: ratings.length
+            ? (ratings.reduce((sum, v) => sum + v, 0) / ratings.length).toFixed(1) + ' / 5'
+            : '—',
+          icon: 'star',
+          tone: 'orange',
+        },
+      ];
+    }
+    return [
+      { label: 'Total records', value: this.entries().length, icon: 'description', tone: 'blue' },
+      {
+        label: 'Active',
+        value: this.entries().filter((e) => e.status === 'Active').length,
+        icon: 'pending_actions',
+        tone: 'purple',
+      },
+      {
+        label: 'High risk · active',
+        value: this.entries().filter((e) => e.status === 'Active' && e.level === 'High').length,
+        icon: 'priority_high',
+        tone: 'orange',
+      },
+      {
+        label: 'Completed',
+        value: this.entries().filter((e) => e.status === 'Completed').length,
+        icon: 'task_alt',
+        tone: 'green',
+      },
+    ];
+  });
   protected readonly mode = signal<'' | 'edit' | 'view' | 'history' | 'remove'>('');
   protected readonly selected = signal<CareEventRead | null>(null);
   protected readonly history = signal<CareEventRead[]>([]);
@@ -146,6 +180,9 @@ export class CareEvents {
       date: londonDate(),
       level: 'Low' as CareEventWrite['level'],
       status: 'Active' as CareEventWrite['status'],
+      feedbackType: 'Feedback' as NonNullable<CareEventWrite['feedbackType']>,
+      rating: null as number | null,
+      receivedFrom: '',
     };
   }
   constructor() {
@@ -226,6 +263,7 @@ export class CareEvents {
     this.search.set('');
     this.status.set('');
     this.level.set('');
+    this.feedbackType.set('');
     this.pageNumber.set(1);
   }
   protected choose(kind: EventKind) {
@@ -304,8 +342,13 @@ export class CareEvents {
             date: row.date,
             level: row.level,
             status: row.status,
+            feedbackType: row.feedbackType ?? '',
+            rating: row.rating ?? null,
+            receivedFrom: row.receivedFrom ?? '',
           }
         : { ...this.blank(), date: this.api.today() || londonDate() };
+      if (!row && this.page() === 'feedback' && this.query().get('create') === 'compliment')
+        this.draft.feedbackType = 'Compliment';
       this.reason = '';
       this.fieldErrors.set({});
       this.baseline = this.draftState();
@@ -345,7 +388,18 @@ export class CareEvents {
         await this.api.save(
           owner.id,
           {
-            ...this.draft,
+            name: this.draft.name,
+            detail: this.draft.detail,
+            date: this.draft.date,
+            level: this.draft.level,
+            status: this.draft.status,
+            ...(owner.kind === 'feedback'
+              ? {
+                  feedbackType: this.draft.feedbackType,
+                  rating: this.draft.rating,
+                  receivedFrom: this.draft.receivedFrom,
+                }
+              : {}),
             kind: owner.kind,
             reason: row ? this.reason : 'Record service user details and follow-up',
           },
@@ -375,7 +429,13 @@ export class CareEvents {
     try {
       const rows = await this.api.load(id, this.collection(), true);
       if (this.api.error()) throw Error(this.api.error());
-      if (scope !== this.api.scope() || id !== this.id() || !this.api.can('export')) return;
+      if (
+        this.destroyed ||
+        scope !== this.api.scope() ||
+        id !== this.id() ||
+        !this.api.can('export')
+      )
+        return;
       this.printRows.set(rows);
       this.cdr.detectChanges();
       window.print();
@@ -388,6 +448,24 @@ export class CareEvents {
         this.printing.set(false);
       }
     }
+  }
+  protected metricNote(label: string): string {
+    if (this.page() === 'feedback' && label === 'Average review rating') {
+      if (this.api.loading()) return 'Loading review ratings…';
+      if (this.api.error()) return 'Review ratings unavailable';
+      const count = this.entries().filter(
+        (r) => r.feedbackType === 'Review' && r.rating != null,
+      ).length;
+      return 'Based on ' + count + ' rated review' + (count === 1 ? '' : 's');
+    }
+    return this.page() === 'feedback' ? 'All feedback · all dates' : 'Current category · all dates';
+  }
+  protected chooseFeedbackType(value: NonNullable<CareEventWrite['feedbackType']>) {
+    this.draft.feedbackType = value;
+    if (value !== 'Review') this.draft.rating = null;
+  }
+  protected ratingText(value: number | null | undefined): string {
+    return value == null ? 'Not rated' : value + ' / 5';
   }
   protected calendarDate(value: string): string {
     return new Intl.DateTimeFormat('en-GB', {
