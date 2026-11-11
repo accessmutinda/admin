@@ -104,6 +104,34 @@ describe('Company product access', () => {
     expect(next).not.toBe(previous);
     await next;
   });
+  it('waits for current authority when the initial scope effect supersedes a navigation request', async () => {
+    let resolveFirst!: (value: AccessContext) => void;
+    let resolveCurrent!: (value: AccessContext) => void;
+    api
+      .mockReset()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveCurrent = resolve;
+          }),
+      );
+    vi.spyOn(TestBed.inject(Router), 'currentNavigation').mockReturnValue({ id: 1 } as Navigation);
+    const pending = access.refreshForNavigation();
+    TestBed.tick();
+    resolveFirst(context);
+    await Promise.resolve();
+    expect(access.context()).toBeNull();
+    resolveCurrent({ ...context, permissions: ['care.medication.read'] });
+    await pending;
+    expect(access.canPath('/manage/clients/one/medication')).toBe(true);
+    expect(api).toHaveBeenCalledTimes(2);
+  });
   it('maps feature routes independently of role labels', () => {
     expect(routeAccess('/manage/learning/certificates')).toEqual([['academy', 'certificates']]);
     expect(routeAccess('/manage/people/staff/one/documents')).toEqual([['people', 'records']]);

@@ -305,12 +305,15 @@ export class CompanyAccessService {
     const promise = this.auth
       .api<AccessContext>(`/companies/${id}/access-context`)
       .then((value) => {
-        if (id !== this.companyId() || generation !== this.generation) return;
+        if (id !== this.companyId()) return;
+        if (generation !== this.generation) return this.refresh();
         this.context.set(value);
         this.error.set('');
         if (!this.canPath(this.router.url)) void this.router.navigateByUrl('/access-denied');
+        return;
       })
       .catch((error) => {
+        if (id === this.companyId() && generation !== this.generation) return this.refresh();
         if (id === this.companyId() && generation === this.generation) {
           this.context.set(null);
           if (routeAccess(this.router.url).length) void this.router.navigateByUrl('/access-denied');
@@ -318,6 +321,7 @@ export class CompanyAccessService {
             error instanceof Error ? error.message : 'Access information unavailable.',
           );
         }
+        return;
       })
       .finally(() => {
         if (this.inFlight?.promise === promise) this.inFlight = undefined;
