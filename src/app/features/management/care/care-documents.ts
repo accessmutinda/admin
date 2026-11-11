@@ -19,7 +19,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { CvSelect } from '../../../shared/ui/select';
 import { ModuleDesign } from '../shared/module-design';
 import { CareHeader } from './care-header';
-import { CareService } from './care.service';
+import { CareDocumentsApi } from './care-documents-api.service';
 import { CareDocument } from './care.models';
 import { VisitNoteAudience } from './visit-notes.models';
 import {
@@ -29,7 +29,7 @@ import {
   documentGroup,
   documentMetadata,
   documentVisibility,
-  safeDocumentSource,
+  documentMetadataError,
 } from './care-documents.models';
 import { londonDate } from '../rota/rota.models';
 
@@ -44,6 +44,7 @@ import { londonDate } from '../rota/rota.models';
     MatSelectModule,
     CvSelect,
   ],
+  providers: [CareDocumentsApi],
   host: { class: 'module-page operations-page documents-page' },
   templateUrl: './care-documents.html',
   styleUrls: [
@@ -52,10 +53,11 @@ import { londonDate } from '../rota/rota.models';
     './care-controls.css',
     './visit-notes.css',
     './care-documents.css',
+    '../clients/service-user-dialogs.css',
   ],
 })
 export class CareDocuments {
-  protected readonly care = inject(CareService);
+  protected readonly api = inject(CareDocumentsApi);
   private readonly route = inject(ActivatedRoute);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly params = toSignal(this.route.paramMap, {
@@ -69,13 +71,12 @@ export class CareDocuments {
   );
   private routeRequest = '';
   protected readonly id = computed(() => this.params().get('id') ?? '');
-  protected readonly client = computed(() => this.care.client(this.id()));
-  protected readonly documents = computed(() =>
-    this.care
-      .documents(this.id())
-      .slice()
-      .sort((a, b) => b.at.localeCompare(a.at)),
+  protected readonly client = computed(() =>
+    this.api.can('read') && this.api.records.selected()?.id === this.id()
+      ? this.api.records.selected()
+      : null,
   );
+  protected readonly documents = computed(() => (this.api.can('read') ? this.api.documents() : []));
   protected readonly groups = DOCUMENT_GROUPS;
   protected readonly groupDocument = documentGroup;
   protected readonly types = DOCUMENT_TYPES;
@@ -139,13 +140,16 @@ export class CareDocuments {
     });
   });
   protected readonly visibilityChartLabel = computed(() =>
-    this.documents().length
-      ? `Document visibility. ${this.visibilitySegments()
-          .map((s) => `${s.label}: ${s.count}`)
-          .join('. ')}.`
-      : 'Document visibility: no documents.',
+    this.api.loading() || this.api.error()
+      ? 'Document visibility is unavailable.'
+      : this.documents().length
+        ? `Document visibility. ${this.visibilitySegments()
+            .map((s) => `${s.label}: ${s.count}`)
+            .join('. ')}.`
+        : 'Document visibility: no documents.',
   );
   protected readonly error = signal('');
+  protected readonly fieldErrors = signal<Record<string, string[]>>({});
   protected readonly notice = signal('');
   protected readonly editing = signal(false);
   protected readonly busy = signal(false);
@@ -160,6 +164,10 @@ export class CareDocuments {
   protected pending: CareDocument | null = null;
   protected existingId = '';
   private owner: { client: string; company: string; revision?: number } | null = null;
+  private original: CareDocument | null = null;
+  private pendingFile: File | null = null;
+  private editorRequest = 0;
+  private pollTimer: ReturnType<typeof setTimeout> | undefined;
   private baseline = '';
   private destroyed = false;
   private previewUrl = '';
@@ -167,17 +175,54 @@ export class CareDocuments {
   constructor() {
     inject(DestroyRef).onDestroy(() => {
       this.destroyed = true;
+      this.editorRequest++;
+      clearTimeout(this.pollTimer);
       this.closePreview();
     });
     effect(() => {
-      this.id();
-      this.care.store.companyId();
-      this.group.set('All Documents');
-      this.audience.set('');
-      this.page.set(1);
-      this.selectedId.set('');
-      this.panelOpen.set(true);
-      this.closePreview();
+      const id = this.id(),
+        scope = this.api.scope();
+      untracked(() => {
+        this.editorRequest++;
+        this.editing.set(false);
+        this.owner = null;
+        this.pendingFile = null;
+        this.pending = null;
+        this.original = null;
+        this.metadata = this.blankMetadata();
+        this.sharing = { staff: true, family: false, inspector: false };
+        this.existingId = '';
+        this.error.set('');
+        this.notice.set('');
+        this.busy.set(false);
+        this.group.set('All Documents');
+        this.audience.set('');
+        this.page.set(1);
+        this.selectedId.set('');
+        this.panelOpen.set(true);
+        this.closePreview();
+        if (id && this.api.can('read')) {
+          void this.api.records.detail(id);
+          void this.load();
+        }
+      });
+    });
+    effect(() => {
+      if (!this.api.denied()) return;
+      untracked(() => {
+        this.editorRequest++;
+        this.editing.set(false);
+        this.owner = null;
+        this.original = null;
+        this.pending = null;
+        this.pendingFile = null;
+        this.metadata = this.blankMetadata();
+        this.sharing = { staff: true, family: false, inspector: false };
+        this.existingId = '';
+        this.notice.set('');
+        this.busy.set(false);
+        this.closePreview();
+      });
     });
     effect(() => {
       const p = this.preview();
@@ -191,14 +236,14 @@ export class CareDocuments {
         this.routeRequest = '';
         return;
       }
-      const request = this.care.store.companyId() + ':' + this.id() + ':' + (documentId || 'new');
+      const request = this.api.scope() + ':' + this.id() + ':' + (documentId || 'new');
       const document = documentId ? this.documents().find((d) => d.id === documentId) : undefined;
       if (this.routeRequest === request || (documentId && !document)) return;
       this.routeRequest = request;
       untracked(() => {
         if (this.editing() && !this.canLeave()) return;
         if (create) {
-          this.open();
+          void this.open();
           if (this.editing() && query?.get('section') === 'Mobility') {
             this.metadata.description = 'Supporting document for the Mobility care-plan section.';
             this.baseline = this.draftState();
@@ -222,7 +267,8 @@ export class CareDocuments {
       description: '',
     };
   }
-  protected categoryCount(group: string): number {
+  protected categoryCount(group: string): number | string {
+    if (this.api.loading() || this.api.error()) return '—';
     return this.documents().filter((d) => group === 'All Documents' || documentGroup(d) === group)
       .length;
   }
@@ -243,32 +289,86 @@ export class CareDocuments {
     this.selectedId.set(d.id);
     this.panelOpen.set(true);
   }
-  protected toggle(d: CareDocument, a: VisitNoteAudience): void {
-    const error = this.care.setDocumentVisibility(
-      this.id(),
-      this.care.store.companyId(),
-      d.id,
-      a,
-      !documentVisibility(d)[a],
-      d.revision ?? 1,
-    );
-    this.error.set(error ?? '');
-    if (!error) this.notice.set('Document visibility updated.');
+  private async load(): Promise<void> {
+    clearTimeout(this.pollTimer);
+    const scope = this.api.scope(),
+      id = this.id();
+    await this.api.load(id);
+    if (
+      !this.destroyed &&
+      scope === this.api.scope() &&
+      id === this.id() &&
+      this.notice() === 'Document uploaded. Security scanning is pending.'
+    ) {
+      const uploaded = this.documents().find((d) => d.id === this.selectedId());
+      if (uploaded?.state === 'clean')
+        this.notice.set('Document uploaded and security scan passed.');
+      else if (uploaded && uploaded.state !== 'quarantined')
+        this.notice.set('Document uploaded. The file was blocked by security scanning.');
+    }
+    if (
+      !this.destroyed &&
+      scope === this.api.scope() &&
+      id === this.id() &&
+      this.documents().some((d) => d.state === 'quarantined')
+    )
+      this.pollTimer = setTimeout(() => void this.load(), 3000);
   }
-  protected open(d?: CareDocument): void {
-    if (!this.care.canManageDocuments()) return;
-    this.owner = {
-      client: this.id(),
-      company: this.care.store.companyId(),
-      revision: d ? (d.revision ?? 1) : undefined,
-    };
-    this.metadata = d ? documentMetadata(d) : this.blankMetadata();
-    this.sharing = d ? documentVisibility(d) : { staff: true, family: false, inspector: true };
-    this.pending = null;
-    this.existingId = d?.id ?? '';
-    this.baseline = this.draftState();
+  protected async toggle(d: CareDocument, a: VisitNoteAudience): Promise<void> {
+    if (this.busy() || !this.api.can('publish')) return;
+    const scope = this.api.scope(),
+      id = this.id();
+    this.busy.set(true);
     this.error.set('');
-    this.editing.set(true);
+    try {
+      await this.api.visibility(id, d, a);
+      if (scope === this.api.scope() && id === this.id()) {
+        this.notice.set('Document visibility updated.');
+        await this.load();
+      }
+    } catch (e) {
+      if (scope === this.api.scope() && id === this.id())
+        this.error.set(e instanceof Error ? e.message : 'Could not update visibility.');
+    } finally {
+      if (scope === this.api.scope() && id === this.id()) this.busy.set(false);
+    }
+  }
+  protected async open(d?: CareDocument): Promise<void> {
+    if (this.busy() || !this.api.can(d ? 'edit' : 'create')) return;
+    if (this.editing() && !this.canLeave()) return;
+    const request = ++this.editorRequest,
+      scope = this.api.scope(),
+      id = this.id();
+    this.error.set('');
+    try {
+      const original = d ? await this.api.detail(id, d.id) : null;
+      if (
+        this.destroyed ||
+        request !== this.editorRequest ||
+        scope !== this.api.scope() ||
+        id !== this.id()
+      )
+        return;
+      this.fieldErrors.set({});
+      this.original = original;
+      this.owner = {
+        client: id,
+        company: this.api.records.companyId(),
+        revision: original?.revision,
+      };
+      this.metadata = original ? documentMetadata(original) : this.blankMetadata();
+      this.sharing = original
+        ? documentVisibility(original)
+        : { staff: true, family: false, inspector: false };
+      this.pending = null;
+      this.pendingFile = null;
+      this.existingId = original?.id ?? '';
+      this.baseline = this.draftState();
+      this.editing.set(true);
+    } catch (e) {
+      if (request === this.editorRequest && scope === this.api.scope())
+        this.error.set(e instanceof Error ? e.message : 'Could not load document information.');
+    }
   }
   private draftState(): string {
     return JSON.stringify([this.metadata, this.sharing, this.pending]);
@@ -278,52 +378,64 @@ export class CareDocuments {
       this.editing.set(false);
       this.owner = null;
       this.pending = null;
+      this.pendingFile = null;
+      this.editorRequest++;
       this.error.set('');
     }
   }
-  protected save(): void {
-    const owner = this.owner;
-    if (!owner || owner.client !== this.id() || owner.company !== this.care.store.companyId()) {
-      this.error.set('The service user or workspace changed. Reopen the document before saving.');
+  protected async save(): Promise<void> {
+    const owner = this.owner,
+      scope = this.api.scope();
+    if (!owner || owner.client !== this.id() || owner.company !== this.api.records.companyId()) {
+      this.error.set('The service user or workspace changed. Reopen the document.');
       return;
     }
     if (this.busy()) return;
-    if (!this.existingId && !this.pending) {
+    const validation = documentMetadataError(this.metadata);
+    if (validation) {
+      this.error.set(validation);
+      return;
+    }
+    if (!this.existingId && !this.pendingFile) {
       this.error.set('Choose a document to upload.');
       return;
     }
-    const error = this.existingId
-      ? this.care.updateDocument(
-          owner.client,
-          owner.company,
-          this.existingId,
-          this.metadata,
-          owner.revision!,
-        )
-      : this.care.saveDocument(owner.client, owner.company, {
-          ...this.pending!,
-          ...this.metadata,
-          visibility: { ...this.sharing },
-        });
-    this.error.set(error ?? '');
-    if (error) return;
-    const id = this.existingId || this.pending!.id;
-    this.group.set('All Documents');
-    this.audience.set('');
-    this.page.set(
-      Math.floor(
-        Math.max(
-          0,
-          this.documents().findIndex((d) => d.id === id),
-        ) / 8,
-      ) + 1,
-    );
-    this.selectedId.set(id);
-    this.panelOpen.set(true);
-    this.editing.set(false);
-    this.owner = null;
-    this.pending = null;
-    this.notice.set('Document saved.');
+    this.busy.set(true);
+    this.error.set('');
+    this.fieldErrors.set({});
+    try {
+      const row = await this.api.save(
+        owner.client,
+        this.metadata,
+        this.sharing,
+        this.original,
+        this.pendingFile,
+      );
+      if (this.destroyed || owner !== this.owner || scope !== this.api.scope()) return;
+      this.editing.set(false);
+      this.owner = null;
+      this.pending = null;
+      this.pendingFile = null;
+      this.original = null;
+      this.group.set('All Documents');
+      this.audience.set('');
+      this.page.set(1);
+      this.selectedId.set(row.id);
+      this.panelOpen.set(true);
+      this.notice.set(
+        row.state === 'quarantined'
+          ? 'Document uploaded. Security scanning is pending.'
+          : 'Document saved.',
+      );
+      await this.load();
+    } catch (e) {
+      if (owner === this.owner && scope === this.api.scope()) {
+        this.fieldErrors.set((e as { fieldErrors?: Record<string, string[]> }).fieldErrors ?? {});
+        this.error.set(e instanceof Error ? e.message : 'Could not save document.');
+      }
+    } finally {
+      if (scope === this.api.scope()) this.busy.set(false);
+    }
   }
   protected async upload(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement,
@@ -355,19 +467,14 @@ export class CareDocuments {
               ? bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255
               : bytes[0] === 80 && bytes[1] === 75 && bytes[2] === 3 && bytes[3] === 4;
       if (!valid) throw new Error('The file content does not match its document type.');
-      const data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Could not read this file.'));
-        reader.readAsDataURL(file);
-      });
       if (
         this.destroyed ||
         owner !== this.owner ||
         owner.client !== this.id() ||
-        owner.company !== this.care.store.companyId()
+        owner.company !== this.api.records.companyId()
       )
         return;
+      this.pendingFile = file;
       this.pending = {
         id: crypto.randomUUID(),
         name: file.name,
@@ -375,7 +482,7 @@ export class CareDocuments {
         version: this.metadata.version,
         size: file.size,
         mime,
-        data,
+        data: '',
         at: '',
         by: '',
       };
@@ -384,25 +491,32 @@ export class CareDocuments {
       if (!this.destroyed && owner === this.owner)
         this.error.set(e instanceof Error ? e.message : 'Could not read the document.');
     } finally {
-      if (!this.destroyed) this.busy.set(false);
+      if (!this.destroyed && owner === this.owner) this.busy.set(false);
     }
   }
-  protected remove(d: CareDocument): void {
+  protected async remove(d: CareDocument): Promise<void> {
     if (
-      !this.care.canManageDocuments() ||
-      !window.confirm(
-        `Delete “${d.name}” from active documents? It will no longer be available in the portals.`,
-      )
+      this.busy() ||
+      !this.api.can('archive') ||
+      !window.confirm(`Delete “${d.name}” from active documents? Its history will be retained.`)
     )
       return;
-    const error = this.care.removeDocument(
-      this.id(),
-      this.care.store.companyId(),
-      d.id,
-      d.revision ?? 1,
-    );
-    this.error.set(error ?? '');
-    if (!error) this.notice.set('Document removed from active documents.');
+    const scope = this.api.scope(),
+      id = this.id();
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.api.remove(id, d);
+      if (scope === this.api.scope() && id === this.id()) {
+        this.notice.set('Document removed from active documents.');
+        await this.load();
+      }
+    } catch (e) {
+      if (scope === this.api.scope() && id === this.id())
+        this.error.set(e instanceof Error ? e.message : 'Could not remove document.');
+    } finally {
+      if (scope === this.api.scope() && id === this.id()) this.busy.set(false);
+    }
   }
   protected closePreview(): void {
     this.previewRequest++;
@@ -413,26 +527,24 @@ export class CareDocuments {
   }
   protected async view(d: CareDocument, download = false): Promise<void> {
     const client = this.id(),
-      company = this.care.store.companyId();
+      company = this.api.records.companyId();
     const request = ++this.previewRequest;
-    if (download && !this.care.rota.can('export')) return;
-    const current = this.care.documents(client).find((item) => item.id === d.id);
-    if (!current || !safeDocumentSource(current.data)) {
+    if (!this.api.can('export')) return;
+    const current = this.documents().find((item) => item.id === d.id);
+    if (!current) {
       this.error.set('This document is no longer available.');
       return;
     }
     this.error.set('');
     try {
-      const response = await fetch(current.data);
-      if (!response.ok) throw new Error('The document could not be loaded.');
-      const blob = await response.blob();
+      const blob = await this.api.content(client, current);
       if (
         this.destroyed ||
         request !== this.previewRequest ||
         client !== this.id() ||
-        company !== this.care.store.companyId() ||
-        !this.care.documents(client).some((item) => item.id === current.id) ||
-        (download && !this.care.rota.can('export'))
+        company !== this.api.records.companyId() ||
+        !this.documents().some((item) => item.id === current.id) ||
+        !this.api.can('export')
       )
         return;
       const previewable = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(
@@ -448,7 +560,7 @@ export class CareDocuments {
       if (download) {
         const a = document.createElement('a');
         a.href = url;
-        a.download = current.name;
+        a.download = current.filename || current.name;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       } else {
@@ -467,7 +579,7 @@ export class CareDocuments {
         !this.destroyed &&
         request === this.previewRequest &&
         client === this.id() &&
-        company === this.care.store.companyId()
+        company === this.api.records.companyId()
       )
         this.error.set(e instanceof Error ? e.message : 'Could not open the document.');
     }
@@ -493,6 +605,7 @@ export class CareDocuments {
     else if (this.editing()) this.close();
   }
   canLeave(): boolean {
+    if (this.busy()) return false;
     return (
       !this.editing() ||
       (!this.busy() && this.draftState() === this.baseline) ||

@@ -6,8 +6,8 @@
       <h1>Documents</h1>
       <p>Upload and manage documents for this service user with visibility control.</p>
     </div>
-    @if (care.canManageDocuments()) {
-      <button class="care-button primary" (click)="open()">
+    @if (api.can('create')) {
+      <button class="care-button primary" [disabled]="busy() || api.loading()" (click)="open()">
         <span class="material-symbols-outlined" aria-hidden="true">add</span>Upload Document
       </button>
     }
@@ -15,8 +15,8 @@
   @if (notice()) {
     <p class="note-notice" role="status">{{ notice() }}</p>
   }
-  @if (error() && !editing()) {
-    <p class="care-error" role="alert">{{ error() }}</p>
+  @if ((error() || api.error()) && !editing()) {
+    <p class="care-error" role="alert">{{ error() || api.error() }}</p>
   }
   <div class="notes-layout" [class.details-closed]="!selected()">
     <section class="notes-register" aria-label="Documents register">
@@ -84,7 +84,11 @@
                   <td>v{{ d.version.replace('v', '') }}</td>
                   <td>
                     <span class="note-badge" [class.flagged]="d.status === 'Under Review'">{{
-                      d.status || 'Current'
+                      d.state === 'clean'
+                        ? d.status
+                        : d.state === 'quarantined'
+                          ? 'Scanning'
+                          : 'File blocked'
                     }}</span>
                   </td>
                   @for (a of audiences; track a) {
@@ -95,7 +99,7 @@
                         role="switch"
                         [attr.aria-label]="'Show ' + d.name + ' to ' + audienceLabels[a]"
                         [attr.aria-checked]="visibility(d)[a]"
-                        [disabled]="!care.canManageDocuments()"
+                        [disabled]="!api.can('publish') || busy()"
                         (click)="toggle(d, a)"
                       >
                         <span></span>
@@ -111,20 +115,46 @@
                       <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
                     </button>
                     <mat-menu #actions="matMenu"
-                      ><button mat-menu-item (click)="select(d); view(d)">View document</button>
-                      @if (care.rota.can('export')) {
-                        <button mat-menu-item (click)="view(d, true)">Download</button>
+                      ><button
+                        mat-menu-item
+                        [disabled]="
+                          busy() || api.loading() || !api.can('export') || d.state !== 'clean'
+                        "
+                        (click)="select(d); view(d)"
+                      >
+                        View document
+                      </button>
+                      @if (api.can('export')) {
+                        <button
+                          mat-menu-item
+                          [disabled]="busy() || api.loading() || d.state !== 'clean'"
+                          (click)="view(d, true)"
+                        >
+                          Download
+                        </button>
                       }
-                      @if (care.canManageDocuments()) {
-                        <button mat-menu-item (click)="open(d)">Edit information</button
-                        ><button mat-menu-item (click)="remove(d)">Delete</button>
+                      @if (api.can('edit')) {
+                        <button mat-menu-item [disabled]="busy()" (click)="open(d)">
+                          Edit information
+                        </button>
+                      }
+                      @if (api.can('archive')) {
+                        <button mat-menu-item [disabled]="busy()" (click)="remove(d)">
+                          Delete
+                        </button>
                       }
                     </mat-menu>
                   </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="9" class="document-empty">No documents in this view.</td>
+                  <td colspan="9" class="document-empty">
+                    {{
+                      api.loading()
+                        ? 'Loading documents…'
+                        : api.error() || 'No documents in this view.'
+                    }}
+                  </td>
                 </tr>
               }
             </tbody>
@@ -179,13 +209,15 @@
                     [attr.stroke-dashoffset]="-segment.offset"
                     transform="rotate(-90 60 60)"
                   >
-                    <title>{{ segment.label }}: {{ segment.count }}</title>
+                    <title>
+                      {{ segment.label }}: {{ api.loading() || api.error() ? '—' : segment.count }}
+                    </title>
                   </circle>
                 }
               }
             </svg>
             <div>
-              <strong>{{ documents().length }}</strong
+              <strong>{{ api.loading() || api.error() ? '—' : documents().length }}</strong
               ><span>Documents</span>
             </div>
           </div>
@@ -199,8 +231,8 @@
               }}</span>
               <div>
                 <h3>Visible to {{ audienceLabels[a] }}</h3>
-                <strong>{{ counts()[a] }}</strong>
-                <p>of {{ documents().length }} documents</p>
+                <strong>{{ api.loading() || api.error() ? '—' : counts()[a] }}</strong>
+                <p>of {{ api.loading() || api.error() ? '—' : documents().length }} documents</p>
                 <button class="document-link" (click)="chooseAudience(a)">
                   View Documents<span class="material-symbols-outlined" aria-hidden="true"
                     >arrow_forward</span
@@ -218,7 +250,8 @@
                 [style.background]="segment.color"
                 aria-hidden="true"
               ></span
-              >{{ segment.label }} <strong>{{ segment.count }}</strong>
+              >{{ segment.label }}
+              <strong>{{ api.loading() || api.error() ? '—' : segment.count }}</strong>
             </li>
           }
         </ul>
@@ -246,7 +279,13 @@
           <div>
             <strong>{{ d.name }}</strong
             ><span class="note-badge" [class.flagged]="d.status === 'Under Review'">{{
-              d.status === 'Under Review' ? 'Under Review' : 'Current Version'
+              d.state !== 'clean'
+                ? d.state === 'quarantined'
+                  ? 'Scanning'
+                  : 'File blocked'
+                : d.status === 'Under Review'
+                  ? 'Under Review'
+                  : 'Current Version'
             }}</span>
             <p>Type: {{ d.category }} · Size: {{ size(d.size) }}</p>
             <p>Uploaded: {{ documentDate(d.at) }} · Version: {{ d.version }}</p>
@@ -282,22 +321,24 @@
                 role="switch"
                 [attr.aria-label]="'Document details: show to ' + audienceLabels[a]"
                 [attr.aria-checked]="visibility(d)[a]"
-                [disabled]="!care.canManageDocuments()"
+                [disabled]="!api.can('publish') || busy()"
                 (click)="toggle(d, a)"
               >
                 <span></span>
               </button>
             </div>
           }
-          @if (!care.canManageDocuments()) {
-            <p class="note-info">Care management permission is required to change visibility.</p>
+          @if (!api.can('publish')) {
+            <p class="note-info">
+              Service User Documents publish permission is required to change visibility.
+            </p>
           }
         </section>
         <section class="document-information">
           <div class="note-panel-heading">
             <h3>Document Information</h3>
-            @if (care.canManageDocuments()) {
-              <button class="care-button" (click)="open(d)">
+            @if (api.can('edit')) {
+              <button class="care-button" [disabled]="busy()" (click)="open(d)">
                 <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
               </button>
             }
@@ -318,18 +359,26 @@
           <p class="document-description">{{ d.description || 'No description recorded.' }}</p>
         </section>
         <div class="document-footer">
-          <button class="care-button primary" (click)="view(d)">
+          <button
+            class="care-button primary"
+            [disabled]="busy() || api.loading() || !api.can('export') || d.state !== 'clean'"
+            (click)="view(d)"
+          >
             <span class="material-symbols-outlined" aria-hidden="true">visibility</span>View
             Document
           </button>
           <div>
-            @if (care.rota.can('export')) {
-              <button class="care-button" (click)="view(d, true)">
+            @if (api.can('export')) {
+              <button
+                class="care-button"
+                [disabled]="busy() || api.loading() || d.state !== 'clean'"
+                (click)="view(d, true)"
+              >
                 <span class="material-symbols-outlined" aria-hidden="true">download</span>Download
               </button>
             }
-            @if (care.canManageDocuments()) {
-              <button class="care-button document-delete" (click)="remove(d)">
+            @if (api.can('archive')) {
+              <button class="care-button document-delete" [disabled]="busy()" (click)="remove(d)">
                 <span class="material-symbols-outlined" aria-hidden="true">delete</span>Delete
               </button>
             }
@@ -339,7 +388,13 @@
     }
   </div>
 } @else {
-  <p class="care-error">Service user no longer available.</p>
+  <p class="care-error">
+    {{
+      api.records.detailLoading()
+        ? 'Loading service user…'
+        : api.error() || api.records.error() || 'Service user unavailable.'
+    }}
+  </p>
 }
 @if (editing()) {
   <div class="note-dialog-backdrop">
@@ -361,6 +416,23 @@
       </div>
       @if (error()) {
         <p class="care-error" role="alert">{{ error() }}</p>
+        @for (
+          field of [
+            'file',
+            'name',
+            'category',
+            'version',
+            'status',
+            'issueDate',
+            'reviewDate',
+            'description',
+          ];
+          track field
+        ) {
+          @if (fieldErrors()[field]; as errors) {
+            <p class="care-error">{{ field }}: {{ errors.join(' ') }}</p>
+          }
+        }
       }
       <form class="note-editor" (ngSubmit)="save()">
         @if (!existingId) {
@@ -378,10 +450,20 @@
           >
         }
         <label
-          >Document Name<input name="name" [(ngModel)]="metadata.name" required maxlength="255"
+          >Document Name<input
+            name="name"
+            [attr.aria-invalid]="fieldErrors()['name'] ? true : null"
+            [(ngModel)]="metadata.name"
+            required
+            maxlength="255"
         /></label>
         <label
-          >Document Type<mat-select cvSelect name="type" [(ngModel)]="metadata.category">
+          >Document Type<mat-select
+            cvSelect
+            name="type"
+            [attr.aria-invalid]="fieldErrors()['category'] ? true : null"
+            [(ngModel)]="metadata.category"
+          >
             @if (!types.includes(metadata.category)) {
               <mat-option [value]="metadata.category">{{ metadata.category }}</mat-option>
             }
@@ -393,28 +475,39 @@
         <label
           >Version<input
             name="version"
+            [attr.aria-invalid]="fieldErrors()['version'] ? true : null"
             [(ngModel)]="metadata.version"
             required
             pattern="[vV]?[0-9]+(\.[0-9]+){0,2}"
         /></label>
         <label
-          >Status<mat-select cvSelect name="status" [(ngModel)]="metadata.status"
+          >Status<mat-select
+            cvSelect
+            name="status"
+            [attr.aria-invalid]="fieldErrors()['status'] ? true : null"
+            [(ngModel)]="metadata.status"
             ><mat-option value="Current">Current</mat-option
             ><mat-option value="Under Review">Under Review</mat-option></mat-select
           ></label
         >
         <label
-          >Issue Date<input type="date" name="issueDate" [(ngModel)]="metadata.issueDate" /></label
+          >Issue Date<input
+            type="date"
+            name="issueDate"
+            [attr.aria-invalid]="fieldErrors()['issueDate'] ? true : null"
+            [(ngModel)]="metadata.issueDate" /></label
         ><label
           >Review Date<input
             type="date"
             name="reviewDate"
+            [attr.aria-invalid]="fieldErrors()['reviewDate'] ? true : null"
             [(ngModel)]="metadata.reviewDate"
             [min]="metadata.issueDate"
         /></label>
         <label class="full-width"
           >Description<textarea
             name="description"
+            [attr.aria-invalid]="fieldErrors()['description'] ? true : null"
             [(ngModel)]="metadata.description"
             maxlength="2000"
             rows="4"
@@ -425,9 +518,12 @@
             <legend>Visibility Settings</legend>
             @for (a of audiences; track a) {
               <label
-                ><input type="checkbox" [name]="a" [(ngModel)]="sharing[a]" />{{
-                  audienceLabels[a]
-                }}</label
+                ><input
+                  type="checkbox"
+                  [name]="a"
+                  [(ngModel)]="sharing[a]"
+                  [disabled]="!api.can('publish')"
+                />{{ audienceLabels[a] }}</label
               >
             }
           </fieldset>
@@ -435,7 +531,7 @@
         <div class="note-editor-footer full-width">
           <button type="button" class="care-button" (click)="close()">Cancel</button
           ><button class="care-button primary" type="submit" [disabled]="busy()">
-            {{ busy() ? 'Reading file…' : existingId ? 'Save Changes' : 'Upload Document' }}
+            {{ busy() ? 'Please wait…' : existingId ? 'Save Changes' : 'Upload Document' }}
           </button>
         </div>
       </form>

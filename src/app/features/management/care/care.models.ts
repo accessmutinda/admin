@@ -67,6 +67,9 @@ export interface CareContact {
   nextOfKin: boolean;
 }
 export interface CareDocument {
+  filename?: string;
+  etag?: string;
+  state?: string;
   visibility?: Record<import('./visit-notes.models').VisitNoteAudience, boolean>;
   status?: import('./care-documents.models').CareDocumentStatus;
   issueDate?: string;

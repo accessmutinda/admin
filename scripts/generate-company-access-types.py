@@ -141,3 +141,8 @@ visit_note_names = [name for name in schemas if name.startswith('VisitNote')]
 visit_note_target = root / 'src/app/features/management/care/visit-notes.generated.ts'
 visit_note_target.write_text('// Generated from backend OpenAPI.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in visit_note_names) + '\n')
 subprocess.run(['npx', 'prettier', '--write', str(visit_note_target)], cwd=root, check=True, capture_output=True)
+
+care_document_names = [name for name in schemas if name.startswith('CareDocument')]
+care_document_target = root / 'src/app/features/management/care/care-documents.generated.ts'
+care_document_target.write_text('// Generated from backend OpenAPI.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in care_document_names) + '\n')
+subprocess.run(['npx', 'prettier', '--write', str(care_document_target)], cwd=root, check=True, capture_output=True)
