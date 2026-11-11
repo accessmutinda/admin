@@ -1,11 +1,11 @@
-import { Component, input } from '@angular/core';
+import { Component, booleanAttribute, input } from '@angular/core';
 import { Logo } from '../ui/logo';
 
 @Component({
   selector: 'cv-auth-centered-layout',
   imports: [Logo],
   template: `
-    <div class="cv-auth-shell cv-auth-flow">
+    <div class="cv-auth-shell cv-auth-flow" [class.cv-auth-flow-compact]="compact()">
       <div class="cv-auth-flow-panel cv-enter w-full {{ widthClass() }}">
         <header class="cv-auth-flow-logo"><cv-logo /></header>
         <main><ng-content /></main>
@@ -24,6 +24,7 @@ import { Logo } from '../ui/logo';
 })
 export class AuthCenteredLayout {
   readonly width = input<'sm' | 'md' | 'lg'>('sm');
+  readonly compact = input(false, { transform: booleanAttribute });
   protected widthClass(): string {
     return this.width() === 'lg'
       ? 'cv-auth-flow-panel-wide max-w-[38rem]'

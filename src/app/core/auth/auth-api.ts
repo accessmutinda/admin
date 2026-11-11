@@ -1,4 +1,5 @@
 export const API_BASE = 'https://care.neuraledge.co.ke/api/v1';
+// export const API_BASE = 'http://localhost:6536/api/v1';
 export const API_BASE_PATH = new URL(API_BASE).pathname;
 
 export type AuthState =
