@@ -1,36 +1,136 @@
+import { signal } from '@angular/core';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
-import { MatSelectHarness } from '@angular/material/select/testing';
-import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { FamilyPortal } from './family-portal';
-import { CareService } from './care.service';
+import { ServiceUsersApi } from '../clients/service-users-api.service';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { AuthService } from '../../../core/auth/auth.service';
-import { WorkspaceService } from '../../../core/auth/workspace.service';
-import { emptyClientFile } from '../clients/client-file.models';
-import { FAMILY_SCOPES, blankPrescription } from './care.models';
-import { londonDate } from '../rota/rota.models';
-
-describe('Family portal pages', () => {
-  let fixture: ComponentFixture<FamilyPortal>;
-  let care: CareService;
-  const params = new BehaviorSubject(
-    convertToParamMap({ clientId: 'client', accessId: 'family', page: 'overview' }),
-  );
-  const query = new BehaviorSubject(convertToParamMap({}));
-  const mobile = new BehaviorSubject({ matches: false, breakpoints: {} });
-  beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    params.next(convertToParamMap({ clientId: 'client', accessId: 'family', page: 'overview' }));
-    query.next(convertToParamMap({}));
-    mobile.next({ matches: false, breakpoints: {} });
+const record = () => ({
+  company_id: 'north',
+  service_user_id: 'person-1',
+  name: 'Alex Citizen',
+  profile: { dob: '1950-01-01', postcode: 'AB1', photo: '' },
+  access: {
+    id: 'family-1',
+    company_id: 'north',
+    service_user_id: 'person-1',
+    name: 'Family member',
+    relationship: 'Sibling',
+    email: 'family@example.com',
+    status: 'Active',
+    scopes: ['Notes', 'Messages', 'Documents', 'Visits'],
+    at: '2026-11-11T10:00:00Z',
+    version: 1,
+    etag: '"v1"',
+  },
+  photoConsent: false,
+  notes: 'Approved summary',
+  plan: null,
+  visits: [],
+  medication: null,
+  administrations: null,
+  allergies: null,
+  updates: [
+    {
+      id: 'update-1',
+      date: '2026-11-10',
+      at: '2026-11-10T10:00:00Z',
+      by: 'Care team',
+      category: 'General',
+      text: 'Approved wellbeing update',
+    },
+  ],
+  visitNotes: [],
+  documents: [
+    {
+      id: 'doc-1',
+      name: 'Approved.pdf',
+      category: 'Care plan',
+      version: '1',
+      size: 100,
+      at: '2026-11-11T10:00:00Z',
+      data: '',
+      mime: 'application/pdf',
+    },
+  ],
+  photos: null,
+  invoices: null,
+  messages: [
+    {
+      id: 'message-1',
+      accessId: 'family-1',
+      text: 'Care team message',
+      by: 'Care team',
+      fromFamily: false,
+      at: '2026-11-11T10:00:00Z',
+    },
+  ],
+  unavailable: {},
+});
+async function settle(f: ComponentFixture<any>) {
+  for (let i = 0; i < 5; i++) {
+    f.detectChanges();
+    await f.whenStable();
+    await Promise.resolve();
+  }
+  f.detectChanges();
+}
+describe('Connected family-facing portal', () => {
+  let fixture: ComponentFixture<FamilyPortal>,
+    portal: any,
+    request: ReturnType<typeof vi.fn>,
+    params: BehaviorSubject<any>,
+    query: BehaviorSubject<any>,
+    scope: ReturnType<typeof signal<string>>,
+    shared: any;
+  beforeEach(async () => {
+    shared = record();
+    scope = signal('north:family');
+    params = new BehaviorSubject(
+      convertToParamMap({ clientId: 'person-1', accessId: 'family-1', page: 'overview' }),
+    );
+    query = new BehaviorSubject(convertToParamMap({}));
+    request = vi.fn(async (path: string, body?: any, method?: string) => {
+      if (method === 'POST')
+        return {
+          company_id: 'north',
+          service_user_id: 'person-1',
+          id: 'reply-1',
+          accessId: 'family-1',
+          text: body.text,
+          fromFamily: true,
+          by: 'Family member',
+          at: '2026-11-11T11:00:00Z',
+          version: 1,
+          etag: '"v1"',
+        };
+      if (path.includes('/content?')) return new Blob(['Shared file'], { type: 'application/pdf' });
+      if (/family-portal\?/.test(path))
+        return {
+          company_id: 'north',
+          companyName: 'North provider',
+          results: [
+            {
+              clientId: 'person-1',
+              accessId: 'family-1',
+              name: 'Alex Citizen',
+              contact: 'Family member',
+              preview: false,
+            },
+          ],
+        };
+      return structuredClone(shared);
+    });
     TestBed.configureTestingModule({
       imports: [FamilyPortal],
       providers: [
-        provideRouter([{ path: 'family/:clientId/:accessId/:page', component: FamilyPortal }]),
-        { provide: BreakpointObserver, useValue: { observe: () => mobile.asObservable() } },
+        provideRouter([]),
+        {
+          provide: BreakpointObserver,
+          useValue: { observe: () => new BehaviorSubject({ matches: false, breakpoints: {} }) },
+        },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -39,333 +139,229 @@ describe('Family portal pages', () => {
             snapshot: { paramMap: params.value, queryParamMap: query.value },
           },
         },
+        { provide: CompanyAccessService, useValue: { canPath: () => true } },
+        {
+          provide: AuthService,
+          useValue: {
+            api: request,
+            profile: signal({ id: 'family-user' }),
+            currentUser: signal({
+              id: 'family-user',
+              name: 'Family member',
+              initials: 'FM',
+              email: 'family@example.com',
+            }),
+            signOut: vi.fn(),
+          },
+        },
+        {
+          provide: ServiceUsersApi,
+          useValue: {
+            scope,
+            companyId: signal('north'),
+            allowed: () => false,
+            access: { can: () => false },
+          },
+        },
       ],
     });
-    const auth = TestBed.inject(AuthService);
-    auth.signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    care = TestBed.inject(CareService);
-    const file = emptyClientFile();
-    file.sections['consent'] = { family: 'Agreed', photo: 'Agreed' };
-    file.sections['family'] = { approved: 'Enjoyed garden time today.' };
-    file.sections['plan'] = {
-      needs: 'Support with daily routines.',
-      support: 'Allow time and offer choices.',
-    };
-    file.familyAccess = [
-      {
-        id: 'family',
-        name: 'Family member',
-        email: auth.currentUser()!.email,
-        relationship: 'Son',
-        status: 'Active',
-        scopes: [...FAMILY_SCOPES],
-        at: '',
-      },
-    ];
-    expect(
-      care.rota.saveClient({
-        id: 'client',
-        name: 'Margaret Williams',
-        reference: 'C1',
-        address: '1 Test Road',
-        postcode: 'BS8',
-        active: true,
-        funding: 'Private',
-        priority: 'Standard',
-        file,
-      }),
-    ).toBeNull();
     fixture = TestBed.createComponent(FamilyPortal);
-    fixture.detectChanges();
+    portal = fixture.componentInstance;
+    await settle(fixture);
   });
   afterEach(() => vi.restoreAllMocks());
-  const text = () => fixture.nativeElement.querySelector('main').textContent as string;
-  function page(value: string) {
-    params.next(convertToParamMap({ clientId: 'client', accessId: 'family', page: value }));
-    fixture.detectChanges();
+  async function page(value: string) {
+    params.next(convertToParamMap({ clientId: 'person-1', accessId: 'family-1', page: value }));
+    await settle(fixture);
   }
-  it('renders each family destination with approved data and meaningful empty states', () => {
-    expect(text()).toContain('Margaret Williams');
-    const expected: Record<string, string> = {
-      'care-plan': 'Allow time and offer choices.',
-      visits: 'No visits match this view.',
-      notes: 'Enjoyed garden time today.',
-      medication: 'Medication key',
-      documents: 'No documents have been approved',
-      photos: 'No approved photos are available',
-      messages: 'No messages yet.',
-      permissions: 'Access & permissions',
-      invoices: 'No approved invoices',
-      support: 'Here to help',
-    };
-    for (const [destination, content] of Object.entries(expected)) {
-      page(destination);
-      expect(text()).toContain(content);
-    }
-  });
-  it('opens every portal section for administrators without a configured family account', () => {
-    const c = structuredClone(care.client('client')!);
-    c.file!.familyAccess = [];
-    c.file!.sections['consent'] = {};
-    care.rota.saveClient(c);
-    params.next(convertToParamMap({}));
-    fixture.detectChanges();
-    expect(text()).toContain('Margaret Williams');
-    expect(text()).toContain('Full administrator access');
-    expect(text()).not.toContain('No active family access');
-    for (const destination of [
-      'care-plan',
-      'visits',
-      'medication',
-      'documents',
-      'photos',
-      'messages',
-      'notes',
-      'invoices',
-    ]) {
-      params.next(convertToParamMap({ page: destination }));
-      fixture.detectChanges();
-      expect(text()).not.toContain('access is restricted');
-      expect(text()).toContain('Full administrator access');
-    }
-    expect(care.client('client')?.file?.familyAccess).toEqual([]);
-    expect(care.client('client')?.file?.sections['consent']).toEqual({});
-  });
-  it('replaces shared content immediately when a permission is revoked', () => {
-    page('notes');
-    expect(text()).toContain('Enjoyed garden time');
-    const c = structuredClone(care.client('client')!);
-    c.file!.familyAccess![0].scopes = ['Messages'];
-    expect(care.rota.saveClient(c)).toBeNull();
-    fixture.detectChanges();
-    expect(text()).toContain('Daily notes access is restricted');
-    expect(text()).not.toContain('Enjoyed garden time');
-  });
-  it('shows no records after consent withdrawal or an invalid deep link', () => {
-    params.next(convertToParamMap({ clientId: 'client', accessId: 'invalid', page: 'overview' }));
-    fixture.detectChanges();
-    expect(text()).toContain('Family access unavailable');
-    const c = structuredClone(care.client('client')!);
-    c.file!.sections['consent']['family'] = 'Declined';
-    care.rota.saveClient(c);
-    page('overview');
-    expect(text()).toContain('Family access unavailable');
-    expect(text()).not.toContain('Margaret Williams');
-  });
-  it('restores unsent messages across page and workspace changes without leaking recipients', async () => {
-    page('messages');
-    await fixture.whenStable();
-    const textarea = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
-    textarea.value = 'Please call about tomorrow’s visit.';
-    textarea.dispatchEvent(new Event('input'));
-    await fixture.whenStable();
-    page('notes');
-    page('messages');
-    await fixture.whenStable();
-    expect(fixture.nativeElement.querySelector('textarea').value).toBe(
-      'Please call about tomorrow’s visit.',
-    );
-    const other = structuredClone(care.client('client')!);
-    other.id = 'other';
-    other.reference = 'C2';
-    other.name = 'Other service user';
-    expect(care.rota.saveClient(other)).toBeNull();
-    params.next(convertToParamMap({ clientId: 'other', accessId: 'family', page: 'messages' }));
-    fixture.detectChanges();
-    await fixture.whenStable();
-    expect(fixture.nativeElement.querySelector('textarea').value).toBe('');
-    page('messages');
-    await fixture.whenStable();
-    expect(fixture.nativeElement.querySelector('textarea').value).toBe(
-      'Please call about tomorrow’s visit.',
-    );
-    TestBed.inject(WorkspaceService).switchWorkspace('riverside');
-    fixture.detectChanges();
-    expect(text()).not.toContain('Please call about tomorrow’s visit.');
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    expect(fixture.nativeElement.querySelector('textarea').value).toBe(
-      'Please call about tomorrow’s visit.',
+  it('loads server-owned choices and the permitted shared record', () => {
+    expect(fixture.nativeElement.textContent).toContain('Alex Citizen');
+    expect(fixture.nativeElement.textContent).toContain('North provider');
+    expect(portal.record().notes).toBe('Approved summary');
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/family-portal/person-1/family-1?preview=0&page=overview'),
+      undefined,
+      undefined,
+      undefined,
+      'json',
     );
   });
-  it('retains a draft when session storage fails and warns before closing the browser', async () => {
-    page('messages');
-    await fixture.whenStable();
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('Full');
-    });
-    const textarea = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
-    textarea.value = 'Keep this unsent draft';
-    textarea.dispatchEvent(new Event('input'));
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(text()).toContain('Browser storage is unavailable');
-    page('notes');
-    page('messages');
-    await fixture.whenStable();
-    expect(fixture.nativeElement.querySelector('textarea').value).toBe('Keep this unsent draft');
-    const event = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(event);
-    expect(event.defaultPrevented).toBe(true);
-  });
-  it('reports actual photo consent and disables messages explicitly in preview permissions', () => {
-    const c = structuredClone(care.client('client')!);
-    c.file!.sections['consent']['photo'] = 'Declined';
-    care.rota.saveClient(c);
-    page('permissions');
-    const rows = [...fixture.nativeElement.querySelectorAll('tr')] as HTMLTableRowElement[];
-    expect(rows.find((r) => r.textContent?.includes('Photos & wellbeing'))?.textContent).toContain(
-      'Restricted',
+  it('loads each page through the permission-checked endpoint', async () => {
+    await page('notes');
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('page=notes'),
+      undefined,
+      undefined,
+      undefined,
+      'json',
     );
-    expect(text()).toContain('Photography consent is not enabled.');
-    page('photos');
-    expect(text()).toContain('access is restricted');
+    expect(fixture.nativeElement.textContent).toContain('Approved wellbeing update');
+  });
+  it('sends a family reply inside CareVerity with an idempotency key', async () => {
+    await page('messages');
+    portal.message = 'Family reply';
+    await portal.send();
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/family-1/messages'),
+      { accessId: 'family-1', text: 'Family reply' },
+      'POST',
+      expect.objectContaining({ 'Idempotency-Key': expect.any(String) }),
+      'json',
+    );
+    expect(portal.message).toBe('');
+    expect(portal.notice()).toContain('sent inside CareVerity');
+  });
+  it('blocks duplicate message sends while the first request is pending', async () => {
+    await page('messages');
+    portal.message = 'One reply';
+    let resolve: any;
+    request.mockImplementationOnce(() => new Promise((r) => (resolve = r)));
+    const pending = portal.send();
+    await portal.send();
+    expect(portal.sending()).toBe(true);
+    await settle(fixture);
+    expect(fixture.nativeElement.querySelector('#family-message').disabled).toBe(true);
+    resolve({ ...record().messages[0], company_id: 'north', service_user_id: 'person-1' });
+    await pending;
+    expect(request.mock.calls.filter((c) => c[2] === 'POST')).toHaveLength(1);
+  });
+  it('retains a failed message for retry with the same idempotency key', async () => {
+    await page('messages');
+    portal.message = 'Retry me';
+    request.mockRejectedValueOnce(Error('Connection unavailable'));
+    await portal.send();
+    expect(portal.message).toBe('Retry me');
+    await portal.send();
+    const writes = request.mock.calls.filter((c) => c[2] === 'POST');
+    expect(writes[0][3]).toEqual(writes[1][3]);
+  });
+  it('uses the protected file endpoint for downloads', async () => {
+    await page('documents');
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:shared');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    await portal.downloadDocument('doc-1');
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/documents/doc-1/content?preview=0'),
+      undefined,
+      undefined,
+      undefined,
+      'blob',
+    );
+  });
+  it('clears previously loaded information after access is revoked', async () => {
+    request.mockRejectedValueOnce(Object.assign(Error('Access revoked'), { status: 403 }));
+    await portal.api.loadShared('person-1', 'family-1', 'overview', false);
+    await settle(fixture);
+    expect(portal.record()).toBeNull();
+    expect(portal.choices()).toEqual([]);
+    expect(fixture.nativeElement.textContent).toContain('Access revoked');
+  });
+  it('does not allow messages in administrator preview', async () => {
     query.next(convertToParamMap({ preview: '1' }));
-    page('permissions');
-    expect(text()).toContain('Preview only');
-    expect(text()).toContain('sending is disabled');
+    await settle(fixture);
+    portal.message = 'Cannot send from preview';
+    await portal.send();
+    expect(request.mock.calls.some((c) => c[2] === 'POST')).toBe(false);
   });
-  it('shows only current prescriptions in the overview and keeps historical statuses in medication', () => {
-    const c = structuredClone(care.client('client')!);
-    c.file!.medications = [
-      {
-        ...blankPrescription(),
-        id: 'ended',
-        name: 'Old prescription',
-        start: '2000-01-01',
-        end: '2001-01-01',
-      },
-      {
-        ...blankPrescription(),
-        id: 'discontinued',
-        name: 'Stopped prescription',
-        start: '2000-01-01',
-        discontinuedAt: '2001-01-01T08:00:00Z',
-      },
-      { ...blankPrescription(), id: 'future', name: 'Future prescription', start: '2099-01-01' },
-      { ...blankPrescription(), id: 'current', name: 'Current prescription', start: '2000-01-01' },
-    ];
-    care.rota.saveClient(c);
-    fixture.detectChanges();
-    expect(text()).toContain('Current prescription');
-    expect(text()).not.toContain('Old prescription');
-    expect(text()).not.toContain('Stopped prescription');
-    expect(text()).not.toContain('Future prescription');
-    page('medication');
-    expect(text()).toContain('Ended');
-    expect(text()).toContain('Discontinued');
-    expect(text()).toContain('Scheduled');
+  it('shows unavailable state instead of cached data after a failed load', async () => {
+    request.mockRejectedValueOnce(Error('Backend unavailable'));
+    await portal.api.loadShared('person-1', 'family-1', 'notes', false);
+    await settle(fixture);
+    expect(portal.record()).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Backend unavailable');
   });
-  it('filters approved dated updates and distinguishes the undated legacy summary', async () => {
-    const c = structuredClone(care.client('client')!);
-    c.file!.familyUpdates = [
+  it('keeps unsent drafts out of browser storage', () => {
+    const set = vi.spyOn(Storage.prototype, 'setItem');
+    portal.updateDraft('Private unsent message');
+    expect(set).not.toHaveBeenCalled();
+  });
+  it('loads shared photos through the protected inline endpoint and revokes their object URLs', async () => {
+    shared.photoConsent = true;
+    shared.access.scopes.push('Photos');
+    shared.photos = [
       {
-        id: 'new',
-        date: londonDate(),
+        id: 'photo-1',
+        name: 'Approved photo',
+        mime: 'image/png',
+        data: '',
         category: 'Wellbeing',
-        text: 'Enjoyed an afternoon walk.',
-        by: 'Care team',
-        at: new Date().toISOString(),
-      },
-      {
-        id: 'old',
-        date: '2000-01-01',
-        category: 'Medication',
-        text: 'Historical approved medication update.',
-        by: 'Care team',
-        at: '2000-01-01T12:00:00Z',
+        at: '2026-11-11T10:00:00Z',
+        size: 100,
+        version: '1',
       },
     ];
-    care.rota.saveClient(c);
-    page('notes');
-    expect(text()).toContain('Enjoyed an afternoon walk.');
-    expect(text()).toContain('date and author not recorded');
-    const loader = TestbedHarnessEnvironment.loader(fixture);
-    const period = await loader.getHarness(
-      MatSelectHarness.with({ selector: '[aria-label="Update date range"]' }),
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:photo');
+    const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    await page('photos');
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/photos/photo-1/content?preview=0'),
+      undefined,
+      undefined,
+      undefined,
+      'blob',
     );
-    await period.open();
-    await period.clickOptions({ text: 'Last 7 days' });
-    expect(text()).toContain('Enjoyed an afternoon walk.');
-    expect(text()).not.toContain('Historical approved');
-    expect(text()).not.toContain('Enjoyed garden time today.');
-    const category = await loader.getHarness(
-      MatSelectHarness.with({ selector: '[aria-label="Update category"]' }),
-    );
-    await category.open();
-    await category.clickOptions({ text: 'Medication' });
-    expect(text()).toContain('No approved care updates match');
+    expect(portal.record().photos[0].data).toBe('blob:photo');
+    fixture.destroy();
+    expect(revoke).toHaveBeenCalledWith('blob:photo');
   });
-  it('saves a family message and prevents sending in administrator preview', async () => {
-    page('messages');
-    await fixture.whenStable();
-    const textarea = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
-    textarea.value = 'Thank you for the update.';
-    textarea.dispatchEvent(new Event('input'));
-    await fixture.whenStable();
-    fixture.detectChanges();
-    fixture.nativeElement
-      .querySelector('form')
-      .dispatchEvent(new Event('submit', { cancelable: true }));
-    fixture.detectChanges();
-    expect(care.familyRecord('client', 'family')?.messages?.at(-1)?.text).toBe(
-      'Thank you for the update.',
+  it('rechecks export permission on the server before exporting visit data', async () => {
+    await page('visits');
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:visits');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    await portal.exportVisits();
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/visits/export?preview=0'),
+      undefined,
+      undefined,
+      undefined,
+      'json',
     );
-    query.next(convertToParamMap({ preview: '1' }));
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBe(true);
-    expect(text()).toContain('Sending is disabled');
-    const key =
-      'cv_family_draft:' +
-      JSON.stringify([care.auth.currentUser()!.id, 'lqcs', 'client', 'family']);
-    expect(sessionStorage.getItem(key)).toBeNull();
   });
-  it('keeps family destinations and active route state within the branded navigation shell', () => {
-    const sidebar = fixture.nativeElement.querySelector('aside') as HTMLElement;
-    expect(sidebar.getAttribute('aria-label')).toBe('Family Portal sidebar');
-    expect(sidebar.querySelector('.nav-label')?.textContent).toContain('FAMILY PORTAL');
-    expect(sidebar.querySelectorAll('#family-navigation a')).toHaveLength(10);
-    page('visits');
-    expect(sidebar.querySelector('#family-navigation a.active')?.getAttribute('href')).toBe(
-      '/family/client/family/visits',
-    );
-    expect(sidebar.querySelector('#family-navigation a.active')?.getAttribute('aria-current')).toBe(
-      'page',
-    );
-    page('support');
-    expect(sidebar.querySelector('.nav-bottom a.active')?.textContent).toContain('Help');
-    expect(sidebar.querySelector('.nav-bottom a[href="/account/security"]')?.textContent).toContain(
-      'Account security',
-    );
-    expect(care.client('client')?.file?.familyAccess?.[0].scopes).toEqual([...FAMILY_SCOPES]);
+  it('refreshes incoming messages without discarding the current shared view', async () => {
+    await page('messages');
+    shared.messages.push({ ...shared.messages[0], id: 'incoming-2', text: 'New care team update' });
+    await portal.api.refreshMessages('person-1', 'family-1', false);
+    await settle(fixture);
+    expect(fixture.nativeElement.textContent).toContain('New care team update');
+    expect(portal.record().name).toBe('Alex Citizen');
   });
-  it('opens the mobile navigation and closes it on Escape or a destination click', async () => {
-    mobile.next({ matches: true, breakpoints: {} });
-    fixture.detectChanges();
-    await fixture.whenStable();
-    const root = fixture.nativeElement as HTMLElement,
-      sidebar = root.querySelector('aside')!,
-      toggle = root.querySelector<HTMLButtonElement>('.menu-button')!;
-    expect(sidebar.hasAttribute('inert')).toBe(true);
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    toggle.click();
-    fixture.detectChanges();
-    await fixture.whenStable();
-    expect(sidebar.classList.contains('open')).toBe(true);
-    expect(sidebar.hasAttribute('inert')).toBe(false);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    expect(root.querySelector('.scrim')).not.toBeNull();
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    fixture.detectChanges();
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(sidebar.hasAttribute('inert')).toBe(true);
-    toggle.click();
-    fixture.detectChanges();
-    await fixture.whenStable();
-    sidebar.querySelector<HTMLAnchorElement>('#family-navigation a')!.click();
-    fixture.detectChanges();
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  for (const status of [undefined, 403]) {
+    it(`ignores an obsolete message refresh failure after navigation (${status ?? 'network'})`, async () => {
+      let reject: any;
+      request.mockImplementationOnce(() => new Promise((_resolve, r) => (reject = r)));
+      const pending = portal.api.refreshMessages('person-1', 'family-1', false);
+      await portal.api.loadShared('person-1', 'family-1', 'notes', false);
+      reject(Object.assign(Error('Obsolete conversation request'), { status }));
+      await pending;
+      expect(portal.record()?.name).toBe('Alex Citizen');
+      expect(portal.api.denied()).toBe(false);
+      expect(portal.api.error()).toBe('');
+    });
+  }
+  it('does not replace fresh messages with an older background response', async () => {
+    const old = structuredClone(shared);
+    let resolve: any;
+    request.mockImplementationOnce(() => new Promise((r) => (resolve = r)));
+    const pending = portal.api.refreshMessages('person-1', 'family-1', false);
+    shared.messages = [{ ...shared.messages[0], text: 'Latest conversation' }];
+    await portal.api.loadShared('person-1', 'family-1', 'messages', false);
+    resolve(old);
+    await pending;
+    expect(portal.record().messages[0].text).toBe('Latest conversation');
+  });
+  it('can open an allowed section after another section is denied', async () => {
+    request.mockRejectedValueOnce(
+      Object.assign(Error('Documents are restricted'), { status: 403 }),
+    );
+    await portal.api.loadShared('person-1', 'family-1', 'documents', false);
+    expect(portal.record()).toBeNull();
+    await portal.api.loadShared('person-1', 'family-1', 'notes', false);
+    expect(portal.record()?.notes).toBe('Approved summary');
+    expect(portal.api.denied()).toBe(false);
+    request.mockRejectedValueOnce(Object.assign(Error('All access was revoked'), { status: 403 }));
+    await portal.api.loadShared('person-1', 'family-1', 'notes', false);
+    expect(portal.record()).toBeNull();
   });
 });

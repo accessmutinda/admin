@@ -48,7 +48,7 @@
   <nav id="family-navigation" aria-label="Family navigation">
     @for (link of links; track link.path) {
       <a
-        [hidden]="!companyAccess.canPath(href(link.path).join('/'))"
+        [hidden]="!preview() && !companyAccess.canPath(href(link.path).join('/'))"
         [routerLink]="href(link.path)"
         [queryParams]="queryParams()"
         [class.active]="page() === link.path"
@@ -60,7 +60,7 @@
     }
   </nav>
   <div class="nav-bottom">
-    @if (care.rota.can('manage')) {
+    @if (api.can('read')) {
       <a routerLink="/manage/companies" (click)="menuOpen.set(false)"
         ><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span>Admin
         Console</a
@@ -85,6 +85,12 @@
 </aside>
 <div class="portal-body">
   <main id="family-content" tabindex="-1">
+    @if (api.loading()) {
+      <p class="message" role="status">Loading shared information…</p>
+    }
+    @if (api.error() || error()) {
+      <p class="error" role="alert">{{ api.error() || error() }}</p>
+    }
     @if (record(); as r) {
       <div class="service-heading">
         <div>
@@ -200,7 +206,7 @@
                 <span class="material-symbols-outlined" aria-hidden="true">diversity_1</span>
                 <h3>Connected to their care</h3>
                 <p>A shared view of the moments and support that matter.</p>
-                <small>{{ care.store.company()?.name }}</small>
+                <small>{{ api.companyName() }}</small>
               </div>
             </section>
             <div class="overview-grid">
@@ -312,6 +318,9 @@
             </div>
           }
           @case ('care-plan') {
+            @if (r.unavailable['care-plan']) {
+              <p class="message" role="status">{{ r.unavailable['care-plan'] }}</p>
+            }
             <div class="info-banner success">
               <span class="material-symbols-outlined" aria-hidden="true">lock</span>
               <div>
@@ -321,12 +330,6 @@
                 </p>
               </div>
             </div>
-            @if (r.plan?.partialDemo) {
-              <p class="message">
-                Partial frontend demo approval: three available care areas only. Fourteen care areas
-                remain deferred; this is not a complete care-plan approval.
-              </p>
-            }
             @if (r.plan?.structured) {
               @for (section of r.plan?.sections; track section.name) {
                 <section class="panel">
@@ -363,7 +366,7 @@
                       >{{ field.label }}
                     </h2>
                     <p class="preserve">
-                      {{ r.plan?.details?.[field.key] || 'Not recorded in the shared plan.' }}
+                      {{ planDetail(field.key) || 'Not recorded in the shared plan.' }}
                     </p>
                   </section>
                 }
@@ -778,16 +781,13 @@
                     ><span class="material-symbols-outlined" aria-hidden="true">groups</span></span
                   >
                   <div>
-                    <strong>{{ care.store.company()?.name }}</strong
+                    <strong>{{ api.companyName() }}</strong
                     ><small>Care team · {{ r.messages?.length || 0 }} messages</small>
                   </div>
                 </div>
                 <div class="info-banner">
                   <span class="material-symbols-outlined" aria-hidden="true">info</span>
-                  <p>
-                    Messages are saved on this device. External delivery and notifications are not
-                    configured.
-                  </p>
+                  <p>Messages are shared securely with the care team inside CareVerity.</p>
                 </div>
               </section>
               <section class="panel conversation">
@@ -813,7 +813,7 @@
                     name="message"
                     [ngModel]="message"
                     (ngModelChange)="updateDraft($event)"
-                    [disabled]="preview()"
+                    [disabled]="preview() || sending()"
                     rows="4"
                     placeholder="Type your message to the care team…"
                     maxlength="5000"
@@ -821,11 +821,7 @@
                   ></textarea>
                   @if (message) {
                     <p class="small" role="status">
-                      {{
-                        draftStored()
-                          ? 'Draft saved for this browser session.'
-                          : 'Draft retained while this app stays open. Browser storage is unavailable.'
-                      }}
+                      Unsent draft · retained while this portal is open.
                     </p>
                   }
                   <div class="compose-footer">
@@ -837,7 +833,7 @@
                     ><button
                       class="button primary"
                       type="submit"
-                      [disabled]="preview() || !message.trim()"
+                      [disabled]="preview() || sending() || !message.trim()"
                     >
                       <span class="material-symbols-outlined" aria-hidden="true">send</span>Save
                       message
@@ -1016,10 +1012,12 @@
                     @for (l of links.slice(1, 9); track l.path) {
                       <tr>
                         <td>
-                          <a [hidden]="!companyAccess.canPath(href(l.path).join('/'))"
-        [routerLink]="href(l.path)" [queryParams]="queryParams()">{{
-                            l.label
-                          }}</a>
+                          <a
+                            [hidden]="!companyAccess.canPath(href(l.path).join('/'))"
+                            [routerLink]="href(l.path)"
+                            [queryParams]="queryParams()"
+                            >{{ l.label }}</a
+                          >
                         </td>
                         <td>
                           <span class="badge" [class.muted]="!scopeAllowed(l.scope)">{{
@@ -1050,6 +1048,9 @@
             </div>
           }
           @case ('invoices') {
+            @if (r.unavailable['invoices']) {
+              <p class="message" role="status">{{ r.unavailable['invoices'] }}</p>
+            }
             <section class="panel">
               <h2>Shared invoices</h2>
               <p>Approved invoices shared with your family account.</p>
@@ -1060,6 +1061,10 @@
                     ><span>{{ i.date | date: 'd MMM yyyy' }}</span
                     ><span class="badge blue">{{ i.state }}</span>
                   </summary>
+                  <p>
+                    Invoice total: {{ i.currency }} {{ i.total }} · Paid: {{ i.currency }}
+                    {{ i.paid }} · Balance: {{ i.currency }} {{ i.balance }}
+                  </p>
                   <div
                     class="table-scroll"
                     tabindex="0"
@@ -1079,7 +1084,7 @@
                           <tr>
                             <td>{{ line.date | date: 'd MMM yyyy' }}</td>
                             <td>{{ line.call }}</td>
-                            <td>£{{ line.amount.toFixed(2) }}</td>
+                            <td>{{ i.currency }} {{ line.amount }}</td>
                           </tr>
                         }
                       </tbody>
@@ -1099,12 +1104,12 @@
               </h2>
               <p>
                 For questions about care, access or visits, contact
-                {{ care.store.company()?.name }} through your usual care contact.
+                {{ api.companyName() }} through your usual care contact.
               </p>
               <div class="plan-grid">
                 <div>
                   <h3>Care questions</h3>
-                  <p>Use messages to keep a device-local record of your questions and updates.</p>
+                  <p>Use messages to send your questions and updates to the care team.</p>
                   <a class="button" [routerLink]="href('messages')" [queryParams]="queryParams()"
                     >Open messages →</a
                   >
@@ -1139,26 +1144,26 @@
           {{
             params().get('clientId')
               ? 'Family access unavailable'
-              : care.rota.can('manage')
-                ? 'No service users in this workspace'
+              : api.can('read')
+                ? 'No active family access records'
                 : 'No active family access'
           }}
         </h2>
         <p>
           {{
-            care.rota.can('manage')
-              ? 'Full administrator preview is available for service users in your current workspace.'
+            api.can('read')
+              ? 'Administrator preview uses active family access records and the information approved for them.'
               : 'Access needs an active family record, sharing consent and a matching account in this workspace.'
           }}
         </p>
         <p>
           {{
-            care.rota.can('manage')
-              ? 'Open Service users to add a record, or select the workspace containing the care data you want to preview.'
+            api.can('read')
+              ? 'Open Service users to add family access and record sharing consent.'
               : 'Ask your care provider to set up access using your account email.'
           }}
         </p>
-        @if (care.rota.can('manage')) {
+        @if (api.can('read')) {
           <a class="button primary" routerLink="/manage/clients">Open service users →</a>
         }
         <a class="text-link" routerLink="/select-workspace">Select another workspace</a>
@@ -1166,11 +1171,7 @@
     }
   </main>
   <footer>
-    <span>CareVerity · {{ care.store.company()?.name }}</span
-    ><span>{{
-      care.store.storageAvailable()
-        ? 'Local workspace · saved on this device'
-        : 'Device storage unavailable'
-    }}</span>
+    <span>CareVerity · {{ api.companyName() }}</span
+    ><span>Shared securely inside CareVerity</span>
   </footer>
 </div>

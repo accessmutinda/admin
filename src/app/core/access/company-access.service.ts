@@ -188,12 +188,14 @@ export function routeAccess(url: string): [string, string][] {
     ];
   }
   if (path.startsWith('/family')) {
+    if (parsed.searchParams.get('preview') === '1') return [['care', 'family']];
     const area = path.startsWith('/family-portal') ? path.split('/')[2] : path.split('/')[4];
     const map: Record<string, string> = {
       visits: 'visits',
       medication: 'medication',
       documents: 'documents',
       messages: 'messages',
+      photos: 'messages',
       invoices: 'invoices',
     };
     return [['family_portal', map[area ?? ''] ?? 'care']];

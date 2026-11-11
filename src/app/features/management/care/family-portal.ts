@@ -8,6 +8,7 @@ import {
   DestroyRef,
   NgZone,
   HostListener,
+  untracked,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -15,19 +16,21 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatSelectModule, MAT_SELECT_CONFIG } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
-import { FamilyDrafts } from './family-drafts.service';
 import { familyMedicationStatus, upcomingFamilyVisit } from './family-portal.models';
 import { A11yModule } from '@angular/cdk/a11y';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { AuthService } from '../../../core/auth/auth.service';
-import { CareService } from './care.service';
+import { FamilySharingApi } from './family-sharing-api.service';
 import { age, csv, ukStamp, FAMILY_UPDATE_CATEGORIES } from './care.models';
 import { londonDate, addDays } from '../rota/rota.models';
 
 @Component({
   selector: 'cv-family-portal',
   imports: [DatePipe, FormsModule, RouterLink, A11yModule, MatSelectModule, CvSelect],
-  providers: [{ provide: MAT_SELECT_CONFIG, useValue: { overlayPanelClass: 'cv-select-overlay' } }],
+  providers: [
+    FamilySharingApi,
+    { provide: MAT_SELECT_CONFIG, useValue: { overlayPanelClass: 'cv-select-overlay' } },
+  ],
   templateUrl: './family-portal.html',
   styleUrls: [
     './family-shell.css',
@@ -39,7 +42,10 @@ import { londonDate, addDays } from '../rota/rota.models';
   host: { '(document:keydown.escape)': 'menuOpen.set(false)' },
 })
 export class FamilyPortal {
-  protected readonly care = inject(CareService);
+  protected readonly api = inject(FamilySharingApi);
+  protected readonly sending = signal(false);
+  private destroyed = false;
+  private refreshingMessages = false;
   protected readonly companyAccess = inject(CompanyAccessService);
   protected readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
@@ -54,7 +60,7 @@ export class FamilyPortal {
   protected readonly menuOpen = signal(false);
   protected readonly age = age;
   protected readonly ukStamp = ukStamp;
-  private readonly drafts = inject(FamilyDrafts);
+  private readonly drafts = new Map<string, string>();
   protected readonly now = signal(Date.now());
   protected get today(): string {
     return londonDate(new Date(this.now()));
@@ -70,7 +76,7 @@ export class FamilyPortal {
       ? 'cv_family_draft:' +
           JSON.stringify([
             this.auth.currentUser()?.id,
-            this.care.store.companyId(),
+            this.api.records.companyId(),
             selected.clientId,
             selected.accessId,
           ])
@@ -92,30 +98,7 @@ export class FamilyPortal {
   protected readonly heading = computed(
     () => this.links.find((l) => l.path === this.page())?.label ?? 'Help & support',
   );
-  protected readonly choices = computed(() =>
-    this.care.clients().flatMap((c) => {
-      const administrator = this.care.rota.can('manage')
-        ? [
-            {
-              clientId: c.id,
-              accessId: this.care.familyPreviewAccessId(c.id),
-              name: c.name,
-              contact: 'Full administrator access',
-              preview: true,
-            },
-          ]
-        : [];
-      return [
-        ...administrator,
-        ...(c.file?.familyAccess ?? []).flatMap((a) => {
-          const preview = this.care.rota.can('manage');
-          return this.care.familyRecord(c.id, a.id, preview)
-            ? [{ clientId: c.id, accessId: a.id, name: c.name, contact: a.name, preview }]
-            : [];
-        }),
-      ];
-    }),
-  );
+  protected readonly choices = this.api.choices;
   protected readonly selected = computed(() => {
     const clientId = this.params().get('clientId');
     return clientId
@@ -124,21 +107,13 @@ export class FamilyPortal {
   });
   protected readonly preview = computed(
     () =>
-      this.care.rota.can('manage') &&
-      (this.query().get('preview') === '1' || !this.params().get('clientId')),
+      this.query().get('preview') === '1' ||
+      (!this.params().get('clientId') &&
+        this.api.records.allowed() &&
+        this.api.records.access.can('care', 'family', 'read')),
   );
-  protected readonly fullPreview = computed(() => {
-    const selected = this.selected();
-    return (
-      this.preview() &&
-      !!selected &&
-      selected.accessId === this.care.familyPreviewAccessId(selected.clientId)
-    );
-  });
-  protected readonly record = computed(() => {
-    const s = this.selected();
-    return s ? this.care.familyRecord(s.clientId, s.accessId, this.preview()) : null;
-  });
+  protected readonly fullPreview = computed(() => false);
+  protected readonly record = this.api.shared;
   protected readonly allowed = computed(() => {
     const scope = this.links.find((l) => l.path === this.page())?.scope;
     return !scope || this.scopeAllowed(scope);
@@ -205,6 +180,10 @@ export class FamilyPortal {
       ? 'Administrator preview of existing workspace records.'
       : 'Approved information shared by the care team.';
   }
+  protected planDetail(key: string): string {
+    const details = this.record()?.plan?.details;
+    return details && key in details ? String(details[key as keyof typeof details] ?? '') : '';
+  }
   protected medicationStatus(m: { start: string; end: string; discontinuedAt: string }): string {
     return familyMedicationStatus(m, this.today);
   }
@@ -257,11 +236,12 @@ export class FamilyPortal {
   protected updateDraft(text: string): void {
     this.message = text;
     const key = this.draftKey();
-    if (key) this.draftStored.set(this.drafts.save(key, text));
+    if (key) this.drafts.set(key, text);
+    this.draftStored.set(!text);
   }
   @HostListener('window:beforeunload', ['$event'])
   protected beforeUnload(event: BeforeUnloadEvent): void {
-    if (this.message && !this.draftStored()) {
+    if (this.sending() || (this.message && !this.draftStored())) {
       event.preventDefault();
       event.returnValue = '';
     }
@@ -291,77 +271,157 @@ export class FamilyPortal {
       });
     this.search = '';
   }
-  protected send(): void {
-    if (this.preview()) return;
-    const s = this.selected();
-    if (!s) return;
-    const error = this.care.message(
-      s.clientId,
-      this.care.store.companyId(),
-      s.accessId,
-      this.message,
-      true,
-    );
-    this.error.set(error ?? '');
-    if (!error) {
+  protected async send(): Promise<void> {
+    if (this.preview() || this.sending()) return;
+    const selected = this.selected(),
+      scope = this.api.scope();
+    if (!selected) return;
+    this.sending.set(true);
+    this.error.set('');
+    try {
+      await this.api.send(selected.clientId, selected.accessId, this.message);
+      if (
+        this.destroyed ||
+        scope !== this.api.scope() ||
+        this.selected()?.accessId !== selected.accessId
+      )
+        return;
       this.updateDraft('');
-      this.notice.set('Message saved on this device. External delivery is not configured.');
+      this.notice.set('Message sent inside CareVerity.');
+      await this.api.loadShared(selected.clientId, selected.accessId, this.page(), false);
+    } catch (e) {
+      if (scope === this.api.scope() && !this.destroyed)
+        this.error.set(e instanceof Error ? e.message : 'Message could not be sent.');
+    } finally {
+      if (!this.destroyed) this.sending.set(false);
     }
   }
-  protected downloadDocument(id: string): void {
-    const document = this.record()?.documents?.find((d) => d.id === id);
-    if (
-      !document ||
-      !/^data:(application\/pdf|application\/vnd.openxmlformats-officedocument.wordprocessingml.document);base64,/.test(
-        document.data,
+  protected async downloadDocument(id: string): Promise<void> {
+    const selected = this.selected(),
+      scope = this.api.scope(),
+      item = this.record()?.documents?.find((d) => d.id === id);
+    if (!selected || !item) return;
+    this.error.set('');
+    try {
+      const blob = await this.api.content(selected.clientId, selected.accessId, id, this.preview());
+      if (
+        this.destroyed ||
+        scope !== this.api.scope() ||
+        this.selected()?.accessId !== selected.accessId
       )
-    )
-      return;
-    const anchor = window.document.createElement('a');
-    anchor.href = document.data;
-    anchor.download = document.name;
-    anchor.click();
+        return;
+      const url = URL.createObjectURL(blob),
+        anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = item.name;
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      if (!this.destroyed && scope === this.api.scope())
+        this.error.set(e instanceof Error ? e.message : 'The document is unavailable.');
+    }
   }
-  protected exportVisits(): void {
-    if (!this.record()?.visits) return;
-    const content = csv([
-      [
-        'Date',
-        'Visit',
-        'Start',
-        'End',
-        'Carer',
-        'Check-in (UK)',
-        'Check-out (UK)',
-        'Duration (minutes)',
-        'Planned location',
-        'Status',
-      ],
-      ...this.filteredVisits().map((v) => [
-        v.date,
-        v.callName,
-        v.start,
-        v.end,
-        v.carers.join(', '),
-        v.attendance.map((a) => (a.start ? ukStamp(a.start) : '')).join('; '),
-        v.attendance.map((a) => (a.end ? ukStamp(a.end) : '')).join('; '),
-        v.attendance.map((a) => a.duration ?? '').join('; '),
-        v.location || 'Not recorded',
-        v.completed ? 'Completed' : 'Scheduled / awaiting completion',
-      ]),
-    ]);
-    const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'family-visits.csv';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  protected async exportVisits(): Promise<void> {
+    const selected = this.selected(),
+      scope = this.api.scope();
+    if (!selected || !this.record()?.visits) return;
+    try {
+      const fresh = await this.api.exportVisits(
+        selected.clientId,
+        selected.accessId,
+        this.preview(),
+      );
+      if (
+        this.destroyed ||
+        scope !== this.api.scope() ||
+        this.selected()?.accessId !== selected.accessId
+      )
+        return;
+      const previous = this.api.shared();
+      if (previous) this.api.shared.set({ ...previous, visits: fresh });
+      const content = csv([
+        [
+          'Date',
+          'Visit',
+          'Start',
+          'End',
+          'Carer',
+          'Check-in (UK)',
+          'Check-out (UK)',
+          'Duration (minutes)',
+          'Planned location',
+          'Status',
+        ],
+        ...this.filteredVisits().map((v) => [
+          v.date,
+          v.callName,
+          v.start,
+          v.end,
+          v.carers.join(', '),
+          v.attendance.map((a) => (a.start ? ukStamp(a.start) : '')).join('; '),
+          v.attendance.map((a) => (a.end ? ukStamp(a.end) : '')).join('; '),
+          v.attendance.map((a) => a.duration ?? '').join('; '),
+          v.location || 'Not recorded',
+          v.completed ? 'Completed' : 'Scheduled / awaiting completion',
+        ]),
+      ]);
+      const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'family-visits.csv';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      if (!this.destroyed && scope === this.api.scope())
+        this.error.set(e instanceof Error ? e.message : 'Visits could not be exported.');
+    }
   }
   constructor() {
     const timer = inject(NgZone).runOutsideAngular(() =>
-      setInterval(() => this.now.set(Date.now()), 30000),
+      setInterval(() => {
+        this.now.set(Date.now());
+        const selected = this.selected();
+        if (
+          document.visibilityState === 'visible' &&
+          this.page() === 'messages' &&
+          selected &&
+          !this.message &&
+          !this.sending() &&
+          !this.api.loading() &&
+          !this.refreshingMessages
+        ) {
+          this.refreshingMessages = true;
+          void this.api
+            .refreshMessages(selected.clientId, selected.accessId, this.preview())
+            .finally(() => {
+              this.refreshingMessages = false;
+            });
+        }
+      }, 30000),
     );
-    inject(DestroyRef).onDestroy(() => clearInterval(timer));
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(timer);
+      this.destroyed = true;
+    });
+    effect(() => {
+      const scope = this.api.scope(),
+        preview = this.preview();
+      untracked(() => {
+        void this.api.loadChoices(preview).catch((e) => {
+          if (scope === this.api.scope())
+            this.error.set(e instanceof Error ? e.message : 'Family access is unavailable.');
+        });
+      });
+    });
+    effect(() => {
+      const selected = this.selected(),
+        scope = this.api.scope(),
+        page = this.page(),
+        preview = this.preview();
+      untracked(() => {
+        if (selected) void this.api.loadShared(selected.clientId, selected.accessId, page, preview);
+      });
+    });
     let previousContext = '';
     effect(() => {
       const params = this.params();
@@ -376,8 +436,8 @@ export class FamilyPortal {
       previousContext = context;
       this.search = '';
       this.carer = '';
-      this.message = key ? this.drafts.read(key) : '';
-      this.draftStored.set(key ? this.drafts.save(key, this.message) : true);
+      this.message = key ? (this.drafts.get(key) ?? '') : '';
+      this.draftStored.set(!this.message);
       this.error.set('');
       this.notice.set('');
     });
