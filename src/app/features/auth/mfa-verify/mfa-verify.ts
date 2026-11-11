@@ -1,10 +1,12 @@
 import { Skeleton } from '../../../shared/ui/skeleton';
-import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { toDataURL } from 'qrcode';
 import { AuthCenteredLayout } from '../../../shared/layouts/auth-centered-layout';
 import { Alert } from '../../../shared/ui/alert';
 import { OtpInput } from '../../../shared/ui/otp-input';
+import { MfaEnrolment } from '../../../core/auth/auth-api';
 import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
@@ -21,6 +23,29 @@ export class MfaVerify implements OnInit {
   protected readonly code = signal('');
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal('');
+  protected readonly setupQr = signal('');
+  private qrRequest = 0;
+
+  constructor() {
+    effect(() => {
+      const address = setupAddress(this.enrolment());
+      untracked(() => {
+        const request = ++this.qrRequest;
+        if (!address) {
+          this.setupQr.set('');
+          return;
+        }
+        void toDataURL(address, { errorCorrectionLevel: 'M', margin: 1, width: 168 }).then(
+          (image) => {
+            if (request === this.qrRequest) this.setupQr.set(image);
+          },
+          () => {
+            if (request === this.qrRequest) this.setupQr.set('');
+          },
+        );
+      });
+    });
+  }
 
   ngOnInit(): void {
     if (!this.auth.state().startsWith('mfa_')) {
@@ -69,4 +94,13 @@ export class MfaVerify implements OnInit {
       },
     });
   }
+}
+
+function setupAddress(device: MfaEnrolment | null): string {
+  if (!device) return '';
+  const provided = device.otpauth_url?.trim() ?? '';
+  if (provided.startsWith('otpauth://')) return provided;
+  const secret = device.secret?.replace(/\s+/g, '') ?? '';
+  if (!secret) return '';
+  return `otpauth://totp/CareVerity?secret=${encodeURIComponent(secret)}&issuer=CareVerity`;
 }
