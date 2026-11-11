@@ -20,6 +20,7 @@ export class CareEventsApi {
   private readonly auth = inject(AuthService);
   readonly scope = this.records.scope;
   readonly loading = signal(false);
+  readonly ready = signal(false);
   readonly today = signal('');
   readonly error = signal('');
   readonly denied = signal(false);
@@ -37,6 +38,7 @@ export class CareEventsApi {
         this.error.set('');
         this.denied.set(false);
         this.loading.set(false);
+        this.ready.set(false);
         this.intents.clear();
       });
     });
@@ -139,7 +141,10 @@ export class CareEventsApi {
       }
       return [];
     } finally {
-      if (generation === this.generation) this.loading.set(false);
+      if (generation === this.generation) {
+        this.ready.set(true);
+        this.loading.set(false);
+      }
     }
   }
   async detail(id: string, record: string): Promise<CareEventRead> {

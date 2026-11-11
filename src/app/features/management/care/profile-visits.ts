@@ -1,5 +1,6 @@
 import {
   Component,
+  ChangeDetectorRef,
   computed,
   effect,
   HostListener,
@@ -16,10 +17,11 @@ import { RosterApi } from '../rota/roster-api.service';
 import { RotaClient, RotaVisit, addDays, londonDate, minutes } from '../rota/rota.models';
 import { age } from './care.models';
 import { CareHeader } from './care-header';
+import { ServiceUserState } from '../shared/service-user-state';
 
 @Component({
   selector: 'cv-profile-visits',
-  imports: [DatePipe, FormsModule, RouterLink, CareHeader],
+  imports: [DatePipe, FormsModule, RouterLink, CareHeader, ServiceUserState],
   templateUrl: './profile-visits.html',
   styleUrls: [
     './service-user-spacing.css',
@@ -32,6 +34,7 @@ export class ProfileVisits {
   readonly client = input.required<RotaClient>();
   readonly visitSelected = output<RotaVisit>();
   protected readonly service = inject(RosterApi);
+  private readonly changeDetector = inject(ChangeDetectorRef);
   protected readonly store = this.service.store;
   protected readonly today = londonDate();
   protected readonly anchor = signal(this.today);
@@ -378,7 +381,17 @@ export class ProfileVisits {
     }
   }
   protected async print(): Promise<void> {
-    if (this.service.can('export') && (await this.service.refresh(true))) window.print();
+    const scope = this.service.scope(),
+      id = this.client().id;
+    if (
+      this.service.can('export') &&
+      (await this.service.refresh(true)) &&
+      scope === this.service.scope() &&
+      id === this.client().id
+    ) {
+      this.changeDetector.detectChanges();
+      window.print();
+    }
   }
   protected move(direction: number): void {
     if (this.view() !== 'Week') {

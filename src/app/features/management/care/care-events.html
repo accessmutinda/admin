@@ -1,5 +1,7 @@
 <cv-module-design />
-@if (client(); as c) {
+@if (api.records.detailPending(id())) {
+  <cv-service-user-state [loading]="true" />
+} @else if (client(); as c) {
   <cv-care-header
     [client]="c"
     [active]="page()"
@@ -7,303 +9,304 @@
     [printBusy]="printing() || api.loading()"
     (printRequested)="print()"
   />
-  <div class="care-heading event-heading">
-    <div>
-      <h1>{{ page() === 'feedback' ? 'Reviews & Feedback' : 'Incidents & Complaints' }}</h1>
-      <p>
-        {{
-          page() === 'feedback'
-            ? 'Manage reviews, compliments, suggestions and concerns for ' + c.name + '.'
-            : 'Record what happened, document follow-up and retain a clear history for ' +
-              c.name +
-              '.'
-        }}
-      </p>
-    </div>
-    @if (api.can('create')) {
-      <button
-        class="care-button primary"
-        [disabled]="busy() || api.loading() || printing()"
-        (click)="open()"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">add</span>Add {{ label() }}
-      </button>
-    }
-  </div>
-  @if (notice()) {
-    <p class="note-notice" role="status">{{ notice() }}</p>
-  }
-  @if ((error() || api.error()) && !mode()) {
-    <p class="care-error" role="alert">{{ error() || api.error() }}</p>
-  }
-  @if (personalContext()) {
-    <p class="event-context">
-      Personal Care related records ·
-      <a [routerLink]="['/manage/clients', id(), 'incidents']">View all records</a>
-    </p>
-  }
-  <section class="event-metrics" aria-label="Record summary">
-    @for (metric of metrics(); track metric.label) {
-      <article class="cv-metric event-metric" [attr.data-card-tone]="metric.tone">
-        <div>
-          <h2>{{ metric.label }}</h2>
-          <strong>{{ api.loading() || api.error() ? '—' : metric.value }}</strong>
-          <p>{{ metricNote(metric.label) }}</p>
-        </div>
-        <span class="material-symbols-outlined" aria-hidden="true">{{ metric.icon }}</span>
-      </article>
-    }
-  </section>
-  <section class="care-panel event-register" aria-label="Records register">
-    <div class="event-toolbar">
-      <nav class="event-tabs" aria-label="Record categories">
-        @if (page() === 'incidents') {
-          <button
-            class="care-button"
-            [class.active]="collection() === 'incidents'"
-            [attr.aria-pressed]="collection() === 'incidents'"
-            [disabled]="busy() || printing()"
-            (click)="choose('incidents')"
-          >
-            <span class="material-symbols-outlined" aria-hidden="true">report</span>Incidents
-          </button>
-          <button
-            class="care-button"
-            [class.active]="collection() === 'complaints'"
-            [attr.aria-pressed]="collection() === 'complaints'"
-            [disabled]="busy() || printing()"
-            (click)="choose('complaints')"
-          >
-            <span class="material-symbols-outlined" aria-hidden="true">forum</span>Complaints
-          </button>
-        } @else {
-          <h2 class="feedback-register-title">
-            <span class="material-symbols-outlined" aria-hidden="true">reviews</span>Feedback
-            register
-          </h2>
-        }
-      </nav>
-      <button
-        class="care-button"
-        [disabled]="api.loading() || busy() || printing()"
-        (click)="api.load(id(), collection())"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Refresh
-      </button>
-    </div>
-    <div class="event-filters">
-      <label class="event-search"
-        >Search records<input
-          [disabled]="printing()"
-          type="search"
-          [ngModel]="search()"
-          (ngModelChange)="search.set($event); pageNumber.set(1)"
-          placeholder="Search title or follow-up"
-      /></label>
-      <label
-        >Status<mat-select
-          [disabled]="printing()"
-          cvSelect
-          aria-label="Filter by status"
-          [ngModel]="status()"
-          (ngModelChange)="status.set($event); pageNumber.set(1)"
-          ><mat-option value="">All statuses</mat-option>
-          @for (s of ['Active', 'Completed', 'Inactive']; track s) {
-            <mat-option [value]="s">{{ s }}</mat-option>
-          }
-        </mat-select></label
-      >
-      @if (page() === 'feedback') {
-        <label
-          >Feedback type<mat-select
-            [disabled]="printing()"
-            cvSelect
-            aria-label="Filter by feedback type"
-            [ngModel]="feedbackType()"
-            (ngModelChange)="feedbackType.set($event); pageNumber.set(1)"
-            ><mat-option value="">All types</mat-option>
-            @for (t of feedbackTypes; track t) {
-              <mat-option [value]="t">{{ t }}</mat-option>
-            }
-          </mat-select></label
+  @if (api.loading() || (api.can('read') && !api.ready())) {
+    <cv-service-user-state [loading]="true" [identity]="false" />
+  } @else {
+    <div class="care-heading event-heading">
+      <div>
+        <h1>{{ page() === 'feedback' ? 'Reviews & Feedback' : 'Incidents & Complaints' }}</h1>
+        <p>
+          {{
+            page() === 'feedback'
+              ? 'Manage reviews, compliments, suggestions and concerns for ' + c.name + '.'
+              : 'Record what happened, document follow-up and retain a clear history for ' +
+                c.name +
+                '.'
+          }}
+        </p>
+      </div>
+      @if (api.can('create')) {
+        <button
+          class="care-button primary"
+          [disabled]="busy() || api.loading() || printing()"
+          (click)="open()"
         >
-      } @else {
+          <span class="material-symbols-outlined" aria-hidden="true">add</span>Add {{ label() }}
+        </button>
+      }
+    </div>
+    @if (notice()) {
+      <p class="note-notice" role="status">{{ notice() }}</p>
+    }
+    @if ((error() || api.error()) && !mode()) {
+      <p class="care-error" role="alert">{{ error() || api.error() }}</p>
+    }
+    @if (personalContext()) {
+      <p class="event-context">
+        Personal Care related records ·
+        <a [routerLink]="['/manage/clients', id(), 'incidents']">View all records</a>
+      </p>
+    }
+    <section class="event-metrics" aria-label="Record summary">
+      @for (metric of metrics(); track metric.label) {
+        <article class="cv-metric event-metric" [attr.data-card-tone]="metric.tone">
+          <div>
+            <h2>{{ metric.label }}</h2>
+            <strong>{{ api.loading() || api.error() ? '—' : metric.value }}</strong>
+            <p>{{ metricNote(metric.label) }}</p>
+          </div>
+          <span class="material-symbols-outlined" aria-hidden="true">{{ metric.icon }}</span>
+        </article>
+      }
+    </section>
+    <section class="care-panel event-register" aria-label="Records register">
+      <div class="event-toolbar">
+        <nav class="event-tabs" aria-label="Record categories">
+          @if (page() === 'incidents') {
+            <button
+              class="care-button"
+              [class.active]="collection() === 'incidents'"
+              [attr.aria-pressed]="collection() === 'incidents'"
+              [disabled]="busy() || printing()"
+              (click)="choose('incidents')"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">report</span>Incidents
+            </button>
+            <button
+              class="care-button"
+              [class.active]="collection() === 'complaints'"
+              [attr.aria-pressed]="collection() === 'complaints'"
+              [disabled]="busy() || printing()"
+              (click)="choose('complaints')"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">forum</span>Complaints
+            </button>
+          } @else {
+            <h2 class="feedback-register-title">
+              <span class="material-symbols-outlined" aria-hidden="true">reviews</span>Feedback
+              register
+            </h2>
+          }
+        </nav>
+        <button
+          class="care-button"
+          [disabled]="api.loading() || busy() || printing()"
+          (click)="api.load(id(), collection())"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Refresh
+        </button>
+      </div>
+      <div class="event-filters">
+        <label class="event-search"
+          >Search records<input
+            [disabled]="printing()"
+            type="search"
+            [ngModel]="search()"
+            (ngModelChange)="search.set($event); pageNumber.set(1)"
+            placeholder="Search title or follow-up"
+        /></label>
         <label
-          >Risk level<mat-select
+          >Status<mat-select
             [disabled]="printing()"
             cvSelect
-            aria-label="Filter by risk level"
-            [ngModel]="level()"
-            (ngModelChange)="level.set($event); pageNumber.set(1)"
-            ><mat-option value="">All levels</mat-option>
-            @for (s of ['Low', 'Medium', 'High']; track s) {
+            aria-label="Filter by status"
+            [ngModel]="status()"
+            (ngModelChange)="status.set($event); pageNumber.set(1)"
+            ><mat-option value="">All statuses</mat-option>
+            @for (s of ['Active', 'Completed', 'Inactive']; track s) {
               <mat-option [value]="s">{{ s }}</mat-option>
             }
           </mat-select></label
         >
-      }
-      <button class="care-button" [disabled]="printing()" (click)="clearFilters()">
-        Clear filters
-      </button>
-    </div>
-    <div class="care-scroll" role="region" aria-label="Service user records" tabindex="0">
-      <table class="care-table event-table">
-        <thead>
-          <tr>
-            <th scope="col">Record</th>
-            @if (page() === 'feedback') {
-              <th scope="col">Feedback type</th>
-            }
-            <th scope="col">Date</th>
-            <th scope="col">{{ page() === 'feedback' ? 'Rating' : 'Risk level' }}</th>
-            <th scope="col">Status</th>
-            <th scope="col">Last updated</th>
-            <th scope="col">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (entry of rows(); track entry.id) {
+        @if (page() === 'feedback') {
+          <label
+            >Feedback type<mat-select
+              [disabled]="printing()"
+              cvSelect
+              aria-label="Filter by feedback type"
+              [ngModel]="feedbackType()"
+              (ngModelChange)="feedbackType.set($event); pageNumber.set(1)"
+              ><mat-option value="">All types</mat-option>
+              @for (t of feedbackTypes; track t) {
+                <mat-option [value]="t">{{ t }}</mat-option>
+              }
+            </mat-select></label
+          >
+        } @else {
+          <label
+            >Risk level<mat-select
+              [disabled]="printing()"
+              cvSelect
+              aria-label="Filter by risk level"
+              [ngModel]="level()"
+              (ngModelChange)="level.set($event); pageNumber.set(1)"
+              ><mat-option value="">All levels</mat-option>
+              @for (s of ['Low', 'Medium', 'High']; track s) {
+                <mat-option [value]="s">{{ s }}</mat-option>
+              }
+            </mat-select></label
+          >
+        }
+        <button class="care-button" [disabled]="printing()" (click)="clearFilters()">
+          Clear filters
+        </button>
+      </div>
+      <div class="care-scroll" role="region" aria-label="Service user records" tabindex="0">
+        <table class="care-table event-table">
+          <thead>
             <tr>
-              <td>
-                <button
-                  class="event-title"
-                  [disabled]="busy() || printing()"
-                  (click)="open(entry, 'view')"
-                >
-                  {{ entry.name }}
-                </button>
-                <p class="event-excerpt">{{ entry.detail }}</p>
-                @if (page() === 'feedback') {
-                  <small class="feedback-source"
-                    >From: {{ entry.receivedFrom || 'Not recorded' }}</small
-                  >
-                }
-              </td>
+              <th scope="col">Record</th>
               @if (page() === 'feedback') {
-                <td>
-                  <span class="event-badge" [attr.data-feedback-type]="entry.feedbackType">{{
-                    entry.feedbackType || 'Not recorded'
-                  }}</span>
-                </td>
+                <th scope="col">Feedback type</th>
               }
-              <td>{{ calendarDate(entry.date) }}</td>
-              @if (page() === 'feedback') {
+              <th scope="col">Date</th>
+              <th scope="col">{{ page() === 'feedback' ? 'Rating' : 'Risk level' }}</th>
+              <th scope="col">Status</th>
+              <th scope="col">Last updated</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of rows(); track entry.id) {
+              <tr>
                 <td>
-                  <span class="feedback-rating" [class.unrated]="entry.rating == null"
-                    ><span class="material-symbols-outlined" aria-hidden="true">{{
-                      entry.rating == null ? 'star_border' : 'star'
-                    }}</span
-                    >{{ ratingText(entry.rating) }}</span
-                  >
-                </td>
-              } @else {
-                <td>
-                  <span
-                    class="event-badge"
-                    [class.high]="entry.level === 'High'"
-                    [class.medium]="entry.level === 'Medium'"
-                    >{{ entry.level }}</span
-                  >
-                </td>
-              }
-              <td>
-                <span
-                  class="event-badge"
-                  [class.completed]="entry.status === 'Completed'"
-                  [class.inactive]="entry.status === 'Inactive'"
-                  >{{ entry.status }}</span
-                >
-              </td>
-              <td>
-                <span>{{ dateTime(entry.updatedAt) }}</span
-                ><small>{{ entry.updatedBy }}</small>
-              </td>
-              <td>
-                <div class="event-actions">
                   <button
-                    class="care-button"
-                    [attr.aria-label]="'View ' + entry.name"
+                    class="event-title"
                     [disabled]="busy() || printing()"
                     (click)="open(entry, 'view')"
                   >
-                    View
+                    {{ entry.name }}
                   </button>
-                  @if (api.can('edit')) {
+                  <p class="event-excerpt">{{ entry.detail }}</p>
+                  @if (page() === 'feedback') {
+                    <small class="feedback-source"
+                      >From: {{ entry.receivedFrom || 'Not recorded' }}</small
+                    >
+                  }
+                </td>
+                @if (page() === 'feedback') {
+                  <td>
+                    <span class="event-badge" [attr.data-feedback-type]="entry.feedbackType">{{
+                      entry.feedbackType || 'Not recorded'
+                    }}</span>
+                  </td>
+                }
+                <td>{{ calendarDate(entry.date) }}</td>
+                @if (page() === 'feedback') {
+                  <td>
+                    <span class="feedback-rating" [class.unrated]="entry.rating == null"
+                      ><span class="material-symbols-outlined" aria-hidden="true">{{
+                        entry.rating == null ? 'star_border' : 'star'
+                      }}</span
+                      >{{ ratingText(entry.rating) }}</span
+                    >
+                  </td>
+                } @else {
+                  <td>
+                    <span
+                      class="event-badge"
+                      [class.high]="entry.level === 'High'"
+                      [class.medium]="entry.level === 'Medium'"
+                      >{{ entry.level }}</span
+                    >
+                  </td>
+                }
+                <td>
+                  <span
+                    class="event-badge"
+                    [class.completed]="entry.status === 'Completed'"
+                    [class.inactive]="entry.status === 'Inactive'"
+                    >{{ entry.status }}</span
+                  >
+                </td>
+                <td>
+                  <span>{{ dateTime(entry.updatedAt) }}</span
+                  ><small>{{ entry.updatedBy }}</small>
+                </td>
+                <td>
+                  <div class="event-actions">
                     <button
                       class="care-button"
-                      [attr.aria-label]="'Edit ' + entry.name"
+                      [attr.aria-label]="'View ' + entry.name"
                       [disabled]="busy() || printing()"
-                      (click)="open(entry)"
+                      (click)="open(entry, 'view')"
                     >
-                      Edit
+                      View
                     </button>
-                  }
-                  <button
-                    class="care-button"
-                    [attr.aria-label]="'History for ' + entry.name"
-                    [disabled]="busy() || printing()"
-                    (click)="open(entry, 'history')"
-                  >
-                    History
-                  </button>
-                  @if (api.can('archive')) {
+                    @if (api.can('edit')) {
+                      <button
+                        class="care-button"
+                        [attr.aria-label]="'Edit ' + entry.name"
+                        [disabled]="busy() || printing()"
+                        (click)="open(entry)"
+                      >
+                        Edit
+                      </button>
+                    }
                     <button
-                      class="care-button event-danger"
-                      [attr.aria-label]="'Remove ' + entry.name"
+                      class="care-button"
+                      [attr.aria-label]="'History for ' + entry.name"
                       [disabled]="busy() || printing()"
-                      (click)="open(entry, 'remove')"
+                      (click)="open(entry, 'history')"
                     >
-                      Remove
+                      History
                     </button>
-                  }
-                </div>
-              </td>
-            </tr>
-          } @empty {
-            <tr>
-              <td [attr.colspan]="page() === 'feedback' ? 7 : 6" class="event-empty">
-                {{
-                  api.loading()
-                    ? 'Loading records…'
-                    : api.error()
-                      ? 'Records are unavailable.'
-                      : search() || status() || level() || feedbackType()
-                        ? 'No records match these filters.'
-                        : 'No ' + label() + ' records have been added.'
-                }}
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-    <div class="note-pagination">
-      <span>{{ filtered().length }} records · Page {{ currentPage() }} of {{ pageCount() }}</span>
-      <nav aria-label="Record pages">
-        <button
-          class="care-button"
-          [disabled]="printing() || currentPage() === 1"
-          (click)="pageNumber.set(currentPage() - 1)"
-        >
-          Previous</button
-        ><button
-          class="care-button"
-          [disabled]="printing() || currentPage() === pageCount()"
-          (click)="pageNumber.set(currentPage() + 1)"
-        >
-          Next
-        </button>
-      </nav>
-    </div>
-  </section>
+                    @if (api.can('archive')) {
+                      <button
+                        class="care-button event-danger"
+                        [attr.aria-label]="'Remove ' + entry.name"
+                        [disabled]="busy() || printing()"
+                        (click)="open(entry, 'remove')"
+                      >
+                        Remove
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td [attr.colspan]="page() === 'feedback' ? 7 : 6" class="event-empty">
+                  {{
+                    api.loading()
+                      ? 'Loading records…'
+                      : api.error()
+                        ? 'Records are unavailable.'
+                        : search() || status() || level() || feedbackType()
+                          ? 'No records match these filters.'
+                          : 'No ' + label() + ' records have been added.'
+                  }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="note-pagination">
+        <span>{{ filtered().length }} records · Page {{ currentPage() }} of {{ pageCount() }}</span>
+        <nav aria-label="Record pages">
+          <button
+            class="care-button"
+            [disabled]="printing() || currentPage() === 1"
+            (click)="pageNumber.set(currentPage() - 1)"
+          >
+            Previous</button
+          ><button
+            class="care-button"
+            [disabled]="printing() || currentPage() === pageCount()"
+            (click)="pageNumber.set(currentPage() + 1)"
+          >
+            Next
+          </button>
+        </nav>
+      </div>
+    </section>
+  }
 } @else {
-  <p class="care-error" role="status">
-    {{
-      api.records.detailLoading()
-        ? 'Loading service user…'
-        : api.error() || api.records.error() || 'Service user records are unavailable.'
-    }}
-  </p>
+  <cv-service-user-state
+    [message]="api.error() || api.records.error()"
+    (retry)="api.records.detail(id()); api.load(id(), collection())"
+  />
 }
 @if (mode()) {
   <div class="note-dialog-backdrop">

@@ -24,6 +24,8 @@ export class VisitNotesApi {
   readonly page = signal<VisitNotePage | null>(null);
   readonly options = signal<VisitNoteOptions | null>(null);
   readonly loading = signal(false);
+  readonly ready = signal(false);
+  readonly optionsLoading = signal(false);
   readonly denied = signal(false);
   readonly error = signal('');
   private generation = 0;
@@ -39,11 +41,13 @@ export class VisitNotesApi {
         this.optionsGeneration++;
         this.page.set(null);
         this.options.set(null);
+        this.optionsLoading.set(false);
         this.error.set('');
         this.intents.clear();
         this.fileIntents.clear();
         this.denied.set(false);
         this.loading.set(false);
+        this.ready.set(false);
       });
     });
     inject(DestroyRef).onDestroy(() => {
@@ -147,12 +151,16 @@ export class VisitNotesApi {
       }
       return false;
     } finally {
-      if (generation === this.generation) this.loading.set(false);
+      if (generation === this.generation) {
+        this.ready.set(true);
+        this.loading.set(false);
+      }
     }
   }
   async loadOptions(id: string, query = ''): Promise<boolean> {
     const scope = this.scope(),
       generation = ++this.optionsGeneration;
+    this.optionsLoading.set(true);
     this.options.set(null);
     try {
       const value = this.check(
@@ -169,6 +177,8 @@ export class VisitNotesApi {
       if (generation === this.optionsGeneration && scope === this.scope())
         this.error.set(e instanceof Error ? e.message : 'Visit note options are unavailable.');
       return false;
+    } finally {
+      if (generation === this.optionsGeneration) this.optionsLoading.set(false);
     }
   }
   async detail(id: string, note: string): Promise<VisitNote> {

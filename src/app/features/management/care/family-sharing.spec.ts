@@ -104,6 +104,9 @@ describe('Connected family sharing administration', () => {
             allowed: () => permissions.has('read'),
             access: { can: (_m: string, _s: string, a: string) => permissions.has(a) },
             selected,
+            detailPending() {
+              return this.detailLoading();
+            },
             detailLoading: signal(false),
             error: signal(''),
             detail: vi.fn(async (id: string) => selected.set({ id, name: 'Service user' })),

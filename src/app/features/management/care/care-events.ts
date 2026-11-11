@@ -1,3 +1,4 @@
+import { ServiceUserState } from '../shared/service-user-state';
 import {
   Component,
   ChangeDetectorRef,
@@ -25,6 +26,7 @@ import { londonDate } from '../rota/rota.models';
 @Component({
   selector: 'cv-care-events',
   imports: [
+    ServiceUserState,
     FormsModule,
     CareHeader,
     RouterLink,

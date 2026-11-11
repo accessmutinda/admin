@@ -94,12 +94,43 @@ describe('Service user initialisation', () => {
       ],
     });
     const api = TestBed.inject(ServiceUsersApi);
+    expect(api.detailLoading()).toBe(false);
+    expect(api.detailPending('user-1')).toBe(true);
     const pending = api.detail('user-1');
+    expect(api.detailPending('user-1')).toBe(true);
     TestBed.tick();
     resolve(overview());
     await pending;
     expect(api.selected()?.id).toBe('user-1');
     expect(api.error()).toBe('');
     expect(api.detailLoading()).toBe(false);
+    expect(api.detailPending('user-1')).toBe(false);
+    expect(api.detailPending('user-2')).toBe(true);
+  });
+  it('settles a failed read and returns to pending immediately when the workspace changes', async () => {
+    const companyId = signal('north');
+    TestBed.configureTestingModule({
+      providers: [
+        ServiceUsersApi,
+        {
+          provide: AuthService,
+          useValue: {
+            api: vi.fn().mockRejectedValue(new Error('Connection interrupted')),
+            profile: signal({ id: 'actor' }),
+          },
+        },
+        {
+          provide: CompanyAccessService,
+          useValue: { companyId, can: () => true, context: signal(null) },
+        },
+      ],
+    });
+    const api = TestBed.inject(ServiceUsersApi);
+    expect(api.detailPending('user-1')).toBe(true);
+    await api.detail('user-1');
+    expect(api.detailPending('user-1')).toBe(false);
+    expect(api.error()).toBe('Connection interrupted');
+    companyId.set('south');
+    expect(api.detailPending('user-1')).toBe(true);
   });
 });

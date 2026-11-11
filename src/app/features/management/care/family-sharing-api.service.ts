@@ -36,6 +36,7 @@ export class FamilySharingApi {
   readonly scope = this.records.scope;
   readonly companyName = signal('');
   readonly loading = signal(false);
+  readonly ready = signal(false);
   readonly denied = signal(false);
   readonly error = signal('');
   readonly workspace = signal<FamilyWorkspaceRead | null>(null);
@@ -68,6 +69,7 @@ export class FamilySharingApi {
     this.companyName.set('');
     this.shared.set(null);
     this.loading.set(false);
+    this.ready.set(false);
     this.denied.set(false);
     this.error.set('');
     this.intents.clear();
@@ -192,7 +194,10 @@ export class FamilySharingApi {
         this.error.set(e instanceof Error ? e.message : 'Family sharing could not be loaded.');
       }
     } finally {
-      if (token === this.generation) this.loading.set(false);
+      if (token === this.generation) {
+        this.ready.set(true);
+        this.loading.set(false);
+      }
     }
   }
   async detail(id: string, kind: SharingKind, row: string) {
@@ -298,7 +303,10 @@ export class FamilySharingApi {
         this.error.set(e instanceof Error ? e.message : 'Shared information is unavailable.');
       }
     } finally {
-      if (token === this.generation) this.loading.set(false);
+      if (token === this.generation) {
+        this.ready.set(true);
+        this.loading.set(false);
+      }
     }
   }
   async refreshMessages(id: string, access: string, preview: boolean) {

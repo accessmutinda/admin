@@ -27,8 +27,7 @@ import {
   SavedAdministration,
 } from './medication-api.service';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
-import { CompanyUnavailable } from '../shared/company-unavailable';
-import { PageLoading } from '../../../shared/layouts/page-loading';
+import { ServiceUserState } from '../shared/service-user-state';
 import {
   Administration,
   Prescription,
@@ -51,8 +50,7 @@ import { addDays, londonDate } from '../rota/rota.models';
     A11yModule,
     MatSelectModule,
     CvSelect,
-    CompanyUnavailable,
-    PageLoading,
+    ServiceUserState,
   ],
   host: { class: 'module-page operations-page' },
   templateUrl: './medication.html',

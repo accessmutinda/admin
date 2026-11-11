@@ -76,6 +76,9 @@ describe('Medication backend workflow', () => {
       companyId: signal('north'),
       allowed: signal(true),
       selected: signal({ id: 'client', name: 'Alex', file: {} }),
+      detailPending() {
+        return this.detailLoading();
+      },
       detailLoading: signal(false),
       error: signal(''),
       detail: vi.fn().mockResolvedValue(undefined),

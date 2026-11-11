@@ -129,6 +129,9 @@ describe('Connected service-user documents', () => {
             access: { can: (_m: string, _s: string, a: string) => permissions.has(a) },
             selected,
             loading: signal(false),
+            detailPending() {
+              return this.detailLoading();
+            },
             detailLoading: signal(false),
             error: signal(''),
             detail: vi.fn(async (id: string) =>

@@ -78,10 +78,10 @@
         </article>
       </div>
       <cv-service-user-directory />
-    } @else if (api.detailLoading() && !client()) {
-      <cv-page-loading url="/manage/clients" />
+    } @else if (api.detailPending(id())) {
+      <cv-service-user-state [loading]="true" />
     } @else if (api.error()) {
-      <cv-company-unavailable [message]="api.error()" (retry)="api.detail(id()!)" />
+      <cv-service-user-state [message]="api.error()" (retry)="api.detail(id()!)" />
     } @else if (client(); as c) {
       <cv-care-header
         [client]="c"
@@ -665,11 +665,7 @@
         }
       </article>
     } @else {
-      <section class="panel empty-state">
-        <h1>Client record unavailable</h1>
-        <p>This client is not in the current workspace.</p>
-        <a class="button" routerLink="/manage/clients">Back to client files</a>
-      </section>
+      <cv-service-user-state (retry)="api.detail(id()!)" />
     }
   </div>
 }

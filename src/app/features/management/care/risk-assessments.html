@@ -1,5 +1,7 @@
 <cv-module-design />
-@if (client(); as c) {
+@if (records.detailPending(id()) || loading() || (allowed() && !data() && !error())) {
+  <cv-service-user-state [loading]="true" />
+} @else if (client(); as c) {
   @if (allowed()) {
     <div class="screen-header">
       <cv-care-header
@@ -963,10 +965,10 @@
     </section>
   }
 } @else {
-  <section class="panel empty">
-    <h2>Service user unavailable</h2>
-    <a routerLink="/manage/clients">Return to Service Users</a>
-  </section>
+  <cv-service-user-state
+    [message]="error() || records.error()"
+    (retry)="records.detail(id()); load()"
+  />
 }
 
 <ng-template #assessmentForm>

@@ -2,8 +2,7 @@ import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { NgTemplateOutlet } from '@angular/common';
 import { ServiceUserOverviewDialog, OverviewCard } from './service-user-overview-dialog';
 import { ServiceUsersApi, DirectoryUser } from './service-users-api.service';
-import { PageLoading } from '../../../shared/layouts/page-loading';
-import { CompanyUnavailable } from '../shared/company-unavailable';
+import { ServiceUserState } from '../shared/service-user-state';
 import { ServiceUserDirectory } from '../care/service-user-directory';
 import { ClientOverview } from './client-overview';
 import { CareHeader } from '../care/care-header';
@@ -82,8 +81,7 @@ const PROFILE_FIELD_LABELS: Record<string, string> = {
   providers: [ServiceUsersApi],
   imports: [
     NgTemplateOutlet,
-    PageLoading,
-    CompanyUnavailable,
+    ServiceUserState,
     ModuleDesign,
     ServiceUserDirectory,
     ClientOverview,

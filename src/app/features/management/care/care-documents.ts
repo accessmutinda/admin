@@ -1,3 +1,4 @@
+import { ServiceUserState } from '../shared/service-user-state';
 import {
   Component,
   DestroyRef,
@@ -36,6 +37,7 @@ import { londonDate } from '../rota/rota.models';
 @Component({
   selector: 'cv-care-documents',
   imports: [
+    ServiceUserState,
     ModuleDesign,
     CareHeader,
     FormsModule,

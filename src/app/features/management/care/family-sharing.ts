@@ -1,3 +1,4 @@
+import { ServiceUserState } from '../shared/service-user-state';
 import {
   Component,
   ChangeDetectorRef,
@@ -28,6 +29,7 @@ import type {
 @Component({
   selector: 'cv-family-sharing',
   imports: [
+    ServiceUserState,
     FormsModule,
     RouterLink,
     A11yModule,

@@ -155,6 +155,11 @@ describe('Connected visit notes', () => {
             allowed: () => permissions.has('read'),
             access: { can: (_m: string, _s: string, a: string) => permissions.has(a) },
             selected,
+            detailPending() {
+              return this.detailLoading();
+            },
+            detailLoading: signal(false),
+            error: signal(''),
             detail: vi.fn(async (id: string) =>
               selected.set({
                 id,
@@ -179,6 +184,24 @@ describe('Connected visit notes', () => {
     editor = fixture.componentInstance;
     await settle(fixture);
   });
+  it('retains the content skeleton while visit-note options are still loading', async () => {
+    const options = editor.api.options();
+    let finish!: (value: unknown) => void;
+    request.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+    const pending = editor.api.loadOptions('person-1');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('cv-care-header')).not.toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('[aria-label="Loading service user"]'),
+    ).not.toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Service user unavailable');
+    finish(options);
+    await pending;
+    await settle(fixture);
+    expect(fixture.nativeElement.querySelector('[aria-label="Loading service user"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Care Visit Notes');
+  });
+
   it('renders backend records without browser data or repeated profile reloads', async () => {
     expect(fixture.nativeElement.textContent).toContain('Recorded visit observations');
     expect(fixture.nativeElement.textContent).toContain('Recorded carer');

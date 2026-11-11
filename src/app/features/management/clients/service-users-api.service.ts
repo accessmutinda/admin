@@ -56,6 +56,12 @@ export class ServiceUsersApi {
   readonly facets = signal<ServiceUserFacets | null>(null);
   readonly loading = signal(false);
   readonly detailLoading = signal(false);
+  private readonly settledDetail = signal<{ id: string; scope: string } | null>(null);
+  detailPending(id: string | null): boolean {
+    if (!id || !this.allowed()) return false;
+    const settled = this.settledDetail();
+    return this.detailLoading() || settled?.id !== id || settled?.scope !== this.scope();
+  }
   readonly error = signal('');
   readonly exportBusy = signal(false);
   readonly saving = signal(false);
@@ -91,6 +97,7 @@ export class ServiceUsersApi {
     this.error.set('');
     this.loading.set(false);
     this.detailLoading.set(false);
+    this.settledDetail.set(null);
     this.saving.set(false);
     this.exportBusy.set(false);
     for (const url of this.photoUrls) URL.revokeObjectURL(url);
@@ -472,6 +479,7 @@ export class ServiceUsersApi {
     const scope = this.scope();
     this.ensureScope(scope);
     const generation = ++this.detailGeneration;
+    this.settledDetail.set(null);
     if (!retainCurrent || this.selected()?.id !== id) this.selected.set(null);
     this.error.set('');
     this.detailLoading.set(true);
@@ -484,7 +492,8 @@ export class ServiceUsersApi {
         throw Error('The returned service user does not match the requested record.');
       const row = this.projectOverview(value);
       this.selected.set(row);
-      if (row.photo_id) void this.loadPhoto(row, scope, () => generation === this.detailGeneration);
+      if (row.photo_id)
+        await this.loadPhoto(row, scope, () => generation === this.detailGeneration);
     } catch (error) {
       if (this.current(scope) && generation === this.detailGeneration) {
         this.selected.set(null);
@@ -493,8 +502,10 @@ export class ServiceUsersApi {
         );
       }
     } finally {
-      if (this.current(scope) && generation === this.detailGeneration)
+      if (this.current(scope) && generation === this.detailGeneration) {
+        this.settledDetail.set({ id, scope });
         this.detailLoading.set(false);
+      }
     }
   }
   private async loadPhoto(

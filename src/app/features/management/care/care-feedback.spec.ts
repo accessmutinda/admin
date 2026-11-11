@@ -115,6 +115,9 @@ describe('Connected service user reviews and feedback', () => {
             allowed: () => permissions.has('read'),
             access: { can: (_m: string, _s: string, a: string) => permissions.has(a) },
             selected,
+            detailPending() {
+              return this.detailLoading();
+            },
             detailLoading: signal(false),
             error: signal(''),
             detail: vi.fn(async (id: string) =>

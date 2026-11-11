@@ -17,24 +17,18 @@ import { CareHeader } from './care-header';
 import { JournalService } from '../journal/journal.service';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
-import { PageLoading } from '../../../shared/layouts/page-loading';
-import { CompanyUnavailable } from '../shared/company-unavailable';
+import { ServiceUserState } from '../shared/service-user-state';
 
 @Component({
   selector: 'cv-care-communications',
-  imports: [
-    ModuleDesign,
-    CareHeader,
-    PortalClientJournal,
-    PortalCommunications,
-    PageLoading,
-    CompanyUnavailable,
-  ],
+  imports: [ModuleDesign, CareHeader, PortalClientJournal, PortalCommunications, ServiceUserState],
   providers: [PortalClientContext, ServiceUsersApi],
   host: { class: 'module-page operations-page' },
   template: `
     <cv-module-design />
-    @if (client(); as client) {
+    @if (records.detailPending(context.id())) {
+      <cv-service-user-state [loading]="true" />
+    } @else if (client(); as client) {
       <cv-care-header
         [client]="client"
         [active]="section()"
@@ -49,12 +43,10 @@ import { CompanyUnavailable } from '../shared/company-unavailable';
       } @else {
         <cv-portal-communications />
       }
-    } @else if (records.detailLoading()) {
-      <cv-page-loading url="/manage/clients" />
     } @else if (records.error()) {
-      <cv-company-unavailable [message]="records.error()" (retry)="records.detail(context.id())" />
+      <cv-service-user-state [message]="records.error()" (retry)="records.detail(context.id())" />
     } @else {
-      <p class="care-empty">Service user unavailable or access restricted.</p>
+      <cv-service-user-state (retry)="records.detail(context.id())" />
     }
   `,
   styleUrls: ['./service-user-spacing.css', './care-shared.css'],

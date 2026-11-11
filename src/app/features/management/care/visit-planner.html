@@ -1,19 +1,25 @@
 <cv-module-design />
-@if (service.error()) {
+@if (!clientId() && service.error()) {
   <p class="care-error" role="alert">{{ service.error() }}</p>
 }
 @if (service.raw()?.unavailable_sources?.length) {
   <p class="care-notice" role="status">{{ service.raw()?.unavailable_sources?.join(' ') }}</p>
 }
-@if (service.loading()) {
+@if (!clientId() && service.loading()) {
   <p role="status">Loading visits and allocations…</p>
 }
 @if (service.can('view')) {
   @if (clientId()) {
-    @if (client(); as c) {
+    @if (service.records.detailPending(clientId())) {
+      <cv-service-user-state [loading]="true" />
+    } @else if (client(); as c) {
       <cv-profile-visits [client]="c" (visitSelected)="edit($event)" />
     } @else {
-      <p class="care-error">Service user unavailable.</p>
+      <cv-service-user-state
+        [loading]="service.records.detailPending(clientId()) || service.loading()"
+        [message]="service.records.error() || service.error()"
+        (retry)="service.records.detail(clientId())"
+      />
     }
   }
   @if (!clientId() || client()) {

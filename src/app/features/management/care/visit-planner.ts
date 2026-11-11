@@ -1,3 +1,4 @@
+import { ServiceUserState } from '../shared/service-user-state';
 import { ProfileVisits } from './profile-visits';
 import { ViewChild } from '@angular/core';
 import { downloadWorkbook } from './workbook';
@@ -35,6 +36,7 @@ import { csv, validDate, weekDates } from './care.models';
   selector: 'cv-visit-planner',
   providers: [RosterApi],
   imports: [
+    ServiceUserState,
     ModuleDesign,
     ProfileVisits,
     DatePipe,

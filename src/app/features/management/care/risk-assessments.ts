@@ -1,3 +1,4 @@
+import { ServiceUserState } from '../shared/service-user-state';
 import { RiskPrintPreview } from './risk-print-preview';
 import {
   Component,
@@ -49,6 +50,7 @@ import {
 @Component({
   selector: 'cv-risk-assessments',
   imports: [
+    ServiceUserState,
     DatePipe,
     NgTemplateOutlet,
     FormsModule,

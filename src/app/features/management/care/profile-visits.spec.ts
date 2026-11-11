@@ -1,8 +1,9 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { Component, input, output, signal } from '@angular/core';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
+import { ApiError } from '../../../core/auth/auth-api';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
 import { VisitPlanner } from './visit-planner';
@@ -16,6 +17,13 @@ class HeaderStub {
   printManaged = input(false);
   printBusy = input(false);
   printRequested = output<void>();
+}
+async function settle(fixture: ComponentFixture<VisitPlanner>): Promise<void> {
+  for (let round = 0; round < 4; round++) {
+    fixture.detectChanges();
+    await fixture.whenStable();
+  }
+  fixture.detectChanges();
 }
 describe('Service user visits and allocation', () => {
   let request: ReturnType<typeof vi.fn>,
@@ -58,6 +66,8 @@ describe('Service user visits and allocation', () => {
             companyId: signal('north'),
             allowed: () => true,
             selected,
+            detailPending: () => false,
+            error: signal(''),
             access: { can: () => true },
             detail: vi.fn(async () =>
               selected.set({ ...workspace.clients[0], file: { details: {}, support: {} } }),
@@ -73,25 +83,90 @@ describe('Service user visits and allocation', () => {
   });
   it('loads the profile and schedule without repeatedly remounting and refreshing', async () => {
     const fixture = TestBed.createComponent(VisitPlanner);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    await fixture.whenStable();
+    await settle(fixture);
+    await settle(fixture);
     expect(fixture.nativeElement.textContent).toContain('Recorded person');
     expect(fixture.nativeElement.querySelector('cv-profile-visits')).not.toBeNull();
-    expect(request.mock.calls.filter((c) => c[0].includes('/roster?')).length).toBe(1);
+    expect(
+      request.mock.calls.filter((c) => c[0].includes('/service-users/client/visits?')).length,
+    ).toBe(1);
+    await settle(fixture);
+    expect(
+      request.mock.calls.filter((c) => c[0].includes('/service-users/client/visits?')).length,
+    ).toBe(1);
+  });
+  it('keeps the service user and schedule dates when handing drafts to Publishing', async () => {
+    const fixture = TestBed.createComponent(VisitPlanner);
+    await settle(fixture);
+    const profile = fixture.debugElement.query(By.directive(ProfileVisits))
+      .componentInstance as any;
+    const link = fixture.nativeElement.querySelector(
+      'a[href^="/manage/rota/publishing"]',
+    ) as HTMLAnchorElement;
+    const destination = new URL(link.href);
+    expect(destination.searchParams.get('client')).toBe('client');
+    expect(destination.searchParams.get('from')).toBe(profile.start());
+    expect(destination.searchParams.get('to')).toBe(profile.end());
+  });
+  it('renders the refreshed schedule before opening print', async () => {
+    const fixture = TestBed.createComponent(VisitPlanner);
+    await settle(fixture);
+    const profile = fixture.debugElement.query(By.directive(ProfileVisits))
+      .componentInstance as any;
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {
+      expect(fixture.nativeElement.querySelector('[aria-label="Loading service user"]')).toBeNull();
+      expect(fixture.nativeElement.textContent).toContain('Visits & Allocation');
+    });
+    await profile.print();
+    expect(
+      request.mock.calls.some(([path]) => path.includes('/service-users/client/visits/export?')),
+    ).toBe(true);
+    expect(print).toHaveBeenCalledOnce();
+    print.mockRestore();
+  });
+  it('holds the content skeleton through a slow schedule read and keeps the service user card', async () => {
+    let finish!: (value: unknown) => void;
+    request.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+    const fixture = TestBed.createComponent(VisitPlanner);
     fixture.detectChanges();
-    await fixture.whenStable();
-    expect(request.mock.calls.filter((c) => c[0].includes('/roster?')).length).toBe(1);
+    await Promise.resolve();
+    fixture.detectChanges();
+    const profile = fixture.debugElement.query(By.directive(ProfileVisits)).componentInstance;
+    expect(fixture.nativeElement.querySelector('cv-care-header')).not.toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('[aria-label="Loading service user"]'),
+    ).not.toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('No visits scheduled');
+    finish(structuredClone(workspace));
+    await settle(fixture);
+    expect(fixture.debugElement.query(By.directive(ProfileVisits)).componentInstance).toBe(profile);
+    expect(fixture.nativeElement.querySelector('[aria-label="Loading service user"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Visits & Allocation');
+  });
+  it('shows a scheduling error instead of an empty calendar and retries without discarding entered allocations', async () => {
+    const fixture = TestBed.createComponent(VisitPlanner);
+    await settle(fixture);
+    const profile = fixture.debugElement.query(By.directive(ProfileVisits))
+      .componentInstance as any;
+    profile.form.notes = 'Keep the recorded routine';
+    request.mockRejectedValueOnce(new ApiError('Missing route', 404, 'request_failed'));
+    await profile.service.refresh();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Visits & Allocation unavailable');
+    expect(fixture.nativeElement.textContent).not.toContain('No visits scheduled');
+    expect(fixture.nativeElement.querySelector('cv-care-header')).not.toBeNull();
+    fixture.nativeElement.querySelector('.cu-retry').click();
+    await settle(fixture);
+    expect(fixture.nativeElement.textContent).not.toContain('Visits & Allocation unavailable');
+    expect(profile.form.notes).toBe('Keep the recorded routine');
+    expect(fixture.debugElement.query(By.directive(ProfileVisits)).componentInstance).toBe(profile);
   });
   it('opens a prefilled edit popup from a fresh backend response', async () => {
     const fixture = TestBed.createComponent(VisitPlanner);
-    fixture.detectChanges();
-    await fixture.whenStable();
+    await settle(fixture);
     const editor = fixture.componentInstance as any;
     await editor.edit(rosterVisit());
-    fixture.detectChanges();
-    await fixture.whenStable();
+    await settle(fixture);
     fixture.detectChanges();
     expect(editor.draft.tasks).toBe('Latest instructions');
     expect(
@@ -101,8 +176,7 @@ describe('Service user visits and allocation', () => {
   });
   it('keeps entered edits and the popup open when a save is rejected', async () => {
     const fixture = TestBed.createComponent(VisitPlanner);
-    fixture.detectChanges();
-    await fixture.whenStable();
+    await settle(fixture);
     const editor = fixture.componentInstance as any;
     await editor.edit(rosterVisit());
     editor.draft.start = '09:00';
@@ -119,8 +193,7 @@ describe('Service user visits and allocation', () => {
   });
   it('clears the editor on access-context changes', async () => {
     const fixture = TestBed.createComponent(VisitPlanner);
-    fixture.detectChanges();
-    await fixture.whenStable();
+    await settle(fixture);
     const editor = fixture.componentInstance as any;
     await editor.edit(rosterVisit());
     scope.set('north:actor:revoked');
@@ -130,8 +203,7 @@ describe('Service user visits and allocation', () => {
   });
   it('submits recurring allocations and disables confirmation while saving', async () => {
     const fixture = TestBed.createComponent(VisitPlanner);
-    fixture.detectChanges();
-    await fixture.whenStable();
+    await settle(fixture);
     const profile = fixture.debugElement.query(By.directive(ProfileVisits))
       .componentInstance as any;
     profile.toggleCall('call');

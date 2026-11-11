@@ -13,6 +13,7 @@ export class CareContactsApi {
   private readonly auth = inject(AuthService);
   readonly scope = this.records.scope;
   readonly loading = signal(false);
+  readonly ready = signal(false);
   readonly denied = signal(false);
   readonly error = signal('');
   readonly rows = signal<ProfessionalContactRead[]>([]);
@@ -33,6 +34,7 @@ export class CareContactsApi {
         this.rows.set([]);
         this.denied.set(false);
         this.loading.set(false);
+        this.ready.set(false);
         this.error.set('');
         this.intents.clear();
       });
@@ -117,7 +119,10 @@ export class CareContactsApi {
       }
       return [];
     } finally {
-      if (generation === this.generation) this.loading.set(false);
+      if (generation === this.generation) {
+        this.ready.set(true);
+        this.loading.set(false);
+      }
     }
   }
   async detail(id: string, contact: string) {

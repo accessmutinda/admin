@@ -1,3 +1,4 @@
+import { ServiceUserState } from '../shared/service-user-state';
 import {
   Component,
   ChangeDetectorRef,
@@ -25,7 +26,15 @@ import type {
 
 @Component({
   selector: 'cv-care-contacts',
-  imports: [FormsModule, A11yModule, MatSelectModule, CvSelect, ModuleDesign, CareHeader],
+  imports: [
+    ServiceUserState,
+    FormsModule,
+    A11yModule,
+    MatSelectModule,
+    CvSelect,
+    ModuleDesign,
+    CareHeader,
+  ],
   providers: [CareContactsApi],
   host: { class: 'module-page operations-page' },
   templateUrl: './care-contacts.html',

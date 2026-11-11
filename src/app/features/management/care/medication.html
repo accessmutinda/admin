@@ -1,5 +1,7 @@
 <cv-module-design />
-@if (client(); as c) {
+@if (api.records.detailPending(id()) || loading() || (api.readable() && !data() && !error())) {
+  <cv-service-user-state [loading]="true" />
+} @else if (client(); as c) {
   <cv-care-header
     [client]="c"
     active="medication"
@@ -846,10 +848,8 @@
       </section>
     </div>
   }
-} @else if (loading() || api.records.detailLoading()) {
-  <cv-page-loading url="/manage/clients" />
 } @else {
-  <cv-company-unavailable
+  <cv-service-user-state
     [message]="error() || api.records.error() || 'Service user unavailable or access restricted.'"
     (retry)="reload()"
   />

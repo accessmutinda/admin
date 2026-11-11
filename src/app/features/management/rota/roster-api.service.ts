@@ -1,4 +1,5 @@
 import { Injectable, computed, effect, inject, signal, untracked, DestroyRef } from '@angular/core';
+import { ApiError } from '../../../core/auth/auth-api';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
 import {
@@ -149,9 +150,12 @@ export class RosterApi {
       throw error;
     }
   }
-  private root(): string {
+  private root(companyWide = false): string {
     if (!this.can('view')) throw Error('Visits and allocations are unavailable.');
-    return `/companies/${this.records.companyId()}/roster`;
+    const company = `/companies/${this.records.companyId()}`;
+    return this.period.client && !companyWide
+      ? `${company}/service-users/${this.period.client}/visits`
+      : `${company}/roster`;
   }
   private current(scope: string): boolean {
     return !this.destroyed && scope === this.scope() && this.can('view');
@@ -196,7 +200,6 @@ export class RosterApi {
     if (!exporting) this.raw.set(null);
     try {
       const query = new URLSearchParams({ start, end });
-      if (client) query.set('client', client);
       const value = this.check(
         await this.request<RosterWorkspace>(
           this.root() + (exporting ? '/export' : '') + '?' + query,
@@ -204,6 +207,13 @@ export class RosterApi {
         scope,
       );
       if (generation !== this.generation) return false;
+      if (
+        client &&
+        (value.clients.some((row) => row.id !== client) ||
+          value.calls.some((row) => row.clientId !== client) ||
+          value.visits.some((row) => row.clientId !== client))
+      )
+        throw Error('The schedule does not match this service user. Reopen Visits & Allocation.');
       this.raw.set(value);
       return true;
     } catch (e) {
@@ -245,6 +255,8 @@ export class RosterApi {
     return this.callProjection(value);
   }
   private message(e: unknown): string {
+    if (e instanceof ApiError && e.status === 404 && e.code === 'request_failed')
+      return 'Visits & Allocation could not be opened. Try again, or contact your administrator if the problem continues.';
     return e instanceof Error ? e.message : 'The request could not be completed. Please retry.';
   }
   private key(path: string, body: unknown): string {
@@ -257,6 +269,7 @@ export class RosterApi {
     body: unknown,
     method: 'POST' | 'PATCH' | 'DELETE' = 'POST',
     etag?: string,
+    companyWide = false,
   ): Promise<string | null> {
     if (this.saving()) return 'A roster change is already in progress.';
     const scope = this.scope();
@@ -266,7 +279,7 @@ export class RosterApi {
       const headers: Record<string, string> = { 'Idempotency-Key': this.key(path, body) };
       if (etag) headers['If-Match'] = etag;
       this.check(
-        await this.request<RosterMutation>(this.root() + path, body, method, headers),
+        await this.request<RosterMutation>(this.root(companyWide) + path, body, method, headers),
         scope,
       );
       if (JSON.stringify(period) === JSON.stringify(this.period))
@@ -427,6 +440,7 @@ export class RosterApi {
       { travelMinutes, reason: 'Update roster travel buffer' },
       'PATCH',
       this.raw()?.settings_etag || undefined,
+      true,
     );
   }
   async recordAttendance(

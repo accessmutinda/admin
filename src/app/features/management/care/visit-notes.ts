@@ -1,3 +1,4 @@
+import { ServiceUserState } from '../shared/service-user-state';
 import {
   Component,
   DestroyRef,
@@ -34,6 +35,7 @@ import {
   selector: 'cv-visit-notes',
   providers: [VisitNotesApi],
   imports: [
+    ServiceUserState,
     ModuleDesign,
     CareHeader,
     DatePipe,
@@ -167,6 +169,11 @@ export class VisitNotes {
         untracked(() => void this.load(id, query, scope));
       }
     });
+  }
+  protected retry(): void {
+    void this.api.records.detail(this.id());
+    void this.api.loadOptions(this.id(), this.queryString(true));
+    void this.load(this.id(), this.queryString(), this.api.scope());
   }
   private queryString(options = false): string {
     const f = this.query(),

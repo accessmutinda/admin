@@ -108,6 +108,11 @@ describe('Risk assessments backend workflow', () => {
     const records = {
       scope,
       selected,
+      detailPending() {
+        return this.detailLoading();
+      },
+      detailLoading: signal(false),
+      error: signal(''),
       detail: vi.fn().mockResolvedValue(undefined),
       allowed: signal(true),
       companyId: signal('north'),

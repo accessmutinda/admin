@@ -42,7 +42,7 @@ describe('Roster API company boundaries', () => {
   it('loads the real workspace with bounded dates and client filter', async () => {
     expect(await service.load('2026-11-11', '2026-11-30', 'client')).toBe(true);
     expect(request.mock.calls[0][0]).toBe(
-      '/companies/north/roster?start=2026-11-11&end=2026-11-30&client=client',
+      '/companies/north/service-users/client/visits?start=2026-11-11&end=2026-11-30',
     );
     expect(service.data().calls[0].tasks).toBe('Recorded instructions');
     expect(localStorage.getItem('rota')).toBeNull();
@@ -72,7 +72,7 @@ describe('Roster API company boundaries', () => {
   });
   it('uses the original etag and entered reason for an edit', async () => {
     workspace.visits = [rosterVisit()];
-    await service.load('2026-11-11', '2026-11-30');
+    await service.load('2026-11-11', '2026-11-30', 'client');
     const row = service.data().visits[0];
     await service.updateVisit(
       { ...row, start: '09:00', end: '09:30' },
@@ -81,7 +81,7 @@ describe('Roster API company boundaries', () => {
       'Correct the start time',
     );
     const edit = request.mock.calls.find((c) => c[2] === 'PATCH')!;
-    expect(edit[0]).toBe('/companies/north/roster/visits/visit');
+    expect(edit[0]).toBe('/companies/north/service-users/client/visits/visits/visit');
     expect(edit[1]).toMatchObject({ start: '09:00', reason: 'Correct the start time' });
     expect((edit as any)[3]['If-Match']).toBe('"v1"');
   });
@@ -118,5 +118,18 @@ describe('Roster API company boundaries', () => {
     expect(service.data().clients).toEqual([]);
     expect(service.candidateRows()).toEqual([]);
     expect(service.can('view')).toBe(false);
+  });
+  it('rejects records belonging to another service user in a scoped schedule', async () => {
+    workspace.visits = [{ ...rosterVisit(), clientId: 'another-person' }];
+    expect(await service.load('2026-11-11', '2026-11-30', 'client')).toBe(false);
+    expect(service.raw()).toBeNull();
+    expect(service.error()).toContain('does not match this service user');
+  });
+  it('keeps company settings on the company route while viewing a scoped schedule', async () => {
+    await service.load('2026-11-11', '2026-11-30', 'client');
+    expect(await service.saveTravel(15)).toBeNull();
+    const save = request.mock.calls.find((call) => call[2] === 'PATCH')!;
+    expect(save[0]).toBe('/companies/north/roster/settings');
+    expect(request.mock.calls.at(-1)![0]).toContain('/service-users/client/visits?');
   });
 });

@@ -1714,13 +1714,15 @@ describe('Service user landing and creation', () => {
       }
       throw Error('Unexpected operation');
     });
-    await api.detail('user-1');
+    const pending = api.detail('user-1');
+    await Promise.resolve();
+    expect(api.detailPending('user-1')).toBe(true);
     const original = api.selected()!;
     await api.saveCard('photo', { photo_id: 'new-photo' }, original, api.scope());
     await Promise.resolve();
     const selected = api.selected()!;
     resolveOld(new Blob(['old'], { type: 'image/png' }));
-    await Promise.resolve();
+    await pending;
     await Promise.resolve();
     expect(api.selected()?.version).toBe(2);
     expect(api.selected()?.photo_id).toBe('new-photo');

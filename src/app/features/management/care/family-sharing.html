@@ -1,5 +1,7 @@
 <cv-module-design />
-@if (client(); as c) {
+@if (api.records.detailPending(id())) {
+  <cv-service-user-state [loading]="true" />
+} @else if (client(); as c) {
   <cv-care-header
     [client]="c"
     active="family"
@@ -7,244 +9,250 @@
     [printBusy]="busy() || api.loading() || printing() || !!savingAccess()"
     (printRequested)="print()"
   />
-  <div class="care-heading">
-    <div>
-      <h2>Family Portal Access</h2>
-      <p>{{ c.name }} · Connected care records and sharing preferences.</p>
-    </div>
-    <div class="care-actions">
-      @if (api.can('create')) {
-        <button
-          class="care-button primary"
-          [disabled]="busy() || api.loading() || printing() || !!savingAccess()"
-          (click)="open()"
-        >
-          + Add family access
-        </button>
-      }
-    </div>
-  </div>
-  @if ((error() || api.error()) && !editing()) {
-    <p class="care-error" role="alert">{{ error() || api.error() }}</p>
-  }
-  @if (notice()) {
-    <p class="care-success" role="status">{{ notice() }}</p>
-  }
-  @if (api.workspace(); as workspace) {
-    <p class="care-note">
-      Sharing consent: {{ workspace.consent || 'Not recorded' }}. Access requires an active account,
-      company permission and recorded consent. Messages stay inside CareVerity.
-    </p>
-    @if (api.can('create')) {
-      <section class="care-panel">
-        <h2>Share an approved care update</h2>
-        <p class="care-note">
-          Only use this form for information approved for family sharing. Internal care notes are
-          not published automatically.
-        </p>
-        <form (ngSubmit)="shareUpdate()">
-          <fieldset [disabled]="busy() || printing() || !!savingAccess()">
-            <div class="care-fields">
-              <label
-                >Date<input
-                  name="date"
-                  type="date"
-                  [(ngModel)]="updateDate"
-                  [max]="workspace.today"
-                  required
-                  [attr.aria-invalid]="fieldErrors()['date'] ? true : null"
-                />
-                @for (error of fieldErrors()['date'] ?? []; track error) {
-                  <small class="care-error">{{ error }}</small>
-                }
-              </label>
-              <label
-                >Category<mat-select
-                  cvSelect
-                  name="category"
-                  aria-label="Update category"
-                  [(ngModel)]="updateCategory"
-                  [disabled]="busy() || printing() || !!savingAccess()"
-                >
-                  @for (category of categories; track category) {
-                    <mat-option [value]="category">{{ category }}</mat-option>
-                  }
-                </mat-select></label
-              >
-              <label class="care-wide"
-                >Approved update<textarea
-                  name="text"
-                  rows="3"
-                  maxlength="5000"
-                  [(ngModel)]="updateText"
-                  required
-                  [attr.aria-invalid]="fieldErrors()['text'] ? true : null"
-                ></textarea>
-                @for (error of fieldErrors()['text'] ?? []; track error) {
-                  <small class="care-error">{{ error }}</small>
-                }
-              </label>
-            </div>
-            <button class="care-button primary" [disabled]="!updateText.trim()">
-              Share approved update
-            </button>
-          </fieldset>
-        </form>
-      </section>
-    }
-    <section class="care-panel">
-      <h2>Family access &amp; permissions</h2>
-      <div class="care-scroll">
-        <table class="care-table">
-          <thead>
-            <tr>
-              <th>Family member</th>
-              <th>Status</th>
-              @for (scope of scopes; track scope) {
-                <th>{{ scope }}</th>
-              }
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of rows(); track row.id) {
-              <tr>
-                <td>
-                  @if (api.can('edit')) {
-                    <button
-                      class="family-name"
-                      [disabled]="busy() || printing() || !!savingAccess()"
-                      (click)="open(row)"
-                      [attr.aria-label]="'Edit access for ' + row.name"
-                    >
-                      {{ row.name }}
-                    </button>
-                  } @else {
-                    {{ row.name }}
-                  }
-                  <small>{{ row.email }} · {{ row.relationship }}</small>
-                </td>
-                <td>
-                  <span
-                    class="care-tag"
-                    [attr.data-tone]="row.status === 'Active' ? 'green' : 'amber'"
-                    >{{ row.status }}</span
-                  >
-                </td>
-                @for (scope of scopes; track scope) {
-                  <td>
-                    <button
-                      class="family-switch"
-                      role="switch"
-                      [class.on]="row.scopes.includes(scope)"
-                      [attr.aria-label]="row.name + ' · ' + scope"
-                      [attr.aria-checked]="row.scopes.includes(scope)"
-                      [disabled]="!api.can('edit') || busy() || printing() || !!savingAccess()"
-                      (click)="toggle(row, scope)"
-                    >
-                      <span></span
-                      ><span class="sr-only">{{ row.scopes.includes(scope) ? 'On' : 'Off' }}</span>
-                    </button>
-                  </td>
-                }
-              </tr>
-            } @empty {
-              <tr>
-                <td [attr.colspan]="scopes.length + 2" class="care-empty">
-                  No family access recorded.
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+  @if (api.loading() || (api.can('read') && !api.ready())) {
+    <cv-service-user-state [loading]="true" [identity]="false" />
+  } @else {
+    <div class="care-heading">
+      <div>
+        <h2>Family Portal Access</h2>
+        <p>{{ c.name }} · Connected care records and sharing preferences.</p>
       </div>
-    </section>
-    @if (canPublish('plan') || canPublish('invoice')) {
+      <div class="care-actions">
+        @if (api.can('create')) {
+          <button
+            class="care-button primary"
+            [disabled]="busy() || api.loading() || printing() || !!savingAccess()"
+            (click)="open()"
+          >
+            + Add family access
+          </button>
+        }
+      </div>
+    </div>
+    @if ((error() || api.error()) && !editing()) {
+      <p class="care-error" role="alert">{{ error() || api.error() }}</p>
+    }
+    @if (notice()) {
+      <p class="care-success" role="status">{{ notice() }}</p>
+    }
+    @if (api.workspace(); as workspace) {
+      <p class="care-note">
+        Sharing consent: {{ workspace.consent || 'Not recorded' }}. Access requires an active
+        account, company permission and recorded consent. Messages stay inside CareVerity.
+      </p>
+      @if (api.can('create')) {
+        <section class="care-panel">
+          <h2>Share an approved care update</h2>
+          <p class="care-note">
+            Only use this form for information approved for family sharing. Internal care notes are
+            not published automatically.
+          </p>
+          <form (ngSubmit)="shareUpdate()">
+            <fieldset [disabled]="busy() || printing() || !!savingAccess()">
+              <div class="care-fields">
+                <label
+                  >Date<input
+                    name="date"
+                    type="date"
+                    [(ngModel)]="updateDate"
+                    [max]="workspace.today"
+                    required
+                    [attr.aria-invalid]="fieldErrors()['date'] ? true : null"
+                  />
+                  @for (error of fieldErrors()['date'] ?? []; track error) {
+                    <small class="care-error">{{ error }}</small>
+                  }
+                </label>
+                <label
+                  >Category<mat-select
+                    cvSelect
+                    name="category"
+                    aria-label="Update category"
+                    [(ngModel)]="updateCategory"
+                    [disabled]="busy() || printing() || !!savingAccess()"
+                  >
+                    @for (category of categories; track category) {
+                      <mat-option [value]="category">{{ category }}</mat-option>
+                    }
+                  </mat-select></label
+                >
+                <label class="care-wide"
+                  >Approved update<textarea
+                    name="text"
+                    rows="3"
+                    maxlength="5000"
+                    [(ngModel)]="updateText"
+                    required
+                    [attr.aria-invalid]="fieldErrors()['text'] ? true : null"
+                  ></textarea>
+                  @for (error of fieldErrors()['text'] ?? []; track error) {
+                    <small class="care-error">{{ error }}</small>
+                  }
+                </label>
+              </div>
+              <button class="care-button primary" [disabled]="!updateText.trim()">
+                Share approved update
+              </button>
+            </fieldset>
+          </form>
+        </section>
+      }
       <section class="care-panel">
-        <h2>Published information</h2>
-        <p class="care-note">
-          Review the existing care plan or select an existing accounting invoice before sharing it.
-          A changed source requires a fresh review.
-        </p>
-        <div class="care-actions">
-          @if (canPublish('plan')) {
-            <button
-              class="care-button"
-              [disabled]="busy() || !!savingAccess() || printing()"
-              (click)="openPublication('plan')"
-            >
-              Publish care plan
-            </button>
-          }
-          @if (canPublish('invoice')) {
-            <button
-              class="care-button"
-              [disabled]="busy() || !!savingAccess() || printing()"
-              (click)="openPublication('invoice')"
-            >
-              Share invoice
-            </button>
-          }
+        <h2>Family access &amp; permissions</h2>
+        <div class="care-scroll">
+          <table class="care-table">
+            <thead>
+              <tr>
+                <th>Family member</th>
+                <th>Status</th>
+                @for (scope of scopes; track scope) {
+                  <th>{{ scope }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of rows(); track row.id) {
+                <tr>
+                  <td>
+                    @if (api.can('edit')) {
+                      <button
+                        class="family-name"
+                        [disabled]="busy() || printing() || !!savingAccess()"
+                        (click)="open(row)"
+                        [attr.aria-label]="'Edit access for ' + row.name"
+                      >
+                        {{ row.name }}
+                      </button>
+                    } @else {
+                      {{ row.name }}
+                    }
+                    <small>{{ row.email }} · {{ row.relationship }}</small>
+                  </td>
+                  <td>
+                    <span
+                      class="care-tag"
+                      [attr.data-tone]="row.status === 'Active' ? 'green' : 'amber'"
+                      >{{ row.status }}</span
+                    >
+                  </td>
+                  @for (scope of scopes; track scope) {
+                    <td>
+                      <button
+                        class="family-switch"
+                        role="switch"
+                        [class.on]="row.scopes.includes(scope)"
+                        [attr.aria-label]="row.name + ' · ' + scope"
+                        [attr.aria-checked]="row.scopes.includes(scope)"
+                        [disabled]="!api.can('edit') || busy() || printing() || !!savingAccess()"
+                        (click)="toggle(row, scope)"
+                      >
+                        <span></span
+                        ><span class="sr-only">{{
+                          row.scopes.includes(scope) ? 'On' : 'Off'
+                        }}</span>
+                      </button>
+                    </td>
+                  }
+                </tr>
+              } @empty {
+                <tr>
+                  <td [attr.colspan]="scopes.length + 2" class="care-empty">
+                    No family access recorded.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
       </section>
-    }
-    @if (api.can('create')) {
-      <section class="care-panel">
-        <h2>Family messages</h2>
-        <p class="care-note">
-          Only members with active Messages permission and sharing consent can view their
-          conversation.
-        </p>
-        <form (ngSubmit)="sendMessage()">
-          <fieldset [disabled]="busy() || printing() || !!savingAccess()">
-            <div class="care-fields">
-              <label
-                >Recipient<mat-select
-                  cvSelect
-                  name="recipient"
-                  aria-label="Message recipient"
-                  [(ngModel)]="messageAccess"
-                  [disabled]="busy() || printing() || !!savingAccess()"
-                >
-                  @for (row of api.access(); track row.id) {
-                    @if (row.status === 'Active' && row.scopes.includes('Messages')) {
-                      <mat-option [value]="row.id">{{ row.name }}</mat-option>
+      @if (canPublish('plan') || canPublish('invoice')) {
+        <section class="care-panel">
+          <h2>Published information</h2>
+          <p class="care-note">
+            Review the existing care plan or select an existing accounting invoice before sharing
+            it. A changed source requires a fresh review.
+          </p>
+          <div class="care-actions">
+            @if (canPublish('plan')) {
+              <button
+                class="care-button"
+                [disabled]="busy() || !!savingAccess() || printing()"
+                (click)="openPublication('plan')"
+              >
+                Publish care plan
+              </button>
+            }
+            @if (canPublish('invoice')) {
+              <button
+                class="care-button"
+                [disabled]="busy() || !!savingAccess() || printing()"
+                (click)="openPublication('invoice')"
+              >
+                Share invoice
+              </button>
+            }
+          </div>
+        </section>
+      }
+      @if (api.can('create')) {
+        <section class="care-panel">
+          <h2>Family messages</h2>
+          <p class="care-note">
+            Only members with active Messages permission and sharing consent can view their
+            conversation.
+          </p>
+          <form (ngSubmit)="sendMessage()">
+            <fieldset [disabled]="busy() || printing() || !!savingAccess()">
+              <div class="care-fields">
+                <label
+                  >Recipient<mat-select
+                    cvSelect
+                    name="recipient"
+                    aria-label="Message recipient"
+                    [(ngModel)]="messageAccess"
+                    [disabled]="busy() || printing() || !!savingAccess()"
+                  >
+                    @for (row of api.access(); track row.id) {
+                      @if (row.status === 'Active' && row.scopes.includes('Messages')) {
+                        <mat-option [value]="row.id">{{ row.name }}</mat-option>
+                      }
                     }
-                  }
-                </mat-select></label
-              ><label class="care-wide"
-                >Message<textarea
-                  name="message"
-                  maxlength="5000"
-                  [(ngModel)]="messageText"
-                  required
-                ></textarea>
-              </label>
-            </div>
-            <button class="care-button primary" [disabled]="!messageAccess || !messageText.trim()">
-              Record message
-            </button>
-          </fieldset>
-        </form>
+                  </mat-select></label
+                ><label class="care-wide"
+                  >Message<textarea
+                    name="message"
+                    maxlength="5000"
+                    [(ngModel)]="messageText"
+                    required
+                  ></textarea>
+                </label>
+              </div>
+              <button
+                class="care-button primary"
+                [disabled]="!messageAccess || !messageText.trim()"
+              >
+                Record message
+              </button>
+            </fieldset>
+          </form>
+        </section>
+      }
+    } @else {
+      <section class="care-panel">
+        <p role="status">
+          {{ api.loading() ? 'Loading family sharing…' : 'Family sharing is unavailable.' }}
+        </p>
+        @if (!api.loading() && api.can('read')) {
+          <button class="care-button" (click)="api.load(id())">Retry</button>
+        }
       </section>
     }
-  } @else {
-    <section class="care-panel">
-      <p role="status">
-        {{ api.loading() ? 'Loading family sharing…' : 'Family sharing is unavailable.' }}
-      </p>
-      @if (!api.loading() && api.can('read')) {
-        <button class="care-button" (click)="api.load(id())">Retry</button>
-      }
-    </section>
   }
 } @else {
-  <p class="care-error" role="status">
-    {{
-      api.error() ||
-        api.records.error() ||
-        (api.records.detailLoading() ? 'Loading service user…' : 'Family sharing is unavailable.')
-    }}
-  </p>
+  <cv-service-user-state
+    [message]="api.error() || api.records.error()"
+    (retry)="api.records.detail(id()); api.load(id())"
+  />
 }
 @if (editing()) {
   <div class="note-dialog-backdrop" (click)="close()">

@@ -95,6 +95,9 @@ describe('Connected Service User Contacts', () => {
             allowed: () => permissions.has('read'),
             access: { can: (_m: string, _s: string, a: string) => permissions.has(a) },
             selected,
+            detailPending() {
+              return this.detailLoading();
+            },
             detailLoading: signal(false),
             error: signal(''),
             detail: vi.fn(async (id: string) =>
@@ -113,6 +116,83 @@ describe('Connected Service User Contacts', () => {
     await settle(fixture);
   });
   afterEach(() => vi.restoreAllMocks());
+  it('renders the service user card skeleton while the tab is still waiting to start', () => {
+    const records = TestBed.inject(ServiceUsersApi);
+    records.selected.set(null);
+    vi.spyOn(records, 'detailPending').mockReturnValue(true);
+    editor.api.ready.set(false);
+    fixture.detectChanges();
+    const page = fixture.nativeElement as HTMLElement;
+    expect(records.detailLoading()).toBe(false);
+    expect(page.querySelector('[aria-label="Loading service user"]')).not.toBeNull();
+    expect(page.querySelector('.su-identity cv-skeleton')).not.toBeNull();
+    expect(page.textContent).not.toContain('Service user unavailable');
+    expect(page.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('keeps the skeleton until tab content finishes even when the service user has loaded', async () => {
+    let finish!: (value: unknown) => void;
+    request.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+    const tab = TestBed.createComponent(CareContacts);
+    tab.detectChanges();
+    await Promise.resolve();
+    tab.detectChanges();
+    expect(TestBed.inject(ServiceUsersApi).selected()).not.toBeNull();
+    expect(tab.nativeElement.querySelector('cv-care-header')).not.toBeNull();
+    expect(tab.nativeElement.querySelector('[aria-label="Loading service user"]')).not.toBeNull();
+    expect(tab.nativeElement.textContent).not.toContain('Service user unavailable');
+
+    finish({
+      company_id: 'north',
+      service_user_id: 'person-1',
+      contacts: structuredClone(rows),
+      count: rows.length,
+      next: null,
+      previous: null,
+      meta: {},
+    });
+    await settle(tab);
+    expect(tab.nativeElement.querySelector('[aria-label="Loading service user"]')).toBeNull();
+    expect(tab.nativeElement.textContent).toContain('Community pharmacist');
+    tab.destroy();
+  });
+
+  it('shows a skeleton through a delayed tab load, then a branded failure and a working retry', async () => {
+    const records = TestBed.inject(ServiceUsersApi);
+    let finish!: () => void;
+    vi.mocked(records.detail).mockImplementationOnce(async () => {
+      records.selected.set(null);
+      records.error.set('');
+      records.detailLoading.set(true);
+      await new Promise<void>((resolve) => (finish = resolve));
+      records.error.set('The connection was interrupted. Please try again.');
+      records.detailLoading.set(false);
+    });
+    const tab = TestBed.createComponent(CareContacts);
+    tab.detectChanges();
+    await Promise.resolve();
+    tab.detectChanges();
+    expect(tab.nativeElement.querySelector('[aria-label="Loading service user"]')).not.toBeNull();
+    expect(tab.nativeElement.textContent).not.toContain('Service user unavailable');
+    expect(tab.nativeElement.querySelector('[role="alert"]')).toBeNull();
+
+    finish();
+    await settle(tab);
+    expect(tab.nativeElement.querySelector('[aria-label="Loading service user"]')).toBeNull();
+    const alert = tab.nativeElement.querySelector('[role="alert"]');
+    expect(alert.textContent).toContain('Service user unavailable');
+    expect(alert.textContent).toContain('The connection was interrupted.');
+    expect(alert.textContent).not.toContain('Company information');
+    expect(alert.querySelector('a').getAttribute('href')).toBe('/manage/clients');
+
+    alert.querySelector('button').click();
+    await settle(tab);
+    expect(records.detail).toHaveBeenLastCalledWith('person-1');
+    expect(tab.nativeElement.querySelector('cv-service-user-state')).toBeNull();
+    expect(tab.nativeElement.textContent).toContain('Community pharmacist');
+    tab.destroy();
+  });
+
   it('uses the shared representative and contact records without duplicating them', async () => {
     expect(editor.representative().name).toBe('Primary representative');
     expect(editor.contacts()).toHaveLength(1);
