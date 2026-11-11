@@ -1,0 +1,470 @@
+<cv-module-design />
+@if (client(); as c) {
+  <cv-care-header
+    [client]="c"
+    [active]="page()"
+    [printManaged]="true"
+    [printBusy]="printing() || api.loading()"
+    (printRequested)="print()"
+  />
+  <div class="care-heading event-heading">
+    <div>
+      <h1>{{ page() === 'feedback' ? 'Reviews & Feedback' : 'Incidents & Complaints' }}</h1>
+      <p>Record what happened, document follow-up and retain a clear history for {{ c.name }}.</p>
+    </div>
+    @if (api.can('create')) {
+      <button
+        class="care-button primary"
+        [disabled]="busy() || api.loading() || printing()"
+        (click)="open()"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">add</span>Add {{ label() }}
+      </button>
+    }
+  </div>
+  @if (notice()) {
+    <p class="note-notice" role="status">{{ notice() }}</p>
+  }
+  @if ((error() || api.error()) && !mode()) {
+    <p class="care-error" role="alert">{{ error() || api.error() }}</p>
+  }
+  @if (personalContext()) {
+    <p class="event-context">
+      Personal Care related records ·
+      <a [routerLink]="['/manage/clients', id(), 'incidents']">View all records</a>
+    </p>
+  }
+  <section class="event-metrics" aria-label="Record summary">
+    @for (metric of metrics(); track metric.label) {
+      <article class="cv-metric event-metric" [attr.data-card-tone]="metric.tone">
+        <div>
+          <h2>{{ metric.label }}</h2>
+          <strong>{{ api.loading() || api.error() ? '—' : metric.value }}</strong>
+          <p>Current category · all dates</p>
+        </div>
+        <span class="material-symbols-outlined" aria-hidden="true">{{ metric.icon }}</span>
+      </article>
+    }
+  </section>
+  <section class="care-panel event-register" aria-label="Records register">
+    <div class="event-toolbar">
+      <nav class="event-tabs" aria-label="Record categories">
+        @if (page() === 'incidents') {
+          <button
+            class="care-button"
+            [class.active]="collection() === 'incidents'"
+            [attr.aria-pressed]="collection() === 'incidents'"
+            [disabled]="busy() || printing()"
+            (click)="choose('incidents')"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">report</span>Incidents
+          </button>
+          <button
+            class="care-button"
+            [class.active]="collection() === 'complaints'"
+            [attr.aria-pressed]="collection() === 'complaints'"
+            [disabled]="busy() || printing()"
+            (click)="choose('complaints')"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">forum</span>Complaints
+          </button>
+        } @else {
+          <h2>Reviews & Feedback register</h2>
+        }
+      </nav>
+      <button
+        class="care-button"
+        [disabled]="api.loading() || busy() || printing()"
+        (click)="api.load(id(), collection())"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Refresh
+      </button>
+    </div>
+    <div class="event-filters">
+      <label class="event-search"
+        >Search records<input
+          type="search"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event); pageNumber.set(1)"
+          placeholder="Search title or follow-up"
+      /></label>
+      <label
+        >Status<mat-select
+          cvSelect
+          aria-label="Filter by status"
+          [ngModel]="status()"
+          (ngModelChange)="status.set($event); pageNumber.set(1)"
+          ><mat-option value="">All statuses</mat-option>
+          @for (s of ['Active', 'Completed', 'Inactive']; track s) {
+            <mat-option [value]="s">{{ s }}</mat-option>
+          }
+        </mat-select></label
+      >
+      <label
+        >Risk level<mat-select
+          cvSelect
+          aria-label="Filter by risk level"
+          [ngModel]="level()"
+          (ngModelChange)="level.set($event); pageNumber.set(1)"
+          ><mat-option value="">All levels</mat-option>
+          @for (s of ['Low', 'Medium', 'High']; track s) {
+            <mat-option [value]="s">{{ s }}</mat-option>
+          }
+        </mat-select></label
+      >
+      <button class="care-button" (click)="clearFilters()">Clear filters</button>
+    </div>
+    <div class="care-scroll" role="region" aria-label="Service user records" tabindex="0">
+      <table class="care-table event-table">
+        <thead>
+          <tr>
+            <th scope="col">Record</th>
+            <th scope="col">Date</th>
+            <th scope="col">Risk level</th>
+            <th scope="col">Status</th>
+            <th scope="col">Last updated</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (entry of rows(); track entry.id) {
+            <tr>
+              <td>
+                <button
+                  class="event-title"
+                  [disabled]="busy() || printing()"
+                  (click)="open(entry, 'view')"
+                >
+                  {{ entry.name }}
+                </button>
+                <p class="event-excerpt">{{ entry.detail }}</p>
+              </td>
+              <td>{{ calendarDate(entry.date) }}</td>
+              <td>
+                <span
+                  class="event-badge"
+                  [class.high]="entry.level === 'High'"
+                  [class.medium]="entry.level === 'Medium'"
+                  >{{ entry.level }}</span
+                >
+              </td>
+              <td>
+                <span
+                  class="event-badge"
+                  [class.completed]="entry.status === 'Completed'"
+                  [class.inactive]="entry.status === 'Inactive'"
+                  >{{ entry.status }}</span
+                >
+              </td>
+              <td>
+                <span>{{ dateTime(entry.updatedAt) }}</span
+                ><small>{{ entry.updatedBy }}</small>
+              </td>
+              <td>
+                <div class="event-actions">
+                  <button
+                    class="care-button"
+                    [attr.aria-label]="'View ' + entry.name"
+                    [disabled]="busy() || printing()"
+                    (click)="open(entry, 'view')"
+                  >
+                    View
+                  </button>
+                  @if (api.can('edit')) {
+                    <button
+                      class="care-button"
+                      [attr.aria-label]="'Edit ' + entry.name"
+                      [disabled]="busy() || printing()"
+                      (click)="open(entry)"
+                    >
+                      Edit
+                    </button>
+                  }
+                  <button
+                    class="care-button"
+                    [attr.aria-label]="'History for ' + entry.name"
+                    [disabled]="busy() || printing()"
+                    (click)="open(entry, 'history')"
+                  >
+                    History
+                  </button>
+                  @if (api.can('archive')) {
+                    <button
+                      class="care-button event-danger"
+                      [attr.aria-label]="'Remove ' + entry.name"
+                      [disabled]="busy() || printing()"
+                      (click)="open(entry, 'remove')"
+                    >
+                      Remove
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="event-empty">
+                {{
+                  api.loading()
+                    ? 'Loading records…'
+                    : api.error()
+                      ? 'Records are unavailable.'
+                      : search() || status() || level()
+                        ? 'No records match these filters.'
+                        : 'No ' + label() + ' records have been added.'
+                }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="note-pagination">
+      <span>{{ filtered().length }} records · Page {{ currentPage() }} of {{ pageCount() }}</span>
+      <nav aria-label="Record pages">
+        <button
+          class="care-button"
+          [disabled]="currentPage() === 1"
+          (click)="pageNumber.set(currentPage() - 1)"
+        >
+          Previous</button
+        ><button
+          class="care-button"
+          [disabled]="currentPage() === pageCount()"
+          (click)="pageNumber.set(currentPage() + 1)"
+        >
+          Next
+        </button>
+      </nav>
+    </div>
+  </section>
+} @else {
+  <p class="care-error" role="status">
+    {{
+      api.records.detailLoading()
+        ? 'Loading service user…'
+        : api.error() || api.records.error() || 'Service user records are unavailable.'
+    }}
+  </p>
+}
+@if (mode()) {
+  <div class="note-dialog-backdrop">
+    <section
+      class="care-panel note-dialog service-user-popup"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="event-dialog-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+    >
+      <div class="note-panel-heading">
+        <div>
+          <h2 id="event-dialog-title">
+            {{
+              mode() === 'remove'
+                ? 'Remove record'
+                : mode() === 'history'
+                  ? 'Record history'
+                  : mode() === 'view'
+                    ? 'Record details'
+                    : selected()
+                      ? 'Edit record'
+                      : 'New ' + label()
+            }}
+          </h2>
+          <p class="event-dialog-context">
+            {{ client()?.name }} · {{ selected()?.kind || collection() }}
+          </p>
+        </div>
+        <button
+          class="note-icon-button"
+          aria-label="Close record popup"
+          [disabled]="busy()"
+          (click)="close()"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      @if (error()) {
+        <p class="care-error" role="alert">{{ error() }}</p>
+      }
+      @if (mode() === 'edit') {
+        <form class="note-editor" (ngSubmit)="save()">
+          <label
+            >Title *<input
+              name="name"
+              [(ngModel)]="draft.name"
+              required
+              maxlength="200"
+              [attr.aria-invalid]="fieldErrors()['name'] ? true : null"
+            />
+            @if (fieldErrors()['name']) {
+              <small class="care-error">{{ fieldErrors()['name'].join(' ') }}</small>
+            }
+          </label>
+          <label
+            >Date *<input
+              type="date"
+              name="date"
+              [(ngModel)]="draft.date"
+              required
+              [max]="api.today()"
+              [attr.aria-invalid]="fieldErrors()['date'] ? true : null"
+            />
+            @if (fieldErrors()['date']) {
+              <small class="care-error">{{ fieldErrors()['date'].join(' ') }}</small>
+            }
+          </label>
+          <label
+            >Risk level<mat-select
+              cvSelect
+              aria-label="Record risk level"
+              name="level"
+              [(ngModel)]="draft.level"
+            >
+              @for (s of ['Low', 'Medium', 'High']; track s) {
+                <mat-option [value]="s">{{ s }}</mat-option>
+              }
+            </mat-select></label
+          >
+          <label
+            >Status<mat-select
+              cvSelect
+              aria-label="Record status"
+              name="status"
+              [(ngModel)]="draft.status"
+            >
+              @for (s of ['Active', 'Completed', 'Inactive']; track s) {
+                <mat-option [value]="s">{{ s }}</mat-option>
+              }
+            </mat-select></label
+          >
+          <label class="full-width"
+            >Details and follow-up *<textarea
+              name="detail"
+              [(ngModel)]="draft.detail"
+              rows="6"
+              required
+              maxlength="8000"
+              [attr.aria-invalid]="fieldErrors()['detail'] ? true : null"
+            ></textarea>
+            @if (fieldErrors()['detail']) {
+              <small class="care-error">{{ fieldErrors()['detail'].join(' ') }}</small>
+            }
+          </label>
+          @if (selected()) {
+            <label class="full-width"
+              >Reason for change *<textarea
+                name="reason"
+                [(ngModel)]="reason"
+                rows="2"
+                required
+                maxlength="4000"
+                [attr.aria-invalid]="fieldErrors()['reason'] ? true : null"
+              ></textarea>
+              @if (fieldErrors()['reason']) {
+                <small class="care-error">{{ fieldErrors()['reason'].join(' ') }}</small>
+              }
+            </label>
+          }
+          <div class="note-editor-footer full-width">
+            <button type="button" class="care-button" [disabled]="busy()" (click)="close()">
+              Cancel</button
+            ><button class="care-button primary" type="submit" [disabled]="busy()">
+              {{ busy() ? 'Saving…' : 'Save record' }}
+            </button>
+          </div>
+        </form>
+      } @else if (mode() === 'remove') {
+        <p>
+          Remove <strong>{{ selected()?.name }}</strong> from the active register? Its source
+          history will be retained.
+        </p>
+        <form class="note-editor" (ngSubmit)="save()">
+          <label class="full-width"
+            >Reason for removal *<textarea
+              name="reason"
+              [(ngModel)]="reason"
+              rows="3"
+              required
+              maxlength="4000"
+              [attr.aria-invalid]="fieldErrors()['reason'] ? true : null"
+            ></textarea>
+            @if (fieldErrors()['reason']) {
+              <small class="care-error">{{ fieldErrors()['reason'].join(' ') }}</small>
+            }
+          </label>
+          <div class="note-editor-footer full-width">
+            <button class="care-button" type="button" [disabled]="busy()" (click)="close()">
+              Cancel</button
+            ><button class="care-button event-danger" type="submit" [disabled]="busy()">
+              {{ busy() ? 'Removing…' : 'Remove record' }}
+            </button>
+          </div>
+        </form>
+      } @else if (mode() === 'history') {
+        <p>
+          {{ selected()?.name }} · Most recent {{ history().length }} revision{{
+            history().length === 1 ? '' : 's'
+          }}
+        </p>
+        <ol class="event-history">
+          @for (revision of history(); track revision.version) {
+            <li>
+              <div>
+                <strong>Revision {{ revision.version }} · {{ revision.status }}</strong
+                ><small>{{ dateTime(revision.updatedAt) }} · {{ revision.updatedBy }}</small>
+              </div>
+              <h3>{{ revision.name }}</h3>
+              <p class="event-full-text">{{ revision.detail }}</p>
+              <p>{{ calendarDate(revision.date) }} · {{ revision.level }} risk</p>
+              <small>Reason: {{ revision.changeReason }}</small>
+            </li>
+          }
+        </ol>
+        <div class="note-editor-footer">
+          <button class="care-button" (click)="close()">Close</button>
+        </div>
+      } @else if (selected(); as record) {
+        <dl class="event-details">
+          <div>
+            <dt>Title</dt>
+            <dd>{{ record.name }}</dd>
+          </div>
+          <div>
+            <dt>Date</dt>
+            <dd>{{ calendarDate(record.date) }}</dd>
+          </div>
+          <div>
+            <dt>Risk level</dt>
+            <dd>{{ record.level }}</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd>{{ record.status }}</dd>
+          </div>
+          <div>
+            <dt>Created by</dt>
+            <dd>{{ record.createdBy }}</dd>
+          </div>
+          <div>
+            <dt>Last updated</dt>
+            <dd>
+              {{ dateTime(record.updatedAt) }} ·
+              {{ record.updatedBy }}
+            </dd>
+          </div>
+        </dl>
+        <h3>Details and follow-up</h3>
+        <p class="event-full-text">{{ record.detail }}</p>
+        <div class="note-editor-footer">
+          <button class="care-button" (click)="open(record, 'history')">History</button>
+          @if (api.can('edit')) {
+            <button class="care-button primary" (click)="open(record)">Edit record</button>
+          }
+          <button class="care-button" (click)="close()">Close</button>
+        </div>
+      }
+    </section>
+  </div>
+}

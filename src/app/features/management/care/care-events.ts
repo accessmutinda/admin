@@ -1,225 +1,423 @@
-import { of } from 'rxjs';
-import { isPersonalCareIncident } from './care-plan-personal-care.models';
-import { Component, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import {
+  Component,
+  ChangeDetectorRef,
+  DestroyRef,
+  HostListener,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { A11yModule } from '@angular/cdk/a11y';
+import { MatSelectModule } from '@angular/material/select';
+import { CvSelect } from '../../../shared/ui/select';
+import { ModuleDesign } from '../shared/module-design';
 import { CareHeader } from './care-header';
-import { CareService } from './care.service';
-import { ClientEntry } from '../clients/client-file.models';
+import { CareEventsApi, EventKind } from './care-events-api.service';
+import { CareEventRead, CareEventWrite } from './care-events.generated';
+import { isPersonalCareIncident } from './care-plan-personal-care.models';
+import { londonDate } from '../rota/rota.models';
+
 @Component({
   selector: 'cv-care-events',
-  imports: [DatePipe, FormsModule, CareHeader, RouterLink],
-  styleUrls: ['./care-shared.css', './care-controls.css', './care-plan.css'],
-  template: `@if (client(); as c) {
-      <cv-care-header [client]="c" [active]="page()" />
-      <section class="plan-card">
-        <div class="card-heading">
-          <div>
-            <h2>{{ page() === 'feedback' ? 'Reviews & Feedback' : 'Incidents & Complaints' }}</h2>
-            <p>{{ c.name }} · Service User records and follow-up.</p>
-          </div>
-          @if (canEdit()) {
-            <button class="button primary" (click)="open()">+ Add record</button>
-          }
-        </div>
-        @if (personalContext()) {
-          <p>
-            Personal Care related records ·
-            <a [routerLink]="['/manage/clients', id(), 'incidents']">View all records</a>
-          </p>
-        }
-        @if (error()) {
-          <p class="message error" role="alert">{{ error() }}</p>
-        }
-        @if (notice()) {
-          <p class="message success" role="status">{{ notice() }}</p>
-        }
-        @if (page() === 'incidents') {
-          <div class="actions">
-            <button
-              class="button"
-              [class.primary]="collection() === 'incidents'"
-              (click)="choose('incidents')"
-            >
-              Incidents</button
-            ><button
-              class="button"
-              [class.primary]="collection() === 'complaints'"
-              (click)="choose('complaints')"
-            >
-              Complaints
-            </button>
-          </div>
-        }
-        @for (entry of entries(); track entry.id) {
-          <article class="record-row">
-            <div>
-              <strong>{{ entry.name }}</strong>
-              <p>{{ entry.detail }}</p>
-              <small
-                >{{ entry.date | date: 'dd MMM yyyy' }} · {{ entry.level }} ·
-                {{ entry.status }}</small
-              >
-            </div>
-            @if (canEdit()) {
-              <button class="button" (click)="open(entry)">View / update</button>
-            }
-          </article>
-        } @empty {
-          <p>No records in this category.</p>
-        }
-        @if (editing()) {
-          <h3>{{ draft.id ? 'Update record' : creationTitle }}</h3>
-          <div class="form-grid">
-            <label>Title<input [(ngModel)]="draft.name" /></label
-            ><label>Date<input type="date" [(ngModel)]="draft.date" /></label
-            ><label
-              >Details and follow-up<textarea rows="4" [(ngModel)]="draft.detail"></textarea></label
-            ><label
-              >Risk level<select [(ngModel)]="draft.level">
-                <option>Low</option>
-                <option>Medium</option>
-                <option>High</option>
-              </select></label
-            ><label
-              >Status<select [(ngModel)]="draft.status">
-                <option>Active</option>
-                <option>Completed</option>
-                <option>Inactive</option>
-              </select></label
-            >
-          </div>
-          <div class="actions">
-            <button class="button primary" (click)="save()">Save record</button
-            ><button class="button" (click)="editing.set(false)">Cancel</button>
-          </div>
-        }
-      </section>
-    } @else {
-      <p>Service user unavailable.</p>
-    }`,
+  imports: [
+    FormsModule,
+    CareHeader,
+    RouterLink,
+    A11yModule,
+    MatSelectModule,
+    CvSelect,
+    ModuleDesign,
+  ],
+  providers: [CareEventsApi],
+  host: { class: 'module-page operations-page events-page' },
+  templateUrl: './care-events.html',
+  styleUrls: [
+    './service-user-spacing.css',
+    './care-shared.css',
+    './care-controls.css',
+    './visit-notes.css',
+    '../clients/service-user-dialogs.css',
+    './care-events.css',
+  ],
 })
 export class CareEvents {
-  protected readonly care = inject(CareService);
+  protected readonly api = inject(CareEventsApi);
   private readonly route = inject(ActivatedRoute);
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
   });
+  private readonly query = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+  private readonly data = toSignal(this.route.data, { initialValue: this.route.snapshot.data });
   protected readonly id = computed(() => this.params().get('id') || '');
-  protected readonly client = computed(() => this.care.client(this.id()));
-  protected readonly page = signal(
-    this.route.snapshot.data['careEventSection'] as 'incidents' | 'feedback',
+  protected readonly page = computed(() =>
+    this.data()['careEventSection'] === 'feedback' ? 'feedback' : 'incidents',
   );
-  protected readonly collection = signal<'incidents' | 'complaints' | 'feedback'>(
-    this.page() === 'feedback' ? 'feedback' : 'incidents',
+  protected readonly collection = signal<EventKind>('incidents');
+  protected readonly label = computed(() =>
+    this.collection() === 'complaints'
+      ? 'complaint'
+      : this.collection() === 'feedback'
+        ? 'feedback'
+        : 'incident',
   );
-  private readonly routeQuery = toSignal(
-    this.route.queryParamMap || of(this.route.snapshot.queryParamMap),
-    { initialValue: this.route.snapshot.queryParamMap },
+  protected readonly client = computed(() =>
+    this.api.can('read') && this.api.records.selected()?.id === this.id()
+      ? this.api.records.selected()
+      : null,
   );
   protected readonly personalContext = computed(
-    () => this.routeQuery()?.get('related') === 'personal-care',
+    () => this.query().get('related') === 'personal-care',
   );
+  protected readonly search = signal('');
+  protected readonly status = signal('');
+  protected readonly level = signal('');
+  protected readonly pageNumber = signal(1);
+  protected readonly printRows = signal<CareEventRead[] | null>(null);
   protected readonly entries = computed(() => {
-    const entries = this.client()?.file?.entries[this.collection()] || [];
-    return this.personalContext() ? entries.filter(isPersonalCareIncident) : entries;
+    const rows = (this.printRows() ?? (this.api.can('read') ? this.api.entries() : [])).filter(
+      (row) => row.kind === this.collection(),
+    );
+    return this.personalContext() ? rows.filter(isPersonalCareIncident) : rows;
   });
-  protected readonly editing = signal(false);
+  protected readonly filtered = computed(() => {
+    const search = this.search().trim().toLowerCase();
+    return this.entries().filter(
+      (e) =>
+        (!search || (e.name + ' ' + e.detail).toLowerCase().includes(search)) &&
+        (!this.status() || e.status === this.status()) &&
+        (!this.level() || e.level === this.level()),
+    );
+  });
+  protected readonly pageCount = computed(() => Math.max(1, Math.ceil(this.filtered().length / 8)));
+  protected readonly currentPage = computed(() => Math.min(this.pageNumber(), this.pageCount()));
+  protected readonly rows = computed(() =>
+    this.printRows()
+      ? this.filtered()
+      : this.filtered().slice((this.currentPage() - 1) * 8, this.currentPage() * 8),
+  );
+  protected readonly metrics = computed(() => [
+    { label: 'Total records', value: this.entries().length, icon: 'description', tone: 'blue' },
+    {
+      label: 'Active',
+      value: this.entries().filter((e) => e.status === 'Active').length,
+      icon: 'pending_actions',
+      tone: 'purple',
+    },
+    {
+      label: 'High risk · active',
+      value: this.entries().filter((e) => e.status === 'Active' && e.level === 'High').length,
+      icon: 'priority_high',
+      tone: 'orange',
+    },
+    {
+      label: 'Completed',
+      value: this.entries().filter((e) => e.status === 'Completed').length,
+      icon: 'task_alt',
+      tone: 'green',
+    },
+  ]);
+  protected readonly mode = signal<'' | 'edit' | 'view' | 'history' | 'remove'>('');
+  protected readonly selected = signal<CareEventRead | null>(null);
+  protected readonly history = signal<CareEventRead[]>([]);
+  protected readonly busy = signal(false);
+  protected readonly printing = signal(false);
   protected readonly error = signal('');
   protected readonly notice = signal('');
-  protected draft: ClientEntry = {
-    id: '',
-    name: '',
-    detail: '',
-    date: new Date().toISOString().slice(0, 10),
-    level: 'Low',
-    status: 'Active',
-  };
-  private clean = '';
-  private revision = '';
-  private workspace = '';
+  protected readonly fieldErrors = signal<Record<string, string[]>>({});
+  protected draft = this.blank();
+  protected reason = '';
+  private baseline = '';
+  private request = 0;
+  private routeRequest = '';
+  private destroyed = false;
+  private owner: { id: string; scope: string; kind: EventKind } | null = null;
+  private blank() {
+    return {
+      name: '',
+      detail: '',
+      date: londonDate(),
+      level: 'Low' as CareEventWrite['level'],
+      status: 'Active' as CareEventWrite['status'],
+    };
+  }
   constructor() {
-    const create = this.route.snapshot.queryParamMap.get('create');
-    if (
-      (this.page() === 'incidents' && ['incident', 'complaint'].includes(create || '')) ||
-      (this.page() === 'feedback' && create === 'compliment')
-    ) {
-      this.collection.set(
-        create === 'complaint' ? 'complaints' : create === 'compliment' ? 'feedback' : 'incidents',
-      );
-      this.open();
-      if (this.editing()) {
-        this.draft.name =
-          create === 'compliment'
-            ? 'Compliment'
-            : create === 'complaint'
-              ? 'Complaint'
-              : 'Incident';
-        this.clean = JSON.stringify(this.draft);
+    inject(DestroyRef).onDestroy(() => {
+      this.destroyed = true;
+      this.request++;
+      this.reset();
+    });
+    effect(() => {
+      const id = this.id(),
+        scope = this.api.scope(),
+        page = this.page();
+      untracked(() => {
+        this.request++;
+        this.reset();
+        this.routeRequest = '';
+        this.error.set('');
+        this.notice.set('');
+        this.printRows.set(null);
+        this.printing.set(false);
+        this.collection.set(page === 'feedback' ? 'feedback' : 'incidents');
+        this.clearFilters();
+        if (id && this.api.can('read')) void this.api.records.detail(id);
+      });
+    });
+    effect(() => {
+      const id = this.id(),
+        scope = this.api.scope(),
+        kind = this.collection();
+      untracked(() => {
+        if (id && this.api.can('read')) void this.api.load(id, kind);
+      });
+    });
+    effect(() => {
+      if (this.api.denied())
+        untracked(() => {
+          this.request++;
+          this.reset();
+          this.printRows.set(null);
+          this.notice.set('');
+        });
+    });
+    effect(() => {
+      const query = this.query(),
+        id = this.id(),
+        scope = this.api.scope(),
+        client = this.client(),
+        loading = this.api.loading();
+      if (!client || loading) return;
+      const create = query.get('create'),
+        entry = query.get('entry');
+      if (!create && !entry) {
+        this.routeRequest = '';
+        return;
       }
-    } else {
-      const entryId = this.route.snapshot.queryParamMap.get('entry');
-      const entry = this.entries().find((item) => item.id === entryId);
-      if (entry) this.open(entry);
+      const key = scope + id + ':' + create + ':' + entry;
+      if (this.routeRequest === key) return;
+      this.routeRequest = key;
+      untracked(() => {
+        if (entry) void this.openId(entry);
+        else if (
+          (this.page() === 'incidents' && ['incident', 'complaint'].includes(create || '')) ||
+          (this.page() === 'feedback' && create === 'compliment')
+        ) {
+          const kind: EventKind =
+            create === 'complaint'
+              ? 'complaints'
+              : create === 'compliment'
+                ? 'feedback'
+                : 'incidents';
+          this.collection.set(kind);
+          void this.open();
+        }
+      });
+    });
+  }
+  protected clearFilters() {
+    this.search.set('');
+    this.status.set('');
+    this.level.set('');
+    this.pageNumber.set(1);
+  }
+  protected choose(kind: EventKind) {
+    if (this.canLeave()) {
+      this.request++;
+      this.reset();
+      this.collection.set(kind);
+      this.clearFilters();
+      this.error.set('');
+      this.notice.set('');
     }
   }
-  protected get creationTitle() {
-    if (this.collection() === 'complaints') return 'New complaint';
-    if (this.collection() === 'incidents') return 'New incident';
-    return this.route.snapshot.queryParamMap.get('create') === 'compliment'
-      ? 'New compliment'
-      : 'New feedback';
+  private reset() {
+    this.mode.set('');
+    this.selected.set(null);
+    this.history.set([]);
+    this.owner = null;
+    this.draft = this.blank();
+    this.reason = '';
+    this.baseline = '';
+    this.busy.set(false);
+    this.fieldErrors.set({});
   }
-  protected canEdit() {
-    return (
-      this.care.rota.can('manage') &&
-      ['PO', 'CA', 'RM', 'CC', 'FS'].includes(this.care.auth.currentUser()?.roleCode || '')
-    );
+  private draftState() {
+    return JSON.stringify([this.draft, this.reason]);
   }
   canLeave() {
     return (
-      !this.editing() ||
-      JSON.stringify(this.draft) === this.clean ||
-      window.confirm('Discard unsaved Service User record changes?')
+      !this.busy() &&
+      !this.printing() &&
+      (!['edit', 'remove'].includes(this.mode()) ||
+        this.draftState() === this.baseline ||
+        window.confirm('Discard unsaved record changes?'))
     );
   }
-  protected open(entry?: ClientEntry) {
-    if (!this.canEdit() || !this.canLeave()) return;
-    this.draft = entry
-      ? structuredClone(entry)
-      : {
-          id: '',
-          name: '',
-          detail: '',
-          date: new Date().toISOString().slice(0, 10),
-          level: 'Low',
-          status: 'Active',
-        };
-    this.clean = JSON.stringify(this.draft);
-    this.revision = this.client()?.file?.updatedAt || '';
-    this.workspace = this.care.store.companyId();
-    this.editing.set(true);
-  }
-  protected choose(collection: 'incidents' | 'complaints') {
+  protected close() {
     if (this.canLeave()) {
-      this.editing.set(false);
-      this.collection.set(collection);
+      this.request++;
+      this.reset();
+      this.error.set('');
     }
   }
-  protected save() {
-    const error = this.care.saveLinkedClientEntry(
-      this.id(),
-      this.workspace,
-      this.collection(),
-      this.draft,
-      this.revision,
-    );
-    this.error.set(error || '');
-    if (!error) {
-      this.editing.set(false);
-      this.notice.set('Service User record saved.');
+  protected async openId(id: string) {
+    await this.open({ id } as CareEventRead, 'view');
+  }
+  protected async open(
+    entry?: CareEventRead,
+    mode: 'edit' | 'view' | 'history' | 'remove' = 'edit',
+  ) {
+    const action =
+      mode === 'edit' ? (entry ? 'edit' : 'create') : mode === 'remove' ? 'archive' : 'read';
+    if (!this.api.can(action) || !this.canLeave()) return;
+    const token = ++this.request,
+      scope = this.api.scope(),
+      id = this.id();
+    this.error.set('');
+    try {
+      const row = entry ? await this.api.detail(id, entry.id) : null;
+      const revisions = row && mode === 'history' ? await this.api.history(id, row.id) : [];
+      if (
+        this.destroyed ||
+        token !== this.request ||
+        scope !== this.api.scope() ||
+        id !== this.id()
+      )
+        return;
+      if (row && (this.page() === 'feedback') !== (row.kind === 'feedback'))
+        throw Error('Open this record from its matching Service User category.');
+      this.selected.set(row);
+      this.history.set(revisions);
+      this.owner = { id, scope, kind: row?.kind ?? this.collection() };
+      this.draft = row
+        ? {
+            name: row.name,
+            detail: row.detail,
+            date: row.date,
+            level: row.level,
+            status: row.status,
+          }
+        : { ...this.blank(), date: this.api.today() || londonDate() };
+      this.reason = '';
+      this.fieldErrors.set({});
+      this.baseline = this.draftState();
+      this.mode.set(mode);
+    } catch (e) {
+      if (token === this.request && scope === this.api.scope())
+        this.error.set(e instanceof Error ? e.message : 'The record could not be opened.');
+    }
+  }
+  protected async save() {
+    const owner = this.owner,
+      row = this.selected();
+    if (!owner || owner.id !== this.id() || owner.scope !== this.api.scope() || this.busy()) return;
+    const removing = this.mode() === 'remove';
+    if (!removing && (!this.draft.name.trim() || !this.draft.detail.trim() || !this.draft.date)) {
+      this.fieldErrors.set(
+        Object.fromEntries(
+          ['name', 'detail', 'date']
+            .filter((k) => !String(this.draft[k as keyof typeof this.draft]).trim())
+            .map((k) => [k, ['This field is required.']]),
+        ),
+      );
+      this.error.set('Enter a title, date and details.');
+      return;
+    }
+    if ((removing || row) && !this.reason.trim()) {
+      this.fieldErrors.set({ reason: ['Enter the reason for this change.'] });
+      this.error.set('Enter a reason for this change.');
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    this.fieldErrors.set({});
+    try {
+      if (removing && row) await this.api.remove(owner.id, row, this.reason);
+      else
+        await this.api.save(
+          owner.id,
+          {
+            ...this.draft,
+            kind: owner.kind,
+            reason: row ? this.reason : 'Record service user details and follow-up',
+          },
+          row,
+        );
+      if (this.destroyed || owner !== this.owner || owner.scope !== this.api.scope()) return;
+      this.reset();
+      this.notice.set(
+        removing ? 'Record removed from the active register. History retained.' : 'Record saved.',
+      );
+      await this.api.load(owner.id, this.collection());
+    } catch (e) {
+      if (owner === this.owner && owner.scope === this.api.scope()) {
+        this.fieldErrors.set((e as { fieldErrors?: Record<string, string[]> }).fieldErrors ?? {});
+        this.error.set(e instanceof Error ? e.message : 'The record could not be saved.');
+      }
+    } finally {
+      if (owner === this.owner) this.busy.set(false);
+    }
+  }
+  protected async print() {
+    if (!this.api.can('export') || this.busy() || this.api.loading() || this.printing()) return;
+    const scope = this.api.scope(),
+      id = this.id();
+    this.printing.set(true);
+    this.error.set('');
+    try {
+      const rows = await this.api.load(id, this.collection(), true);
+      if (this.api.error()) throw Error(this.api.error());
+      if (scope !== this.api.scope() || id !== this.id() || !this.api.can('export')) return;
+      this.printRows.set(rows);
+      this.cdr.detectChanges();
+      window.print();
+    } catch (e) {
+      if (scope === this.api.scope())
+        this.error.set(e instanceof Error ? e.message : 'Printing is unavailable.');
+    } finally {
+      if (scope === this.api.scope()) {
+        this.printRows.set(null);
+        this.printing.set(false);
+      }
+    }
+  }
+  protected calendarDate(value: string): string {
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'UTC',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(new Date(value + 'T12:00:00Z'));
+  }
+  protected dateTime(value: string): string {
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(value));
+  }
+  @HostListener('document:keydown.escape') escape() {
+    if (this.mode()) this.close();
+  }
+  @HostListener('window:beforeunload', ['$event']) beforeUnload(event: BeforeUnloadEvent) {
+    if (
+      this.busy() ||
+      this.printing() ||
+      (['edit', 'remove'].includes(this.mode()) && this.draftState() !== this.baseline)
+    ) {
+      event.preventDefault();
+      event.returnValue = '';
     }
   }
 }

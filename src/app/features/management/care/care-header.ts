@@ -89,6 +89,8 @@ export class CareHeader {
       (this.active() !== 'communications' || this.access.can('care', 'communications', 'export')) &&
       (this.active() !== 'risks' || this.access.can('care', 'risks', 'export')) &&
       (this.active() !== 'documents' || this.access.can('care', 'documents', 'export')) &&
+      (!['incidents', 'feedback'].includes(this.active()) ||
+        this.access.can('care', 'incidents', 'export')) &&
       (this.active() !== 'visits' || this.access.can('care', 'rostering', 'export'))
     );
   }
