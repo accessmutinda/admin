@@ -10,6 +10,10 @@ import type {
   ServiceUserWrite,
   ServiceUserPhoto,
   ServiceUserOverview,
+  ServiceUserDemographics,
+  ServiceUserFamily,
+  ServiceUserCarePlan,
+  ServiceUserRecordSection,
 } from './service-users.generated';
 export type DirectoryUser = RotaClient & {
   company_id: string;
@@ -154,8 +158,42 @@ export class ServiceUsersApi {
         behaviour: c.behaviour,
         continuity: c.continuity,
       },
+      family: { approved: value.family.approved, preferences: value.family.preferences },
+      consent: { family: value.family.sharing_consent },
       access: { location: c.key_safe_location },
     };
+    for (const section of value.workspace.sections) {
+      this.validate(section);
+      if (section.id !== row.id)
+        throw Error('The record section does not match this service user.');
+      row.file!.sections[section.key] = Object.fromEntries(
+        section.fields.map((field) => [field.key, field.value]),
+      );
+      row.file!.entries[section.key] = section.entries.map((entry) => ({
+        ...entry,
+        date: entry.date ?? '',
+        level: entry.level as 'Low' | 'Medium' | 'High',
+        status: entry.status as 'Active' | 'Completed' | 'Inactive',
+      }));
+    }
+    const consent = row.file!.sections['consent']?.['family'];
+    row.file!.sections['family']['sharingConsent'] = [
+      consent && consent !== 'Not recorded' ? consent : '',
+      value.family.sharing_consent,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    if (value.care_plan) {
+      row.file!.sections['plan'] = Object.fromEntries(
+        Object.entries(value.care_plan.plan).map(([key, item]) => [key, item ?? '']),
+      );
+      row.file!.entries['plan'] = value.care_plan.goals.map((goal) => ({
+        ...goal,
+        date: goal.date ?? '',
+        level: goal.level as 'Low' | 'Medium' | 'High',
+        status: goal.status as 'Active' | 'Completed' | 'Inactive',
+      }));
+    }
     return row;
   }
   async saveCard(
@@ -174,6 +212,184 @@ export class ServiceUsersApi {
       { 'If-Match': original.etag },
     );
     if (!this.current(scope)) throw Error('The workspace changed. Reload the record.');
+    if (value.record.id !== original.id)
+      throw Error('The saved service user does not match the requested record.');
+    const row = this.projectOverview(value);
+    if (row.photo_id === original.photo_id && original.file?.photo)
+      row.file!.photo = original.file.photo;
+    this.selected.set(row);
+    if (row.photo_id && !row.file?.photo)
+      void this.loadPhoto(
+        row,
+        scope,
+        () => this.selected()?.id === row.id && this.selected()?.photo_id === row.photo_id,
+      );
+    return row;
+  }
+  async getRecordSection(id: string, section: string): Promise<ServiceUserRecordSection> {
+    const scope = this.scope();
+    if (!this.current(scope)) throw Error('The workspace changed. Reopen the form.');
+    const value = await this.auth.api<ServiceUserRecordSection>(
+      `${this.root()}/service-users/${id}/record-sections/${section}`,
+    );
+    if (!this.current(scope) || value.id !== id || value.key !== section)
+      throw Error('The workspace changed. Reopen the form.');
+    this.validate(value);
+    return value;
+  }
+  async saveRecordSection(
+    body: unknown,
+    original: DirectoryUser,
+    etag: string,
+    scope: string,
+    section: string,
+    entryId?: string | null,
+    key?: string,
+  ): Promise<DirectoryUser> {
+    if (!this.current(scope)) throw Error('The workspace changed. Reopen the form.');
+    const owner =
+      ({ risks: 'risks', medication: 'medication', tasks: 'recording' } as Record<string, string>)[
+        section
+      ] ?? 'records';
+    const action = entryId === null ? 'create' : 'edit';
+    if (!this.access.can('care', owner, action))
+      throw Error('You do not have permission to change this record.');
+    const suffix = entryId === undefined ? '' : '/entries' + (entryId ? '/' + entryId : '');
+    const value = await this.auth.api<ServiceUserOverview>(
+      `${this.root()}/service-users/${original.id}/record-sections/${section}${suffix}`,
+      body,
+      entryId === null ? 'POST' : 'PATCH',
+      { 'If-Match': etag, ...(entryId === null ? { 'Idempotency-Key': key! } : {}) },
+    );
+    if (!this.current(scope) || this.selected()?.id !== original.id)
+      throw Error('The workspace changed. Reload the record.');
+    if (value.record.id !== original.id)
+      throw Error('The saved record does not match the requested service user.');
+    const row = this.projectOverview(value);
+    if (row.photo_id === original.photo_id && original.file?.photo)
+      row.file!.photo = original.file.photo;
+    this.selected.set(row);
+    if (row.photo_id && !row.file?.photo)
+      void this.loadPhoto(
+        row,
+        scope,
+        () => this.selected()?.id === row.id && this.selected()?.photo_id === row.photo_id,
+      );
+    return row;
+  }
+  async recordSummary(id: string): Promise<DirectoryUser> {
+    const scope = this.scope();
+    if (!this.current(scope) || !this.access.can('care', 'records', 'export'))
+      throw Error('Service user export permission is required.');
+    const value = await this.auth.api<ServiceUserOverview>(
+      `${this.root()}/service-users/${id}/record-summary`,
+    );
+    if (!this.current(scope) || value.record.id !== id || this.selected()?.id !== id)
+      throw Error('The workspace changed. Reopen the care summary.');
+    return this.projectOverview(value);
+  }
+  async getCarePlan(id: string): Promise<ServiceUserCarePlan> {
+    const scope = this.scope();
+    if (!this.current(scope)) throw Error('The workspace changed. Reopen the form.');
+    const value = await this.auth.api<ServiceUserCarePlan>(
+      `${this.root()}/service-users/${id}/care-plan`,
+    );
+    if (!this.current(scope) || value.id !== id)
+      throw Error('The workspace changed. Reopen the form.');
+    this.validate(value);
+    return value;
+  }
+  async saveCarePlan(
+    body: unknown,
+    original: DirectoryUser,
+    etag: string,
+    scope: string,
+    goalId?: string | null,
+    key?: string,
+  ): Promise<DirectoryUser> {
+    if (!this.current(scope)) throw Error('The workspace changed. Reopen the form.');
+    const action = goalId === null ? 'create' : 'edit';
+    if (!this.access.can('care', 'planning', action))
+      throw Error('Care Planning permission is required.');
+    const suffix = goalId === undefined ? '' : '/goals' + (goalId ? '/' + goalId : '');
+    const value = await this.auth.api<ServiceUserOverview>(
+      `${this.root()}/service-users/${original.id}/care-plan${suffix}`,
+      body,
+      goalId === null ? 'POST' : 'PATCH',
+      { 'If-Match': etag, ...(goalId === null ? { 'Idempotency-Key': key! } : {}) },
+    );
+    if (!this.current(scope) || this.selected()?.id !== original.id)
+      throw Error('The workspace changed. Reload the record.');
+    if (value.record.id !== original.id)
+      throw Error('The saved service user does not match the requested record.');
+    const row = this.projectOverview(value);
+    if (row.photo_id === original.photo_id && original.file?.photo)
+      row.file!.photo = original.file.photo;
+    this.selected.set(row);
+    if (row.photo_id && !row.file?.photo)
+      void this.loadPhoto(
+        row,
+        scope,
+        () => this.selected()?.id === row.id && this.selected()?.photo_id === row.photo_id,
+      );
+    return row;
+  }
+  async getDemographics(id: string): Promise<ServiceUserDemographics> {
+    const scope = this.scope();
+    if (!this.current(scope)) throw Error('The workspace changed. Reopen the form.');
+    const value = await this.auth.api<ServiceUserDemographics>(
+      `${this.root()}/service-users/${id}/demographics`,
+    );
+    if (!this.current(scope) || value.id !== id)
+      throw Error('The workspace changed. Reopen the form.');
+    this.validate(value);
+    return value;
+  }
+  async getFamily(id: string): Promise<ServiceUserFamily> {
+    const scope = this.scope();
+    if (!this.current(scope)) throw Error('The workspace changed. Reopen the form.');
+    const value = await this.auth.api<ServiceUserFamily>(
+      `${this.root()}/service-users/${id}/family`,
+    );
+    if (!this.current(scope) || value.id !== id)
+      throw Error('The workspace changed. Reopen the form.');
+    this.validate(value);
+    return value;
+  }
+  async saveFamily(
+    body: unknown,
+    original: DirectoryUser,
+    etag: string,
+    scope: string,
+  ): Promise<DirectoryUser> {
+    return this.saveSource('family', body, original, etag, scope);
+  }
+  async saveDemographics(
+    body: unknown,
+    original: DirectoryUser,
+    etag: string,
+    scope: string,
+  ): Promise<DirectoryUser> {
+    return this.saveSource('demographics', body, original, etag, scope);
+  }
+  private async saveSource(
+    source: 'demographics' | 'family',
+    body: unknown,
+    original: DirectoryUser,
+    etag: string,
+    scope: string,
+  ): Promise<DirectoryUser> {
+    if (!this.current(scope)) throw Error('The workspace changed. Reopen the form.');
+    if (!this.access.can('care', 'records', 'edit'))
+      throw Error('You do not have permission to edit this service user.');
+    const value = await this.auth.api<ServiceUserOverview>(
+      `${this.root()}/service-users/${original.id}/${source}`,
+      body,
+      'PATCH',
+      { 'If-Match': etag },
+    );
+    if (!this.current(scope) || this.selected()?.id !== original.id)
+      throw Error('The workspace changed. Reload the record.');
     if (value.record.id !== original.id)
       throw Error('The saved service user does not match the requested record.');
     const row = this.projectOverview(value);

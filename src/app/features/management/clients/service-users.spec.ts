@@ -52,6 +52,9 @@ function row(): ServiceUser {
 function overview(record: ServiceUser = row()): ServiceUserOverview {
   return {
     record,
+    workspace: { sections: [], visits: [], visits_read: false },
+    care_plan: null,
+    family: { approved: '', preferences: '', sharing_consent: '' },
     clinical: {
       primary_diagnosis: 'Recorded diagnosis',
       other_conditions: '',

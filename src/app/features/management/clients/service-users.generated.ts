@@ -1,6 +1,313 @@
 // Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.
 
+export type ServiceUserRecordSection = {
+  id: string;
+  company_id: string;
+  version: number;
+  etag: string;
+  key: string;
+  fields: {
+    key: string;
+    value: string;
+  }[];
+  entries: {
+    id: string;
+    version: number;
+    name: string;
+    detail: string;
+    date: string | null;
+    level: string;
+    status: string;
+    capacity: string;
+  }[];
+  can_edit: boolean;
+  can_create: boolean;
+  has_code: boolean;
+  staff_read: boolean;
+  staff_choices: {
+    id: string;
+    name: string;
+  }[];
+  local_date: string;
+};
+
+export type ServiceUserRecordEntryWrite = {
+  name: string;
+  detail?: string;
+  date?: string | null;
+  level?: 'Low' | 'Medium' | 'High';
+  status?: 'Active' | 'Completed' | 'Inactive';
+  capacity?: '' | 'Has capacity' | 'Lacks capacity' | 'Fluctuates' | 'Not assessed';
+};
+
+export type ServiceUserRecordEntryPatch = {
+  name?: string;
+  detail?: string;
+  date?: string | null;
+  level?: '' | 'Low' | 'Medium' | 'High';
+  status?: 'Active' | 'Completed' | 'Inactive';
+  capacity?: '' | 'Has capacity' | 'Lacks capacity' | 'Fluctuates' | 'Not assessed';
+};
+
+export type ServiceUserRecordDiagnosesWrite = {
+  primary?: string;
+  diet?: string;
+  ongoing?: string;
+  communication?: string;
+  hearing?: string;
+  vision?: string;
+  sensory?: string;
+};
+
+export type ServiceUserRecordMovingWrite = {
+  assessed?: string | null;
+  review?: string | null;
+  support?: '' | 'Independent' | 'One person' | 'Two people' | 'Specialist assessment required';
+  equipment?: string;
+  instructions?: string;
+};
+
+export type ServiceUserRecordCapacityWrite = {
+  status?: '' | 'Not recorded' | 'Has capacity' | 'Lacks capacity' | 'Fluctuates' | 'Not assessed';
+  assessed?: string | null;
+  reason?: string;
+  welfareLpa?: string;
+  financeLpa?: string;
+  advance?: string;
+  support?: string;
+  review?: string | null;
+};
+
+export type ServiceUserRecordConsentWrite = {
+  status?: '' | 'Not recorded' | 'Given' | 'Declined' | 'Withdrawn';
+  date?: string | null;
+  by?: string;
+  care?: '' | 'Not recorded' | 'Agreed' | 'Declined';
+  medication?: '' | 'Not recorded' | 'Agreed' | 'Declined';
+  family?: '' | 'Not recorded' | 'Agreed' | 'Declined';
+  photo?: '' | 'Not recorded' | 'Agreed' | 'Declined';
+  notes?: string;
+};
+
+export type ServiceUserRecordAccessWrite = {
+  location?: string;
+  code?: string;
+  checked?: string | null;
+  instructions?: string;
+};
+
+export type ServiceUserRecordSupportWrite = {
+  personal?: string;
+  nutrition?: string;
+  continence?: string;
+  safety?: string;
+  behaviour?: string;
+  continuity?: string;
+  gender?: '' | 'Any' | 'Female' | 'Male';
+  preferredStaff?: string;
+  backupStaff?: string;
+};
+
+export type ServiceUserCarePlan = {
+  id: string;
+  company_id: string;
+  version: number;
+  etag: string;
+  plan: {
+    name: string;
+    start: string | null;
+    review: string | null;
+    status: string;
+    needs: string;
+    support: string;
+  };
+  goals: {
+    name: string;
+    detail: string;
+    date: string | null;
+    level: 'Low' | 'Medium' | 'High';
+    status: 'Active' | 'Completed' | 'Inactive';
+    id: string;
+    version: number;
+  }[];
+  can_edit: boolean;
+  can_create_goal: boolean;
+};
+
+export type ServiceUserCarePlanWrite = {
+  name?: string;
+  start?: string | null;
+  review?: string | null;
+  status?: 'Draft' | 'Active' | 'Archived';
+  needs?: string;
+  support?: string;
+};
+
+export type ServiceUserCareGoalWrite = {
+  name: string;
+  detail?: string;
+  date?: string | null;
+  level?: 'Low' | 'Medium' | 'High';
+  status?: 'Active' | 'Completed' | 'Inactive';
+};
+
+export type ServiceUserCareGoalPatch = {
+  name?: string;
+  detail?: string;
+  date?: string | null;
+  level?: 'Low' | 'Medium' | 'High';
+  status?: 'Active' | 'Completed' | 'Inactive';
+};
+
+export type ServiceUserFamily = {
+  id: string;
+  company_id: string;
+  version: number;
+  etag: string;
+  name: string;
+  relationship: string;
+  phone: string;
+  email: string;
+  approved: string;
+  preferences: string;
+  sharing_consent: string;
+  can_edit: boolean;
+};
+
+export type ServiceUserFamilyWrite = {
+  name?: string;
+  relationship?: string;
+  phone?: string;
+  email?: string;
+  approved?: string;
+  preferences?: string;
+  sharing_consent?: string;
+};
+
+export type ServiceUserDemographics = {
+  id: string;
+  company_id: string;
+  version: number;
+  etag: string;
+  name: string;
+  reference: string;
+  address: string;
+  postcode: string;
+  phone: string;
+  email: string;
+  details: {
+    dob?: string | null;
+    gender?: string;
+    preferredName?: string;
+    language?: string;
+    nhs?: string;
+    religion?: string;
+    ethnicity?: string;
+    gp?: string;
+    living?: string;
+    sexuality?: string;
+    likes?: string;
+    dislikes?: string;
+    about?: string;
+  };
+  local_date: string;
+  can_edit: boolean;
+};
+
+export type ServiceUserDemographicsWrite = {
+  dob?: string | null;
+  gender?: string;
+  preferredName?: string;
+  language?: string;
+  nhs?: string;
+  religion?: string;
+  ethnicity?: string;
+  gp?: string;
+  living?: string;
+  sexuality?: string;
+  likes?: string;
+  dislikes?: string;
+  about?: string;
+  name?: string;
+  reference?: string;
+  address?: string;
+  postcode?: string;
+  phone?: string;
+  email?: string;
+};
+
 export type ServiceUserOverview = {
+  workspace: {
+    visits_read: boolean;
+    sections: {
+      id: string;
+      company_id: string;
+      version: number;
+      etag: string;
+      key: string;
+      fields: {
+        key: string;
+        value: string;
+      }[];
+      entries: {
+        id: string;
+        version: number;
+        name: string;
+        detail: string;
+        date: string | null;
+        level: string;
+        status: string;
+        capacity: string;
+      }[];
+      can_edit: boolean;
+      can_create: boolean;
+      has_code: boolean;
+      staff_read: boolean;
+      staff_choices: {
+        id: string;
+        name: string;
+      }[];
+      local_date: string;
+    }[];
+    visits: {
+      id: string;
+      callName: string;
+      date: string;
+      start: string;
+      end: string;
+      state: string;
+    }[];
+  };
+  care_plan: {
+    id: string;
+    company_id: string;
+    version: number;
+    etag: string;
+    plan: {
+      name: string;
+      start: string | null;
+      review: string | null;
+      status: string;
+      needs: string;
+      support: string;
+    };
+    goals: {
+      name: string;
+      detail: string;
+      date: string | null;
+      level: 'Low' | 'Medium' | 'High';
+      status: 'Active' | 'Completed' | 'Inactive';
+      id: string;
+      version: number;
+    }[];
+    can_edit: boolean;
+    can_create_goal: boolean;
+  } | null;
+  family: {
+    approved: string;
+    preferences: string;
+    sharing_consent: string;
+  };
   record: {
     id: string;
     company_id: string;
