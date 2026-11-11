@@ -331,6 +331,157 @@ describe('CareVerity API authentication', () => {
     await vi.advanceTimersByTimeAsync(15000);
     expect(auth.isAuthenticated()).toBe(false);
     expect(fetchMock.mock.calls.some((call) => call[0] === `${API_BASE}/auth/refresh`)).toBe(false);
+    expect(auth.sessionError()).toContain('Your session has ended');
+  });
+
+  it('warns two minutes before the server deadline and requires an explicit decision to extend it', async () => {
+    loginResponse = {
+      ...authenticated,
+      expires_in: 3600,
+      server_time: new Date().toISOString(),
+      idle_expires_at: new Date(Date.now() + 1800000).toISOString(),
+    };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    vi.setSystemTime(Date.now() + 1679000);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(auth.sessionWarning()).toBe(true);
+    expect(auth.sessionSecondsRemaining()).toBe(120);
+    document.dispatchEvent(new Event('pointerdown'));
+    document.dispatchEvent(new Event('keydown'));
+    await Promise.resolve();
+    expect(fetchMock.mock.calls.some((call) => call[0] === `${API_BASE}/auth/activity`)).toBe(
+      false,
+    );
+    expect(fetchMock.mock.calls.some((call) => call[0] === `${API_BASE}/auth/refresh`)).toBe(false);
+    const original = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url, options) =>
+      url.endsWith('/auth/refresh')
+        ? Response.json({
+            ...authenticated,
+            server_time: new Date().toISOString(),
+            idle_expires_at: new Date(Date.now() + 1800000).toISOString(),
+          })
+        : original(url, options),
+    );
+    await auth.continueSession();
+    const refresh = fetchMock.mock.calls.find(
+      (call) => call[0] === `${API_BASE}/auth/refresh`,
+    )![1]!;
+    expect(JSON.parse(refresh.body as string)).toEqual({ continue_session: true });
+    expect(auth.sessionSecondsRemaining()).toBe(1800);
+    expect(auth.sessionWarning()).toBe(false);
+    expect(auth.isAuthenticated()).toBe(true);
+  });
+
+  it('keeps the prompt available for retry after a connection failure', async () => {
+    loginResponse = {
+      ...authenticated,
+      server_time: new Date().toISOString(),
+      idle_expires_at: new Date(Date.now() + 120000).toISOString(),
+    };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    const original = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url, options) => {
+      if (url.endsWith('/auth/refresh')) throw new Error('Offline');
+      return original(url, options);
+    });
+    await auth.continueSession();
+    expect(auth.sessionWarning()).toBe(true);
+    expect(auth.continuingSession()).toBe(false);
+    expect(auth.sessionContinuationError()).toContain('Check your connection');
+    expect(auth.isAuthenticated()).toBe(true);
+  });
+
+  it('expires after an ignored warning and rejects continuation after the deadline', async () => {
+    loginResponse = {
+      ...authenticated,
+      server_time: new Date().toISOString(),
+      idle_expires_at: new Date(Date.now() + 120000).toISOString(),
+    };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    vi.setSystemTime(Date.now() + 120000);
+    await auth.continueSession();
+    expect(auth.isAuthenticated()).toBe(false);
+    expect(auth.sessionWarning()).toBe(false);
+    expect(TestBed.inject(Router).navigateByUrl).toHaveBeenCalledWith('/auth/sign-in');
+    expect(fetchMock.mock.calls.some((call) => call[0] === `${API_BASE}/auth/refresh`)).toBe(false);
+  });
+
+  it('uses the absolute deadline and rechecks immediately when a suspended tab regains focus', async () => {
+    loginResponse = {
+      ...authenticated,
+      server_time: new Date().toISOString(),
+      absolute_expires_at: new Date(Date.now() + 60000).toISOString(),
+    };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    expect(auth.sessionWarning()).toBe(true);
+    expect(auth.canContinueSession()).toBe(false);
+    expect(auth.sessionSecondsRemaining()).toBe(60);
+    vi.setSystemTime(Date.now() + 60000);
+    window.dispatchEvent(new Event('focus'));
+    expect(auth.isAuthenticated()).toBe(false);
+  });
+
+  it('deduplicates repeated continuation clicks and never restores a session after sign-out', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    let finish!: (response: Response) => void;
+    const original = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url, options) =>
+      url.endsWith('/auth/refresh')
+        ? new Promise<Response>((resolve) => (finish = resolve))
+        : original(url, options),
+    );
+    const first = auth.continueSession();
+    await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+    await auth.continueSession();
+    auth.signOut();
+    finish(Response.json(authenticated));
+    await first;
+    expect(auth.isAuthenticated()).toBe(false);
+    expect(
+      fetchMock.mock.calls.filter((call) => call[0] === `${API_BASE}/auth/refresh`),
+    ).toHaveLength(1);
+  });
+
+  it('waits for a background token rotation before sending explicit continuation', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    let finish!: (response: Response) => void;
+    let rotations = 0;
+    const original = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url, options) => {
+      if (!url.endsWith('/auth/refresh')) return original(url, options);
+      if (++rotations === 1) return new Promise<Response>((resolve) => (finish = resolve));
+      return Response.json(authenticated);
+    });
+    vi.setSystemTime(Date.now() + 295000);
+    const request = auth.api('/me');
+    await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+    const continuation = auth.continueSession();
+    expect(rotations).toBe(1);
+    finish(Response.json(authenticated));
+    await Promise.all([request, continuation]);
+    const bodies = fetchMock.mock.calls
+      .filter((call) => call[0] === `${API_BASE}/auth/refresh`)
+      .map((call) => JSON.parse(call[1]!.body as string));
+    expect(bodies).toEqual([{ continue_session: false }, { continue_session: true }]);
+    expect(auth.continuingSession()).toBe(false);
+  });
+
+  it('returns to sign-in when the backend rejects explicit continuation', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    const original = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url, options) =>
+      url.endsWith('/auth/refresh')
+        ? Response.json(
+            { code: 'unauthenticated', detail: 'Sign-in has expired.' },
+            { status: 401 },
+          )
+        : original(url, options),
+    );
+    await auth.continueSession();
+    expect(auth.isAuthenticated()).toBe(false);
+    expect(auth.continuingSession()).toBe(false);
+    expect(auth.sessionError()).toContain('Please sign in again');
   });
 
   it('clears the session when refresh credentials are rejected', async () => {

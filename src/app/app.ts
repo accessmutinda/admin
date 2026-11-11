@@ -5,8 +5,9 @@ import { NavigationEnd, NavigationError, Router, RouterOutlet } from '@angular/r
 import { filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from './core/auth/auth.service';
+import { SessionTimeout } from './core/auth/session-timeout';
 @Component({
-  imports: [RouterOutlet, PageTransition],
+  imports: [RouterOutlet, PageTransition, SessionTimeout],
   selector: 'app-root',
   styleUrl: './app.css',
   templateUrl: './app.html',

@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import {
   NavigationEnd,
   NavigationError,
@@ -18,7 +19,20 @@ describe('Application session skeleton', () => {
     let restore!: () => void;
     const initialize = vi.fn(() => new Promise<void>((resolve) => (restore = resolve)));
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: AuthService, useValue: { initialize } }],
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            initialize,
+            sessionWarning: signal(false),
+            sessionSecondsRemaining: signal(0),
+            canContinueSession: signal(true),
+            sessionContinuationError: signal(''),
+            continuingSession: signal(false),
+          },
+        },
+      ],
     });
     const router = TestBed.inject(Router);
     const events = new Subject<NavigationEnd | NavigationError>();
@@ -40,7 +54,17 @@ describe('Application session skeleton', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: AuthService, useValue: { initialize: () => new Promise<void>(() => {}) } },
+        {
+          provide: AuthService,
+          useValue: {
+            initialize: () => new Promise<void>(() => {}),
+            sessionWarning: signal(false),
+            sessionSecondsRemaining: signal(0),
+            canContinueSession: signal(true),
+            sessionContinuationError: signal(''),
+            continuingSession: signal(false),
+          },
+        },
       ],
     });
     const router = TestBed.inject(Router);

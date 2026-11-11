@@ -1,0 +1,128 @@
+:host {
+  font-family: var(--font-sans, 'Lato', sans-serif);
+}
+dialog {
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  color: #123352;
+  background: linear-gradient(120deg, #fff, #fcfefe);
+  border: 1px solid #e9eff3;
+  border-radius: 9px;
+  box-shadow: 0 12px 40px #123c5433;
+  font-family: inherit;
+}
+dialog::backdrop {
+  background: #0b305080;
+}
+header,
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+}
+header {
+  border-bottom: 1px solid #edf2f5;
+}
+header img {
+  height: auto;
+  max-width: 45%;
+}
+.security-label,
+.session-note {
+  color: #657184;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.session-content {
+  padding: 20px 20px 0;
+}
+.session-icon {
+  display: inline-flex;
+  padding: 9px;
+  color: #00528c;
+  background: #eaf5fc;
+  border-radius: 9px;
+  font-size: 24px;
+}
+h2 {
+  margin: 12px 0 6px;
+  color: #002b60;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.countdown {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: #f1f7fa;
+  border: 1px solid #e2eaf0;
+  border-radius: 7px;
+  font-size: 12px;
+}
+.countdown strong {
+  color: #081334;
+  font-size: 21px;
+  font-variant-numeric: tabular-nums;
+}
+.session-error {
+  padding: 10px 12px;
+  color: #b42334;
+  background: #fff5f6;
+  border: 1px solid #f2c8cf;
+  border-radius: 7px;
+}
+footer {
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+button {
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 1px solid;
+  border-radius: 7px;
+  font: 700 12px/1.4 var(--font-sans, 'Lato', sans-serif);
+  cursor: pointer;
+}
+.primary {
+  color: #fff;
+  background: #008afa;
+  border-color: #008afa;
+}
+.primary:hover {
+  background: #0079dc;
+}
+.secondary {
+  color: #16375b;
+  background: linear-gradient(#fff, #f9fcfd);
+  border-color: #dfe6eb;
+}
+button:focus-visible {
+  outline: 2px solid #008bd9;
+  outline-offset: 3px;
+}
+button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+@media (pointer: coarse), (max-width: 480px) {
+  button {
+    min-height: 44px;
+  }
+  footer {
+    flex-wrap: wrap;
+  }
+}

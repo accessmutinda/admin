@@ -28,6 +28,21 @@ export class AuthService {
   readonly passwordReason = signal('');
   readonly minPasswordLength = signal(8);
   readonly sessionError = signal('');
+  readonly sessionContinuationError = signal('');
+  readonly continuingSession = signal(false);
+  private readonly sessionDeadline = signal(0);
+  private readonly absoluteDeadline = signal(0);
+  private readonly clock = signal(Date.now());
+  readonly sessionSecondsRemaining = computed(() =>
+    Math.max(0, Math.ceil((this.sessionDeadline() - this.clock()) / 1000)),
+  );
+  readonly sessionWarning = computed(
+    () =>
+      this.isAuthenticated() && this.sessionDeadline() > 0 && this.sessionSecondsRemaining() <= 120,
+  );
+  readonly canContinueSession = computed(
+    () => !this.absoluteDeadline() || this.absoluteDeadline() - this.clock() > 120000,
+  );
   private access: string | null = null;
   private accessExpiresAt = 0;
   private idleExpiresAt = 0;
@@ -57,17 +72,22 @@ export class AuthService {
     const activity = () => void this.recordActivity();
     for (const event of ['pointerdown', 'keydown'])
       document.addEventListener(event, activity, { passive: true });
-    const timer = setInterval(() => {
+    const checkSession = () => {
+      this.clock.set(Date.now());
       if (!this.isAuthenticated()) return;
       if (this.idleExpiresAt && Date.now() >= this.idleExpiresAt) {
-        this.clear();
-        void this.router.navigateByUrl('/auth/sign-in');
-      } else if (Date.now() >= this.accessExpiresAt - 30000) {
+        this.expire();
+      } else if (!this.sessionWarning() && Date.now() >= this.accessExpiresAt - 30000) {
         void this.refresh().catch(() => this.expire());
       }
-    }, 15000);
+    };
+    const timer = setInterval(checkSession, 1000);
+    document.addEventListener('visibilitychange', checkSession);
+    window.addEventListener('focus', checkSession);
     this.destroyRef.onDestroy(() => {
       clearInterval(timer);
+      document.removeEventListener('visibilitychange', checkSession);
+      window.removeEventListener('focus', checkSession);
       for (const event of ['pointerdown', 'keydown']) document.removeEventListener(event, activity);
     });
   }
@@ -281,6 +301,13 @@ export class AuthService {
           Date.parse(response.idle_expires_at),
           response.absolute_expires_at ? Date.parse(response.absolute_expires_at) : Infinity,
         ) - this.serverOffset;
+      this.absoluteDeadline.set(
+        response.absolute_expires_at
+          ? Date.parse(response.absolute_expires_at) - this.serverOffset
+          : 0,
+      );
+      this.sessionDeadline.set(this.idleExpiresAt);
+      this.clock.set(Date.now());
     }
   }
 
@@ -345,11 +372,38 @@ export class AuthService {
     });
   }
 
-  private refresh(): Promise<void> {
+  async continueSession(): Promise<void> {
+    if (this.continuingSession()) return;
+    if (!this.isAuthenticated() || Date.now() >= this.idleExpiresAt) {
+      this.expire();
+      return;
+    }
+    const generation = this.generation;
+    this.continuingSession.set(true);
+    this.sessionContinuationError.set('');
+    try {
+      if (this.refreshInFlight) await this.refreshInFlight;
+      if (generation !== this.generation) return;
+      await this.refresh(true);
+      if (generation === this.generation) this.lastActivity = Date.now();
+    } catch (error) {
+      if (generation !== this.generation) return;
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403))
+        this.expire();
+      else
+        this.sessionContinuationError.set(
+          'We could not extend your session. Check your connection and select Stay signed in to try again before the timer ends.',
+        );
+    } finally {
+      if (generation === this.generation) this.continuingSession.set(false);
+    }
+  }
+
+  private refresh(continueSession = false): Promise<void> {
     if (!this.refreshInFlight) {
       const generation = this.generation;
       this.refreshInFlight = this.request<AuthResponse>('/auth/refresh', {
-        continue_session: false,
+        continue_session: continueSession,
       })
         .then((response) => {
           if (generation === this.generation) this.acceptToken(response);
@@ -407,10 +461,18 @@ export class AuthService {
   }
 
   private async recordActivity(): Promise<void> {
-    if (!this.isAuthenticated() || Date.now() - this.lastActivity < 60000) return;
+    this.clock.set(Date.now());
+    if (!this.isAuthenticated()) return;
+    if (this.idleExpiresAt && Date.now() >= this.idleExpiresAt) {
+      this.expire();
+      return;
+    }
+    if (this.sessionWarning() || Date.now() - this.lastActivity < 60000) return;
+    const generation = this.generation;
     this.lastActivity = Date.now();
     try {
-      this.deadlines(await this.api<AuthResponse>('/auth/activity', undefined, 'POST'));
+      const response = await this.api<AuthResponse>('/auth/activity', undefined, 'POST');
+      if (generation === this.generation) this.deadlines(response);
     } catch {
       /* Authentication failures are handled by the request path. */
     }
@@ -477,6 +539,7 @@ export class AuthService {
 
   private expire(): void {
     this.clear();
+    this.sessionError.set('Your session has ended. Please sign in again to continue.');
     void this.router.navigateByUrl('/auth/sign-in');
   }
   private clear(): void {
@@ -484,6 +547,10 @@ export class AuthService {
     this.access = null;
     this.accessExpiresAt = 0;
     this.idleExpiresAt = 0;
+    this.sessionDeadline.set(0);
+    this.absoluteDeadline.set(0);
+    this.sessionContinuationError.set('');
+    this.continuingSession.set(false);
     this.lastActivity = 0;
     this._session.set(null);
     this.profile.set(null);
