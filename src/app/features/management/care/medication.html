@@ -1,6 +1,12 @@
 <cv-module-design />
 @if (client(); as c) {
-  <cv-care-header [client]="c" active="medication" />
+  <cv-care-header
+    [client]="c"
+    active="medication"
+    [printManaged]="true"
+    [printBusy]="exportBusy()"
+    (printRequested)="print()"
+  />
   <div class="care-heading">
     <div>
       <h2 id="medication-workspace-title">
@@ -12,12 +18,23 @@
       </p>
     </div>
     <div class="care-actions">
-      @if (care.rota.can('export')) {
-        <button class="care-button" (click)="print()">Print / Save PDF</button
-        ><button class="care-button" (click)="export()">Export MAR</button>
+      @if ((can('create') || can('edit')) && previewRecordAvailable()) {
+        <button class="care-button" [disabled]="fetching() || saving()" (click)="startRecord()">
+          Record dose
+        </button>
+      }
+      @if (can('export')) {
+        <button class="care-button" [disabled]="exportBusy()" (click)="print()">
+          Print / Save PDF</button
+        ><button class="care-button" [disabled]="exportBusy()" (click)="export()">
+          Export MAR
+        </button>
       }
     </div>
   </div>
+  @if (error() && !modal()) {
+    <p class="care-error" role="alert">{{ error() }}</p>
+  }
   @if (notice()) {
     <p role="status" class="care-note">{{ notice() }}</p>
   }
@@ -102,8 +119,12 @@
                 <mat-option [value]="f">{{ f }} medications</mat-option>
               }
             </mat-select>
-            @if (care.rota.can('manage')) {
-              <button class="care-button primary" (click)="open('medication')">
+            @if (can('create')) {
+              <button
+                class="care-button primary"
+                [disabled]="fetching() || saving()"
+                (click)="open('medication')"
+              >
                 Add Medication <span class="material-symbols-outlined" aria-hidden="true">add</span>
               </button>
             }
@@ -181,19 +202,24 @@
                     }}</small>
                   </td>
                   <td>
-                    @if (care.rota.can('manage') && !m.discontinuedAt) {
+                    @if ((can('edit') || can('archive')) && !m.discontinuedAt) {
                       <details class="medication-row-actions">
                         <summary [attr.aria-label]="'Actions for ' + m.name">
                           <span class="material-symbols-outlined" aria-hidden="true"
                             >more_horiz</span
                           >
                         </summary>
-                        <button class="care-button" (click)="open('medication', m)">
-                          View / Edit</button
-                        ><button class="care-button" (click)="open('stock', m)">Stock</button
-                        ><button class="care-button" (click)="open('discontinue', m)">
-                          Discontinue
-                        </button>
+                        @if (can('edit')) {
+                          <button class="care-button" (click)="open('medication', m)">
+                            View / Edit
+                          </button>
+                          <button class="care-button" (click)="open('stock', m)">Stock</button>
+                        }
+                        @if (can('archive')) {
+                          <button class="care-button" (click)="open('discontinue', m)">
+                            Discontinue
+                          </button>
+                        }
                       </details>
                     }
                   </td>
@@ -218,7 +244,7 @@
           Settings Preview
         </h2>
         @if (previewMedication(); as m) {
-          @if (care.rota.can('manage')) {
+          @if (can('edit')) {
             <button class="care-button" (click)="open('medication', m)">
               <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
             </button>
@@ -256,7 +282,7 @@
               <tr>
                 <th>Medication</th>
                 <th>Time</th>
-                @for (date of previewDates; track date) {
+                @for (date of previewDates(); track date) {
                   <th>{{ date | date: 'EEE d MMM' }}</th>
                 }
               </tr>
@@ -271,7 +297,7 @@
                     </td>
                   }
                   <td>{{ time }}</td>
-                  @for (date of previewDates; track date) {
+                  @for (date of previewDates(); track date) {
                     <td class="mar-preview-slot">
                       @if (due(m, date)) {
                         <span
@@ -368,301 +394,451 @@
             ×
           </button>
         </div>
-        <form (ngSubmit)="save()">
-          <div class="care-panel care-fields">
-            @if (modal() === 'medication') {
-              <label class="care-wide"
-                >Medication name *<input name="name" [(ngModel)]="draft.name" required /></label
-              ><label
-                >Strength *<input name="strength" [(ngModel)]="draft.strength" required /></label
-              ><label
-                >Form *<mat-select
-                  cvSelect
-                  name="form"
-                  aria-label="Medication form"
-                  [(ngModel)]="draft.form"
-                >
-                  @for (
-                    f of [
-                      'Tablet',
-                      'Capsule',
-                      'Cream',
-                      'Ointment',
-                      'Liquid',
-                      'Inhaler',
-                      'Drops',
-                      'Patch',
-                      'Injection',
-                      'Other',
-                    ];
-                    track f
-                  ) {
-                    <mat-option [value]="f">{{ f }}</mat-option>
-                  }
-                </mat-select></label
-              ><label
-                >Route *<mat-select
-                  cvSelect
-                  name="route"
-                  aria-label="Medication route"
-                  [(ngModel)]="draft.route"
-                >
-                  @for (r of routes; track r) {
-                    <mat-option [value]="r">{{ r }}</mat-option>
-                  }
-                </mat-select></label
-              ><label
-                >Dose instructions *<input
-                  name="dose"
-                  [(ngModel)]="draft.dose"
-                  required
-                  placeholder="e.g. 1 tablet" /></label
-              ><label
-                >Frequency *<mat-select
-                  cvSelect
-                  name="frequency"
-                  aria-label="Medication frequency"
-                  [(ngModel)]="draft.frequency"
-                >
-                  @for (f of ['Daily', 'Selected days', 'PRN']; track f) {
-                    <mat-option [value]="f">{{ f }}</mat-option>
-                  }
-                </mat-select></label
-              >
-              @if (draft.frequency !== 'PRN') {
+        <form #editorForm="ngForm" (ngSubmit)="editorForm.valid && save()">
+          <fieldset class="medication-editor-fields" [disabled]="saving()">
+            <div class="care-panel care-fields">
+              @if (modal() === 'medication') {
                 <label class="care-wide"
-                  >Times (comma separated HH:mm) *<input
-                    name="times"
-                    [(ngModel)]="timeText"
-                    placeholder="08:00, 12:00, 18:00"
-                    required
-                /></label>
-              }
-              @if (draft.frequency === 'Selected days') {
-                <fieldset class="care-wide">
-                  <legend>Repeat on</legend>
-                  @for (d of weekdays; track d; let i = $index) {
-                    <label class="care-check"
-                      ><input
-                        type="checkbox"
-                        [checked]="draft.weekdays.includes(i)"
-                        (change)="toggleDay(i)"
-                      />{{ d }}</label
-                    >
-                  }
-                </fieldset>
-              }
-              <label
-                >Start date *<input
-                  type="date"
-                  name="start"
-                  [(ngModel)]="draft.start"
-                  required /></label
-              ><label>End date<input type="date" name="end" [(ngModel)]="draft.end" /></label
-              ><label
-                >Prescriber *<input
-                  name="prescriber"
-                  [(ngModel)]="draft.prescriber"
-                  required /></label
-              ><label
-                >Pharmacy *<input name="pharmacy" [(ngModel)]="draft.pharmacy" required /></label
-              ><label class="care-wide"
-                >Indication / reason *<textarea
-                  name="indication"
-                  [(ngModel)]="draft.indication"
-                  required
-                ></textarea>
-              </label>
-              <fieldset class="care-wide medication-support-choices">
-                <legend>Medication Support Level *</legend>
-                <div>
-                  @for (s of supportLevels; track s) {
-                    <label [attr.data-support]="s" [class.selected]="draft.support === s">
-                      <input
-                        type="radio"
-                        name="support"
-                        [value]="s"
-                        [(ngModel)]="draft.support"
-                        required
-                      />
-                      <span class="material-symbols-outlined" aria-hidden="true">{{
-                        supportIcon(s)
-                      }}</span>
-                      <strong>{{ s === 'Support' ? 'Assist / Support' : s }}</strong>
-                      <small>{{ supportDescription(s) }}</small>
-                    </label>
-                  }
-                </div>
-              </fieldset>
-              @if (draft.frequency === 'PRN') {
-                <label class="care-wide"
-                  >PRN indication *<textarea
-                    name="prnIndication"
-                    [(ngModel)]="draft.prnIndication"
-                    required
-                  ></textarea></label
+                  >Medication name *<input
+                    [attr.aria-invalid]="fieldError('name') ? true : null"
+                    [attr.title]="fieldError('name') || null"
+                    name="name"
+                    [(ngModel)]="draft.name"
+                    required /></label
                 ><label
-                  >Maximum stock units / 24 hours *<input
+                  >Strength *<input
+                    [attr.aria-invalid]="fieldError('strength') ? true : null"
+                    [attr.title]="fieldError('strength') || null"
+                    name="strength"
+                    [(ngModel)]="draft.strength"
+                    required /></label
+                ><label
+                  >Form *<mat-select
+                    [disabled]="saving() || fetching()"
+                    cvSelect
+                    [attr.aria-invalid]="fieldError('form') ? true : null"
+                    [attr.title]="fieldError('form') || null"
+                    name="form"
+                    aria-label="Medication form"
+                    [(ngModel)]="draft.form"
+                  >
+                    @for (
+                      f of [
+                        'Tablet',
+                        'Capsule',
+                        'Cream',
+                        'Ointment',
+                        'Liquid',
+                        'Inhaler',
+                        'Drops',
+                        'Patch',
+                        'Injection',
+                        'Other',
+                      ];
+                      track f
+                    ) {
+                      <mat-option [value]="f">{{ f }}</mat-option>
+                    }
+                  </mat-select></label
+                ><label
+                  >Route *<mat-select
+                    [disabled]="saving() || fetching()"
+                    cvSelect
+                    [attr.aria-invalid]="fieldError('route') ? true : null"
+                    [attr.title]="fieldError('route') || null"
+                    name="route"
+                    aria-label="Medication route"
+                    [(ngModel)]="draft.route"
+                  >
+                    @for (r of routes; track r) {
+                      <mat-option [value]="r">{{ r }}</mat-option>
+                    }
+                  </mat-select></label
+                ><label
+                  >Dose instructions *<input
+                    [attr.aria-invalid]="fieldError('dose') ? true : null"
+                    [attr.title]="fieldError('dose') || null"
+                    name="dose"
+                    [(ngModel)]="draft.dose"
+                    required
+                    placeholder="e.g. 1 tablet" /></label
+                ><label
+                  >Frequency *<mat-select
+                    [disabled]="saving() || fetching()"
+                    cvSelect
+                    [attr.aria-invalid]="fieldError('frequency') ? true : null"
+                    [attr.title]="fieldError('frequency') || null"
+                    name="frequency"
+                    aria-label="Medication frequency"
+                    [(ngModel)]="draft.frequency"
+                  >
+                    @for (f of ['Daily', 'Selected days', 'PRN']; track f) {
+                      <mat-option [value]="f">{{ f }}</mat-option>
+                    }
+                  </mat-select></label
+                >
+                @if (draft.frequency !== 'PRN') {
+                  <label class="care-wide"
+                    >Times (comma separated HH:mm) *<input
+                      [attr.aria-invalid]="fieldError('times') ? true : null"
+                      [attr.title]="fieldError('times') || null"
+                      name="times"
+                      [(ngModel)]="timeText"
+                      placeholder="08:00, 12:00, 18:00"
+                      required
+                  /></label>
+                }
+                @if (draft.frequency === 'Selected days') {
+                  <fieldset class="care-wide">
+                    <legend>Repeat on</legend>
+                    @for (d of weekdays; track d; let i = $index) {
+                      <label class="care-check"
+                        ><input
+                          type="checkbox"
+                          [checked]="draft.weekdays.includes(i)"
+                          (change)="toggleDay(i)"
+                        />{{ d }}</label
+                      >
+                    }
+                  </fieldset>
+                }
+                <label
+                  >Start date *<input
+                    type="date"
+                    [attr.aria-invalid]="fieldError('start') ? true : null"
+                    [attr.title]="fieldError('start') || null"
+                    name="start"
+                    [(ngModel)]="draft.start"
+                    required /></label
+                ><label
+                  >End date<input
+                    type="date"
+                    [attr.aria-invalid]="fieldError('end') ? true : null"
+                    [attr.title]="fieldError('end') || null"
+                    name="end"
+                    [(ngModel)]="draft.end" /></label
+                ><label
+                  >Prescriber *<input
+                    [attr.aria-invalid]="fieldError('prescriber') ? true : null"
+                    [attr.title]="fieldError('prescriber') || null"
+                    name="prescriber"
+                    [(ngModel)]="draft.prescriber"
+                    required /></label
+                ><label
+                  >Pharmacy *<input
+                    [attr.aria-invalid]="fieldError('pharmacy') ? true : null"
+                    [attr.title]="fieldError('pharmacy') || null"
+                    name="pharmacy"
+                    [(ngModel)]="draft.pharmacy"
+                    required /></label
+                ><label class="care-wide"
+                  >Indication / reason *<textarea
+                    [attr.aria-invalid]="fieldError('indication') ? true : null"
+                    [attr.title]="fieldError('indication') || null"
+                    name="indication"
+                    [(ngModel)]="draft.indication"
+                    required
+                  ></textarea>
+                </label>
+                <fieldset class="care-wide medication-support-choices">
+                  <legend>Medication Support Level *</legend>
+                  <div>
+                    @for (s of supportLevels; track s) {
+                      <label [attr.data-support]="s" [class.selected]="draft.support === s">
+                        <input
+                          type="radio"
+                          [attr.aria-invalid]="fieldError('support') ? true : null"
+                          [attr.title]="fieldError('support') || null"
+                          name="support"
+                          [value]="s"
+                          [(ngModel)]="draft.support"
+                          required
+                        />
+                        <span class="material-symbols-outlined" aria-hidden="true">{{
+                          supportIcon(s)
+                        }}</span>
+                        <strong>{{ s === 'Support' ? 'Assist / Support' : s }}</strong>
+                        <small>{{ supportDescription(s) }}</small>
+                      </label>
+                    }
+                  </div>
+                </fieldset>
+                @if (draft.frequency === 'PRN') {
+                  <label class="care-wide"
+                    >PRN indication *<textarea
+                      [attr.aria-invalid]="fieldError('prnIndication') ? true : null"
+                      [attr.title]="fieldError('prnIndication') || null"
+                      name="prnIndication"
+                      [(ngModel)]="draft.prnIndication"
+                      required
+                    ></textarea></label
+                  ><label
+                    >Maximum stock units / 24 hours *<input
+                      type="number"
+                      [attr.aria-invalid]="fieldError('prnMax') ? true : null"
+                      [attr.title]="fieldError('prnMax') || null"
+                      name="prnMax"
+                      [(ngModel)]="draft.prnMax"
+                      min="0.01"
+                      step="any"
+                      required /></label
+                  ><label
+                    >Minimum interval (hours) *<input
+                      type="number"
+                      [attr.aria-invalid]="fieldError('prnInterval') ? true : null"
+                      [attr.title]="fieldError('prnInterval') || null"
+                      name="prnInterval"
+                      [(ngModel)]="draft.prnInterval"
+                      min="0"
+                      step="any"
+                      required
+                  /></label>
+                }
+                <label
+                  >Stock units (blank = untracked)<input
                     type="number"
-                    name="prnMax"
-                    [(ngModel)]="draft.prnMax"
+                    [readonly]="!!selectedId"
+                    [attr.aria-invalid]="fieldError('stock') ? true : null"
+                    [attr.title]="fieldError('stock') || null"
+                    name="stock"
+                    [(ngModel)]="draft.stock"
+                    min="0"
+                    step="any" /></label
+                ><label
+                  >Low-stock threshold<input
+                    type="number"
+                    [attr.aria-invalid]="fieldError('lowStock') ? true : null"
+                    [attr.title]="fieldError('lowStock') || null"
+                    name="lowStock"
+                    [(ngModel)]="draft.lowStock"
+                    min="0"
+                    step="any" /></label
+                ><label
+                  >Dispensing system<input
+                    [attr.aria-invalid]="fieldError('dispensing') ? true : null"
+                    [attr.title]="fieldError('dispensing') || null"
+                    name="dispensing"
+                    [(ngModel)]="draft.dispensing" /></label
+                ><label
+                  >Stock location<input
+                    [attr.aria-invalid]="fieldError('stockLocation') ? true : null"
+                    [attr.title]="fieldError('stockLocation') || null"
+                    name="stockLocation"
+                    [(ngModel)]="draft.stockLocation" /></label
+                ><label class="care-check"
+                  ><input
+                    type="checkbox"
+                    [attr.aria-invalid]="fieldError('controlled') ? true : null"
+                    [attr.title]="fieldError('controlled') || null"
+                    name="controlled"
+                    [(ngModel)]="draft.controlled"
+                  />Controlled drug / CD register</label
+                ><label class="care-check"
+                  ><input
+                    type="checkbox"
+                    [attr.aria-invalid]="fieldError('requiresMar') ? true : null"
+                    [attr.title]="fieldError('requiresMar') || null"
+                    name="requiresMar"
+                    [(ngModel)]="draft.requiresMar"
+                  />Requires MAR</label
+                ><label class="care-check care-wide"
+                  ><input
+                    type="checkbox"
+                    [attr.aria-invalid]="fieldError('covert') ? true : null"
+                    [attr.title]="fieldError('covert') || null"
+                    name="covert"
+                    [(ngModel)]="draft.covert"
+                  />Covert medication</label
+                >
+                @if (draft.covert) {
+                  <label class="care-wide"
+                    >Covert authority / plan *<textarea
+                      [attr.aria-invalid]="fieldError('covertAuthority') ? true : null"
+                      [attr.title]="fieldError('covertAuthority') || null"
+                      name="covertAuthority"
+                      [(ngModel)]="draft.covertAuthority"
+                      required
+                    ></textarea>
+                  </label>
+                }
+                <label class="care-wide"
+                  >Side effects / monitoring<textarea
+                    [attr.aria-invalid]="fieldError('monitoring') ? true : null"
+                    [attr.title]="fieldError('monitoring') || null"
+                    name="monitoring"
+                    [(ngModel)]="draft.monitoring"
+                  ></textarea></label
+                ><label class="care-wide"
+                  >Notes<textarea
+                    [attr.aria-invalid]="fieldError('notes') ? true : null"
+                    [attr.title]="fieldError('notes') || null"
+                    name="notes"
+                    [(ngModel)]="draft.notes"
+                  ></textarea>
+                </label>
+              } @else if (modal() === 'record') {
+                <label class="care-wide"
+                  >Medication *<mat-select
+                    [disabled]="saving() || fetching()"
+                    cvSelect
+                    aria-label="Record medication"
+                    [ngModel]="selectedId"
+                    (ngModelChange)="chooseMedication($event)"
+                    [attr.aria-invalid]="fieldError('recordMedication') ? true : null"
+                    [attr.title]="fieldError('recordMedication') || null"
+                    name="recordMedication"
+                  >
+                    @for (m of recordMedicines(); track m.id) {
+                      @if (m.requiresMar) {
+                        <mat-option [value]="m.id">{{ m.name }} {{ m.strength }}</mat-option>
+                      }
+                    }
+                  </mat-select></label
+                >
+                @if (can('edit')) {
+                  <label class="care-wide"
+                    >MAR entry<mat-select
+                      [disabled]="saving() || fetching()"
+                      cvSelect
+                      aria-label="MAR entry to record or correct"
+                      [attr.aria-invalid]="fieldError('existingRecord') ? true : null"
+                      [attr.title]="fieldError('existingRecord') || null"
+                      name="existingRecord"
+                      [ngModel]="record.correctionOf || ''"
+                      (ngModelChange)="selectRecord($event)"
+                    >
+                      <mat-option value="" [disabled]="!can('create')"
+                        >New administration</mat-option
+                      >
+                      @for (a of medicationRecords(); track a.id) {
+                        <mat-option [value]="a.id"
+                          >{{ a.date }} {{ a.time }} · {{ a.outcome }}</mat-option
+                        >
+                      }
+                    </mat-select></label
+                  >
+                }
+                @if (reviewed) {
+                  <p class="care-note care-wide">
+                    Existing record: {{ reviewed.outcome }} · {{ reviewed.doseUnits }} units ·
+                    {{ reviewed.by }} · {{ ukStamp(reviewed.at) }}. Reason:
+                    {{ reviewed.reason || 'None recorded' }}. Response:
+                    {{ reviewed.response || 'Not recorded' }}.
+                  </p>
+                }
+                <p class="care-wide">
+                  {{ draft.name }} {{ draft.strength }} · {{ draft.dose }}. Enter actual dose
+                  quantity in the same units used for stock.
+                </p>
+                <label
+                  >Date *<input
+                    [attr.aria-invalid]="fieldError('date') ? true : null"
+                    [attr.title]="fieldError('date') || null"
+                    name="date"
+                    type="date"
+                    [(ngModel)]="record.date"
+                    [readonly]="!!record.correctionOf"
+                    required /></label
+                ><label
+                  >Time ({{ data()?.timezone ?? 'company time' }}) *<input
+                    [attr.aria-invalid]="fieldError('time') ? true : null"
+                    [attr.title]="fieldError('time') || null"
+                    name="time"
+                    type="time"
+                    [(ngModel)]="record.time"
+                    [readonly]="!!record.correctionOf"
+                    required /></label
+                ><label
+                  >Outcome *<mat-select
+                    [disabled]="saving() || fetching()"
+                    cvSelect
+                    [attr.aria-invalid]="fieldError('outcome') ? true : null"
+                    [attr.title]="fieldError('outcome') || null"
+                    name="outcome"
+                    aria-label="Administration outcome"
+                    [(ngModel)]="record.outcome"
+                  >
+                    @for (o of ['Given', 'Refused', 'Omitted', 'Absent']; track o) {
+                      <mat-option [value]="o">{{ o }}</mat-option>
+                    }
+                  </mat-select></label
+                ><label
+                  >Dose quantity (stock units) *<input
+                    type="number"
+                    [attr.aria-invalid]="fieldError('doseUnits') ? true : null"
+                    [attr.title]="fieldError('doseUnits') || null"
+                    name="doseUnits"
+                    [(ngModel)]="record.doseUnits"
                     min="0.01"
                     step="any"
                     required /></label
-                ><label
-                  >Minimum interval (hours) *<input
-                    type="number"
-                    name="prnInterval"
-                    [(ngModel)]="draft.prnInterval"
-                    min="0"
-                    step="any"
-                    required
-                /></label>
-              }
-              <label
-                >Stock units (blank = untracked)<input
-                  type="number"
-                  name="stock"
-                  [(ngModel)]="draft.stock"
-                  min="0"
-                  step="any" /></label
-              ><label
-                >Low-stock threshold<input
-                  type="number"
-                  name="lowStock"
-                  [(ngModel)]="draft.lowStock"
-                  min="0"
-                  step="any" /></label
-              ><label
-                >Dispensing system<input name="dispensing" [(ngModel)]="draft.dispensing" /></label
-              ><label
-                >Stock location<input
-                  name="stockLocation"
-                  [(ngModel)]="draft.stockLocation" /></label
-              ><label class="care-check"
-                ><input
-                  type="checkbox"
-                  name="controlled"
-                  [(ngModel)]="draft.controlled"
-                />Controlled drug / CD register</label
-              ><label class="care-check"
-                ><input
-                  type="checkbox"
-                  name="requiresMar"
-                  [(ngModel)]="draft.requiresMar"
-                />Requires MAR</label
-              ><label class="care-check care-wide"
-                ><input type="checkbox" name="covert" [(ngModel)]="draft.covert" />Covert
-                medication</label
-              >
-              @if (draft.covert) {
+                ><label class="care-wide"
+                  >Reason / correction explanation<textarea
+                    [attr.aria-invalid]="fieldError('reason') ? true : null"
+                    [attr.title]="fieldError('reason') || null"
+                    name="reason"
+                    [(ngModel)]="record.reason"
+                  ></textarea></label
+                ><label class="care-wide"
+                  >Response / monitoring outcome<textarea
+                    [attr.aria-invalid]="fieldError('response') ? true : null"
+                    [attr.title]="fieldError('response') || null"
+                    name="response"
+                    [(ngModel)]="record.response"
+                  ></textarea>
+                </label>
+                @if (draft.controlled && record.outcome === 'Given') {
+                  <label class="care-wide"
+                    >Independent witness *<input
+                      [attr.aria-invalid]="fieldError('witness') ? true : null"
+                      [attr.title]="fieldError('witness') || null"
+                      name="witness"
+                      [(ngModel)]="record.witness"
+                      required
+                  /></label>
+                }
+                @if (record.correctionOf) {
+                  <p class="care-note care-wide">
+                    The original entry remains in the audit record. Management permission is
+                    required to save a correction.
+                  </p>
+                }
+              } @else {
+                <p class="care-wide">{{ draft.name }} {{ draft.strength }}</p>
+                @if (modal() === 'stock') {
+                  <label class="care-wide"
+                    >Change in stock units *<input
+                      type="number"
+                      [attr.aria-invalid]="fieldError('stockChange') ? true : null"
+                      [attr.title]="fieldError('stockChange') || null"
+                      name="stockChange"
+                      [(ngModel)]="stockChange"
+                      step="any"
+                      required
+                  /></label>
+                }
                 <label class="care-wide"
-                  >Covert authority / plan *<textarea
-                    name="covertAuthority"
-                    [(ngModel)]="draft.covertAuthority"
+                  >Reason *<textarea
+                    [attr.aria-invalid]="fieldError('reason') ? true : null"
+                    [attr.title]="fieldError('reason') || null"
+                    name="reason"
+                    [(ngModel)]="reason"
                     required
                   ></textarea>
                 </label>
               }
-              <label class="care-wide"
-                >Side effects / monitoring<textarea
-                  name="monitoring"
-                  [(ngModel)]="draft.monitoring"
-                ></textarea></label
-              ><label class="care-wide"
-                >Notes<textarea name="notes" [(ngModel)]="draft.notes"></textarea>
-              </label>
-            } @else if (modal() === 'record') {
-              @if (reviewed) {
-                <p class="care-note care-wide">
-                  Existing record: {{ reviewed.outcome }} · {{ reviewed.doseUnits }} units ·
-                  {{ reviewed.by }} · {{ ukStamp(reviewed.at) }}. Reason:
-                  {{ reviewed.reason || 'None recorded' }}. Response:
-                  {{ reviewed.response || 'Not recorded' }}.
-                </p>
-              }
-              <p class="care-wide">
-                {{ draft.name }} {{ draft.strength }} · {{ draft.dose }}. Enter actual dose quantity
-                in the same units used for stock.
-              </p>
-              <label
-                >Date *<input
-                  name="date"
-                  type="date"
-                  [(ngModel)]="record.date"
-                  [readonly]="!!record.correctionOf"
-                  required /></label
-              ><label
-                >Time (UK) *<input
-                  name="time"
-                  type="time"
-                  [(ngModel)]="record.time"
-                  [readonly]="!!record.correctionOf"
-                  required /></label
-              ><label
-                >Outcome *<mat-select
-                  cvSelect
-                  name="outcome"
-                  aria-label="Administration outcome"
-                  [(ngModel)]="record.outcome"
-                >
-                  @for (o of ['Given', 'Refused', 'Omitted', 'Absent']; track o) {
-                    <mat-option [value]="o">{{ o }}</mat-option>
-                  }
-                </mat-select></label
-              ><label
-                >Dose quantity (stock units) *<input
-                  type="number"
-                  name="doseUnits"
-                  [(ngModel)]="record.doseUnits"
-                  min="0.01"
-                  step="any"
-                  required /></label
-              ><label class="care-wide"
-                >Reason / correction explanation<textarea
-                  name="reason"
-                  [(ngModel)]="record.reason"
-                ></textarea></label
-              ><label class="care-wide"
-                >Response / monitoring outcome<textarea
-                  name="response"
-                  [(ngModel)]="record.response"
-                ></textarea>
-              </label>
-              @if (draft.controlled) {
-                <label class="care-wide"
-                  >Independent witness *<input name="witness" [(ngModel)]="record.witness" required
-                /></label>
-              }
-              @if (record.correctionOf) {
-                <p class="care-note care-wide">
-                  The original entry remains in the audit record. Management permission is required
-                  to save a correction.
-                </p>
-              }
-            } @else {
-              <p class="care-wide">{{ draft.name }} {{ draft.strength }}</p>
-              @if (modal() === 'stock') {
-                <label class="care-wide"
-                  >Change in stock units *<input
-                    type="number"
-                    name="stockChange"
-                    [(ngModel)]="stockChange"
-                    step="any"
-                    required
-                /></label>
-              }
-              <label class="care-wide"
-                >Reason *<textarea name="reason" [(ngModel)]="reason" required></textarea>
-              </label>
+            </div>
+            @if (error()) {
+              <p class="care-error" role="alert">{{ error() }}</p>
             }
-          </div>
-          @if (error()) {
-            <p class="care-error" role="alert">{{ error() }}</p>
-          }
+          </fieldset>
           <footer>
             <button class="care-button" type="button" (click)="close()">Cancel</button
-            ><button class="care-button primary" type="submit">
+            ><button
+              class="care-button primary"
+              [disabled]="saving() || editorForm.invalid"
+              type="submit"
+            >
               Save {{ modal() === 'record' ? 'MAR record' : 'changes' }}
             </button>
           </footer>
@@ -670,6 +846,11 @@
       </section>
     </div>
   }
+} @else if (loading() || api.records.detailLoading()) {
+  <cv-page-loading url="/manage/clients" />
 } @else {
-  <p class="care-empty">Service user unavailable or access restricted.</p>
+  <cv-company-unavailable
+    [message]="error() || api.records.error() || 'Service user unavailable or access restricted.'"
+    (retry)="reload()"
+  />
 }

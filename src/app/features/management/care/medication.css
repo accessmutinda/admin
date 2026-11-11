@@ -67,3 +67,15 @@
   display: block;
   color: #657184;
 }
+
+.medication-editor-fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.medication-editor-fields [aria-invalid='true'] {
+  border-color: #bb2335;
+  outline-color: #bb2335;
+}

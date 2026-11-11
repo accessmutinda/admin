@@ -115,3 +115,8 @@ journal_names = [name for name in schemas if name.startswith('Journal')]
 journal_target = root / 'src/app/features/management/journal/journal.generated.ts'
 journal_target.write_text('// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.\n\n'+'\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in journal_names)+'\n')
 subprocess.run(['npx','prettier','--write',str(journal_target)],cwd=root,check=True,capture_output=True)
+
+medication_names = [name for name in schemas if name.startswith('Medication') or name in ['MarRead', 'MarWrite']]
+medication_target = root / 'src/app/features/management/care/medication.generated.ts'
+medication_target.write_text('// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.\n\n'+'\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in medication_names)+'\n')
+subprocess.run(['npx','prettier','--write',str(medication_target)],cwd=root,check=True,capture_output=True)
