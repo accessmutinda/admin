@@ -1,16 +1,34 @@
-import { Component, computed, inject, signal, input, effect } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import {
+  Component,
+  computed,
+  inject,
+  signal,
+  input,
+  effect,
+  DestroyRef,
+  untracked,
+} from '@angular/core';
+import { ActivatedRoute, RouterLink, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { ModuleDesign } from '../shared/module-design';
 import { JournalService } from './journal.service';
+import { AccessRequired } from '../shared/access-required';
 import { JournalEntry } from './journal.models';
 
 @Component({
   selector: 'cv-staff-journal',
-  imports: [DatePipe, FormsModule, MatSelectModule, CvSelect, ModuleDesign, RouterLink],
+  imports: [
+    DatePipe,
+    FormsModule,
+    MatSelectModule,
+    CvSelect,
+    ModuleDesign,
+    RouterLink,
+    AccessRequired,
+  ],
   templateUrl: './staff-journal.html',
   styleUrls: [
     './staff-journal.css',
@@ -27,26 +45,81 @@ export class StaffJournal {
   readonly clientId = input('');
   readonly embedded = input(false);
   readonly composeOnly = input(false);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  protected taskRoute() {
+    return this.router.url.startsWith('/manage/clients/') && this.clientId()
+      ? ['/manage/clients', this.clientId(), 'journal', 'tasks']
+      : ['/staff-portal/tasks'];
+  }
+  private openGeneration = 0;
   constructor() {
+    const release = this.service.activate();
+    inject(DestroyRef).onDestroy(() => {
+      release();
+      this.openGeneration++;
+      this.service.closeEntry();
+    });
     effect(() => {
-      const clientId = this.clientId();
-      if (clientId) {
+      const clientId = this.clientId(),
+        scope = this.service.scope();
+      untracked(() => {
+        this.service.selectClient(clientId);
+        this.openGeneration++;
+        this.selected.set(null);
+        this.service.closeEntry();
+        this.draft = this.service.newEntry();
         this.draft.clientId = clientId;
+        this.editorHtml = '';
         this.cleanDraft = JSON.stringify(this.draft);
-      }
+        this.composing.set(true);
+        this.error.set('');
+        this.notice.set('');
+        this.checked.set([]);
+        if (this.service.allowed()) void this.service.loadOptions(clientId);
+      });
+    });
+    effect((onCleanup) => {
+      this.service.scope();
+      const query = {
+        client_id: this.clientId() || undefined,
+        folder: this.folder(),
+        search: this.search(),
+        category: this.label(),
+        filter: this.filter(),
+        order: this.order(),
+        page: this.page(),
+      };
+      this.service.invalidateList();
+      const timer = setTimeout(() => {
+        if (this.service.allowed()) void this.service.setQuery(query);
+      }, 200);
+      onCleanup(() => clearTimeout(timer));
+    });
+    effect(() => {
+      const value = this.service.detail();
+      untracked(() => {
+        if (value && this.selected()?.id === value.id) this.selected.set(value);
+      });
     });
   }
-  private readonly route = inject(ActivatedRoute);
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     const view = this.route.snapshot.queryParamMap.get('view');
     if (view && ['Journal', 'Tasks & actions', 'Activity timeline'].includes(view))
       this.view.set(view);
     const id = this.route.snapshot.queryParamMap.get('entry');
-    const entry = this.service.entries().find((e) => e.id === id);
-    if (entry && (!this.clientId() || entry.clientId === this.clientId())) {
-      this.folder.set(entry.authorEmail === this.service.email() ? 'Sent' : 'Inbox');
-      this.open(entry);
-    }
+    if (id)
+      try {
+        const entry = await this.service.getEntry(id);
+        if (!this.clientId() || entry.clientId === this.clientId()) {
+          this.folder.set(entry.authorEmail === this.service.email() ? 'Sent' : 'Inbox');
+          await this.open(entry);
+        }
+      } catch (error) {
+        this.error.set(
+          error instanceof Error ? error.message : 'This journal entry is unavailable.',
+        );
+      }
   }
   protected readonly service = inject(JournalService);
   protected readonly view = signal('Journal');
@@ -55,45 +128,24 @@ export class StaffJournal {
   protected readonly label = signal('');
   protected readonly order = signal('Newest first');
   protected readonly page = signal(1);
-  protected readonly pageEntries = computed(() =>
-    this.messages().slice((this.activePage() - 1) * 10, this.activePage() * 10),
-  );
-  protected readonly pageCount = computed(() =>
-    Math.max(1, Math.ceil(this.messages().length / 10)),
-  );
+  protected readonly pageEntries = computed(() => this.service.entries());
+  protected readonly pageCount = computed(() => Math.max(1, Math.ceil(this.service.count() / 10)));
   protected readonly activePage = computed(() => Math.min(this.page(), this.pageCount()));
   protected readonly checked = signal<string[]>([]);
-  protected readonly awaiting = computed(() =>
-    this.service
-      .entries()
-      .filter(
-        (e) =>
-          e.state === 'Sent' &&
-          e.responseRequired &&
-          e.responseStatus !== 'Responded' &&
-          e.to.includes(this.service.email()) &&
-          !(e.deletedBy ?? []).includes(this.service.email()),
-      ),
-  );
-  protected readonly linkedTasks = computed(() =>
-    this.service.tasks().filter((t) => !!t.journalId && t.status !== 'Resolved'),
-  );
   protected visits() {
-    return (
-      this.service.store
-        .data()
-        .rota?.visits.filter((v) => v.clientId === (this.clientId() || this.draft.clientId)) ?? []
-    );
+    return this.service.visits();
   }
   protected visitName(id?: string): string {
-    const visit = this.service.store.data().rota?.visits.find((v) => v.id === id);
+    const visit = this.visits().find((visit) => visit.id === id);
     return visit ? visit.date + ' · ' + visit.callName : 'No visit linked';
   }
-  protected photo(email: string): string {
-    return (
-      this.service.store.staff().find((p) => p.email.toLowerCase() === email)?.hr?.personal.photo ??
-      ''
-    );
+  protected photo(_email: string): string {
+    return '';
+  }
+  protected canCompose(): boolean {
+    return this.draft.etag
+      ? this.service.capabilities().can_edit
+      : this.service.capabilities().can_create;
   }
   protected folderLabel(name: string): string {
     return this.clientId() && name === 'Inbox' ? 'All Journal' : name;
@@ -101,13 +153,11 @@ export class StaffJournal {
   protected toggle(id: string): void {
     this.checked.update((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]));
   }
-  protected bulk(field: 'archivedBy' | 'deletedBy'): void {
-    for (const id of this.checked()) {
-      const error = this.service.mark(id, field, true);
-      if (error) {
-        this.error.set(error);
-        return;
-      }
+  protected async bulk(field: 'archivedBy' | 'deletedBy'): Promise<void> {
+    const error = await this.service.bulkMark(this.checked(), field, true);
+    if (error) {
+      this.error.set(error);
+      return;
     }
     this.checked.set([]);
     this.selected.set(null);
@@ -119,6 +169,7 @@ export class StaffJournal {
     this.draft.visitId = '';
     this.draft.to = [];
     this.draft.cc = [];
+    void this.service.loadOptions(this.draft.clientId);
   }
   protected bodyChanged(event: Event): void {
     const node = event.target as HTMLElement;
@@ -159,105 +210,23 @@ export class StaffJournal {
   protected draft = this.service.newEntry();
   protected editorHtml = this.draft.bodyHtml || this.draft.body;
   private cleanDraft = JSON.stringify(this.draft);
-  protected readonly unread = computed(
-    () =>
-      this.service
-        .entries()
-        .filter(
-          (e) =>
-            e.state === 'Sent' &&
-            e.authorEmail !== this.service.email() &&
-            !e.readBy.includes(this.service.email()) &&
-            !e.archivedBy.includes(this.service.email()) &&
-            !(e.deletedBy ?? []).includes(this.service.email()),
-        ).length,
+  protected readonly unread = computed(() => this.service.summary().unread);
+  protected readonly mentions = computed(() => this.service.summary().mentions);
+  protected readonly activityEvents = computed(() =>
+    this.service.events().filter((event) => !this.clientId() || event.clientId === this.clientId()),
   );
-  protected readonly followUps = computed(
-    () =>
-      this.service
-        .entries()
-        .filter(
-          (e) =>
-            e.followUpBy.includes(this.service.email()) &&
-            !e.archivedBy.includes(this.service.email()) &&
-            !(e.deletedBy ?? []).includes(this.service.email()),
-        ).length,
+  protected readonly linkedTasks = computed(() =>
+    this.service.tasks().filter((task) => !!task.journalId && task.status !== 'Resolved'),
   );
-  protected readonly openTasks = computed(() =>
-    this.service.tasks().filter((t) => t.status !== 'Resolved'),
-  );
-  protected readonly mentions = computed(
-    () =>
-      this.service
-        .entries()
-        .filter(
-          (e) =>
-            e.state === 'Sent' &&
-            e.cc.includes(this.service.email()) &&
-            !e.archivedBy.includes(this.service.email()) &&
-            !(e.deletedBy ?? []).includes(this.service.email()),
-        ).length,
-  );
-  protected readonly messages = computed(() =>
-    this.folderEntries(this.folder())
-      .filter((e) => {
-        const q = this.search().toLowerCase().trim();
-        return (
-          (!this.label() || e.category === this.label()) &&
-          (!q ||
-            [e.subject, e.body, e.author, this.client(e.clientId)].some((v) =>
-              v.toLowerCase().includes(q),
-            )) &&
-          (this.filter() !== 'Unread' || !e.readBy.includes(this.service.email())) &&
-          (this.filter() !== 'High priority' || e.priority === 'High') &&
-          (this.filter() !== 'With attachments' || e.attachments.length > 0)
-        );
-      })
-      .sort((a, b) =>
-        this.order() === 'Newest first'
-          ? b.createdAt.localeCompare(a.createdAt)
-          : a.createdAt.localeCompare(b.createdAt),
-      ),
-  );
-  protected readonly tasks = computed(() =>
-    this.service
-      .tasks()
-      .filter(
-        (t) =>
-          !this.search() ||
-          [t.title, this.client(t.clientId), t.status].some((v) =>
-            v.toLowerCase().includes(this.search().toLowerCase()),
-          ),
-      )
-      .sort((a, b) => a.due.localeCompare(b.due)),
-  );
-  protected folderEntries(folder: string): JournalEntry[] {
-    const email = this.service.email();
-    return this.service.entries().filter((e) => {
-      if (this.clientId() && e.clientId !== this.clientId()) return false;
-      if (folder === 'Trash') return (e.deletedBy ?? []).includes(email);
-      if ((e.deletedBy ?? []).includes(email)) return false;
-      if (folder === 'Archived') return e.archivedBy.includes(email);
-      if (e.archivedBy.includes(email)) return false;
-      if (folder === 'Drafts') return e.state === 'Draft';
-      if (e.state !== 'Sent') return false;
-      if (folder === 'Internal Notes') return e.kind === 'Internal note';
-      if (folder === 'From Professionals')
-        return (this.service.clients().find((c) => c.id === e.clientId)?.file?.contacts ?? []).some(
-          (c) => c.email.toLowerCase() === e.authorEmail,
-        );
-      if (folder === 'Awaiting My Response')
-        return !!e.responseRequired && e.responseStatus !== 'Responded' && e.to.includes(email);
-      if (this.clientId() && folder === 'Inbox') return true;
-      if (folder === 'Sent') return e.authorEmail === email;
-      if (folder === 'Mentions') return e.cc.includes(email);
-      if (folder === 'Follow up') return e.followUpBy.includes(email);
-      if (folder === 'Starred') return e.starredBy.includes(email);
-      return [...e.to, ...e.cc].includes(email);
-    });
+  protected readonly messages = computed(() => this.service.entries());
+  protected folderCount(folder: string): number | string {
+    return this.service.ready() ? (this.service.summary().folders[folder] ?? 0) : '—';
   }
   protected client(id: string): string {
-    return this.service.clients().find((c) => c.id === id)?.name ?? 'General / no service user';
+    return (
+      this.service.clients().find((c) => c.id === id)?.name ??
+      (id ? 'Service user unavailable' : 'General / no service user')
+    );
   }
   protected contact(email: string): string {
     return (
@@ -278,13 +247,29 @@ export class StaffJournal {
     this.search.set('');
   }
   protected openFolder(folder: string): void {
+    this.openGeneration++;
     this.folder.set(folder);
     this.checked.set([]);
     this.page.set(1);
     this.selected.set(null);
+    this.service.closeEntry();
   }
-  protected open(entry: JournalEntry): void {
-    if (entry.state === 'Draft') {
+  protected async open(entry: JournalEntry): Promise<void> {
+    const generation = ++this.openGeneration,
+      scope = this.service.scope();
+    if (this.service.busy() || !this.discard()) return;
+    try {
+      entry = await this.service.getEntry(entry.id);
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : 'This journal entry is unavailable.');
+      return;
+    }
+    if (generation !== this.openGeneration || scope !== this.service.scope()) return;
+    if (this.clientId() && entry.clientId !== this.clientId()) return;
+    if (
+      entry.state === 'Draft' &&
+      (entry.is_author ?? entry.authorEmail === this.service.email())
+    ) {
       if (!this.discard()) return;
       this.draft = structuredClone(entry);
       this.editorHtml = this.draft.bodyHtml || this.draft.body;
@@ -294,24 +279,30 @@ export class StaffJournal {
     } else {
       if (!this.discard()) return;
       this.composing.set(false);
-      if (!entry.readBy.includes(this.service.email())) {
-        const error = this.service.mark(entry.id, 'readBy', true);
+      if (this.service.capabilities().can_edit && entry.state_etag && !entry.readBy.length) {
+        const error = await this.service.mark(entry.id, 'readBy', true);
+        if (generation !== this.openGeneration || scope !== this.service.scope()) return;
         if (error) {
           this.error.set(error);
           return;
         }
       }
-      this.selected.set(this.service.entries().find((e) => e.id === entry.id) ?? entry);
+      this.selected.set(this.service.cached(entry.id) ?? entry);
     }
   }
   protected newMessage(reply = false): void {
+    if (this.service.busy() || !this.service.capabilities().can_create) return;
     if (!this.discard()) return;
     const source = reply ? this.selected() : null;
+    this.openGeneration++;
+    this.service.closeEntry();
     this.draft = this.service.newEntry();
     this.draft.clientId = this.clientId();
     if (source) {
       this.draft.to = [
-        source.authorEmail === this.service.email() ? source.to[0] : source.authorEmail,
+        (source.is_author ?? source.authorEmail === this.service.email())
+          ? source.to[0]
+          : source.authorEmail,
       ].filter(Boolean);
       this.draft.subject = source.subject.startsWith('Re: ')
         ? source.subject
@@ -319,7 +310,8 @@ export class StaffJournal {
       this.draft.clientId = source.clientId;
       this.draft.category = source.category;
       this.draft.visitId = source.visitId;
-      this.draft.replyToId = source.authorEmail === this.service.email() ? undefined : source.id;
+      this.draft.replyToId =
+        (source.is_author ?? source.authorEmail === this.service.email()) ? undefined : source.id;
     }
     this.editorHtml = this.draft.bodyHtml || this.draft.body;
     this.cleanDraft = JSON.stringify(this.draft);
@@ -327,9 +319,13 @@ export class StaffJournal {
     this.selected.set(null);
     this.error.set('');
   }
-  protected save(send: boolean): void {
-    if (this.uploading()) return;
-    const error = this.service.save(this.draft, send);
+  protected async save(send: boolean): Promise<void> {
+    if (this.uploading() || this.service.busy()) return;
+    if (this.draft.attachments.length && !(await this.checkAttachments())) return;
+    const scope = this.service.scope(),
+      draft = this.draft;
+    const error = await this.service.save(this.draft, send);
+    if (scope !== this.service.scope() || draft !== this.draft) return;
     this.error.set(error ?? '');
     if (error) return;
     this.composing.set(false);
@@ -356,30 +352,29 @@ export class StaffJournal {
     );
   }
   canLeave(): boolean {
+    if (this.service.busy()) return false;
     return (
       ((!this.composing() || JSON.stringify(this.draft) === this.cleanDraft) &&
         !this.uploading()) ||
       window.confirm('Leave and discard unsaved journal changes?')
     );
   }
-  protected mark(field: 'readBy' | 'archivedBy' | 'starredBy' | 'followUpBy' | 'deletedBy'): void {
+  protected async mark(
+    field: 'readBy' | 'archivedBy' | 'starredBy' | 'followUpBy' | 'deletedBy',
+  ): Promise<void> {
     const entry = this.selected();
     if (!entry) return;
-    const enabled = !(entry[field] ?? []).includes(this.service.email());
-    const error = this.service.mark(entry.id, field, enabled);
+    const enabled = !(entry[field] ?? []).length;
+    const error = await this.service.mark(entry.id, field, enabled);
     this.error.set(error ?? '');
-    if (!error) {
-      this.selected.set(
-        field === 'archivedBy'
-          ? null
-          : (this.service.entries().find((e) => e.id === entry.id) ?? null),
-      );
+    if (!error && this.selected()?.id === entry.id) {
+      this.selected.set(field === 'archivedBy' ? null : (this.service.cached(entry.id) ?? null));
     }
   }
   protected has(
     field: 'readBy' | 'archivedBy' | 'starredBy' | 'followUpBy' | 'deletedBy',
   ): boolean {
-    return this.selected()?.[field]?.includes(this.service.email()) ?? false;
+    return !!this.selected()?.[field]?.length;
   }
   protected async attach(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
@@ -406,28 +401,19 @@ export class StaffJournal {
     this.uploading.set(true);
     this.error.set('');
     try {
+      const scope = this.service.scope(),
+        draft = this.draft;
       const attachments = await Promise.all(
-        files.map(
-          (file) =>
-            new Promise<{ id: string; name: string; size: number; content: string }>(
-              (resolve, reject) => {
-                const reader = new FileReader();
-                reader.onerror = () => reject(new Error('Could not read attachment.'));
-                reader.onload = () =>
-                  resolve({
-                    id: crypto.randomUUID(),
-                    name: file.name,
-                    size: file.size,
-                    content: String(reader.result),
-                  });
-                reader.readAsDataURL(file);
-              },
-            ),
-        ),
+        files.map((file) => this.service.upload(file, this.draft.id)),
       );
+      if (scope !== this.service.scope() || draft !== this.draft) return;
       this.draft.attachments.push(...attachments);
-    } catch {
-      this.error.set('Could not read the attachments. Please try again.');
+    } catch (error) {
+      this.error.set(
+        error instanceof Error
+          ? error.message
+          : 'Could not upload the attachments. Please try again.',
+      );
     } finally {
       this.uploading.set(false);
     }
@@ -435,20 +421,39 @@ export class StaffJournal {
   protected removeAttachment(id: string): void {
     this.draft.attachments = this.draft.attachments.filter((a) => a.id !== id);
   }
-  protected download(id: string): void {
-    const file = this.selected()?.attachments.find((a) => a.id === id);
+  protected async download(id: string): Promise<void> {
+    const file = this.selected()?.attachments.find((file) => file.id === id);
     if (!file) return;
-    const parts = file.content.split(',');
     try {
-      const bytes = Uint8Array.from(atob(parts[1]), (c) => c.charCodeAt(0));
-      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = file.name;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      this.error.set('This attachment could not be downloaded.');
+      await this.service.download(file);
+    } catch (error) {
+      this.error.set(
+        error instanceof Error ? error.message : 'This attachment could not be downloaded.',
+      );
+    }
+  }
+  protected async checkAttachments(): Promise<boolean> {
+    try {
+      const scope = this.service.scope(),
+        draft = this.draft;
+      const files = await Promise.all(
+        draft.attachments.map((file) => this.service.checkFile(file.id)),
+      );
+      if (scope !== this.service.scope() || draft !== this.draft) return false;
+      draft.attachments = files;
+      const pending = files.find((file) => file.state !== 'clean');
+      if (pending) {
+        this.error.set(
+          pending.state === 'rejected'
+            ? 'An attachment was rejected by the scanner. Remove it before saving.'
+            : 'An attachment is still being scanned. Try saving again shortly.',
+        );
+        return false;
+      }
+      return true;
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : 'Attachments are unavailable.');
+      return false;
     }
   }
 }

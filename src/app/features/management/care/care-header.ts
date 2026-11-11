@@ -46,6 +46,7 @@ export class CareHeader {
   readonly photo = output<void>();
   readonly printRequested = output<void>();
   readonly printBusy = input(false);
+  readonly printManaged = input(false);
   readonly sectionChange = output<string>();
   protected readonly service = inject(RotaService);
   private readonly router = inject(Router);
@@ -80,11 +81,14 @@ export class CareHeader {
     return this.access.can('care', 'records', 'edit');
   }
   protected canExport(): boolean {
-    return this.access.can('care', 'records', 'export');
+    return (
+      this.access.can('care', 'records', 'export') &&
+      (this.active() !== 'journal' || this.access.can('care', 'recording', 'export'))
+    );
   }
   protected printProfile(): void {
     if (!this.canExport() || this.printBusy()) return;
-    if (this.local()) this.printRequested.emit();
+    if (this.local() || this.printManaged()) this.printRequested.emit();
     else window.print();
   }
   protected select(section: string): void {

@@ -1,4 +1,12 @@
-import { Component, computed, inject, viewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  viewChild,
+  effect,
+  untracked,
+  ChangeDetectorRef,
+} from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ModuleDesign } from '../shared/module-design';
@@ -6,21 +14,43 @@ import { PortalClientContext } from '../staff-portal/portal-client-context';
 import { PortalClientJournal } from '../staff-portal/portal-client-journal';
 import { PortalCommunications } from '../staff-portal/portal-communications';
 import { CareHeader } from './care-header';
+import { JournalService } from '../journal/journal.service';
+import { ToastService } from '../../../shared/ui/toast.service';
+import { ServiceUsersApi } from '../clients/service-users-api.service';
+import { PageLoading } from '../../../shared/layouts/page-loading';
+import { CompanyUnavailable } from '../shared/company-unavailable';
 
 @Component({
   selector: 'cv-care-communications',
-  imports: [ModuleDesign, CareHeader, PortalClientJournal, PortalCommunications],
-  providers: [PortalClientContext],
+  imports: [
+    ModuleDesign,
+    CareHeader,
+    PortalClientJournal,
+    PortalCommunications,
+    PageLoading,
+    CompanyUnavailable,
+  ],
+  providers: [PortalClientContext, ServiceUsersApi],
   host: { class: 'module-page operations-page' },
   template: `
     <cv-module-design />
-    @if (context.client(); as client) {
-      <cv-care-header [client]="client" [active]="section()" />
+    @if (client(); as client) {
+      <cv-care-header
+        [client]="client"
+        [active]="section()"
+        [printManaged]="section() === 'journal'"
+        [printBusy]="journalService.printBusy()"
+        (printRequested)="printJournal()"
+      />
       @if (section() === 'journal') {
         <cv-portal-client-journal />
       } @else {
         <cv-portal-communications />
       }
+    } @else if (section() === 'journal' && records.detailLoading()) {
+      <cv-page-loading url="/manage/clients" />
+    } @else if (section() === 'journal' && records.error()) {
+      <cv-company-unavailable [message]="records.error()" (retry)="records.detail(context.id())" />
     } @else {
       <p class="care-empty">Service user unavailable or access restricted.</p>
     }
@@ -32,6 +62,38 @@ export class CareCommunications {
   private readonly route = inject(ActivatedRoute);
   private readonly data = toSignal(this.route.data, { initialValue: this.route.snapshot.data });
   protected readonly section = computed(() => this.data()['careSection'] ?? 'journal');
+  protected readonly journalService = inject(JournalService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
+  private readonly toast = inject(ToastService);
+  protected async printJournal(): Promise<void> {
+    try {
+      await this.journalService.preparePrint();
+      this.changeDetector.detectChanges();
+      window.print();
+    } catch (error) {
+      this.toast.error(
+        error instanceof Error ? error.message : 'The journal could not be prepared for printing.',
+      );
+    }
+  }
+  protected readonly records = inject(ServiceUsersApi);
+  protected readonly client = computed(() =>
+    this.section() === 'journal'
+      ? this.records.selected()?.id === this.context.id()
+        ? this.records.selected()
+        : null
+      : this.context.client(),
+  );
+  constructor() {
+    effect(() => {
+      const section = this.section(),
+        id = this.context.id(),
+        scope = this.records.scope();
+      untracked(() => {
+        if (section === 'journal' && id) void this.records.detail(id);
+      });
+    });
+  }
   private readonly journal = viewChild(PortalClientJournal);
   private readonly communications = viewChild(PortalCommunications);
 

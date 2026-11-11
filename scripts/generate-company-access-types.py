@@ -109,3 +109,9 @@ service_user_names = [name for name in schemas if name.startswith('ServiceUser')
 service_user_target = root / 'src/app/features/management/clients/service-users.generated.ts'
 service_user_target.write_text('// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.\n\n'+'\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in service_user_names)+'\n')
 subprocess.run(['npx','prettier','--write',str(service_user_target)],cwd=root,check=True,capture_output=True)
+
+
+journal_names = [name for name in schemas if name.startswith('Journal')]
+journal_target = root / 'src/app/features/management/journal/journal.generated.ts'
+journal_target.write_text('// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.\n\n'+'\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in journal_names)+'\n')
+subprocess.run(['npx','prettier','--write',str(journal_target)],cwd=root,check=True,capture_output=True)

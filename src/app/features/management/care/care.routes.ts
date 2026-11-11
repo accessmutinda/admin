@@ -2,6 +2,13 @@ import { Routes, Router } from '@angular/router';
 import { inject } from '@angular/core';
 export const CARE_ROUTES: Routes = [
   {
+    path: 'journal/tasks',
+    data: { careJournalTasks: true },
+    title: 'Client journal tasks · CareVerity',
+    canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+    loadComponent: () => import('../staff-portal/portal-tasks').then((m) => m.PortalTasks),
+  },
+  {
     path: 'risks',
     title: 'Risk Assessments · CareVerity',
     canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],

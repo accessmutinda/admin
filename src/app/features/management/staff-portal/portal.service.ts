@@ -26,7 +26,12 @@ export class PortalService {
   );
   readonly clients = this.care.clients;
   readonly contacts = this.journal.contacts;
-  readonly today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+  get today(): string {
+    return (
+      this.journal.summary().local_date ||
+      new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' })
+    );
+  }
   readonly awaitingResponses = computed(() =>
     this.journal
       .entries()
@@ -44,14 +49,11 @@ export class PortalService {
       (c) => c.responseRequired && c.responseStatus !== 'Responded' && c.status !== 'Resolved',
     ),
   );
-  readonly weekStart = new Date(
-    new Date(this.today + 'T12:00:00Z').setUTCDate(
-      new Date(this.today + 'T12:00:00Z').getUTCDate() -
-        ((new Date(this.today + 'T12:00:00Z').getUTCDay() + 6) % 7),
-    ),
-  )
-    .toISOString()
-    .slice(0, 10);
+  get weekStart(): string {
+    const day = new Date(this.today + 'T12:00:00Z');
+    day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
+    return day.toISOString().slice(0, 10);
+  }
   readonly me = computed(() => this.journal.auth.currentUser()?.name ?? 'Staff member');
   readonly openTasks = computed(() => this.tasks().filter((t) => t.status !== 'Resolved'));
   readonly openConcerns = computed(() =>
@@ -100,7 +102,10 @@ export class PortalService {
     return this.contacts().find((c) => c.email.toLowerCase() === email)?.name ?? email;
   }
   clientName(id: string): string {
-    return this.clients().find((c) => c.id === id)?.name ?? 'General';
+    return (
+      this.journal.clients().find((c) => c.id === id)?.name ??
+      (id ? 'Service user unavailable' : 'General')
+    );
   }
   private event(
     action: string,
@@ -157,77 +162,8 @@ export class PortalService {
       attachments: [],
     };
   }
-  saveTask(input: JournalTask): string | null {
-    const existing = this.journal.data().tasks.find((t) => t.id === input.id);
-    if (existing && !existing.shared && existing.owner !== this.journal.email())
-      return 'This task is private to its owner.';
-    if (
-      !input.title.trim() ||
-      !validDate(input.due) ||
-      (input.followUp && !validDate(input.followUp))
-    )
-      return 'Enter a task title and valid dates.';
-    if (!this.contacts().some((p) => p.email.toLowerCase() === input.owner))
-      return 'Choose a current staff member.';
-    if (input.clientId && !this.clients().some((c) => c.id === input.clientId))
-      return 'Choose a current service user.';
-    if (
-      !['Open', 'In progress', 'Awaiting response', 'Escalated', 'Resolved'].includes(
-        input.status,
-      ) ||
-      !['Normal', 'High', 'Low', 'Medium'].includes(input.priority)
-    )
-      return 'Choose a valid status and priority.';
-    if ((input.attachments ?? []).reduce((s, f) => s + f.size, 0) > 5 * 1024 * 1024)
-      return 'Evidence must total 5 MB or less.';
-    if (input.status === 'Resolved' && !(input.actions ?? '').trim())
-      return 'Record the action taken before resolving this task.';
-    if ([input.dueTime, input.followUpTime].some((t) => t && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)))
-      return 'Choose valid task times.';
-    if (
-      input.visitId &&
-      !this.care.rota
-        .data()
-        .visits.some((v) => v.id === input.visitId && v.clientId === input.clientId)
-    )
-      return 'Choose a visit belonging to this service user.';
-    if (
-      input.journalId &&
-      !this.journal.entries().some((e) => e.id === input.journalId && e.clientId === input.clientId)
-    )
-      return 'Choose a journal entry belonging to this service user.';
-    if (
-      input.concernId &&
-      !this.concerns().some((c) => c.id === input.concernId && c.clientId === input.clientId)
-    )
-      return 'Choose a concern belonging to this service user.';
-    const task = {
-      ...structuredClone(input),
-      title: input.title.trim(),
-      createdAt: existing?.createdAt ?? new Date().toISOString(),
-      resolvedAt:
-        input.status === 'Resolved'
-          ? (existing?.resolvedAt ?? new Date().toISOString())
-          : undefined,
-      shared: existing ? !!existing.shared : true,
-      assignedBy: existing?.assignedBy ?? this.journal.email(),
-    };
-    const event = this.event(
-      existing ? 'Task updated' : 'Task created',
-      task.title,
-      task.clientId,
-      task.id,
-      'Staff action',
-      task.status,
-    );
-    if (!task.shared) event.audience = [task.owner];
-    return this.commit(event, (d) => ({
-      ...d,
-      journal: {
-        ...(d.journal ?? { entries: [], tasks: [], events: [] }),
-        tasks: [task, ...(d.journal?.tasks ?? []).filter((t) => t.id !== task.id)],
-      },
-    }));
+  saveTask(input: JournalTask): Promise<string | null> {
+    return this.journal.saveTask(input);
   }
   newConcern(): PortalConcern {
     return {

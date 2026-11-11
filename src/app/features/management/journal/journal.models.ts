@@ -3,17 +3,24 @@ export interface JournalAttachment {
   name: string;
   size: number;
   content: string;
+  state?: string;
+  content_type?: string;
 }
 export interface JournalEntry {
+  company_id?: string;
+  version?: number;
+  etag?: string;
+  state_etag?: string;
   visitId?: string;
   kind?: 'Message' | 'Internal note';
   bodyHtml?: string;
   responseRequired?: boolean;
-  responseStatus?: 'Awaiting response' | 'Responded';
+  responseStatus?: 'Awaiting response' | 'Responded' | '';
   replyToId?: string;
   deletedBy?: string[];
   id: string;
   author: string;
+  is_author?: boolean;
   authorEmail: string;
   to: string[];
   cc: string[];
@@ -31,6 +38,9 @@ export interface JournalEntry {
   followUpBy: string[];
 }
 export interface JournalTask {
+  company_id?: string;
+  version?: number;
+  etag?: string;
   createdAt?: string;
   dueTime?: string;
   followUpTime?: string;

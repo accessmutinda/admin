@@ -115,6 +115,8 @@ export class PortalEvidence {
   readonly filesChange = output<JournalAttachment[]>();
   readonly loading = output<boolean>();
   readonly readonly = input(false);
+  readonly uploadHandler = input<((file: File) => Promise<JournalAttachment>) | null>(null);
+  readonly downloadHandler = input<((file: JournalAttachment) => Promise<void>) | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected async upload(event: Event): Promise<void> {
@@ -143,6 +145,12 @@ export class PortalEvidence {
     this.loading.emit(true);
     this.error.set('');
     try {
+      const upload = this.uploadHandler();
+      if (upload) {
+        const added = await Promise.all(selected.map((file) => upload(file)));
+        this.filesChange.emit([...this.files(), ...added]);
+        return;
+      }
       const added = await Promise.all(
         selected.map(
           (file) =>
@@ -161,8 +169,10 @@ export class PortalEvidence {
         ),
       );
       this.filesChange.emit([...this.files(), ...added]);
-    } catch {
-      this.error.set('Could not read the selected files. Try again.');
+    } catch (error) {
+      this.error.set(
+        error instanceof Error ? error.message : 'Could not upload the selected files. Try again.',
+      );
     } finally {
       this.busy.set(false);
       this.loading.emit(false);
@@ -171,8 +181,13 @@ export class PortalEvidence {
   protected remove(id: string): void {
     this.filesChange.emit(this.files().filter((f) => f.id !== id));
   }
-  protected download(file: JournalAttachment): void {
+  protected async download(file: JournalAttachment): Promise<void> {
     try {
+      const download = this.downloadHandler();
+      if (download) {
+        await download(file);
+        return;
+      }
       const bytes = Uint8Array.from(atob(file.content.split(',')[1]), (c) => c.charCodeAt(0));
       const url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
       const a = document.createElement('a');
