@@ -1,376 +1,390 @@
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { signal } from '@angular/core';
-import { of } from 'rxjs';
-import { TestBed } from '@angular/core/testing';
+import { Component, input, output, signal } from '@angular/core';
+import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
-import { DEMO_USER } from '../../../demo/business-fixtures';
-import { WorkspaceService } from '../../../core/auth/workspace.service';
-import { ManagementStore } from '../shared/management.store';
-import { RotaService } from '../rota/rota.service';
-import { emptyClientFile } from '../clients/client-file.models';
-import { CareService } from './care.service';
+import { ApiError } from '../../../core/auth/auth-api';
+import { ServiceUsersApi } from '../clients/service-users-api.service';
 import { VisitNotes } from './visit-notes';
-import { blankVisitNote } from './visit-notes.models';
-import { InspectorService } from '../../inspector/inspector.service';
+import { VisitNotesApi } from './visit-notes-api.service';
+import { CareHeader } from './care-header';
 
-const actor = signal({ ...DEMO_USER, roleCode: 'CA' as typeof DEMO_USER.roleCode });
-describe('Service-user visit notes', () => {
-  let care: CareService, store: ManagementStore;
-  const draft = (id = 'note') => ({
-    ...blankVisitNote('2026-02-10'),
-    id,
-    carerId: 'carer',
-    body: 'Supported with washing and dressing. Client comfortable.',
-  });
-  beforeEach(() => {
-    localStorage.clear();
+@Component({ selector: 'cv-care-header', template: '' })
+class HeaderStub {
+  client = input<any>();
+  active = input('');
+  printManaged = input(false);
+  printBusy = input(false);
+  printRequested = output<void>();
+}
+function note(): any {
+  return {
+    id: 'note-1',
+    company_id: 'north',
+    service_user_id: 'person-1',
+    version: 1,
+    etag: '"v1"',
+    visitId: null,
+    date: '2026-11-10',
+    start: '08:00',
+    end: '08:30',
+    carerId: 'carer-1',
+    carerName: 'Recorded carer',
+    visitType: 'Personal Care',
+    body: 'Recorded visit observations',
+    status: 'Completed',
+    visibility: { staff: true, family: false, inspector: false },
+    attachments: [],
+    createdAt: '2026-11-10T09:00:00Z',
+    createdById: 'recorder-1',
+    createdBy: 'Recording coordinator',
+    updatedAt: '2026-11-10T09:00:00Z',
+    updatedBy: 'Recording coordinator',
+    deleted: false,
+  };
+}
+async function settle(fixture: ComponentFixture<VisitNotes>) {
+  for (let round = 0; round < 4; round++) {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+  }
+  fixture.detectChanges();
+}
+describe('Connected visit notes', () => {
+  let fixture: ComponentFixture<VisitNotes>,
+    editor: any,
+    request: ReturnType<typeof vi.fn>,
+    scope: ReturnType<typeof signal<string>>,
+    permissions: Set<string>,
+    workspace: any,
+    params: BehaviorSubject<any>;
+  beforeEach(async () => {
+    scope = signal('north:actor');
+    permissions = new Set(['read', 'create', 'edit', 'publish', 'archive', 'export']);
+    params = new BehaviorSubject(convertToParamMap({ id: 'person-1' }));
+    workspace = {
+      company_id: 'north',
+      service_user_id: 'person-1',
+      count: 1,
+      total: 1,
+      page: 1,
+      page_size: 8,
+      next: null,
+      previous: null,
+      results: [note()],
+    };
+    request = vi.fn(async (path: string, body?: any, method?: string) => {
+      if (path.includes('/options'))
+        return {
+          company_id: 'north',
+          service_user_id: 'person-1',
+          timezone: 'Europe/London',
+          today: '2026-11-11',
+          staff: [{ id: 'carer-1', name: 'Recorded carer' }],
+          carers: [{ id: 'carer-1', name: 'Recorded carer' }],
+          types: ['Personal Care'],
+          visits: [
+            {
+              id: 'visit-1',
+              date: '2026-11-10',
+              start: '07:00',
+              end: '07:30',
+              callName: 'Morning care',
+              staffIds: ['carer-1'],
+            },
+          ],
+          visits_available: true,
+        };
+      if (path.endsWith('/visibility')) {
+        const row = {
+          ...note(),
+          version: 2,
+          etag: '"v2"',
+          visibility: { ...note().visibility, [body.audience]: body.value },
+        };
+        workspace.results = [row];
+        return row;
+      }
+      if (path.endsWith('/files') && method === 'POST')
+        return {
+          id: 'file-1',
+          company_id: 'north',
+          service_user_id: 'person-1',
+          name: 'evidence.pdf',
+          mime: 'application/pdf',
+          size: 20,
+          state: 'clean',
+          version: 2,
+          etag: '"v2"',
+          uploadedAt: '2026-11-10T09:00:00Z',
+          uploadedBy: 'Recorder',
+        };
+      if (path.includes('/files/file-1') && method === 'DELETE')
+        return { company_id: 'north', service_user_id: 'person-1', id: 'file-1', deleted: true };
+      if (path.endsWith('/note-1'))
+        return {
+          ...note(),
+          body: 'Latest saved visit observations',
+          ...body,
+          version: method === 'PATCH' ? 2 : 1,
+          etag: method === 'PATCH' ? '"v2"' : '"v1"',
+        };
+      if (method === 'POST') {
+        const row = { ...note(), ...body, id: 'server-note', version: 1, etag: '"v1"' };
+        workspace.results = [row];
+        return row;
+      }
+      return structuredClone(workspace);
+    });
+    const selected = signal<any>(null);
     TestBed.configureTestingModule({
+      imports: [VisitNotes],
       providers: [
         provideRouter([]),
         {
           provide: ActivatedRoute,
+          useValue: { paramMap: params, snapshot: { paramMap: params.value } },
+        },
+        { provide: AuthService, useValue: { api: request } },
+        {
+          provide: ServiceUsersApi,
           useValue: {
-            snapshot: {
-              paramMap: convertToParamMap({ id: 'client' }),
-              queryParamMap: convertToParamMap({}),
-            },
-            paramMap: of(convertToParamMap({ id: 'client' })),
+            scope,
+            companyId: signal('north'),
+            allowed: () => permissions.has('read'),
+            access: { can: (_m: string, _s: string, a: string) => permissions.has(a) },
+            selected,
+            detail: vi.fn(async (id: string) =>
+              selected.set({
+                id,
+                name: 'Recorded service user',
+                reference: 'SU-1',
+                address: 'Recorded address',
+                postcode: 'AB1 2CD',
+                active: true,
+                funding: 'Private',
+                priority: 'Standard',
+              }),
+            ),
           },
         },
       ],
     });
-    const auth = TestBed.inject(AuthService);
-    auth.signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    actor.set({ ...DEMO_USER, roleCode: 'CA' });
-    vi.spyOn(auth, 'currentUser').mockImplementation(() => actor());
-    store = TestBed.inject(ManagementStore);
-    store.saveWorkspace((data) => ({
-      ...data,
-      people: [
-        ...data.people,
-        {
-          id: 'carer',
-          name: 'Test Carer',
-          email: actor().email,
-          role: 'Care Worker',
-          location: 'London',
-          stage: 'Hired',
-          vacancy: '',
-          start: '2025-01-01',
-          notes: [],
-          checks: [],
-          onboarding: [],
-          learning: [],
-          progress: {},
-        },
-      ],
-    }));
-    const file = emptyClientFile();
-    file.sections['consent'] = { family: 'Agreed' };
-    TestBed.inject(RotaService).saveClient({
-      id: 'client',
-      name: 'Mary Test',
-      reference: 'C1',
-      address: '1 Road',
-      postcode: 'HA1 1AA',
-      active: true,
-      priority: 'Standard',
-      funding: 'Private',
-      file,
+    TestBed.overrideComponent(VisitNotes, {
+      remove: { imports: [CareHeader] },
+      add: { imports: [HeaderStub] },
     });
-    care = TestBed.inject(CareService);
+    fixture = TestBed.createComponent(VisitNotes);
+    editor = fixture.componentInstance;
+    await settle(fixture);
   });
-  it('saves notes in the service-user file with attribution, revisions and audit', () => {
-    expect(care.saveVisitNote('client', 'lqcs', draft())).toBeNull();
-    const first = care.visitNotes('client')[0];
-    expect(first.createdById).toBe(actor().id);
-    expect(first.version).toBe(1);
-    expect(
-      care.saveVisitNote(
-        'client',
-        'lqcs',
-        { ...first, body: 'Added a factual follow-up.' },
-        first.version,
-      ),
-    ).toBeNull();
-    const changed = care.visitNotes('client')[0];
-    expect(changed.revisions[0].body).toContain('washing');
-    expect(changed.version).toBe(2);
-    expect(changed.createdAt).toBe(first.createdAt);
-    expect(
-      care.client('client')!.file!.audit!.some((event) => event.action === 'Visit note updated'),
-    ).toBe(true);
-    expect(
-      care.saveVisitNote('client', 'lqcs', { ...first, body: 'Stale overwrite' }, first.version),
-    ).toContain('changed');
-    expect(care.visitNotes('client')[0].body).toBe('Added a factual follow-up.');
+  it('renders backend records without browser data or repeated profile reloads', async () => {
+    expect(fixture.nativeElement.textContent).toContain('Recorded visit observations');
+    expect(fixture.nativeElement.textContent).toContain('Recorded carer');
+    const count = request.mock.calls.length;
+    await settle(fixture);
+    expect(request.mock.calls.length).toBe(count);
+    expect(TestBed.inject(ServiceUsersApi).detail).toHaveBeenCalledTimes(1);
   });
-  it('enforces care management permissions and filters staff and inspector access', () => {
-    care.saveVisitNote('client', 'lqcs', draft());
-    store.saveWorkspace((data) => ({
-      ...data,
-      rotaPermissions: {
-        ...data.rotaPermissions,
-        'Care Coordinator': ['view', 'attendance'],
-        'Care Worker': ['view', 'attendance'],
-      },
-    }));
-    actor.update((a) => ({ ...a, roleCode: 'CC' }));
-    expect(care.setVisitNoteVisibility('client', 'lqcs', 'note', 'family', true, 1)).toContain(
-      'permission',
+  it('opens a fresh prefilled note in the branded popup', async () => {
+    await editor.open(editor.notes()[0]);
+    await settle(fixture);
+    expect(editor.draft.body).toBe('Latest saved visit observations');
+    expect(
+      fixture.nativeElement.querySelector('[role="dialog"].service-user-popup'),
+    ).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('textarea[name="body"]').value).toBe(
+      'Latest saved visit observations',
     );
-    expect(
-      care.saveVisitNote('client', 'lqcs', {
-        ...draft('other'),
-        visibility: { staff: true, family: true, inspector: false },
-      }),
-    ).toContain('permission');
-    actor.update((a) => ({ ...a, roleCode: 'CA' }));
-    expect(care.setVisitNoteVisibility('client', 'lqcs', 'note', 'staff', false, 1)).toBeNull();
-    actor.update((a) => ({ ...a, roleCode: 'CW' }));
-    expect(care.visitNotes('client')).toHaveLength(0);
-    actor.update((a) => ({ ...a, roleCode: 'IN' }));
-    expect(care.visitNotes('client')).toHaveLength(0);
-    actor.update((a) => ({ ...a, roleCode: 'CA' }));
-    expect(care.setVisitNoteVisibility('client', 'lqcs', 'note', 'inspector', true, 2)).toBeNull();
-    expect(TestBed.inject(InspectorService).visitNotes()).toHaveLength(1);
   });
-  it('shares only explicitly allowed notes through active family Notes access without internal history', () => {
-    care.saveVisitNote('client', 'lqcs', draft());
-    expect(
-      care.saveAccess(
-        'client',
-        'lqcs',
-        {
-          id: 'family',
-          name: 'Family',
-          email: actor().email,
-          relationship: 'Son',
-          status: 'Active',
-          scopes: ['Notes'],
-          at: '',
-        },
-        care.client('client')!.file!.updatedAt,
-      ),
-    ).toBeNull();
-    expect(care.familyRecord('client', 'family')!.visitNotes).toHaveLength(0);
-    care.setVisitNoteVisibility('client', 'lqcs', 'note', 'family', true, 1);
-    const note = care.familyRecord('client', 'family')!.visitNotes![0];
-    expect(note.body).toContain('washing');
-    expect(note).not.toHaveProperty('revisions');
-    expect(note).not.toHaveProperty('createdById');
-    expect(note).not.toHaveProperty('attachments');
-    care.saveAccess(
-      'client',
-      'lqcs',
-      {
-        id: 'family',
-        name: 'Family',
-        email: actor().email,
-        relationship: 'Son',
-        status: 'Active',
-        scopes: ['Visits'],
-        at: '',
-      },
-      care.client('client')!.file!.updatedAt,
-    );
-    expect(care.familyRecord('client', 'family')!.visitNotes).toBeNull();
-  });
-  it('rejects invalid/future notes, foreign visits and workspace changes atomically', () => {
-    expect(care.saveVisitNote('client', 'lqcs', { ...draft(), body: ' ' })).toContain('note');
-    expect(care.saveVisitNote('client', 'lqcs', { ...draft(), date: '2099-01-01' })).toContain(
-      'past',
-    );
-    expect(
-      care.saveVisitNote('client', 'lqcs', { ...draft(), visitId: 'foreign-visit' }),
-    ).toContain('visit');
-    expect(care.saveVisitNote('client', 'other-company', draft())).toContain('workspace');
-    expect(care.visitNotes('client')).toHaveLength(0);
-    const save = vi.spyOn(store, 'saveWorkspace').mockReturnValue(false);
-    expect(care.saveVisitNote('client', 'lqcs', draft())).toContain('Could not save');
-    expect(care.visitNotes('client')).toHaveLength(0);
-    save.mockRestore();
-  });
-  it('renders the requested navigation order, filters and pagination with a selectable details panel', async () => {
-    for (let i = 1; i <= 10; i++)
-      care.saveVisitNote('client', 'lqcs', {
-        ...draft('n' + i),
-        date: `2026-02-${String(i).padStart(2, '0')}`,
-        visitType: i === 1 ? 'Observation' : 'Personal Care',
-      });
-    const fixture = TestBed.createComponent(VisitNotes);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    const root = fixture.nativeElement as HTMLElement;
-    const nav = root.querySelector('nav[aria-label="Service user workspace"]')!;
-    expect(nav.textContent).not.toContain('Care Plan');
-    const labels = Array.from(nav.querySelectorAll('a, button')).map((a) => a.textContent ?? '');
-    expect(labels.findIndex((s) => s.includes('Visit Notes'))).toBe(
-      labels.findIndex((s) => s.includes('Visits & Allocation')) + 1,
-    );
-    expect(root.querySelectorAll('.note-row')).toHaveLength(8);
-    (root.querySelector('[aria-label="Next page"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(root.querySelectorAll('.note-row')).toHaveLength(2);
-    const page = fixture.componentInstance as any;
-    page.filters.type = 'Observation';
-    page.search();
-    fixture.detectChanges();
-    expect(root.querySelectorAll('.note-row')).toHaveLength(1);
-    expect(root.querySelector('.note-details')?.textContent).toContain('Observation');
-    (root.querySelector('[aria-label="Close visit note details"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(root.querySelector('.note-details')).toBeNull();
-    root
-      .querySelector('.note-row')!
-      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    fixture.detectChanges();
-    expect(root.querySelector('.note-details')).not.toBeNull();
-  });
-  it('creates a note from the editor, retains invalid drafts and protects unsaved edits', async () => {
-    const fixture = TestBed.createComponent(VisitNotes);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    const editor = fixture.componentInstance as any;
-    editor.open();
-    editor.save();
-    fixture.detectChanges();
-    expect(editor.editing()).toBe(true);
-    expect(editor.error()).not.toBe('');
-    editor.draft = draft();
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    expect(editor.canLeave()).toBe(false);
-    editor.save();
-    fixture.detectChanges();
+  it('saves a new note and uses its server assigned ID', async () => {
+    await editor.open();
+    Object.assign(editor.draft, {
+      date: '2026-11-10',
+      start: '08:00',
+      end: '08:30',
+      carerId: 'carer-1',
+      body: 'New factual note',
+    });
+    await editor.save();
+    await settle(fixture);
+    const saved = request.mock.calls.find((c) => c[2] === 'POST' && c[0].endsWith('/visit-notes'))!;
+    expect(saved[1]).toMatchObject({
+      body: 'New factual note',
+      carerId: 'carer-1',
+      attachment_ids: [],
+    });
+    expect(saved[1]).not.toHaveProperty('id');
     expect(editor.editing()).toBe(false);
-    expect(fixture.nativeElement.querySelector('.note-body')?.textContent).toContain('washing');
-    expect(editor.canLeave()).toBe(true);
-    confirm.mockRestore();
+    expect(editor.selectedId()).toBe('server-note');
   });
-  it('validates attachment bytes and retains saved attachments when notes are edited', () => {
-    const content = '%PDF-1.4\n%%EOF';
-    const attachment = {
-      id: 'attachment',
-      name: 'Visit record.pdf',
-      mime: 'application/pdf',
-      size: content.length,
-      data: 'data:application/pdf;base64,' + btoa(content),
-    };
-    expect(
-      care.saveVisitNote('client', 'lqcs', { ...draft(), attachments: [attachment] }),
-    ).toBeNull();
-    const note = care.visitNotes('client')[0];
-    expect(
-      care.saveVisitNote('client', 'lqcs', { ...note, attachments: [] }, note.version),
-    ).toContain('retained');
-    expect(
-      care.saveVisitNote('client', 'lqcs', {
-        ...draft('invalid'),
-        attachments: [
-          { ...attachment, data: 'data:application/pdf;base64,' + btoa('wrong header'), size: 12 },
-        ],
-      }),
-    ).toContain('valid');
-    expect(care.visitNotes('client')[0].attachments[0].name).toBe('Visit record.pdf');
-  });
-  it('persists notes to storage and keeps companies isolated', () => {
-    care.saveVisitNote('client', 'lqcs', draft());
-    const saved = JSON.parse(localStorage.getItem('cv_management_v1')!);
-    expect(
-      saved.lqcs.rota.clients.find((c: { id: string }) => c.id === 'client').file.visitNotes[0]
-        .body,
-    ).toContain('washing');
-    const workspace = TestBed.inject(WorkspaceService);
-    workspace.switchWorkspace('riverside');
-    expect(care.visitNotes('client')).toHaveLength(0);
-    workspace.switchWorkspace('lqcs');
-    expect(care.visitNotes('client')[0].body).toContain('washing');
-  });
-  it('persists all three visibility toggles from both the table and details for authorised care users', async () => {
-    const popout = vi
-      .spyOn(TestBed.inject(MatSnackBar), 'openFromComponent')
-      .mockReturnValue({} as never);
-    care.saveVisitNote('client', 'lqcs', draft());
-    actor.update((a) => ({ ...a, roleCode: 'CW' }));
-    expect(care.canManageNoteVisibility()).toBe(true);
-    const fixture = TestBed.createComponent(VisitNotes);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    const root = fixture.nativeElement as HTMLElement;
-    for (const audience of ['staff', 'family', 'inspector'] as const) {
-      const initial = care.visitNotes('client')[0].visibility[audience];
-      const rowToggle = root.querySelector<HTMLButtonElement>(
-        `.note-row button[role="switch"][aria-label$="with ${audience}"]`,
-      )!;
-      expect(rowToggle.disabled).toBe(false);
-      rowToggle.click();
-      fixture.detectChanges();
-      expect(rowToggle.getAttribute('aria-checked')).toBe(String(!initial));
-      const saved = JSON.parse(localStorage.getItem('cv_management_v1')!);
-      expect(
-        saved.lqcs.rota.clients.find((c: { id: string }) => c.id === 'client').file.visitNotes[0]
-          .visibility[audience],
-      ).toBe(!initial);
-      const detailToggle = root.querySelector<HTMLButtonElement>(
-        `.note-details button[role="switch"][aria-label="Share this note with ${audience}"]`,
-      )!;
-      expect(detailToggle.getAttribute('aria-checked')).toBe(String(!initial));
-      detailToggle.click();
-      fixture.detectChanges();
-      expect(rowToggle.getAttribute('aria-checked')).toBe(String(initial));
-      expect(care.visitNotes('client')[0].visibility[audience]).toBe(initial);
-    }
-    expect(care.visitNotes('client')[0].revisions).toHaveLength(6);
-    expect(root.querySelector('.note-notice')).toBeNull();
-    expect(popout).toHaveBeenLastCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        duration: 2000,
-        horizontalPosition: 'left',
-        verticalPosition: 'bottom',
-        data: { message: 'Visit note visibility updated.', icon: 'check_circle' },
-      }),
-    );
-  });
-  it('keeps Inspector sharing controls read-only even if broad rota management is enabled', async () => {
-    care.saveVisitNote('client', 'lqcs', {
-      ...draft(),
-      visibility: { staff: true, family: false, inspector: true },
+  it('uses the fresh etag on edit and retains corrections after a rejected save', async () => {
+    await editor.open(editor.notes()[0]);
+    editor.draft.body = 'Unsaved correction';
+    request.mockImplementationOnce(async () => {
+      throw new ApiError('This note changed. Reopen it.', 412, 'stale_version');
     });
-    actor.update((a) => ({ ...a, roleCode: 'IN' }));
-    expect(care.canManageNoteVisibility()).toBe(false);
-    const fixture = TestBed.createComponent(VisitNotes);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    const toggles = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>(
-        'button[role="switch"]',
-      ),
-    );
-    expect(toggles).toHaveLength(6);
-    expect(toggles.every((toggle) => toggle.disabled)).toBe(true);
-    expect(care.setVisitNoteVisibility('client', 'lqcs', 'note', 'family', true, 1)).toContain(
-      'permission',
-    );
+    await editor.save();
+    await settle(fixture);
+    expect(editor.editing()).toBe(true);
+    expect(editor.draft.body).toBe('Unsaved correction');
+    expect(editor.error()).toContain('note changed');
+    const call = request.mock.calls.find((c) => c[2] === 'PATCH')!;
+    expect((call as any)[3]['If-Match']).toBe('"v1"');
   });
-  it('does not grant family-only accounts clinical note management through their demo role', () => {
-    care.saveVisitNote('client', 'lqcs', draft());
-    actor.update((a) => ({
-      ...a,
-      id: 'demo-family',
-      email: 'family@example.test',
-      roleCode: 'CW',
-    }));
-    expect(care.canManageNoteVisibility()).toBe(false);
-    expect(care.canWriteVisitNotes()).toBe(false);
-    expect(care.visitNotes('client')).toHaveLength(0);
-    expect(care.setVisitNoteVisibility('client', 'lqcs', 'note', 'family', true, 1)).toContain(
-      'permission',
-    );
+  it('sends filters and page changes to the backend', async () => {
+    editor.filters = {
+      from: '2026-11-01',
+      to: '2026-11-11',
+      carer: 'carer-1',
+      type: 'Personal Care',
+    };
+    editor.search();
+    await settle(fixture);
+    expect(
+      request.mock.calls.some(
+        (c) => c[0].includes('from_date=2026-11-01') && c[0].includes('carer=carer-1'),
+      ),
+    ).toBe(true);
+    workspace.count = 20;
+    editor.api.page.set({ ...workspace, count: 20 });
+    editor.page.set(2);
+    await settle(fixture);
+    expect(request.mock.calls.some((c) => c[0].includes('page=2'))).toBe(true);
+  });
+  it('validates reversed dates without requesting another page', () => {
+    const count = request.mock.calls.length;
+    editor.filters = { from: '2026-11-11', to: '2026-11-01', carer: '', type: '' };
+    editor.search();
+    expect(editor.error()).toContain('end date');
+    expect(request.mock.calls.length).toBe(count);
+  });
+  it('prefills linked visit fields using the existing allocation', async () => {
+    await editor.open();
+    editor.draft.visitId = 'visit-1';
+    editor.chooseVisit();
+    expect(editor.draft).toMatchObject({
+      date: '2026-11-10',
+      start: '07:00',
+      end: '07:30',
+      carerId: 'carer-1',
+      visitType: 'Morning care',
+    });
+  });
+  it('updates sharing through its versioned command', async () => {
+    await editor.toggle(editor.notes()[0], 'family');
+    await settle(fixture);
+    const call = request.mock.calls.find((c) => c[0].endsWith('/visibility'))!;
+    expect(call[1]).toMatchObject({ audience: 'family', value: true });
+    expect((call as any)[3]['If-Match']).toBe('"v1"');
+    expect(editor.selected().visibility.family).toBe(true);
+  });
+  it('honours create edit publish and export grants independently', async () => {
+    permissions.delete('publish');
+    permissions.delete('edit');
+    permissions.delete('export');
+    scope.set('north:actor:limited');
+    await settle(fixture);
+    expect(editor.api.can('create')).toBe(true);
+    expect(editor.api.can('publish')).toBe(false);
+    expect(editor.api.can('export')).toBe(false);
+    await editor.open(editor.notes()[0]);
+    expect(editor.editing()).toBe(false);
+  });
+  it('uploads through multipart transport and removes unused attachments', async () => {
+    await editor.open();
+    const file = new File(['%PDF-1.4\n%%EOF'], 'evidence.pdf', { type: 'application/pdf' });
+    const event = { target: { files: [file], value: 'chosen' } } as unknown as Event;
+    await editor.upload(event);
+    expect(editor.draft.attachments).toHaveLength(1);
+    expect(editor.draft.attachments[0].data).toBe('');
+    const upload = request.mock.calls.find((c) => c[0].endsWith('/files'))!;
+    expect(upload[1]).toBeInstanceOf(FormData);
+    await editor.removeAttachment('file-1');
+    expect(editor.draft.attachments).toEqual([]);
+    expect(request.mock.calls.some((c) => c[2] === 'DELETE')).toBe(true);
+  });
+  it('clears cached notes and closes the visible editor after backend access denial', async () => {
+    await editor.open(editor.notes()[0]);
+    request.mockImplementationOnce(async () => {
+      throw new ApiError('Recording access revoked', 403, 'forbidden');
+    });
+    await editor.save();
+    await settle(fixture);
+    expect(editor.api.notes()).toEqual([]);
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Recorded visit observations');
+  });
+  it('does not apply an old note response after switching service users', async () => {
+    let resolve!: (value: any) => void;
+    request.mockImplementationOnce(() => new Promise((r) => (resolve = r)));
+    const pending = editor.open(editor.notes()[0]);
+    params.next(convertToParamMap({ id: 'person-2' }));
+    await settle(fixture);
+    resolve(note());
+    await pending;
+    await settle(fixture);
+    expect(editor.editing()).toBe(false);
+    expect(editor.id()).toBe('person-2');
+  });
+  it('clears data and drafts when the access context changes', async () => {
+    await editor.open(editor.notes()[0]);
+    editor.draft.body = 'Private draft';
+    permissions.delete('read');
+    scope.set('north:revoked');
+    await settle(fixture);
+    expect(editor.api.notes()).toEqual([]);
+    expect(editor.editing()).toBe(false);
+    expect(editor.draft.body).toBe('');
+  });
+  it('requests the authorised filtered print dataset', async () => {
+    const api = fixture.debugElement.injector.get(VisitNotesApi);
+    const rows = await api.print('person-1', 'type=Personal+Care');
+    expect(rows).toHaveLength(1);
+    expect(request.mock.calls.at(-1)![0]).toContain('/print?type=Personal+Care');
+  });
+  it('marks the rejected field and retains its entered value', async () => {
+    await editor.open(editor.notes()[0]);
+    editor.draft.body = 'Entered care observation';
+    request.mockImplementationOnce(async () => {
+      throw new ApiError('Check the visit note.', 400, 'validation_error', {
+        body: ['Enter the recorded care outcome.'],
+      });
+    });
+    await editor.save();
+    await settle(fixture);
+    expect(
+      fixture.nativeElement.querySelector('textarea[name="body"]').getAttribute('aria-invalid'),
+    ).toBe('true');
+    expect(editor.draft.body).toBe('Entered care observation');
+    expect(editor.editing()).toBe(true);
+  });
+  it('discards unused uploads when a changed note is cancelled', async () => {
+    await editor.open();
+    const file = new File(['%PDF-1.4\n%%EOF'], 'evidence.pdf', { type: 'application/pdf' });
+    await editor.upload({ target: { files: [file], value: 'chosen' } } as unknown as Event);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    try {
+      await editor.close();
+      expect(editor.editing()).toBe(false);
+      expect(
+        request.mock.calls.some((c) => c[2] === 'DELETE' && c[0].endsWith('/files/file-1')),
+      ).toBe(true);
+    } finally {
+      confirm.mockRestore();
+    }
+  });
+  it('ignores a slower earlier popup request when another note has been opened', async () => {
+    let resolve!: (value: any) => void;
+    request.mockImplementationOnce(() => new Promise((r) => (resolve = r)));
+    const pending = editor.open(editor.notes()[0]);
+    await editor.open();
+    editor.draft.body = 'New note draft';
+    resolve(note());
+    await pending;
+    await settle(fixture);
+    expect(editor.draft.body).toBe('New note draft');
+    expect(editor.isEditingExisting()).toBe(false);
   });
 });

@@ -7,12 +7,12 @@ import {
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { RotaService } from '../rota/rota.service';
-import { ManagementStore } from '../shared/management.store';
+import { RosterApi } from '../rota/roster-api.service';
 import { RotaClient, RotaVisit, addDays, londonDate, minutes } from '../rota/rota.models';
 import { age } from './care.models';
 import { CareHeader } from './care-header';
@@ -31,8 +31,8 @@ import { CareHeader } from './care-header';
 export class ProfileVisits {
   readonly client = input.required<RotaClient>();
   readonly visitSelected = output<RotaVisit>();
-  protected readonly service = inject(RotaService);
-  protected readonly store = inject(ManagementStore);
+  protected readonly service = inject(RosterApi);
+  protected readonly store = this.service.store;
   protected readonly today = londonDate();
   protected readonly anchor = signal(this.today);
   protected readonly view = signal('Month');
@@ -41,7 +41,9 @@ export class ProfileVisits {
   protected readonly error = signal('');
   protected readonly notice = signal('');
   protected readonly calls = computed(() =>
-    this.service.data().calls.filter((c) => c.clientId === this.client().id && c.active),
+    this.service
+      .data()
+      .calls.filter((c) => c.clientId === this.client().id && c.active && c.scheduleRecorded),
   );
   protected readonly start = computed(() =>
     this.view() !== 'Week'
@@ -87,13 +89,14 @@ export class ProfileVisits {
       },
       {
         label: 'Allocated Visits',
-        count: visits.filter((v) => v.staffIds.length === v.carers).length,
+        count: visits.filter((v) => v.requirementsRecorded && v.staffIds.length === v.carers)
+          .length,
         icon: 'group',
         tone: 'blue',
       },
       {
         label: 'Needs Cover',
-        count: visits.filter((v) => v.staffIds.length < v.carers).length,
+        count: visits.filter((v) => !v.requirementsRecorded || v.staffIds.length < v.carers).length,
         icon: 'error',
         tone: 'red',
       },
@@ -105,8 +108,10 @@ export class ProfileVisits {
       },
       {
         label: 'Permanent Carer Visits',
-        count: visits.filter((v) => v.allocation === 'Regular' && v.staffIds.length === v.carers)
-          .length,
+        count: visits.filter(
+          (v) =>
+            v.allocation === 'Regular' && v.requirementsRecorded && v.staffIds.length === v.carers,
+        ).length,
         icon: 'schedule',
         tone: 'blue',
       },
@@ -118,16 +123,16 @@ export class ProfileVisits {
       },
     ];
   });
-  protected readonly age = computed(() => age(this.client().file?.details['dob'] ?? ''));
+  protected readonly age = computed(() => age(this.client().file?.details?.['dob'] ?? ''));
   protected readonly flags = computed(() => {
     const c = this.client(),
       f = c.file;
-    const section = (key: string, field: string) => f?.sections[key]?.[field];
+    const section = (key: string, field: string) => f?.sections?.[key]?.[field];
     const diagnoses = [
       ...new Set(
         [
           section('diagnoses', 'primary'),
-          ...(f?.entries['diagnoses'] ?? [])
+          ...(f?.entries?.['diagnoses'] ?? [])
             .filter((d) => d.status === 'Active')
             .map((d) => d.name),
           ...(c.riskFlags ?? []),
@@ -185,7 +190,7 @@ export class ProfileVisits {
     ];
   });
   protected readonly rules = computed(() => {
-    const support = this.client().file?.sections['support'];
+    const support = this.client().file?.sections?.['support'];
     const regular = [...new Set(this.calls().flatMap((c) => c.regularStaffIds))];
     const backup = [
       ...new Set(
@@ -265,6 +270,15 @@ export class ProfileVisits {
   private workspace = '';
   constructor() {
     effect(() => {
+      this.service.scope();
+      const id = this.client().id,
+        days = this.days(),
+        start = days[0],
+        end = days.at(-1)!;
+      if (this.service.can('view')) untracked(() => void this.service.load(start, end, id));
+    });
+    effect(() => {
+      this.service.scope();
       const id = this.client().id;
       if (id !== this.sourceId) {
         this.sourceId = id;
@@ -321,8 +335,10 @@ export class ProfileVisits {
       ? this.form.weekdays.filter((d) => d !== day)
       : [...this.form.weekdays, day];
   }
-  protected save(): void {
-    if (!this.service.can('manage')) return;
+  protected async save(): Promise<void> {
+    if (!this.service.can('create') || this.service.saving()) return;
+    const scope = this.service.scope(),
+      person = this.client().id;
     if (this.workspace !== this.store.companyId() || this.sourceId !== this.client().id) {
       this.error.set('The workspace or service user changed. Reopen the allocation form.');
       return;
@@ -335,7 +351,7 @@ export class ProfileVisits {
       return;
     }
     const f = this.form;
-    const error = this.service.generate(
+    const error = await this.service.generate(
       this.client().id,
       f.callIds,
       f.from,
@@ -353,12 +369,16 @@ export class ProfileVisits {
         travelMinutes: Number(f.travel),
       },
     );
+    if (scope !== this.service.scope() || person !== this.client().id) return;
     this.error.set(error ?? '');
     if (!error) {
       this.anchor.set(f.from);
       this.notice.set('Allocation confirmed. Visits are saved as drafts for publishing.');
       this.reset();
     }
+  }
+  protected async print(): Promise<void> {
+    if (this.service.can('export') && (await this.service.refresh(true))) window.print();
   }
   protected move(direction: number): void {
     if (this.view() !== 'Week') {
@@ -393,7 +413,9 @@ export class ProfileVisits {
     }
   }
   canLeave(): boolean {
-    return !this.dirty() || window.confirm('Discard the unsaved allocation?');
+    return (
+      !this.service.saving() && (!this.dirty() || window.confirm('Discard the unsaved allocation?'))
+    );
   }
   @HostListener('window:beforeunload', ['$event'])
   protected beforeUnload(event: BeforeUnloadEvent): void {

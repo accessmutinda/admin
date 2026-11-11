@@ -552,3 +552,8 @@ textarea:focus-visible {
     inset: -13px -6px;
   }
 }
+
+.note-editor [aria-invalid='true'] {
+  border-color: #d62b41 !important;
+  box-shadow: 0 0 0 1px #d62b41;
+}

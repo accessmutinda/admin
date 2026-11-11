@@ -62,6 +62,7 @@ export class ServiceUsersApi {
   private destroyed = false;
   private generation = 0;
   private detailGeneration = 0;
+  private activeScope: string | null = null;
   private photoUrls = new Set<string>();
   private readonly intents = new Map<string, string>();
   constructor() {
@@ -70,9 +71,14 @@ export class ServiceUsersApi {
       this.clear();
     });
     effect(() => {
-      this.scope();
-      untracked(() => this.clear());
+      const scope = this.scope();
+      untracked(() => this.ensureScope(scope));
     });
+  }
+  private ensureScope(scope: string): void {
+    if (this.activeScope === scope) return;
+    this.activeScope = scope;
+    this.clear();
   }
   private clear(): void {
     this.generation++;
@@ -426,8 +432,9 @@ export class ServiceUsersApi {
   }
 
   async load(query: string): Promise<void> {
-    const scope = this.scope(),
-      generation = ++this.generation;
+    const scope = this.scope();
+    this.ensureScope(scope);
+    const generation = ++this.generation;
     this.directory.set(null);
     this.rows.set([]);
     this.summary.set(null);
@@ -462,8 +469,9 @@ export class ServiceUsersApi {
     }
   }
   async detail(id: string, retainCurrent = false): Promise<void> {
-    const scope = this.scope(),
-      generation = ++this.detailGeneration;
+    const scope = this.scope();
+    this.ensureScope(scope);
+    const generation = ++this.detailGeneration;
     if (!retainCurrent || this.selected()?.id !== id) this.selected.set(null);
     this.error.set('');
     this.detailLoading.set(true);

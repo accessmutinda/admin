@@ -1,124 +1,97 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
-import { WorkspaceService } from '../../../core/auth/workspace.service';
-import { DEMO_USER } from '../../../demo/business-fixtures';
+import { ServiceUsersApi } from '../clients/service-users-api.service';
 import { Rota } from './rota';
-import { RotaService } from './rota.service';
-import { ManagementStore } from '../shared/management.store';
+import { rosterWorkspace } from './roster.spec-fixtures';
 
-describe('Rota screens', () => {
+async function settle(fixture: any) {
+  for (let round = 0; round < 4; round++) {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+  }
+  fixture.detectChanges();
+}
+describe('Connected rota screens', () => {
+  let request: ReturnType<typeof vi.fn>, workspace: any;
   beforeEach(() => {
-    localStorage.clear();
-    TestBed.configureTestingModule({ imports: [Rota], providers: [provideRouter([])] });
-    const auth = TestBed.inject(AuthService);
-    auth.signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    vi.spyOn(auth, 'currentUser').mockReturnValue({ ...DEMO_USER, roleCode: 'CA' });
+    workspace = rosterWorkspace();
+    request = vi.fn(async (path: string, body?: any, method?: string) =>
+      path.endsWith('/call-packages/call')
+        ? { ...workspace.calls[0], tasks: 'Latest recorded instructions' }
+        : method
+          ? { company_id: 'north', ids: ['call'] }
+          : structuredClone(workspace),
+    );
+    TestBed.configureTestingModule({
+      imports: [Rota],
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            api: request,
+            currentUser: () => null,
+            isAuthenticated: () => false,
+            isSuperAdmin: () => false,
+            profile: () => null,
+          },
+        },
+        {
+          provide: ServiceUsersApi,
+          useValue: {
+            scope: signal('north:actor'),
+            companyId: signal('north'),
+            allowed: () => true,
+            access: { can: () => true },
+            selected: signal(null),
+          },
+        },
+      ],
+    });
   });
-  it('opens call packages within the shared workspace without allocation workflow cards', () => {
+  it('renders call packages from the API without allocation workflow cards', async () => {
     TestBed.inject(ActivatedRoute).snapshot.data = { rotaSection: 'call-packages' };
     const fixture = TestBed.createComponent(Rota);
+    await settle(fixture);
+    const editor = fixture.componentInstance as any;
+    editor.packageClient.set('client');
     fixture.detectChanges();
-    const element = fixture.nativeElement as HTMLElement;
-    expect(element.querySelector('.rota-package-grid')).not.toBeNull();
-    expect(element.querySelector('.rota-workflows')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.rota-call-list').textContent).toContain(
+      'Recorded instructions',
+    );
+    expect(fixture.nativeElement.querySelector('.rota-workflows')).toBeNull();
   });
-  it('uses the planner when starting allocations from publishing', () => {
+  it('fetches the latest call and opens a prefilled branded popup', async () => {
+    TestBed.inject(ActivatedRoute).snapshot.data = { rotaSection: 'call-packages' };
+    const fixture = TestBed.createComponent(Rota);
+    await settle(fixture);
+    const editor = fixture.componentInstance as any;
+    await editor.open('call', 'call');
+    fixture.detectChanges();
+    expect(editor.call.tasks).toBe('Latest recorded instructions');
+    expect(
+      fixture.nativeElement.querySelector('[role="dialog"].service-user-popup'),
+    ).not.toBeNull();
+    expect(request.mock.calls.some((c) => c[0].endsWith('/call-packages/call'))).toBe(true);
+  });
+  it('uses the existing planner when starting allocations from publishing', async () => {
     TestBed.inject(ActivatedRoute).snapshot.data = { rotaSection: 'publishing' };
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const fixture = TestBed.createComponent(Rota);
-    fixture.detectChanges();
-    const element = fixture.nativeElement as HTMLElement;
-    expect(element.textContent).toContain('Draft review');
-    expect(element.querySelector('.rota-workflows')).toBeNull();
-    (fixture.componentInstance as unknown as { open(kind: string): void }).open('allocation');
+    await settle(fixture);
+    await (fixture.componentInstance as any).open('allocation');
     expect(navigate).toHaveBeenCalledWith(['/manage/rota/planner'], {
       queryParams: { plan: 'true', client: null },
     });
-    expect(element.querySelector('.rota-allocation-modal')).toBeNull();
   });
-  it('opens past visit history and retains access to audit', () => {
-    TestBed.inject(ActivatedRoute).snapshot.data = { rotaSection: 'history' };
+  it('shows backend errors without retaining a successful-looking register', async () => {
+    request.mockRejectedValue(new Error('Roster unavailable'));
     const fixture = TestBed.createComponent(Rota);
-    fixture.detectChanges();
-    const element = fixture.nativeElement as HTMLElement;
-    expect(element.textContent).toContain('History visits');
-    expect(element.querySelector('.rota-navigation')).toBeNull();
-    const audit = Array.from(
-      element.querySelectorAll<HTMLButtonElement>('.page-heading button'),
-    ).find((button) => button.textContent?.includes('Audit log'))!;
-    audit.click();
-    fixture.detectChanges();
-    expect(element.querySelector('.rota-audit')).not.toBeNull();
-    expect(element.querySelector('.rota-package-grid')).toBeNull();
-  });
-  it('renders all starting workflows before any visits have been created', async () => {
-    const fixture = TestBed.createComponent(Rota);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    const element = fixture.nativeElement as HTMLElement;
-    expect(element.querySelectorAll('.rota-workflow')).toHaveLength(6);
-    expect(element.querySelectorAll('.metric strong')[0].textContent).toBe('0');
-    expect(element.textContent).toContain('Service users & calls');
-  });
-  it('renders saved service users and their calls in the package view', async () => {
-    const service = TestBed.inject(RotaService);
-    service.saveClient({
-      id: 'client',
-      name: 'Mary Smith',
-      reference: 'M1',
-      address: '1 Test Street',
-      postcode: 'SW1A 1AA',
-      funding: 'Private',
-      priority: 'Standard',
-      active: true,
-    });
-    service.saveCall({
-      id: 'call',
-      clientId: 'client',
-      name: 'Breakfast call',
-      start: '08:00',
-      end: '08:30',
-      carers: 1,
-      weekdays: [1],
-      skills: [],
-      regularStaffIds: [],
-      tasks: 'Prepare breakfast',
-      active: true,
-    });
-    const fixture = TestBed.createComponent(Rota);
-    const editor = fixture.componentInstance as unknown as {
-      choose(view: string): void;
-      packageClient: { set(id: string): void };
-    };
-    editor.choose('Service users');
-    editor.packageClient.set('client');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    const element = fixture.nativeElement as HTMLElement;
-    expect(element.querySelector('.rota-client-list')?.textContent).toContain('Mary Smith');
-    expect(element.querySelector('.rota-call-list')?.textContent).toContain('Breakfast call');
-    expect(element.querySelector('.rota-call-list')?.textContent).toContain('Prepare breakfast');
-  });
-  it('shows a clear permission panel and links to the current role instead of displaying rota data', async () => {
-    TestBed.inject(ManagementStore).update((data) => ({
-      ...data,
-      rotaPermissions: { 'Care Worker': [] },
-    }));
-    vi.mocked(TestBed.inject(AuthService).currentUser).mockReturnValue({
-      ...DEMO_USER,
-      roleCode: 'CW',
-    });
-    const fixture = TestBed.createComponent(Rota);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    const element = fixture.nativeElement as HTMLElement;
-    expect(element.querySelector('.access-required-panel')?.textContent).toContain('View rota');
-    expect(element.querySelector('.access-required-context')?.textContent).toContain('Care Worker');
-    expect(element.querySelector('.access-required-actions a')?.getAttribute('href')).toContain(
-      'role=Care%20Worker',
-    );
-    expect(element.querySelector('.rota-register')).toBeNull();
+    await settle(fixture);
+    expect(fixture.nativeElement.textContent).toContain('Roster unavailable');
+    expect(fixture.nativeElement.textContent).not.toContain('Recorded person');
   });
 });

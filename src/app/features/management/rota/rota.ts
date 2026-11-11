@@ -1,6 +1,6 @@
 import { CarePlanPackageHandoffs } from '../care/care-plan-package-handoffs';
 import { ModuleDesign } from '../shared/module-design';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, untracked, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
@@ -8,8 +8,8 @@ import { A11yModule } from '@angular/cdk/a11y';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CvSelect } from '../../../shared/ui/select';
 import { ToastService } from '../../../shared/ui/toast.service';
-import { ManagementStore, COURSES } from '../shared/management.store';
-import { RotaService } from './rota.service';
+import { COURSES } from '../shared/management.store';
+import { RosterApi } from './roster-api.service';
 import { emptyEcm } from '../ecm/ecm.models';
 import { AccessRequired } from '../shared/access-required';
 import { validVacancyDate } from '../recruitment/vacancy-deadline';
@@ -27,6 +27,7 @@ import {
 
 @Component({
   selector: 'cv-rota',
+  providers: [RosterApi],
   imports: [
     ModuleDesign,
     CarePlanPackageHandoffs,
@@ -43,8 +44,8 @@ import {
   templateUrl: './rota.html',
 })
 export class Rota {
-  protected readonly store = inject(ManagementStore);
-  protected readonly service = inject(RotaService);
+  protected readonly service = inject(RosterApi);
+  protected readonly store = this.service.store;
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   protected readonly today = londonDate();
@@ -121,17 +122,7 @@ export class Rota {
       description: 'Trace planning, allocation, publishing and attendance changes.',
     },
   ];
-  protected get courses() {
-    return [
-      ...COURSES,
-      ...(this.store
-        .data()
-        .academy?.courses.filter(
-          (c) =>
-            c.status === 'Published' && c.active !== false && !COURSES.some((x) => x.id === c.id),
-        ) ?? []),
-    ];
-  }
+  protected readonly courses = COURSES;
   protected readonly weekdays = [
     { id: 1, name: 'Mon' },
     { id: 2, name: 'Tue' },
@@ -178,7 +169,11 @@ export class Rota {
   protected readonly unallocated = computed(() =>
     this.service
       .data()
-      .visits.filter((v) => v.state !== 'Cancelled' && v.staffIds.length < v.carers),
+      .visits.filter(
+        (v) =>
+          v.state !== 'Cancelled' &&
+          (v.requirementsRecorded === false || v.staffIds.length < v.carers),
+      ),
   );
   protected readonly drafts = computed(() =>
     this.service.data().visits.filter((v) => v.state === 'Draft'),
@@ -242,7 +237,9 @@ export class Rota {
         },
         {
           label: 'Drafts needing carers',
-          value: drafts.filter((v) => v.staffIds.length < v.carers).length,
+          value: drafts.filter(
+            (v) => v.requirementsRecorded === false || v.staffIds.length < v.carers,
+          ).length,
           icon: 'person_alert',
           tone: 'orange',
           detail: 'Missing required carer places',
@@ -310,7 +307,8 @@ export class Rota {
           (!this.staffFilter() || v.staffIds.includes(this.staffFilter())) &&
           (this.stateFilter() === 'All' || v.state === this.stateFilter()) &&
           (this.tab() !== 'Unallocated' ||
-            (v.state !== 'Cancelled' && v.staffIds.length < v.carers)) &&
+            (v.state !== 'Cancelled' &&
+              (v.requirementsRecorded === false || v.staffIds.length < v.carers))) &&
           (!['Published', 'Live board', 'Staff view'].includes(this.tab()) ||
             v.state === 'Published') &&
           `${v.clientName} ${v.callName} ${v.address} ${v.staffIds.map((id) => this.personName(id)).join(' ')}`
@@ -338,6 +336,20 @@ export class Rota {
       ),
   );
   constructor() {
+    effect(() => {
+      this.service.scope();
+      const from = this.from() || addDays(this.to(), -30),
+        to = this.to() || addDays(from, 30);
+      if (this.service.can('view')) untracked(() => void this.loadPeriod(from, to));
+    });
+    effect(() => {
+      this.service.scope();
+      untracked(() => {
+        this.modal.set('');
+        this.selectedIds.set([]);
+        this.selected.set('');
+      });
+    });
     if (this.clientFiles) this.tab.set('Service users');
     if (this.section) {
       this.tab.set(
@@ -355,7 +367,7 @@ export class Rota {
     }
     const params = this.route.snapshot.queryParamMap;
     const staffId = params.get('staff');
-    if (staffId && this.store.staff().some((p) => p.id === staffId)) {
+    if (staffId) {
       this.staffFilter.set(staffId);
       this.tab.set(this.section === 'history' ? 'History' : 'Staff view');
     }
@@ -363,7 +375,7 @@ export class Rota {
     if (validVacancyDate(params.get('to') ?? '') && params.get('to')! >= this.from())
       this.to.set(params.get('to')!);
     const clientId = params.get('client');
-    if (clientId && this.service.data().clients.some((client) => client.id === clientId)) {
+    if (clientId) {
       this.packageClient.set(clientId);
       if (!this.section || this.section === 'call-packages') this.tab.set('Service users');
       else this.clientFilter.set(clientId);
@@ -377,6 +389,9 @@ export class Rota {
     }
     const timer = setInterval(() => this.clock.set(Date.now()), 60000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
+  }
+  private async loadPeriod(from: string, to: string): Promise<void> {
+    if (await this.service.load(from, to)) this.travel = this.service.data().travelMinutes;
   }
   private blankClient(): RotaClient {
     return {
@@ -525,7 +540,9 @@ export class Rota {
     const all = [...this.service.data().visits, ...visits];
     return {
       count: visits.length,
-      unallocated: visits.filter((v) => v.staffIds.length < v.carers).length,
+      unallocated: visits.filter(
+        (v) => v.requirementsRecorded === false || v.staffIds.length < v.carers,
+      ).length,
       issues: [...new Set(visits.flatMap((v) => this.service.conflicts(v, all)))].slice(0, 8),
     };
   }
@@ -543,7 +560,7 @@ export class Rota {
   }
   protected status(v: RotaVisit): string {
     if (v.state === 'Cancelled') return 'Cancelled';
-    if (v.staffIds.length < v.carers) return 'Unallocated';
+    if (v.requirementsRecorded === false || v.staffIds.length < v.carers) return 'Unallocated';
     if (v.state === 'Draft') return 'Draft';
     if (completedVisit(v)) return 'Completed';
     if (v.attendance.length) return 'Part complete';
@@ -567,7 +584,8 @@ export class Rota {
       timeZoneName: 'short',
     }).format(new Date(at));
   }
-  protected open(kind: string, id = ''): void {
+  protected async open(kind: string, id = ''): Promise<void> {
+    if (this.service.saving()) return;
     if (this.section && kind === 'allocation') {
       void this.router.navigate(['/manage/rota/planner'], {
         queryParams: { plan: 'true', client: this.packageClient() || null },
@@ -580,7 +598,33 @@ export class Rota {
       });
       return;
     }
-    if (!this.service.can(kind === 'attendance' ? 'attendance' : 'manage')) return;
+    if (
+      !this.service.can(
+        kind === 'attendance'
+          ? 'attendance'
+          : kind === 'cancel'
+            ? 'archive'
+            : (kind === 'call' || kind === 'client') && !id
+              ? 'create'
+              : kind === 'allocation' || kind === 'copy'
+                ? 'create'
+                : 'edit',
+      )
+    )
+      return;
+    const scope = this.service.scope();
+    try {
+      if (kind === 'client' && id) await this.service.records.detail(id);
+      if (kind === 'call' && id) this.call = await this.service.detailCall(id);
+      if (['cover', 'cancel', 'attendance'].includes(kind)) {
+        const visit = await this.service.detailVisit(id || this.selected()!);
+        this.selected.set(visit.id);
+      }
+      if (scope !== this.service.scope()) return;
+    } catch (e) {
+      this.error.set(e instanceof Error ? e.message : 'This record is unavailable.');
+      return;
+    }
     this.error.set('');
     this.modal.set(kind);
     this.step.set(1);
@@ -588,17 +632,14 @@ export class Rota {
       this.client = id
         ? {
             ...this.blankClient(),
-            ...structuredClone(this.service.data().clients.find((c) => c.id === id)!),
+            ...structuredClone(this.service.records.selected()!),
             representative: {
               ...this.blankClient().representative!,
               ...this.service.data().clients.find((c) => c.id === id)!.representative,
             },
           }
         : this.blankClient();
-    if (kind === 'call')
-      this.call = id
-        ? structuredClone(this.service.data().calls.find((c) => c.id === id)!)
-        : this.blankCall();
+    if (kind === 'call') this.call = id ? this.call : this.blankCall();
     if (kind === 'allocation') {
       this.allocation = {
         clientId: this.packageClient(),
@@ -626,9 +667,11 @@ export class Rota {
     }
   }
   canLeave(): boolean {
+    if (this.service.saving()) return false;
     return !this.modal() || window.confirm('Discard the unsaved rota changes?');
   }
   protected close(): void {
+    if (this.service.saving()) return;
     this.modal.set('');
     this.error.set('');
   }
@@ -659,13 +702,15 @@ export class Rota {
     this.error.set('');
     this.step.update((s) => Math.min(s + 1, 3));
   }
-  protected save(): void {
+  protected async save(): Promise<void> {
+    if (this.service.saving()) return;
+    const scope = this.service.scope();
     let result: string | null = 'Choose a valid action.';
     const kind = this.modal();
-    if (kind === 'client') result = this.service.saveClient(this.client);
-    if (kind === 'call') result = this.service.saveCall(this.call);
+    if (kind === 'client') result = await this.service.saveClient(this.client);
+    if (kind === 'call') result = await this.service.saveCall(this.call);
     if (kind === 'allocation')
-      result = this.service.generate(
+      result = await this.service.generate(
         this.allocation.clientId,
         this.allocation.callIds,
         this.allocation.from,
@@ -676,14 +721,14 @@ export class Rota {
         this.allocation.type,
       );
     if (kind === 'cover')
-      result = this.service.allocate(
+      result = await this.service.allocate(
         this.selected()!,
         this.cover.staffIds,
         this.cover.type,
         this.cover.reason,
       );
-    if (kind === 'copy') result = this.service.copyWeek(this.copy.source, this.copy.target);
-    if (kind === 'cancel') result = this.service.cancel(this.selected()!, this.reason);
+    if (kind === 'copy') result = await this.service.copyWeek(this.copy.source, this.copy.target);
+    if (kind === 'cancel') result = await this.service.cancel(this.selected()!, this.reason);
     if (kind === 'attendance') {
       const start = this.attendance.start.split('T'),
         end = this.attendance.end.split('T');
@@ -691,7 +736,7 @@ export class Rota {
         b = londonInstant(end[0], end[1] ?? '');
       result =
         a && b
-          ? this.service.recordAttendance(
+          ? await this.service.recordAttendance(
               this.selected()!,
               this.attendance.personId,
               a,
@@ -700,6 +745,7 @@ export class Rota {
             )
           : 'Enter valid UK times. Ambiguous or missing times during a clock change need a different time.';
     }
+    if (scope !== this.service.scope()) return;
     if (result) {
       this.error.set(result);
       return;
@@ -744,16 +790,16 @@ export class Rota {
       .map((v) => v.id);
     return !!ids.length && ids.every((id) => this.selectedIds().includes(id));
   }
-  protected publish(): void {
-    const result = this.service.publish(this.selectedIds());
+  protected async publish(): Promise<void> {
+    const result = await this.service.publish(this.selectedIds());
     this.error.set(result ?? '');
     if (!result) {
       this.selectedIds.set([]);
-      this.toast.success('Rota published. Expected visits are available on this device.');
+      this.toast.success('Rota published. Confirmed visits are saved.');
     }
   }
-  protected saveTravel(): void {
-    const result = this.service.saveTravel(this.travel);
+  protected async saveTravel(): Promise<void> {
+    const result = await this.service.saveTravel(this.travel);
     this.error.set(result ?? '');
     if (!result) this.toast.success('Planning rules saved.');
   }
@@ -780,7 +826,9 @@ export class Rota {
     return this.filtered().filter((v) => v.date === date && v.state !== 'Cancelled');
   }
   protected dayUnallocated(date: string): number {
-    return this.dayVisits(date).filter((v) => v.staffIds.length < v.carers).length;
+    return this.dayVisits(date).filter(
+      (v) => v.requirementsRecorded === false || v.staffIds.length < v.carers,
+    ).length;
   }
   protected calendarOffset(): number {
     return (new Date(this.from() + 'T12:00:00Z').getUTCDay() + 6) % 7;
@@ -790,8 +838,8 @@ export class Rota {
     this.from.set(date);
     this.to.set(date);
   }
-  protected export(): void {
-    if (!this.service.can('export')) return;
+  protected async export(): Promise<void> {
+    if (!this.service.can('export') || !(await this.service.refresh(true))) return;
     const escape = (value: string) =>
       '"' + (/^[=+\-@\t\r]/.test(value) ? "'" : '') + value.replaceAll('"', '""') + '"';
     const rows = [

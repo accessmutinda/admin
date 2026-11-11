@@ -1,6 +1,8 @@
 export type VisitNoteAudience = 'staff' | 'family' | 'inspector';
 export type VisitNoteStatus = 'Completed' | 'Flagged';
 export interface VisitNoteAttachment {
+  etag?: string;
+  state?: string;
   id: string;
   name: string;
   mime: string;
@@ -38,6 +40,9 @@ export interface VisitNoteRevision {
   updatedBy: string;
 }
 export interface VisitNote extends VisitNoteDraft {
+  etag?: string;
+  carerName?: string;
+  durationMinutes?: number;
   version: number;
   createdAt: string;
   createdById: string;

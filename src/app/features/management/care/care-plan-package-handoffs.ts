@@ -17,7 +17,7 @@ import { PackageHandoff } from './care-plan.models';
   template: `<section class="plan-card demo-workflow">
     <div class="card-heading">
       <div>
-        <p class="eyebrow">CARE PLAN → ROTA · DEMO</p>
+        <p class="eyebrow">{{ connected() ? 'CARE PLAN → ROTA' : 'CARE PLAN → ROTA · DEMO' }}</p>
         <h2>Care-package handoffs</h2>
       </div>
       @if (!rotaMode()) {
@@ -30,7 +30,11 @@ import { PackageHandoff } from './care-plan.models';
       }
     </div>
     <p class="message">
-      Simulated handoff only. These steps do not alter recurring calls or published allocations.
+      {{
+        connected()
+          ? 'Review care needs in the service user care plan and configure the authorised recurring calls below.'
+          : 'Simulated handoff only. These steps do not alter recurring calls or published allocations.'
+      }}
     </p>
     @if (error()) {
       <p class="message error" role="alert">{{ error() }}</p>
@@ -102,14 +106,18 @@ import { PackageHandoff } from './care-plan.models';
       </article>
     } @empty {
       <p>
-        No authorised recommendations yet. Save a package change in the care-plan review, then ask a
-        different manager to authorise it.
+        {{
+          connected()
+            ? 'An approved care-plan handoff service is not available. Existing call packages remain available below.'
+            : 'No authorised recommendations yet. Save a package change in the care-plan review, then ask a different manager to authorise it.'
+        }}
       </p>
     }
   </section>`,
 })
 export class CarePlanPackageHandoffs {
   readonly clientId = input('');
+  readonly connected = input(false);
   readonly rotaMode = input(false);
   readonly changed = output<void>();
   protected readonly service = inject(CarePlanService);
@@ -122,16 +130,18 @@ export class CarePlanPackageHandoffs {
   protected readonly error = signal('');
   protected readonly notice = signal('');
   protected readonly rows = computed(() =>
-    this.service.care
-      .clients()
-      .filter((client) => !this.clientId() || client.id === this.clientId())
-      .flatMap((client) =>
-        (client.file?.carePlan?.packageHandoffs || []).map((handoff) => ({
-          client,
-          handoff,
-          revision: client.file!.carePlan!.revision,
-        })),
-      ),
+    this.connected()
+      ? []
+      : this.service.care
+          .clients()
+          .filter((client) => !this.clientId() || client.id === this.clientId())
+          .flatMap((client) =>
+            (client.file?.carePlan?.packageHandoffs || []).map((handoff) => ({
+              client,
+              handoff,
+              revision: client.file!.carePlan!.revision,
+            })),
+          ),
   );
   protected advance(clientId: string, handoff: PackageHandoff, revision: number) {
     this.notice.set('');

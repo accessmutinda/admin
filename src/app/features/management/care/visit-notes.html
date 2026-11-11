@@ -1,12 +1,24 @@
 <cv-module-design />
+@if (api.loading()) {
+  <p role="status">Loading visit notes…</p>
+}
+@if (api.error()) {
+  <p class="care-error" role="alert">{{ api.error() }}</p>
+}
 @if (client(); as c) {
-  <cv-care-header [client]="c" active="visit-notes" />
+  <cv-care-header
+    [client]="c"
+    active="visit-notes"
+    [printManaged]="true"
+    [printBusy]="printing()"
+    (printRequested)="print()"
+  />
   <div class="care-heading notes-heading">
     <div>
       <h1>Care Visit Notes</h1>
       <p>View, add and manage visit notes for this service user with visibility control.</p>
     </div>
-    @if (care.canWriteVisitNotes()) {
+    @if (api.can('create')) {
       <button class="care-button primary" (click)="open()">
         <span class="material-symbols-outlined" aria-hidden="true">add</span>Add Visit Note
       </button>
@@ -133,7 +145,7 @@
                         [attr.aria-label]="
                           'Share ' + (note.date | date: 'dd MMM yyyy') + ' note with ' + audience
                         "
-                        [disabled]="!care.canManageNoteVisibility()"
+                        [disabled]="!api.can('publish') || busy()"
                         (click)="toggle(note, audience)"
                       >
                         <span></span>
@@ -151,7 +163,7 @@
                     </button>
                     <mat-menu #noteActions="matMenu"
                       ><button mat-menu-item (click)="select(note)">View details</button>
-                      @if (care.canEditVisitNote(note)) {
+                      @if (api.can('edit')) {
                         <button mat-menu-item (click)="open(note)">Edit note</button>
                       }
                     </mat-menu>
@@ -173,13 +185,9 @@
         </div>
         <div class="note-pagination">
           <span
-            >Showing {{ filtered().length ? (currentPage() - 1) * pageSize() + 1 : 0 }} to
-            {{
-              currentPage() * pageSize() < filtered().length
-                ? currentPage() * pageSize()
-                : filtered().length
-            }}
-            of {{ filtered().length }} notes</span
+            >Showing {{ total() ? (currentPage() - 1) * pageSize() + 1 : 0 }} to
+            {{ currentPage() * pageSize() < total() ? currentPage() * pageSize() : total() }}
+            of {{ total() }} notes</span
           >
           <nav aria-label="Visit notes pages">
             <button
@@ -265,7 +273,7 @@
         </dl>
         <div class="note-panel-heading note-subheading">
           <h3>Visit Note</h3>
-          @if (care.canEditVisitNote(note)) {
+          @if (api.can('edit')) {
             <button class="care-button" (click)="open(note)">
               <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
             </button>
@@ -278,14 +286,16 @@
             <button
               type="button"
               class="note-attachment"
-              [disabled]="!care.rota.can('export')"
+              [disabled]="!api.can('export')"
               (click)="download(note, attachment)"
               [attr.aria-label]="'Download ' + attachment.name"
             >
-              @if (attachment.mime.startsWith('image/')) {
+              @if (attachment.mime.startsWith('image/') && attachment.data) {
                 <img [src]="attachment.data" alt="" />
               } @else {
-                <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>
+                <span class="material-symbols-outlined" aria-hidden="true">{{
+                  attachment.mime.startsWith('image/') ? 'image' : 'picture_as_pdf'
+                }}</span>
               }
               <span
                 ><strong>{{ attachment.name }}</strong
@@ -335,7 +345,7 @@
                 role="switch"
                 [attr.aria-checked]="note.visibility[audience]"
                 [attr.aria-label]="'Share this note with ' + audience"
-                [disabled]="!care.canManageNoteVisibility()"
+                [disabled]="!api.can('publish') || busy()"
                 (click)="toggle(note, audience)"
               >
                 <span></span>
@@ -353,7 +363,7 @@
 } @else {
   <p class="care-empty">Service user unavailable or access restricted.</p>
 }
-@if (editing()) {
+@if (editing() && api.can('read')) {
   <div class="note-dialog-backdrop" (click)="close()">
     <section
       class="care-panel note-dialog service-user-popup"
@@ -379,6 +389,7 @@
             cvSelect
             name="visit"
             aria-label="Linked visit"
+            [attr.aria-invalid]="fieldErrors()['visitId'] ? true : null"
             [(ngModel)]="draft.visitId"
             (ngModelChange)="chooseVisit()"
             ><mat-option value="">Record visit details manually</mat-option>
@@ -394,14 +405,16 @@
           >Date<input
             type="date"
             name="date"
+            [attr.aria-invalid]="fieldErrors()['date'] ? true : null"
             [(ngModel)]="draft.date"
-            [max]="today"
+            [max]="today()"
             required /></label
         ><label
           >Carer<mat-select
             cvSelect
             name="carer"
             aria-label="Visit note carer"
+            [attr.aria-invalid]="fieldErrors()['carerId'] ? true : null"
             [(ngModel)]="draft.carerId"
             required
             ><mat-option value="">Select carer</mat-option>
@@ -414,16 +427,23 @@
           >Start time (UK)<input
             type="time"
             name="start"
+            [attr.aria-invalid]="fieldErrors()['start'] ? true : null"
             [(ngModel)]="draft.start"
             required /></label
         ><label
-          >End time (UK)<input type="time" name="end" [(ngModel)]="draft.end" required
+          >End time (UK)<input
+            type="time"
+            name="end"
+            [attr.aria-invalid]="fieldErrors()['end'] ? true : null"
+            [(ngModel)]="draft.end"
+            required
         /></label>
         <label
           >Visit Type<mat-select
             cvSelect
             name="type"
             aria-label="Visit note type"
+            [attr.aria-invalid]="fieldErrors()['visitType'] ? true : null"
             [(ngModel)]="draft.visitType"
             required
           >
@@ -436,6 +456,7 @@
             cvSelect
             name="status"
             aria-label="Visit note status"
+            [attr.aria-invalid]="fieldErrors()['status'] ? true : null"
             [(ngModel)]="draft.status"
             ><mat-option value="Completed">Completed</mat-option
             ><mat-option value="Flagged">Flagged</mat-option></mat-select
@@ -444,6 +465,7 @@
         <label class="full-width"
           >Visit Note<textarea
             name="body"
+            [attr.aria-invalid]="fieldErrors()['body'] ? true : null"
             [(ngModel)]="draft.body"
             rows="6"
             maxlength="10000"
@@ -461,7 +483,7 @@
             (change)="upload($event)"
         /></label>
         @if (busy()) {
-          <p class="full-width" role="status">Reading attachments…</p>
+          <p class="full-width" role="status">Uploading and scanning attachments…</p>
         }
         @for (attachment of draft.attachments; track attachment.id) {
           <div class="note-draft-attachment full-width">
@@ -473,7 +495,7 @@
             }
           </div>
         }
-        @if (care.canManageNoteVisibility()) {
+        @if (api.can('publish')) {
           <fieldset class="full-width note-draft-sharing">
             <legend>Visibility Settings</legend>
             @for (audience of audiences; track audience) {

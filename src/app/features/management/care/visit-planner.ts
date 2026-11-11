@@ -1,7 +1,16 @@
 import { ProfileVisits } from './profile-visits';
 import { ViewChild } from '@angular/core';
 import { downloadWorkbook } from './workbook';
-import { HostListener, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import {
+  HostListener,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  untracked,
+  inject,
+  signal,
+} from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -10,8 +19,8 @@ import { A11yModule } from '@angular/cdk/a11y';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { ModuleDesign } from '../shared/module-design';
-import { ManagementStore, COURSES } from '../shared/management.store';
-import { RotaService } from '../rota/rota.service';
+import { COURSES } from '../shared/management.store';
+import { RosterApi } from '../rota/roster-api.service';
 import {
   RotaVisit,
   addDays,
@@ -24,6 +33,7 @@ import { liveVisit, emptyEcm } from '../ecm/ecm.models';
 import { csv, validDate, weekDates } from './care.models';
 @Component({
   selector: 'cv-visit-planner',
+  providers: [RosterApi],
   imports: [
     ModuleDesign,
     ProfileVisits,
@@ -48,8 +58,50 @@ export class VisitPlanner {
   @ViewChild(ProfileVisits) private profileVisits?: ProfileVisits;
   protected readonly now = signal(Date.now());
   constructor() {
+    effect(() => {
+      this.service.scope();
+      const id = this.clientId();
+      untracked(() => {
+        this.modal.set('');
+        this.draft = null;
+        this.selected.set([]);
+        if (id && this.service.can('view')) void this.service.records.detail(id);
+      });
+    });
+    effect(() => {
+      this.service.scope();
+      const id = this.clientId(),
+        start = addDays(this.start(), -7),
+        end = this.view() === 'Month' ? this.monthDays().at(-1)! : this.end();
+      if (!id && this.service.can('view')) untracked(() => void this.loadPeriod(start, end));
+    });
     const timer = setInterval(() => this.now.set(Date.now()), 60000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
+  }
+  private async openLinkedVisit(id: string): Promise<void> {
+    try {
+      const row = await this.service.detailVisit(id);
+      if (this.clientId() && row.clientId !== this.clientId())
+        throw Error('This visit belongs to another service user.');
+      this.anchor.set(row.date);
+      await this.edit(row);
+      await this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { visit: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    } catch (e) {
+      this.error.set(e instanceof Error ? e.message : 'This visit is unavailable.');
+    }
+  }
+  private async loadPeriod(start: string, end: string): Promise<void> {
+    if (!(await this.service.load(start, end))) return;
+    const id = this.route.snapshot.queryParamMap.get('visit');
+    if (id && !this.modal()) {
+      const row = this.service.data().visits.find((v) => v.id === id);
+      if (row) await this.edit(row);
+    }
   }
   ngOnInit(): void {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
@@ -73,13 +125,14 @@ export class VisitPlanner {
         this.plan.clientId = this.clientId() || params.get('client') || '';
       }
       if (params.get('visit')) {
+        void this.openLinkedVisit(params.get('visit')!);
         const visit = this.service.data().visits.find((v) => v.id === params.get('visit'));
         if (visit) {
           this.anchor.set(visit.date);
           this.edit(visit);
         }
       }
-      if (params.get('plan') === 'true' || params.get('visit')) {
+      if (params.get('plan') === 'true') {
         void this.router.navigate([], {
           relativeTo: this.route,
           queryParams: { plan: null, visit: null },
@@ -90,8 +143,8 @@ export class VisitPlanner {
     });
   }
   private readonly destroyRef = inject(DestroyRef);
-  protected readonly service = inject(RotaService);
-  protected readonly store = inject(ManagementStore);
+  protected readonly service = inject(RosterApi);
+  protected readonly store = this.service.store;
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly params = toSignal(this.route.paramMap, {
@@ -100,7 +153,9 @@ export class VisitPlanner {
   protected readonly workspaceView = this.route.snapshot.data['visitsWorkspace'] === true;
   protected readonly clientId = computed(() => this.params().get('id') ?? '');
   protected readonly client = computed(() =>
-    this.service.data().clients.find((c) => c.id === this.clientId()),
+    this.service.records.selected()?.id === this.clientId()
+      ? this.service.records.selected()!
+      : this.service.data().clients.find((c) => c.id === this.clientId()),
   );
   protected readonly today = londonDate();
   protected readonly anchor = signal(this.today);
@@ -179,7 +234,7 @@ export class VisitPlanner {
     });
     this.staffPage.set(1);
   }
-  private trained(person: ReturnType<ManagementStore['staff']>[number], course: string): boolean {
+  private trained(person: ReturnType<RosterApi['staff']>[number], course: string): boolean {
     return person.hr
       ? person.hr.training.some(
           (training) =>
@@ -257,11 +312,9 @@ export class VisitPlanner {
             ([course, required]) => !required || this.trained(p, course) === (required === 'Yes'),
           ) &&
           (!this.availabilityFilter() ||
-            this.days().some(
-              (date) => !this.store.data().leaves.some(this.leaveFor(p.id, date)),
-            )) &&
+            this.days().some((date) => p.hr.availableDays?.includes(date) === true)) &&
           (!this.genderFilter() || p.hr?.personal.gender === this.genderFilter()) &&
-          (!this.driverFilter() || !!p.hr?.personal.driver === (this.driverFilter() === 'Yes')) &&
+          (!this.driverFilter() || p.hr?.personal.driver === (this.driverFilter() === 'Yes')) &&
           (!this.skillFilter() ||
             (p.hr?.training.some(
               (t) =>
@@ -286,11 +339,16 @@ export class VisitPlanner {
               (!this.staffFilter() || v.staffIds.includes(this.staffFilter())) &&
               (!this.locationFilter() ||
                 v.address.toLowerCase().includes(this.locationFilter().toLowerCase())) &&
-              (this.showUnallocated() || v.staffIds.length === v.carers) &&
+              (this.showUnallocated() ||
+                (v.requirementsRecorded !== false &&
+                  v.carers > 0 &&
+                  v.staffIds.length === v.carers)) &&
               (this.allocationFilter() === 'All' ||
                 (this.allocationFilter() === 'Unallocated'
-                  ? v.staffIds.length < v.carers
-                  : v.staffIds.length === v.carers)) &&
+                  ? v.requirementsRecorded === false || v.staffIds.length < v.carers
+                  : v.requirementsRecorded !== false &&
+                    v.carers > 0 &&
+                    v.staffIds.length === v.carers)) &&
               (!this.skillFilter() || v.skills.includes(this.skillFilter())) &&
               (!(
                 this.genderFilter() ||
@@ -307,10 +365,12 @@ export class VisitPlanner {
       : [],
   );
   protected readonly unallocated = computed(() =>
-    this.visits().filter((v) => v.staffIds.length < v.carers),
+    this.visits().filter((v) => !v.requirementsRecorded || v.staffIds.length < v.carers),
   );
   protected readonly allocated = computed(() =>
-    this.visits().filter((v) => v.staffIds.length === v.carers),
+    this.visits().filter(
+      (v) => v.requirementsRecorded && v.carers > 0 && v.staffIds.length === v.carers,
+    ),
   );
   protected readonly doubleUps = computed(() => this.visits().filter((v) => v.carers === 2));
   protected readonly rosterStats = computed(() => [
@@ -590,6 +650,8 @@ export class VisitPlanner {
     );
   }
   protected status(v: RotaVisit): string {
+    if (v.state === 'Cancelled') return 'Cancelled';
+    if (v.requirementsRecorded === false) return 'Requirements not recorded';
     return v.staffIds.length < v.carers
       ? 'Needs staff'
       : completedVisit(v)
@@ -654,6 +716,7 @@ export class VisitPlanner {
     }
   }
   canLeave(): boolean {
+    if (this.service.saving()) return false;
     return (
       (this.profileVisits?.canLeave() ?? true) &&
       (!this.modal() ||
@@ -662,6 +725,7 @@ export class VisitPlanner {
     );
   }
   protected close(): void {
+    if (this.service.saving()) return;
     if (this.canLeave()) {
       this.modal.set('');
       this.error.set('');
@@ -674,11 +738,26 @@ export class VisitPlanner {
     this.error.set('');
     this.modal.set(kind);
   }
-  protected edit(v: RotaVisit): void {
-    if (!this.service.can('view')) return;
-    this.begin(this.service.can('manage') ? 'visit' : 'view');
-    this.draft = structuredClone(v);
-    this.original = JSON.stringify(v);
+  protected async edit(v: RotaVisit): Promise<void> {
+    if (!this.service.can('view') || this.service.saving()) return;
+    const scope = this.service.scope();
+    try {
+      const fresh = await this.service.detailVisit(v.id);
+      if (scope !== this.service.scope()) return;
+      this.begin(
+        this.service.can('edit') &&
+          fresh.requirementsRecorded &&
+          !fresh.attendance.length &&
+          fresh.state !== 'Cancelled'
+          ? 'visit'
+          : 'view',
+      );
+      this.draft = fresh;
+      this.original = JSON.stringify(fresh);
+      void this.service.loadCandidates(fresh);
+    } catch (e) {
+      this.error.set(e instanceof Error ? e.message : 'This visit is unavailable.');
+    }
   }
   protected findAvailable(): void {
     const visit =
@@ -695,6 +774,7 @@ export class VisitPlanner {
     return this.draft ? this.service.candidates(this.draft) : [];
   }
   protected create(): void {
+    if (!this.service.can('create') || this.service.saving()) return;
     this.begin('plan');
     this.plan = {
       clientId: this.clientId() || '',
@@ -706,17 +786,23 @@ export class VisitPlanner {
     };
   }
   protected planCalls() {
-    return this.service.data().calls.filter((c) => c.clientId === this.plan.clientId && c.active);
+    return this.service
+      .data()
+      .calls.filter((c) => c.clientId === this.plan.clientId && c.active && c.scheduleRecorded);
   }
-  protected prepareAuto(): void {
+  protected async prepareAuto(): Promise<void> {
     this.begin('auto');
-    const result = this.service.suggest(
-      this.selected().length ? this.selected() : this.unallocated().map((v) => v.id),
-      this.staff().map((p) => p.id),
-    );
-    this.plans = result.plans;
-    this.unfilled = result.unfilled;
-    this.reason = 'Assign available trained carers, preferring continuity and balanced hours.';
+    try {
+      const result = await this.service.suggest(
+        this.selected().length ? this.selected() : this.unallocated().map((v) => v.id),
+        this.staff().map((p) => p.id),
+      );
+      this.plans = result.plans;
+      this.unfilled = result.unfilled;
+      this.reason = 'Assign available trained carers, preferring continuity and balanced hours.';
+    } catch (e) {
+      this.error.set(e instanceof Error ? e.message : 'Suggestions are unavailable.');
+    }
   }
   protected prepareBulk(): void {
     this.begin('bulk');
@@ -730,20 +816,27 @@ export class VisitPlanner {
     const v = this.service.data().visits.find((v) => v.id === id);
     return v ? `${v.date} ${v.start} · ${v.clientName} · ${v.callName}` : id;
   }
-  protected save(): void {
+  protected async save(): Promise<void> {
+    if (this.service.saving()) return;
+    const scope = this.service.scope();
     if (this.sourceId !== this.clientId()) {
       this.error.set('Selected service user changed. Reopen the planner.');
       return;
     }
     let error: string | null = null;
     if (this.modal() === 'visit')
-      error = this.service.updateVisit(this.draft!, this.workspace, this.original, this.reason);
+      error = await this.service.updateVisit(
+        this.draft!,
+        this.workspace,
+        this.original,
+        this.reason,
+      );
     else if (this.modal() === 'plan') {
       if (this.workspace !== this.store.companyId()) {
         this.error.set('Workspace changed. Reopen the planner.');
         return;
       }
-      error = this.service.generate(
+      error = await this.service.generate(
         this.plan.clientId,
         this.plan.callIds,
         this.plan.from,
@@ -754,8 +847,9 @@ export class VisitPlanner {
     } else {
       if (this.modal() === 'bulk')
         this.plans = this.plans.map((p) => ({ ...p, staffIds: [...this.bulkStaff] }));
-      error = this.service.bulkAllocate(this.plans, this.workspace, this.reason);
+      error = await this.service.bulkAllocate(this.plans, this.workspace, this.reason);
     }
+    if (scope !== this.service.scope()) return;
     if (error) {
       this.error.set(error);
       return;
@@ -792,15 +886,40 @@ export class VisitPlanner {
       ]),
     ];
   }
-  protected export(): void {
-    if (this.service.can('export'))
+  private async authoriseExport(): Promise<boolean> {
+    const hr = !!(
+      this.genderFilter() ||
+      this.driverFilter() ||
+      this.skillFilter() ||
+      Object.values(this.trainingFilters()).some(Boolean)
+    );
+    if (hr && !this.service.access.can('people', 'records', 'export')) {
+      this.error.set(
+        'Staff Records export access is required to export results filtered by staff attributes or training.',
+      );
+      return false;
+    }
+    if (
+      this.availabilityFilter() &&
+      (!this.service.access.can('people', 'records', 'export') ||
+        !this.service.access.can('people', 'leave', 'export'))
+    ) {
+      this.error.set(
+        'Staff Records and Availability and Leave export access is required for this availability filter.',
+      );
+      return false;
+    }
+    return this.service.can('export') && (await this.service.refresh(true));
+  }
+  protected async export(): Promise<void> {
+    if (await this.authoriseExport())
       this.store.download('visit-planner.csv', csv(this.exportRows()), 'text/csv');
   }
-  protected exportExcel(): void {
-    if (this.service.can('export'))
+  protected async exportExcel(): Promise<void> {
+    if (await this.authoriseExport())
       downloadWorkbook('visit-planner.xlsx', this.exportRows(), 'Visit schedule');
   }
-  protected print(): void {
-    if (this.service.can('export')) window.print();
+  protected async print(): Promise<void> {
+    if (await this.authoriseExport()) window.print();
   }
 }

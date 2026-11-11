@@ -1,4 +1,13 @@
 <cv-module-design />
+@if (service.error()) {
+  <p class="care-error" role="alert">{{ service.error() }}</p>
+}
+@if (service.raw()?.unavailable_sources?.length) {
+  <p class="care-notice" role="status">{{ service.raw()?.unavailable_sources?.join(' ') }}</p>
+}
+@if (service.loading()) {
+  <p role="status">Loading visits and allocations…</p>
+}
 @if (service.can('view')) {
   @if (clientId()) {
     @if (client(); as c) {
@@ -52,7 +61,7 @@
               </select>
             </label>
             @if (service.can('manage')) {
-              <button class="care-button primary" (click)="create()">
+              <button class="care-button primary" [disabled]="service.saving()" (click)="create()">
                 <span class="material-symbols-outlined" aria-hidden="true">add</span>Add Visit
               </button>
             }
@@ -742,15 +751,26 @@
                   required.
                 </p>
                 <label class="care-wide"
-                  >Date<input type="date" name="date" [(ngModel)]="draft.date" required /></label
+                  >Date<input
+                    type="date"
+                    name="date"
+                    [(ngModel)]="draft.date"
+                    (ngModelChange)="service.loadCandidates(draft)"
+                    required /></label
                 ><label
                   >Start (UK)<input
                     type="time"
                     name="start"
                     [(ngModel)]="draft.start"
+                    (ngModelChange)="service.loadCandidates(draft)"
                     required /></label
                 ><label
-                  >End (UK)<input type="time" name="end" [(ngModel)]="draft.end" required /></label
+                  >End (UK)<input
+                    type="time"
+                    name="end"
+                    [(ngModel)]="draft.end"
+                    (ngModelChange)="service.loadCandidates(draft)"
+                    required /></label
                 ><label class="care-wide"
                   >Carers<mat-select
                     cvSelect
@@ -758,6 +778,7 @@
                     name="staffIds"
                     aria-label="Allocated carers"
                     [(ngModel)]="draft.staffIds"
+                    (ngModelChange)="service.loadCandidates(draft)"
                   >
                     @for (candidate of candidateList(); track candidate.id) {
                       <mat-option [value]="candidate.id"
@@ -773,6 +794,7 @@
                     name="allocation"
                     aria-label="Allocation type"
                     [(ngModel)]="draft.allocation"
+                    (ngModelChange)="service.loadCandidates(draft)"
                     ><mat-option value="Regular">Regular</mat-option
                     ><mat-option value="Temporary">Temporary cover</mat-option></mat-select
                   ></label
@@ -782,22 +804,29 @@
                     name="location"
                     aria-label="Visit location"
                     [(ngModel)]="draft.location"
+                    (ngModelChange)="service.loadCandidates(draft)"
                     ><mat-option value="Home">Home</mat-option
                     ><mat-option value="Community">Community</mat-option></mat-select
                   ></label
-                ><label>Task category<input name="taskType" [(ngModel)]="draft.taskType" /></label
+                ><label
+                  >Task category<input
+                    name="taskType"
+                    [(ngModel)]="draft.taskType"
+                    (ngModelChange)="service.loadCandidates(draft)" /></label
                 ><label
                   >Mileage<input
                     type="number"
                     min="0"
                     step="0.1"
                     name="mileage"
-                    [(ngModel)]="draft.mileage" /></label
+                    [(ngModel)]="draft.mileage"
+                    (ngModelChange)="service.loadCandidates(draft)" /></label
                 ><label class="care-check"
                   ><input
                     type="checkbox"
                     name="sensitive"
                     [(ngModel)]="draft.timeSensitive"
+                    (ngModelChange)="service.loadCandidates(draft)"
                   />Time-sensitive visit</label
                 ><label
                   >Tolerance (minutes)<input
@@ -805,17 +834,27 @@
                     min="0"
                     max="120"
                     name="tolerance"
-                    [(ngModel)]="draft.toleranceMinutes" /></label
+                    [(ngModel)]="draft.toleranceMinutes"
+                    (ngModelChange)="service.loadCandidates(draft)" /></label
                 ><label class="care-check"
-                  ><input type="checkbox" name="flexible" [(ngModel)]="draft.flexible" />Flexible
-                  visit</label
+                  ><input
+                    type="checkbox"
+                    name="flexible"
+                    [(ngModel)]="draft.flexible"
+                    (ngModelChange)="service.loadCandidates(draft)"
+                  />Flexible visit</label
                 ><label class="care-check"
-                  ><input type="checkbox" name="driver" [(ngModel)]="draft.driverRequired" />Driver
-                  required</label
+                  ><input
+                    type="checkbox"
+                    name="driver"
+                    [(ngModel)]="draft.driverRequired"
+                    (ngModelChange)="service.loadCandidates(draft)"
+                  />Driver required</label
                 ><label class="care-wide"
                   >Tasks & instructions<textarea
                     name="tasks"
                     [(ngModel)]="draft.tasks"
+                    (ngModelChange)="service.loadCandidates(draft)"
                   ></textarea></label
                 ><label class="care-wide"
                   >Change reason *<textarea name="reason" [(ngModel)]="reason" required></textarea>
@@ -948,7 +987,9 @@
               @if (modal() !== 'view') {
                 <button
                   class="care-button primary"
+                  [disabled]="service.saving()"
                   type="submit"
+                  [disabled]="service.saving()"
                   [disabled]="modal() === 'auto' && !plans.length"
                 >
                   Confirm {{ modal() === 'visit' ? 'visit changes' : 'allocation' }}

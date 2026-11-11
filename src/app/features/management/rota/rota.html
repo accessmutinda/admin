@@ -1,4 +1,10 @@
 <cv-module-design />
+@if (service.error()) {
+  <p class="co-error" role="alert">{{ service.error() }}</p>
+}
+@if (service.loading()) {
+  <p role="status">Loading visits and allocations…</p>
+}
 @if (!workspaceView || section) {
   <nav class="co-breadcrumb" aria-label="Breadcrumb">
     <a routerLink="/manage/rota">Care Delivery</a>
@@ -77,7 +83,11 @@
   />
 } @else {
   @if (section === 'call-packages') {
-    <cv-care-plan-package-handoffs [clientId]="handoffClientId" [rotaMode]="true" />
+    <cv-care-plan-package-handoffs
+      [clientId]="handoffClientId"
+      [rotaMode]="true"
+      [connected]="true"
+    />
   }
   @if (section) {
     <div class="metrics four" aria-label="Page statistics">
@@ -301,6 +311,7 @@
               @if (service.can('manage')) {
                 <button
                   class="icon-button"
+                  [disabled]="!service.can('edit')"
                   aria-label="Edit {{ c.name }}"
                   (click)="open('client', c.id)"
                 >
@@ -329,7 +340,7 @@
               }}
             </p>
           </div>
-          @if (packageClient() && service.can('manage')) {
+          @if (packageClient() && service.can('create')) {
             <button class="button" (click)="open('call')">
               <span class="material-symbols-outlined" aria-hidden="true">add</span>Add call
             </button>
@@ -350,7 +361,7 @@
               </p>
             }
             <small
-              >Client billing: £{{ c.billingRate || 0 }} /
+              >Client billing: £{{ c.billingRate === undefined ? 'Not recorded' : c.billingRate }} /
               {{ c.billingBasis || 'Visit hour' }}</small
             >
           </div>
@@ -360,10 +371,17 @@
             <article class="rota-call">
               <div class="rota-call-heading">
                 <strong>{{ c.name }}</strong
-                ><span class="badge">{{ c.active ? c.carers + ' carer(s)' : 'Inactive' }}</span>
+                ><span class="badge">{{
+                  !c.active
+                    ? 'Inactive'
+                    : c.scheduleRecorded
+                      ? c.carers + ' carer(s)'
+                      : 'Schedule not recorded'
+                }}</span>
                 @if (service.can('manage')) {
                   <button
                     class="icon-button"
+                    [disabled]="!service.can('edit')"
                     aria-label="Edit {{ c.name }}"
                     (click)="open('call', c.id)"
                   >
@@ -722,7 +740,11 @@
       }
       <div class="panel-note">
         {{ filtered().length }} matching visits · UK time (GMT/BST) ·
-        {{ service.data().travelMinutes }} min travel buffer
+        {{
+          service.raw()?.travelMinutes === null
+            ? 'Travel buffer not recorded'
+            : service.data().travelMinutes + ' min travel buffer'
+        }}
       </div>
     </section>
     @if (
@@ -791,9 +813,11 @@
           }
           @if (v.state !== 'Cancelled') {
             <div class="rota-detail-actions">
-              @if (!v.attendance.length && service.can('manage')) {
-                <button class="button" (click)="open('cover')">Allocate / arrange cover</button
-                ><button class="button" (click)="open('cancel')">Cancel visit</button>
+              @if (!v.attendance.length && service.can('edit') && v.requirementsRecorded) {
+                <button class="button" (click)="open('cover')">Allocate / arrange cover</button>
+              }
+              @if (!v.attendance.length && service.can('archive')) {
+                <button class="button" (click)="open('cancel')">Cancel visit</button>
               }
               @if (v.state === 'Published' && !completed(v) && service.can('attendance')) {
                 <button class="button primary" (click)="open('attendance')">
@@ -807,16 +831,19 @@
     </section>
   }
   <p class="rota-footer">
-    Device demo · rota and attendance stay in this company on this browser. Mobile check-in,
-    external staff notifications, live monitoring and shared publishing require connected services.
+    Visits, allocations and attendance are saved to the company workspace. Publish reviewed drafts
+    before delivery.
   </p>
 }
 @if (
-  modal() && (service.can('manage') || (modal() === 'attendance' && service.can('attendance')))
+  modal() &&
+  (service.can('manage') ||
+    (modal() === 'cancel' && service.can('archive')) ||
+    (modal() === 'attendance' && service.can('attendance')))
 ) {
   <div class="modal-backdrop" (click)="close()">
     <section
-      class="modal panel rota-modal"
+      class="modal panel rota-modal service-user-popup"
       [class.rota-allocation-modal]="modal() === 'allocation'"
       role="dialog"
       aria-modal="true"
@@ -826,7 +853,7 @@
       (keydown.escape)="close()"
       (click)="$event.stopPropagation()"
     >
-      <div class="panel-toolbar">
+      <div class="panel-toolbar su-dialog-heading">
         <div>
           <h2 id="rota-modal-title">
             {{
@@ -1170,7 +1197,11 @@
               </p>
               <p class="full-width">
                 Checks include employment dates, leave, required training, overlapping calls and
-                {{ service.data().travelMinutes }} minutes between different service users.
+                {{
+                  service.raw()?.travelMinutes === null
+                    ? 'Record a travel buffer before allocating visits at different service users.'
+                    : service.data().travelMinutes + ' minutes between different service users.'
+                }}
               </p>
             } @else {
               @let preview = allocationPreview();
@@ -1335,7 +1366,7 @@
           @if (modal() === 'allocation' && step() < 3) {
             <button type="button" class="button primary" (click)="next()">Continue</button>
           } @else {
-            <button class="button primary">
+            <button class="button primary" [disabled]="service.saving()">
               {{
                 modal() === 'allocation'
                   ? 'Create draft visits'

@@ -131,3 +131,13 @@ risk_names = [name for name in schemas if name.startswith('Risk')]
 risk_target = root / 'src/app/features/management/care/risk.generated.ts'
 risk_target.write_text('// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in risk_names)+'\n')
 subprocess.run(['npx','prettier','--write',str(risk_target)],cwd=root,check=True,capture_output=True)
+
+roster_names = [name for name in schemas if name.startswith('Roster')]
+roster_target = root / 'src/app/features/management/rota/roster.generated.ts'
+roster_target.write_text('// Generated from backend OpenAPI.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in roster_names) + '\n')
+subprocess.run(['npx', 'prettier', '--write', str(roster_target)], cwd=root, check=True, capture_output=True)
+
+visit_note_names = [name for name in schemas if name.startswith('VisitNote')]
+visit_note_target = root / 'src/app/features/management/care/visit-notes.generated.ts'
+visit_note_target.write_text('// Generated from backend OpenAPI.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in visit_note_names) + '\n')
+subprocess.run(['npx', 'prettier', '--write', str(visit_note_target)], cwd=root, check=True, capture_output=True)

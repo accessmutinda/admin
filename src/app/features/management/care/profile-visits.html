@@ -1,4 +1,13 @@
-<cv-care-header [client]="client()" active="visits" />
+<cv-care-header
+  [client]="client()"
+  active="visits"
+  [printManaged]="true"
+  [printBusy]="service.loading()"
+  (printRequested)="print()"
+/>
+@if (service.error()) {
+  <p class="care-error" role="alert">{{ service.error() }}</p>
+}
 <header class="visits-heading">
   <div>
     <h2>Visits &amp; Allocation</h2>
@@ -19,7 +28,7 @@
         }
       </select></label
     >
-    @if (service.can('manage')) {
+    @if (service.can('create')) {
       <button type="button" class="primary" (click)="formOpen.set(true)">
         <span aria-hidden="true">＋</span> Allocate Carer
       </button>
@@ -30,7 +39,7 @@
 @if (notice()) {
   <p class="notice" role="status">{{ notice() }}</p>
 }
-<div class="workspace" [class.form-closed]="!formOpen() || !service.can('manage')">
+<div class="workspace" [class.form-closed]="!formOpen() || !service.can('create')">
   <section class="visits-panel calendar-panel" aria-label="Visits calendar">
     <div class="calendar-heading">
       <div class="section-title">
@@ -178,7 +187,7 @@
       }
     </footer>
   </section>
-  @if (formOpen() && service.can('manage')) {
+  @if (formOpen() && service.can('create')) {
     <section class="visits-panel allocation-panel" aria-labelledby="allocation-title">
       <div class="form-heading">
         <div>
@@ -334,7 +343,11 @@
         }
         <div class="form-actions">
           <button type="button" (click)="closeForm()">Cancel</button
-          ><button class="confirm" type="submit" [disabled]="!calls().length">
+          ><button
+            class="confirm"
+            type="submit"
+            [disabled]="service.saving() || !calls().length"
+          >
             Confirm Allocation
           </button>
         </div>
@@ -347,7 +360,7 @@
       <div class="section-title">
         <span class="material-symbols-outlined" aria-hidden="true">settings</span>
         <h2>Allocation Rules &amp; Preferences</h2>
-        @if (service.can('manage')) {
+        @if (service.can('create')) {
           <a
             class="edit"
             routerLink="/manage/rota/call-packages"

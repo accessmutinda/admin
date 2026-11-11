@@ -65,6 +65,8 @@ export interface VisitRequirements {
   backupStaffId?: string;
 }
 export interface RotaCall extends VisitRequirements {
+  etag?: string;
+  scheduleRecorded?: boolean;
   priority?: 'Standard' | 'High';
   id: string;
   clientId: string;
@@ -84,6 +86,8 @@ export interface VisitAttendance {
   end: string;
 }
 export interface RotaVisit extends VisitRequirements {
+  etag?: string;
+  requirementsRecorded?: boolean;
   riskFlags?: RiskFlag[];
   demo?: boolean;
   manualOverride?: { at: string; by: string; reason: string; conflicts: string[] };
@@ -101,7 +105,7 @@ export interface RotaVisit extends VisitRequirements {
   tasks: string;
   staffIds: string[];
   allocation: 'Regular' | 'Temporary';
-  state: 'Draft' | 'Published' | 'Cancelled';
+  state: 'Draft' | 'Published' | 'Cancelled' | 'Planned';
   priority: 'Standard' | 'High';
   attendance: VisitAttendance[];
   exception: string;
@@ -181,5 +185,6 @@ export function londonInstant(date: string, time: string): string | null {
 }
 export const completedVisit = (v: RotaVisit): boolean =>
   v.state === 'Published' &&
+  v.carers > 0 &&
   v.staffIds.length === v.carers &&
   v.staffIds.every((id) => v.attendance.some((a) => a.personId === id && a.end));
