@@ -12,7 +12,13 @@ import { ToastService } from '../../../shared/ui/toast.service';
 import { ClientFiles } from './client-files';
 import { ServiceUserDirectory } from '../care/service-user-directory';
 import { ServiceUsersApi } from './service-users-api.service';
-import { ServiceUser, ServiceUserPage, ServiceUserOverview } from './service-users.generated';
+import {
+  ServiceUser,
+  ServiceUserPage,
+  ServiceUserOverview,
+  ServiceUserCarePlan,
+  ServiceUserRecordSection,
+} from './service-users.generated';
 import { RotaClient } from '../rota/rota.models';
 
 function row(): ServiceUser {
@@ -182,6 +188,53 @@ describe('Service user landing and creation', () => {
         };
       if (path.includes('/export?'))
         return new Blob(['Name\r\nAlex Citizen\r\n'], { type: 'text/csv' });
+      if (path.endsWith('/family')) {
+        if (body) {
+          const changes = body as Record<string, any>,
+            value = overview();
+          value.record.representative = {
+            name: changes['name'],
+            relationship: changes['relationship'],
+            phone: changes['phone'],
+            email: changes['email'],
+          };
+          value.family = {
+            approved: changes['approved'],
+            preferences: changes['preferences'],
+            sharing_consent: changes['sharing_consent'],
+          };
+          value.record.version = 3;
+          value.record.etag = '\"v3\"';
+          return value;
+        }
+        return {
+          id: 'user-1',
+          company_id: 'north',
+          version: 2,
+          etag: '\"v2\"',
+          name: 'Sam Latest',
+          relationship: 'Sibling',
+          phone: '0701',
+          email: 'sam@example.com',
+          approved: 'Visit times only',
+          preferences: 'Call after 5pm',
+          sharing_consent: 'Recorded consent',
+          can_edit: true,
+        };
+      }
+      if (path.endsWith('/demographics')) {
+        if (body) {
+          const source = row(),
+            changes = body as Record<string, any>;
+          for (const [key, value] of Object.entries(changes)) {
+            if (['name', 'reference', 'address', 'postcode', 'phone', 'email'].includes(key))
+              (source as any)[key] = value;
+            else (source.details as any)[key] = value;
+          }
+          return overview({ ...source, version: 3, etag: '\"v3\"' });
+        }
+        return { ...row(), version: 2, etag: '\"v2\"', local_date: '2026-11-10', can_edit: true };
+      }
       if (path.endsWith('/overview')) return overview();
       if (body && path.includes('/overview/')) {
         const value = overview(),
@@ -222,7 +275,14 @@ describe('Service user landing and creation', () => {
             snapshot: { paramMap: params.value, queryParamMap: params.value, data: {} },
           },
         },
-        { provide: AuthService, useValue: { profile: () => ({ id: 'actor' }), api: request } },
+        {
+          provide: AuthService,
+          useValue: {
+            profile: () => ({ id: 'actor' }),
+            currentUser: () => ({ roleCode: 'CA' }),
+            api: request,
+          },
+        },
         {
           provide: CompanyAccessService,
           useValue: {
@@ -235,9 +295,14 @@ describe('Service user landing and creation', () => {
         { provide: RotaService, useValue: { can: () => grant(), data: browser } },
         {
           provide: ManagementStore,
-          useValue: { companyId: company, data: browser, staff: () => [] },
+          useValue: {
+            companyId: company,
+            company: () => ({ id: company(), name: 'Current workspace' }),
+            data: browser,
+            staff: () => [],
+          },
         },
-        { provide: ToastService, useValue: { success: vi.fn() } },
+        { provide: ToastService, useValue: { success: vi.fn(), error: vi.fn() } },
       ],
     });
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
@@ -619,6 +684,914 @@ describe('Service user landing and creation', () => {
     await settle(fixture);
     return fixture;
   }
+  async function openDemographics() {
+    const fixture = await openOverview();
+    (fixture.componentInstance as any).setSection('details');
+    await settle(fixture);
+    const button = [...fixture.nativeElement.querySelectorAll('button')].find(
+      (element: any) => element.textContent.trim() === 'Edit contacts',
+    ) as HTMLButtonElement;
+    button.click();
+    await settle(fixture);
+    return { fixture, dialog: document.querySelector('[role="dialog"]')! };
+  }
+  it('loads fresh demographics in a branded popup and saves with its version without navigating', async () => {
+    const { fixture, dialog } = await openDemographics();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+    expect(dialog.textContent).toContain('Demographics & Contacts');
+    expect(document.querySelector('.service-user-card-dialog')).toBeTruthy();
+    expect((dialog.querySelector('[name="preferredName"]') as HTMLInputElement).value).toBe('Alex');
+    expect((dialog.querySelector('[name="phone"]') as HTMLInputElement).value).toBe('0700');
+    expect(dialog.querySelector('[name="funding"]')).toBeNull();
+    expect(dialog.querySelector('[name="primary_diagnosis"]')).toBeNull();
+    const input = dialog.querySelector('[name="name"]') as HTMLInputElement;
+    input.value = 'Alex Updated';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    const call = request.mock.calls.find(
+      ([path, body]) => path.endsWith('/demographics') && !!body,
+    )!;
+    expect(call[2]).toBe('PATCH');
+    expect(call[3]).toEqual({ 'If-Match': '\"v2\"' });
+    expect(call[1].name).toBe('Alex Updated');
+    expect(call[1].funding).toBeUndefined();
+    await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+    expect(fixture.nativeElement.textContent).toContain('Alex Updated');
+    expect(navigate).not.toHaveBeenCalled();
+  });
+  it('marks the invalid demographic field and retains entered values after failed save', async () => {
+    const { fixture, dialog } = await openDemographics();
+    const input = dialog.querySelector('[name="reference"]') as HTMLInputElement;
+    input.value = 'Duplicate';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    request.mockRejectedValueOnce(
+      new ApiError('That reference is in use.', 409, 'reference_conflict', {
+        reference: ['Choose another client reference.'],
+      }),
+    );
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    expect(input.value).toBe('Duplicate');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(dialog.textContent).toContain('Choose another client reference.');
+    expect(document.querySelector('[role="dialog"]')).toBe(dialog);
+  });
+  it('disables demographic submission when loading fails and allows discarding', async () => {
+    const fixture = await openOverview();
+    request.mockRejectedValueOnce(new Error('Could not load saved details.'));
+    (fixture.componentInstance as any).setSection('details');
+    await settle(fixture);
+    (
+      [...fixture.nativeElement.querySelectorAll('button')].find(
+        (element: any) => element.textContent.trim() === 'Edit contacts',
+      ) as HTMLButtonElement
+    ).click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('Could not load saved details.');
+    expect((dialog.querySelector('[type="submit"]') as HTMLButtonElement).disabled).toBe(true);
+    (dialog.querySelector('[type="button"]') as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+  });
+  it('closes the demographics popup on workspace change and ignores a late read', async () => {
+    const fixture = await openOverview();
+    let resolve!: (value: unknown) => void;
+    request.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    (fixture.componentInstance as any).setSection('details');
+    await settle(fixture);
+    (
+      [...fixture.nativeElement.querySelectorAll('button')].find(
+        (element: any) => element.textContent.trim() === 'Edit contacts',
+      ) as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
+    await Promise.resolve();
+    expect(
+      (document.querySelector('[role="dialog"] [type="submit"]') as HTMLButtonElement).disabled,
+    ).toBe(true);
+    company.set('south');
+    fixture.detectChanges();
+    resolve({ ...row(), local_date: '2026-11-10', can_edit: true });
+    await settle(fixture);
+    await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+    expect(
+      request.mock.calls.filter(([path, body]) => path.endsWith('/demographics') && !!body),
+    ).toHaveLength(0);
+  });
+  async function openFamily(action: 'Edit' | 'Edit contacts' = 'Edit') {
+    const fixture = await openOverview();
+    (fixture.componentInstance as any).setSection('family');
+    await settle(fixture);
+    (
+      [...fixture.nativeElement.querySelectorAll('button')].find(
+        (element: any) => element.textContent.trim() === action,
+      ) as HTMLButtonElement
+    ).click();
+    await settle(fixture);
+    return { fixture, dialog: document.querySelector('[role="dialog"]')! };
+  }
+  it('opens both existing family edit actions in a fresh prefilled branded popup', async () => {
+    for (const action of ['Edit', 'Edit contacts'] as const) {
+      const { fixture, dialog } = await openFamily(action);
+      expect(dialog.textContent).toContain('Family / Representative');
+      expect(document.querySelector('.service-user-card-dialog')).toBeTruthy();
+      for (const [key, value] of [
+        ['name', 'Sam Latest'],
+        ['approved', 'Visit times only'],
+        ['preferences', 'Call after 5pm'],
+        ['sharing_consent', 'Recorded consent'],
+      ])
+        expect((dialog.querySelector(`[name="${key}"]`) as HTMLInputElement).value).toBe(value);
+      expect(fixture.nativeElement.querySelector('.client-editor')).toBeNull();
+      (dialog.querySelector('[type="button"]') as HTMLButtonElement).click();
+      await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+      fixture.destroy();
+    }
+  });
+  it('saves family details and guidance with the fresh version and updates the existing page', async () => {
+    const { fixture, dialog } = await openFamily();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+    const input = dialog.querySelector('[name="approved"]') as HTMLTextAreaElement;
+    input.value = 'Appointment dates only';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    const call = request.mock.calls.find(([path, body]) => path.endsWith('/family') && !!body)!;
+    expect(call[2]).toBe('PATCH');
+    expect(call[3]).toEqual({ 'If-Match': '\"v2\"' });
+    expect(call[1]).toEqual({
+      name: 'Sam Latest',
+      relationship: 'Sibling',
+      phone: '0701',
+      email: 'sam@example.com',
+      approved: 'Appointment dates only',
+      preferences: 'Call after 5pm',
+      sharing_consent: 'Recorded consent',
+    });
+    await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+    expect(fixture.nativeElement.textContent).toContain('Appointment dates only');
+    expect(fixture.nativeElement.textContent).toContain('Call after 5pm');
+    expect(fixture.nativeElement.textContent).toContain('Recorded consent');
+    expect(fixture.nativeElement.textContent).toContain('Sam Latest');
+    expect(navigate).not.toHaveBeenCalled();
+  });
+  it('keeps failed family edits and marks the invalid contact field', async () => {
+    const { fixture, dialog } = await openFamily();
+    const input = dialog.querySelector('[name="name"]') as HTMLInputElement;
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    request.mockRejectedValueOnce(
+      new ApiError('Enter a contact name.', 400, 'validation_error', {
+        name: ['Contact name is required.'],
+      }),
+    );
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    expect(document.querySelector('[role="dialog"]')).toBe(dialog);
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(dialog.textContent).toContain('Contact name is required.');
+    expect((dialog.querySelector('[name="approved"]') as HTMLTextAreaElement).value).toBe(
+      'Visit times only',
+    );
+  });
+  it('blocks family saving after a failed fresh read', async () => {
+    const fixture = await openOverview();
+    (fixture.componentInstance as any).setSection('family');
+    await settle(fixture);
+    request.mockRejectedValueOnce(new Error('Family details are unavailable.'));
+    (
+      [...fixture.nativeElement.querySelectorAll('button')].find(
+        (element: any) => element.textContent.trim() === 'Edit',
+      ) as HTMLButtonElement
+    ).click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('Family details are unavailable.');
+    expect((dialog.querySelector('[type="submit"]') as HTMLButtonElement).disabled).toBe(true);
+  });
+  function connectPlan() {
+    let state: ServiceUserCarePlan = {
+      id: 'user-1',
+      company_id: 'north',
+      version: 2,
+      etag: '\"v2\"',
+      plan: {
+        name: 'Current plan',
+        start: '2026-11-10',
+        review: '2027-02-10',
+        status: 'Active',
+        needs: 'Recorded needs',
+        support: 'Offer choices',
+      },
+      goals: [
+        {
+          id: 'goal-1',
+          version: 1,
+          name: 'Maintain independence',
+          detail: 'Offer support',
+          date: '2027-01-01',
+          level: 'High',
+          status: 'Active',
+        },
+      ],
+      can_edit: true,
+      can_create_goal: true,
+    };
+    const previous = request.getMockImplementation()! as (...args: any[]) => any;
+    request.mockImplementation(async (path: string, body?: any, method?: string, headers?: any) => {
+      if (path.endsWith('/overview')) return { ...overview(), care_plan: structuredClone(state) };
+      if (path.endsWith('/care-plan') && !body) return structuredClone(state);
+      if (path.includes('/care-plan') && body) {
+        if (path.endsWith('/goals')) state.goals.push({ ...body, id: 'goal-new', version: 1 });
+        else if (path.includes('/goals/'))
+          state.goals[0] = { ...state.goals[0], ...body, version: 2 };
+        else state.plan = { ...state.plan, ...body };
+        state.version++;
+        state.etag = '\"v' + state.version + '\"';
+        return {
+          ...overview({ ...row(), version: state.version, etag: state.etag }),
+          care_plan: structuredClone(state),
+        };
+      }
+      return previous(path, body, method, headers);
+    });
+    return state;
+  }
+  async function openPlan() {
+    connectPlan();
+    const fixture = await openOverview();
+    (fixture.componentInstance as any).setSection('plan');
+    await settle(fixture);
+    return fixture;
+  }
+  it('loads saved plan and goals in the existing page and edits the plan in a branded popup', async () => {
+    const fixture = await openPlan();
+    expect(fixture.nativeElement.textContent).toContain('Current plan');
+    expect(fixture.nativeElement.textContent).toContain('Maintain independence');
+    const button = [...fixture.nativeElement.querySelectorAll('.client-section-panel button')].find(
+      (element: any) => element.textContent.trim() === 'Edit',
+    ) as HTMLButtonElement;
+    button.click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('Care Plan');
+    expect((dialog.querySelector('[name="name"]') as HTMLInputElement).value).toBe('Current plan');
+    const review = dialog.querySelector('[name="review"]') as HTMLInputElement;
+    expect(review.value).toBe('2027-02-10');
+    expect(review.max).toBe('');
+    const needs = dialog.querySelector('[name="needs"]') as HTMLTextAreaElement;
+    needs.value = 'Updated needs';
+    needs.dispatchEvent(new Event('input', { bubbles: true }));
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    const call = request.mock.calls.find(([path, body]) => path.endsWith('/care-plan') && body)!;
+    expect(call[2]).toBe('PATCH');
+    expect(call[3]).toEqual({ 'If-Match': '\"v2\"' });
+    await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+    expect(fixture.nativeElement.textContent).toContain('Updated needs');
+  });
+  it('adds a goal through a popup with an idempotency key and refreshes the register', async () => {
+    const fixture = await openPlan();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+    (
+      fixture.nativeElement.querySelector('.client-entry-panel .primary') as HTMLButtonElement
+    ).click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('Add goal');
+    const input = dialog.querySelector('[name="name"]') as HTMLInputElement;
+    input.value = 'Attend appointments';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    const call = request.mock.calls.find(
+      ([path, body]) => path.endsWith('/care-plan/goals') && body,
+    )!;
+    expect(call[2]).toBe('POST');
+    expect(call[3]['If-Match']).toBe('\"v2\"');
+    expect(call[3]['Idempotency-Key']).toBeTruthy();
+    expect(call[1].name).toBe('Attend appointments');
+    await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+    expect(fixture.nativeElement.textContent).toContain('Attend appointments');
+    expect(fixture.nativeElement.textContent).toContain('Maintain independence');
+    expect(navigate).not.toHaveBeenCalled();
+  });
+  it('edits a saved goal in a prefilled popup and retains invalid drafts', async () => {
+    const fixture = await openPlan();
+    (
+      fixture.nativeElement.querySelector(
+        '[aria-label="Edit Maintain independence"]',
+      ) as HTMLButtonElement
+    ).click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('Edit goal');
+    const input = dialog.querySelector('[name="name"]') as HTMLInputElement;
+    expect(input.value).toBe('Maintain independence');
+    request.mockRejectedValueOnce(
+      new ApiError('Check the goal.', 400, 'validation_error', {
+        name: ['Care goal is required.'],
+      }),
+    );
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(dialog.textContent).toContain('Care goal is required.');
+    input.value = 'Updated care goal';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    expect(
+      request.mock.calls.find(
+        ([path, body]) => path.endsWith('/care-plan/goals/goal-1') && body,
+      )?.[2],
+    ).toBe('PATCH');
+    await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+    expect(fixture.nativeElement.textContent).toContain('Updated care goal');
+  });
+  it('shows access denied instead of empty plan data when Planning is unavailable', async () => {
+    const fixture = await openOverview();
+    (fixture.componentInstance as any).setSection('plan');
+    await settle(fixture);
+    expect(fixture.nativeElement.querySelector('cv-access-required')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.client-entry-panel')).toBeNull();
+  });
+  it('uses independent Planning actions to show edit and create controls', async () => {
+    const state = connectPlan();
+    state.can_edit = false;
+    state.can_create_goal = true;
+    const fixture = await openOverview();
+    (fixture.componentInstance as any).setSection('plan');
+    await settle(fixture);
+    expect(
+      fixture.nativeElement.querySelector('.client-section-panel .panel-toolbar button'),
+    ).toBeNull();
+    expect(fixture.nativeElement.querySelector('.client-entry-panel .primary')).toBeTruthy();
+    expect(
+      fixture.nativeElement.querySelector('[aria-label="Edit Maintain independence"]'),
+    ).toBeNull();
+  });
+  function connectRecords() {
+    const values: Record<string, Record<string, string>> = {
+      diagnoses: {
+        primary: 'Recorded diagnosis',
+        diet: 'Diet guidance',
+        ongoing: 'Healthcare guidance',
+        communication: 'Speak clearly',
+        hearing: 'Hearing guidance',
+        vision: 'Glasses',
+        sensory: 'Reduce noise',
+      },
+      moving: {
+        assessed: '2026-01-01',
+        review: '2027-01-01',
+        support: 'One person',
+        equipment: 'Walking frame',
+        instructions: 'Agreed transfer instructions',
+      },
+      capacity: {
+        status: 'Has capacity',
+        assessed: '2026-01-01',
+        reason: 'Recorded assessment findings',
+        welfareLpa: 'Named attorney',
+        financeLpa: 'Named attorney',
+        advance: 'Recorded document reference',
+        support: 'Give time to decide',
+        review: '2027-01-01',
+      },
+      consent: {
+        status: 'Given',
+        date: '2026-01-01',
+        by: 'Service user',
+        care: 'Agreed',
+        medication: 'Declined',
+        family: 'Agreed',
+        photo: 'Declined',
+        notes: 'Recorded scope and restrictions',
+      },
+      access: {
+        location: 'Side entrance',
+        checked: '2026-01-01',
+        instructions: 'Call before entering',
+      },
+      support: {
+        personal: 'Morning support',
+        nutrition: 'Offer drinks',
+        continence: 'Recorded support',
+        safety: 'Agreed checks',
+        behaviour: 'Give reassurance',
+        gender: 'Any',
+        preferredStaff: 'staff-1',
+        backupStaff: 'staff-2',
+        continuity: 'Consistent team',
+      },
+      risks: {},
+      medication: {},
+      allergies: {},
+      tasks: {},
+      documents: {},
+    };
+    const registers = [
+      'diagnoses',
+      'risks',
+      'capacity',
+      'medication',
+      'allergies',
+      'tasks',
+      'documents',
+    ];
+    const sources: Record<string, ServiceUserRecordSection> = Object.fromEntries(
+      Object.entries(values).map(([key, fields]) => [
+        key,
+        {
+          id: 'user-1',
+          company_id: 'north',
+          version: 1,
+          etag: '\"v1\"',
+          key,
+          fields: Object.entries(fields).map(([key, value]) => ({ key, value })),
+          entries: registers.includes(key)
+            ? [
+                {
+                  id: key + '-entry',
+                  version: 1,
+                  name: 'Saved ' + key,
+                  detail: 'Recorded ' + key + ' guidance',
+                  date: '2026-01-01',
+                  level: 'High',
+                  status: 'Active',
+                  capacity: key === 'capacity' ? 'Has capacity' : '',
+                },
+              ]
+            : [],
+          can_edit: true,
+          can_create: registers.includes(key),
+          has_code: key === 'access',
+          staff_read: key === 'support',
+          staff_choices:
+            key === 'support'
+              ? [
+                  { id: 'staff-1', name: 'First carer' },
+                  { id: 'staff-2', name: 'Backup carer' },
+                ]
+              : [],
+          local_date: '2026-11-10',
+        },
+      ]),
+    );
+    let accessSecret = '45678-fresh-secret';
+    const current = () => ({
+      ...overview(),
+      workspace: {
+        sections: structuredClone(Object.values(sources)),
+        visits: [
+          {
+            id: 'visit-1',
+            callName: 'Morning support',
+            date: '2026-11-01',
+            start: '09:00',
+            end: '10:00',
+            state: 'Planned',
+          },
+        ],
+        visits_read: true,
+      },
+    });
+    const previous = request.getMockImplementation()! as (...args: any[]) => any;
+    request.mockImplementation(async (path: string, body?: any, method?: string, headers?: any) => {
+      if (path.endsWith('/overview')) return current();
+      if (path.endsWith('/record-summary')) {
+        const value = current();
+        value.record.name = 'Fresh exported name';
+        value.workspace.sections = value.workspace.sections.filter(
+          (section) => section.key !== 'access',
+        );
+        return value;
+      }
+      const match = path.match(/\/record-sections\/([^/]+)(?:\/entries(?:\/([^/]+))?)?$/);
+      if (match) {
+        const source = sources[match[1]];
+        if (!body) {
+          const fresh = { ...structuredClone(source), version: 2, etag: '\"v2\"' };
+          if (source.key === 'access') fresh.fields.push({ key: 'code', value: accessSecret });
+          return fresh;
+        }
+        if (path.includes('/entries')) {
+          if (match[2])
+            Object.assign(
+              source.entries.find((entry) => entry.id === match[2])!,
+              body,
+            );
+          else
+            source.entries.push({
+              ...body,
+              id: source.key + '-new',
+              version: 1,
+              capacity: body.capacity ?? '',
+            });
+        } else {
+          for (const [key, value] of Object.entries(body)) {
+            if (key === 'code') {
+              accessSecret = String(value);
+              continue;
+            }
+            const field = source.fields.find((field) => field.key === key);
+            if (field) field.value = String(value ?? '');
+            else source.fields.push({ key, value: String(value ?? '') });
+          }
+        }
+        return { ...current(), record: { ...row(), version: 3, etag: '\"v3\"' } };
+      }
+      return previous(path, body, method, headers);
+    });
+    return { sources, current };
+  }
+  async function openRecordSection(key: string) {
+    const state = connectRecords();
+    const fixture = await openOverview();
+    (fixture.componentInstance as any).setSection(key);
+    await settle(fixture);
+    return { fixture, ...state };
+  }
+  it('opens every left-menu section and returns to Overview without leaving the record', async () => {
+    const state = connectRecords();
+    const plan = connectPlan();
+    const previous = request.getMockImplementation()! as (...args: any[]) => any;
+    request.mockImplementation(async (path: string, ...args: any[]) =>
+      path.endsWith('/overview')
+        ? { ...state.current(), care_plan: plan }
+        : previous(path, ...args),
+    );
+    const fixture = await openOverview();
+    const nav = fixture.nativeElement.querySelector('nav[aria-label="Client record sections"]');
+    const buttons = Array.from(nav.querySelectorAll('button')) as HTMLButtonElement[];
+    expect(buttons).toHaveLength(15);
+    for (const button of buttons.slice(1)) {
+      button.click();
+      await settle(fixture);
+      expect(button.getAttribute('aria-current')).toBe('page');
+      expect(fixture.nativeElement.textContent).toContain(
+        button.textContent!.trim().replace(/^\w+/, '').trim(),
+      );
+      expect(fixture.nativeElement.querySelector('cv-access-required')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.client-editor')).toBeNull();
+    }
+    buttons[0].click();
+    await settle(fixture);
+    expect(fixture.nativeElement.querySelector('cv-client-overview')).toBeTruthy();
+    expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+    expect(browser).not.toHaveBeenCalled();
+  });
+  it('uses Records permissions for Overview actions even when legacy manage grants differ', async () => {
+    vi.spyOn(TestBed.inject(CompanyAccessService), 'can').mockImplementation(
+      (module, submodule, action) => submodule === 'records' && action !== 'export',
+    );
+    vi.spyOn(TestBed.inject(RotaService), 'can').mockReturnValue(false);
+    const fixture = await openOverview();
+    await settle(fixture);
+    expect(
+      fixture.nativeElement.querySelector('cv-care-header .profile-page-actions').textContent,
+    ).toContain('Edit Profile');
+    expect(
+      fixture.nativeElement.querySelector('cv-care-header .profile-page-actions').textContent,
+    ).not.toContain('Print');
+    expect(fixture.nativeElement.querySelectorAll('cv-client-overview header button')).toHaveLength(
+      6,
+    );
+  });
+  it('uses the fresh authorised summary for the top Print action', async () => {
+    const { fixture } = await openRecordSection('overview');
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    (
+      Array.from(
+        fixture.nativeElement.querySelectorAll('cv-care-header .profile-page-actions button'),
+      ) as HTMLButtonElement[]
+    )
+      .find((button) => button.textContent?.includes('Print'))!
+      .click();
+    await settle(fixture);
+    expect(request).toHaveBeenCalledWith('/companies/north/service-users/user-1/record-summary');
+    expect(print).toHaveBeenCalledOnce();
+    expect(fixture.nativeElement.querySelector('.client-print').textContent).toContain(
+      'Fresh exported name',
+    );
+    window.dispatchEvent(new Event('afterprint'));
+  });
+  it('reads every remaining section from the API and opens all existing field editors as branded popups', async () => {
+    const { fixture } = await openRecordSection('diagnoses');
+    for (const [key, field, expected] of [
+      ['diagnoses', 'primary', 'Recorded diagnosis'],
+      ['moving', 'instructions', 'Agreed transfer instructions'],
+      ['capacity', 'reason', 'Recorded assessment findings'],
+      ['consent', 'by', 'Service user'],
+      ['access', 'code', '45678-fresh-secret'],
+      ['support', 'personal', 'Morning support'],
+    ]) {
+      (fixture.componentInstance as any).setSection(key);
+      await settle(fixture);
+      (
+        fixture.nativeElement.querySelector(
+          '.client-section-panel .panel-toolbar button',
+        ) as HTMLButtonElement
+      ).click();
+      await settle(fixture);
+      const dialog = document.querySelector('[role="dialog"]')!;
+      expect(document.querySelector('.service-user-card-dialog')).toBeTruthy();
+      expect((dialog.querySelector(`[name="${field}"]`) as HTMLInputElement).value).toBe(expected);
+      expect(fixture.nativeElement.querySelector('.client-editor')).toBeNull();
+      (dialog.querySelector('[type="button"]') as HTMLButtonElement).click();
+      await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+    }
+    expect(browser).not.toHaveBeenCalled();
+  });
+  it('adds and edits records in every remaining register through the existing branded dialog', async () => {
+    const { fixture } = await openRecordSection('diagnoses');
+    for (const key of [
+      'diagnoses',
+      'risks',
+      'capacity',
+      'medication',
+      'allergies',
+      'tasks',
+      'documents',
+    ]) {
+      (fixture.componentInstance as any).setSection(key);
+      await settle(fixture);
+      (
+        fixture.nativeElement.querySelector('.client-entry-panel .primary') as HTMLButtonElement
+      ).click();
+      await settle(fixture);
+      let dialog = document.querySelector('[role="dialog"]')!;
+      const name = dialog.querySelector('[name="name"]') as HTMLInputElement;
+      name.value = 'Added ' + key;
+      name.dispatchEvent(new Event('input', { bubbles: true }));
+      if (key === 'capacity') {
+        (
+          dialog.querySelector(
+            'mat-select[aria-label="Capacity summary"] .mat-mdc-select-trigger',
+          ) as HTMLElement
+        ).click();
+        await settle(fixture);
+        (
+          Array.from(document.querySelectorAll('mat-option')).find(
+            (option) => option.textContent?.trim() === 'Has capacity',
+          ) as HTMLElement
+        ).click();
+        await settle(fixture);
+      }
+      dialog
+        .querySelector('form')!
+        .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await settle(fixture);
+      const call = request.mock.calls.find(
+        ([path, body]) => path.endsWith('/record-sections/' + key + '/entries') && body,
+      )!;
+      expect(call[2]).toBe('POST');
+      if (key === 'capacity') expect(call[1].capacity).toBe('Has capacity');
+      expect(call[3]['If-Match']).toBe('\"v2\"');
+      expect(call[3]['Idempotency-Key']).toBeTruthy();
+      await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+      expect(fixture.nativeElement.textContent).toContain('Added ' + key);
+      (
+        fixture.nativeElement.querySelector(
+          '[aria-label="Edit Saved ' + key + '"]',
+        ) as HTMLButtonElement
+      ).click();
+      await settle(fixture);
+      dialog = document.querySelector('[role="dialog"]')!;
+      expect((dialog.querySelector('[name="name"]') as HTMLInputElement).value).toBe(
+        'Saved ' + key,
+      );
+      const detail = dialog.querySelector('[name="detail"]') as HTMLTextAreaElement;
+      detail.value = 'Updated ' + key + ' findings';
+      detail.dispatchEvent(new Event('input', { bubbles: true }));
+      dialog
+        .querySelector('form')!
+        .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await settle(fixture);
+      expect(
+        request.mock.calls.find(
+          ([path, body]) => path.endsWith('/entries/' + key + '-entry') && body,
+        )?.[2],
+      ).toBe('PATCH');
+      await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+      expect(fixture.nativeElement.textContent).toContain('Updated ' + key + ' findings');
+    }
+    expect(browser).not.toHaveBeenCalled();
+  });
+  it('saves clinical section edits with the fresh ETag and keeps the page in place', async () => {
+    const { fixture } = await openRecordSection('moving');
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+    (
+      fixture.nativeElement.querySelector(
+        '.client-section-panel .panel-toolbar button',
+      ) as HTMLButtonElement
+    ).click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    const input = dialog.querySelector('[name="instructions"]') as HTMLTextAreaElement;
+    input.value = 'Updated transfer instructions';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    const call = request.mock.calls.find(
+      ([path, body]) => path.endsWith('/record-sections/moving') && body,
+    )!;
+    expect(call[3]).toEqual({ 'If-Match': '\"v2\"' });
+    await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+    expect(fixture.nativeElement.textContent).toContain('Updated transfer instructions');
+    expect(navigate).not.toHaveBeenCalled();
+  });
+  it('keeps field errors and drafts in a failed consent edit', async () => {
+    const { fixture } = await openRecordSection('consent');
+    (
+      fixture.nativeElement.querySelector(
+        '.client-section-panel .panel-toolbar button',
+      ) as HTMLButtonElement
+    ).click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    const input = dialog.querySelector('[name="by"]') as HTMLInputElement;
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    request.mockRejectedValueOnce(
+      new ApiError('Check the consent fields.', 400, 'validation_error', {
+        by: ['Record the person and their authority.'],
+      }),
+    );
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(dialog.textContent).toContain('Record the person and their authority.');
+    expect(document.querySelector('[role="dialog"]')).toBe(dialog);
+  });
+  it('marks rejected select values as invalid and names the consent control accessibly', async () => {
+    const { fixture } = await openRecordSection('consent');
+    (
+      fixture.nativeElement.querySelector(
+        '.client-section-panel .panel-toolbar button',
+      ) as HTMLButtonElement
+    ).click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    (
+      dialog.querySelector(
+        'mat-select[aria-label="Consent status"] .mat-mdc-select-trigger',
+      ) as HTMLElement
+    ).click();
+    await settle(fixture);
+    (
+      Array.from(document.querySelectorAll('mat-option')).find(
+        (option) => option.textContent?.trim() === 'Withdrawn',
+      ) as HTMLElement
+    ).click();
+    await settle(fixture);
+    request.mockRejectedValueOnce(
+      new ApiError('Review the consent scope.', 400, 'validation_error', {
+        status: ['Review agreed scopes before withdrawing consent.'],
+      }),
+    );
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    const control = dialog.querySelector('mat-select[aria-label="Consent status"]')!;
+    expect(control).toBeTruthy();
+    expect(control.getAttribute('aria-invalid')).toBe('true');
+    expect(dialog.textContent).toContain('Review agreed scopes before withdrawing consent.');
+  });
+  it('fetches an access code only on demand and clears it when leaving the section', async () => {
+    const { fixture } = await openRecordSection('access');
+    expect(fixture.nativeElement.textContent).not.toContain('45678-fresh-secret');
+    expect(
+      request.mock.calls.filter(([path]) => path.endsWith('/record-sections/access')),
+    ).toHaveLength(0);
+    (fixture.nativeElement.querySelector('.client-code') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(fixture.nativeElement.textContent).toContain('45678-fresh-secret');
+    expect(
+      fixture.debugElement.injector.get(ServiceUsersApi).selected()?.file?.sections['access'][
+        'code'
+      ],
+    ).toBeUndefined();
+    (fixture.componentInstance as any).setSection('documents');
+    await settle(fixture);
+    (fixture.componentInstance as any).setSection('access');
+    await settle(fixture);
+    expect(fixture.nativeElement.textContent).not.toContain('45678-fresh-secret');
+  });
+  it('prepares a fresh authorised care summary before printing and excludes access data', async () => {
+    const { fixture } = await openRecordSection('documents');
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    (
+      [...fixture.nativeElement.querySelectorAll('button')].find(
+        (element: any) =>
+          element.textContent.includes('Print') && element.textContent.includes('summary'),
+      ) as HTMLButtonElement
+    ).click();
+    await settle(fixture);
+    expect(request).toHaveBeenCalledWith('/companies/north/service-users/user-1/record-summary');
+    expect(print).toHaveBeenCalledOnce();
+    const summary = fixture.nativeElement.querySelector('.client-print') as HTMLElement;
+    expect(summary.textContent).toContain('Fresh exported name');
+    expect(summary.textContent).toContain('Saved documents');
+    expect(summary.textContent).not.toContain('45678-fresh-secret');
+    expect(summary.textContent).not.toContain('Key safe');
+    window.dispatchEvent(new Event('afterprint'));
+    await settle(fixture);
+    expect(summary.textContent?.trim()).toBe('');
+  });
+  it('does not print cached data after a denied summary export', async () => {
+    const { fixture } = await openRecordSection('documents');
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    request.mockRejectedValueOnce(
+      new ApiError('Export permission is required.', 403, 'permission_denied'),
+    );
+    (
+      [...fixture.nativeElement.querySelectorAll('button')].find(
+        (element: any) =>
+          element.textContent.includes('Print') && element.textContent.includes('summary'),
+      ) as HTMLButtonElement
+    ).click();
+    await settle(fixture);
+    expect(print).not.toHaveBeenCalled();
+    expect(TestBed.inject(ToastService).error).toHaveBeenCalledWith(
+      'Export permission is required.',
+    );
+    expect(fixture.nativeElement.querySelector('.client-print').textContent.trim()).toBe('');
+  });
+  it('preserves carer preferences when Staff Records is unavailable during a support edit', async () => {
+    const state = connectRecords();
+    state.sources['support'].staff_read = false;
+    state.sources['support'].staff_choices = [];
+    state.sources['support'].fields = state.sources['support'].fields.filter(
+      (field) => !['preferredStaff', 'backupStaff'].includes(field.key),
+    );
+    const fixture = await openOverview();
+    (fixture.componentInstance as any).setSection('support');
+    await settle(fixture);
+    (
+      fixture.nativeElement.querySelector(
+        '.client-section-panel .panel-toolbar button',
+      ) as HTMLButtonElement
+    ).click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('Staff Records read permission');
+    expect(
+      dialog
+        .querySelector('mat-select[aria-label="Preferred carers"]')
+        ?.getAttribute('aria-disabled'),
+    ).toBe('true');
+    const input = dialog.querySelector('[name="personal"]') as HTMLTextAreaElement;
+    input.value = 'Updated personal care';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    const body = request.mock.calls.find(
+      ([path, body]) => path.endsWith('/record-sections/support') && body,
+    )?.[1] as any;
+    expect(body.personal).toBe('Updated personal care');
+    expect(body.preferredStaff).toBeUndefined();
+    expect(body.backupStaff).toBeUndefined();
+    await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+  });
+  it('uses visit schedule sources without browser workspace attendance', async () => {
+    const { fixture } = await openRecordSection('tasks');
+    expect(fixture.nativeElement.textContent).toContain('Morning support');
+    expect(fixture.nativeElement.textContent).toContain('Planned');
+    expect(browser).not.toHaveBeenCalled();
+  });
   it('opens each existing overview card in a prefilled dialog without changing the page', async () => {
     const fixture = await openOverview();
     const panels = [

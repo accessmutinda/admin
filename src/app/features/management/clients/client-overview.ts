@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { RotaClient } from '../rota/rota.models';
 import { age } from '../care/care.models';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { RotaService } from '../rota/rota.service';
 
 interface ProfileRow {
@@ -23,6 +24,7 @@ export class ClientOverview {
   readonly edit = output<string>();
   readonly open = output<string>();
   protected readonly rota = inject(RotaService);
+  protected readonly access = inject(CompanyAccessService);
   protected readonly age = (dob: string) => age(dob, this.client().overview?.local_date);
   protected readonly calls = computed(() =>
     this.client().overview
@@ -40,18 +42,45 @@ export class ClientOverview {
   protected details(key: string): string {
     return this.file()?.details[key] || 'Not recorded';
   }
+  protected canOpen(section: string): boolean {
+    const overview = this.client().overview;
+    const owner =
+      (
+        {
+          plan: 'planning',
+          risks: 'risks',
+          medication: 'medication',
+          tasks: 'recording',
+        } as Record<string, string>
+      )[section] ?? 'records';
+    return (
+      this.access.can('care', owner, 'read') &&
+      (!overview ||
+        (section === 'plan'
+          ? !!overview.care_plan
+          : overview.workspace.sections.some((source) => source.key === section)))
+    );
+  }
   protected section(section: string, key: string): string {
     return this.file()?.sections[section]?.[key] || 'Not recorded';
   }
   protected entries(key: string): string {
     const overview = this.client().overview;
     if (overview) {
-      if (key === 'diagnoses') return overview.clinical.other_conditions || 'Not recorded';
-      if (key === 'allergies') return overview.clinical.allergies || 'Not recorded';
-      if (key === 'medication')
-        return overview.medication_read
-          ? overview.medication_reference || 'Not recorded'
-          : 'Unavailable';
+      if (['diagnoses', 'allergies', 'medication'].includes(key)) {
+        if (key === 'medication' && !overview.medication_read) return 'Unavailable';
+        const reference =
+          key === 'diagnoses'
+            ? overview.clinical.other_conditions
+            : key === 'allergies'
+              ? overview.clinical.allergies
+              : overview.medication_reference;
+        const records = (this.file()?.entries[key] ?? [])
+          .filter((entry) => entry.status === 'Active')
+          .map((entry) => entry.name + (entry.detail ? ' · ' + entry.detail : ''))
+          .join('\n');
+        return [reference, records].filter(Boolean).join('\n') || 'Not recorded';
+      }
       if (key === 'risks')
         return overview.risks_read
           ? overview.risks.map((r) => r.title + ' · ' + r.level).join('\n') || 'Not recorded'

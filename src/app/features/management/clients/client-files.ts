@@ -43,6 +43,20 @@ import {
   emptyClientFile,
 } from './client-file.models';
 
+const RECORD_SECTIONS = [
+  'diagnoses',
+  'risks',
+  'moving',
+  'capacity',
+  'consent',
+  'medication',
+  'allergies',
+  'access',
+  'tasks',
+  'support',
+  'documents',
+];
+
 const PROFILE_FIELD_LABELS: Record<string, string> = {
   name: 'Full name',
   reference: 'Client reference',
@@ -110,6 +124,15 @@ export class ClientFiles {
       this.overviewDialog?.close();
     });
     effect(() => {
+      this.api.selected()?.version;
+      this.id();
+      untracked(() => {
+        this.accessCode.set('');
+        this.showCode.set(false);
+        this.printSnapshot.set(null);
+      });
+    });
+    effect(() => {
       const scope = this.api.scope(),
         id = this.id();
       untracked(() => {
@@ -148,7 +171,7 @@ export class ClientFiles {
   ngOnInit(): void {
     this.route.queryParamMap?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       if (!this.editing())
-        this.sectionKey.set(
+        this.setSection(
           this.sections.some((section) => section.key === params.get('section'))
             ? params.get('section')!
             : 'overview',
@@ -241,15 +264,32 @@ export class ClientFiles {
         }
       });
   }
-  protected editOverviewSection(key: string): void {
+  protected editOverviewSection(key: string, goalId?: string): void {
     if (key === 'details') {
       this.openProfileDialog();
       return;
     }
     const person = this.api.selected();
-    if (!person?.overview || !this.api.access.can('care', 'records', 'edit')) return;
+    if (!person?.overview) return;
+    if (['plan', 'goal'].includes(key)) {
+      if (!this.api.access.can('care', 'planning', key === 'goal' && !goalId ? 'create' : 'edit'))
+        return;
+    } else if (!this.api.access.can('care', 'records', 'edit')) return;
     const card = key as OverviewCard;
-    if (!['health', 'support', 'communication', 'preferences', 'contact'].includes(card)) return;
+    if (
+      ![
+        'health',
+        'support',
+        'communication',
+        'preferences',
+        'contact',
+        'demographics',
+        'family',
+        'plan',
+        'goal',
+      ].includes(card)
+    )
+      return;
     this.overviewDialog = this.dialogs.open(ServiceUserOverviewDialog, {
       width: '800px',
       panelClass: ['service-user-dialog', 'service-user-card-dialog'],
@@ -258,7 +298,7 @@ export class ClientFiles {
       maxHeight: '90vh',
       autoFocus: 'first-tabbable',
       restoreFocus: true,
-      data: { card, person: structuredClone(person), api: this.api },
+      data: { card, goalId, person: structuredClone(person), api: this.api },
     });
   }
   protected preferredStaff(): string[] {
@@ -268,7 +308,7 @@ export class ClientFiles {
     this.values['preferredStaff'] = ids.join(',');
   }
   protected staffChoices() {
-    return this.store.staff();
+    return this.workspaceSection('support')?.staff_choices ?? [];
   }
   protected async uploadPhoto(event: Event): Promise<void> {
     this.clearFieldError('photo');
@@ -304,10 +344,18 @@ export class ClientFiles {
     }
   }
   protected readonly sections = CLIENT_SECTIONS;
-  protected readonly sectionGroups = CLIENT_SECTION_GROUPS.map((group) => ({
-    label: group.label,
-    sections: group.keys.map((key) => CLIENT_SECTIONS.find((section) => section.key === key)!),
-  }));
+  protected readonly sectionGroups = computed(() =>
+    CLIENT_SECTION_GROUPS.map((group) => ({
+      label: group.label,
+      sections: group.keys
+        .filter((key) =>
+          key === 'plan'
+            ? this.canPlan('read')
+            : !RECORD_SECTIONS.includes(key) || this.canSectionAction('read', key),
+        )
+        .map((key) => CLIENT_SECTIONS.find((section) => section.key === key)!),
+    })),
+  );
   protected readonly allergyRecords = computed(() => this.file().entries['allergies'] ?? []);
   protected readonly activeAllergies = computed(() =>
     this.allergyRecords().filter((entry) => entry.status === 'Active'),
@@ -344,6 +392,14 @@ export class ClientFiles {
       ? { label: 'Due soon', tone: 'warning' }
       : { label: 'Scheduled', tone: 'info' };
   }
+  protected canPlan(action: 'read' | 'edit' | 'create'): boolean {
+    const plan = this.client()?.overview?.care_plan;
+    return (
+      !!plan &&
+      this.api.access.can('care', 'planning', action) &&
+      (action === 'create' ? plan.can_create_goal : action === 'edit' ? plan.can_edit : true)
+    );
+  }
   protected readonly personalFields = PERSONAL_FIELDS;
   protected readonly riskFlags = RISK_FLAGS;
   protected readonly sectionKey = signal(
@@ -361,6 +417,10 @@ export class ClientFiles {
   protected readonly editing = signal('');
   protected readonly error = signal('');
   protected readonly showCode = signal(false);
+  protected readonly accessCode = signal('');
+  protected readonly accessCodeLoading = signal(false);
+  protected readonly printSnapshot = signal<DirectoryUser | null>(null);
+  protected readonly printBusy = signal(false);
   protected readonly clients = computed(() =>
     this.service
       .data()
@@ -383,12 +443,7 @@ export class ClientFiles {
       ? this.client()!.overview!.record.packages.map((call) => ({ ...call, active: true }))
       : this.service.data().calls.filter((c) => c.clientId === this.id()),
   );
-  protected readonly visits = computed(() =>
-    this.service
-      .data()
-      .visits.filter((v) => v.clientId === this.id() && v.state !== 'Cancelled')
-      .sort((a, b) => `${b.date} ${b.start}`.localeCompare(`${a.date} ${a.start}`)),
-  );
+  protected readonly visits = computed(() => this.client()?.overview?.workspace.visits ?? []);
   protected readonly entries = computed(() => this.file().entries[this.sectionKey()] ?? []);
   protected readonly activeRisks = computed(() =>
     (this.file().entries['risks'] ?? []).filter((r) => r.status === 'Active'),
@@ -396,7 +451,8 @@ export class ClientFiles {
   protected readonly completedTasks = computed(
     () => (this.file().entries['tasks'] ?? []).filter((r) => r.status === 'Completed').length,
   );
-  protected readonly completedVisit = completedVisit;
+  protected readonly completedVisit = (visit: { state: string }): boolean =>
+    visit.state === 'Completed';
   protected draft: RotaClient = this.blankClient();
   protected values: Record<string, string> = {};
   protected entry: ClientEntry = this.blankEntry();
@@ -430,7 +486,8 @@ export class ClientFiles {
     return this.service.data().calls.filter((call) => call.clientId === c.id && call.active).length;
   }
   protected value(key: string): string {
-    return this.file().sections[this.sectionKey()]?.[key] ?? '';
+    if (this.sectionKey() === 'access' && key === 'code') return this.accessCode();
+    return this.fieldValue(this.client(), this.sectionKey(), key);
   }
   protected selectWorkspaceSection(key: string): void {
     if (this.editing()) return;
@@ -448,6 +505,7 @@ export class ClientFiles {
   protected setSection(key: string): void {
     this.sectionKey.set(key);
     this.showCode.set(false);
+    this.accessCode.set('');
   }
   protected discard(): void {
     if (this.api.saving()) return;
@@ -500,6 +558,14 @@ export class ClientFiles {
     this.editing.set('profile');
   }
   protected editSection(): void {
+    if (RECORD_SECTIONS.includes(this.sectionKey())) {
+      this.openRecordDialog(this.sectionKey());
+      return;
+    }
+    if (this.sectionKey() === 'family' || this.sectionKey() === 'plan') {
+      this.editOverviewSection(this.sectionKey());
+      return;
+    }
     this.sourceId = this.id()!;
     this.sourceWorkspace = this.store.companyId();
     this.values = structuredClone(this.file().sections[this.sectionKey()] ?? {});
@@ -507,6 +573,14 @@ export class ClientFiles {
     this.editing.set('section');
   }
   protected editEntry(entry?: ClientEntry): void {
+    if (RECORD_SECTIONS.includes(this.sectionKey())) {
+      this.openRecordDialog(this.sectionKey(), entry?.id ?? null);
+      return;
+    }
+    if (this.sectionKey() === 'plan') {
+      this.editOverviewSection('goal', entry?.id);
+      return;
+    }
     this.sourceId = this.id()!;
     this.sourceWorkspace = this.store.companyId();
     this.entry = entry ? structuredClone(entry) : this.blankEntry();
@@ -612,7 +686,139 @@ export class ClientFiles {
     this.error.set('This record section is not connected to the backend yet.');
     return;
   }
-  protected print(): void {
-    if (this.service.can('export')) window.print();
+  private workspaceSection(key: string) {
+    return this.client()?.overview?.workspace.sections.find((section) => section.key === key);
+  }
+  protected canSectionAction(action: 'read' | 'edit' | 'create', key = this.sectionKey()): boolean {
+    if (key === 'plan') return this.canPlan(action);
+    if (RECORD_SECTIONS.includes(key)) {
+      const section = this.workspaceSection(key);
+      const owner =
+        (
+          { risks: 'risks', medication: 'medication', tasks: 'recording' } as Record<string, string>
+        )[key] ?? 'records';
+      return (
+        !!section &&
+        this.api.access.can('care', owner, action) &&
+        (action === 'read' || (action === 'edit' ? section.can_edit : section.can_create))
+      );
+    }
+    return this.api.access.can('care', 'records', action);
+  }
+  private openRecordDialog(sectionKey: string, entryId?: string | null): void {
+    const person = this.api.selected();
+    if (
+      !person?.overview ||
+      !this.canSectionAction(entryId === null ? 'create' : 'edit', sectionKey)
+    )
+      return;
+    this.overviewDialog = this.dialogs.open(ServiceUserOverviewDialog, {
+      width: '800px',
+      panelClass: ['service-user-dialog', 'service-user-card-dialog'],
+      backdropClass: 'service-user-dialog-backdrop',
+      maxWidth: 'calc(100vw - 24px)',
+      maxHeight: '90vh',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+      data: {
+        card: entryId === undefined ? 'record-section' : 'record-entry',
+        sectionKey,
+        entryId: entryId ?? undefined,
+        person: structuredClone(person),
+        api: this.api,
+      },
+    });
+  }
+  protected hasAccessCode(): boolean {
+    return !!this.workspaceSection('access')?.has_code;
+  }
+  protected async toggleAccessCode(): Promise<void> {
+    if (this.showCode()) {
+      this.showCode.set(false);
+      this.accessCode.set('');
+      return;
+    }
+    const id = this.id(),
+      version = this.client()?.version,
+      scope = this.api.scope();
+    if (!id || this.accessCodeLoading()) return;
+    this.accessCodeLoading.set(true);
+    try {
+      const source = await this.api.getRecordSection(id, 'access');
+      if (
+        scope !== this.api.scope() ||
+        this.id() !== id ||
+        this.client()?.version !== version ||
+        this.sectionKey() !== 'access'
+      )
+        return;
+      this.accessCode.set(source.fields.find((field) => field.key === 'code')?.value ?? '');
+      this.showCode.set(true);
+    } catch (error) {
+      if (scope === this.api.scope())
+        this.toast.error(
+          error instanceof Error ? error.message : 'The access code could not be opened.',
+        );
+    } finally {
+      this.accessCodeLoading.set(false);
+    }
+  }
+  private fieldValue(
+    person: DirectoryUser | undefined | null,
+    section: string,
+    key: string,
+  ): string {
+    const raw = person?.file?.sections[section]?.[key] ?? '';
+    if (section === 'support' && ['preferredStaff', 'backupStaff'].includes(key)) {
+      const source = person?.overview?.workspace.sections.find((item) => item.key === 'support');
+      if (!source?.staff_read) return 'Unavailable';
+      return raw
+        .split(',')
+        .filter(Boolean)
+        .map(
+          (id) =>
+            source.staff_choices.find((choice) => choice.id === id)?.name ??
+            'Unavailable staff record',
+        )
+        .join(', ');
+    }
+    return raw;
+  }
+  protected printFields(key: string, field: string): string {
+    return this.fieldValue(this.printSnapshot(), key, field);
+  }
+  protected printSections() {
+    const person = this.printSnapshot();
+    return this.sections.filter(
+      (section) =>
+        section.key !== 'access' &&
+        (section.fields || section.entryLabel) &&
+        (section.key === 'family' ||
+          (section.key === 'plan'
+            ? !!person?.overview?.care_plan
+            : !!person?.overview?.workspace.sections.some((source) => source.key === section.key))),
+    );
+  }
+  protected async print(): Promise<void> {
+    if (!this.id() || this.printBusy()) return;
+    const scope = this.api.scope(),
+      id = this.id()!;
+    this.printSnapshot.set(null);
+    this.printBusy.set(true);
+    try {
+      const person = await this.api.recordSummary(id);
+      if (scope !== this.api.scope() || this.id() !== id) return;
+      this.printSnapshot.set(person);
+      this.changeDetector.detectChanges();
+      window.addEventListener('afterprint', () => this.printSnapshot.set(null), { once: true });
+      window.print();
+    } catch (error) {
+      if (scope === this.api.scope())
+        this.toast.error(
+          error instanceof Error ? error.message : 'The care summary could not be prepared.',
+        );
+    } finally {
+      this.printBusy.set(false);
+    }
   }
 }

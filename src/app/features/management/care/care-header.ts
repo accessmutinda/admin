@@ -44,6 +44,8 @@ export class CareHeader {
   readonly disabled = input(false);
   readonly edit = output<void>();
   readonly photo = output<void>();
+  readonly printRequested = output<void>();
+  readonly printBusy = input(false);
   readonly sectionChange = output<string>();
   protected readonly service = inject(RotaService);
   private readonly router = inject(Router);
@@ -62,7 +64,7 @@ export class CareHeader {
       .join('');
   }
   protected editProfile(): void {
-    if (!this.service.can('manage') || this.disabled()) return;
+    if (!this.canEdit() || this.disabled()) return;
     if (this.local()) this.edit.emit();
     else
       void this.router.navigate(['/manage/clients', this.client().id], {
@@ -70,12 +72,20 @@ export class CareHeader {
       });
   }
   protected editPhoto(): void {
-    if (!this.service.can('manage') || this.disabled()) return;
+    if (!this.canEdit() || this.disabled()) return;
     if (this.local()) this.photo.emit();
     else this.editProfile();
   }
+  protected canEdit(): boolean {
+    return this.access.can('care', 'records', 'edit');
+  }
+  protected canExport(): boolean {
+    return this.access.can('care', 'records', 'export');
+  }
   protected printProfile(): void {
-    if (this.service.can('export')) window.print();
+    if (!this.canExport() || this.printBusy()) return;
+    if (this.local()) this.printRequested.emit();
+    else window.print();
   }
   protected select(section: string): void {
     if (this.disabled()) return;

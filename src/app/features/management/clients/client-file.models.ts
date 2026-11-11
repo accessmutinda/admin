@@ -268,8 +268,7 @@ export const CLIENT_SECTIONS: ClientSection[] = [
     label: 'Documents & care summary',
     icon: 'description',
     tone: 'blue',
-    description:
-      'Register supporting documents and print a care-plan summary. Document files are held outside this device demo.',
+    description: 'Register supporting document references and print a care-plan summary.',
     entryLabel: 'document',
     nameLabel: 'Document name',
     detailLabel: 'Type, version and storage reference',

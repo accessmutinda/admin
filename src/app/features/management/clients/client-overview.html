@@ -43,7 +43,7 @@
         <h2 id="personal-title">
           <span class="material-symbols-outlined" aria-hidden="true">person</span>Personal Details
         </h2>
-        @if (rota.can('manage')) {
+        @if (access.can('care', 'records', 'edit')) {
           <button (click)="edit.emit('details')">
             <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
           </button>
@@ -70,7 +70,7 @@
             <dt>{{ row.label }}</dt>
             <dd>
               {{ row.value }}
-              @if (row.section) {
+              @if (row.section && canOpen(row.section)) {
                 <button class="inline-link" (click)="open.emit(row.section)">View details</button>
               }
             </dd>
@@ -91,7 +91,7 @@
           <span class="material-symbols-outlined" aria-hidden="true">group</span>Next of Kin /
           Emergency Contact
         </h2>
-        @if (rota.can('manage')) {
+        @if (access.can('care', 'records', 'edit')) {
           <button (click)="edit.emit('contact')">
             <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
           </button>
@@ -129,7 +129,11 @@
         <div>
           <dt>Other contacts</dt>
           <dd>
-            <a [routerLink]="['/manage/clients', client().id, 'contacts']">View all contacts</a>
+            <a
+              [routerLink]="['/manage/clients', client().id]"
+              [queryParams]="{ section: 'details' }"
+              >View all contacts</a
+            >
           </dd>
         </div>
       </dl>
@@ -142,7 +146,7 @@
           <span class="material-symbols-outlined" aria-hidden="true">cardiology</span>Health
           Conditions
         </h2>
-        @if (rota.can('manage')) {
+        @if (access.can('care', 'records', 'edit')) {
           <button (click)="edit.emit('health')">
             <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
           </button>
@@ -163,7 +167,7 @@
                 "
                 >{{ row.value }}</span
               >
-              @if (row.section) {
+              @if (row.section && canOpen(row.section)) {
                 @if (row.section === 'medication') {
                   <a
                     class="inline-link"
@@ -187,7 +191,7 @@
           <span class="material-symbols-outlined" aria-hidden="true">volunteer_activism</span
           >Support Needs
         </h2>
-        @if (rota.can('manage')) {
+        @if (access.can('care', 'records', 'edit')) {
           <button (click)="edit.emit('support')">
             <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
           </button>
@@ -207,7 +211,7 @@
     <section class="profile-panel">
       <header>
         <h2><span class="material-symbols-outlined" aria-hidden="true">chat</span>Communication</h2>
-        @if (rota.can('manage')) {
+        @if (access.can('care', 'records', 'edit')) {
           <button (click)="edit.emit('communication')">
             <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
           </button>
@@ -228,7 +232,7 @@
           <span class="material-symbols-outlined" aria-hidden="true">sentiment_satisfied</span
           >Likes, Dislikes & Personal Information
         </h2>
-        @if (rota.can('manage')) {
+        @if (access.can('care', 'records', 'edit')) {
           <button (click)="edit.emit('preferences')">
             <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
           </button>
@@ -263,9 +267,14 @@
         <div>
           <dt>Care plan</dt>
           <dd>
-            <button class="inline-link" (click)="open.emit('plan')">
-              {{ section('plan', 'name') }}</button
-            ><span class="secondary">{{ review() }}</span>
+            @if (canOpen('plan')) {
+              <button class="inline-link" (click)="open.emit('plan')">
+                {{ section('plan', 'name') }}
+              </button>
+              <span class="secondary">{{ review() }}</span>
+            } @else {
+              <span>Unavailable</span>
+            }
           </dd>
         </div>
         <div>
@@ -279,8 +288,10 @@
         <div>
           <dt>Risk assessments</dt>
           <dd>
-            {{ entries('risks')
-            }}<button class="inline-link" (click)="open.emit('risks')">View risks</button>
+            {{ entries('risks') }}
+            @if (canOpen('risks')) {
+              <button class="inline-link" (click)="open.emit('risks')">View risks</button>
+            }
           </dd>
         </div>
       </dl>
