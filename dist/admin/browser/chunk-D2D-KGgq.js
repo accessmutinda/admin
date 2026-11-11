@@ -1,0 +1,1 @@
+import"./chunk-CUCVH8se.js";import"./chunk-5w51_-hs.js";import"./main-XHMEUYN7.js";import"./chunk-CyyTbtUn.js";import"./chunk-iL8Pw2DP.js";import"./chunk-B0fzCFlG.js";import"./chunk-DvBlW21Q.js";import"./chunk-YiYPzAhL.js";import{t as $}from"./chunk-DMg-OPQN.js";export{$ as AcademyService};

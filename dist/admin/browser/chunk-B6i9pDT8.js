@@ -1,0 +1,1 @@
+import{t as W}from"./chunk-DbDdt0Qz.js";export{W as downloadAcademyCertificate};
