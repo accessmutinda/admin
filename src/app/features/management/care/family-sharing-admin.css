@@ -1,0 +1,105 @@
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.family-name {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: #007caa;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.family-switch {
+  display: inline-flex;
+  align-items: center;
+  width: 34px;
+  height: 20px;
+  border: 0;
+  border-radius: 12px;
+  background: #afbeca;
+  padding: 2px;
+  cursor: pointer;
+  position: relative;
+}
+.family-switch > span:first-child {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.15s;
+  box-shadow: 0 1px 2px #0002;
+}
+.family-switch.on {
+  background: #007caa;
+}
+.family-switch.on > span:first-child {
+  transform: translateX(14px);
+}
+.family-switch:disabled,
+.family-name:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.family-switch:focus-visible,
+.family-name:focus-visible {
+  outline: 2px solid #009cde;
+  outline-offset: 3px;
+}
+.family-switch::before {
+  content: '';
+  position: absolute;
+  inset: -12px -5px;
+}
+.scope-list {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+[aria-invalid='true'] {
+  border-color: #b42318 !important;
+}
+.disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+@media print {
+  .care-heading .care-actions,
+  form,
+  .care-panel:has(form) {
+    display: none !important;
+  }
+  .family-name {
+    color: inherit;
+  }
+  .family-switch {
+    print-color-adjust: exact;
+  }
+}
+.publication-details {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 6px 10px;
+}
+.publication-details dt {
+  font-weight: 700;
+}
+.publication-details dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.note-dialog form > .su-dialog-content {
+  padding: 10px 0;
+}
+.note-dialog .su-dialog-content > label {
+  display: block;
+  margin-top: 10px;
+}
+.note-dialog .su-dialog-content > label.care-check {
+  display: flex;
+  gap: 6px;
+}
