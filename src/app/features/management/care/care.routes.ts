@@ -66,7 +66,13 @@ export const CARE_ROUTES: Routes = [
     canDeactivate: [(c: { canLeave: () => boolean }) => c.canLeave()],
     loadComponent: () => import('./care-documents').then((m) => m.CareDocuments),
   },
-  ...['contacts', 'family', 'audit'].map((careSection) => ({
+  {
+    path: 'contacts',
+    title: 'Contacts · CareVerity',
+    canDeactivate: [(c: { canLeave: () => boolean }) => c.canLeave()],
+    loadComponent: () => import('./care-contacts').then((m) => m.CareContacts),
+  },
+  ...['family', 'audit'].map((careSection) => ({
     path: careSection,
     data: { careSection },
     title: 'Service user record · CareVerity',

@@ -159,12 +159,52 @@ export type ProfessionalContactWrite = {
   nextOfKin: boolean;
 };
 
-export type ProfessionalReason = {
-  reason: string;
+export type ProfessionalContactQuery = {
+  page?: number;
+  page_size?: number;
 };
 
 export type ProfessionalContacts = {
   company_id: string;
   service_user_id: string;
-  contacts: ProfessionalContactRead[];
+  contacts: {
+    id: string;
+    company_id: string;
+    service_user_id: string;
+    name: string;
+    relationship: string;
+    phone: string;
+    email: string;
+    type: string;
+    nextOfKin: boolean;
+    source: 'contact' | 'representative';
+    version: number;
+    etag: string;
+    lastContact: string | null;
+    nextFollowUp: string | null;
+  }[];
+  results: {
+    id: string;
+    company_id: string;
+    service_user_id: string;
+    name: string;
+    relationship: string;
+    phone: string;
+    email: string;
+    type: string;
+    nextOfKin: boolean;
+    source: 'contact' | 'representative';
+    version: number;
+    etag: string;
+    lastContact: string | null;
+    nextFollowUp: string | null;
+  }[];
+  count: number;
+  next: number | null;
+  previous: number | null;
+  meta: {};
+};
+
+export type ProfessionalReason = {
+  reason: string;
 };

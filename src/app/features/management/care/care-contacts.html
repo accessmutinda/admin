@@ -1,0 +1,273 @@
+<cv-module-design />
+@if (client(); as c) {
+  <cv-care-header
+    [client]="c"
+    active="contacts"
+    [printManaged]="true"
+    [printBusy]="printing() || api.loading()"
+    (printRequested)="print()"
+  />
+  <div class="care-heading">
+    <div>
+      <h2>Contacts</h2>
+      <p>{{ c.name }} · Connected care records and sharing preferences.</p>
+    </div>
+    <div class="care-actions">
+      @if (api.can('create')) {
+        <button
+          class="care-button primary"
+          [disabled]="busy() || api.loading() || printing()"
+          (click)="open()"
+        >
+          + Add contact
+        </button>
+      }
+    </div>
+  </div>
+  @if ((error() || api.error()) && !editing()) {
+    <p class="care-error" role="alert">{{ error() || api.error() }}</p>
+  }
+  @if (notice()) {
+    <p class="care-note" role="status">{{ notice() }}</p>
+  }
+  <section class="care-panel">
+    <h2>Primary representative</h2>
+    <dl class="care-dl">
+      <div>
+        <dt>Name</dt>
+        <dd>
+          {{
+            api.loading()
+              ? 'Loading…'
+              : api.error()
+                ? 'Unavailable'
+                : representative()?.name || 'Not recorded'
+          }}
+        </dd>
+      </div>
+      <div>
+        <dt>Relationship</dt>
+        <dd>
+          {{
+            api.loading()
+              ? 'Loading…'
+              : api.error()
+                ? 'Unavailable'
+                : representative()?.relationship || 'Not recorded'
+          }}
+        </dd>
+      </div>
+      <div>
+        <dt>Phone / email</dt>
+        <dd>
+          {{
+            api.loading()
+              ? 'Loading…'
+              : api.error()
+                ? 'Unavailable'
+                : representative()?.phone || 'Not recorded'
+          }}
+          ·
+          {{
+            api.loading()
+              ? 'Loading…'
+              : api.error()
+                ? 'Unavailable'
+                : representative()?.email || 'Not recorded'
+          }}
+        </dd>
+      </div>
+    </dl>
+    <p class="care-note">
+      The primary representative remains editable from the profile. Additional contacts are managed
+      below.
+    </p>
+  </section>
+  <section class="care-panel">
+    <h2>Family, emergency & professional contacts</h2>
+    <div class="care-scroll" tabindex="0" role="region" aria-label="Contact register">
+      <table class="care-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Relationship</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (contact of contacts(); track contact.id) {
+            <tr>
+              <td>
+                {{ contact.name }}
+                @if (contact.nextOfKin) {
+                  <span class="care-tag" data-tone="green">Next of kin</span>
+                }
+              </td>
+              <td>{{ contact.type }}</td>
+              <td>{{ contact.relationship || 'Not recorded' }}</td>
+              <td>
+                @if (contact.phone) {
+                  <a [href]="'tel:' + contact.phone">{{ contact.phone }}</a>
+                } @else {
+                  Not recorded
+                }
+              </td>
+              <td>
+                @if (contact.email) {
+                  <a [href]="'mailto:' + contact.email">{{ contact.email }}</a>
+                } @else {
+                  Not recorded
+                }
+              </td>
+              <td>
+                @if (api.can('edit')) {
+                  <button
+                    class="care-button"
+                    [disabled]="busy() || printing() || api.loading()"
+                    (click)="open(contact)"
+                  >
+                    Edit contact
+                  </button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="care-empty">
+                {{
+                  api.loading()
+                    ? 'Loading contacts…'
+                    : api.error()
+                      ? 'Contacts are unavailable.'
+                      : 'No additional contacts recorded.'
+                }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+} @else {
+  <p class="care-error" role="status">
+    {{
+      api.records.detailLoading()
+        ? 'Loading service user…'
+        : api.error() || api.records.error() || 'Service user contacts are unavailable.'
+    }}
+  </p>
+}
+@if (editing()) {
+  <div class="note-dialog-backdrop">
+    <section
+      class="care-panel note-dialog service-user-popup"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="contact-editor-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+    >
+      <div class="note-panel-heading">
+        <h2 id="contact-editor-title">Contact details</h2>
+        <button
+          class="note-icon-button"
+          aria-label="Close editor"
+          [disabled]="busy()"
+          (click)="close()"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      @if (error()) {
+        <p class="care-error" role="alert">{{ error() }}</p>
+      }
+      <form class="note-editor" (ngSubmit)="save()">
+        <label
+          >Name *<input
+            [disabled]="busy()"
+            name="name"
+            [(ngModel)]="contact.name"
+            required
+            maxlength="200"
+            [attr.aria-invalid]="fieldErrors()['name'] ? true : null"
+          />
+          @if (fieldErrors()['name']) {
+            <small class="care-error">{{ fieldErrors()['name'].join(' ') }}</small>
+          }
+        </label>
+        <label
+          >Relationship<input
+            [disabled]="busy()"
+            name="relationship"
+            [(ngModel)]="contact.relationship"
+            maxlength="150"
+            [attr.aria-invalid]="fieldErrors()['relationship'] ? true : null"
+          />
+          @if (fieldErrors()['relationship']) {
+            <small class="care-error">{{ fieldErrors()['relationship'].join(' ') }}</small>
+          }
+        </label>
+        <label
+          >Type<mat-select
+            [disabled]="busy()"
+            cvSelect
+            name="type"
+            aria-label="Contact type"
+            [(ngModel)]="contact.type"
+          >
+            @for (t of types; track t) {
+              <mat-option [value]="t">{{ t }}</mat-option>
+            }
+          </mat-select>
+          @if (fieldErrors()['type']) {
+            <small class="care-error">{{ fieldErrors()['type'].join(' ') }}</small>
+          }
+        </label>
+        <label
+          >Phone<input
+            [disabled]="busy()"
+            name="phone"
+            type="tel"
+            [(ngModel)]="contact.phone"
+            maxlength="50"
+            [attr.aria-invalid]="fieldErrors()['phone'] ? true : null"
+          />
+          @if (fieldErrors()['phone']) {
+            <small class="care-error">{{ fieldErrors()['phone'].join(' ') }}</small>
+          }
+        </label>
+        <label class="full-width"
+          >Email<input
+            [disabled]="busy()"
+            name="email"
+            type="email"
+            [(ngModel)]="contact.email"
+            maxlength="254"
+            [attr.aria-invalid]="fieldErrors()['email'] ? true : null"
+          />
+          @if (fieldErrors()['email']) {
+            <small class="care-error">{{ fieldErrors()['email'].join(' ') }}</small>
+          }
+        </label>
+        <label class="care-check full-width"
+          ><input
+            [disabled]="busy()"
+            name="kin"
+            type="checkbox"
+            [(ngModel)]="contact.nextOfKin"
+          />Next of kin</label
+        >
+        <div class="note-editor-footer full-width">
+          <button class="care-button" type="button" [disabled]="busy()" (click)="close()">
+            Cancel</button
+          ><button class="care-button primary" type="submit" [disabled]="busy()">
+            {{ busy() ? 'Saving…' : 'Save contact' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+}
