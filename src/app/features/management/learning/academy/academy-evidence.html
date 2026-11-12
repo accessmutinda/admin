@@ -13,7 +13,7 @@
   </div>
   <a class="academy-button" routerLink="/manage/learning/reports">Reports & audit log →</a>
 </div>
-<cv-academy-message [error]="error()" [notice]="notice()" />
+<cv-academy-message [error]="error() || (resultsView ? academy.resultsApi.error() : '')" [notice]="notice()" />
 <section class="panel toolbar">
   <label class="field"
     >Search learner, course or reference<input type="search" [(ngModel)]="search"
@@ -55,7 +55,7 @@
     >
   }
 </section>
-@if (resultsView) {
+@if (resultsView && !academy.resultsApi.error()) {
   <section class="panel">
     <h2>Assessment results & retake review</h2>
     <div class="scroll" tabindex="0" role="region" aria-label="Assessment results">
@@ -133,7 +133,7 @@
       </table>
     </div>
   </section>
-} @else {
+} @else if (!resultsView) {
   <section class="panel">
     <h2>Internal certificate evidence</h2>
     <div class="scroll" tabindex="0" role="region" aria-label="Certificate evidence">
@@ -238,6 +238,7 @@
   </section>
 }
 
+@if (!resultsView) {
 <section class="panel">
   <div class="heading">
     <h2>Evidence workflow exceptions</h2>
@@ -258,3 +259,5 @@
     }
   }
 </section>
+
+}

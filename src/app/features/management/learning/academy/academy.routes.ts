@@ -46,6 +46,50 @@ const capability =
       ),
     );
   };
+const resultsLoaded: CanActivateFn = async (route) => {
+  const context = inject(EnvironmentInjector),
+    router = inject(Router);
+  const m = await import('./academy-results-api.service');
+  const api = runInInjectionContext(context, () => inject(m.AcademyResultsApi));
+  if (!api.available()) return router.createUrlTree(['/access-denied']);
+  try {
+    await api.load(false, true);
+    const id = route.paramMap.get('attemptId');
+    if (id) await api.detail(id);
+  } catch {
+    /* The page displays the access or connection error. */
+  }
+  return true;
+};
+const learningLoaded: CanActivateFn = async (route) => {
+  if (route.queryParamMap.get('preview') === '1') return true;
+  const context = inject(EnvironmentInjector),
+    router = inject(Router);
+  const m = await import('./academy-results-api.service');
+  const api = runInInjectionContext(context, () => inject(m.AcademyResultsApi));
+  if (!api.learnerAvailable()) return router.createUrlTree(['/access-denied']);
+  try {
+    await api.load(true, true);
+    const id = route.paramMap.get('attemptId');
+    if (id) await api.detail(id, true);
+  } catch {
+    /* The page displays the access or connection error. */
+  }
+  return true;
+};
+const resultsIfAvailable: CanActivateFn = async () => {
+  const context = inject(EnvironmentInjector);
+  const m = await import('./academy-results-api.service');
+  const api = runInInjectionContext(context, () => inject(m.AcademyResultsApi));
+  if (api.available()) {
+    try {
+      await api.load(false, true);
+    } catch {
+      /* The page displays the access error. */
+    }
+  }
+  return true;
+};
 const assignmentsLoaded: CanActivateFn = async () => {
   const router = inject(Router);
   const context = inject(EnvironmentInjector);
@@ -92,18 +136,18 @@ const previewLoaded: CanActivateFn = async (route) => {
 const admin = capability('author');
 const reader = access('evidence');
 const learner = access('learner');
-const leave = (c: { canLeave: () => boolean }) => c.canLeave();
+const leave = (c: { canLeave: () => boolean | Promise<boolean> }) => c.canLeave();
 export const ACADEMY_ADMIN_ROUTES: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    canActivate: [reader],
+    canActivate: [reader, resultsIfAvailable],
     title: 'CareVerity Academy · CareVerity',
     loadComponent: () => import('./academy-dashboard').then((m) => m.AcademyDashboard),
   },
   {
     path: 'results/:attemptId',
-    canActivate: [reader],
+    canActivate: [resultsLoaded],
     title: 'Staff results & retakes · CareVerity',
     loadComponent: () => import('./academy-results-review').then((m) => m.AcademyResultsReview),
   },
@@ -117,7 +161,7 @@ export const ACADEMY_ADMIN_ROUTES: Routes = [
   ...['results', 'certificates'].map((view) => ({
     path: view,
     data: { view },
-    canActivate: [reader],
+    canActivate: view === 'results' ? [resultsLoaded] : [reader],
     title: 'CareVerity Academy · Evidence',
     loadComponent: () => import('./academy-evidence').then((m) => m.AcademyEvidence),
   })),
@@ -129,7 +173,7 @@ export const ACADEMY_ADMIN_ROUTES: Routes = [
   },
   {
     path: 'governance',
-    canActivate: [reader],
+    canActivate: [reader, resultsIfAvailable],
     title: 'Academy policies & reviews · CareVerity',
     loadComponent: () => import('./academy-governance').then((m) => m.AcademyGovernancePage),
   },
@@ -225,7 +269,7 @@ export const ACADEMY_STAFF_ROUTES: Routes = [
   ].map((view) => ({
     path: 'training/' + view,
     data: { view },
-    canActivate: [learner, previewLoaded],
+    canActivate: [learner, previewLoaded, learningLoaded],
     canDeactivate: [leave],
     title: 'My CareVerity Academy · CareVerity',
     loadComponent: () => import('./academy-learner').then((m) => m.AcademyLearner),
@@ -233,7 +277,7 @@ export const ACADEMY_STAFF_ROUTES: Routes = [
   {
     path: 'training/courses/:courseId',
     data: { view: 'course' },
-    canActivate: [learner, previewLoaded],
+    canActivate: [learner, previewLoaded, learningLoaded],
     canDeactivate: [leave],
     title: 'Learning course · CareVerity',
     loadComponent: () => import('./academy-learner').then((m) => m.AcademyLearner),
@@ -241,7 +285,7 @@ export const ACADEMY_STAFF_ROUTES: Routes = [
   {
     path: 'training/courses/:courseId/lessons/:lessonId',
     data: { view: 'lesson' },
-    canActivate: [learner, previewLoaded],
+    canActivate: [learner, previewLoaded, learningLoaded],
     canDeactivate: [leave],
     title: 'Course lesson · CareVerity',
     loadComponent: () => import('./academy-learner').then((m) => m.AcademyLearner),
@@ -249,7 +293,7 @@ export const ACADEMY_STAFF_ROUTES: Routes = [
   ...['assessment', 'results'].map((view) => ({
     path: 'training/' + view + '/:attemptId',
     data: { view: view === 'results' ? 'result' : 'assessment' },
-    canActivate: [learner, previewLoaded],
+    canActivate: [learner, previewLoaded, learningLoaded],
     canDeactivate: [leave],
     title: 'Training assessment · CareVerity',
     loadComponent: () => import('./academy-assessment').then((m) => m.AcademyAssessment),
@@ -257,7 +301,7 @@ export const ACADEMY_STAFF_ROUTES: Routes = [
   {
     path: 'training/certificates/:certificateId',
     data: { view: 'certificate' },
-    canActivate: [learner, previewLoaded],
+    canActivate: [learner, previewLoaded, learningLoaded],
     canDeactivate: [leave],
     title: 'Training certificate · CareVerity',
     loadComponent: () => import('./academy-learner').then((m) => m.AcademyLearner),

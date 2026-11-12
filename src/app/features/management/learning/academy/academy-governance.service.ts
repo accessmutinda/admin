@@ -596,49 +596,21 @@ export class AcademyGovernanceService {
       workspace,
     );
   }
-  releaseFeedback(id: string) {
-    const a = this.academy.attempt(id);
-    if (!a) return 'Assessment unavailable.';
-    return this.mutate(
-      'review',
-      'Assessment feedback released',
-      (d) => {
-        const a = d.attempts.find((a) => a.id === id)!;
-        if (!a.submittedAt || a.invalidatedAt)
-          return 'Only a submitted valid result can release feedback.';
-        a.feedbackReleasedAt = new Date().toISOString();
-        a.feedbackAvailableAt = '';
-        a.showFeedback = true;
-        return null;
-      },
-      a.personId,
-    );
-  }
-  invalidate(id: string, reason: string) {
-    const source = this.academy.attempt(id);
-    if (!source) return 'Assessment unavailable.';
-    const c = this.academy
-      .state()
-      .certificates.find(
-        (c) => (c.passedAttemptId === id || c.assignmentId === source.assignmentId) && !c.revokedAt,
-      );
-    if (c && !c.revokedAt) {
-      const error = this.academy.revokeCertificate(c.id, reason, this.workspace());
-      if (error) return error;
+  async releaseFeedback(id: string): Promise<string | null> {
+    try {
+      await this.academy.resultsApi.releaseFeedback(id);
+      return null;
+    } catch (e) {
+      return (e as Error).message;
     }
-    return this.mutate(
-      'correct',
-      'Assessment invalidated with original result retained',
-      (d) => {
-        const a = d.attempts.find((a) => a.id === id);
-        if (!a?.submittedAt || !reason.trim() || a.invalidatedAt)
-          return 'Select a submitted result and record the invalidation reason.';
-        a.invalidatedAt = new Date().toISOString();
-        a.invalidationReason = reason;
-        return null;
-      },
-      source.personId,
-    );
+  }
+  async invalidate(id: string, reason: string): Promise<string | null> {
+    try {
+      await this.academy.resultsApi.invalidate(id, reason);
+      return null;
+    } catch (e) {
+      return (e as Error).message;
+    }
   }
   reissue(id: string, reason: string) {
     return this.mutate('correct', 'Certificate correction issued', (d) => {

@@ -214,7 +214,7 @@
       <div class="actions">
         <button
           class="academy-button danger"
-          [disabled]="!academy.can('correct') || !invalidationAttempt || !reason.trim()"
+          [disabled]="!academy.resultsApi.canApprove() || !invalidationAttempt || !reason.trim()"
           (click)="invalidate()"
         >
           Invalidate original result</button
@@ -427,7 +427,7 @@
               ><button
                 class="academy-button"
                 [disabled]="!academy.can('review', a.personId) || !!a.feedbackReleasedAt"
-                (click)="result(operations.releaseFeedback(a.id))"
+                (click)="releaseFeedback(a.id)"
               >
                 {{ a.feedbackReleasedAt ? 'Feedback released' : 'Release feedback' }}
               </button>

@@ -13,7 +13,7 @@ export class AcademyAssets {
     return asset.id;
   }
   async url(id: string): Promise<string> {
-    return URL.createObjectURL(await this.academy.api.blob(id));
+    return URL.createObjectURL(await (this.academy.api.available() ? this.academy.api.blob(id) : this.academy.resultsApi.blob(id)));
   }
   async download(id: string): Promise<void> {
     const asset = this.academy.state().assets.find((a) => a.id === id);

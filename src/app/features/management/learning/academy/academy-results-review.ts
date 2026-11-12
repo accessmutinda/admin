@@ -17,12 +17,15 @@ import { MatMenuModule } from '@angular/material/menu';
 import { CvSelect } from '../../../../shared/ui/select';
 import { londonDate, londonInstant } from '../../rota/rota.models';
 import { AcademyService } from './academy.service';
-import { AcademyDemoWorkflow } from './academy-demo-workflow';
 import { AcademyAttempt, AcademySyncStatus } from './academy.models';
 import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 import { AcademyDate } from './academy-date';
 @Component({
-  host: { class: 'module-page academy-page' },
+  host: {
+    class: 'module-page academy-page',
+    '[attr.inert]': 'academy.resultsApi.saving() ? "" : null',
+    '[attr.aria-busy]': 'academy.resultsApi.saving()',
+  },
   selector: 'cv-academy-results-review',
   imports: [
     FormsModule,
@@ -40,7 +43,6 @@ import { AcademyDate } from './academy-date';
 })
 export class AcademyResultsReview {
   protected readonly academy = inject(AcademyService);
-  private readonly workflow = inject(AcademyDemoWorkflow);
   private readonly route = inject(ActivatedRoute);
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
@@ -106,16 +108,18 @@ export class AcademyResultsReview {
     inject(DestroyRef).onDestroy(() => clearInterval(clock));
   }
   protected name(id: string) {
-    return this.academy.store.staff().find((p) => p.id === id)?.name ?? 'Unavailable staff record';
+    return (
+      this.academy.resultsApi.people().find((p) => p.id === id)?.name ?? 'Unavailable staff record'
+    );
   }
-  protected assignment(attempt = this.result()) {
+  protected assignment(attempt: AcademyAttempt | undefined = this.result()) {
     return attempt
       ? this.academy
           .assignments()
           .find((a) => a.id === attempt.assignmentId && a.personId === attempt.personId)
       : undefined;
   }
-  protected history(attempt = this.result()) {
+  protected history(attempt: AcademyAttempt | undefined = this.result()) {
     return attempt
       ? this.academy
           .state()
@@ -127,10 +131,10 @@ export class AcademyResultsReview {
           .sort((a, b) => a.startedAt.localeCompare(b.startedAt))
       : [];
   }
-  protected attemptNumber(attempt = this.result()) {
+  protected attemptNumber(attempt: AcademyAttempt | undefined = this.result()) {
     return this.history(attempt).findIndex((a) => a.id === attempt?.id) + 1;
   }
-  protected policy(attempt = this.result()) {
+  protected policy(attempt: AcademyAttempt | undefined = this.result()) {
     return (
       this.assignment(attempt)?.policySnapshot ??
       attempt?.policy ?? { ...this.academy.state().settings, retakeWaitHours: 0 }
@@ -174,7 +178,7 @@ export class AcademyResultsReview {
       assignment = this.assignment(attempt),
       available = this.availability(attempt);
     return (
-      this.academy.can('assign', attempt.personId) &&
+      this.academy.resultsApi.canEdit() &&
       !attempt.invalidatedAt &&
       !attempt.passed &&
       attempt.groupKind !== 'Survey' &&
@@ -315,19 +319,16 @@ export class AcademyResultsReview {
   protected retryWorkflow() {
     const job = this.job();
     if (!job) return;
-    this.error.set(this.workflow.retry(job.id) ?? '');
+    this.error.set('The evidence delivery integration is not configured.');
     if (!this.error())
       this.notice.set(
         'The saved workflow is queued for retry. Existing acknowledged stages will be retained.',
       );
   }
-  protected notify(attempt: AcademyAttempt) {
+  protected async notify(attempt: AcademyAttempt) {
     this.notice.set('');
-    this.error.set(this.academy.notifyRetake(attempt.id, this.workspace) ?? '');
-    if (!this.error())
-      this.notice.set(
-        'Retake notice recorded in the learner portal. External email delivery is not configured.',
-      );
+    this.error.set((await this.academy.notifyRetake(attempt.id, this.workspace)) ?? '');
+    if (!this.error()) this.notice.set('Retake notification request queued.');
   }
   private localTime(instant: number) {
     const d = new Date(instant);
@@ -355,9 +356,10 @@ export class AcademyResultsReview {
     this.scheduling.set(attempt);
   }
   @HostListener('window:keydown.escape') protected closeSchedule() {
+    if (this.academy.resultsApi.saving()) return;
     this.scheduling.set(null);
   }
-  protected saveSchedule() {
+  protected async saveSchedule() {
     const attempt = this.scheduling();
     if (!attempt) return;
     const [date, time] = this.scheduleDate.split('T'),
@@ -366,15 +368,11 @@ export class AcademyResultsReview {
       this.scheduleError.set('Choose a valid, unambiguous UK date and time.');
       return;
     }
-    const error = this.academy.scheduleRetake(attempt.id, instant, this.workspace);
+    const error = await this.academy.scheduleRetake(attempt.id, instant, this.workspace);
     this.scheduleError.set(error ?? '');
     if (!error) {
       this.scheduling.set(null);
-      this.notice.set(
-        this.academy.state().settings.portalNotifications
-          ? 'Retake scheduled and an in-platform learner notice recorded.'
-          : 'Retake scheduled. Portal notifications are disabled.',
-      );
+      this.notice.set('Retake scheduled and a notification request queued.');
     }
   }
 }

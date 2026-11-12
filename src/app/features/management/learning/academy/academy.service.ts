@@ -1,3 +1,4 @@
+import { AcademyResultsApi } from './academy-results-api.service';
 import { AcademyAssignmentsApi } from './academy-assignments-api.service';
 import { AcademyApi } from './academy-api.service';
 import { CompanyAccessService } from '../../../../core/access/company-access.service';
@@ -44,21 +45,37 @@ export class AcademyService {
   readonly store = inject(ManagementStore);
   readonly api = inject(AcademyApi);
   readonly assignmentApi = inject(AcademyAssignmentsApi);
+  readonly resultsApi = inject(AcademyResultsApi);
   readonly auth = inject(AuthService);
   readonly state = computed(() => {
     const records = this.api.courses();
+    const courses = new Map(
+      records
+        .flatMap((r) =>
+          r.published ? [r.published] : r.course.status !== 'Draft' ? [r.course] : [],
+        )
+        .map((c) => [c.id, c]),
+    );
+    for (const a of [...this.resultsApi.assignments()]
+      .filter((a) => !a.archived)
+      .sort((a, b) => b.assignedAt.localeCompare(a.assignedAt))) {
+      if (a.courseSnapshot && !courses.has(a.courseId)) courses.set(a.courseId, a.courseSnapshot);
+    }
     return {
       ...emptyAcademy(),
       settings: { ...emptyAcademy().settings, ...this.api.settings() },
-      courses: records.flatMap((r) =>
-        r.published ? [r.published] : r.course.status !== 'Draft' ? [r.course] : [],
-      ),
+      courses: [...courses.values()],
       courseDrafts: records.filter((r) => r.course.status === 'Draft').map((r) => r.course),
       questions: records.flatMap((r) => r.questions.filter((q) => q.status !== 'Draft')),
       questionDrafts: records.flatMap((r) => r.questions.filter((q) => q.status === 'Draft')),
       courseVersions: records.flatMap((r) => r.versions),
-      assets: this.api.assets(),
-      assignments: this.assignmentApi.assignments(),
+      assets: [
+        ...this.api.assets(),
+        ...this.resultsApi.assets().filter((a) => !this.api.assets().some((v) => v.id === a.id)),
+      ],
+      assignments: this.assignments(),
+      attempts: this.resultsApi.attempts(),
+      retakePlans: this.resultsApi.retakes(),
     };
   });
   async persistCourse(
@@ -133,6 +150,7 @@ export class AcademyService {
     return this.access.can('academy', features[capability] ?? 'learner', capability);
   }
   feedbackVisible(attempt: AcademyAttempt): boolean {
+    if ('feedbackPermitted' in attempt) return !!attempt.feedbackPermitted;
     if (this.can('author') || this.can('review', attempt.personId)) return true;
     return (
       !!attempt.submittedAt &&
@@ -142,17 +160,12 @@ export class AcademyService {
       (!attempt.feedbackAvailableAt || Date.parse(attempt.feedbackAvailableAt) <= Date.now())
     );
   }
-  readonly me = computed(() => {
-    const email = this.auth.currentUser()?.email.toLowerCase();
-    const matches = this.store
-      .staff()
-      .filter(
-        (p) =>
-          p.email.toLowerCase() === email && !['Inactive', 'Left'].includes(p.hr?.status ?? ''),
-      );
-    return matches.length === 1 ? matches[0] : undefined;
+  readonly me = computed(() => this.resultsApi.me());
+  readonly assignments = computed(() => {
+    const rows = new Map(this.assignmentApi.assignments().map((a) => [a.id, a]));
+    this.resultsApi.assignments().forEach((a) => rows.set(a.id, a));
+    return [...rows.values()];
   });
-  readonly assignments = computed(() => this.assignmentApi.assignments());
   owns(personId: string): boolean {
     return this.enabled() && this.me()?.id === personId;
   }
@@ -340,6 +353,19 @@ export class AcademyService {
       )[0];
   }
   assessmentAvailability(a: AcademyAssignment, now = Date.now(), groupId = '') {
+    const server = this.resultsApi.assignments().find((v) => v.id === a.id)?.availability[
+      groupId === 'final' ? '' : groupId
+    ];
+    if (server) {
+      const ready = server.readyAt && Date.parse(server.readyAt) <= now;
+      return {
+        ...server,
+        ...(ready &&
+        server.reason === 'Retake waiting period or scheduled time has not been reached.'
+          ? { readyAt: '', reason: '' }
+          : {}),
+      };
+    }
     groupId = groupId === 'final' ? '' : groupId;
     const course = this.assignedCourse(a);
     const group = course?.questionGroups?.find((g) => g.id === groupId);
@@ -482,46 +508,7 @@ export class AcademyService {
     elapsedSeconds: number,
     workspace: string,
   ): string | null {
-    const assignment = this.assignment(assignmentId);
-    if (!assignment) return 'Assignment unavailable.';
-    return this.change(
-      workspace,
-      'Lesson progress saved',
-      lessonId,
-      (d) => {
-        const a = d.assignments.find((v) => v.id === assignmentId && !v.archived)!;
-        const lesson = this.assignedCourse(a)?.lessons.find((l) => l.id === lessonId);
-        if (!lesson?.videoId || this.lessonBlock(a, lessonId))
-          return 'Video lesson is locked or unavailable.';
-        if (
-          [start, end, duration, elapsedSeconds].some((v) => !Number.isFinite(v)) ||
-          start < 0 ||
-          end < 0 ||
-          duration <= 0 ||
-          end > duration + 1 ||
-          start > duration ||
-          elapsedSeconds < 0
-        )
-          return 'Invalid video progress.';
-        a.positions[lessonId] = Math.min(end, duration);
-        a.videoDurations = { ...a.videoDurations, [lessonId]: duration };
-        if (end <= start || end - start > Math.min(elapsedSeconds, 15) * 2 + 0.5) return null;
-        const ranges = [
-          ...(a.watchedRanges?.[lessonId] ?? []),
-          [start, Math.min(end, duration)] as [number, number],
-        ].sort((a, b) => a[0] - b[0]);
-        const merged: [number, number][] = [];
-        for (const range of ranges) {
-          const last = merged.at(-1);
-          if (last && range[0] <= last[1]) last[1] = Math.max(last[1], range[1]);
-          else merged.push([...range]);
-        }
-        a.watchedRanges = { ...a.watchedRanges, [lessonId]: merged };
-        return null;
-      },
-      assignment.personId,
-      false,
-    );
+    return 'Verified video viewing evidence is not available for this lesson yet.';
   }
   requestTrainingRecords(workspace: string): string | null {
     const person = this.me();
@@ -1507,522 +1494,82 @@ export class AcademyService {
     return 'Open Manage training to save assignment changes.';
   }
   enrol(courseId: string, workspace: string): string | null {
-    const person = this.me();
-    if (!person) return 'Your account is not linked to a staff record.';
-    return this.change(
-      workspace,
-      'Optional course enrolment',
-      courseId,
-      (d) => {
-        const course = d.courses.find((c) => c.id === courseId && c.status === 'Published');
-        if (
-          !d.settings.allowSelfEnrolment ||
-          !course ||
-          course.mandatory ||
-          !this.canBrowseCourse(course)
-        )
-          return 'Self-enrolment is not available for this course.';
-        if (
-          d.assignments.some(
-            (a) => a.personId === person.id && a.courseId === courseId && !a.archived,
-          )
-        )
-          return 'You are already enrolled.';
-        d.assignments.push({
-          ...legacyAssignment(person, courseId),
-          id: crypto.randomUUID(),
-          assignedAt: new Date().toISOString(),
-          assignedBy: person.name,
-          tenantId: workspace,
-          courseVersion: course.version,
-          courseSnapshot: this.snapshotCourse(course, d.settings),
-          questionSnapshot: structuredClone(
-            course.assessmentQuestions ??
-              d.questions.filter((q) => q.courseId === courseId && q.status === 'Published'),
-          ),
-          policySnapshot: this.policyFor(course, d.settings),
-          source: 'Learner optional enrolment',
-          type: 'Initial',
-        });
-        return null;
-      },
-      person.id,
-      false,
-    );
+    return 'Ask your training manager to assign this course.';
   }
-  saveLesson(
+  private async assessmentWrite(
+    workspace: string,
+    callback: () => Promise<unknown>,
+  ): Promise<string | null> {
+    if (workspace !== this.store.companyId())
+      return 'The workspace changed. Reopen this assessment.';
+    try {
+      await callback();
+      return null;
+    } catch (e) {
+      return (e as Error).message;
+    }
+  }
+  async saveLesson(
     assignmentId: string,
     lessonId: string,
     note: string | null,
     position: number | null,
     complete: boolean,
     workspace: string,
-  ): string | null {
-    const assignment = this.assignment(assignmentId);
-    if (!assignment) return 'Assignment unavailable.';
-    return this.change(
-      workspace,
-      complete ? 'Lesson completed' : 'Lesson progress saved',
-      lessonId,
-      (d) => {
-        const a = d.assignments.find((v) => v.id === assignmentId && !v.archived)!;
-        const course =
-          a.courseSnapshot ??
-          d.courses.find((c) => c.id === a.courseId && c.status === 'Published');
-        const index = course?.lessons.findIndex((l) => l.id === lessonId) ?? -1;
-        if (!course || index < 0) return 'Lesson is unavailable.';
-        const block = this.lessonBlock(a, lessonId);
-        if (block) return block;
-        const lesson = course.lessons[index];
-        if (
-          complete &&
-          lesson.videoId &&
-          this.watchedPercent(a, lessonId) < (lesson.watchThreshold ?? 90)
-        )
-          return 'Watch the required portion of the video before completing this lesson.';
-        if (
-          complete &&
-          lesson.requireResourceAck &&
-          lesson.handoutIds.some(
-            (id) =>
-              !lesson.optionalHandoutIds?.includes(id) && !a.resourceAcknowledgements?.includes(id),
-          )
-        )
-          return 'Open and acknowledge all required resources first.';
-        if (note !== null) {
-          if (note.length > 1000) return 'Notes are limited to 1000 characters.';
-          a.notes[lessonId] = note;
-        }
-        if (position !== null) {
-          if (!Number.isFinite(position) || position < 0) return 'Invalid video position.';
-          a.positions[lessonId] = position;
-        }
-        if (complete && !a.completedLessonIds.includes(lessonId))
-          a.completedLessonIds.push(lessonId);
-        return null;
-      },
-      assignment.personId,
-      false,
-    );
+  ): Promise<string | null> {
+    return this.assessmentWrite(workspace, async () => {
+      if (note !== null)
+        await this.resultsApi.event(assignmentId, { kind: 'note', lessonId, text: note });
+      if (position !== null)
+        await this.resultsApi.event(assignmentId, {
+          kind: 'position',
+          lessonId,
+          position: position.toFixed(3),
+        });
+      if (complete) await this.resultsApi.event(assignmentId, { kind: 'completed', lessonId });
+    });
   }
-  startAttempt(
+  async startAttempt(
     assignmentId: string,
     workspace: string,
     groupId = '',
-  ): { id: string; error: string | null } {
-    if (workspace !== this.store.companyId())
-      return { id: '', error: 'The workspace changed. Reopen the assessment.' };
-    const assignment = this.assignment(assignmentId);
-    if (!assignment) return { id: '', error: 'Assignment unavailable.' };
-    groupId = groupId === 'final' ? '' : groupId;
-    const availability = this.assessmentAvailability(assignment, Date.now(), groupId);
-    if (availability.reason)
-      return {
-        id: '',
-        error: availability.readyAt
-          ? 'Retake available after ' +
-            availability.readyAt +
-            '. Review the learning or contact your training manager.'
-          : availability.reason === 'Complete all required lessons to unlock the assessment.'
-            ? 'Complete all lessons before starting the assessment.'
-            : availability.reason,
-      };
-    const running = this.state().attempts.find(
-      (a) => a.assignmentId === assignmentId && (a.groupId ?? '') === groupId && !a.submittedAt,
-    );
-    if (running && this.owns(assignment.personId)) return { id: running.id, error: null };
-    const id = crypto.randomUUID();
-    const error = this.change(
-      workspace,
-      'Assessment started',
-      assignment.courseId,
-      (d) => {
-        const a = d.assignments.find((v) => v.id === assignmentId && !v.archived);
-        const course =
-          a?.courseSnapshot ??
-          d.courses.find((c) => c.id === assignment.courseId && c.status === 'Published');
-        if (!a || !course) return 'Assignment or course unavailable.';
-        const basePolicy = a.policySnapshot ?? this.policyFor(course, d.settings);
-        const adjustment = d.governance?.adjustments
-          .filter(
-            (x) =>
-              x.assignmentId === a.id &&
-              x.personId === a.personId &&
-              (!x.expires || x.expires >= londonDate()),
-          )
-          .at(-1);
-        const policy = {
-          ...basePolicy,
-          timeLimitMinutes: adjustment?.untimed
-            ? 0
-            : basePolicy.timeLimitMinutes
-              ? basePolicy.timeLimitMinutes + (adjustment?.extraMinutes ?? 0)
-              : 0,
-        };
-        let questions =
-          a.questionSnapshot ??
-          d.questions.filter((q) => q.courseId === course.id && q.status === 'Published');
-        questions = questions
-          .filter((q) => (q.groupId === 'final' ? '' : (q.groupId ?? '')) === groupId)
-          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-        if (!questions.length) return 'No published questions are available.';
-        if (policy.shuffleQuestions ?? d.settings.shuffleQuestions) questions = shuffled(questions);
-        questions = structuredClone(questions).map((q) => ({
-          ...q,
-          options:
-            (policy.shuffleOptions ?? d.settings.shuffleOptions) && q.shuffle
-              ? shuffled(q.options)
-              : q.options,
-        }));
-        const now = Date.now();
-        const group = course.questionGroups?.find((g) => g.id === groupId);
-        const survey = group?.kind === 'Survey';
-        const previous = d.attempts
-          .filter((v) => v.assignmentId === a.id && (v.groupId ?? '') === groupId && v.submittedAt)
-          .reverse()
-          .sort((x, y) => y.submittedAt.localeCompare(x.submittedAt))[0];
-        const plan = d.retakePlans?.find(
-          (p) =>
-            p.assignmentId === a.id &&
-            p.groupId === groupId &&
-            p.fromAttemptId === previous?.id &&
-            !p.startedAttemptId,
-        );
-        if (plan) plan.startedAttemptId = id;
-        d.attempts.push({
-          groupId,
-          groupKind: group?.kind ?? 'Quiz',
-          countsTowardGrade: !groupId || !!group?.countsTowardGrade,
-          contributingAttemptIds: groupId
-            ? []
-            : (course.questionGroups ?? [])
-                .filter((g) => g.kind !== 'Survey' && g.countsTowardGrade)
-                .map((g) => this.latestGroupAttempt(d.attempts, a.id, g.id)!.id),
-          groupTitle: course.questionGroups?.find((g) => g.id === groupId)?.title,
-          award: groupId
-            ? undefined
-            : {
-                cpdHours: course.cpdHours,
-                validityMonths: course.validityMonths ?? d.settings.validityMonths,
-                sample: course.sample,
-                branding: structuredClone(d.settings),
-                issuer:
-                  course.issuer?.trim() ||
-                  d.settings.issuer.trim() ||
-                  this.store.company()?.name ||
-                  'CareVerity',
-                learner: this.store.staff().find((p) => p.id === a.personId)!.name,
-              },
-          id,
-          adjustment: adjustment ? structuredClone(adjustment) : undefined,
-          policy: { ...structuredClone(policy), ...(survey ? { timeLimitMinutes: 0 } : {}) },
-          assignmentId,
-          personId: a.personId,
-          courseId: course.id,
-          courseTitle: course.title,
-          courseVersion: course.version,
-          questions,
-          answers: {},
-          flags: [],
-          startedAt: new Date(now).toISOString(),
-          deadline:
-            !survey && policy.timeLimitMinutes
-              ? new Date(now + policy.timeLimitMinutes * 60000).toISOString()
-              : '9999-12-31T23:59:59.000Z',
-          submittedAt: '',
-          passMark: course.passMark ?? d.settings.passMark,
-          showFeedback: survey ? false : policy.showFeedback,
-          score: null,
-          passed: false,
-        });
-        return null;
-      },
-      assignment.personId,
-      false,
-    );
-    return { id: error ? '' : id, error };
+  ): Promise<{ id: string; error: string | null }> {
+    let id = '';
+    const error = await this.assessmentWrite(workspace, async () => {
+      id = (await this.resultsApi.start(assignmentId, groupId)).attempt.id;
+    });
+    return { id, error };
   }
-  answer(
+  async answer(
     attemptId: string,
     questionId: string,
     answerIds: string[],
     flag: boolean | null,
     workspace: string,
-  ): string | null {
-    const attempt = this.attempt(attemptId);
-    if (!attempt) return 'Assessment unavailable.';
-    return this.change(
-      workspace,
-      'Assessment response saved',
-      attempt.courseTitle,
-      (d) => {
-        const a = d.attempts.find((a) => a.id === attemptId)!;
-        if (a.submittedAt || Date.parse(a.deadline) <= Date.now())
-          return 'This assessment is submitted or the time limit has expired.';
-        const q = a.questions.find((q) => q.id === questionId);
-        if (
-          !q ||
-          (q.type === 'Free text'
-            ? a.groupKind !== 'Survey' ||
-              answerIds.length > 1 ||
-              answerIds.some((text) => !text.trim() || text.length > 4000)
-            : answerIds.some((id) => !q.options.some((o) => o.id === id))) ||
-          new Set(answerIds).size !== answerIds.length ||
-          (q.type !== 'Multiple choice' && answerIds.length > 1)
-        )
-          return 'Choose a valid answer.';
-        a.answers[q.id] = [...answerIds];
-        if (flag !== null)
-          a.flags = flag ? [...new Set([...a.flags, q.id])] : a.flags.filter((id) => id !== q.id);
-        return null;
-      },
-      attempt.personId,
-      false,
+  ): Promise<string | null> {
+    return this.assessmentWrite(workspace, () =>
+      this.resultsApi.answer(attemptId, questionId, answerIds, flag),
     );
   }
-  submit(attemptId: string, workspace: string): string | null {
-    if (workspace !== this.store.companyId())
-      return 'The workspace changed. Reopen the assessment.';
-    const attempt = this.attempt(attemptId);
-    if (!attempt) return 'Assessment unavailable.';
-    if (attempt.invalidatedAt)
-      return 'This attempt was invalidated after review; the original result is retained.';
-    if (attempt.submittedAt)
-      return this.owns(attempt.personId) ? null : 'Only the learner can submit.';
-    return this.change(
-      workspace,
-      'Assessment submitted',
-      attempt.courseTitle,
-      (d) => {
-        const a = d.attempts.find((v) => v.id === attemptId)!;
-        if (
-          Date.parse(a.deadline) > Date.now() &&
-          a.questions.some((q) => q.required && !a.answers[q.id]?.length)
-        )
-          return 'Answer all required questions before submitting.';
-        const assignment = d.assignments.find((v) => v.id === a.assignmentId && !v.archived);
-        const course = assignment?.courseSnapshot ?? d.courses.find((c) => c.id === a.courseId);
-        if (!assignment || !course)
-          return 'Assignment or course changed. Contact the training manager.';
-        const survey = a.groupKind === 'Survey';
-        const gradedAttempts = [a];
-        if (!a.groupId) {
-          for (const group of course.questionGroups ?? []) {
-            if (group.kind === 'Survey' || !group.countsTowardGrade) continue;
-            const previous = a.contributingAttemptIds
-              ? d.attempts.find(
-                  (v) =>
-                    a.contributingAttemptIds!.includes(v.id) &&
-                    v.assignmentId === assignment.id &&
-                    v.groupId === group.id &&
-                    v.submittedAt &&
-                    !v.invalidatedAt,
-                )
-              : this.latestGroupAttempt(d.attempts, assignment.id, group.id);
-            if (!previous) return 'Complete all quizzes that count toward the final grade.';
-            gradedAttempts.push(previous);
-          }
-        }
-        a.sectionScore = survey ? null : gradeAttempt(a);
-        a.gradeBreakdown = survey
-          ? []
-          : gradedAttempts.map((section) => ({
-              groupId: section.groupId ?? '',
-              title: section.groupTitle || 'Final course assessment',
-              attemptId: section.id,
-              earned: section.questions.reduce(
-                (sum, q) => sum + (questionCorrect(q, section.answers[q.id] ?? []) ? q.weight : 0),
-                0,
-              ),
-              available: section.questions.reduce((sum, q) => sum + q.weight, 0),
-            }));
-        const earned = a.gradeBreakdown.reduce((sum, section) => sum + section.earned, 0);
-        const available = a.gradeBreakdown.reduce((sum, section) => sum + section.available, 0);
-        a.score = survey ? null : available ? (earned / available) * 100 : 0;
-        a.criticalFailed =
-          !survey &&
-          gradedAttempts.some((section) =>
-            section.questions.some(
-              (q) => q.critical && !questionCorrect(q, section.answers[q.id] ?? []),
-            ),
-          );
-        a.passed = survey || (a.score! >= a.passMark && !a.criticalFailed);
-        a.resultId = crypto.randomUUID();
-        a.correlationId = crypto.randomUUID();
-        a.scorerVersion = 'local-rubric-v3';
-        a.submittedAt = new Date().toISOString();
-        if (a.policy?.feedbackMode === 'After delay')
-          a.feedbackAvailableAt = new Date(
-            Date.now() + (a.policy.feedbackDelayHours ?? 24) * 3600000,
-          ).toISOString();
-        if (
-          !a.passed &&
-          d.governance &&
-          d.attempts.filter(
-            (t) => t.assignmentId === a.assignmentId && (t.groupId ?? '') === (a.groupId ?? ''),
-          ).length >= (a.policy?.maxAttempts ?? d.settings.maxAttempts) &&
-          !d.governance.reviews.some((r) => r.attemptId === a.id)
-        ) {
-          d.governance.reviews.unshift({
-            id: crypto.randomUUID(),
-            personId: a.personId,
-            assignmentId: a.assignmentId,
-            attemptId: a.id,
-            kind: 'Remedial review',
-            status: 'Open',
-            ownerId: assignment.supervisorId ?? '',
-            due: londonDate(),
-            reason: 'Maximum permitted attempts reached',
-            actions: '',
-            decision: '',
-            resolvedAt: '',
-          });
-        }
-        if (a.groupId) {
-          if (d.settings.portalNotifications)
-            d.notices.unshift({
-              id: crypto.randomUUID(),
-              assignmentId: assignment.id,
-              personId: a.personId,
-              title: survey ? 'Survey completed' : 'Question group result',
-              text:
-                (a.groupTitle || 'Checkpoint') +
-                ': ' +
-                (survey ? 'Completed' : a.passed ? 'Passed' : 'Not passed') +
-                '. Continue your course learning.',
-              at: a.submittedAt,
-              key: a.id,
-            });
-          return null;
-        }
-        if (
-          a.passed &&
-          course.evidenceType &&
-          course.evidenceType !== 'Internal knowledge completion'
-        ) {
-          assignment.completedAt = a.submittedAt;
-          return null;
-        }
-        if (a.passed && !d.certificates.some((c) => c.assignmentId === assignment.id)) {
-          assignment.completedAt = a.submittedAt;
-          const award = a.award ?? {
-            cpdHours: course.cpdHours,
-            validityMonths: course.validityMonths ?? d.settings.validityMonths,
-            sample: course.sample,
-            branding: d.settings,
-            issuer:
-              course.issuer?.trim() ||
-              d.settings.issuer.trim() ||
-              this.store.company()?.name ||
-              'CareVerity',
-            learner: this.store.staff().find((p) => p.id === a.personId)!.name,
-          };
-          const months = award.validityMonths;
-          const certificate: AcademyCertificate = {
-            id: 'CV-' + crypto.randomUUID(),
-            templateVersion: 1,
-            passedAttemptId: a.id,
-            courseCode: course.code,
-            personId: a.personId,
-            assignmentId: assignment.id,
-            courseId: course.id,
-            courseTitle: a.courseTitle,
-            courseVersion: a.courseVersion,
-            learner: award.learner,
-            issuer: award.issuer,
-            issuedAt: a.submittedAt,
-            expires: months ? addMonths(londonDate(new Date(a.submittedAt)), months) : '',
-            score: a.score!,
-            cpdHours: award.cpdHours,
-            sample: award.sample,
-            branding: structuredClone(award.branding),
-          };
-          d.certificates.push(certificate);
-          d.completions ??= [];
-          d.completions.push({
-            id: a.resultId!,
-            tenantId: workspace,
-            personId: a.personId,
-            assignmentId: assignment.id,
-            attemptId: a.id,
-            courseVersion: a.courseVersion,
-            correlationId: a.correlationId!,
-            status: 'CERTIFICATE_PENDING',
-            createdAt: a.submittedAt,
-            updatedAt: a.submittedAt,
-            retryCount: 0,
-            error: 'Certificate generation and HR filing are queued in the seeded workflow.',
-            acknowledgements: [],
-          });
-          if (d.settings.portalNotifications)
-            d.notices.unshift({
-              id: crypto.randomUUID(),
-              assignmentId: assignment.id,
-              personId: a.personId,
-              title: 'Completion recorded · evidence pending',
-              text: this.template(
-                'Your result for {{course}} is recorded. Certificate and HR filing are pending.',
-                course.title,
-                certificate.expires,
-              ),
-              at: a.submittedAt,
-              key: certificate.id,
-            });
-        }
-        if (d.settings.portalNotifications)
-          d.notices.unshift({
-            id: crypto.randomUUID(),
-            assignmentId: assignment.id,
-            personId: a.personId,
-            title: 'Assessment result',
-            text: this.template(d.settings.notificationTemplates.result, a.courseTitle, ''),
-            at: a.submittedAt,
-            key: a.id,
-          });
-        return null;
-      },
-      attempt.personId,
-      false,
+  async submit(attemptId: string, workspace: string): Promise<string | null> {
+    return this.assessmentWrite(workspace, () => this.resultsApi.submit(attemptId));
+  }
+  async recordResourceOpen(
+    assignmentId: string,
+    resourceId: string,
+    workspace: string,
+  ): Promise<string | null> {
+    return this.assessmentWrite(workspace, () =>
+      this.resultsApi.event(assignmentId, { kind: 'opened', assetId: resourceId }),
     );
   }
-  recordResourceOpen(assignmentId: string, resourceId: string, workspace: string): string | null {
-    const assignment = this.assignment(assignmentId);
-    if (!assignment) return 'Assignment unavailable.';
-    return this.change(
-      workspace,
-      'Resource opened',
-      resourceId,
-      (d) => {
-        const a = d.assignments.find((v) => v.id === assignmentId && !v.archived);
-        if (!a || !this.assignedCourse(a)?.lessons.some((l) => l.handoutIds.includes(resourceId)))
-          return 'Resource unavailable.';
-        a.openedResourceIds = [...new Set([...(a.openedResourceIds ?? []), resourceId])];
-        return null;
-      },
-      assignment.personId,
-      false,
-    );
-  }
-  acknowledgeResource(assignmentId: string, resourceId: string, workspace: string): string | null {
-    const assignment = this.assignment(assignmentId);
-    if (!assignment) return 'Assignment unavailable.';
-    return this.change(
-      workspace,
-      'Resource acknowledged',
-      resourceId,
-      (d) => {
-        const a = d.assignments.find((v) => v.id === assignmentId && !v.archived);
-        if (!a || !this.assignedCourse(a)?.lessons.some((l) => l.handoutIds.includes(resourceId)))
-          return 'Resource unavailable.';
-        if (!a.openedResourceIds?.includes(resourceId))
-          return 'Open the resource before acknowledging it.';
-        a.resourceAcknowledgements = [
-          ...new Set([...(a.resourceAcknowledgements ?? []), resourceId]),
-        ];
-        return null;
-      },
-      assignment.personId,
-      false,
+  async acknowledgeResource(
+    assignmentId: string,
+    resourceId: string,
+    workspace: string,
+  ): Promise<string | null> {
+    return this.assessmentWrite(workspace, () =>
+      this.resultsApi.event(assignmentId, { kind: 'acknowledged', assetId: resourceId }),
     );
   }
   revokeCertificate(id: string, reason: string, workspace: string): string | null {
@@ -2051,138 +1598,18 @@ export class AcademyService {
       return null;
     });
   }
-  private retakeSource(
-    d: AcademyData,
+  async scheduleRetake(
     attemptId: string,
-  ): { attempt: AcademyAttempt; assignment: AcademyAssignment; earliest: number } | string {
-    const attempt = d.attempts.find((a) => a.id === attemptId);
-    if (
-      !attempt?.submittedAt ||
-      attempt.invalidatedAt ||
-      attempt.passed ||
-      attempt.groupKind === 'Survey'
-    )
-      return 'Choose a submitted, failed assessment.';
-    const assignment = d.assignments.find(
-      (a) =>
-        a.id === attempt.assignmentId &&
-        a.personId === attempt.personId &&
-        !a.archived &&
-        !a.completedAt,
-    );
-    if (!assignment) return 'This learning cycle is complete or archived.';
-    const groupId = attempt.groupId ?? '';
-    const history = d.attempts.filter(
-      (a) => a.assignmentId === assignment.id && (a.groupId ?? '') === groupId,
-    );
-    if (history.some((a) => !a.submittedAt)) return 'A retake is already in progress.';
-    const latest = history
-      .filter((a) => a.submittedAt)
-      .reverse()
-      .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))[0];
-    if (latest?.id !== attempt.id || history.some((a) => a.passed))
-      return 'This result has been superseded. Review the latest assessment result.';
-    const course = assignment.courseSnapshot ?? d.courses.find((c) => c.id === assignment.courseId);
-    if (!course) return 'The assigned course is unavailable.';
-    const policy = assignment.policySnapshot ?? attempt.policy ?? this.policyFor(course);
-    if (history.length >= policy.maxAttempts)
-      return 'No attempts remain. Training manager review is required.';
-    return {
-      attempt,
-      assignment,
-      earliest: Date.parse(attempt.submittedAt) + policy.retakeWaitHours * 3600000,
-    };
+    scheduledFor: string,
+    workspace: string,
+  ): Promise<string | null> {
+    return this.assessmentWrite(workspace, () => this.resultsApi.schedule(attemptId, scheduledFor));
   }
-  private recordRetakeNotice(d: AcademyData, attempt: AcademyAttempt, scheduledFor: string) {
-    const key = 'retake:' + attempt.id + ':' + scheduledFor;
-    if (d.notices.some((n) => n.key === key)) return;
-    d.notices.unshift({
-      id: crypto.randomUUID(),
-      assignmentId: attempt.assignmentId,
-      personId: attempt.personId,
-      title: 'Assessment retake',
-      text:
-        attempt.courseTitle +
-        (attempt.groupTitle ? ' · ' + attempt.groupTitle : '') +
-        ': return to your course for a retake available from ' +
-        scheduledFor +
-        '. The assigned attempt limit and content requirements still apply.',
-      at: new Date().toISOString(),
-      key,
-    });
+  async notifyRetake(attemptId: string, workspace: string): Promise<string | null> {
+    return this.assessmentWrite(workspace, () => this.resultsApi.notify(attemptId));
   }
-  scheduleRetake(attemptId: string, scheduledFor: string, workspace: string): string | null {
-    return this.change(workspace, 'Assessment retake scheduled', attemptId, (d) => {
-      const source = this.retakeSource(d, attemptId);
-      if (typeof source === 'string') return source;
-      const date = Date.parse(scheduledFor);
-      if (!Number.isFinite(date) || date < Date.now() || date < source.earliest)
-        return 'Choose a future retake time on or after the assigned minimum waiting period.';
-      d.retakePlans ??= [];
-      const existing = d.retakePlans.find(
-        (p) => p.fromAttemptId === attemptId && !p.startedAttemptId,
-      );
-      const now = new Date().toISOString();
-      const plan: AcademyRetakePlan = {
-        id: existing?.id ?? crypto.randomUUID(),
-        assignmentId: source.assignment.id,
-        personId: source.attempt.personId,
-        fromAttemptId: attemptId,
-        groupId: source.attempt.groupId ?? '',
-        scheduledFor: new Date(date).toISOString(),
-        createdAt: existing?.createdAt ?? now,
-        createdBy: existing?.createdBy ?? this.auth.currentUser()!.name,
-        updatedAt: now,
-        notifiedAt: '',
-      };
-      if (d.settings.portalNotifications) {
-        this.recordRetakeNotice(d, source.attempt, plan.scheduledFor);
-        plan.notifiedAt = now;
-      }
-      d.retakePlans = [...d.retakePlans.filter((p) => p.id !== plan.id), plan];
-      return null;
-    });
-  }
-  notifyRetake(attemptId: string, workspace: string): string | null {
-    return this.change(workspace, 'Retake portal notice recorded', attemptId, (d) => {
-      const source = this.retakeSource(d, attemptId);
-      if (typeof source === 'string') return source;
-      if (!d.settings.portalNotifications)
-        return 'Enable portal notifications before recording a learner notice.';
-      const plan = d.retakePlans?.find((p) => p.fromAttemptId === attemptId && !p.startedAttemptId);
-      this.recordRetakeNotice(
-        d,
-        source.attempt,
-        plan?.scheduledFor ?? new Date(source.earliest).toISOString(),
-      );
-      if (plan) plan.notifiedAt = new Date().toISOString();
-      return null;
-    });
-  }
-  notifyManager(attemptId: string, workspace: string): string | null {
-    const attempt = this.attempt(attemptId);
-    if (!attempt?.submittedAt) return 'Choose a submitted assessment.';
-    return this.change(
-      workspace,
-      'Learner requested training support',
-      attempt.courseTitle,
-      (d) => {
-        if (!d.notices.some((n) => n.key === 'support:' + attemptId))
-          d.notices.unshift({
-            id: crypto.randomUUID(),
-            assignmentId: attempt.assignmentId,
-            personId: attempt.personId,
-            title: 'Training support requested',
-            text:
-              this.auth.currentUser()!.name + ' requested a review of ' + attempt.courseTitle + '.',
-            at: new Date().toISOString(),
-            key: 'support:' + attemptId,
-          });
-        return null;
-      },
-      attempt.personId,
-      false,
-    );
+  async notifyManager(attemptId: string, workspace: string): Promise<string | null> {
+    return this.assessmentWrite(workspace, () => this.resultsApi.requestSupport(attemptId));
   }
   generateReminders(workspace: string): string | null {
     return this.change(

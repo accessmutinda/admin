@@ -25,7 +25,11 @@ import { AcademyMessage } from './academy-shared';
 import { downloadAcademyCertificate } from './academy-pdf';
 
 @Component({
-  host: { class: 'module-page academy-page' },
+  host: {
+    class: 'module-page academy-page',
+    '[attr.inert]': 'academy.resultsApi.saving() ? "" : null',
+    '[attr.aria-busy]': 'academy.resultsApi.saving()',
+  },
   selector: 'cv-academy-learner',
   imports: [
     AcademyDate,
@@ -63,9 +67,9 @@ export class AcademyLearner {
   protected readonly person = computed(() => {
     const selected = this.query().get('person');
     return this.academy.canManage() && selected
-      ? this.academy.store.staff().find((p) => p.id === selected)
+      ? this.academy.resultsApi.people().find((p) => p.id === selected)
       : (this.academy.me() ??
-          (this.academy.canManage() ? this.academy.store.staff()[0] : undefined));
+          (this.academy.canManage() ? this.academy.resultsApi.people()[0] : undefined));
   });
   protected readonly preview = computed(
     () =>
@@ -130,7 +134,6 @@ export class AcademyLearner {
   private noteWorkspace = '';
   private noteAssignment = '';
   private noteLesson = '';
-  private notesMemory = new Map<string, string>();
   private readonly mediaKey = computed(() =>
     [this.lesson()?.videoId ?? '', this.lesson()?.captionId ?? ''].join('|'),
   );
@@ -185,15 +188,8 @@ export class AcademyLearner {
       this.noteWorkspace = this.academy.store.companyId();
       this.noteAssignment = assignment?.id ?? '';
       this.noteLesson = lesson?.id ?? '';
-      let cached: string | null = this.notesMemory.get(key) ?? null;
-      if (key && cached === null)
-        try {
-          cached = sessionStorage.getItem(key);
-        } catch {}
-      this.note = this.preview() ? '' : (cached ?? assignment?.notes[lesson?.id ?? ''] ?? '');
-      this.notePending.set(
-        cached !== null && cached !== (assignment?.notes[lesson?.id ?? ''] ?? ''),
-      );
+      this.note = this.preview() ? '' : (assignment?.notes[lesson?.id ?? ''] ?? '');
+      this.notePending.set(false);
     });
   }
   protected context() {
@@ -480,18 +476,22 @@ export class AcademyLearner {
       ? this.academy.assessmentAvailability(assignment, this.clock(), id)
       : undefined;
   }
-  protected start(assignmentId: string, groupId = '') {
+  protected async start(assignmentId: string, groupId = '') {
     if (this.preview()) return;
-    const result = this.academy.startAttempt(assignmentId, this.academy.store.companyId(), groupId);
+    const result = await this.academy.startAttempt(
+      assignmentId,
+      this.academy.store.companyId(),
+      groupId,
+    );
     this.error.set(result.error ?? '');
     if (!result.error) void this.router.navigate(['/staff-portal/training/assessment', result.id]);
   }
-  protected complete() {
+  protected async complete() {
     const a = this.assignment();
     const lesson = this.lesson();
     if (!a || !lesson || this.preview()) return;
-    if (!this.flushNote()) return;
-    const error = this.academy.saveLesson(
+    if (!(await this.flushNote())) return;
+    const error = await this.academy.saveLesson(
       a.id,
       lesson.id,
       null,
@@ -506,16 +506,20 @@ export class AcademyLearner {
   protected editNote(value: string) {
     this.note = value;
     this.notePending.set(true);
-    if (this.noteKey) {
-      this.notesMemory.set(this.noteKey, value);
-      try {
-        sessionStorage.setItem(this.noteKey, value);
-      } catch {}
+  }
+  private noteSave?: Promise<boolean>;
+  protected async flushNote(): Promise<boolean> {
+    if (this.noteSave) return this.noteSave;
+    this.noteSave = this.persistNote();
+    try {
+      return await this.noteSave;
+    } finally {
+      this.noteSave = undefined;
     }
   }
-  protected flushNote(): boolean {
+  private async persistNote(): Promise<boolean> {
     if (!this.notePending() || !this.noteKey) return true;
-    const error = this.academy.saveLesson(
+    const error = await this.academy.saveLesson(
       this.noteAssignment,
       this.noteLesson,
       this.note,
@@ -526,10 +530,6 @@ export class AcademyLearner {
     this.error.set(error ?? '');
     if (error) return false;
     this.notePending.set(false);
-    this.notesMemory.delete(this.noteKey);
-    try {
-      sessionStorage.removeItem(this.noteKey);
-    } catch {}
     return true;
   }
   private playback = { lessonId: '', position: 0, at: 0 };
@@ -578,7 +578,7 @@ export class AcademyLearner {
       await this.files.download(id);
       const assignment = this.assignment();
       if (assignment && !this.preview()) {
-        const error = this.academy.recordResourceOpen(
+        const error = await this.academy.recordResourceOpen(
           assignment.id,
           id,
           this.academy.store.companyId(),
@@ -589,10 +589,10 @@ export class AcademyLearner {
       this.error.set((e as Error).message);
     }
   }
-  protected acknowledge(id: string) {
+  protected async acknowledge(id: string) {
     const a = this.assignment();
     if (!a || this.preview()) return;
-    const error = this.academy.acknowledgeResource(a.id, id, this.academy.store.companyId());
+    const error = await this.academy.acknowledgeResource(a.id, id, this.academy.store.companyId());
     this.error.set(error ?? '');
     if (!error) this.notice.set('Resource read acknowledgement saved.');
   }
@@ -635,11 +635,12 @@ export class AcademyLearner {
       .sort((a, b) => a.due.localeCompare(b.due))
       .slice(0, 5);
   }
-  canLeave(): boolean {
+  async canLeave(): Promise<boolean> {
+    if (this.academy.resultsApi.saving()) return false;
     return (
-      this.flushNote() ||
+      (await this.flushNote()) ||
       window.confirm(
-        'Your notes could not be saved. Leave this lesson? The browser-session draft is retained where storage is available.',
+        'Your notes could not be saved. Leave this lesson and discard the unsaved notes?',
       )
     );
   }

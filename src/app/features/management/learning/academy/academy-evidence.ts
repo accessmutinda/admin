@@ -23,9 +23,9 @@ import { AcademyDate } from './academy-date';
   styleUrls: ['./academy-forms.css', './academy.css', './academy-dashboard.css'],
 })
 export class AcademyEvidence {
-  protected readonly workflow = inject(AcademyDemoWorkflow);
   protected readonly academy = inject(AcademyService);
   protected readonly resultsView = inject(ActivatedRoute).snapshot.data['view'] === 'results';
+  protected readonly workflow = this.resultsView ? null : inject(AcademyDemoWorkflow);
   private readonly router = inject(Router);
   protected resultStaff = '';
   protected certificateStaff = '';
@@ -48,12 +48,10 @@ export class AcademyEvidence {
     if (latest) void this.router.navigate(['/manage/learning/certificates', latest.id]);
   }
   protected resultPeople() {
-    return this.academy.store
-      .staff()
-      .filter(
-        (p) =>
-          this.academy.can('evidence', p.id) &&
-          this.academy.state().attempts.some((a) => a.personId === p.id && a.submittedAt),
+    return this.academy.resultsApi
+      .people()
+      .filter((p) =>
+        this.academy.state().attempts.some((a) => a.personId === p.id && a.submittedAt),
       );
   }
   protected openStaffResult(id: string) {
@@ -101,7 +99,9 @@ export class AcademyEvidence {
       .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
   }
   protected name(id: string) {
-    return this.academy.store.staff().find((p) => p.id === id)?.name ?? 'Unavailable staff record';
+    return (
+      this.academy.resultsApi.people().find((p) => p.id === id)?.name ?? 'Unavailable staff record'
+    );
   }
   protected accessRequests() {
     return (
@@ -119,7 +119,9 @@ export class AcademyEvidence {
       );
   }
   protected retry(id: string) {
-    const error = this.workflow.retry(id);
+    const error =
+      this.workflow?.retry(id) ??
+      (this.resultsView ? 'The evidence delivery integration is not configured.' : null);
     this.error.set(error ?? '');
     if (!error) this.notice.set('The saved evidence workflow has been queued for retry.');
   }

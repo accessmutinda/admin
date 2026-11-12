@@ -256,6 +256,7 @@ export interface AcademyAssignment {
   archived: boolean;
 }
 export interface AcademyAttempt {
+  feedbackPermitted?: boolean;
   adjustment?: AcademyAdjustment;
   invalidatedAt?: string;
   invalidationReason?: string;

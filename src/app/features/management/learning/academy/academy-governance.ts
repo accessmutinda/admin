@@ -281,9 +281,12 @@ export class AcademyGovernancePage {
       this.operations.disclosure(id, status, this.disclosureDecision, this.disclosureReference),
     );
   }
-  protected invalidate() {
+  protected async releaseFeedback(id: string) {
+    this.result(await this.operations.releaseFeedback(id));
+  }
+  protected async invalidate() {
     this.result(
-      this.operations.invalidate(this.invalidationAttempt, this.reason),
+      await this.operations.invalidate(this.invalidationAttempt, this.reason),
       'Original result retained and marked invalidated; it cannot issue current evidence.',
     );
   }

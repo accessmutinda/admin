@@ -1,245 +1,171 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { By } from '@angular/platform-browser';
-import { MatSelect } from '@angular/material/select';
-import { provideRouter, Router } from '@angular/router';
-import { RouterTestingHarness } from '@angular/router/testing';
-import { AuthService } from '../../../../core/auth/auth.service';
-import { DEMO_USER } from '../../../../demo/business-fixtures';
-import { WorkspaceService } from '../../../../core/auth/workspace.service';
-import { ManagementStore } from '../../shared/management.store';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
+import { AcademyResultsReview } from './academy-results-review';
 import { AcademyService } from './academy.service';
-import {
-  AcademyDemoWorkflow,
-  ACADEMY_DEMO_PDF,
-  ACADEMY_DEMO_STEP_DELAY,
-} from './academy-demo-workflow';
-import { ACADEMY_ADMIN_ROUTES } from './academy.routes';
-import { londonDate } from '../../rota/rota.models';
-describe('Selected staff results and retakes', () => {
-  let academy: AcademyService, store: ManagementStore;
-  const actor = signal({ ...DEMO_USER, roleCode: 'CA' as typeof DEMO_USER.roleCode });
-  const pdf = vi.fn(async () => ({
-    content: 'data:application/pdf;base64,' + btoa('%PDF-1.7\nStaff result fixture\n%%EOF'),
-    checksum: 'staff-result-checksum',
-  }));
+import { AcademyAttempt, AcademyAssignment } from './academy.models';
+
+const policy = { maxAttempts: 3, retakeWaitHours: 24, timeLimitMinutes: 30, showFeedback: true };
+const attempt: AcademyAttempt = {
+  id: 'result-one',
+  assignmentId: 'assignment',
+  personId: 'worker',
+  courseId: 'course',
+  courseTitle: 'Safeguarding',
+  courseVersion: 4,
+  questions: [],
+  answers: {},
+  flags: [],
+  startedAt: '2026-11-11T08:00:00Z',
+  deadline: '2026-11-11T08:30:00Z',
+  submittedAt: '2026-11-11T08:10:00Z',
+  passMark: 80,
+  showFeedback: true,
+  score: 0,
+  passed: false,
+  policy,
+  scorerVersion: 'weighted-exact-v1',
+};
+const assignment: AcademyAssignment = {
+  id: 'assignment',
+  personId: 'worker',
+  courseId: 'course',
+  due: '2027-12-01',
+  assignedAt: '2026-11-01T00:00:00Z',
+  assignedBy: 'Training lead',
+  recurrenceMonths: 0,
+  completedLessonIds: [],
+  notes: {},
+  positions: {},
+  completedAt: '',
+  archived: false,
+  policySnapshot: policy,
+};
+
+describe('Results and retake review screen', () => {
+  const allowed = signal(true),
+    saving = signal(false),
+    error = signal('');
+  let schedule: ReturnType<typeof vi.fn>, notify: ReturnType<typeof vi.fn>;
+  let availability: { remaining: number; reason: string; readyAt: string; runningId: string };
   beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    pdf.mockClear();
+    allowed.set(true);
+    saving.set(false);
+    error.set('');
+    availability = { remaining: 2, reason: '', readyAt: '', runningId: '' };
+    schedule = vi.fn(async () => null);
+    notify = vi.fn(async () => null);
+    const params = convertToParamMap({ attemptId: 'result-one' });
     TestBed.configureTestingModule({
+      imports: [AcademyResultsReview],
       providers: [
-        provideRouter([
-          { path: 'manage/learning', children: ACADEMY_ADMIN_ROUTES },
-          {
-            path: 'access-denied',
-            loadComponent: () =>
-              import('../../../auth/access-denied/access-denied').then((m) => m.AccessDenied),
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: { paramMap: of(params), snapshot: { paramMap: params } },
+        },
+        {
+          provide: AcademyService,
+          useValue: {
+            canViewEvidence: () => true,
+            canManage: () => true,
+            can: () => true,
+            attempt: () => attempt,
+            assignments: () => [assignment],
+            assessmentAvailability: () => availability,
+            store: { companyId: () => 'company' },
+            resultsApi: {
+              people: () => [{ id: 'worker', name: 'Jane Worker' }],
+              canEdit: allowed,
+              error,
+              saving,
+            },
+            state: () => ({
+              attempts: [attempt],
+              certificates: [],
+              completions: [],
+              retakePlans: [],
+              settings: { ...policy, portalNotifications: true },
+            }),
+            scheduleRetake: schedule,
+            notifyRetake: notify,
           },
-        ]),
-        { provide: ACADEMY_DEMO_PDF, useValue: pdf },
-        { provide: ACADEMY_DEMO_STEP_DELAY, useValue: 0 },
+        },
       ],
     });
-    const auth = TestBed.inject(AuthService);
-    auth.signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    store = TestBed.inject(ManagementStore);
-    actor.set({ ...DEMO_USER, roleCode: 'CA', email: store.staff()[0].email });
-    vi.spyOn(auth, 'currentUser').mockImplementation(() => actor());
-    academy = TestBed.inject(AcademyService);
   });
-  afterEach(() => vi.restoreAllMocks());
-  function complete(personId: string, passed: boolean) {
-    const course = academy.state().courses[0],
-      person = store.staff().find((p) => p.id === personId)!;
-    actor.update((a) => ({ ...a, roleCode: 'CA', email: person.email }));
-    expect(
-      academy.assign([person.id], [course.id], '2026-12-31', 0, '', false, true, 'lqcs'),
-    ).toBeNull();
-    const assignment = academy
-      .assignments()
-      .find((a) => a.personId === person.id && a.courseId === course.id && !a.archived)!;
-    course.lessons.forEach((l) =>
-      expect(academy.saveLesson(assignment.id, l.id, null, null, true, 'lqcs')).toBeNull(),
-    );
-    const { id, error } = academy.startAttempt(assignment.id, 'lqcs');
-    expect(error).toBeNull();
-    const attempt = academy.attempt(id)!;
-    for (const q of attempt.questions)
-      expect(
-        academy.answer(
-          id,
-          q.id,
-          passed ? q.correctIds : [q.options.find((o) => !q.correctIds.includes(o.id))!.id],
-          null,
-          'lqcs',
-        ),
-      ).toBeNull();
-    expect(academy.submit(id, 'lqcs')).toBeNull();
-    return { person, assignment, attempt: academy.attempt(id)! };
+  async function render() {
+    const fixture = TestBed.createComponent(AcademyResultsReview);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture;
   }
-  it('selects the exact staff result and shows only acknowledged HR and integration stages, then recovers the same workflow', async () => {
-    const settings = structuredClone(academy.state().settings);
-    settings.demoFailure = 'HR filing';
-    expect(academy.saveSettings(settings, 'lqcs', settings.updatedAt)).toBeNull();
-    const passed = complete(store.staff()[0].id, true),
-      failed = complete(store.staff()[1].id, false);
-    actor.update((a) => ({ ...a, email: passed.person.email, roleCode: 'CA' }));
-    const workflow = TestBed.inject(AcademyDemoWorkflow),
-      job = academy.completion(passed.assignment.id)!;
-    await workflow.process(job.id);
-    expect(academy.completion(passed.assignment.id)?.status).toBe('SYNC_EXCEPTION');
-    const harness = await RouterTestingHarness.create('/manage/learning/results');
-    const settle = async () => {
-      await harness.fixture.whenStable();
-      harness.detectChanges();
-    };
-    await settle();
-    harness
-      .routeDebugElement!.queryAll(By.directive(MatSelect))
-      .find((d) => d.nativeElement.getAttribute('aria-label') === 'Select staff result')!
-      .triggerEventHandler('selectionChange', { value: passed.person.id });
-    await settle();
-    expect(TestBed.inject(Router).url).toBe('/manage/learning/results/' + passed.attempt.id);
-    const page = () => harness.routeNativeElement!;
-    expect(page().querySelector('.staff-identity')?.textContent).toContain(passed.person.name);
-    expect(page().querySelectorAll('.workflow-steps li')).toHaveLength(8);
-    expect(page().querySelectorAll('.integration-pill.done')).toHaveLength(0);
-    expect(page().querySelector('.workflow-outcome')?.textContent).not.toContain(
-      'Workflow complete:',
-    );
-    expect(page().querySelector('.failed-retakes')?.textContent).toContain(failed.person.name);
-    expect(page().querySelectorAll('.result-actions a')[0].getAttribute('href')).toBe(
-      '/manage/people/staff/' + passed.person.id,
-    );
-    const recovered = structuredClone(academy.state().settings);
-    recovered.demoFailure = 'None';
-    expect(academy.saveSettings(recovered, 'lqcs', recovered.updatedAt)).toBeNull();
-    Array.from(page().querySelectorAll<HTMLButtonElement>('button'))
-      .find((b) => b.textContent?.trim() === 'Retry Saved Workflow')!
-      .click();
-    await workflow.process(job.id);
-    await settle();
-    expect(academy.completion(passed.assignment.id)?.status).toBe('COMPLETE_SYNCED');
-    expect(page().querySelectorAll('.workflow-steps li.done')).toHaveLength(8);
-    expect(page().querySelectorAll('.integration-pill.done')).toHaveLength(4);
-    expect(page().querySelector('.workflow-outcome')?.textContent).toContain('Workflow complete:');
-    expect(pdf).toHaveBeenCalledTimes(1);
-    expect(
-      store
-        .staff()
-        .find((p) => p.id === passed.person.id)
-        ?.documents?.filter((d) => d.id === academy.completion(passed.assignment.id)?.documentId),
-    ).toHaveLength(1);
-    expect(
-      store
-        .staff()
-        .find((p) => p.id === failed.person.id)
-        ?.documents?.some((d) => d.id === academy.completion(passed.assignment.id)?.documentId),
-    ).toBe(false);
-    const certificate = academy
-      .state()
-      .certificates.find((c) => c.assignmentId === passed.assignment.id)!;
-    expect(
-      academy.revokeCertificate(certificate.id, 'Evidence review required', 'lqcs'),
-    ).toBeNull();
-    await settle();
-    expect(page().querySelector('.evidence-revoked')?.textContent).toContain('historical pass');
-    expect(page().querySelectorAll('.integration-pill.done')).toHaveLength(0);
-    expect(page().querySelector('.workflow-outcome')?.textContent).not.toContain(
-      'Workflow complete:',
+  function button(text: string) {
+    return [...document.querySelectorAll('button')].find((b) => b.textContent?.includes(text))!;
+  }
+  async function openSchedule(fixture: Awaited<ReturnType<typeof render>>) {
+    button('Manage').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const action = [...document.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Schedule this learner'),
+    )!;
+    action.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return document.querySelector<HTMLInputElement>('input[type="datetime-local"]')!;
+  }
+  it('renders the server result and does not claim certificate or HR acknowledgements', async () => {
+    const fixture = await render();
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Jane Worker');
+    expect(text).toContain('Safeguarding');
+    expect(text).toContain('Not passed');
+    expect(text).toContain('Pass required');
+    expect(text).not.toContain('Completed automatically in');
+  });
+  it('awaits a scheduled retake before closing the dialog and reporting success', async () => {
+    let finish!: (error: string | null) => void;
+    schedule.mockImplementationOnce(() => new Promise((done) => (finish = done)));
+    const fixture = await render();
+    const date = await openSchedule(fixture);
+    expect(date).toBeTruthy();
+    date.value = '2027-12-01T12:00';
+    date.dispatchEvent(new Event('input', { bubbles: true }));
+    fixture.detectChanges();
+    const submit = [...document.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Save Retake Schedule'),
+    )!;
+    submit.click();
+    fixture.detectChanges();
+    expect(schedule).toHaveBeenCalledWith('result-one', '2027-12-01T12:00:00.000Z', 'company');
+    expect(document.querySelector('[role="dialog"]')).toBeTruthy();
+    finish(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain(
+      'Retake scheduled and a notification request queued.',
     );
   });
-  it('schedules a failed result with its frozen policy, records one portal notice and leaves reviewers read-only', async () => {
-    const course = structuredClone(academy.state().courses[0]);
-    course.policy = { ...academy.policyFor(course), maxAttempts: 2, retakeWaitHours: 24 };
-    expect(academy.saveCourse(course, 'lqcs', course.updatedAt)).toBeNull();
-    const failed = complete(store.staff()[0].id, false);
-    const harness = await RouterTestingHarness.create(
-      '/manage/learning/results/' + failed.attempt.id,
-    );
-    const settle = async () => {
-      await harness.fixture.whenStable();
-      harness.detectChanges();
-    };
-    await settle();
-    const page = () => harness.routeNativeElement!;
-    expect(page().querySelector('.retry-rules')?.textContent).toContain('24 hours');
-    expect(page().querySelectorAll('.integration-pill.done')).toHaveLength(0);
-    page()
-      .querySelector<HTMLButtonElement>(
-        '[aria-label="Schedule retake for ' + failed.person.name + '"]',
-      )!
-      .click();
-    await settle();
-    const fill = (instant: number) => {
-      const date = new Date(instant);
-      const input = page().querySelector<HTMLInputElement>(
-        '[aria-label="Retake date and time (UK)"]',
-      )!;
-      input.value =
-        londonDate(date) +
-        'T' +
-        new Intl.DateTimeFormat('en-GB', {
-          timeZone: 'Europe/London',
-          hour: '2-digit',
-          minute: '2-digit',
-          hourCycle: 'h23',
-        }).format(date);
-      input.dispatchEvent(new Event('input'));
-      harness.detectChanges();
-    };
-    const submit = async () => {
-      page()
-        .querySelector('form')!
-        .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-      await settle();
-    };
-    fill(Date.parse(failed.attempt.submittedAt) + 3600000);
-    await submit();
-    expect(page().querySelector('[role="dialog"] [role="alert"]')?.textContent).toContain(
-      'minimum waiting period',
-    );
-    fill(Date.parse(failed.attempt.submittedAt) + 25 * 3600000);
-    await submit();
-    expect(page().querySelector('[role="dialog"]')).toBeNull();
-    expect(academy.state().retakePlans![0]).toMatchObject({
-      fromAttemptId: failed.attempt.id,
-      assignmentId: failed.assignment.id,
-      personId: failed.person.id,
-    });
-    expect(page().querySelector('.failed-retakes')?.textContent).toContain('Retake scheduled');
-    page()
-      .querySelector<HTMLButtonElement>(
-        '[aria-label="Notify ' + failed.person.name + ' about retake"]',
-      )!
-      .click();
-    await settle();
-    expect(academy.state().notices.filter((n) => n.key.startsWith('retake:'))).toHaveLength(1);
-    Array.from(page().querySelectorAll<HTMLButtonElement>('.results-tabs button'))
-      .find((b) => b.textContent?.includes('Automation & Integration'))!
-      .click();
-    await settle();
-    expect(page().querySelector('.workflow-audit')?.textContent).toContain(
-      'No course integration workflow',
-    );
-    expect(page().querySelector('.failed-retakes')).toBeNull();
-    actor.update((a) => ({ ...a, roleCode: 'QA' }));
-    await harness.navigateByUrl('/manage/learning/results/' + failed.attempt.id);
-    await settle();
-    Array.from(page().querySelectorAll<HTMLButtonElement>('.results-tabs button'))
-      .find((b) => b.textContent?.includes('Retakes & Outstanding'))!
-      .click();
-    await settle();
-    expect(
-      page().querySelector<HTMLButtonElement>(
-        '[aria-label="Schedule retake for ' + failed.person.name + '"]',
-      )!.disabled,
-    ).toBe(true);
-    actor.update((a) => ({ ...a, roleCode: 'CW' }));
-    await harness.navigateByUrl('/manage/learning/results');
-    await settle();
-    expect(TestBed.inject(Router).url).toBe('/access-denied');
+  it('shows an unavailable state after backend denial instead of retained result details', async () => {
+    const fixture = await render();
+    error.set('Result access revoked');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Result access revoked');
+    expect(fixture.nativeElement.textContent).not.toContain('Jane Worker');
+  });
+  it('disables scheduling when the attempt limit is exhausted', async () => {
+    availability.remaining = 0;
+    const fixture = await render();
+    button('Manage').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const action = [...document.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Schedule this learner'),
+    )!;
+    expect(action.disabled).toBe(true);
   });
 });

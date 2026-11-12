@@ -51,7 +51,7 @@
     the staff link is verified.
   </div>
 }
-<cv-academy-message [error]="error()" [notice]="notice()" />
+<cv-academy-message [error]="error() || academy.resultsApi.learnerError()" [notice]="notice()" />
 @switch (view()) {
   @case ('dashboard') {
     <div class="heading">

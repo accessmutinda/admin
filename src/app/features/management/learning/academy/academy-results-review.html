@@ -1,5 +1,6 @@
 <cv-academy-admin-nav />
-<cv-academy-message [error]="error()" [notice]="notice()" />
+<cv-academy-message [error]="error() || academy.resultsApi.error()" [notice]="notice()" />
+@if (!academy.resultsApi.error()) {
 @if (result(); as a) {
   @if (a.invalidatedAt) {
     <p class="evidence-revoked" role="status">
@@ -519,4 +520,6 @@
       </div>
     </form>
   </section>
+}
+
 }

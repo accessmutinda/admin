@@ -11,7 +11,11 @@ import { AcademyMessage } from './academy-shared';
 import { AcademyImage } from './academy-image';
 import { downloadAcademyCertificate } from './academy-pdf';
 @Component({
-  host: { class: 'module-page academy-page' },
+  host: {
+    class: 'module-page academy-page',
+    '[attr.inert]': 'academy.resultsApi.saving() ? "" : null',
+    '[attr.aria-busy]': 'academy.resultsApi.saving()',
+  },
   selector: 'cv-academy-assessment',
   imports: [AcademyDate, FormsModule, RouterLink, AcademyMessage, AcademyImage, AcademyTimeline],
   templateUrl: './academy-assessment.html',
@@ -108,6 +112,7 @@ export class AcademyAssessment {
       const a = this.attempt();
       if (
         !a ||
+        this.academy.resultsApi.saving() ||
         a.submittedAt ||
         !this.academy.owns(a.personId) ||
         this.seconds() > 0 ||
@@ -159,12 +164,12 @@ export class AcademyAssessment {
   protected hasCriticalQuestions() {
     return !!this.attempt()?.questions.some((q) => q.critical);
   }
-  protected saveNext() {
+  protected async saveNext() {
     const attempt = this.attempt(),
       question = this.question();
     if (!attempt || !question || !this.canEdit()) return;
     this.notice.set('');
-    const error = this.academy.answer(
+    const error = await this.academy.answer(
       attempt.id,
       question.id,
       attempt.answers[question.id] ?? [],
@@ -177,7 +182,7 @@ export class AcademyAssessment {
     if (this.index() < attempt.questions.length - 1) this.index.update((index) => index + 1);
     else this.notice.set('Responses saved. Review your answers, then submit when you are ready.');
   }
-  protected choose(id: string, event: Event) {
+  protected async choose(id: string, event: Event) {
     const a = this.attempt();
     const q = this.question();
     if (!a || !q || !this.canEdit()) return;
@@ -188,29 +193,35 @@ export class AcademyAssessment {
           ? previous.filter((v) => v !== id)
           : [...previous, id]
         : [id];
-    const error = this.academy.answer(a.id, q.id, answers, null, this.academy.store.companyId());
+    const error = await this.academy.answer(
+      a.id,
+      q.id,
+      answers,
+      null,
+      this.academy.store.companyId(),
+    );
     this.error.set(error ?? '');
     if (error) (event.target as HTMLInputElement).checked = previous.includes(id);
   }
-  protected writeResponse(text: string) {
+  protected async writeResponse(text: string) {
     const a = this.attempt(),
       q = this.question();
     if (!a || !q || !this.canEdit()) return;
     this.error.set(
-      this.academy.answer(
+      (await this.academy.answer(
         a.id,
         q.id,
         text.trim() ? [text] : [],
         null,
         this.academy.store.companyId(),
-      ) ?? '',
+      )) ?? '',
     );
   }
-  protected flag() {
+  protected async flag() {
     const a = this.attempt();
     const q = this.question();
     if (!a || !q) return;
-    const error = this.academy.answer(
+    const error = await this.academy.answer(
       a.id,
       q.id,
       a.answers[q.id] ?? [],
@@ -219,7 +230,7 @@ export class AcademyAssessment {
     );
     this.error.set(error ?? '');
   }
-  protected submit(expired = false) {
+  protected async submit(expired = false) {
     const a = this.attempt();
     if (!a || !this.academy.owns(a.personId)) return;
     if (
@@ -231,7 +242,7 @@ export class AcademyAssessment {
       )
     )
       return;
-    const error = this.academy.submit(a.id, this.academy.store.companyId());
+    const error = await this.academy.submit(a.id, this.academy.store.companyId());
     this.error.set(error ?? '');
     if (!error) void this.router.navigate(['/staff-portal/training/results', a.id]);
   }
@@ -255,10 +266,10 @@ export class AcademyAssessment {
         )
       : 0;
   }
-  protected retry() {
+  protected async retry() {
     const a = this.attempt();
     if (!a) return;
-    const result = this.academy.startAttempt(
+    const result = await this.academy.startAttempt(
       a.assignmentId,
       this.academy.store.companyId(),
       a.groupId ?? '',
@@ -285,15 +296,13 @@ export class AcademyAssessment {
     this.index.set(Math.max(0, i));
     this.review.set(true);
   }
-  protected notifyManager() {
+  protected async notifyManager() {
     const a = this.attempt();
     if (!a) return;
-    const error = this.academy.notifyManager(a.id, this.academy.store.companyId());
+    const error = await this.academy.notifyManager(a.id, this.academy.store.companyId());
     this.error.set(error ?? '');
     if (!error)
-      this.notice.set(
-        'Your training support request has been recorded for academy managers on this device.',
-      );
+      this.notice.set('Your training support request has been recorded for academy managers.');
   }
   protected async download() {
     const c = this.certificate();
@@ -310,6 +319,6 @@ export class AcademyAssessment {
     return a && this.academy.canManage() ? { person: a.personId } : {};
   }
   canLeave(): boolean {
-    return true;
+    return !this.academy.resultsApi.saving();
   }
 }

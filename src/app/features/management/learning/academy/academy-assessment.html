@@ -4,7 +4,7 @@
     No server acknowledgement is claimed.
   </p>
 }
-<cv-academy-message [error]="error()" [notice]="notice()" />
+<cv-academy-message [error]="error() || academy.resultsApi.learnerError()" [notice]="notice()" />
 @if (attempt(); as a) {
   @if (!academy.owns(a.personId)) {
     <div class="notice">
