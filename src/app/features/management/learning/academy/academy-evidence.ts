@@ -1,4 +1,3 @@
-import { AcademyDemoWorkflow } from './academy-demo-workflow';
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
@@ -25,21 +24,15 @@ import { AcademyDate } from './academy-date';
 export class AcademyEvidence {
   protected readonly academy = inject(AcademyService);
   protected readonly resultsView = inject(ActivatedRoute).snapshot.data['view'] === 'results';
-  protected readonly workflow = this.resultsView ? null : inject(AcademyDemoWorkflow);
   private readonly router = inject(Router);
   protected resultStaff = '';
   protected certificateStaff = '';
   protected certificatePeople() {
-    return this.academy.store
-      .staff()
-      .filter(
-        (p) =>
-          this.academy.can('evidence', p.id) &&
-          this.academy.state().certificates.some((c) => c.personId === p.id),
-      );
+    return this.academy.certificatesApi.people();
   }
+
   protected openStaffCertificate(id: string) {
-    if (!this.academy.can('evidence', id)) return;
+    if (!this.academy.certificatesApi.available()) return;
     const latest = this.academy
       .state()
       .certificates.filter((c) => c.personId === id)
@@ -72,7 +65,7 @@ export class AcademyEvidence {
       .state()
       .certificates.filter(
         (c) =>
-          this.academy.can('evidence', c.personId) &&
+          this.academy.certificatesApi.available() &&
           `${c.learner} ${c.courseTitle} ${c.id}`
             .toLowerCase()
             .includes(this.search.toLowerCase()) &&
@@ -100,29 +93,31 @@ export class AcademyEvidence {
   }
   protected name(id: string) {
     return (
-      this.academy.resultsApi.people().find((p) => p.id === id)?.name ?? 'Unavailable staff record'
+      [...this.academy.resultsApi.people(), ...this.academy.certificatesApi.people()].find(
+        (p) => p.id === id,
+      )?.name ?? 'Unavailable staff record'
     );
   }
   protected accessRequests() {
     return (
-      this.academy
-        .state()
-        .accessRequests?.filter((r) => this.academy.can('evidence', r.personId)) ?? []
+      this.academy.state().accessRequests?.filter(() => this.academy.certificatesApi.available()) ??
+      []
     );
   }
-  protected acknowledgeAccess(id: string) {
-    const error = this.academy.acknowledgeRecordsRequest(id, this.academy.store.companyId());
+  protected async acknowledgeAccess(id: string) {
+    const error = await this.academy.acknowledgeRecordsRequest(id, this.academy.store.companyId());
     this.error.set(error ?? '');
     if (!error)
       this.notice.set(
         'Request acknowledged for HR handling. No disclosure or external message has been sent.',
       );
   }
-  protected retry(id: string) {
-    const error =
-      this.workflow?.retry(id) ??
-      (this.resultsView ? 'The evidence delivery integration is not configured.' : null);
-    this.error.set(error ?? '');
-    if (!error) this.notice.set('The saved evidence workflow has been queued for retry.');
+  protected async retry(id: string) {
+    try {
+      await this.academy.certificatesApi.issue(id);
+      this.notice.set('Certificate issued and linked to the staff training file.');
+    } catch (e) {
+      this.error.set((e as Error).message);
+    }
   }
 }

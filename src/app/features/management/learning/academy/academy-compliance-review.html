@@ -35,7 +35,7 @@
       </button>
     </div>
   </div>
-  <cv-academy-message [error]="error()" [notice]="notice()" />
+  <cv-academy-message [error]="error() || academy.certificatesApi.error()" [notice]="notice()" />
   @if (certificate(); as c) {
     <div class="staff-context">
       <span
@@ -121,7 +121,7 @@
               <div>
                 <span class="material-symbols-outlined" aria-hidden="true">event_available</span
                 ><span
-                  >Completion Date<strong>{{ c.issuedAt | ukDate: 'd MMM yyyy' }}</strong></span
+                  >Completion Date<strong>{{ (c.completedAt ?? c.issuedAt) | ukDate: 'd MMM yyyy' }}</strong></span
                 >
               </div>
               <div>
@@ -144,7 +144,7 @@
                 <span class="material-symbols-outlined" aria-hidden="true">verified_user</span
                 ><span
                   >Verification Reference<strong>{{
-                    c.checksum ? c.checksum.slice(0, 16) : 'Generation pending'
+                    c.id.slice(0, 16)
                   }}</strong></span
                 >
               </div>
@@ -209,11 +209,11 @@
             }}</span>
           </div>
           @if (filed()) {
-            <button class="text-action" (click)="previewFiled()">
+            <button class="text-action" [disabled]="!academy.certificatesApi.canExport()" (click)="previewFiled()">
               Preview filed PDF<span class="material-symbols-outlined" aria-hidden="true"
                 >visibility</span
               ></button
-            ><button class="text-action" (click)="download()">
+            ><button class="text-action" [disabled]="!academy.certificatesApi.canExport()" (click)="download()">
               Open filed PDF<span class="material-symbols-outlined" aria-hidden="true"
                 >open_in_new</span
               >
@@ -269,7 +269,7 @@
               Matrix Status
             </h2>
             <span class="status" [class.good]="active() && !!ack('ROTA_REFRESH_PENDING')">{{
-              c.revokedAt ? 'Revoked' : ack('ROTA_REFRESH_PENDING') ? 'Recalculated' : 'Pending'
+              c.revokedAt ? 'Revoked' : record() ? 'Recalculated' : 'Pending'
             }}</span>
           </div>
           <div class="matrix-outcome" [class.current]="courseCurrent()">
@@ -309,7 +309,7 @@
           </div>
           <p>
             Training inputs {{ ack('COMPLETE_SYNCED') ? 'acknowledged' : 'pending' }}.
-            {{ academy.practicalReadiness(c.personId, c.courseId) }}.
+            Practical competency requires separate authorised evidence.
           </p>
           <div class="table-scroll" tabindex="0" role="region" aria-label="Staff visit suitability">
             <table>
@@ -347,7 +347,7 @@
                       {{
                         canViewRota()
                           ? 'No upcoming assigned visits. Suitability is checked for each actual visit.'
-                          : 'Visit suitability is restricted to authorised rota viewers.'
+                          : 'Rota integration is not configured. Visit suitability has not been evaluated.'
                       }}
                     </td>
                   </tr>
@@ -559,7 +559,7 @@
       ><a class="academy-button" [routerLink]="['/manage/people/staff', c.personId, 'training']"
         >Staff Training Record</a
       >
-      @if (!c.revokedAt && academy.canManage()) {
+      @if (!c.revokedAt && academy.certificatesApi.canRevoke()) {
         <button
           class="text-action danger"
           [attr.aria-expanded]="revokeOpen()"
@@ -569,7 +569,7 @@
         </button>
       }
     </div>
-    @if (revokeOpen() && academy.canManage() && !c.revokedAt) {
+    @if (revokeOpen() && academy.certificatesApi.canRevoke() && !c.revokedAt) {
       <section class="panel revoke-panel">
         <h2>Controlled Revocation</h2>
         <p>

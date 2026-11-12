@@ -1,3 +1,4 @@
+import { AcademyCertificatesApi } from './academy-certificates-api.service';
 import { AcademyResultsApi } from './academy-results-api.service';
 import { AcademyAssignmentsApi } from './academy-assignments-api.service';
 import { AcademyApi } from './academy-api.service';
@@ -7,6 +8,7 @@ import {
   requirementsFor,
   evidenceCurrent,
   courseApplies,
+  emptyGovernance,
 } from './academy-governance.models';
 import { Injectable, computed, inject } from '@angular/core';
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -46,8 +48,9 @@ export class AcademyService {
   readonly api = inject(AcademyApi);
   readonly assignmentApi = inject(AcademyAssignmentsApi);
   readonly resultsApi = inject(AcademyResultsApi);
+  readonly certificatesApi = inject(AcademyCertificatesApi);
   readonly auth = inject(AuthService);
-  readonly state = computed(() => {
+  readonly state = computed<AcademyData>(() => {
     const records = this.api.courses();
     const courses = new Map(
       records
@@ -76,6 +79,11 @@ export class AcademyService {
       assignments: this.assignments(),
       attempts: this.resultsApi.attempts(),
       retakePlans: this.resultsApi.retakes(),
+      certificates: this.certificatesApi.certificates(),
+      completions: this.certificatesApi.completions(),
+      refresherSchedules: this.certificatesApi.refreshers(),
+      accessRequests: this.certificatesApi.requests(),
+      governance: { ...emptyGovernance(), requirements: this.certificatesApi.requirements() },
     };
   });
   async persistCourse(
@@ -170,7 +178,12 @@ export class AcademyService {
     return this.enabled() && this.me()?.id === personId;
   }
   canReadPerson(personId: string): boolean {
-    return this.enabled() && (this.can('evidence', personId) || this.owns(personId));
+    return (
+      this.enabled() &&
+      (this.can('evidence', personId) ||
+        this.owns(personId) ||
+        this.certificatesApi.people().some((p) => p.id === personId))
+    );
   }
   canBrowseCourse(course: AcademyCourse): boolean {
     if (!this.enabled()) return false;
@@ -235,8 +248,10 @@ export class AcademyService {
   }
   completion(assignmentId: string) {
     const c = this.state()
-      .certificates.filter((c) => c.assignmentId === assignmentId && !c.revokedAt)
-      .at(-1);
+      .certificates.filter(
+        (c) => c.assignmentId === assignmentId && !c.revokedAt && !c.replacedById,
+      )
+      .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt) || b.id.localeCompare(a.id))[0];
     return this.state().completions?.find(
       (j) =>
         j.assignmentId === assignmentId &&
@@ -245,12 +260,10 @@ export class AcademyService {
     );
   }
   canReadCertificate(): boolean {
-    return this.canViewEvidence();
+    return this.certificatesApi.available() || this.certificatesApi.learnerAvailable();
   }
   certificate(id: string) {
-    return this.state().certificates.find(
-      (c) => c.id === id && this.canReadCertificate() && this.can('evidence', c.personId),
-    );
+    return this.state().certificates.find((c) => c.id === id && this.canReadCertificate());
   }
   policyFor(course: AcademyCourse, settings = this.state().settings): AcademyPolicy {
     return {
@@ -510,69 +523,21 @@ export class AcademyService {
   ): string | null {
     return 'Verified video viewing evidence is not available for this lesson yet.';
   }
-  requestTrainingRecords(workspace: string): string | null {
-    const person = this.me();
-    if (!person) return 'Your account is not linked to a staff record.';
-    return this.change(
-      workspace,
-      'Training records access requested',
-      person.id,
-      (d) => {
-        d.accessRequests ??= [];
-        if (d.accessRequests.some((r) => r.personId === person.id && r.status === 'Requested'))
-          return 'Your records access request is already awaiting HR review.';
-        d.accessRequests.push({
-          id: crypto.randomUUID(),
-          tenantId: workspace,
-          personId: person.id,
-          createdAt: new Date().toISOString(),
-          status: 'Requested',
-          acknowledgedAt: '',
-          acknowledgedBy: '',
-        });
-        return null;
-      },
-      person.id,
-      false,
-    );
+  async requestTrainingRecords(workspace: string): Promise<string | null> {
+    return this.assessmentWrite(workspace, () => this.certificatesApi.requestRecords());
   }
-  acknowledgeRecordsRequest(id: string, workspace: string): string | null {
-    return this.change(workspace, 'Training records access request acknowledged', id, (d) => {
-      const request = d.accessRequests?.find((r) => r.id === id && r.tenantId === workspace);
-      if (!request) return 'Request unavailable.';
-      if (request.status === 'Acknowledged') return null;
-      if (request.status !== 'Requested')
-        return 'The disclosure request has already progressed; use its decision workflow.';
-      request.status = 'Acknowledged';
-      request.acknowledgedAt = new Date().toISOString();
-      request.acknowledgedBy = this.auth.currentUser()!.name;
-      return null;
-    });
+  async acknowledgeRecordsRequest(id: string, workspace: string): Promise<string | null> {
+    return this.assessmentWrite(workspace, () => this.certificatesApi.acknowledge(id));
   }
   knowledgeCompliance(personId: string) {
-    const person = this.store.staff().find((p) => p.id === personId);
-    const rules = person ? requirementsFor(this.state(), person) : [];
-    const required = rules
-      .map((r) => this.state().courses.find((c) => c.id === r.courseId))
-      .filter((c): c is AcademyCourse => !!c);
-    const missing = required.filter(
-      (course) =>
-        !person ||
-        !evidenceCurrent(
-          this.state(),
-          person,
-          course.id,
-          londonDate(),
-          rules.find((r) => r.courseId === course.id),
-        ),
-    );
+    const source = this.certificatesApi.compliance().find((r) => r.person.id === personId);
     return {
-      required: required.length,
-      missing,
-      compliant: required.length ? missing.length === 0 : null,
-      percent: required.length
-        ? Math.round(((required.length - missing.length) / required.length) * 100)
-        : null,
+      required: source?.requirements.length ?? 0,
+      missing: (source?.requirements ?? [])
+        .filter((r) => r.missing)
+        .map((r) => ({ id: r.courseId, title: r.title })),
+      compliant: source?.compliant ?? null,
+      percent: source?.percentage ?? null,
     };
   }
   practicalReadiness(personId: string, courseId: string) {
@@ -675,12 +640,16 @@ export class AcademyService {
     });
   }
   status(a: AcademyAssignment) {
-    if (this.state().attempts.some((t) => t.assignmentId === a.id && !t.groupId && t.invalidatedAt))
+    if (
+      !a.completedAt &&
+      this.state().attempts.some((t) => t.assignmentId === a.id && !t.groupId && t.invalidatedAt)
+    )
       return 'Evidence review';
     const certificate =
       this.state()
-        .certificates.filter((c) => c.assignmentId === a.id && !c.revokedAt)
-        .at(-1) ?? this.state().certificates.find((c) => c.assignmentId === a.id);
+        .certificates.filter((c) => c.assignmentId === a.id && !c.revokedAt && !c.replacedById)
+        .sort((x, y) => y.issuedAt.localeCompare(x.issuedAt) || y.id.localeCompare(x.id))[0] ??
+      this.state().certificates.find((c) => c.assignmentId === a.id);
     if (certificate?.revokedAt) return 'Evidence review';
     if (a.completedAt && certificate?.expires) {
       if (certificate.expires < londonDate()) return 'Expired';
@@ -698,7 +667,13 @@ export class AcademyService {
       this.assignedCourse(a)?.evidenceType !== 'Internal knowledge completion'
     )
       return 'Evidence review';
-    if (a.completedAt && this.completion(a.id)?.status !== 'COMPLETE_SYNCED')
+    if (
+      a.completedAt &&
+      !(
+        certificate?.documentId &&
+        this.completion(a.id)?.acknowledgements.some((e) => e.stage === 'TRAINING_RECORD_PENDING')
+      )
+    )
       return 'Passed · evidence pending';
     return assignmentStatus(a, this.state().settings.dueSoonDays);
   }
@@ -1572,31 +1547,8 @@ export class AcademyService {
       this.resultsApi.event(assignmentId, { kind: 'acknowledged', assetId: resourceId }),
     );
   }
-  revokeCertificate(id: string, reason: string, workspace: string): string | null {
-    return this.change(workspace, 'Certificate revoked', id + ' · ' + reason, (d) => {
-      const c = d.certificates.find((c) => c.id === id);
-      if (!c || !reason.trim()) return 'Select a certificate and record a revocation reason.';
-      if (c.revokedAt) return 'This certificate is already revoked.';
-      c.revokedAt = new Date().toISOString();
-      c.revocationReason = reason.trim();
-      d.refresherSchedules?.forEach((schedule) => {
-        if (
-          d.completions?.some(
-            (job) => job.id === schedule.completionId && job.assignmentId === c.assignmentId,
-          )
-        )
-          schedule.cancelledAt = c.revokedAt;
-      });
-      const completion = d.completions?.find((v) => v.assignmentId === c.assignmentId);
-      if (completion) {
-        completion.status = 'SYNC_EXCEPTION';
-        completion.error =
-          'Evidence revoked; current training and rota checks exclude it. History retained: ' +
-          reason.trim();
-        completion.updatedAt = c.revokedAt;
-      }
-      return null;
-    });
+  async revokeCertificate(id: string, reason: string, workspace: string): Promise<string | null> {
+    return this.assessmentWrite(workspace, () => this.certificatesApi.revoke(id, reason));
   }
   async scheduleRetake(
     attemptId: string,
@@ -1691,30 +1643,6 @@ export class AcademyService {
     }))
       ? null
       : 'Could not record export access.';
-  }
-  recordCertificateAccess(
-    id: string,
-    mode: 'Preview' | 'Filed PDF',
-    workspace: string,
-  ): string | null {
-    if (workspace !== this.store.companyId()) return 'The workspace changed. Reopen this page.';
-    const certificate = this.certificate(id);
-    if (!certificate || !this.store.staff().some((p) => p.id === certificate.personId))
-      return 'You do not have permission to access this certificate.';
-    const event = {
-      id: crypto.randomUUID(),
-      at: new Date().toISOString(),
-      actor: this.auth.currentUser()!.name,
-      action: 'Certificate accessed',
-      detail: mode + ': ' + id,
-      personId: certificate.personId,
-    };
-    return this.store.saveWorkspace((data) => ({
-      ...data,
-      academy: { ...this.state(), events: [event, ...this.state().events] },
-    }))
-      ? null
-      : 'Could not record certificate access. Free some browser storage and try again.';
   }
   private template(value: string, course: string, due: string): string {
     return value.replaceAll('{{course}}', course).replaceAll('{{due}}', due || 'Not set');

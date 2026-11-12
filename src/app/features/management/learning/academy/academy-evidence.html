@@ -13,7 +13,7 @@
   </div>
   <a class="academy-button" routerLink="/manage/learning/reports">Reports & audit log →</a>
 </div>
-<cv-academy-message [error]="error() || (resultsView ? academy.resultsApi.error() : '')" [notice]="notice()" />
+<cv-academy-message [error]="error() || (resultsView ? academy.resultsApi.error() : academy.certificatesApi.error())" [notice]="notice()" />
 <section class="panel toolbar">
   <label class="field"
     >Search learner, course or reference<input type="search" [(ngModel)]="search"
@@ -133,7 +133,7 @@
       </table>
     </div>
   </section>
-} @else if (!resultsView) {
+} @else if (!resultsView && !academy.certificatesApi.error()) {
   <section class="panel">
     <h2>Internal certificate evidence</h2>
     <div class="scroll" tabindex="0" role="region" aria-label="Certificate evidence">
@@ -219,7 +219,7 @@
                 <button
                   class="academy-button"
                   [disabled]="
-                    request.status !== 'Requested' || !academy.can('review', request.personId)
+                    request.status !== 'Requested' || !academy.certificatesApi.canRevoke()
                   "
                   (click)="acknowledgeAccess(request.id)"
                 >
@@ -242,18 +242,18 @@
 <section class="panel">
   <div class="heading">
     <h2>Evidence workflow exceptions</h2>
-    <a class="academy-button" routerLink="/manage/learning/settings">Demo failure scenarios →</a>
+
   </div>
   @for (job of academy.state().completions; track job.id) {
-    @if (job.status === 'SYNC_EXCEPTION' && academy.can('evidence', job.personId)) {
+    @if (job.status === 'CERTIFICATE_PENDING' && academy.certificatesApi.available()) {
       <article class="list-item">
         <div>
           <h3>{{ name(job.personId) }}</h3>
           <p>{{ job.error }}</p>
           <small>Trace {{ job.correlationId }} · Retry attempts {{ job.retryCount }}</small>
         </div>
-        <button class="academy-button" [disabled]="!academy.canManage()" (click)="retry(job.id)">
-          Retry saved workflow
+        <button class="academy-button" [disabled]="!academy.certificatesApi.canIssue() || academy.certificatesApi.saving()" (click)="retry(job.id)">
+          Generate certificate
         </button>
       </article>
     }

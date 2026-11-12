@@ -6,7 +6,6 @@ import { CvSelect } from '../../../../shared/ui/select';
 import { AcademyAssignment } from './academy.models';
 import { AcademyService } from './academy.service';
 import { AcademyGovernanceService } from './academy-governance.service';
-import { AcademyDemoWorkflow } from './academy-demo-workflow';
 import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 import { AcademyDate } from './academy-date';
 import {
@@ -21,7 +20,10 @@ import { addDays, londonDate } from '../../rota/rota.models';
 import { ROLES } from '../../../../core/auth/models/role';
 @Component({
   selector: 'cv-academy-governance',
-  host: { class: 'module-page academy-page' },
+  host: {
+    class: 'module-page academy-page',
+    '[attr.inert]': 'academy.certificatesApi.saving() || academy.resultsApi.saving() ? "" : null',
+  },
   imports: [
     FormsModule,
     RouterLink,
@@ -37,7 +39,6 @@ import { ROLES } from '../../../../core/auth/models/role';
 export class AcademyGovernancePage {
   protected readonly academy = inject(AcademyService);
   protected readonly operations = inject(AcademyGovernanceService);
-  protected readonly workflow = inject(AcademyDemoWorkflow);
   private readonly workspace = this.academy.store.companyId();
   protected readonly tab = signal('Reviews');
   private readonly allTabs = [
@@ -95,17 +96,6 @@ export class AcademyGovernancePage {
   protected invalidationAttempt = '';
   protected connected = true;
   protected backupStatus = '';
-  constructor() {
-    if (this.academy.can('configure')) {
-      this.result(
-        this.operations.seed(),
-        'Seeded review, adjustment, delivery, authorisation and access examples are ready.',
-      );
-      void this.operations.seedMedia().then((error) => {
-        if (error) this.error.set(error);
-      });
-    }
-  }
   protected people() {
     return this.academy.store.staff().filter((p) => this.academy.can('evidence', p.id));
   }
@@ -153,7 +143,7 @@ export class AcademyGovernancePage {
     this.requirementBranches = '';
     this.reminderDays = '30, 14, 7';
   }
-  protected saveRequirement() {
+  protected async saveRequirement() {
     const list = (s: string) =>
       s
         .split(',')
@@ -163,7 +153,7 @@ export class AcademyGovernancePage {
     this.requirement.branches = list(this.requirementBranches);
     this.requirement.reminderDays = list(this.reminderDays).map(Number);
     this.result(
-      this.operations.saveRequirement(this.requirement, this.workspace),
+      await this.operations.saveRequirement(this.requirement, this.workspace),
       'Requirement saved. Existing results and issued certificates are retained.',
     );
   }
@@ -290,10 +280,10 @@ export class AcademyGovernancePage {
       'Original result retained and marked invalidated; it cannot issue current evidence.',
     );
   }
-  protected reissue() {
+  protected async reissue() {
     this.result(
-      this.operations.reissue(this.correctionCertificate, this.reason),
-      'Replacement evidence queued with a traceable link to the original certificate.',
+      await this.operations.reissue(this.correctionCertificate, this.reason),
+      'Replacement certificate issued with a traceable link to the original.',
     );
   }
   protected exportEvidence() {
@@ -358,19 +348,27 @@ export class AcademyGovernancePage {
       this.result((e as Error).message);
     }
   }
+  protected async retryCertificate(attemptId: string) {
+    try {
+      await this.academy.certificatesApi.issue(attemptId);
+      this.result(null, 'Certificate issued and linked to the staff training file.');
+    } catch (e) {
+      this.result((e as Error).message);
+    }
+  }
   protected async reconcile() {
-    this.workflow.reconcile();
-    for (const j of this.academy.state().completions ?? [])
-      if (j.status !== 'COMPLETE_SYNCED') {
-        if (j.status === 'SYNC_EXCEPTION') {
-          const e = this.workflow.retry(j.id);
-          if (e) {
-            this.result(e);
-            return;
-          }
-        }
-        await this.workflow.process(j.id);
-      }
-    this.result(null, 'Reconciliation evaluated saved passes, certificates and workflow stages.');
+    try {
+      await this.academy.certificatesApi.load();
+      for (const job of this.academy.certificatesApi
+        .completions()
+        .filter((j) => j.status === 'CERTIFICATE_PENDING'))
+        await this.academy.certificatesApi.issue(job.attemptId);
+      this.result(
+        null,
+        'Valid passing results processed. External integration stages require recorded provider acknowledgements.',
+      );
+    } catch (e) {
+      this.result((e as Error).message);
+    }
   }
 }

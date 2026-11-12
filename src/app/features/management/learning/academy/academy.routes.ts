@@ -70,8 +70,53 @@ const learningLoaded: CanActivateFn = async (route) => {
   if (!api.learnerAvailable()) return router.createUrlTree(['/access-denied']);
   try {
     await api.load(true, true);
+    const certificates = await import('./academy-certificates-api.service');
+    const evidence = runInInjectionContext(context, () =>
+      inject(certificates.AcademyCertificatesApi),
+    );
+    await evidence.load(true);
+    const certificateId = route.paramMap.get('certificateId');
+    if (certificateId) await evidence.detail(certificateId, true);
     const id = route.paramMap.get('attemptId');
     if (id) await api.detail(id, true);
+  } catch {
+    /* The page displays the access or connection error. */
+  }
+  return true;
+};
+const certificatesIfAvailable: CanActivateFn = async () => {
+  const context = inject(EnvironmentInjector),
+    m = await import('./academy-certificates-api.service');
+  const api = runInInjectionContext(context, () => inject(m.AcademyCertificatesApi));
+  if (api.available())
+    try {
+      await api.load();
+    } catch {
+      /* The page displays the source error. */
+    }
+  return true;
+};
+const requirementsLoaded: CanActivateFn = async () => {
+  const context = inject(EnvironmentInjector),
+    m = await import('./academy-certificates-api.service');
+  const api = runInInjectionContext(context, () => inject(m.AcademyCertificatesApi));
+  try {
+    await api.loadRequirements();
+  } catch {
+    /* The page displays the access error. */
+  }
+  return true;
+};
+const certificatesLoaded: CanActivateFn = async (route) => {
+  const context = inject(EnvironmentInjector),
+    router = inject(Router);
+  const m = await import('./academy-certificates-api.service');
+  const api = runInInjectionContext(context, () => inject(m.AcademyCertificatesApi));
+  if (!api.available()) return router.createUrlTree(['/access-denied']);
+  try {
+    await api.load();
+    const id = route.paramMap.get('certificateId');
+    if (id) await api.detail(id);
   } catch {
     /* The page displays the access or connection error. */
   }
@@ -141,19 +186,19 @@ export const ACADEMY_ADMIN_ROUTES: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    canActivate: [reader, resultsIfAvailable],
+    canActivate: [reader, resultsIfAvailable, certificatesIfAvailable],
     title: 'CareVerity Academy · CareVerity',
     loadComponent: () => import('./academy-dashboard').then((m) => m.AcademyDashboard),
   },
   {
     path: 'results/:attemptId',
-    canActivate: [resultsLoaded],
+    canActivate: [resultsLoaded, certificatesIfAvailable],
     title: 'Staff results & retakes · CareVerity',
     loadComponent: () => import('./academy-results-review').then((m) => m.AcademyResultsReview),
   },
   {
     path: 'certificates/:certificateId',
-    canActivate: [reader],
+    canActivate: [certificatesLoaded],
     title: 'Staff certificates & compliance · CareVerity',
     loadComponent: () =>
       import('./academy-compliance-review').then((m) => m.AcademyComplianceReview),
@@ -161,7 +206,8 @@ export const ACADEMY_ADMIN_ROUTES: Routes = [
   ...['results', 'certificates'].map((view) => ({
     path: view,
     data: { view },
-    canActivate: view === 'results' ? [resultsLoaded] : [reader],
+    canActivate:
+      view === 'results' ? [resultsLoaded, certificatesIfAvailable] : [certificatesLoaded],
     title: 'CareVerity Academy · Evidence',
     loadComponent: () => import('./academy-evidence').then((m) => m.AcademyEvidence),
   })),
@@ -173,7 +219,12 @@ export const ACADEMY_ADMIN_ROUTES: Routes = [
   },
   {
     path: 'governance',
-    canActivate: [reader, resultsIfAvailable],
+    canActivate: [
+      capability('diagnostics'),
+      resultsIfAvailable,
+      certificatesIfAvailable,
+      requirementsLoaded,
+    ],
     title: 'Academy policies & reviews · CareVerity',
     loadComponent: () => import('./academy-governance').then((m) => m.AcademyGovernancePage),
   },
@@ -237,7 +288,7 @@ export const ACADEMY_ADMIN_ROUTES: Routes = [
   },
   {
     path: 'manage',
-    canActivate: [assignmentsLoaded],
+    canActivate: [assignmentsLoaded, certificatesIfAvailable],
     canDeactivate: [leave],
     title: 'Manage training · CareVerity',
     loadComponent: () => import('./academy-manage').then((m) => m.AcademyManage),

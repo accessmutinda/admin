@@ -57,7 +57,11 @@ export class StaffFields {
       Number(now.slice(0, 4)) - Number(birth.slice(0, 4)) - (now.slice(5) < birth.slice(5) ? 1 : 0);
     return years >= 0 && Number.isFinite(years) ? String(years) : 'Not recorded';
   }
+  protected academyCourse(id: string): boolean {
+    return this.p.hr?.training.some((t) => t.courseId === id && !!t.sourceCompletionId) ?? false;
+  }
   protected toggleCourse(id: string, selected: boolean): void {
+    if (this.academyCourse(id)) return;
     this.p.hr!.training = selected
       ? [
           ...this.p.hr!.training,

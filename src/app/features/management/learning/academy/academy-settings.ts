@@ -1,4 +1,3 @@
-import { AcademyDemoWorkflow } from './academy-demo-workflow';
 import { Component, HostListener, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -31,8 +30,11 @@ import { AcademyCertificateView } from './academy-certificate';
   ],
 })
 export class AcademySettingsPage {
-  protected readonly workflow = inject(AcademyDemoWorkflow);
   protected readonly academy = inject(AcademyService);
+  protected async refreshEvidence() {
+    try { await this.academy.certificatesApi.load(); this.notice.set('Certificate workflows refreshed from saved records.'); }
+    catch(e) { this.error.set((e as Error).message); }
+  }
   private readonly workspace = this.academy.store.companyId();
   private readonly files = inject(AcademyAssets);
   protected readonly uploadingImage = signal(false);

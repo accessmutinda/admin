@@ -28,7 +28,7 @@ import { AcademyImage } from './academy-image';
       <h3>{{ certificate().learner }}</h3>
       <p>has successfully completed</p>
       <h4>{{ certificate().courseTitle }}</h4>
-      <p>Completed {{ certificate().issuedAt | ukDate: 'd MMM yyyy' : 'Europe/London' }}</p>
+      <p>Completed {{ (certificate().completedAt ?? certificate().issuedAt) | ukDate: 'd MMM yyyy' : 'Europe/London' }}</p>
       <p>{{ certificate().courseCode }} · Version {{ certificate().courseVersion ?? 1 }}</p>
       <p>
         Knowledge completion · Score {{ certificate().score }}% · {{ certificate().cpdHours }} CPD

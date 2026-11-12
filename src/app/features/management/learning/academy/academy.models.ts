@@ -307,6 +307,7 @@ export interface AcademyAttempt {
   passed: boolean;
 }
 export interface AcademyCertificate {
+  completedAt?: string;
   templateVersion?: number;
   replacesId?: string;
   replacedById?: string;

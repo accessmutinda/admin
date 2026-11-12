@@ -427,13 +427,13 @@ export class AcademyLearner {
       this.academy.state().accessRequests?.filter((r) => r.personId === this.person()?.id) ?? []
     );
   }
-  protected requestRecords() {
+  protected async requestRecords() {
     if (this.preview()) return;
-    const error = this.academy.requestTrainingRecords(this.academy.store.companyId());
+    const error = await this.academy.requestTrainingRecords(this.academy.store.companyId());
     this.error.set(error ?? '');
     if (!error)
       this.notice.set(
-        'Your training-record access request is recorded for HR review on this device. No external message has been sent.',
+        'Your training-record access request is recorded for HR review. No external message has been sent.',
       );
   }
   protected pendingRequest() {
@@ -600,28 +600,8 @@ export class AcademyLearner {
     return this.academy.state().assets.find((a) => a.id === id)?.language ?? 'en';
   }
   protected async downloadCertificate(c: AcademyCertificate) {
-    if (!this.academy.canReadCertificate() || !this.academy.certificate(c.id)) return;
-    const document = this.academy.store
-      .staff()
-      .find((p) => p.id === c.personId)
-      ?.documents?.find((d) => d.id === c.documentId);
-    if (!document?.content.startsWith('data:application/pdf;base64,')) {
-      this.error.set('The filed PDF is not available yet.');
-      return;
-    }
-    const error = this.academy.recordCertificateAccess(
-      c.id,
-      'Filed PDF',
-      this.academy.store.companyId(),
-    );
-    if (error) {
-      this.error.set(error);
-      return;
-    }
-    const link = window.document.createElement('a');
-    link.href = document.content;
-    link.download = document.name;
-    link.click();
+    try { await this.academy.certificatesApi.download(c.id, true); }
+    catch(e) { this.error.set((e as Error).message); }
   }
   protected enrol() {
     if (!this.course()) return;

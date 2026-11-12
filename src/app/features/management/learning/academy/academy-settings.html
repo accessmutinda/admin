@@ -286,11 +286,10 @@
       </mat-select></label
     >
     <p>
-      Save the scenario, complete an assessment, then inspect its exception. Restore Healthy
-      workflow and retry to demonstrate recovery without duplicate PDFs or HR links.
+      Certificate workflows use persisted source records. External integration stages remain pending until actual delivery is acknowledged.
     </p>
-    <button class="academy-button" (click)="workflow.reconcile()">
-      Reconcile seeded completions
+    <button class="academy-button" (click)="refreshEvidence()">
+      Refresh certificate workflows
     </button>
     <a class="academy-button" routerLink="/manage/learning/reports">Export academy records →</a>
   </section>

@@ -3169,3 +3169,304 @@ export type AcademyResultRetakeRead = {
 export type AcademyRetakeWrite = {
   scheduledFor: string;
 };
+
+export type AcademyCertificateEmpty = Record<string, unknown>;
+
+export type AcademyCertificateIssue = {
+  attemptId: string;
+};
+
+export type AcademyCertificatePageRead = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: {
+    certificate: {
+      id: string;
+      company_id: string;
+      version: number;
+      etag: string;
+      personId: string;
+      assignmentId: string;
+      courseId: string;
+      passedAttemptId: string;
+      courseTitle: string;
+      courseCode: string;
+      courseVersion: number;
+      learner: string;
+      issuer: string;
+      issuedAt: string;
+      completedAt: string;
+      expires: string;
+      score: number;
+      cpdHours: number;
+      sample: boolean;
+      branding: Record<string, unknown>;
+      documentId: string;
+      replacesId: string;
+      replacedById: string;
+      correctionReason: string;
+      revokedAt: string;
+      revocationReason: string;
+      state: string;
+    };
+    person: {
+      id: string;
+      name: string;
+      email: string;
+      role: string;
+      location: string;
+      department: string;
+      status: string;
+    };
+    completion: Record<string, unknown>;
+    document: Record<string, unknown>;
+    training: Record<string, unknown>;
+    currentTraining: Record<string, unknown> | null;
+    refresher: Record<string, unknown> | null;
+    matrix: Record<string, unknown>[];
+    events: Record<string, unknown>[];
+    assets: {
+      rights?: string;
+      language?: string;
+      replacesId?: string;
+      durationSeconds?: number;
+      width?: number;
+      height?: number;
+      id: string;
+      company_id: string;
+      name: string;
+      mime: string;
+      kind: 'Video' | 'Image' | 'Document' | 'Captions';
+      size: number;
+      checksum: string;
+      status: 'SCAN_PENDING' | 'CAPTIONS_REVIEW' | 'READY' | 'REJECTED';
+      version: number;
+      etag: string;
+      at: string;
+      by: string;
+      scanner?: string;
+      scannedAt?: string;
+      reviewedAt?: string;
+      reviewedBy?: string;
+      request_id?: string;
+    }[];
+    integration: Record<string, unknown>;
+  }[];
+  meta: Record<string, unknown>;
+};
+
+export type AcademyCertificateQuery = {
+  page?: number;
+  page_size?: number;
+  q?: string;
+  person_id?: string;
+  state?: 'All' | 'Current' | 'Expired' | 'Revoked' | 'Superseded';
+};
+
+export type AcademyCertificateRead = {
+  id: string;
+  company_id: string;
+  version: number;
+  etag: string;
+  personId: string;
+  assignmentId: string;
+  courseId: string;
+  passedAttemptId: string;
+  courseTitle: string;
+  courseCode: string;
+  courseVersion: number;
+  learner: string;
+  issuer: string;
+  issuedAt: string;
+  completedAt: string;
+  expires: string;
+  score: number;
+  cpdHours: number;
+  sample: boolean;
+  branding: Record<string, unknown>;
+  documentId: string;
+  replacesId: string;
+  replacedById: string;
+  correctionReason: string;
+  revokedAt: string;
+  revocationReason: string;
+  state: string;
+};
+
+export type AcademyCertificateReason = {
+  reason: string;
+};
+
+export type AcademyCertificateRecordRead = {
+  certificate: {
+    id: string;
+    company_id: string;
+    version: number;
+    etag: string;
+    personId: string;
+    assignmentId: string;
+    courseId: string;
+    passedAttemptId: string;
+    courseTitle: string;
+    courseCode: string;
+    courseVersion: number;
+    learner: string;
+    issuer: string;
+    issuedAt: string;
+    completedAt: string;
+    expires: string;
+    score: number;
+    cpdHours: number;
+    sample: boolean;
+    branding: Record<string, unknown>;
+    documentId: string;
+    replacesId: string;
+    replacedById: string;
+    correctionReason: string;
+    revokedAt: string;
+    revocationReason: string;
+    state: string;
+  };
+  person: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    location: string;
+    department: string;
+    status: string;
+  };
+  completion: Record<string, unknown>;
+  document: Record<string, unknown>;
+  training: Record<string, unknown>;
+  currentTraining: Record<string, unknown> | null;
+  refresher: Record<string, unknown> | null;
+  matrix: Record<string, unknown>[];
+  events: Record<string, unknown>[];
+  assets: {
+    rights?: string;
+    language?: string;
+    replacesId?: string;
+    durationSeconds?: number;
+    width?: number;
+    height?: number;
+    id: string;
+    company_id: string;
+    name: string;
+    mime: string;
+    kind: 'Video' | 'Image' | 'Document' | 'Captions';
+    size: number;
+    checksum: string;
+    status: 'SCAN_PENDING' | 'CAPTIONS_REVIEW' | 'READY' | 'REJECTED';
+    version: number;
+    etag: string;
+    at: string;
+    by: string;
+    scanner?: string;
+    scannedAt?: string;
+    reviewedAt?: string;
+    reviewedBy?: string;
+    request_id?: string;
+  }[];
+  integration: Record<string, unknown>;
+};
+
+export type AcademyCompliancePageRead = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: Record<string, unknown>[];
+  meta: Record<string, unknown>;
+};
+
+export type AcademyRecordsPageRead = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: {
+    id: string;
+    company_id: string;
+    version: number;
+    etag: string;
+    tenantId: string;
+    personId: string;
+    createdAt: string;
+    status: 'Requested' | 'Acknowledged';
+    acknowledgedAt: string;
+    acknowledgedBy: string;
+  }[];
+  meta: Record<string, unknown>;
+};
+
+export type AcademyRecordsRequestRead = {
+  id: string;
+  company_id: string;
+  version: number;
+  etag: string;
+  tenantId: string;
+  personId: string;
+  createdAt: string;
+  status: 'Requested' | 'Acknowledged';
+  acknowledgedAt: string;
+  acknowledgedBy: string;
+};
+
+export type AcademyRequirementPageRead = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: {
+    courseId: string;
+    roles?: string[];
+    branches?: string[];
+    serviceCategory?: string;
+    effectiveFrom: string;
+    effectiveTo: string;
+    minimumVersion?: number;
+    allowExternal?: boolean;
+    reviewRequired?: boolean;
+    renewalMonths?: number;
+    reminderDays?: number[];
+    autoAssign?: boolean;
+    id: string;
+    company_id: string;
+    version: number;
+    etag: string;
+  }[];
+  meta: Record<string, unknown>;
+};
+
+export type AcademyRequirementRead = {
+  courseId: string;
+  roles?: string[];
+  branches?: string[];
+  serviceCategory?: string;
+  effectiveFrom: string;
+  effectiveTo: string;
+  minimumVersion?: number;
+  allowExternal?: boolean;
+  reviewRequired?: boolean;
+  renewalMonths?: number;
+  reminderDays?: number[];
+  autoAssign?: boolean;
+  id: string;
+  company_id: string;
+  version: number;
+  etag: string;
+};
+
+export type AcademyRequirementWrite = {
+  courseId: string;
+  roles?: string[];
+  branches?: string[];
+  serviceCategory?: string;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  minimumVersion?: number;
+  allowExternal?: boolean;
+  reviewRequired?: boolean;
+  renewalMonths?: number;
+  reminderDays?: number[];
+  autoAssign?: boolean;
+};

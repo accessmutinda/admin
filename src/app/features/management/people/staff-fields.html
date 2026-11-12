@@ -431,7 +431,7 @@
               >
                 <mat-option value="">No evidence attached</mat-option>
                 @for (d of p.documents ?? []; track d.id) {
-                  <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option>
+                  @if (!d.sourceCertificateId) { <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option> }
                 }
               </mat-select></label
             ><label>Review notes<input [(ngModel)]="c.note" /></label>
@@ -460,19 +460,19 @@
               ><input
                 type="checkbox"
                 [checked]="p.learning.includes(c.id)"
-                [disabled]="!!staffId && c.category === 'Mandatory'"
+                [disabled]="!!staffId && (c.category === 'Mandatory' || academyCourse(c.id))"
                 (change)="toggleCourse(c.id, $any($event.target).checked)"
               />{{ c.title }} <span class="hr-badge">{{ c.category }}</span></label
             >
           }
         </div>
       </section>
-      @for (t of h.training; track t.courseId) {
+      @for (t of h.training; track t.sourceCompletionId || t.courseId) {
         <section class="hr-panel">
           <div class="hr-panel-head">
             <h2>{{ title(t.courseId) }}</h2>
           </div>
-          <div class="hr-panel-body hr-form">
+          <div class="hr-panel-body hr-form" [attr.inert]="t.sourceCompletionId ? '' : null">
             <label>Completion date<input type="date" [(ngModel)]="t.completed" /></label
             ><label>Renewal date<input type="date" [(ngModel)]="t.expiry" /></label
             ><label>Score (%)<input type="number" min="0" max="100" [(ngModel)]="t.score" /></label
@@ -495,8 +495,9 @@
                 aria-label="Certificate"
               >
                 <mat-option value="">Not attached</mat-option>
+                @if (t.sourceCompletionId) { <mat-option [value]="t.certificateId">Academy completion certificate</mat-option> }
                 @for (d of p.documents ?? []; track d.id) {
-                  <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option>
+                  @if (!d.sourceCertificateId) { <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option> }
                 }
               </mat-select></label
             >
@@ -537,7 +538,7 @@
           >
             <mat-option value="">Upload as a new document</mat-option>
             @for (d of p.documents ?? []; track d.id) {
-              <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option>
+              @if (!d.sourceCertificateId) { <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option> }
             }
           </mat-select></label
         ><label
@@ -580,7 +581,7 @@
                 <td>{{ d.version || 1 }}</td>
                 <td>
                   <label class="hr-form"
-                    >Expiry date for {{ d.name }}<input type="date" [(ngModel)]="d.expiry"
+                    >Expiry date for {{ d.name }}<input type="date" [disabled]="!!d.sourceCertificateId" [(ngModel)]="d.expiry"
                   /></label>
                 </td>
               </tr>

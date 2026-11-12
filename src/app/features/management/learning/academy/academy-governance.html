@@ -7,11 +7,9 @@
   <a class="academy-button" routerLink="/manage/learning/reports">Training matrix & reports</a>
 </div>
 <p class="demo-notice">
-  <span class="material-symbols-outlined" aria-hidden="true">science</span>Seeded frontend
-  demonstration. Delivery states and background processing are local simulations; no external
-  messages are sent.
+  <span class="material-symbols-outlined" aria-hidden="true">science</span>Certificate corrections and requirement policies use saved server records. External delivery and rota stages require actual provider acknowledgements.
 </p>
-<cv-academy-message [error]="error()" [notice]="notice()" />
+<cv-academy-message [error]="error() || academy.certificatesApi.error()" [notice]="notice()" />
 <nav class="governance-tabs" aria-label="Academy policy workspaces">
   @for (item of tabs; track item) {
     <button
@@ -197,7 +195,7 @@
             aria-label="Certificate to correct"
           >
             @for (c of academy.state().certificates; track c.id) {
-              @if (academy.can('evidence', c.personId)) {
+              @if (academy.certificatesApi.available()) {
                 <mat-option [value]="c.id"
                   >{{ c.learner }} · {{ c.courseTitle }} · {{ c.id }}</mat-option
                 >
@@ -220,7 +218,7 @@
           Invalidate original result</button
         ><button
           class="academy-button"
-          [disabled]="!academy.can('correct') || !correctionCertificate || !reason.trim()"
+          [disabled]="!academy.certificatesApi.canIssue() || !correctionCertificate || !reason.trim()"
           (click)="reissue()"
         >
           Issue linked correction
@@ -267,7 +265,7 @@
                     }}</small>
                   </td>
                   <td>
-                    <button class="academy-button" (click)="editRequirement(r)">Edit policy</button>
+                    <button class="academy-button" [disabled]="!academy.certificatesApi.canSaveRequirement(r)" (click)="editRequirement(r)">Edit policy</button>
                   </td>
                 </tr>
               }
@@ -297,7 +295,7 @@
       <section class="panel">
         <h2>Requirement policy</h2>
         <form (ngSubmit)="saveRequirement()">
-          <fieldset [disabled]="!academy.can('configure')">
+          <fieldset [disabled]="!academy.certificatesApi.canSaveRequirement(requirement)">
             <label class="field"
               >Course<mat-select
                 cvSelect
@@ -305,7 +303,7 @@
                 [(ngModel)]="requirement.courseId"
                 aria-label="Requirement course"
               >
-                @for (c of academy.state().courses; track c.id) {
+                @for (c of academy.certificatesApi.requirementCourses(); track c.id) {
                   <mat-option [value]="c.id">{{ c.title }}</mat-option>
                 }
               </mat-select></label
@@ -330,7 +328,7 @@
                   [(ngModel)]="requirement.effectiveFrom"
                   required /></label
               ><label class="field"
-                >Effective to<input
+                >Effective until (exclusive)<input
                   type="date"
                   name="requirementTo"
                   [(ngModel)]="requirement.effectiveTo" /></label
@@ -953,11 +951,11 @@
                 ><small>{{ j.correlationId }} · Retry {{ j.retryCount }}</small>
                 <p>{{ j.error }}</p>
               </div>
-              @if (j.status === 'SYNC_EXCEPTION') {
+              @if (j.status === 'CERTIFICATE_PENDING') {
                 <button
                   class="academy-button"
                   [disabled]="!academy.can('review')"
-                  (click)="result(workflow.retry(j.id))"
+                  (click)="retryCertificate(j.attemptId)"
                 >
                   Retry workflow
                 </button>

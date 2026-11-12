@@ -51,7 +51,7 @@
     the staff link is verified.
   </div>
 }
-<cv-academy-message [error]="error() || academy.resultsApi.learnerError()" [notice]="notice()" />
+<cv-academy-message [error]="error() || academy.resultsApi.learnerError() || academy.certificatesApi.error()" [notice]="notice()" />
 @switch (view()) {
   @case ('dashboard') {
     <div class="heading">
@@ -546,7 +546,7 @@
               [routerLink]="['/staff-portal/training/certificates', c.id]"
               [queryParams]="context()"
               >View</a
-            ><button class="academy-button" (click)="downloadCertificate(c)">
+            ><button class="academy-button" [disabled]="!academy.certificatesApi.canLearnerExport()" (click)="downloadCertificate(c)">
               Download preview PDF
             </button>
           } @else {
@@ -588,7 +588,7 @@
             routerLink="/staff-portal/training/certificates"
             [queryParams]="context()"
             >All certificates</a
-          ><button class="academy-button primary" (click)="downloadCertificate(c)">
+          ><button class="academy-button primary" [disabled]="!academy.certificatesApi.canLearnerExport()" (click)="downloadCertificate(c)">
             Download certificate PDF ↓
           </button>
         </div>

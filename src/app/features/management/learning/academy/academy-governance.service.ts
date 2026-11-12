@@ -48,21 +48,7 @@ export class AcademyGovernanceService {
     if (expectedWorkspace !== this.workspace()) return 'The workspace changed. Reopen this page.';
     if (!this.academy.can(capability, personId))
       return 'Your role does not have permission for this action.';
-    const draft = structuredClone(this.academy.state());
-    draft.governance ??= emptyGovernance();
-    const error = apply(draft);
-    if (error) return error;
-    draft.events.unshift({
-      id: crypto.randomUUID(),
-      at: new Date().toISOString(),
-      actor: this.academy.auth.currentUser()!.name,
-      action,
-      detail: personId || action,
-      personId,
-    });
-    return this.academy.store.saveWorkspace((data) => ({ ...data, academy: draft }))
-      ? null
-      : 'Could not save. Browser storage may be full.';
+    return 'This workflow does not have a configured backend adapter.';
   }
   seed() {
     if (this.academy.state().governance) return null;
@@ -483,55 +469,17 @@ export class AcademyGovernanceService {
       return (e as Error).message;
     }
   }
-  saveRequirement(rule: AcademyRequirement, workspace = this.workspace()) {
-    return this.mutate(
-      'configure',
-      'Requirement policy saved',
-      (d) => {
-        if (
-          !d.courses.some((c) => c.id === rule.courseId) ||
-          !rule.effectiveFrom ||
-          !/^\d{4}-\d{2}-\d{2}$/.test(rule.effectiveFrom) ||
-          (rule.effectiveTo && rule.effectiveTo < rule.effectiveFrom) ||
-          !Number.isInteger(rule.minimumVersion) ||
-          rule.minimumVersion < 0 ||
-          !Number.isInteger(rule.renewalMonths) ||
-          rule.renewalMonths < 0 ||
-          rule.renewalMonths > 120 ||
-          rule.reminderDays.some((n) => !Number.isInteger(n) || n < 0 || n > 365)
-        )
-          return 'Check course, effective dates, versions, renewal and reminder days.';
-        if (
-          d.governance!.requirements.some(
-            (r) =>
-              r.id !== rule.id &&
-              r.courseId === rule.courseId &&
-              JSON.stringify(r.roles) === JSON.stringify(rule.roles) &&
-              JSON.stringify(r.branches) === JSON.stringify(rule.branches) &&
-              r.serviceCategory === rule.serviceCategory &&
-              (!r.effectiveTo || r.effectiveTo >= rule.effectiveFrom) &&
-              (!rule.effectiveTo || rule.effectiveTo >= r.effectiveFrom),
-          )
-        )
-          return 'This requirement overlaps an existing policy. End-date the old policy before adding its successor.';
-        const previous = d.governance!.requirements.find((r) => r.id === rule.id);
-        if (previous && previous.effectiveFrom < londonDate()) {
-          const strip = (r: AcademyRequirement) => ({ ...r, effectiveTo: '' });
-          if (
-            JSON.stringify(strip(previous)) !== JSON.stringify(strip(rule)) ||
-            (!!rule.effectiveTo && rule.effectiveTo < londonDate())
-          )
-            return 'Create a prospective successor policy; existing effective policy terms are retained.';
-        }
-        d.governance!.requirements = [
-          ...d.governance!.requirements.filter((r) => r.id !== rule.id),
-          structuredClone(rule),
-        ];
-        return null;
-      },
-      '',
-      workspace,
-    );
+  async saveRequirement(
+    rule: AcademyRequirement,
+    workspace = this.workspace(),
+  ): Promise<string | null> {
+    if (workspace !== this.workspace()) return 'The workspace changed. Reopen this page.';
+    try {
+      await this.academy.certificatesApi.saveRequirement(rule);
+      return null;
+    } catch (e) {
+      return (e as Error).message;
+    }
   }
   saveAdjustment(value: AcademyAdjustment, workspace = this.workspace()) {
     return this.mutate(
@@ -612,56 +560,15 @@ export class AcademyGovernanceService {
       return (e as Error).message;
     }
   }
-  reissue(id: string, reason: string) {
-    return this.mutate('correct', 'Certificate correction issued', (d) => {
-      const c = d.certificates.find((c) => c.id === id);
-      if (!c || !reason.trim() || c.replacedById)
-        return 'Choose an original certificate and record a correction reason.';
-      const a =
-        d.attempts.find((a) => a.id === c.passedAttemptId) ??
-        d.attempts.find((a) => a.assignmentId === c.assignmentId && a.passed);
-      if (!a?.passed || a.invalidatedAt)
-        return 'A valid passed attempt is required; an invalidated result cannot be reissued.';
-      const oldJob = d.completions?.find((j) => j.assignmentId === c.assignmentId);
-      if (!oldJob) return 'The original workflow is unavailable.';
-      const next: AcademyCertificate = {
-        ...structuredClone(c),
-        id: 'CV-' + crypto.randomUUID(),
-        learner: this.academy.store.staff().find((p) => p.id === c.personId)?.name ?? c.learner,
-        replacesId: c.id,
-        replacedById: undefined,
-        correctionReason: reason,
-        revokedAt: undefined,
-        revocationReason: undefined,
-        documentId: undefined,
-        checksum: undefined,
-        templateVersion: (c.templateVersion ?? 1) + 1,
-      };
-      c.revokedAt ||= new Date().toISOString();
-      c.revocationReason = reason;
-      c.replacedById = next.id;
-      d.certificates.push(next);
-      d.completions!.push({
-        ...structuredClone(oldJob),
-        id: 'correction:' + next.id,
-        certificateId: next.id,
-        assignmentId: next.assignmentId,
-        attemptId: a.id,
-        status: 'CERTIFICATE_PENDING',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        retryCount: 0,
-        documentId: undefined,
-        trainingRecordId: undefined,
-        pdfContent: undefined,
-        checksum: undefined,
-        correlationId: crypto.randomUUID(),
-        acknowledgements: [],
-        error: '',
-      });
+  async reissue(id: string, reason: string): Promise<string | null> {
+    try {
+      await this.academy.certificatesApi.reissue(id, reason);
       return null;
-    });
+    } catch (e) {
+      return (e as Error).message;
+    }
   }
+
   saveAuthorisation(value: AcademyAuthorisation, workspace = this.workspace()) {
     return this.mutate(
       'review',

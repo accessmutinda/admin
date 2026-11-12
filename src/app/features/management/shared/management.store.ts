@@ -60,6 +60,7 @@ export interface Company {
   publishedBranding?: PublishedCompanyBranding;
 }
 export interface StaffDocument {
+  sourceCertificateId?: string;
   id: string;
   name: string;
   type: string;
@@ -71,7 +72,7 @@ export interface StaffDocument {
   expiry?: string;
   reviewedBy?: string;
   reviewedAt?: string;
-  status?: 'Pending review' | 'Verified';
+  status?: 'Pending review' | 'Verified' | 'Archived';
   version?: number;
   replacesId?: string;
 }

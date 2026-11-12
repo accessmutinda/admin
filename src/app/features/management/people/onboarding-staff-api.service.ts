@@ -259,16 +259,18 @@ export class OnboardingStaffApi {
       };
     } else if (section === 'training') {
       body = {
-        training: h.training.map((t) => ({
-          courseId: t.courseId,
-          completed: optionalDate(t.completed),
-          expiry: optionalDate(t.expiry),
-          certificateId: t.certificateId || null,
-          assessor: t.assessor,
-          competency: t.competency,
-          score: t.score ?? null,
-          reassessmentDue: optionalDate(t.reassessmentDue),
-        })),
+        training: h.training
+          .filter((t) => !t.sourceCompletionId)
+          .map((t) => ({
+            courseId: t.courseId,
+            completed: optionalDate(t.completed),
+            expiry: optionalDate(t.expiry),
+            certificateId: t.certificateId || null,
+            assessor: t.assessor,
+            competency: t.competency,
+            score: t.score ?? null,
+            reassessmentDue: optionalDate(t.reassessmentDue),
+          })),
         induction: h.induction.map(({ id, complete, evidenceId }) => ({
           id,
           complete,
@@ -277,11 +279,13 @@ export class OnboardingStaffApi {
       };
     } else if (section === 'documents') {
       body = {
-        documents: (person.documents ?? []).map((d) => ({
-          id: d.id,
-          category: d.category || 'Employment & HR',
-          expiry: optionalDate(d.expiry),
-        })),
+        documents: (person.documents ?? [])
+          .filter((d) => !d.sourceCertificateId)
+          .map((d) => ({
+            id: d.id,
+            category: d.category || 'Employment & HR',
+            expiry: optionalDate(d.expiry),
+          })),
       };
     } else throw Error('This staff section is not connected yet.');
     await this.mutate(person.id, '/' + section, body, 'PATCH', etag);
