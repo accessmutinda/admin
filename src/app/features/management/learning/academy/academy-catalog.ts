@@ -20,6 +20,11 @@ import { AcademyImage } from './academy-image';
 })
 export class AcademyCatalog {
   protected readonly academy = inject(AcademyService);
+  protected async reload() {
+    try {
+      await this.academy.api.load(true);
+    } catch {}
+  }
   protected search = '';
   protected filter = 'All';
   protected page = 1;
@@ -28,7 +33,7 @@ export class AcademyCatalog {
       .editableCourses()
       .filter(
         (course) =>
-          `${course.title} ${course.category}`
+          `${course.title} ${course.code ?? ''} ${course.category} ${course.description}`
             .toLowerCase()
             .includes(this.search.trim().toLowerCase()) &&
           (this.filter === 'All' || course.status === this.filter),

@@ -1,3 +1,4 @@
+@if (canEdit()) {
 <cv-academy-admin-nav />
 <div class="heading bank-heading">
   <div>
@@ -19,7 +20,7 @@
     </mat-select></label
   >
 </div>
-<cv-academy-message [error]="error()" [notice]="notice()" />
+<cv-academy-message [error]="error() || academy.api.error()" [notice]="notice()" />
 @if (unavailable || !course) {
   <section class="panel empty">
     <h2>Question bank unavailable</h2>
@@ -477,7 +478,7 @@
               Publish reviewed questions, then publish the approved course version. Existing
               assignments retain their original bank and schedule.
             </p>
-            <button class="academy-button primary" (click)="save(true)">
+            <button class="academy-button primary" [disabled]="!academy.api.can('assessments', 'publish')" (click)="save(true)">
               Publish selected question
             </button>
           </details>
@@ -658,7 +659,7 @@
         <span class="material-symbols-outlined" aria-hidden="true">close</span>
       </button>
     </div>
-    <cv-academy-message [error]="error()" />
+    <cv-academy-message [error]="error() || academy.api.error()" />
     <form (ngSubmit)="saveGroup()">
       <label class="field"
         >Group name *<input
@@ -785,4 +786,8 @@
       </div>
     </form>
   </section>
+}
+
+} @else {
+  <cv-academy-message error="Course authoring is unavailable in this workspace." />
 }

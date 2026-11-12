@@ -8,7 +8,11 @@ import { AcademyCourseSteps } from './academy-course-steps';
 import { AcademyCourse, AcademyLesson } from './academy.models';
 import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 @Component({
-  host: { class: 'module-page academy-page' },
+  host: {
+    class: 'module-page academy-page',
+    '[attr.inert]': 'academy.api.saving() ? "" : null',
+    '[attr.aria-busy]': 'academy.api.saving()',
+  },
   selector: 'cv-academy-course-editor',
   imports: [
     AcademyCourseSteps,
@@ -39,7 +43,8 @@ export class AcademyCourseEditor {
   }
   private readonly workspace = this.academy.store.companyId();
   private readonly id = this.route.snapshot.paramMap.get('courseId');
-  protected readonly unavailable = !!this.id && !this.academy.course(this.id);
+  protected readonly unavailable =
+    !!this.academy.api.error() || (!!this.id && !this.academy.course(this.id));
   protected draft: AcademyCourse = structuredClone(
     this.academy.course(this.id ?? '') ?? {
       code: '',
@@ -71,19 +76,8 @@ export class AcademyCourseEditor {
       updatedAt: '',
     },
   );
-  protected readonly audienceBranches = [
-    ...new Set(this.academy.store.staff().map((p) => p.location)),
-  ];
-  protected readonly audienceRoles = [
-    ...new Set([
-      'Care Worker',
-      'Support Worker',
-      'Senior Care Worker',
-      'Team Leader',
-      ...this.academy.store.staff().map((p) => p.role),
-      ...(this.draft.targetRoles ?? []),
-    ]),
-  ];
+  protected readonly audienceBranches = this.academy.api.audience().branches;
+  protected readonly audienceRoles = this.academy.api.audience().roles;
   protected readonly postPassActions = [
     {
       title: 'Internal Certificate',
@@ -146,7 +140,7 @@ export class AcademyCourseEditor {
   private original = JSON.stringify(this.draft);
   protected readonly error = signal('');
   protected readonly notice = signal('');
-  protected save(publish: boolean): void {
+  protected async save(publish: boolean): Promise<void> {
     this.notice.set('');
     const candidate = {
       ...this.draft,
@@ -156,14 +150,14 @@ export class AcademyCourseEditor {
           ? ('Archived' as const)
           : ('Draft' as const),
     };
-    const error = this.academy.saveCourse(
+    const error = await this.academy.persistCourse(
       candidate,
       this.workspace,
       JSON.parse(this.original).updatedAt,
     );
     this.error.set(error ?? '');
     if (!error) {
-      this.draft = structuredClone(this.academy.course(this.draft.id)!);
+      this.draft = structuredClone(this.academy.course(candidate.id)!);
       this.original = JSON.stringify(this.draft);
       this.notice.set(
         publish
@@ -172,14 +166,14 @@ export class AcademyCourseEditor {
       );
     }
   }
-  protected reviewPublish() {
-    this.save(false);
+  protected async reviewPublish() {
+    await this.save(false);
     if (!this.error()) void this.router.navigate(['/manage/learning/publish', this.draft.id]);
   }
   protected isNew() {
     return !this.id;
   }
-  protected saveContinue(): void {
+  protected async saveContinue(): Promise<void> {
     this.notice.set('');
     if (
       !this.draft.title.trim() ||
@@ -193,7 +187,7 @@ export class AcademyCourseEditor {
       );
       return;
     }
-    this.save(false);
+    await this.save(false);
     if (!this.error()) void this.router.navigate(['/manage/learning/content', this.draft.id]);
   }
   protected setMandatory(value: boolean) {
@@ -316,7 +310,16 @@ export class AcademyCourseEditor {
   protected saved(): boolean {
     return !!this.academy.course(this.draft.id);
   }
+  protected canEdit() {
+    return (
+      this.workspace === this.academy.store.companyId() &&
+      this.academy.api.available() &&
+      !this.academy.api.error()
+    );
+  }
   canLeave(): boolean {
+    if (!this.canEdit()) return true;
+    if (this.academy.api.saving()) return false;
     return (
       JSON.stringify(this.draft) === this.original ||
       window.confirm('Discard unsaved course changes?')

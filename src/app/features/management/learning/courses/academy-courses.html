@@ -1,8 +1,8 @@
 <div class="hr-panel-head">
   <div>
-    <h2>Sample Course Catalogue</h2>
+    <h2>Course Catalogue</h2>
     <p class="hr-muted">
-      Explore courses and continue sample lessons for the selected staff member.
+      Explore available courses for the selected staff member.
     </p>
   </div>
 </div>
@@ -102,8 +102,8 @@
     </article>
   } @empty {
     <div class="empty-state">
-      <h3>No courses found</h3>
-      <p>Try a different search or category.</p>
+      <h3>{{ academy.api.error() ? 'Courses unavailable' : academy.api.loading() ? 'Loading courses…' : 'No courses found' }}</h3>
+      <p>{{ academy.api.error() || 'Try a different search or category.' }}</p>
     </div>
   }
 </div>

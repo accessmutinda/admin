@@ -1,3 +1,4 @@
+@if (canEdit()) {
 <cv-academy-admin-nav />
 <div class="heading structure-heading">
   <div>
@@ -20,7 +21,7 @@
     </button>
   </div>
 </div>
-<cv-academy-message [error]="error()" [notice]="notice()" />
+<cv-academy-message [error]="error() || academy.api.error()" [notice]="notice()" />
 @if (course) {
   <cv-academy-course-steps
     [courseId]="course.id"
@@ -622,7 +623,7 @@
         <span class="material-symbols-outlined" aria-hidden="true">close</span>
       </button>
     </div>
-    <cv-academy-message [error]="error()" />
+    <cv-academy-message [error]="error() || academy.api.error()" />
     <form (ngSubmit)="submitEditor()">
       <label class="field"
         >{{ editor() === 'module' ? 'Module' : 'Lesson' }} title *<input
@@ -712,4 +713,8 @@
       </div>
     </form>
   </section>
+}
+
+} @else {
+  <cv-academy-message error="Course authoring is unavailable in this workspace." />
 }

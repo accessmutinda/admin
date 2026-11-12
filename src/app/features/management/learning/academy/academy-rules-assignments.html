@@ -1,3 +1,4 @@
+@if (canEdit()) {
 <cv-academy-admin-nav />
 <div class="heading rules-heading">
   <div>
@@ -31,7 +32,7 @@
       <mat-option [value]="p.id">{{ p.name }}</mat-option>
     }
   </mat-select></label
-><cv-academy-message [error]="error()" [notice]="notice()" />
+><cv-academy-message [error]="error() || academy.api.error()" [notice]="notice()" />
 @if (course) {
   <cv-academy-course-steps [courseId]="course.id" [current]="5" />
   <div class="rules-course-context">
@@ -612,7 +613,7 @@
         <span class="material-symbols-outlined" aria-hidden="true">close</span>
       </button>
     </div>
-    <cv-academy-message [error]="error()" />
+    <cv-academy-message [error]="error() || academy.api.error()" />
     <h3>{{ course.title }}</h3>
     <p>
       {{ reviewPeople().length }} staff · Due {{ plan.due | ukDate: 'd MMM yyyy' }} ·
@@ -685,4 +686,8 @@
       </button>
     </div>
   </section>
+}
+
+} @else {
+  <cv-academy-message error="Course authoring is unavailable in this workspace." />
 }

@@ -17,7 +17,11 @@ import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 import { AcademyImage } from './academy-image';
 import { AcademyDate } from './academy-date';
 @Component({
-  host: { class: 'module-page academy-page' },
+  host: {
+    class: 'module-page academy-page',
+    '[attr.inert]': 'academy.api.saving() ? "" : null',
+    '[attr.aria-busy]': 'academy.api.saving()',
+  },
   selector: 'cv-academy-question-editor',
   imports: [
     AcademyCourseSteps,
@@ -364,7 +368,7 @@ export class AcademyQuestionEditor {
       )
       .slice(0, 8);
   }
-  protected save(publish = false) {
+  protected async save(publish = false) {
     if (!this.course) return;
     this.syncTags();
     this.notice.set('');
@@ -383,12 +387,13 @@ export class AcademyQuestionEditor {
     });
     const id = this.draft.id;
     const groupId = this.selectedGroupId;
-    const error = this.academy.saveQuestionBank(
+    const error = await this.academy.persistQuestionBank(
       this.course.id,
       candidates,
       this.groups,
       this.expectedCourse,
       this.workspace,
+      publish ? this.draft.id : undefined,
     );
     this.error.set(error ?? '');
     if (error) return;
@@ -400,15 +405,15 @@ export class AcademyQuestionEditor {
         : 'Question bank saved. Edited and new questions remain drafts until approved and published.',
     );
   }
-  protected back() {
+  protected async back() {
     this.syncTags();
-    if (this.snapshot() !== this.original) this.save();
+    if (this.snapshot() !== this.original) await this.save();
     else this.error.set('');
     if (!this.error() && this.course)
       void this.router.navigate(['/manage/learning/structure', this.course.id]);
   }
-  protected saveContinue() {
-    this.save();
+  protected async saveContinue() {
+    await this.save();
     if (!this.error() && this.course)
       void this.router.navigate(['/manage/learning/rules', this.course.id]);
   }
@@ -545,7 +550,16 @@ export class AcademyQuestionEditor {
     this.revealAnswers.set(false);
     this.previewOpen.set(true);
   }
+  protected canEdit() {
+    return (
+      this.workspace === this.academy.store.companyId() &&
+      this.academy.api.available() &&
+      !this.academy.api.error()
+    );
+  }
   canLeave() {
+    if (!this.canEdit()) return true;
+    if (this.academy.api.saving()) return false;
     this.syncTags();
     return (
       this.snapshot() === this.original || window.confirm('Discard unsaved question bank changes?')

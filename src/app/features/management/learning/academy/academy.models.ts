@@ -340,7 +340,14 @@ export interface AcademyAsset {
   width?: number;
   height?: number;
   accessibilityReview?: { by: string; at: string; note: string };
-  status?: 'UPLOADING' | 'SCAN_PENDING' | 'PROCESSING' | 'CAPTIONS_REVIEW' | 'READY' | 'FAILED';
+  status?:
+    | 'UPLOADING'
+    | 'SCAN_PENDING'
+    | 'PROCESSING'
+    | 'CAPTIONS_REVIEW'
+    | 'READY'
+    | 'FAILED'
+    | 'REJECTED';
   failure?: string;
   id: string;
   name: string;

@@ -10,7 +10,11 @@ import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 import { AcademyAsset, AcademyLesson, courseMediaLessons } from './academy.models';
 import { AcademyImage } from './academy-image';
 @Component({
-  host: { class: 'module-page academy-page' },
+  host: {
+    class: 'module-page academy-page',
+    '[attr.inert]': 'academy.api.saving() ? "" : null',
+    '[attr.aria-busy]': 'academy.api.saving()',
+  },
   selector: 'cv-academy-content-editor',
   imports: [
     AcademyCourseSteps,
@@ -58,7 +62,7 @@ export class AcademyContentEditor {
   protected mediaLanguage = 'en';
   protected mediaReplacementId = '';
   protected videoDetails: { durationSeconds?: number; width?: number; height?: number } = {};
-  protected saveMetadata() {
+  protected async saveMetadata() {
     const ids = [
       this.lesson?.videoId,
       this.lesson?.captionId,
@@ -69,7 +73,7 @@ export class AcademyContentEditor {
       return;
     }
     for (const id of ids) {
-      const error = this.academy.saveMediaMetadata(
+      const error = await this.saveMediaMetadata(
         id,
         {
           rights: this.mediaRights,
@@ -88,6 +92,15 @@ export class AcademyContentEditor {
     }
     this.error.set('');
     this.notice.set('Media rights, language and available video metadata saved.');
+  }
+  private async saveMediaMetadata(id: string, values: Partial<AcademyAsset>, workspace: string) {
+    if (workspace !== this.academy.store.companyId()) return 'The workspace changed.';
+    try {
+      await this.academy.api.metadata(id, values);
+      return null;
+    } catch (e) {
+      return (e as Error).message;
+    }
   }
   protected captionLanguage() {
     return (
@@ -178,7 +191,7 @@ export class AcademyContentEditor {
         this.error.set('Some files could not be uploaded. Review the file errors and try again.');
       if (added)
         this.notice.set(
-          `Upload started: ${added} file${added === 1 ? '' : 's'} added to the queue. Review captions and save. Add unused uploads to modules in Step 3.`,
+          `Uploaded: ${added} file${added === 1 ? '' : 's'} added to the course. Review captions and save. Add unused uploads to modules in Step 3.`,
         );
     } finally {
       if (!this.disposed) {
@@ -418,17 +431,17 @@ export class AcademyContentEditor {
       },
       {
         title: 'Virus Scan',
-        detail: processed ? 'Seeded file-check stage completed' : 'Waiting for upload',
+        detail: processed ? 'File scanning completed' : 'Waiting for upload',
         done: processed,
-        status: processed ? 'Demo check' : 'Pending',
+        status: processed ? 'Clean' : 'Pending',
       },
       {
-        title: 'Transcoding',
+        title: 'Playback format',
         detail: processed
-          ? 'Seeded processing complete; original available for playback'
+          ? 'Original file validated and available for playback'
           : 'Waiting for file checks',
         done: processed,
-        status: processed ? 'Demo ready' : 'Pending',
+        status: processed ? 'Ready' : 'Pending',
       },
       {
         title: 'Preview Generation',
@@ -456,29 +469,47 @@ export class AcademyContentEditor {
       },
     ];
   }
-  protected back() {
-    this.save(false);
+  protected async back() {
+    await this.save(false);
     if (!this.error() && this.course)
       void this.router.navigate(['/manage/learning/courses', this.course.id]);
   }
-  protected saveContinue() {
-    this.save(false);
+  protected async saveContinue() {
+    await this.save(false);
     if (!this.error() && this.course)
       void this.router.navigate(['/manage/learning/structure', this.course.id]);
   }
-  protected approveVideo() {
+  protected async approveVideo() {
     if (!this.course || !this.lesson) return;
-    this.save(false);
+    await this.save(false);
     if (this.error()) return;
-    const error = this.academy.approveDemoVideo(this.course.id, this.lesson.id, this.workspace);
+    let error = '';
+    try {
+      await this.academy.api.approve(this.course.id, this.lesson.id);
+    } catch (e) {
+      error = (e as Error).message;
+    }
     this.error.set(error ?? '');
-    if (!error)
-      this.notice.set('Video captions and transcript approved for the seeded demonstration.');
+    if (!error) this.notice.set('Video captions and transcript reviewed and approved.');
   }
-  protected save(publish: boolean): void {
+  protected async save(publish: boolean): Promise<void> {
     if (!this.course) return;
     this.notice.set('');
-    const error = this.academy.saveCourse(
+    this.academy.api.mediaError.set('');
+    for (const id of new Set(
+      courseMediaLessons(this.course)
+        .flatMap((l) => [l.videoId, l.captionId, ...l.handoutIds])
+        .filter(Boolean),
+    )) {
+      if (this.asset(id)?.status === 'SCAN_PENDING') {
+        try {
+          await this.academy.api.process(id);
+        } catch (e) {
+          this.academy.api.mediaError.set((e as Error).message);
+        }
+      }
+    }
+    const error = await this.academy.persistCourse(
       { ...this.course, status: publish ? 'Published' : 'Draft' },
       this.workspace,
       JSON.parse(this.original).updatedAt,
@@ -525,7 +556,16 @@ export class AcademyContentEditor {
     if (!this.lesson?.transcript) return;
     this.academy.store.download('lesson-transcript.txt', this.lesson.transcript);
   }
+  protected canEdit() {
+    return (
+      this.workspace === this.academy.store.companyId() &&
+      this.academy.api.available() &&
+      !this.academy.api.error()
+    );
+  }
   canLeave(): boolean {
+    if (!this.canEdit()) return true;
+    if (this.academy.api.saving()) return false;
     return (
       (!this.busy() && JSON.stringify(this.course) === this.original) ||
       window.confirm('Discard unsaved video and lesson changes?')

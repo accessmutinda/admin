@@ -1,17 +1,63 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { AuthService } from '../../../../core/auth/auth.service';
-import { WorkspaceService } from '../../../../core/auth/workspace.service';
+import { CompanyAccessService } from '../../../../core/access/company-access.service';
+import { ManagementStore } from '../../shared/management.store';
+import { AcademyService } from './academy.service';
+import { AcademyGovernanceService } from './academy-governance.service';
+import { AcademyDemoWorkflow } from './academy-demo-workflow';
+import { WorkspaceTools } from '../../care/workspace-tools';
+import { WallboardLauncher } from '../../ecm/wallboard-launcher';
 import { ManagementLayout } from '../../layout/management-layout';
 @Component({ template: '<h1>Academy destination</h1>' })
 class Destination {}
+@Component({ selector: 'cv-workspace-tools', template: '' })
+class WorkspaceToolsStub {}
 describe('Academy navigation within the admin console', () => {
-  beforeEach(() => {
-    localStorage.clear();
+  const role = signal('CA');
+  const auth = {
+    currentUser: () => ({
+      id: 'author-one',
+      name: 'Course author',
+      initials: 'CA',
+      roleCode: role(),
+    }),
+    hasRole: (...codes: string[]) => codes.includes(role()),
+    isSuperAdmin: () => role() === 'PO',
+    canSwitchWorkspace: () => role() === 'PO',
+    profile: () => ({ company_id: 'company-one' }),
+    signOut: vi.fn(),
+  };
+  beforeEach(async () => {
+    role.set('CA');
     TestBed.configureTestingModule({
       providers: [
+        { provide: AuthService, useValue: auth },
+        {
+          provide: CompanyAccessService,
+          useValue: { context: () => ({ roles: [] }), can: () => true, canPath: () => true },
+        },
+        {
+          provide: ManagementStore,
+          useValue: {
+            company: () => ({ name: 'North Training', code: 'NORTH' }),
+            storageAvailable: () => true,
+          },
+        },
+        {
+          provide: AcademyService,
+          useValue: {
+            canManage: () => role() !== 'CW',
+            can: () => role() !== 'CW',
+            canViewEvidence: () => false,
+            state: () => ({ governance: {} }),
+          },
+        },
+        { provide: AcademyGovernanceService, useValue: { seed: vi.fn() } },
+        { provide: AcademyDemoWorkflow, useValue: {} },
+        { provide: WallboardLauncher, useValue: { open: vi.fn() } },
         provideRouter([
           {
             path: 'manage',
@@ -30,11 +76,11 @@ describe('Academy navigation within the admin console', () => {
         ]),
       ],
     });
-    const auth = TestBed.inject(AuthService);
-    auth.signInDemoSession();
-    const user = auth.currentUser()!;
-    vi.spyOn(auth, 'currentUser').mockReturnValue({ ...user, roleCode: 'CA' });
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
+    TestBed.overrideComponent(ManagementLayout, {
+      remove: { imports: [WorkspaceTools] },
+      add: { imports: [WorkspaceToolsStub] },
+    });
+    await TestBed.compileComponents();
   });
   afterEach(() => vi.restoreAllMocks());
   it('opens the Academy dropdown on a direct course link while retaining the shared shell', async () => {
@@ -46,7 +92,9 @@ describe('Academy navigation within the admin console', () => {
     expect(
       page.querySelector('.academy-submenu a[aria-current="page"]')?.getAttribute('href'),
     ).toBe('/manage/learning/courses');
-    expect(page.querySelector('.app-sidebar a[href="/manage/companies"]')).not.toBeNull();
+    expect(
+      page.querySelector('.app-sidebar a[href="/manage/companies/company-one"]'),
+    ).not.toBeNull();
     expect(page.querySelector('.app-sidebar a[href="/manage/people"]')).not.toBeNull();
     expect(page.querySelector('.co-console-heading strong')?.textContent).toBe('Admin Console');
     expect(page.querySelector('.academy-shell')).toBeNull();
@@ -76,15 +124,14 @@ describe('Academy navigation within the admin console', () => {
     );
   });
   it('places the Super Admin workspace selector above Organisation and removes it from the header', async () => {
-    const auth = TestBed.inject(AuthService);
-    vi.spyOn(auth, 'currentUser').mockReturnValue({ ...auth.currentUser()!, roleCode: 'PO' });
+    role.set('PO');
     const harness = await RouterTestingHarness.create('/manage/companies');
     const page = harness.routeNativeElement!;
     const selector = page.querySelector<HTMLButtonElement>('.app-sidebar > .workspace-control')!;
     expect(selector).not.toBeNull();
     expect(page.querySelector('.app-sidebar > .nav-label')?.textContent).toBe('ORGANISATION');
     expect(selector.nextElementSibling?.textContent).toBe('ORGANISATION');
-    expect(selector.textContent).toContain('London Quality Care Services');
+    expect(selector.textContent).toContain('North Training');
     expect(page.querySelector('.app-header .workspace-control')).toBeNull();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     selector.click();
@@ -114,9 +161,7 @@ describe('Academy navigation within the admin console', () => {
     expect(TestBed.inject(Router).url).toBe('/manage/learning/questions');
   });
   it('shows workers their own learning rather than authoring links', async () => {
-    const auth = TestBed.inject(AuthService);
-    const user = auth.currentUser()!;
-    vi.mocked(auth.currentUser).mockReturnValue({ ...user, roleCode: 'CW' });
+    role.set('CW');
     const harness = await RouterTestingHarness.create('/manage/learning');
     const page = harness.routeNativeElement!;
     expect(page.querySelector('.academy-submenu a[href="/staff-portal/training"]')).not.toBeNull();

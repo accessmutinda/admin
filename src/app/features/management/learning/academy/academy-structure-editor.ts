@@ -13,7 +13,11 @@ import { AcademyCourse, AcademyLesson, AcademyModule } from './academy.models';
 import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 
 @Component({
-  host: { class: 'module-page academy-page' },
+  host: {
+    class: 'module-page academy-page',
+    '[attr.inert]': 'academy.api.saving() ? "" : null',
+    '[attr.aria-busy]': 'academy.api.saving()',
+  },
   selector: 'cv-academy-structure-editor',
   imports: [
     AcademyCourseSteps,
@@ -442,10 +446,10 @@ export class AcademyStructureEditor {
   protected mediaSaved(lesson: AcademyLesson) {
     return !!this.academy.course(this.course?.id ?? '')?.lessons.some((l) => l.id === lesson.id);
   }
-  protected save() {
+  protected async save() {
     if (!this.course) return false;
     this.notice.set('');
-    const error = this.academy.saveCourse(
+    const error = await this.academy.persistCourse(
       { ...this.course, status: 'Draft' },
       this.workspace,
       JSON.parse(this.original)?.updatedAt ?? '',
@@ -459,29 +463,38 @@ export class AcademyStructureEditor {
     );
     return true;
   }
-  protected preview() {
-    if (this.save() && this.course)
+  protected async preview() {
+    if ((await this.save()) && this.course)
       void this.router.navigate(['/staff-portal/training/courses', this.course.id], {
         queryParams: { preview: '1' },
       });
   }
-  protected back() {
-    if (this.save() && this.course)
+  protected async back() {
+    if ((await this.save()) && this.course)
       void this.router.navigate(['/manage/learning/content', this.course.id]);
   }
-  protected continue() {
+  protected async continue() {
     if (this.unusedVideos().length) {
       this.error.set(
         'Add every unused video to a module or delete it from this course before continuing.',
       );
       return;
     }
-    if (this.save() && this.course)
+    if ((await this.save()) && this.course)
       void this.router.navigate(['/manage/learning/questions'], {
         queryParams: { course: this.course.id },
       });
   }
+  protected canEdit() {
+    return (
+      this.workspace === this.academy.store.companyId() &&
+      this.academy.api.available() &&
+      !this.academy.api.error()
+    );
+  }
   canLeave() {
+    if (!this.canEdit()) return true;
+    if (this.academy.api.saving()) return false;
     return (
       JSON.stringify(this.course) === this.original ||
       window.confirm('Discard unsaved module and lesson changes?')

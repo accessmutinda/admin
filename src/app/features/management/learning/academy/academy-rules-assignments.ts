@@ -19,7 +19,11 @@ import {
 import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 import { AcademyDate } from './academy-date';
 @Component({
-  host: { class: 'module-page academy-page' },
+  host: {
+    class: 'module-page academy-page',
+    '[attr.inert]': 'academy.api.saving() ? "" : null',
+    '[attr.aria-busy]': 'academy.api.saving()',
+  },
   selector: 'cv-academy-rules-assignments',
   imports: [
     AcademyCourseSteps,
@@ -381,14 +385,14 @@ export class AcademyRulesAssignments {
   protected pages() {
     return Math.max(1, Math.ceil(this.assignments().length / 8));
   }
-  protected save() {
+  protected async save() {
     if (!this.course || !this.validPassMark()) return;
     const candidate = {
       ...this.course,
       assignmentPlan: structuredClone(this.plan),
       status: 'Draft' as const,
     };
-    const error = this.academy.saveCourse(candidate, this.workspace, this.expected);
+    const error = await this.academy.persistCourse(candidate, this.workspace, this.expected);
     this.error.set(error ?? '');
     this.notice.set('');
     if (!error) {
@@ -398,15 +402,15 @@ export class AcademyRulesAssignments {
       );
     }
   }
-  protected back() {
-    this.save();
+  protected async back() {
+    await this.save();
     if (!this.error() && this.course)
       void this.router.navigate(['/manage/learning/questions'], {
         queryParams: { course: this.course.id },
       });
   }
-  protected reviewPublishing() {
-    this.save();
+  protected async reviewPublishing() {
+    await this.save();
     if (!this.error() && this.course)
       void this.router.navigate(['/manage/learning/publish', this.course.id], {
         queryParams: this.staffContext ? { person: this.staffContext } : {},
@@ -511,7 +515,16 @@ export class AcademyRulesAssignments {
     }
     this.saving.set(false);
   }
+  protected canEdit() {
+    return (
+      this.workspace === this.academy.store.companyId() &&
+      this.academy.api.available() &&
+      !this.academy.api.error()
+    );
+  }
   canLeave() {
+    if (!this.canEdit()) return true;
+    if (this.academy.api.saving()) return false;
     return (
       this.snapshot() === this.original ||
       window.confirm('Discard unsaved assessment rules and assignment setup?')

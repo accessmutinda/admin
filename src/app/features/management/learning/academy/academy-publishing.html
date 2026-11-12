@@ -1,3 +1,4 @@
+@if (canEdit()) {
 <cv-academy-admin-nav />
 <div class="heading publish-heading">
   <div>
@@ -20,7 +21,7 @@
     </button>
   </div>
 </div>
-<cv-academy-message [error]="error()" [notice]="notice()" />
+<cv-academy-message [error]="error() || academy.api.error()" [notice]="notice()" />
 @if (course) {
   <cv-academy-course-steps [courseId]="course.id" [current]="6" />
   <div class="publication-context">
@@ -549,4 +550,8 @@
     </ol>
     <button class="academy-button" (click)="selectedVersion.set(null)">Close</button>
   </section>
+}
+
+} @else {
+  <cv-academy-message error="Course authoring is unavailable in this workspace." />
 }

@@ -1,3 +1,4 @@
+@if (canEdit()) {
 <cv-academy-admin-nav />
 <div class="heading upload-heading">
   <div>
@@ -5,7 +6,7 @@
     <p>Upload, process and manage training videos and supporting resources for this course.</p>
   </div>
 </div>
-<cv-academy-message [error]="error()" [notice]="notice()" />
+<cv-academy-message [error]="error() || academy.api.error() || academy.api.mediaError()" [notice]="notice()" />
 @if (course) {
   <cv-academy-course-steps [courseId]="course.id" [current]="2" />
   <input
@@ -43,7 +44,7 @@
         <div class="section-header">
           <h2>Upload Training Video</h2>
           <small
-            >Supported: MP4 / WebM · Up to 4 GB per file
+            >Supported: MP4 / WebM · Up to 256 MB per file
             <span class="material-symbols-outlined" aria-hidden="true">info</span></small
           >
         </div>
@@ -65,7 +66,7 @@
             </button></strong
           >
           <p>
-            MP4 / WebM · Up to 4 GB per file · File checks · Processing · Preview · Closed captions
+            MP4 / WebM · Up to 256 MB per file · File checks · Processing · Preview · Closed captions
           </p>
           <button
             class="academy-button choose-video"
@@ -83,7 +84,7 @@
           <h2>Upload Queue ({{ videos().length }} files)</h2>
           <small class="auto-process"
             ><span class="material-symbols-outlined" aria-hidden="true">check_circle</span
-            >Auto-process enabled <span class="queue-demo">· Seeded processing</span></small
+            >Server scanning <span class="queue-demo">· Quarantined until clean</span></small
           >
         </div>
         <div class="table-scroll">
@@ -93,7 +94,7 @@
                 <th>Thumbnail</th>
                 <th>Filename</th>
                 <th>Duration</th>
-                <th>Transcoding</th>
+                <th>Playback format</th>
                 <th>Subtitles (CC)</th>
                 <th>File Size</th>
                 <th>Accessibility Checks</th>
@@ -148,7 +149,7 @@
                             : processed(item.videoId)
                               ? 'Processed'
                               : 'Pending'
-                        }}<small>Seeded workflow</small></span
+                        }}<small>Server validation</small></span
                       ></span
                     >
                   </td>
@@ -410,7 +411,7 @@
         </p>
       </section>
       <p class="processing-note">
-        Seeded processing runs in this browser. Captions and transcript require approval before
+        Media is stored and scanned on the server. Save the draft to retry pending scans. Captions and transcript require approval before
         video publication.
       </p>
     </aside>
@@ -650,4 +651,8 @@
     <p>Save a course before uploading its videos and resources.</p>
     <a class="academy-button" routerLink="/manage/learning/courses">Back to courses</a>
   </section>
+}
+
+} @else {
+  <cv-academy-message error="Course authoring is unavailable in this workspace." />
 }

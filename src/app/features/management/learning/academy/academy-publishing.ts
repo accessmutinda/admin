@@ -11,7 +11,11 @@ import { AcademyCourse, hasUnusedVideos } from './academy.models';
 import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 import { AcademyDate } from './academy-date';
 @Component({
-  host: { class: 'module-page academy-page' },
+  host: {
+    class: 'module-page academy-page',
+    '[attr.inert]': 'academy.api.saving() ? "" : null',
+    '[attr.aria-busy]': 'academy.api.saving()',
+  },
   selector: 'cv-academy-publishing',
   imports: [
     AcademyCourseSteps,
@@ -345,9 +349,9 @@ export class AcademyPublishing {
       .state()
       .courses.find((c) => c.id === this.course?.id && c.status === 'Published');
   }
-  protected save(): boolean {
+  protected async save(): Promise<boolean> {
     if (!this.course) return false;
-    const error = this.academy.saveCourse(
+    const error = await this.academy.persistCourse(
       { ...this.course, status: 'Draft' },
       this.workspace,
       this.expected,
@@ -360,19 +364,19 @@ export class AcademyPublishing {
     );
     return true;
   }
-  protected back() {
-    if (this.course && (JSON.stringify(this.course) === this.original || this.save()))
+  protected async back() {
+    if (this.course && (JSON.stringify(this.course) === this.original || (await this.save())))
       void this.router.navigate(['/manage/learning/rules', this.course.id], {
         queryParams: this.context(),
       });
   }
-  protected preview() {
-    if (this.course && (JSON.stringify(this.course) === this.original || this.save()))
+  protected async preview() {
+    if (this.course && (JSON.stringify(this.course) === this.original || (await this.save())))
       void this.router.navigate(['/staff-portal/training/courses', this.course.id], {
         queryParams: { ...this.context(), preview: '1' },
       });
   }
-  protected publish() {
+  protected async publish() {
     if (!this.course) return;
     this.notice.set('');
     if (!this.attested()) {
@@ -387,7 +391,7 @@ export class AcademyPublishing {
       );
       return;
     }
-    const error = this.academy.saveCourse(
+    const error = await this.academy.persistCourse(
       { ...this.course, status: 'Published' },
       this.workspace,
       this.expected,
@@ -406,7 +410,16 @@ export class AcademyPublishing {
       );
     }
   }
+  protected canEdit() {
+    return (
+      this.workspace === this.academy.store.companyId() &&
+      this.academy.api.available() &&
+      !this.academy.api.error()
+    );
+  }
   canLeave() {
+    if (!this.canEdit()) return true;
+    if (this.academy.api.saving()) return false;
     return (
       JSON.stringify(this.course) === this.original ||
       window.confirm('Discard unsaved publication details?')

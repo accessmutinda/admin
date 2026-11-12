@@ -1,147 +1,23 @@
 import { Injectable, inject } from '@angular/core';
 import { AcademyService } from './academy.service';
-import { AcademyAsset } from './academy.models';
-
 @Injectable({ providedIn: 'root' })
 export class AcademyAssets {
   private readonly academy = inject(AcademyService);
-  private database(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open('careverity-academy-media', 1);
-      request.onupgradeneeded = () => request.result.createObjectStore('files');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(new Error('Media storage is unavailable in this browser.'));
-    });
-  }
-  private async access<T>(workspace: string, id: string, write?: Blob | null): Promise<T> {
-    const database = await this.database();
-    try {
-      return await new Promise<T>((resolve, reject) => {
-        const transaction = database.transaction(
-          'files',
-          write === undefined ? 'readonly' : 'readwrite',
-        );
-        const store = transaction.objectStore('files');
-        const key = workspace + ':' + id;
-        const request =
-          write === undefined
-            ? store.get(key)
-            : write === null
-              ? store.delete(key)
-              : store.put(write, key);
-        let result: T;
-        request.onsuccess = () => {
-          result = request.result as T;
-        };
-        transaction.oncomplete = () => resolve(result);
-        transaction.onerror = () =>
-          reject(new Error('Could not save media. Browser storage may be full.'));
-        transaction.onabort = () =>
-          reject(new Error('The media storage operation was interrupted.'));
-      });
-    } finally {
-      database.close();
-    }
-  }
   async upload(file: File, workspace: string): Promise<string> {
-    if (!this.academy.canManage() || workspace !== this.academy.store.companyId())
-      throw new Error('Workspace or media permission changed.');
-    if (!file.type && file.name.toLowerCase().endsWith('.vtt'))
+    if (workspace !== this.academy.store.companyId() || !this.academy.can('author'))
+      throw Error('The workspace or media permission changed.');
+    if ((!file.type || file.type === 'text/plain') && file.name.toLowerCase().endsWith('.vtt'))
       file = new File([file], file.name, { type: 'text/vtt' });
-    const types: Record<string, string[]> = {
-      Video: ['video/mp4', 'video/webm'],
-      Image: ['image/png', 'image/jpeg', 'image/webp'],
-      Document: [
-        'application/pdf',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      ],
-      Captions: ['text/vtt', 'text/plain'],
-    };
-    const kind = Object.keys(types).find((k) => types[k].includes(file.type)) as
-      AcademyAsset['kind'] | undefined;
-    if (!kind || !file.size || file.size > (kind === 'Video' ? 4 * 1024 ** 3 : 10 * 1024 ** 2))
-      throw new Error(
-        'Use MP4/WebM video up to 4 GB, or PNG/JPEG/WebP, PDF/DOCX or VTT up to 10 MB. Browser storage limits apply.',
-      );
-    const extensions: Record<string, string[]> = {
-      'video/mp4': ['mp4'],
-      'video/webm': ['webm'],
-      'image/png': ['png'],
-      'image/jpeg': ['jpg', 'jpeg'],
-      'image/webp': ['webp'],
-      'application/pdf': ['pdf'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['docx'],
-      'text/vtt': ['vtt'],
-      'text/plain': ['vtt'],
-    };
-    if (!extensions[file.type]?.includes(file.name.split('.').pop()?.toLowerCase() ?? ''))
-      throw new Error('The file extension does not match its declared media format.');
-    if (kind === 'Captions' && !(await file.text()).trimStart().startsWith('WEBVTT'))
-      throw new Error('Caption files must use the WEBVTT format.');
-    const bytes = new Uint8Array(await file.slice(0, 16).arrayBuffer());
-    const text = new TextDecoder().decode(bytes);
-    if (
-      (file.type === 'video/mp4' && text.slice(4, 8) !== 'ftyp') ||
-      (file.type === 'video/webm' &&
-        ![0x1a, 0x45, 0xdf, 0xa3].every((byte, index) => bytes[index] === byte)) ||
-      (file.type === 'image/webp' && !(text.startsWith('RIFF') && text.slice(8, 12) === 'WEBP'))
-    )
-      throw new Error('The media content does not match its declared format.');
-    if (
-      (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' &&
-        !(bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 3 && bytes[3] === 4)) ||
-      (file.type === 'application/pdf' &&
-        new TextDecoder().decode(bytes.slice(0, 5)) !== '%PDF-') ||
-      (file.type === 'image/png' && !(bytes[0] === 137 && bytes[1] === 80)) ||
-      (file.type === 'image/jpeg' && !(bytes[0] === 255 && bytes[1] === 216))
-    )
-      throw new Error('The file content does not match its declared format.');
-    const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
-    const checksum = Array.from(new Uint8Array(digest), (b) =>
-      b.toString(16).padStart(2, '0'),
-    ).join('');
-    const id = crypto.randomUUID();
-    await this.access(workspace, id, file);
-    const error = this.academy.saveAsset(
-      {
-        id,
-        checksum,
-        version: 1,
-        language: 'en',
-        rights: 'Pending course rights review',
-        name: file.name,
-        mime: file.type === 'text/plain' ? 'text/vtt' : file.type,
-        size: file.size,
-        kind,
-        status: kind === 'Video' || kind === 'Document' ? 'SCAN_PENDING' : 'CAPTIONS_REVIEW',
-        at: new Date().toISOString(),
-        by: this.academy.auth.currentUser()!.name,
-      },
-      workspace,
-    );
-    if (error) {
-      await this.access(workspace, id, null);
-      throw new Error(error);
-    }
-    const processingError = this.academy.processDemoAsset(id, workspace);
-    if (processingError) throw new Error(processingError);
-    return id;
+    const asset = await this.academy.api.upload(file, crypto.randomUUID());
+    if (asset.status === 'REJECTED') throw Error('The uploaded file failed scanning.');
+    return asset.id;
   }
   async url(id: string): Promise<string> {
-    const workspace = this.academy.store.companyId();
-    if (!this.academy.assetReadable(id)) throw new Error('You do not have access to this asset.');
-    const blob = await this.access<Blob | undefined>(workspace, id);
-    if (workspace !== this.academy.store.companyId() || !this.academy.assetReadable(id))
-      throw new Error('Workspace or asset access changed.');
-    if (!blob)
-      throw new Error(
-        'This media file is not stored in this browser. Upload it again from the course media editor.',
-      );
-    return URL.createObjectURL(blob);
+    return URL.createObjectURL(await this.academy.api.blob(id));
   }
   async download(id: string): Promise<void> {
     const asset = this.academy.state().assets.find((a) => a.id === id);
-    if (!asset) throw new Error('Asset unavailable.');
+    if (!asset) throw Error('Media is unavailable.');
     const url = await this.url(id);
     const a = document.createElement('a');
     a.href = url;
@@ -149,9 +25,9 @@ export class AcademyAssets {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  async remove(id: string, workspace: string): Promise<void> {
-    const error = this.academy.removeAsset(id, workspace);
-    if (error) throw new Error(error);
-    await this.access(workspace, id, null);
+  async remove(_id: string, _workspace: string): Promise<void> {
+    throw Error(
+      'Remove media placements from the course draft. Uploaded source files are retained.',
+    );
   }
 }

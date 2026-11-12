@@ -1,3 +1,4 @@
+import { AcademyApi } from './academy-api.service';
 import { CompanyAccessService } from '../../../../core/access/company-access.service';
 import {
   AcademyCapability,
@@ -40,19 +41,61 @@ import {
 export class AcademyService {
   private readonly access = inject(CompanyAccessService);
   readonly store = inject(ManagementStore);
+  readonly api = inject(AcademyApi);
   readonly auth = inject(AuthService);
   readonly state = computed(() => {
-    const state = this.store.data().academy;
-    return state
-      ? {
-          ...state,
-          completions: state.completions ?? [],
-          accessRequests: state.accessRequests ?? [],
-          courseDrafts: state.courseDrafts ?? [],
-          questionDrafts: state.questionDrafts ?? [],
-        }
-      : emptyAcademy();
+    const records = this.api.courses();
+    return {
+      ...emptyAcademy(),
+      settings: { ...emptyAcademy().settings, ...this.api.settings() },
+      courses: records.flatMap((r) =>
+        r.published ? [r.published] : r.course.status !== 'Draft' ? [r.course] : [],
+      ),
+      courseDrafts: records.filter((r) => r.course.status === 'Draft').map((r) => r.course),
+      questions: records.flatMap((r) => r.questions.filter((q) => q.status !== 'Draft')),
+      questionDrafts: records.flatMap((r) => r.questions.filter((q) => q.status === 'Draft')),
+      courseVersions: records.flatMap((r) => r.versions),
+      assets: this.api.assets(),
+    };
   });
+  async persistCourse(
+    course: AcademyCourse,
+    workspace: string,
+    expected = '',
+  ): Promise<string | null> {
+    if (workspace !== this.store.companyId()) return 'The workspace changed. Reopen this course.';
+    try {
+      const record = await this.api.save(course, expected);
+      course.id = record.course.id;
+      return null;
+    } catch (e) {
+      const error = e as Error & { fieldErrors?: Record<string, string[]> };
+      const fields = Object.entries(error.fieldErrors ?? {})
+        .map(([field, values]) => `${field}: ${values.join(' ')}`)
+        .join(' ');
+      return fields || error.message;
+    }
+  }
+  async persistQuestionBank(
+    courseId: string,
+    questions: AcademyQuestion[],
+    groups: AcademyQuestionGroup[],
+    expected: string,
+    workspace: string,
+    publishQuestionId?: string,
+  ): Promise<string | null> {
+    if (workspace !== this.store.companyId()) return 'The workspace changed. Reopen this course.';
+    try {
+      await this.api.bank(courseId, questions, groups, expected, publishQuestionId);
+      return null;
+    } catch (e) {
+      const error = e as Error & { fieldErrors?: Record<string, string[]> };
+      const fields = Object.entries(error.fieldErrors ?? {})
+        .map(([field, values]) => `${field}: ${values.join(' ')}`)
+        .join(' ');
+      return fields || error.message;
+    }
+  }
   readonly editableCourses = computed(() => [
     ...this.state().courseDrafts,
     ...this.state().courses.filter((c) => !this.state().courseDrafts.some((d) => d.id === c.id)),
@@ -69,9 +112,21 @@ export class AcademyService {
       (cap) => this.can(cap),
     ),
   );
-  readonly canViewEvidence = computed(() => this.access.can('academy', 'results') || this.access.can('academy', 'certificates'));
+  readonly canViewEvidence = computed(
+    () => this.access.can('academy', 'results') || this.access.can('academy', 'certificates'),
+  );
   can(capability: AcademyCapability, personId = ''): boolean {
-    const features: Record<string,string> = {author:'courses',publish:'governance',assign:'assignments',review:'results',correct:'results',configure:'governance',export:'reports',evidence:'results',diagnostics:'governance'};
+    const features: Record<string, string> = {
+      author: 'courses',
+      publish: 'governance',
+      assign: 'assignments',
+      review: 'results',
+      correct: 'results',
+      configure: 'governance',
+      export: 'reports',
+      evidence: 'results',
+      diagnostics: 'governance',
+    };
     return this.access.can('academy', features[capability] ?? 'learner', capability);
   }
   feedbackVisible(attempt: AcademyAttempt): boolean {
