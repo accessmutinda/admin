@@ -4,21 +4,22 @@
     <h1>Training compliance & reporting</h1>
     <p>Monitor assigned learning, completion, assessment outcomes and certificate validity.</p>
   </div>
-  <button class="academy-button" (click)="export('compliance')">Export report ↓</button>
+  <button class="academy-button" [disabled]="!api.canExport() || !api.data() || api.exporting() || api.loading()" (click)="export('compliance')">Export report ↓</button>
 </div>
 <cv-academy-message [error]="error()" [notice]="notice()" />
+@if (api.loading()) { <p role="status">Loading training reports…</p> }
 <section class="panel toolbar">
-  <label class="field">Activity from<input type="date" [(ngModel)]="from" /></label
-  ><label class="field">Activity to<input type="date" [(ngModel)]="to" /></label
+  <label class="field">Activity from<input type="date" [(ngModel)]="from" (ngModelChange)="filtersChanged()" /></label
+  ><label class="field">Activity to<input type="date" [(ngModel)]="to" (ngModelChange)="filtersChanged()" /></label
   ><label class="field"
-    >Branch<mat-select cvSelect aria-label="Report branch" [(ngModel)]="branch"
+    >Branch<mat-select cvSelect aria-label="Report branch" [(ngModel)]="branch" (ngModelChange)="filtersChanged()"
       ><mat-option value="All">All branches</mat-option>
       @for (item of branches(); track item) {
         <mat-option [value]="item">{{ item }}</mat-option>
       }
     </mat-select></label
   ><label class="field"
-    >Role<mat-select cvSelect aria-label="Report role" [(ngModel)]="role"
+    >Role<mat-select cvSelect aria-label="Report role" [(ngModel)]="role" (ngModelChange)="filtersChanged()"
       ><mat-option value="All">All roles</mat-option>
       @for (item of roles(); track item) {
         <mat-option [value]="item">{{ item }}</mat-option>
@@ -26,6 +27,7 @@
     </mat-select></label
   >
 </section>
+@if (api.data()) {
 <div class="stats" [style.--academy-metric-columns]="stats().length">
   @for (stat of stats(); track stat.label; let index = $index) {
     <div
@@ -112,7 +114,7 @@
           @for (item of risk(); track item.person.id) {
             <tr>
               <td>
-                <a routerLink="/staff-portal/training" [queryParams]="{ person: item.person.id }">{{
+                <a routerLink="/manage/learning/manage" [queryParams]="{ person: item.person.id }">{{
                   item.person.name
                 }}</a>
               </td>
@@ -175,14 +177,14 @@
     <small>Page {{ heatmapPage }} of {{ heatmapPages() }}</small
     ><button
       class="academy-button"
-      [disabled]="heatmapPage <= 1"
-      (click)="heatmapPage = heatmapPage - 1"
+      [disabled]="api.loading() || heatmapPage <= 1"
+      (click)="paginate('heatmap', -1)"
     >
       Previous</button
     ><button
       class="academy-button"
-      [disabled]="heatmapPage >= heatmapPages()"
-      (click)="heatmapPage = heatmapPage + 1"
+      [disabled]="api.loading() || heatmapPage >= heatmapPages()"
+      (click)="paginate('heatmap', 1)"
     >
       Next
     </button>
@@ -196,12 +198,12 @@
       than certifying regulatory compliance.
     </p>
     <div class="grid">
-      <button class="academy-button" (click)="export('compliance')">
+      <button class="academy-button" [disabled]="!api.canExport() || !api.data() || api.exporting() || api.loading()" (click)="export('compliance')">
         Training completion report</button
-      ><button class="academy-button" (click)="export('certificates')">
+      ><button class="academy-button" [disabled]="!api.canExport() || !api.data() || api.exporting() || api.loading()" (click)="export('certificates')">
         Staff certificate register</button
-      ><button class="academy-button" (click)="export('matrix')">Mandatory training matrix</button
-      ><button class="academy-button" (click)="export('evidence-pack')">
+      ><button class="academy-button" [disabled]="!api.canExport() || !api.data() || api.exporting() || api.loading()" (click)="export('matrix')">Mandatory training matrix</button
+      ><button class="academy-button" [disabled]="!api.canExport() || !api.data() || api.exporting() || api.loading()" (click)="export('evidence-pack')">
         Inspection evidence pack (JSON)
       </button>
     </div>
@@ -221,7 +223,7 @@
         <tbody>
           @for (event of eventRows(); track event.id) {
             <tr>
-              <td>{{ event.at | ukDate: 'd MMM yyyy, HH:mm' : 'Europe/London' }}</td>
+              <td>{{ event.at | ukDate: 'd MMM yyyy, HH:mm' : api.data()?.meta?.timezone ?? 'Europe/London' }}</td>
               <td>{{ event.actor }}</td>
               <td>{{ event.action }}</td>
               <td>{{ event.detail }}</td>
@@ -235,20 +237,22 @@
       </table>
     </div>
     <div class="pagination">
-      <small>{{ events().length }} events</small
+      <small>{{ api.data()?.audit?.count ?? 0 }} events</small
       ><button
         class="academy-button"
-        [disabled]="auditPage <= 1"
-        (click)="auditPage = auditPage - 1"
+        [disabled]="api.loading() || auditPage <= 1"
+        (click)="paginate('audit', -1)"
       >
         Previous</button
       ><button
         class="academy-button"
-        [disabled]="auditPage >= auditPages()"
-        (click)="auditPage = auditPage + 1"
+        [disabled]="api.loading() || auditPage >= auditPages()"
+        (click)="paginate('audit', 1)"
       >
         Next
       </button>
     </div>
   </section>
 </div>
+
+}

@@ -3470,3 +3470,182 @@ export type AcademyRequirementWrite = {
   reminderDays?: number[];
   autoAssign?: boolean;
 };
+
+export type AcademyReportAuditRead = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: {
+    id: string;
+    at: string;
+    actor: string;
+    action: string;
+    detail: string;
+  }[];
+};
+
+export type AcademyReportCellRead = {
+  branch: string;
+  percent: number | null;
+};
+
+export type AcademyReportCourseRead = {
+  id: string;
+  title: string;
+  cells: {
+    branch: string;
+    percent: number | null;
+  }[];
+};
+
+export type AcademyReportEventRead = {
+  id: string;
+  at: string;
+  actor: string;
+  action: string;
+  detail: string;
+};
+
+export type AcademyReportExportQuery = {
+  from_date?: string;
+  to_date?: string;
+  branch?: string;
+  role?: string;
+  kind: 'compliance' | 'certificates' | 'matrix' | 'evidence-pack';
+};
+
+export type AcademyReportFilters = {
+  from_date?: string;
+  to_date?: string;
+  branch?: string;
+  role?: string;
+};
+
+export type AcademyReportGroupRead = {
+  name: string;
+  assigned: number;
+  percent: number | null;
+};
+
+export type AcademyReportMetaRead = {
+  company_id: string;
+  as_of: string;
+  request_id: string;
+  timezone: string;
+  filters: {
+    from_date?: string;
+    to_date?: string;
+    branch?: string;
+    role?: string;
+  };
+};
+
+export type AcademyReportMetricRead = {
+  label: string;
+  value: string;
+  caption: string;
+  icon: string;
+};
+
+export type AcademyReportMonthRead = {
+  month: string;
+  count: number;
+  percent: number | null;
+};
+
+export type AcademyReportPersonRead = {
+  id: string;
+  name: string;
+  role: string;
+  location: string;
+};
+
+export type AcademyReportQuery = {
+  from_date?: string;
+  to_date?: string;
+  branch?: string;
+  role?: string;
+  page?: number;
+  page_size?: number;
+  audit_page?: number;
+};
+
+export type AcademyReportRead = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: {
+    id: string;
+    title: string;
+    cells: {
+      branch: string;
+      percent: number | null;
+    }[];
+  }[];
+  meta: {
+    company_id: string;
+    as_of: string;
+    request_id: string;
+    timezone: string;
+    filters: {
+      from_date?: string;
+      to_date?: string;
+      branch?: string;
+      role?: string;
+    };
+  };
+  branches: string[];
+  roles: string[];
+  stats: {
+    label: string;
+    value: string;
+    caption: string;
+    icon: string;
+  }[];
+  months: {
+    month: string;
+    count: number;
+    percent: number | null;
+  }[];
+  byBranch: {
+    name: string;
+    assigned: number;
+    percent: number | null;
+  }[];
+  byRole: {
+    name: string;
+    assigned: number;
+    percent: number | null;
+  }[];
+  risk: {
+    person: {
+      id: string;
+      name: string;
+      role: string;
+      location: string;
+    };
+    overdue: number;
+  }[];
+  audit: {
+    count: number;
+    next: number | null;
+    previous: number | null;
+    results: {
+      id: string;
+      at: string;
+      actor: string;
+      action: string;
+      detail: string;
+    }[];
+  };
+};
+
+export type AcademyReportRiskRead = {
+  person: {
+    id: string;
+    name: string;
+    role: string;
+    location: string;
+  };
+  overdue: number;
+};

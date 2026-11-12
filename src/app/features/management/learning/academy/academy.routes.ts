@@ -1,3 +1,4 @@
+import { CompanyAccessService } from '../../../../core/access/company-access.service';
 import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
 import { CanActivateFn, Router, Routes } from '@angular/router';
 const access =
@@ -302,7 +303,15 @@ export const ACADEMY_ADMIN_ROUTES: Routes = [
   },
   {
     path: 'reports',
-    canActivate: [reader],
+    canActivate: [
+      () => {
+        const router = inject(Router);
+        return (
+          inject(CompanyAccessService).can('academy', 'reports', 'read') ||
+          router.createUrlTree(['/access-denied'])
+        );
+      },
+    ],
     title: 'Training compliance & reporting · CareVerity',
     loadComponent: () => import('./academy-reports').then((m) => m.AcademyReports),
   },
