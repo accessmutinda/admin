@@ -1,9 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../../shared/ui/select';
-import { AcademyAssignment } from './academy.models';
+import { AcademyReportsApi } from './academy-reports-api.service';
 import { AcademyService } from './academy.service';
 import { AcademyGovernanceService } from './academy-governance.service';
 import { AcademyAdminNav, AcademyMessage } from './academy-shared';
@@ -22,7 +22,8 @@ import { ROLES } from '../../../../core/auth/models/role';
   selector: 'cv-academy-governance',
   host: {
     class: 'module-page academy-page',
-    '[attr.inert]': 'academy.certificatesApi.saving() || academy.resultsApi.saving() ? "" : null',
+    '[attr.inert]':
+      'academy.governanceApi.saving() || academy.certificatesApi.saving() || academy.resultsApi.saving() ? "" : null',
   },
   imports: [
     FormsModule,
@@ -39,7 +40,10 @@ import { ROLES } from '../../../../core/auth/models/role';
 export class AcademyGovernancePage {
   protected readonly academy = inject(AcademyService);
   protected readonly operations = inject(AcademyGovernanceService);
-  private readonly workspace = this.academy.store.companyId();
+  private get workspace() {
+    return this.academy.store.companyId();
+  }
+  protected readonly reports = inject(AcademyReportsApi);
   protected readonly tab = signal('Reviews');
   private readonly allTabs = [
     'Reviews',
@@ -53,7 +57,20 @@ export class AcademyGovernancePage {
     'KPI definitions',
   ];
   protected get tabs() {
-    return this.allTabs.filter((t) => t !== 'Access controls' || this.academy.can('configure'));
+    const kinds: Record<string, string> = {
+      Reviews: 'reviews',
+      'Adjustments & feedback': 'adjustments',
+      'Task authorisations': 'observations',
+      Notifications: 'notifications',
+      'Records disclosure': 'disclosures',
+      'Recovery & data': 'disclosures',
+      'KPI definitions': 'summary',
+    };
+    return this.allTabs.filter((tab) =>
+      tab === 'Access controls'
+        ? this.academy.governanceApi.can('edit')
+        : !kinds[tab] || this.academy.governanceApi.canRead(kinds[tab]),
+    );
   }
   protected readonly error = signal('');
   protected readonly notice = signal('');
@@ -70,13 +87,7 @@ export class AcademyGovernancePage {
   ];
   protected readonly roles = Object.values(ROLES);
   protected role = 'HR';
-  protected selectedCapabilities: AcademyCapability[] = [
-    'assign',
-    'review',
-    'correct',
-    'export',
-    'evidence',
-  ];
+  protected selectedCapabilities: AcademyCapability[] = [];
   protected readonly today = londonDate();
   protected requirement = this.newRequirement();
   protected adjustment = this.newAdjustment();
@@ -96,19 +107,75 @@ export class AcademyGovernancePage {
   protected invalidationAttempt = '';
   protected connected = true;
   protected backupStatus = '';
+  constructor() {
+    effect(() => {
+      const tabs = this.tabs;
+      if (!tabs.includes(this.tab())) this.tab.set(tabs[0] ?? 'Requirements & renewals');
+    });
+    effect(() => {
+      if (this.tab() === 'Recovery & data' && this.academy.api.available())
+        untracked(() => {
+          void this.academy.api
+            .load(true)
+            .catch((error) => this.error.set((error as Error).message));
+        });
+    });
+    let previous = this.academy.governanceApi.scope();
+    effect(() => {
+      const scope = this.academy.governanceApi.scope();
+      if (scope !== previous) {
+        previous = scope;
+        untracked(() => {
+          this.error.set('');
+          this.notice.set('');
+          this.review = this.newReview();
+          this.adjustment = this.newAdjustment();
+          this.authorisation = this.newAuthorisation();
+          this.resetRequirement();
+          this.reason =
+            this.disclosureDecision =
+            this.disclosureReference =
+            this.deliveryAssignment =
+            this.correctionCertificate =
+            this.invalidationAttempt =
+              '';
+          if (this.academy.governanceApi.available())
+            void Promise.all([
+              this.academy.governanceApi.load(),
+              ...(this.academy.assignmentApi.available()
+                ? [this.academy.assignmentApi.load(true)]
+                : []),
+              this.academy.certificatesApi.loadRequirements(),
+            ]).catch((error) => {
+              if (scope === this.academy.governanceApi.scope())
+                this.error.set((error as Error).message);
+            });
+        });
+      }
+    });
+  }
   protected people() {
-    return this.academy.store.staff().filter((p) => this.academy.can('evidence', p.id));
+    return this.academy.governanceApi
+      .people()
+      .filter((p) => ['Active', 'Onboarding'].includes(p.status));
   }
   protected assignments() {
-    return this.academy
-      .assignments()
-      .filter((a) => !a.archived && this.academy.can('evidence', a.personId));
+    return this.academy.assignments().filter((a) => !a.archived);
   }
   protected name(id: string) {
-    return this.academy.store.staff().find((p) => p.id === id)?.name ?? id;
+    return (
+      this.academy.governanceApi.people().find((p) => p.id === id)?.name ??
+      this.academy.certificatesApi.people().find((p) => p.id === id)?.name ??
+      id
+    );
   }
   protected title(id: string) {
-    return this.academy.state().courses.find((c) => c.id === id)?.title ?? id;
+    return (
+      this.academy.governanceApi.courses().find((c) => c.id === id)?.title ??
+      this.academy.assignmentApi.courses().find((c) => c.id === id)?.title ??
+      this.academy.certificatesApi.requirementCourses().find((c) => c.id === id)?.title ??
+      id
+    );
   }
   protected result(error: string | null, message = 'Changes saved.') {
     this.error.set(error ?? '');
@@ -117,7 +184,10 @@ export class AcademyGovernancePage {
   protected newRequirement(): AcademyRequirement {
     return {
       id: crypto.randomUUID(),
-      courseId: this.academy.state().courses[0]?.id ?? '',
+      courseId:
+        this.academy.certificatesApi.requirementCourses()[0]?.id ??
+        this.academy.governanceApi.courses()[0]?.id ??
+        '',
       roles: [],
       branches: [],
       serviceCategory: '',
@@ -158,7 +228,7 @@ export class AcademyGovernancePage {
     );
   }
   protected newAdjustment(): AcademyAdjustment {
-    const a = this.academy.assignments().find((a) => !a.archived);
+    const a = this.academy.assignments().find((a) => !a.archived && !a.completedAt);
     return {
       id: crypto.randomUUID(),
       assignmentId: a?.id ?? '',
@@ -175,11 +245,25 @@ export class AcademyGovernancePage {
     this.adjustment.personId =
       this.academy.assignments().find((a) => a.id === this.adjustment.assignmentId)?.personId ?? '';
   }
-  protected saveAdjustment() {
+  protected async saveAdjustment() {
     this.adjustmentAssignment();
     this.result(
-      this.operations.saveAdjustment(this.adjustment, this.workspace),
+      await this.operations.saveAdjustment(this.adjustment, this.workspace),
       'Adjustment approved for new attempts. Running attempts retain their frozen settings.',
+    );
+  }
+  protected canSaveReview() {
+    const versioned = this.review as AcademyReview & { version?: number };
+    const current = this.operations.data().reviews.find((r) => r.id === this.review.id);
+    const transition =
+      this.review.status === 'Resolved' ||
+      (this.review.status === 'In progress' && current?.status !== 'In progress') ||
+      (this.review.status === 'Open' && current?.status === 'In progress');
+    return (
+      this.academy.governanceApi.can(
+        transition ? 'approve' : versioned.version ? 'edit' : 'create',
+      ) &&
+      (!!versioned.version || this.academy.governanceApi.can('create'))
     );
   }
   protected newReview(): AcademyReview {
@@ -191,7 +275,7 @@ export class AcademyGovernancePage {
       attemptId: '',
       kind: 'Remedial review',
       status: 'Open',
-      ownerId: this.academy.store.staff()[0]?.id ?? '',
+      ownerId: this.people()[0]?.id ?? '',
       due: addDays(londonDate(), 7),
       reason: '',
       actions: '',
@@ -199,21 +283,39 @@ export class AcademyGovernancePage {
       resolvedAt: '',
     };
   }
+  protected versioned(value: { id: string }) {
+    return !!(value as { version?: number }).version;
+  }
+  protected reviewAssignmentChanged(id: string) {
+    if (this.versioned(this.review)) return;
+    this.review.personId = this.academy.assignment(id)?.personId ?? '';
+    this.review.attemptId = '';
+  }
+  protected observationReadOnly() {
+    return (
+      this.operations.data().authorisations.find((row) => row.id === this.authorisation.id)
+        ?.status === 'Revoked'
+    );
+  }
   protected editReview(r: AcademyReview) {
     this.review = structuredClone(r);
+    if (!(r as AcademyReview & { version?: number }).version) {
+      this.review.ownerId = this.people()[0]?.id ?? '';
+      this.review.due = addDays(londonDate(), 7);
+    }
   }
-  protected saveReview() {
-    this.result(this.operations.saveReview(this.review, this.workspace));
+  protected async saveReview() {
+    this.result(await this.operations.saveReview(this.review, this.workspace));
   }
   protected newAuthorisation(): AcademyAuthorisation {
     return {
       id: crypto.randomUUID(),
-      personId: this.academy.store.staff()[0]?.id ?? '',
-      courseId: this.academy.state().courses[0]?.id ?? '',
+      personId: this.people()[0]?.id ?? '',
+      courseId: this.academy.governanceApi.courses()[0]?.id ?? '',
       task: '',
       clientId: '',
       location: '',
-      assessorId: this.academy.store.staff()[1]?.id ?? '',
+      assessorId: this.people()[1]?.id ?? '',
       observedAt: londonDate(),
       reviewDue: addDays(londonDate(), 90),
       status: 'Restricted',
@@ -224,8 +326,8 @@ export class AcademyGovernancePage {
   protected editAuthorisation(a: AcademyAuthorisation) {
     this.authorisation = structuredClone(a);
   }
-  protected saveAuthorisation() {
-    this.result(this.operations.saveAuthorisation(this.authorisation, this.workspace));
+  protected async saveAuthorisation() {
+    this.result(await this.operations.saveAuthorisation(this.authorisation, this.workspace));
   }
   protected newGrant(): AcademyAccessGrant {
     return {
@@ -245,30 +347,33 @@ export class AcademyGovernancePage {
     this.result(this.operations.saveGrant(this.grant, this.workspace));
   }
   protected roleChanged() {
-    const defaults: Record<string, AcademyCapability[]> = {
-      HR: ['assign', 'review', 'correct', 'export', 'evidence'],
-      TM: ['author', 'publish', 'assign', 'review', 'export', 'evidence'],
-      QA: ['evidence', 'export'],
-      CO: ['evidence', 'export'],
-    };
-    this.selectedCapabilities =
-      this.operations.data().capabilityRoles?.[this.role] ?? defaults[this.role] ?? [];
+    this.selectedCapabilities = [];
   }
   protected saveCapabilities() {
     this.result(this.operations.saveCapabilities(this.role, this.selectedCapabilities));
   }
-  protected queue() {
+  protected async queue() {
     const a = this.academy.assignment(this.deliveryAssignment);
     this.result(
       a
-        ? this.operations.queueDelivery(a.personId, a.id, this.deliveryChannel, this.deliveryText)
+        ? await this.operations.queueDelivery(
+            a.personId,
+            a.id,
+            this.deliveryChannel,
+            this.deliveryText,
+          )
         : 'Choose an assignment.',
-      'Notification queued for local simulation.',
+      'Notification saved in the recipient’s academy inbox.',
     );
   }
-  protected disclose(id: string, status: 'Approved' | 'Declined' | 'Provided') {
+  protected async disclose(id: string, status: 'Approved' | 'Declined' | 'Provided') {
     this.result(
-      this.operations.disclosure(id, status, this.disclosureDecision, this.disclosureReference),
+      await this.operations.disclosure(
+        id,
+        status,
+        this.disclosureDecision,
+        this.disclosureReference,
+      ),
     );
   }
   protected async releaseFeedback(id: string) {
@@ -286,67 +391,34 @@ export class AcademyGovernancePage {
       'Replacement certificate issued with a traceable link to the original.',
     );
   }
-  protected exportEvidence() {
-    const data = this.operations.redactedEvidence();
-    if (!data) {
-      this.result('Export permission is required.');
-      return;
-    }
-    const error = this.academy.recordReport('Redacted Academy evidence', this.workspace);
+  protected async evaluateRenewals() {
     this.result(
-      error,
-      'Redacted evidence prepared without keys, responses, PDF bytes or private notes.',
+      await this.operations.runSchedules(),
+      `${this.academy.governanceApi.summary()?.outstanding ?? 0} outstanding requirement records. Automatic assignment and external delivery require configured workers.`,
     );
-    if (!error)
-      this.academy.store.download(
-        'academy-evidence.json',
-        JSON.stringify(data, null, 2),
-        'application/json',
-      );
+  }
+  protected async retryMedia(id: string) {
+    try {
+      await this.academy.api.process(id);
+      this.result(null, 'Media processing checked against the saved upload.');
+    } catch (error) {
+      this.result((error as Error).message);
+    }
+  }
+  protected async exportEvidence() {
+    const success = await this.reports.download('evidence-pack', {});
+    this.result(
+      success ? null : this.reports.error(),
+      'Evidence export prepared from authorised server records.',
+    );
   }
   protected backup() {
-    if (!this.academy.can('configure')) return;
-    const snapshot = {
-      format: 'careverity-academy-demo-v1',
-      workspace: this.workspace,
-      createdAt: new Date().toISOString(),
-      data: this.academy.store.data(),
-    };
-    this.academy.store.download(
-      'academy-demo-backup.json',
-      JSON.stringify(snapshot, null, 2),
-      'application/json',
-    );
-    this.backupStatus =
-      'Private demo backup prepared, including protected workspace records. Media blobs remain in this browser.';
+    this.backupStatus = 'Private backups are managed by authorised server operations.';
   }
-  protected async restore(event: Event) {
-    const input = event.target as HTMLInputElement,
-      file = input.files?.[0];
-    input.value = '';
-    if (!file || !this.academy.can('configure')) return;
-    try {
-      const snapshot = JSON.parse(await file.text());
-      if (
-        snapshot.format !== 'careverity-academy-demo-v1' ||
-        snapshot.workspace !== this.workspace ||
-        !snapshot.data?.academy ||
-        !Array.isArray(snapshot.data.people) ||
-        !Array.isArray(snapshot.data.academy.assignments) ||
-        !Array.isArray(snapshot.data.academy.attempts)
-      )
-        throw new Error('Use a valid backup from this workspace.');
-      if (this.workspace !== this.academy.store.companyId()) throw new Error('Workspace changed.');
-      const ids = new Set(snapshot.data.people.map((p: { id: string }) => p.id));
-      if (snapshot.data.academy.assignments.some((a: AcademyAssignment) => !ids.has(a.personId)))
-        throw new Error('The backup contains unmatched staff records.');
-      this.result(
-        this.academy.store.saveWorkspace(() => snapshot.data) ? null : 'Could not restore backup.',
-        'Demo records restored. Run reconciliation to verify evidence links. Local media must remain available separately.',
-      );
-    } catch (e) {
-      this.result((e as Error).message);
-    }
+  protected restore(event: Event) {
+    (event.target as HTMLInputElement).value = '';
+    this.backupStatus =
+      'Browser workspace imports are unavailable. Restore through authorised server operations.';
   }
   protected async retryCertificate(attemptId: string) {
     try {

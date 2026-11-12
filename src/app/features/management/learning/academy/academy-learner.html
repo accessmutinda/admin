@@ -51,7 +51,7 @@
     the staff link is verified.
   </div>
 }
-<cv-academy-message [error]="error() || academy.resultsApi.learnerError() || academy.certificatesApi.error()" [notice]="notice()" />
+<cv-academy-message [error]="error() || academy.resultsApi.learnerError() || academy.certificatesApi.error() || academy.governanceApi.learnerError()" [notice]="notice()" />
 @switch (view()) {
   @case ('dashboard') {
     <div class="heading">
@@ -206,7 +206,7 @@
         } @empty {
           <p>No training notifications.</p>
         }
-        <small>These are device-local portal records.</small>
+        <small>These notifications come from your saved academy inbox.</small>
       </section>
     </div>
   }
@@ -502,6 +502,7 @@
             <h2>{{ n.title }}</h2>
             <p class="preserve">{{ n.text }}</p>
             <small>{{ n.at | ukDate: 'd MMM yyyy, HH:mm' }} · Recorded in app</small>
+            <button class="academy-button" [disabled]="!academy.governanceApi.canAcknowledge() || academy.governanceApi.saving() || notificationAcknowledged(n.id)" (click)="acknowledgeNotification(n.id)">{{ notificationAcknowledged(n.id) ? 'Message acknowledged' : 'Acknowledge message' }}</button>
             @if (n.assignmentId) {
               <a
                 [routerLink]="['/staff-portal/training/courses', noticeCourse(n.assignmentId)]"
@@ -514,7 +515,7 @@
       } @empty {
         <p>No training messages yet.</p>
       }
-      <small>App records are saved on this device. Email/SMS delivery is not connected.</small>
+      <small>Messages and acknowledgements are saved by the server. External delivery requires a configured provider.</small>
     </section>
   }
   @case ('certificates') {

@@ -436,8 +436,24 @@ export class AcademyLearner {
         'Your training-record access request is recorded for HR review. No external message has been sent.',
       );
   }
+  protected notificationAcknowledged(id: string) {
+    return this.academy.governanceApi
+      .notifications()
+      .some((n) => n.id === id && n.status === 'Delivered');
+  }
+  protected async acknowledgeNotification(id: string) {
+    try {
+      await this.academy.governanceApi.acknowledge(id);
+      this.error.set('');
+      this.notice.set('Notification acknowledgement saved.');
+    } catch (error) {
+      this.error.set((error as Error).message);
+    }
+  }
   protected pendingRequest() {
-    return this.requests().some((r) => r.status === 'Requested');
+    return this.requests().some((r) =>
+      ['Requested', 'Acknowledged', 'Approved'].includes(r.status),
+    );
   }
   protected groupPlacement(group: AcademyQuestionGroup) {
     const target = ['Before module', 'After module'].includes(group.placement)
@@ -600,8 +616,11 @@ export class AcademyLearner {
     return this.academy.state().assets.find((a) => a.id === id)?.language ?? 'en';
   }
   protected async downloadCertificate(c: AcademyCertificate) {
-    try { await this.academy.certificatesApi.download(c.id, true); }
-    catch(e) { this.error.set((e as Error).message); }
+    try {
+      await this.academy.certificatesApi.download(c.id, true);
+    } catch (e) {
+      this.error.set((e as Error).message);
+    }
   }
   protected enrol() {
     if (!this.course()) return;

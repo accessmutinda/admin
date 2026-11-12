@@ -76,6 +76,9 @@ const learningLoaded: CanActivateFn = async (route) => {
       inject(certificates.AcademyCertificatesApi),
     );
     await evidence.load(true);
+    const policies = await import('./academy-governance-api.service');
+    const policy = runInInjectionContext(context, () => inject(policies.AcademyGovernanceApi));
+    await policy.load(true);
     const certificateId = route.paramMap.get('certificateId');
     if (certificateId) await evidence.detail(certificateId, true);
     const id = route.paramMap.get('attemptId');
@@ -95,6 +98,19 @@ const certificatesIfAvailable: CanActivateFn = async () => {
     } catch {
       /* The page displays the source error. */
     }
+  return true;
+};
+const governanceLoaded: CanActivateFn = async () => {
+  const context = inject(EnvironmentInjector),
+    router = inject(Router);
+  const m = await import('./academy-governance-api.service');
+  const api = runInInjectionContext(context, () => inject(m.AcademyGovernanceApi));
+  if (!api.available()) return router.createUrlTree(['/access-denied']);
+  try {
+    await api.load();
+  } catch {
+    /* The page shows the source error. */
+  }
   return true;
 };
 const requirementsLoaded: CanActivateFn = async () => {
@@ -134,6 +150,18 @@ const resultsIfAvailable: CanActivateFn = async () => {
       /* The page displays the access error. */
     }
   }
+  return true;
+};
+const assignmentsIfAvailable: CanActivateFn = async () => {
+  const context = inject(EnvironmentInjector),
+    m = await import('./academy-assignments-api.service');
+  const api = runInInjectionContext(context, () => inject(m.AcademyAssignmentsApi));
+  if (api.available())
+    try {
+      await api.load(true);
+    } catch {
+      /* The source service shows the error. */
+    }
   return true;
 };
 const assignmentsLoaded: CanActivateFn = async () => {
@@ -221,7 +249,8 @@ export const ACADEMY_ADMIN_ROUTES: Routes = [
   {
     path: 'governance',
     canActivate: [
-      capability('diagnostics'),
+      governanceLoaded,
+      assignmentsIfAvailable,
       resultsIfAvailable,
       certificatesIfAvailable,
       requirementsLoaded,

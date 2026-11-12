@@ -1,3 +1,4 @@
+import { AcademyGovernanceApi } from './academy-governance-api.service';
 import { AcademyCertificatesApi } from './academy-certificates-api.service';
 import { AcademyResultsApi } from './academy-results-api.service';
 import { AcademyAssignmentsApi } from './academy-assignments-api.service';
@@ -49,6 +50,7 @@ export class AcademyService {
   readonly assignmentApi = inject(AcademyAssignmentsApi);
   readonly resultsApi = inject(AcademyResultsApi);
   readonly certificatesApi = inject(AcademyCertificatesApi);
+  readonly governanceApi = inject(AcademyGovernanceApi);
   readonly auth = inject(AuthService);
   readonly state = computed<AcademyData>(() => {
     const records = this.api.courses();
@@ -83,7 +85,11 @@ export class AcademyService {
       completions: this.certificatesApi.completions(),
       refresherSchedules: this.certificatesApi.refreshers(),
       accessRequests: this.certificatesApi.requests(),
-      governance: { ...emptyGovernance(), requirements: this.certificatesApi.requirements() },
+      notices: this.governanceApi.notifications().map((n) => ({ ...n, key: n.id })),
+      governance: {
+        ...this.governanceApi.data(),
+        requirements: this.certificatesApi.requirements(),
+      },
     };
   });
   async persistCourse(

@@ -4,12 +4,12 @@
     <h1>CareVerity Academy — Policies & Reviews</h1>
     <p>Manage learning support, evidence requirements, renewal policies and controlled access.</p>
   </div>
-  <a class="academy-button" routerLink="/manage/learning/reports">Training matrix & reports</a>
+  @if (reports.available()) { <a class="academy-button" routerLink="/manage/learning/reports">Training matrix & reports</a> }
 </div>
 <p class="demo-notice">
-  <span class="material-symbols-outlined" aria-hidden="true">science</span>Certificate corrections and requirement policies use saved server records. External delivery and rota stages require actual provider acknowledgements.
+  <span class="material-symbols-outlined" aria-hidden="true">science</span>Reviews, approvals and requirement policies use saved server records. External delivery and rota authority require configured integrations.
 </p>
-<cv-academy-message [error]="error() || academy.certificatesApi.error()" [notice]="notice()" />
+<cv-academy-message [error]="error() || academy.governanceApi.error() || academy.certificatesApi.error()" [notice]="notice()" />
 <nav class="governance-tabs" aria-label="Academy policy workspaces">
   @for (item of tabs; track item) {
     <button
@@ -21,22 +21,7 @@
     </button>
   }
 </nav>
-@if (!academy.state().governance) {
-  <section class="panel">
-    <h2>Demonstration policies</h2>
-    <p>
-      An administrator can initialise the seeded review, requirement, adjustment and delivery
-      examples.
-    </p>
-    <button
-      class="academy-button primary"
-      [disabled]="!academy.can('configure')"
-      (click)="result(operations.seed(), 'Examples seeded.')"
-    >
-      Load demonstration examples
-    </button>
-  </section>
-}
+@if (academy.governanceApi.loading()) { <p role="status">Loading policy and review records…</p> }
 @switch (tab()) {
   @case ('Reviews') {
     <div class="governance-grid">
@@ -44,7 +29,7 @@
         <h2>Learning review queue</h2>
         <p>
           Exhausted assessments require a documented decision. Resolving a review never changes the
-          original score or resets attempt limits.
+          original score or resets attempt limits. Closing a remedial review does not waive evidence requirements or certify practical competency.
         </p>
         <div class="scroll">
           <table>
@@ -58,14 +43,14 @@
             </thead>
             <tbody>
               @for (r of operations.data().reviews; track r.id) {
-                @if (academy.can('evidence', r.personId)) {
+                @if (academy.governanceApi.available()) {
                   <tr>
                     <td>
                       <strong>{{ name(r.personId) }}</strong
                       ><small>{{ r.reason }}</small>
                     </td>
                     <td>
-                      {{ name(r.ownerId) }}<small>{{ r.due | ukDate: 'd MMM yyyy' }}</small>
+                      {{ name(r.ownerId) || 'Unassigned' }}<small>{{ r.due | ukDate: 'd MMM yyyy' }}</small>
                     </td>
                     <td>
                       <span class="badge" [class.good]="r.status === 'Resolved'">{{
@@ -90,20 +75,19 @@
             </tbody>
           </table>
         </div>
-        <button class="academy-button" (click)="review = newReview()">New review</button>
+        <button class="academy-button" [disabled]="!academy.governanceApi.can('create')" (click)="review = newReview()">New review</button>
       </section>
       <section class="panel">
         <h2>Review decision</h2>
         <form (ngSubmit)="saveReview()">
-          <fieldset [disabled]="!academy.can('review', review.personId) || !!review.resolvedAt">
+          <fieldset [disabled]="!canSaveReview() || !!review.resolvedAt">
             <label class="field"
               >Assignment<mat-select
                 cvSelect
                 name="reviewAssignment"
                 [(ngModel)]="review.assignmentId"
-                (selectionChange)="
-                  review.personId = academy.assignment($event.value)?.personId ?? ''
-                "
+                [disabled]="versioned(review)"
+                (selectionChange)="reviewAssignmentChanged($event.value)"
                 aria-label="Review assignment"
               >
                 @for (a of assignments(); track a.id) {
@@ -178,7 +162,7 @@
             aria-label="Attempt to invalidate"
           >
             @for (a of academy.state().attempts; track a.id) {
-              @if (a.submittedAt && academy.can('evidence', a.personId)) {
+              @if (a.submittedAt && academy.governanceApi.available()) {
                 <mat-option [value]="a.id"
                   >{{ name(a.personId) }} · {{ a.courseTitle }} ·
                   {{
@@ -273,18 +257,7 @@
           </table>
         </div>
         <button class="academy-button" (click)="resetRequirement()">New policy / successor</button
-        ><button
-          class="academy-button primary"
-          [disabled]="!academy.can('assign')"
-          (click)="
-            result(
-              operations.runSchedules(),
-              'Renewal rules evaluated and eligible notices recorded. Repeat runs do not duplicate assignments.'
-            )
-          "
-        >
-          Run renewal scheduler
-        </button>
+        ><button class="academy-button primary" [disabled]="!academy.governanceApi.canRead('summary')" (click)="evaluateRenewals()">Evaluate renewal policies</button>
         @for (run of operations.data().schedulerRuns.slice(0, 5); track run.at) {
           <p class="supporting">
             {{ run.at | ukDate: 'd MMM yyyy, HH:mm:ss' }} · {{ run.assignments }} assignments ·
@@ -390,7 +363,7 @@
             </thead>
             <tbody>
               @for (a of operations.data().adjustments; track a.id) {
-                @if (academy.can('evidence', a.personId)) {
+                @if (academy.governanceApi.available()) {
                   <tr>
                     <td>
                       {{ name(a.personId) }}<small>{{ a.reason }}</small>
@@ -418,13 +391,13 @@
           @if (
             a.submittedAt &&
             a.policy?.feedbackMode === 'Manager release' &&
-            academy.can('evidence', a.personId)
+            academy.governanceApi.available()
           ) {
             <article class="list-item">
               <span>{{ name(a.personId) }} · {{ a.courseTitle }}</span
               ><button
                 class="academy-button"
-                [disabled]="!academy.can('review', a.personId) || !!a.feedbackReleasedAt"
+                [disabled]="!academy.resultsApi.canApprove() || !!a.feedbackReleasedAt"
                 (click)="releaseFeedback(a.id)"
               >
                 {{ a.feedbackReleasedAt ? 'Feedback released' : 'Release feedback' }}
@@ -440,7 +413,7 @@
           started.
         </p>
         <form (ngSubmit)="saveAdjustment()">
-          <fieldset [disabled]="!academy.can('review')">
+          <fieldset [disabled]="!academy.governanceApi.can('approve')">
             <label class="field"
               >Assignment<mat-select
                 cvSelect
@@ -491,11 +464,10 @@
       <section class="panel">
         <h2>Observed task evidence & restrictions</h2>
         <p>
-          A quiz pass does not grant clinical authority. These records add task, service-user and
-          location-specific restrictions to existing rota checks.
+          A quiz pass does not grant clinical authority. These records document observed tasks and restrictions. Rota authorisation is managed by its owning workflow.
         </p>
         @for (a of operations.data().authorisations; track a.id) {
-          @if (academy.can('evidence', a.personId)) {
+          @if (academy.governanceApi.available()) {
             <article class="list-item">
               <div>
                 <h3>{{ name(a.personId) }} · {{ a.task }}</h3>
@@ -519,11 +491,11 @@
       <section class="panel">
         <h2>Task authorisation</h2>
         <form (ngSubmit)="saveAuthorisation()">
-          <fieldset [disabled]="!academy.can('review')">
+          <fieldset [disabled]="!academy.governanceApi.can('approve') || observationReadOnly()">
             <label class="field"
               >Staff<mat-select
                 cvSelect
-                name="taskPerson"
+                name="taskPerson" [disabled]="versioned(authorisation)"
                 [(ngModel)]="authorisation.personId"
                 aria-label="Task person"
               >
@@ -534,11 +506,11 @@
             ><label class="field"
               >Course<mat-select
                 cvSelect
-                name="taskCourse"
+                name="taskCourse" [disabled]="versioned(authorisation)"
                 [(ngModel)]="authorisation.courseId"
                 aria-label="Task course"
               >
-                @for (c of academy.state().courses; track c.id) {
+                @for (c of academy.governanceApi.courses(); track c.id) {
                   <mat-option [value]="c.id">{{ c.title }}</mat-option>
                 }
               </mat-select></label
@@ -549,7 +521,7 @@
                 required /></label
             ><label class="field"
               >Service user ID (blank for all)<input
-                name="taskClient"
+                name="taskClient" [disabled]="versioned(authorisation)"
                 [(ngModel)]="authorisation.clientId" /></label
             ><label class="field"
               >Location (blank for all)<input
@@ -588,7 +560,7 @@
                 aria-label="Task status"
                 ><mat-option value="Approved">Approved</mat-option
                 ><mat-option value="Restricted">Restricted</mat-option
-                ><mat-option value="Revoked">Revoked</mat-option></mat-select
+                ><mat-option value="Revoked" [disabled]="!versioned(authorisation)">Revoked</mat-option></mat-select
               ></label
             ><label class="field"
               >Observation evidence<textarea
@@ -613,17 +585,16 @@
         <div>
           <h2>Notification delivery ledger</h2>
           <p>
-            Queued → Sent → Delivered, or Failed with a retry record. These are local simulation
-            outcomes.
+            In-app messages are saved in the recipient’s inbox and marked delivered after their acknowledgement. External delivery requires a configured provider.
           </p>
         </div>
         <label class="check"
           ><input
             type="checkbox"
-            [disabled]="!academy.can('configure')"
-            [ngModel]="operations.data().channelFailure"
+            [disabled]="true"
+            [ngModel]="false"
             (ngModelChange)="result(operations.setChannelFailure($event))"
-          />Simulate channel outage</label
+          />Provider delivery unavailable</label
         >
       </div>
       <div class="scroll">
@@ -639,7 +610,7 @@
           </thead>
           <tbody>
             @for (n of operations.data().deliveries; track n.id) {
-              @if (academy.can('evidence', n.personId)) {
+              @if (academy.governanceApi.available()) {
                 <tr>
                   <td>
                     {{ name(n.personId) }}<small>{{ n.channel }}</small>
@@ -659,7 +630,7 @@
                     <span
                       class="badge"
                       [class.good]="n.status === 'Delivered'"
-                      [class.bad]="n.status === 'Failed'"
+                      [class.bad]="false"
                       >{{ n.status }}</span
                     ><small>{{ n.error }}</small>
                   </td>
@@ -672,15 +643,11 @@
                   <td>
                     <button
                       class="academy-button"
-                      [disabled]="!academy.can('assign') || n.status === 'Delivered'"
-                      (click)="result(operations.processDelivery(n.id, n.status === 'Failed'))"
+                      [disabled]="true"
+                      (click)="result(operations.processDelivery(n.id))"
                     >
                       {{
-                        n.status === 'Failed'
-                          ? 'Retry delivery'
-                          : n.status === 'Sent'
-                            ? 'Acknowledge delivery'
-                            : 'Process queue'
+                        n.status === 'Delivered' ? 'Recipient acknowledged' : 'Awaiting recipient'
                       }}
                     </button>
                   </td>
@@ -713,13 +680,13 @@
             aria-label="Notification channel"
           >
             @for (c of ['In-platform', 'App', 'Email', 'SMS']; track c) {
-              <mat-option [value]="c">{{ c }}</mat-option>
+              <mat-option [value]="c" [disabled]="c !== 'In-platform'">{{ c }}</mat-option>
             }
           </mat-select></label
         ><label class="field">Message<textarea [(ngModel)]="deliveryText"></textarea></label>
       </div>
-      <button class="academy-button primary" [disabled]="!academy.can('assign')" (click)="queue()">
-        Queue demo notification
+      <button class="academy-button primary" [disabled]="!academy.governanceApi.can('create') || deliveryChannel !== 'In-platform'" (click)="queue()">
+        Queue training notification
       </button>
     </section>
   }
@@ -729,14 +696,14 @@
         <h2>Role capabilities</h2>
         <p>
           Publication, assignment, correction and evidence access are separate capabilities.
-          Administrator recovery access is retained.
+          Use Company access to manage authoritative company role actions. Policy records do not grant permissions.
         </p>
         <label class="field"
           >Role<mat-select
             cvSelect
             [(ngModel)]="role"
             (selectionChange)="roleChanged()"
-            aria-label="Academy capability role"
+            aria-label="Academy capability role" [disabled]="true"
           >
             @for (r of roles; track r.code) {
               @if (r.code !== 'CA' && r.code !== 'PO') {
@@ -749,7 +716,7 @@
             cvSelect
             multiple
             [(ngModel)]="selectedCapabilities"
-            aria-label="Allowed Academy capabilities"
+            aria-label="Allowed Academy capabilities" [disabled]="true"
           >
             @for (c of capabilities; track c) {
               <mat-option [value]="c">{{ c }}</mat-option>
@@ -757,12 +724,13 @@
           </mat-select></label
         ><button
           class="academy-button primary"
-          [disabled]="!academy.can('configure')"
+          [disabled]="true"
           (click)="saveCapabilities()"
         >
-          Save role permissions
+          Role permissions managed centrally
         </button>
-        <h2>Approved access windows</h2>
+        <a class="academy-button" routerLink="/manage/companies/access">Manage company access</a>
+        <h2>Approved access windows</h2><p>Time-limited and per-person grants require a supported access adapter. They cannot be approved here.</p>
         @for (g of operations.data().grants; track g.id) {
           <article class="list-item">
             <div>
@@ -787,7 +755,7 @@
       <section class="panel">
         <h2>Approve time-limited access</h2>
         <form (ngSubmit)="saveGrant()">
-          <fieldset [disabled]="!academy.can('configure')">
+          <fieldset [disabled]="true">
             <label class="field"
               >Reviewer email<input
                 type="email"
@@ -866,7 +834,7 @@
           </thead>
           <tbody>
             @for (r of academy.state().accessRequests ?? []; track r.id) {
-              @if (academy.can('evidence', r.personId)) {
+              @if (academy.governanceApi.available()) {
                 <tr>
                   <td>
                     {{ name(r.personId)
@@ -891,7 +859,7 @@
                       <button
                         class="academy-button"
                         [disabled]="
-                          !academy.can('review', r.personId) ||
+                          !academy.governanceApi.can('approve') || !academy.certificatesApi.canRevoke() || !disclosureDecision.trim() ||
                           r.status === 'Provided' ||
                           r.status === 'Declined'
                         "
@@ -900,14 +868,14 @@
                         Approve</button
                       ><button
                         class="academy-button"
-                        [disabled]="!academy.can('review', r.personId) || r.status !== 'Approved'"
+                        [disabled]="!academy.governanceApi.can('approve') || !academy.certificatesApi.canRevoke() || r.status !== 'Approved'"
                         (click)="disclose(r.id, 'Provided')"
                       >
                         Record provision</button
                       ><button
                         class="academy-button"
                         [disabled]="
-                          !academy.can('review', r.personId) ||
+                          !academy.governanceApi.can('approve') || !academy.certificatesApi.canRevoke() || !disclosureDecision.trim() ||
                           r.status === 'Provided' ||
                           r.status === 'Declined'
                         "
@@ -933,12 +901,11 @@
           >Open restricted diagnostics</a
         >
         <p>
-          Recheck saved passes and workflow stages. Pending and interrupted jobs resume from
-          acknowledged steps; revoked originals remain historical.
+          Recheck saved passes and generate missing academy evidence. External integration stages remain pending until their own adapters acknowledge them.
         </p>
         <button
           class="academy-button primary"
-          [disabled]="!academy.can('review')"
+          [disabled]="!academy.certificatesApi.canIssue()"
           (click)="reconcile()"
         >
           Reconcile saved evidence
@@ -954,7 +921,7 @@
               @if (j.status === 'CERTIFICATE_PENDING') {
                 <button
                   class="academy-button"
-                  [disabled]="!academy.can('review')"
+                  [disabled]="!academy.certificatesApi.canIssue()"
                   (click)="retryCertificate(j.attemptId)"
                 >
                   Retry workflow
@@ -965,30 +932,29 @@
         }
       </section>
       <section class="panel">
-        <h2>Private demo backup & restore</h2>
+        <h2>Server backup & restore</h2>
         <p>
-          Backups contain protected workspace records and answer keys. Use the redacted evidence
-          export for inspections. Uploaded media blobs remain in browser storage.
+          Backups and restores are managed by authorised server operations. Use the redacted evidence export for inspections.
         </p>
         <div class="actions">
-          <button class="academy-button" [disabled]="!academy.can('configure')" (click)="backup()">
-            Export private demo backup</button
+          <button class="academy-button" [disabled]="true" (click)="backup()">
+            Server backup required</button
           ><label class="academy-button"
-            >Restore demo backup<input
+            >Server restore required<input
               type="file"
               accept="application/json,.json"
-              [disabled]="!academy.can('configure')"
+              [disabled]="true"
               (change)="restore($event)"
           /></label>
         </div>
         <p>{{ backupStatus }}</p>
-        <h2>Reconnect demonstration</h2>
+        <h2>Connection requirements</h2>
         <p>
-          Local answers and records remain on this device. Server synchronisation is not connected.
+          Policy and review changes require an authenticated server connection. Browser imports and offline business changes are unavailable.
         </p>
         <button
           class="academy-button"
-          [disabled]="!academy.can('configure')"
+          [disabled]="true"
           (click)="
             result(
               operations.setOffline(!operations.data().offline),
@@ -996,13 +962,13 @@
             )
           "
         >
-          {{ operations.data().offline ? 'Restore connection' : 'Simulate offline mode' }}
+          Server connection required
         </button>
         <p role="status">
           {{
             operations.data().offline
               ? 'Offline simulation — local changes queued; no server delivery claimed'
-              : 'Online simulation — local changes persisted'
+              : 'Changes are saved by the server; offline simulation is unavailable'
           }}
         </p>
         <p>{{ operations.data().syncQueue?.length ?? 0 }} recorded offline operations</p>
@@ -1014,7 +980,7 @@
         }
         <button
           class="academy-button"
-          [disabled]="!academy.can('export')"
+          [disabled]="!reports.canExport() || reports.exporting()"
           (click)="exportEvidence()"
         >
           Export redacted evidence
@@ -1024,8 +990,7 @@
     <section class="panel">
       <h2>Media processing & recovery</h2>
       <p>
-        These controls simulate quarantine/retry for locally uploaded files. Videos require
-        accessibility approval again after a retry.
+        Media processing uses the saved upload and configured scanning adapter. Videos require accessibility approval before publication.
       </p>
       <div class="scroll">
         <table>
@@ -1057,21 +1022,8 @@
                 <td>
                   <button
                     class="academy-button"
-                    [disabled]="!academy.can('author')"
-                    (click)="
-                      result(
-                        academy.simulateMediaCheck(
-                          a.id,
-                          a.status !== 'FAILED',
-                          academy.store.companyId()
-                        )
-                      )
-                    "
-                  >
-                    {{
-                      a.status === 'FAILED' ? 'Retry local processing' : 'Simulate scan rejection'
-                    }}
-                  </button>
+                    [disabled]="!academy.api.available()"
+                    (click)="retryMedia(a.id)">Retry server processing</button>
                 </td>
               </tr>
             }
@@ -1090,9 +1042,7 @@
             ungraded and excluded.
           </p>
         </div>
-        <a class="academy-button" routerLink="/manage/learning/reports"
-          >Open source-linked reports</a
-        >
+        @if (reports.available()) { <a class="academy-button" routerLink="/manage/learning/reports">Open source-linked reports</a> }
       </div>
       <div class="scroll">
         <table>
@@ -1116,8 +1066,8 @@
             </tr>
             <tr>
               <td>Evidence sync exceptions</td>
-              <td>Saved completion jobs in SYNC_EXCEPTION</td>
-              <td>{{ operations.kpis().exceptions }}</td>
+              <td>Recorded provider failures; unavailable without a configured delivery adapter</td>
+              <td>{{ operations.kpis().exceptions ?? '—' }}</td>
             </tr>
             <tr>
               <td>Mandatory knowledge currency</td>

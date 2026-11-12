@@ -2086,6 +2086,12 @@ export type AcademyLearningPageRead = {
         shuffleQuestions?: boolean;
         shuffleOptions?: boolean;
       };
+      adjustment?: {
+        id: string;
+        extraMinutes: number;
+        untimed: boolean;
+        approvedAt: string;
+      } | null;
       questions: {
         id: string;
         courseId: string;
@@ -2303,6 +2309,12 @@ export type AcademyLearningRecordRead = {
       shuffleQuestions?: boolean;
       shuffleOptions?: boolean;
     };
+    adjustment?: {
+      id: string;
+      extraMinutes: number;
+      untimed: boolean;
+      approvedAt: string;
+    } | null;
     questions: {
       id: string;
       courseId: string;
@@ -2399,6 +2411,13 @@ export type AcademyResponseWrite = {
   flagged?: boolean;
 };
 
+export type AcademyResultAdjustmentRead = {
+  id: string;
+  extraMinutes: number;
+  untimed: boolean;
+  approvedAt: string;
+};
+
 export type AcademyResultAssignmentRead = {
   id: string;
   company_id: string;
@@ -2493,6 +2512,12 @@ export type AcademyResultAttemptRead = {
     shuffleQuestions?: boolean;
     shuffleOptions?: boolean;
   };
+  adjustment?: {
+    id: string;
+    extraMinutes: number;
+    untimed: boolean;
+    approvedAt: string;
+  } | null;
   questions: {
     id: string;
     courseId: string;
@@ -2614,6 +2639,12 @@ export type AcademyResultPageRead = {
         shuffleQuestions?: boolean;
         shuffleOptions?: boolean;
       };
+      adjustment?: {
+        id: string;
+        extraMinutes: number;
+        untimed: boolean;
+        approvedAt: string;
+      } | null;
       questions: {
         id: string;
         courseId: string;
@@ -2765,6 +2796,12 @@ export type AcademyResultPageRead = {
         shuffleQuestions?: boolean;
         shuffleOptions?: boolean;
       };
+      adjustment?: {
+        id: string;
+        extraMinutes: number;
+        untimed: boolean;
+        approvedAt: string;
+      } | null;
       questions: {
         id: string;
         courseId: string;
@@ -2855,6 +2892,18 @@ export type AcademyResultPageRead = {
   };
 };
 
+export type AcademyResultPolicyRead = {
+  maxAttempts: number;
+  retakeWaitHours: number;
+  timeLimitMinutes: number;
+  showFeedback: boolean;
+  feedbackMode?: 'Immediate' | 'After delay' | 'Manager release';
+  feedbackDelayHours?: number;
+  sequentialLessons?: boolean;
+  shuffleQuestions?: boolean;
+  shuffleOptions?: boolean;
+};
+
 export type AcademyResultQuery = {
   page?: number;
   page_size?: number;
@@ -2918,6 +2967,12 @@ export type AcademyResultRecordRead = {
       shuffleQuestions?: boolean;
       shuffleOptions?: boolean;
     };
+    adjustment?: {
+      id: string;
+      extraMinutes: number;
+      untimed: boolean;
+      approvedAt: string;
+    } | null;
     questions: {
       id: string;
       courseId: string;
@@ -3069,6 +3124,12 @@ export type AcademyResultRecordRead = {
       shuffleQuestions?: boolean;
       shuffleOptions?: boolean;
     };
+    adjustment?: {
+      id: string;
+      extraMinutes: number;
+      untimed: boolean;
+      approvedAt: string;
+    } | null;
     questions: {
       id: string;
       courseId: string;
@@ -3392,9 +3453,12 @@ export type AcademyRecordsPageRead = {
     tenantId: string;
     personId: string;
     createdAt: string;
-    status: 'Requested' | 'Acknowledged';
+    status: 'Requested' | 'Acknowledged' | 'Approved' | 'Declined' | 'Provided';
     acknowledgedAt: string;
     acknowledgedBy: string;
+    decision: string;
+    deliveryReference: string;
+    completedAt: string;
   }[];
   meta: Record<string, unknown>;
 };
@@ -3407,9 +3471,12 @@ export type AcademyRecordsRequestRead = {
   tenantId: string;
   personId: string;
   createdAt: string;
-  status: 'Requested' | 'Acknowledged';
+  status: 'Requested' | 'Acknowledged' | 'Approved' | 'Declined' | 'Provided';
   acknowledgedAt: string;
   acknowledgedBy: string;
+  decision: string;
+  deliveryReference: string;
+  completedAt: string;
 };
 
 export type AcademyRequirementPageRead = {
@@ -3648,4 +3715,327 @@ export type AcademyReportRiskRead = {
     location: string;
   };
   overdue: number;
+};
+
+export type AcademyAdjustmentPageRead = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: {
+    id: string;
+    company_id: string;
+    version: number;
+    etag: string;
+    assignmentId: string;
+    personId: string;
+    extraMinutes: number;
+    untimed: boolean;
+    reason: string;
+    expires: string;
+    approvedBy: string;
+    approvedAt: string;
+  }[];
+  meta: Record<string, unknown>;
+};
+
+export type AcademyAdjustmentRead = {
+  id: string;
+  company_id: string;
+  version: number;
+  etag: string;
+  assignmentId: string;
+  personId: string;
+  extraMinutes: number;
+  untimed: boolean;
+  reason: string;
+  expires: string;
+  approvedBy: string;
+  approvedAt: string;
+};
+
+export type AcademyAdjustmentWrite = {
+  assignmentId: string;
+  extraMinutes?: number;
+  untimed?: boolean;
+  reason: string;
+  expires: string;
+};
+
+export type AcademyDisclosureWrite = {
+  decision: string;
+  deliveryReference?: string;
+};
+
+export type AcademyGovernanceEmpty = Record<string, unknown>;
+
+export type AcademyGovernancePageRead = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: Record<string, unknown>[];
+  meta: Record<string, unknown>;
+};
+
+export type AcademyGovernancePeopleRead = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    location: string;
+    department: string;
+    status: string;
+  }[];
+  meta: Record<string, unknown>;
+};
+
+export type AcademyGovernanceQuery = {
+  page?: number;
+  page_size?: number;
+  person_id?: string;
+  assignment_id?: string;
+};
+
+export type AcademyGovernanceRecordRead = {
+  id: string;
+  company_id: string;
+  version: number;
+  etag: string;
+};
+
+export type AcademyGovernanceSummaryRead = {
+  company_id: string;
+  as_of: string;
+  request_id: string;
+  finalPassRate: string;
+  checkpointPassRate: string;
+  finalAttempts: number;
+  checkpointAttempts: number;
+  exceptions: number | null;
+  exceptionsReason: string;
+  currency: string;
+  current: number;
+  applicable: number;
+  outstanding: number;
+};
+
+export type AcademyNotificationEventRead = {
+  at: string;
+  status: 'Queued' | 'Delivered';
+  detail: string;
+};
+
+export type AcademyNotificationPageRead = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: {
+    id: string;
+    company_id: string;
+    version: number;
+    etag: string;
+    assignmentId: string;
+    personId: string;
+    channel: 'In-platform';
+    title: string;
+    text: string;
+    status: 'Queued' | 'Delivered';
+    attempts: number;
+    nextAttemptAt: string;
+    at: string;
+    updatedAt: string;
+    providerId: string;
+    error: string;
+    history: {
+      at: string;
+      status: 'Queued' | 'Delivered';
+      detail: string;
+    }[];
+  }[];
+  meta: Record<string, unknown>;
+};
+
+export type AcademyNotificationRead = {
+  id: string;
+  company_id: string;
+  version: number;
+  etag: string;
+  assignmentId: string;
+  personId: string;
+  channel: 'In-platform';
+  title: string;
+  text: string;
+  status: 'Queued' | 'Delivered';
+  attempts: number;
+  nextAttemptAt: string;
+  at: string;
+  updatedAt: string;
+  providerId: string;
+  error: string;
+  history: {
+    at: string;
+    status: 'Queued' | 'Delivered';
+    detail: string;
+  }[];
+};
+
+export type AcademyNotificationWrite = {
+  assignmentId: string;
+  channel: 'In-platform';
+  text: string;
+};
+
+export type AcademyObservationPageRead = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: {
+    id: string;
+    company_id: string;
+    version: number;
+    etag: string;
+    personId: string;
+    courseId: string;
+    clientId: string;
+    assessorId: string;
+    task: string;
+    location: string;
+    observedAt: string;
+    reviewDue: string;
+    status: 'Approved' | 'Restricted' | 'Revoked';
+    evidence: string;
+    restrictions: string;
+  }[];
+  meta: Record<string, unknown>;
+};
+
+export type AcademyObservationRead = {
+  id: string;
+  company_id: string;
+  version: number;
+  etag: string;
+  personId: string;
+  courseId: string;
+  clientId: string;
+  assessorId: string;
+  task: string;
+  location: string;
+  observedAt: string;
+  reviewDue: string;
+  status: 'Approved' | 'Restricted' | 'Revoked';
+  evidence: string;
+  restrictions: string;
+};
+
+export type AcademyObservationWrite = {
+  personId: string;
+  courseId: string;
+  clientId?: string | null;
+  assessorId: string;
+  task: string;
+  location?: string;
+  observedAt: string;
+  reviewDue: string;
+  evidence: string;
+  restrictions?: string;
+};
+
+export type AcademyPendingReviewPageRead = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: {
+    id: string;
+    company_id: string;
+    version?: number;
+    etag?: string;
+    assignmentId: string;
+    attemptId: string;
+    personId: string;
+    ownerId: string;
+    due: string;
+    reason: string;
+    actions: string;
+    decision: string;
+    kind: 'Remedial review' | 'Evidence correction';
+    status: 'Open' | 'In progress' | 'Resolved';
+    resolvedAt: string;
+    pending: boolean;
+  }[];
+  meta: Record<string, unknown>;
+};
+
+export type AcademyPendingReviewRead = {
+  id: string;
+  company_id: string;
+  version?: number;
+  etag?: string;
+  assignmentId: string;
+  attemptId: string;
+  personId: string;
+  ownerId: string;
+  due: string;
+  reason: string;
+  actions: string;
+  decision: string;
+  kind: 'Remedial review' | 'Evidence correction';
+  status: 'Open' | 'In progress' | 'Resolved';
+  resolvedAt: string;
+  pending: boolean;
+};
+
+export type AcademyReviewPageRead = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: {
+    id: string;
+    company_id: string;
+    version: number;
+    etag: string;
+    assignmentId: string;
+    attemptId: string;
+    personId: string;
+    ownerId: string;
+    due: string;
+    reason: string;
+    actions: string;
+    decision: string;
+    kind: 'Remedial review' | 'Evidence correction';
+    status: 'Open' | 'In progress' | 'Resolved';
+    resolvedAt: string;
+  }[];
+  meta: Record<string, unknown>;
+};
+
+export type AcademyReviewRead = {
+  id: string;
+  company_id: string;
+  version: number;
+  etag: string;
+  assignmentId: string;
+  attemptId: string;
+  personId: string;
+  ownerId: string;
+  due: string;
+  reason: string;
+  actions: string;
+  decision: string;
+  kind: 'Remedial review' | 'Evidence correction';
+  status: 'Open' | 'In progress' | 'Resolved';
+  resolvedAt: string;
+};
+
+export type AcademyReviewWrite = {
+  assignmentId: string;
+  attemptId?: string | null;
+  ownerId: string;
+  due: string;
+  reason: string;
+  actions?: string;
+  decision?: string;
+  kind?: 'Remedial review' | 'Evidence correction';
 };

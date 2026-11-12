@@ -295,6 +295,11 @@ export class CompanyAccessService {
     };
     return promise;
   }
+  invalidate(): Promise<void> {
+    this.context.set(null);
+    return this.refresh();
+  }
+
   refresh(): Promise<void> {
     const id = this.companyId();
     if (!id) {
