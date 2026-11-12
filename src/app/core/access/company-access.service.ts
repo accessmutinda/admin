@@ -105,6 +105,7 @@ export function routeAccess(url: string): [string, string][] {
   }
   if (path.startsWith('/manage/learning')) {
     const area = path.split('/')[3] ?? '';
+    if (!area) return ['reports','courses','assignments','results','certificates','governance'].map((feature): [string, string] => ['academy',feature]);
     const map: Record<string, string> = {
       courses: 'courses',
       content: 'courses',

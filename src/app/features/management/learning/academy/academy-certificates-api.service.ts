@@ -547,6 +547,35 @@ export class AcademyCertificatesApi {
       throw e;
     }
   }
+  async brandingBlob(assetId: string): Promise<Blob | null> {
+    const certificate = this.certificates().find((c) =>
+      [c.branding.logoId, c.branding.backgroundId, c.branding.signatureId].includes(assetId),
+    );
+    if (!certificate) return null;
+    const learner = !this.available();
+    const scope = this.scope();
+    this.check(scope, learner);
+    try {
+      const blob = await this.auth.api<Blob>(
+        `${this.root()}${learner ? '/learning' : ''}/certificates/${certificate.id}/media/${assetId}/content`,
+        undefined,
+        undefined,
+        undefined,
+        'blob',
+      );
+      this.check(scope, learner);
+      return blob;
+    } catch (error) {
+      if (scope === this.scope()) {
+        this.clear();
+        if ([401, 403].includes((error as { status?: number }).status ?? 0))
+          this.access.invalidate();
+        this.error.set((error as Error).message);
+      }
+      throw error;
+    }
+  }
+
   async download(id: string, learner = false) {
     const blob = await this.pdf(id, learner);
     const url = URL.createObjectURL(blob);

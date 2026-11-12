@@ -18,305 +18,331 @@
         }
       </mat-select></label
     >
-    @if (academy.canManage()) {
+    @if (api.available() && api.can('assignments', 'create')) {
       <a class="academy-button primary" routerLink="/manage/learning/manage"
         ><span class="material-symbols-outlined" aria-hidden="true">add</span>Assign Course</a
       >
     }
   </div>
 </div>
-<section class="workflow-banner" aria-label="Automated training workflow">
-  <div class="workflow-intro">
-    <div class="workflow-intro-heading">
-      <span class="workflow-gear"
-        ><span class="material-symbols-outlined" aria-hidden="true">settings</span
-        ><span class="material-symbols-outlined gear-play" aria-hidden="true"
-          >play_circle</span
-        ></span
-      >
-      <h2>Automated<br />Training Workflow</h2>
+<cv-academy-message [error]="api.error()" notice="" />
+@if (api.loading()) {
+  <p role="status">Loading academy dashboard…</p>
+}
+@if (!api.data() && !api.loading()) {
+  <section class="panel">
+    <p>Academy dashboard is unavailable.</p>
+    <button class="academy-button" (click)="reload()">Reload dashboard</button>
+  </section>
+}
+@if (api.data(); as dashboard) {
+  <section class="workflow-banner" aria-label="Training evidence workflow">
+    <div class="workflow-intro">
+      <div class="workflow-intro-heading">
+        <span class="workflow-gear"
+          ><span class="material-symbols-outlined" aria-hidden="true">settings</span
+          ><span class="material-symbols-outlined gear-play" aria-hidden="true"
+            >play_circle</span
+          ></span
+        >
+        <h2>Training Evidence<br />Workflow</h2>
+      </div>
+      <p>Saved evidence drives training records. External delivery requires configured adapters.</p>
     </div>
-    <p>End-to-end, integrated and fully automated within CareVerity ECM.</p>
-  </div>
-  <ol>
-    @for (step of workflow; track step.label; let last = $last) {
-      <li>
-        <div class="workflow-step" [attr.data-tone]="step.tone">
-          <span class="material-symbols-outlined" aria-hidden="true">{{ step.icon }}</span
-          ><strong>{{ step.label }}</strong>
-        </div>
-        @if (!last) {
-          <span class="workflow-arrow material-symbols-outlined" aria-hidden="true"
-            >arrow_forward</span
-          >
-        }
-      </li>
-    }
-  </ol>
-</section>
-<div class="metrics dashboard-stats" aria-label="Academy summary">
-  @for (stat of stats(); track stat.label) {
-    <a
-      class="metric cv-metric"
-      [attr.data-card-tone]="stat.tone"
-      [routerLink]="['/manage/learning', stat.path]"
-    >
-      <span class="cv-metric-icon material-symbols-outlined" aria-hidden="true">{{
-        stat.icon
-      }}</span>
-      <div class="cv-metric-copy">
-        <h2 class="cv-metric-label">{{ stat.label }}</h2>
-        <strong>{{ stat.value }}</strong>
-        <p class="metric-caption" [class.attention]="!stat.positive">
-          <span class="material-symbols-outlined" aria-hidden="true">{{
-            stat.positive ? 'check' : 'priority_high'
-          }}</span
-          >{{ stat.caption }}
-          @if (stat.at) {
-            <span>{{ timestamp(stat.at) }}</span>
+    <ol>
+      @for (step of workflow; track step.label; let last = $last) {
+        <li>
+          <div class="workflow-step" [attr.data-tone]="step.tone">
+            <span class="material-symbols-outlined" aria-hidden="true">{{ step.icon }}</span
+            ><strong>{{ step.label }}</strong>
+          </div>
+          @if (!last) {
+            <span class="workflow-arrow material-symbols-outlined" aria-hidden="true"
+              >arrow_forward</span
+            >
           }
-        </p>
-      </div>
-    </a>
-  }
-</div>
-<div class="dashboard-grid">
-  <div class="dashboard-main">
-    <section class="panel activity-panel">
-      <div class="panel-heading">
-        <h2>
-          <span class="material-symbols-outlined" aria-hidden="true">school</span>Course Activity
-        </h2>
-        <a routerLink="/manage/learning/courses">View all courses →</a>
-      </div>
-      <div class="scroll" tabindex="0" role="region" aria-label="Course activity">
-        <table>
-          <thead>
-            <tr>
-              <th>Course</th>
-              <th>Assigned</th>
-              <th>In Progress</th>
-              <th>Completed</th>
-              <th>Pass Rate</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of activity(); track row.course.id) {
+        </li>
+      }
+    </ol>
+  </section>
+  <div class="metrics dashboard-stats" aria-label="Academy summary">
+    @for (stat of stats(); track stat.label) {
+      <a
+        class="metric cv-metric"
+        [attr.data-card-tone]="stat.tone"
+        [routerLink]="['/manage/learning', stat.path]"
+      >
+        <span class="cv-metric-icon material-symbols-outlined" aria-hidden="true">{{
+          stat.icon
+        }}</span>
+        <div class="cv-metric-copy">
+          <h2 class="cv-metric-label">{{ stat.label }}</h2>
+          <strong>{{ stat.value }}</strong>
+          <p class="metric-caption" [class.attention]="!stat.positive">
+            <span class="material-symbols-outlined" aria-hidden="true">{{
+              stat.positive ? 'check' : 'priority_high'
+            }}</span
+            >{{ stat.caption }}
+          </p>
+        </div>
+      </a>
+    }
+  </div>
+  <div class="dashboard-grid">
+    <div class="dashboard-main">
+      <section class="panel activity-panel">
+        <div class="panel-heading">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">school</span>Course Activity
+          </h2>
+          <a [routerLink]="api.can('courses', 'edit') ? '/manage/learning/courses' : null"
+            >View all courses →</a
+          >
+        </div>
+        <small
+          >Showing {{ dashboard.activity.results.length }} of
+          {{ dashboard.activity.count }} records</small
+        >
+        <div class="scroll" tabindex="0" role="region" aria-label="Course activity">
+          <table>
+            <thead>
               <tr>
-                <td>
-                  <a [routerLink]="['/manage/learning/courses', row.course.id]">{{
-                    row.course.title
-                  }}</a>
-                </td>
-                <td>{{ row.assigned }}</td>
-                <td>{{ row.progress }}</td>
-                <td>{{ row.passed }}</td>
-                <td>
-                  <span class="rate-badge">{{ row.rate }}</span>
-                </td>
+                <th>Course</th>
+                <th>Assigned</th>
+                <th>In Progress</th>
+                <th>Completed</th>
+                <th>Pass Rate</th>
               </tr>
-            } @empty {
+            </thead>
+            <tbody>
+              @for (row of activity(); track row.id) {
+                <tr>
+                  <td>
+                    <a
+                      [routerLink]="
+                        api.can('courses', 'edit') ? ['/manage/learning/courses', row.id] : null
+                      "
+                      >{{ row.title }}</a
+                    >
+                  </td>
+                  <td>{{ row.assigned }}</td>
+                  <td>{{ row.progress }}</td>
+                  <td>{{ row.passed }}</td>
+                  <td>
+                    <span class="rate-badge">{{ row.rate === null ? '—' : row.rate + '%' }}</span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="empty">No published courses yet.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section class="panel renewal-panel">
+        <div class="panel-heading">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">schedule</span>Expiring
+            Courses & Refreshers
+          </h2>
+          <a routerLink="/manage/learning/manage">View all →</a>
+        </div>
+        <small
+          >Showing {{ dashboard.renewals.results.length }} of
+          {{ dashboard.renewals.count }} records</small
+        >
+        <div class="scroll" tabindex="0" role="region" aria-label="Expiring courses and refreshers">
+          <table>
+            <thead>
               <tr>
-                <td colspan="5" class="empty">No published courses yet.</td>
+                <th>Course / Refresher</th>
+                <th>Learners</th>
+                <th>Expiry Date</th>
               </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </section>
-    <section class="panel renewal-panel">
-      <div class="panel-heading">
-        <h2>
-          <span class="material-symbols-outlined" aria-hidden="true">schedule</span>Expiring Courses
-          & Refreshers
-        </h2>
-        <a routerLink="/manage/learning/manage">View all →</a>
-      </div>
-      <div class="scroll" tabindex="0" role="region" aria-label="Expiring courses and refreshers">
-        <table>
-          <thead>
-            <tr>
-              <th>Course / Refresher</th>
-              <th>Learners</th>
-              <th>Expiry Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of renewals(); track row.courseId) {
+            </thead>
+            <tbody>
+              @for (row of renewals(); track row.courseId) {
+                <tr>
+                  <td>{{ row.title }}</td>
+                  <td>{{ row.learners }}</td>
+                  <td>
+                    <span class="date-badge" [class.expired]="row.overdue">{{
+                      row.expires | ukDate: 'd MMM yyyy'
+                    }}</span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="3" class="empty">
+                    No certificate expiry or overdue evidence within the next 30 days.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section class="panel completions-panel">
+        <div class="panel-heading">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span
+            >Recent Completions
+          </h2>
+          <a routerLink="/manage/learning/results">View all completions →</a>
+        </div>
+        <small
+          >Showing {{ dashboard.recent.results.length }} of
+          {{ dashboard.recent.count }} records</small
+        >
+        <div class="scroll" tabindex="0" role="region" aria-label="Recent completions">
+          <table>
+            <thead>
               <tr>
-                <td>{{ row.title }}</td>
-                <td>{{ row.learners }}</td>
-                <td>
-                  <span class="date-badge" [class.expired]="row.overdue">{{
-                    row.expires | ukDate: 'd MMM yyyy'
-                  }}</span>
-                </td>
+                <th>Learner</th>
+                <th>Course</th>
+                <th>Result</th>
+                <th>Completed</th>
               </tr>
-            } @empty {
-              <tr>
-                <td colspan="3" class="empty">No recorded renewals due in the next 30 days.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </section>
-    <section class="panel completions-panel">
-      <div class="panel-heading">
-        <h2>
-          <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span>Recent
-          Completions
-        </h2>
-        <a routerLink="/manage/learning/results">View all completions →</a>
-      </div>
-      <div class="scroll" tabindex="0" role="region" aria-label="Recent completions">
-        <table>
-          <thead>
-            <tr>
-              <th>Learner</th>
-              <th>Course</th>
-              <th>Result</th>
-              <th>Completed</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (a of recent(); track a.id) {
-              <tr>
-                <td>
-                  <span class="learner-name"
-                    ><span class="material-symbols-outlined" aria-hidden="true">check_circle</span
-                    ><strong>{{ name(a.personId) }}</strong></span
-                  >
-                </td>
-                <td>{{ a.courseTitle }}</td>
-                <td><span class="rate-badge">Passed</span></td>
-                <td>{{ timestamp(a.submittedAt) }}</td>
-              </tr>
-            } @empty {
-              <tr>
-                <td colspan="4" class="empty">No completed assessments in this period.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </section>
-    <section class="panel integration-panel">
-      <div class="panel-heading">
-        <h2>
-          <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>Integration
-          Health
-        </h2>
-        <a routerLink="/manage/learning/certificates">View integration logs →</a>
-      </div>
-      @for (service of integrationRows(); track service.name) {
-        <a class="integration-row" routerLink="/manage/learning/certificates"
-          ><span
-            class="material-symbols-outlined integration-status"
-            [class.pending]="!service.healthy"
-            aria-hidden="true"
-            >{{ service.healthy ? 'check_circle' : 'error' }}</span
+            </thead>
+            <tbody>
+              @for (a of recent(); track a.id) {
+                <tr>
+                  <td>
+                    <span class="learner-name"
+                      ><span class="material-symbols-outlined" aria-hidden="true">check_circle</span
+                      ><strong>{{ a.learner }}</strong></span
+                    >
+                  </td>
+                  <td>{{ a.courseTitle }}</td>
+                  <td><span class="rate-badge">Passed</span></td>
+                  <td>{{ timestamp(a.submittedAt) }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4" class="empty">No valid final passes in this period.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section class="panel integration-panel">
+        <div class="panel-heading">
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">verified_user</span
+            >Integration Health
+          </h2>
+          <a routerLink="/manage/learning/certificates">View integration logs →</a>
+        </div>
+        @for (service of integrationRows(); track service.name) {
+          <a class="integration-row" routerLink="/manage/learning/certificates"
+            ><span
+              class="material-symbols-outlined integration-status"
+              [class.pending]="!service.healthy"
+              aria-hidden="true"
+              >{{ service.healthy ? 'check_circle' : 'error' }}</span
+            >
+            <div>
+              <h3>{{ service.name }}</h3>
+              <small
+                >{{ service.at ? 'Last recorded:' : 'Status:' }}
+                @if (service.at) {
+                  {{ timestamp(service.at) }}
+                } @else {
+                  {{ service.detail }}
+                }
+              </small>
+            </div>
+            <span class="status-badge" [class.pending]="!service.healthy">{{
+              service.status
+            }}</span></a
+          >
+        }
+        <div class="integration-row">
+          <span class="material-symbols-outlined integration-status" aria-hidden="true"
+            >check_circle</span
           >
           <div>
-            <h3>{{ service.name }}</h3>
-            <small
-              >{{ service.at ? 'Last sync:' : 'Status:' }}
-              @if (service.at) {
-                {{ timestamp(service.at) }}
-              } @else {
-                {{ service.detail }}
-              }
-            </small>
+            <h3>User & Org Data (CareVerity ECM)</h3>
+            <small>{{ dashboard.staffCount }} active/onboarding staff · current workspace</small>
           </div>
-          <span class="status-badge" [class.pending]="!service.healthy">{{
-            service.status
-          }}</span></a
-        >
-      }
-      <div class="integration-row">
-        <span class="material-symbols-outlined integration-status" aria-hidden="true"
-          >check_circle</span
-        >
-        <div>
-          <h3>User & Org Data (CareVerity ECM)</h3>
-          <small
-            >{{ academy.store.staff().length }} canonical staff records · current workspace</small
-          >
+          <span class="status-badge">Available</span>
         </div>
-        <span class="status-badge">{{ academy.store.company() ? 'Healthy' : 'Pending' }}</span>
-      </div>
-    </section>
-  </div>
-  <aside class="panel readiness">
-    <div class="panel-heading">
-      <h2>
-        <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>Compliance &
-        Workforce Readiness
-      </h2>
+      </section>
     </div>
-    <div class="compliance-summary">
-      <div
-        class="readiness-ring"
-        [style.--compliance]="readiness().percent ?? 0"
-        role="img"
-        [attr.aria-label]="
-          'Staff compliance: ' +
-          (readiness().percent === null
-            ? 'no applicable records'
-            : readiness().percent + ' percent')
-        "
-      >
-        <div>
-          <strong>{{ readiness().percent === null ? '—' : readiness().percent + '%' }}</strong
-          ><small>Compliant</small>
+    <aside class="panel readiness">
+      <div class="panel-heading">
+        <h2>
+          <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>Compliance
+          & Workforce Readiness
+        </h2>
+      </div>
+      <div class="compliance-summary">
+        <div
+          class="readiness-ring"
+          [style.--compliance]="readiness().percent ?? 0"
+          role="img"
+          [attr.aria-label]="
+            'Staff compliance: ' +
+            (readiness().percent === null
+              ? 'no applicable records'
+              : readiness().percent + ' percent')
+          "
+        >
+          <div>
+            <strong>{{ readiness().percent === null ? '—' : readiness().percent + '%' }}</strong
+            ><small>Compliant</small>
+          </div>
+        </div>
+        <div class="compliance-legend">
+          <h3>Mandatory Knowledge Status</h3>
+          <div>
+            <span class="legend-label"><i class="legend-key green"></i>Compliant</span
+            ><strong>{{ readiness().compliant }}</strong
+            ><span>{{ percent(readiness().compliant) }}</span>
+          </div>
+          <div>
+            <span class="legend-label"
+              ><i class="legend-key amber"></i>Due Soon (≤
+              {{ dashboard.meta.dueSoonDays }} days)</span
+            ><strong>{{ readiness().soon }}</strong
+            ><span>{{ percent(readiness().soon) }}</span>
+          </div>
+          <div>
+            <span class="legend-label"><i class="legend-key red"></i>Overdue</span
+            ><strong>{{ readiness().overdue }}</strong
+            ><span>{{ percent(readiness().overdue) }}</span>
+          </div>
+          @if (readiness().outstanding) {
+            <small class="outstanding"
+              >{{ readiness().outstanding }} staff have incomplete or unassigned mandatory
+              requirements.</small
+            >
+          }
         </div>
       </div>
-      <div class="compliance-legend">
-        <h3>Staff Compliance Status</h3>
-        <div>
-          <span class="legend-label"><i class="legend-key green"></i>Compliant</span
-          ><strong>{{ readiness().compliant }}</strong
-          ><span>{{ percent(readiness().compliant) }}</span>
-        </div>
-        <div>
-          <span class="legend-label"
-            ><i class="legend-key amber"></i>Due Soon (≤
-            {{ academy.state().settings.dueSoonDays }} days)</span
-          ><strong>{{ readiness().soon }}</strong
-          ><span>{{ percent(readiness().soon) }}</span>
-        </div>
-        <div>
-          <span class="legend-label"><i class="legend-key red"></i>Overdue</span
-          ><strong>{{ readiness().overdue }}</strong
-          ><span>{{ percent(readiness().overdue) }}</span>
-        </div>
-        @if (readiness().outstanding) {
-          <small class="outstanding"
-            >{{ readiness().outstanding }} staff have incomplete or unassigned mandatory
-            requirements.</small
+      <div class="service-cards">
+        @for (service of serviceCards(); track service.title) {
+          <a
+            class="service-card"
+            [attr.data-tone]="service.tone"
+            routerLink="/manage/learning/certificates"
+            ><span class="material-symbols-outlined" aria-hidden="true">{{ service.icon }}</span>
+            <div>
+              <h3>{{ service.title }}</h3>
+              <p>{{ service.description }}</p>
+            </div>
+            <span class="status-badge" [class.pending]="!service.row.healthy"
+              ><span class="material-symbols-outlined" aria-hidden="true">{{
+                service.row.healthy ? 'check_circle' : 'schedule'
+              }}</span
+              >{{ service.row.status }}</span
+            ></a
           >
         }
       </div>
-    </div>
-    <div class="service-cards">
-      @for (service of serviceCards(); track service.title) {
-        <a
-          class="service-card"
-          [attr.data-tone]="service.tone"
-          routerLink="/manage/learning/certificates"
-          ><span class="material-symbols-outlined" aria-hidden="true">{{ service.icon }}</span>
-          <div>
-            <h3>{{ service.title }}</h3>
-            <p>{{ service.description }}</p>
-          </div>
-          <span class="status-badge" [class.pending]="!service.row.healthy"
-            ><span class="material-symbols-outlined" aria-hidden="true">{{
-              service.row.healthy ? 'check_circle' : 'schedule'
-            }}</span
-            >{{ service.row.status === 'Healthy' ? 'Active' : service.row.status }}</span
-          ></a
-        >
-      }
-    </div>
-  </aside>
-</div>
+    </aside>
+  </div>
+}

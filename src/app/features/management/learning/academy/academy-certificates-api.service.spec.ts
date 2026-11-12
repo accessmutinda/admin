@@ -38,6 +38,7 @@ describe('Academy certificates source adapter', () => {
         {
           provide: CompanyAccessService,
           useValue: {
+            invalidate: vi.fn(),
             can: (_module: string, submodule: string, action = 'read') =>
               allowed() && (!grants() || grants()!.has(submodule + '.' + action)),
           },
@@ -47,6 +48,21 @@ describe('Academy certificates source adapter', () => {
       ],
     });
     api = TestBed.inject(AcademyCertificatesApi);
+  });
+  it('reads only a certificate-linked image and clears revoked evidence', async () => {
+    const saved = certificateRecord();
+    saved.certificate.branding.logoId = 'image';
+    request.mockResolvedValueOnce({
+      results: [saved],
+      next: null,
+      meta: { company_id: 'company' },
+    });
+    await api.load();
+    expect(await api.brandingBlob('unrelated')).toBeNull();
+    request.mockRejectedValueOnce(Object.assign(Error('Access revoked'), { status: 403 }));
+    await expect(api.brandingBlob('image')).rejects.toThrow('revoked');
+    expect(api.certificates()).toEqual([]);
+    expect(TestBed.inject(CompanyAccessService).invalidate).toHaveBeenCalled();
   });
   it('loads certificates, persisted filing references and separate compliance sources', async () => {
     await api.load();

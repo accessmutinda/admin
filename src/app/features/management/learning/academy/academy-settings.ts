@@ -1,11 +1,14 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, HostListener, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../../shared/ui/select';
+import { CompanyAccessService } from '../../../../core/access/company-access.service';
+import type { CompanyRole } from '../../../../core/access/company-access.generated';
 import { ROLES } from '../../../../core/auth/models/role';
 import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 import { AcademyService } from './academy.service';
+import { AcademySettingsApi } from './academy-settings-api.service';
 import { AcademyAssets } from './academy-assets.service';
 import { AcademyCertificate, AcademySettings } from './academy.models';
 import { AcademyCertificateView } from './academy-certificate';
@@ -31,18 +34,84 @@ import { AcademyCertificateView } from './academy-certificate';
 })
 export class AcademySettingsPage {
   protected readonly academy = inject(AcademyService);
-  protected async refreshEvidence() {
-    try { await this.academy.certificatesApi.load(); this.notice.set('Certificate workflows refreshed from saved records.'); }
-    catch(e) { this.error.set((e as Error).message); }
+  protected readonly access = inject(CompanyAccessService);
+  private readonly savedRoles = signal<CompanyRole[]>([]);
+  protected roleAccess(code: string): boolean | null {
+    const role = this.savedRoles().find((role) => role.code === code);
+    return role
+      ? role.permissions.some(
+          (permission) =>
+            permission.code.startsWith('academy.') &&
+            !permission.code.startsWith('academy.learner.'),
+        )
+      : null;
   }
-  private readonly workspace = this.academy.store.companyId();
+  private async loadRoles(scope: string) {
+    this.savedRoles.set([]);
+    if (!this.access.core('company.roles.read')) return;
+    try {
+      const result = await this.access.roles(this.workspace);
+      if (scope === this.api.scope() && this.access.core('company.roles.read'))
+        this.savedRoles.set(result.results);
+    } catch {
+      if (scope === this.api.scope()) this.savedRoles.set([]);
+    }
+  }
+  protected async refreshEvidence() {
+    const scope = this.api.scope();
+    try {
+      await this.academy.certificatesApi.load();
+      if (scope === this.api.scope())
+        this.notice.set('Certificate workflows refreshed from saved records.');
+    } catch (e) {
+      if (scope === this.api.scope()) this.error.set((e as Error).message);
+    }
+  }
+  protected readonly api = inject(AcademySettingsApi);
+  private workspace = this.academy.store.companyId();
+  private etag = '';
+  constructor() {
+    let previous = this.api.scope();
+    void this.loadRoles(previous);
+    effect(() => {
+      const scope = this.api.scope();
+      const value = this.api.settings();
+      const etag = this.api.record()?.etag ?? '';
+      untracked(() => {
+        this.workspace = this.academy.store.companyId();
+        this.draft = value
+          ? structuredClone(value)
+          : structuredClone(this.academy.state().settings);
+        this.etag = etag;
+        this.original = JSON.stringify(this.draft);
+        if (scope !== previous) {
+          this.error.set('');
+          this.notice.set('');
+          this.fullPreview.set(false);
+          previous = scope;
+          void this.loadRoles(scope);
+        }
+      });
+    });
+  }
+  protected async reload() {
+    const scope = this.api.scope();
+    this.error.set('');
+    this.notice.set('');
+    try {
+      await this.api.load(true);
+    } catch (e) {
+      if (scope === this.api.scope()) this.error.set((e as Error).message);
+    }
+  }
   private readonly files = inject(AcademyAssets);
   protected readonly uploadingImage = signal(false);
   protected async uploadBrandImage(event: Event) {
+    const scope = this.api.scope();
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (!file || this.uploadingImage()) return;
+    if (!file || this.uploadingImage() || !this.api.canEdit()) return;
     this.error.set('');
     this.notice.set('');
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
@@ -52,17 +121,18 @@ export class AcademySettingsPage {
     this.uploadingImage.set(true);
     try {
       await this.files.upload(file, this.workspace);
+      if (scope !== this.api.scope()) return;
       this.notice.set(
-        'Image uploaded. Select it for the signature, logo or background, then save your settings.',
+        'Image uploaded. Once scanning is complete, select it for the signature, logo or background and save your settings.',
       );
     } catch (e) {
-      this.error.set((e as Error).message);
+      if (scope === this.api.scope()) this.error.set((e as Error).message);
     } finally {
       this.uploadingImage.set(false);
     }
   }
   protected draft: AcademySettings = {
-    ...structuredClone(this.academy.state().settings),
+    ...structuredClone(this.api.settings() ?? this.academy.state().settings),
     demoFailure: this.academy.state().settings.demoFailure ?? ('None' as const),
   };
   private original = JSON.stringify(this.draft);
@@ -88,6 +158,9 @@ export class AcademySettingsPage {
   protected readonly notice = signal('');
   protected readonly previewDate = new Date().toISOString();
   protected readonly fullPreview = signal(false);
+  protected knownImage(id: string): boolean {
+    return this.academy.state().assets.some((asset) => asset.id === id);
+  }
   protected preview(): AcademyCertificate {
     return {
       id: 'PREVIEW · NOT ISSUED',
@@ -105,33 +178,44 @@ export class AcademySettingsPage {
       branding: this.draft,
     };
   }
-  protected save(): void {
-    const error = this.academy.saveSettings(
-      this.draft,
-      this.workspace,
-      JSON.parse(this.original).updatedAt,
-    );
-    this.error.set(error ?? '');
-    if (!error) {
-      this.draft = structuredClone(this.academy.state().settings);
+  protected async save(): Promise<void> {
+    const scope = this.api.scope();
+    this.error.set('');
+    this.notice.set('');
+    if (!this.api.record() || !this.etag) {
+      this.error.set('Load the saved academy settings before editing.');
+      return;
+    }
+    try {
+      await this.api.save(this.draft, this.etag);
+      if (scope !== this.api.scope()) return;
+      this.draft = structuredClone(this.api.settings()!);
+      this.etag = this.api.record()!.etag;
       this.original = JSON.stringify(this.draft);
       this.notice.set(
-        'Academy settings saved on this device. Existing attempts and certificates retain their original rules.',
+        'Academy settings saved. Existing course revisions, attempts and certificates retain their original rules.',
       );
+    } catch (e) {
+      if (scope === this.api.scope()) this.error.set((e as Error).message);
     }
   }
-  protected toggleRole(role: string): void {
-    this.draft.adminRoles = this.draft.adminRoles.includes(role)
-      ? this.draft.adminRoles.filter((r) => r !== role)
-      : [...this.draft.adminRoles, role];
-  }
-  protected reminders(): void {
-    const error = this.academy.generateReminders(this.workspace);
-    this.error.set(error ?? '');
-    if (!error)
+  protected async reminders(): Promise<void> {
+    const scope = this.api.scope();
+    this.error.set('');
+    this.notice.set('');
+    if (JSON.stringify(this.draft) !== this.original) {
+      this.error.set('Save settings before generating reminders.');
+      return;
+    }
+    try {
+      const count = await this.api.reminders();
+      if (scope !== this.api.scope()) return;
       this.notice.set(
-        'Eligible reminders recorded in the portal. External email and background scheduling are not configured.',
+        `${count} portal reminders queued. Repeated checks on the same day do not create duplicates. Email delivery and background scheduling are not configured.`,
       );
+    } catch (e) {
+      if (scope === this.api.scope()) this.error.set((e as Error).message);
+    }
   }
   canLeave(): boolean {
     return (

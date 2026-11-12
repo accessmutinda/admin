@@ -47,7 +47,7 @@ export interface LearningRecord {
 interface Page<T> {
   results: T[];
   next: number | null;
-  meta: { company_id: string; person?: AcademyAssignmentStaff };
+  meta: { company_id: string; person?: AcademyAssignmentStaff; dueSoonDays?: number | null };
 }
 
 function unique<T extends { id: string; version?: number }>(rows: T[]): T[] {
@@ -79,6 +79,14 @@ export class AcademyResultsApi {
   private readonly learning = signal<LearningRecord[]>([]);
   readonly error = signal('');
   readonly learnerError = signal('');
+  private readonly reminderWindow = signal<{ scope: string; value: number | null } | null>(null);
+  readonly dueSoonDays = computed(() =>
+    ((this.available() && this.resultScope() === this.scope()) ||
+      (this.learnerAvailable() && this.learnerScope() === this.scope())) &&
+    this.reminderWindow()?.scope === this.scope()
+      ? this.reminderWindow()!.value
+      : null,
+  );
   readonly saving = signal(false);
   readonly loading = signal(false);
   private pending?: { scope: string; learner: boolean; promise: Promise<void> };
@@ -219,6 +227,7 @@ export class AcademyResultsApi {
       try {
         let page: number | null = 1;
         const results: Array<ResultRecord | LearningRecord> = [];
+        let reminderWindow: number | null = null;
         while (page !== null) {
           const result: Page<ResultRecord | LearningRecord> = await this.auth.api(
             `${this.root()}/${learner ? 'learning' : 'results'}?page=${page}&page_size=100`,
@@ -227,10 +236,12 @@ export class AcademyResultsApi {
           if (result.meta.company_id !== this.store.companyId())
             throw Error('Assessment workspace mismatch.');
           for (const row of result.results) this.checkRecord(row, scope, learner);
+          reminderWindow = result.meta.dueSoonDays ?? null;
           if (learner) this.ownPerson.set(result.meta.person);
           results.push(...result.results);
           page = result.next;
         }
+        this.reminderWindow.set({ scope, value: reminderWindow });
         if (learner) {
           this.learning.set(results as LearningRecord[]);
           this.learnerScope.set(scope);

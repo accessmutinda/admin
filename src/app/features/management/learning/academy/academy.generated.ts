@@ -1578,6 +1578,7 @@ export type AcademyAssignmentCoursePage = {
     mandatory: boolean;
   }[];
   meta: {
+    dueSoonDays?: number | null;
     company_id: string;
     as_of: string;
     request_id: string;
@@ -1611,6 +1612,7 @@ export type AcademyAssignmentHistoryPage = {
     channels: string[];
   }[];
   meta: {
+    dueSoonDays?: number | null;
     company_id: string;
     as_of: string;
     request_id: string;
@@ -1619,6 +1621,7 @@ export type AcademyAssignmentHistoryPage = {
 };
 
 export type AcademyAssignmentMeta = {
+  dueSoonDays?: number | null;
   company_id: string;
   as_of: string;
   request_id: string;
@@ -1654,6 +1657,7 @@ export type AcademyAssignmentPage = {
     completedAt: string;
   }[];
   meta: {
+    dueSoonDays?: number | null;
     company_id: string;
     as_of: string;
     request_id: string;
@@ -1753,6 +1757,7 @@ export type AcademyAssignmentStaffPage = {
     status: string;
   }[];
   meta: {
+    dueSoonDays?: number | null;
     company_id: string;
     as_of: string;
     request_id: string;
@@ -1948,6 +1953,7 @@ export type AcademyAvailabilityRead = {
 export type AcademyEmptyResultCommand = Record<string, unknown>;
 
 export type AcademyLearningMetaRead = {
+  dueSoonDays?: number | null;
   company_id: string;
   request_id: string;
   as_of: string;
@@ -2174,6 +2180,7 @@ export type AcademyLearningPageRead = {
     };
   }[];
   meta: {
+    dueSoonDays?: number | null;
     company_id: string;
     request_id: string;
     as_of: string;
@@ -2578,6 +2585,7 @@ export type AcademyResultAttemptRead = {
 };
 
 export type AcademyResultMetaRead = {
+  dueSoonDays?: number | null;
   company_id: string;
   request_id: string;
   as_of: string;
@@ -2885,6 +2893,7 @@ export type AcademyResultPageRead = {
     integrations: Record<string, unknown>;
   }[];
   meta: {
+    dueSoonDays?: number | null;
     company_id: string;
     request_id: string;
     as_of: string;
@@ -4038,4 +4047,335 @@ export type AcademyReviewWrite = {
   actions?: string;
   decision?: string;
   kind?: 'Remedial review' | 'Evidence correction';
+};
+
+export type AcademySettingsEmpty = Record<string, unknown>;
+
+export type AcademySettingsRead = {
+  passMark: number;
+  maxAttempts: number;
+  timeLimitMinutes: number;
+  validityMonths: number;
+  reminderDays: number;
+  dueSoonDays: number;
+  refresherDays: number;
+  overdueDays: number;
+  shuffleQuestions: boolean;
+  shuffleOptions: boolean;
+  sequentialLessons: boolean;
+  showFeedback: boolean;
+  allowSelfEnrolment: boolean;
+  portalNotifications: boolean;
+  showSignatureDate: boolean;
+  template: 'Standard' | 'Modern' | 'Minimal' | 'Professional';
+  primary: string;
+  secondary: string;
+  issuer: string;
+  signatureName: string;
+  signatureRole: string;
+  logoId: string | null;
+  backgroundId: string | null;
+  signatureId: string | null;
+  notificationTemplates: {
+    assigned: string;
+    result: string;
+    certificate: string;
+    expiry: string;
+  };
+  id: string;
+  company_id: string;
+  version: number;
+  etag: string;
+  updatedAt: string;
+};
+
+export type AcademySettingsReminderRead = {
+  company_id: string;
+  notificationIds: string[];
+};
+
+export type AcademySettingsTemplates = {
+  assigned: string;
+  result: string;
+  certificate: string;
+  expiry: string;
+};
+
+export type AcademySettingsWrite = {
+  passMark: number;
+  maxAttempts: number;
+  timeLimitMinutes: number;
+  validityMonths: number;
+  reminderDays: number;
+  dueSoonDays: number;
+  refresherDays: number;
+  overdueDays: number;
+  shuffleQuestions: boolean;
+  shuffleOptions: boolean;
+  sequentialLessons: boolean;
+  showFeedback: boolean;
+  allowSelfEnrolment: boolean;
+  portalNotifications: boolean;
+  showSignatureDate: boolean;
+  template: 'Standard' | 'Modern' | 'Minimal' | 'Professional';
+  primary: string;
+  secondary: string;
+  issuer: string;
+  signatureName: string;
+  signatureRole: string;
+  logoId: string | null;
+  backgroundId: string | null;
+  signatureId: string | null;
+  notificationTemplates: {
+    assigned: string;
+    result: string;
+    certificate: string;
+    expiry: string;
+  };
+};
+
+export type AcademyDashboardActivityPage = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: {
+    id: string;
+    title: string;
+    assigned: number;
+    progress: number;
+    passed: number;
+    rate: number | null;
+  }[];
+  meta: {
+    company_id: string;
+    as_of: string;
+    request_id: string;
+    timezone: string;
+    period: number;
+    from_date: string;
+    to_date: string;
+    dueSoonDays: number;
+  };
+};
+
+export type AcademyDashboardActivityRead = {
+  id: string;
+  title: string;
+  assigned: number;
+  progress: number;
+  passed: number;
+  rate: number | null;
+};
+
+export type AcademyDashboardCompletionPage = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: {
+    id: string;
+    personId: string;
+    learner: string;
+    courseTitle: string;
+    submittedAt: string;
+  }[];
+  meta: {
+    company_id: string;
+    as_of: string;
+    request_id: string;
+    timezone: string;
+    period: number;
+    from_date: string;
+    to_date: string;
+    dueSoonDays: number;
+  };
+};
+
+export type AcademyDashboardCompletionRead = {
+  id: string;
+  personId: string;
+  learner: string;
+  courseTitle: string;
+  submittedAt: string;
+};
+
+export type AcademyDashboardIntegrationRead = {
+  name: string;
+  at: string | null;
+  status: string;
+  healthy: boolean;
+  detail: string;
+};
+
+export type AcademyDashboardMetaRead = {
+  company_id: string;
+  as_of: string;
+  request_id: string;
+  timezone: string;
+  period: number;
+  from_date: string;
+  to_date: string;
+  dueSoonDays: number;
+};
+
+export type AcademyDashboardMetricRead = {
+  label: string;
+  value: string;
+  icon: string;
+  path: string;
+  tone: string;
+  caption: string;
+  positive: boolean;
+};
+
+export type AcademyDashboardQuery = {
+  period?: 7 | 30 | 90;
+  page_size?: number;
+  activity_page?: number;
+  renewal_page?: number;
+  completion_page?: number;
+};
+
+export type AcademyDashboardRead = {
+  meta: {
+    company_id: string;
+    as_of: string;
+    request_id: string;
+    timezone: string;
+    period: number;
+    from_date: string;
+    to_date: string;
+    dueSoonDays: number;
+  };
+  stats: {
+    label: string;
+    value: string;
+    icon: string;
+    path: string;
+    tone: string;
+    caption: string;
+    positive: boolean;
+  }[];
+  activity: {
+    count: number;
+    next: number | null;
+    previous: number | null;
+    results: {
+      id: string;
+      title: string;
+      assigned: number;
+      progress: number;
+      passed: number;
+      rate: number | null;
+    }[];
+    meta: {
+      company_id: string;
+      as_of: string;
+      request_id: string;
+      timezone: string;
+      period: number;
+      from_date: string;
+      to_date: string;
+      dueSoonDays: number;
+    };
+  };
+  renewals: {
+    count: number;
+    next: number | null;
+    previous: number | null;
+    results: {
+      courseId: string;
+      title: string;
+      learners: number;
+      expires: string;
+      overdue: boolean;
+    }[];
+    meta: {
+      company_id: string;
+      as_of: string;
+      request_id: string;
+      timezone: string;
+      period: number;
+      from_date: string;
+      to_date: string;
+      dueSoonDays: number;
+    };
+  };
+  recent: {
+    count: number;
+    next: number | null;
+    previous: number | null;
+    results: {
+      id: string;
+      personId: string;
+      learner: string;
+      courseTitle: string;
+      submittedAt: string;
+    }[];
+    meta: {
+      company_id: string;
+      as_of: string;
+      request_id: string;
+      timezone: string;
+      period: number;
+      from_date: string;
+      to_date: string;
+      dueSoonDays: number;
+    };
+  };
+  readiness: {
+    total: number;
+    compliant: number;
+    soon: number;
+    overdue: number;
+    outstanding: number;
+    percent: number | null;
+  };
+  integrations: {
+    name: string;
+    at: string | null;
+    status: string;
+    healthy: boolean;
+    detail: string;
+  }[];
+  staffCount: number;
+};
+
+export type AcademyDashboardReadinessRead = {
+  total: number;
+  compliant: number;
+  soon: number;
+  overdue: number;
+  outstanding: number;
+  percent: number | null;
+};
+
+export type AcademyDashboardRenewalPage = {
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: {
+    courseId: string;
+    title: string;
+    learners: number;
+    expires: string;
+    overdue: boolean;
+  }[];
+  meta: {
+    company_id: string;
+    as_of: string;
+    request_id: string;
+    timezone: string;
+    period: number;
+    from_date: string;
+    to_date: string;
+    dueSoonDays: number;
+  };
+};
+
+export type AcademyDashboardRenewalRead = {
+  courseId: string;
+  title: string;
+  learners: number;
+  expires: string;
+  overdue: boolean;
 };

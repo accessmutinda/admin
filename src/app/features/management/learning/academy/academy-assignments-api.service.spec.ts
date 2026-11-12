@@ -63,6 +63,14 @@ describe('Academy staff assignment persistence', () => {
     });
     api = TestBed.inject(AcademyAssignmentsApi);
   });
+  it('uses the saved due-soon window after the scoped collection loads', async () => {
+    const implementation = request.getMockImplementation() as (path: string, body?: unknown) => Promise<Record<string, unknown>>;
+    request.mockImplementation(async (path: string, body?: unknown) => ({...await implementation(path,body),meta:{company_id:companyId(),dueSoonDays:47}}));
+    await api.load();
+    expect(api.dueSoonDays()).toBe(47);
+    allowed.set(false);
+    expect(api.dueSoonDays()).toBeNull();
+  });
   it('loads authoritative staff, courses and assignments without authoring access', async () => {
     await api.load();
     expect(api.staff()[0].name).toBe('Jane');

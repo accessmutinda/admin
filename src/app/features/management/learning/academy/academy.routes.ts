@@ -113,6 +113,25 @@ const governanceLoaded: CanActivateFn = async () => {
   }
   return true;
 };
+const dashboardLoaded: CanActivateFn = async () => {
+  const context=inject(EnvironmentInjector), router=inject(Router);
+  const module=await import('./academy-dashboard-api.service');
+  const api=runInInjectionContext(context,()=>inject(module.AcademyDashboardApi));
+  if (!api.available()) return router.createUrlTree(['/access-denied']);
+  try {await api.load(30,true);} catch { /* The dashboard shows its source error. */ }
+  return true;
+};
+const settingsLoaded: CanActivateFn = async () => {
+  const context = inject(EnvironmentInjector), router = inject(Router);
+  const module = await import('./academy-settings-api.service');
+  const api = runInInjectionContext(context, () => inject(module.AcademySettingsApi));
+  if (!api.available()) return router.createUrlTree(['/access-denied']);
+  try { await api.load(true); } catch { /* The page shows the source error. */ }
+  const media = await import('./academy-api.service');
+  const assets = runInInjectionContext(context, () => inject(media.AcademyApi));
+  if (assets.available()) try {await assets.load();} catch { /* Media remains unavailable. */ }
+  return true;
+};
 const requirementsLoaded: CanActivateFn = async () => {
   const context = inject(EnvironmentInjector),
     m = await import('./academy-certificates-api.service');
@@ -208,14 +227,13 @@ const previewLoaded: CanActivateFn = async (route) => {
   return true;
 };
 const admin = capability('author');
-const reader = access('evidence');
 const learner = access('learner');
 const leave = (c: { canLeave: () => boolean | Promise<boolean> }) => c.canLeave();
 export const ACADEMY_ADMIN_ROUTES: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    canActivate: [reader, resultsIfAvailable, certificatesIfAvailable],
+    canActivate: [dashboardLoaded],
     title: 'CareVerity Academy · CareVerity',
     loadComponent: () => import('./academy-dashboard').then((m) => m.AcademyDashboard),
   },
@@ -325,7 +343,7 @@ export const ACADEMY_ADMIN_ROUTES: Routes = [
   },
   {
     path: 'settings',
-    canActivate: [capability('configure')],
+    canActivate: [settingsLoaded],
     canDeactivate: [leave],
     title: 'Academy settings · CareVerity',
     loadComponent: () => import('./academy-settings').then((m) => m.AcademySettingsPage),

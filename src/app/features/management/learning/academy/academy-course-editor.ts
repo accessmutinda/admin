@@ -59,7 +59,15 @@ export class AcademyCourseEditor {
       approver: '',
       effectiveDate: '',
       practicalRequired: false,
-      policy: { maxAttempts: 3, retakeWaitHours: 24, timeLimitMinutes: 30, showFeedback: true },
+      policy: {
+        maxAttempts: this.academy.state().settings.maxAttempts,
+        retakeWaitHours: 24,
+        timeLimitMinutes: this.academy.state().settings.timeLimitMinutes,
+        showFeedback: this.academy.state().settings.showFeedback,
+        sequentialLessons: this.academy.state().settings.sequentialLessons,
+        shuffleQuestions: this.academy.state().settings.shuffleQuestions,
+        shuffleOptions: this.academy.state().settings.shuffleOptions,
+      },
       id: crypto.randomUUID(),
       title: '',
       description: '',
@@ -121,7 +129,10 @@ export class AcademyCourseEditor {
       maxAttempts: this.academy.state().settings.maxAttempts,
       retakeWaitHours: 24,
       timeLimitMinutes: this.academy.state().settings.timeLimitMinutes,
-      showFeedback: true,
+      showFeedback: this.academy.state().settings.showFeedback,
+      sequentialLessons: this.academy.state().settings.sequentialLessons,
+      shuffleQuestions: this.academy.state().settings.shuffleQuestions,
+      shuffleOptions: this.academy.state().settings.shuffleOptions,
     };
     this.original = JSON.stringify(this.draft);
   }

@@ -68,7 +68,10 @@ export class AcademyService {
     }
     return {
       ...emptyAcademy(),
-      settings: { ...emptyAcademy().settings, ...this.api.settings() },
+      settings: {
+        ...emptyAcademy().settings, ...this.api.settings(),
+        dueSoonDays: this.assignmentApi.dueSoonDays() ?? this.resultsApi.dueSoonDays() ?? this.api.settings().dueSoonDays ?? emptyAcademy().settings.dueSoonDays,
+      },
       courses: [...courses.values()],
       courseDrafts: records.filter((r) => r.course.status === 'Draft').map((r) => r.course),
       questions: records.flatMap((r) => r.questions.filter((q) => q.status !== 'Draft')),
@@ -822,60 +825,8 @@ export class AcademyService {
       ? null
       : 'Could not save on this device. Free browser storage and retry. Your draft is retained.';
   }
-  saveSettings(settings: AcademySettings, workspace: string, expected: string): string | null {
-    return this.change(
-      workspace,
-      'Academy settings saved',
-      'Assessment, certificates and learning rules',
-      (d) => {
-        if (d.settings.updatedAt !== expected)
-          return 'Settings changed in another view. Reload before saving.';
-        const integers = [
-          settings.passMark,
-          settings.maxAttempts,
-          settings.timeLimitMinutes,
-          settings.validityMonths,
-          settings.reminderDays,
-          settings.dueSoonDays,
-          settings.refresherDays,
-          settings.overdueDays,
-        ];
-        if (
-          integers.some((v) => !Number.isInteger(v)) ||
-          settings.passMark < 1 ||
-          settings.passMark > 100 ||
-          settings.maxAttempts < 1 ||
-          settings.maxAttempts > 10 ||
-          settings.timeLimitMinutes < 1 ||
-          settings.timeLimitMinutes > 240 ||
-          settings.validityMonths < 0 ||
-          settings.validityMonths > 120 ||
-          [
-            settings.reminderDays,
-            settings.dueSoonDays,
-            settings.refresherDays,
-            settings.overdueDays,
-          ].some((v) => v < 0 || v > 365)
-        )
-          return 'Check the pass mark, attempts, time limit, validity and reminder periods.';
-        if (
-          ![settings.primary, settings.secondary].every((v) => /^#[\da-fA-F]{6}$/.test(v)) ||
-          !['Standard', 'Modern', 'Minimal', 'Professional'].includes(settings.template) ||
-          settings.adminRoles.some((r) => !Object.keys(ROLES).includes(r))
-        )
-          return 'Choose valid branding colours, template and roles.';
-        if (
-          [settings.logoId, settings.backgroundId, settings.signatureId].some(
-            (id) => id && !d.assets.some((a) => a.id === id && a.kind === 'Image'),
-          )
-        )
-          return 'Choose saved image assets for certificate branding.';
-        if (Object.values(settings.notificationTemplates).some((v) => !v.trim() || v.length > 2000))
-          return 'Notification templates must contain 1–2000 characters.';
-        d.settings = { ...structuredClone(settings), updatedAt: new Date().toISOString() };
-        return null;
-      },
-    );
+  saveSettings(_settings: AcademySettings, _workspace: string, _expected: string): string {
+    return 'Use the server-backed academy settings form to save settings.';
   }
   private pinAssignments(d: AcademyData, courseId: string): void {
     const published = d.courses.find((c) => c.id === courseId);
@@ -1569,60 +1520,8 @@ export class AcademyService {
   async notifyManager(attemptId: string, workspace: string): Promise<string | null> {
     return this.assessmentWrite(workspace, () => this.resultsApi.requestSupport(attemptId));
   }
-  generateReminders(workspace: string): string | null {
-    return this.change(
-      workspace,
-      'Reminder schedules checked',
-      'Device-local reminder generation',
-      (d) => {
-        if (!d.settings.portalNotifications) return 'Enable portal notifications first.';
-        const today = londonDate();
-        const add = (a: AcademyAssignment, title: string, text: string, key: string) => {
-          if (!d.notices.some((n) => n.key === key))
-            d.notices.unshift({
-              id: crypto.randomUUID(),
-              assignmentId: a.id,
-              personId: a.personId,
-              title,
-              text,
-              at: new Date().toISOString(),
-              key,
-            });
-        };
-        d.assignments
-          .filter((a) => !a.archived)
-          .forEach((a) => {
-            const course = d.courses.find((c) => c.id === a.courseId);
-            if (!course) return;
-            if (!a.completedAt && a.due) {
-              const days = Math.round((Date.parse(a.due) - Date.parse(today)) / 86400000);
-              if (days <= d.settings.dueSoonDays && days >= -d.settings.overdueDays)
-                add(
-                  a,
-                  days < 0 ? 'Training overdue' : 'Training due soon',
-                  this.template(d.settings.notificationTemplates.assigned, course.title, a.due),
-                  'due:' + a.id + ':' + today,
-                );
-            }
-            const cert = d.certificates.find((c) => c.assignmentId === a.id);
-            if (cert?.expires) {
-              const days = Math.round((Date.parse(cert.expires) - Date.parse(today)) / 86400000);
-              if (days >= 0 && days <= Math.max(d.settings.reminderDays, d.settings.refresherDays))
-                add(
-                  a,
-                  'Certificate expiry / refresher reminder',
-                  this.template(
-                    d.settings.notificationTemplates.expiry,
-                    course.title,
-                    cert.expires,
-                  ),
-                  'expiry:' + cert.id + ':' + today,
-                );
-            }
-          });
-        return null;
-      },
-    );
+  generateReminders(_workspace: string): string {
+    return 'Use the server-backed reminder command in academy settings.';
   }
   recordReport(kind: string, workspace: string): string | null {
     if (

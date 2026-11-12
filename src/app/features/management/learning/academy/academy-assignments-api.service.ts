@@ -14,7 +14,11 @@ import type {
 
 export type AssignmentStaff = AcademyAssignmentStaff;
 type Assignment = AcademyAssignment & { company_id: string; etag: string; version: number };
-type Page<T> = { results: T[]; next: number | null; meta: { company_id: string } };
+type Page<T> = {
+  results: T[];
+  next: number | null;
+  meta: { company_id: string; dueSoonDays?: number | null };
+};
 
 @Injectable({ providedIn: 'root' })
 export class AcademyAssignmentsApi {
@@ -35,6 +39,8 @@ export class AcademyAssignmentsApi {
     () => this.available() && this.access.can('academy', 'assignments', 'edit'),
   );
   private readonly loaded = signal('');
+  private readonly reminderWindow = signal<number | null>(null);
+  readonly dueSoonDays = computed(() => (this.current() ? this.reminderWindow() : null));
   private readonly people = signal<AssignmentStaff[]>([]);
   private readonly catalogue = signal<AcademyAssignmentCourse[]>([]);
   private readonly records = signal<Assignment[]>([]);
@@ -85,6 +91,7 @@ export class AcademyAssignmentsApi {
     this.error.set('');
     this.loading.set(true);
     const root = this.root();
+    let reminderWindow: number | null = null;
     const all = async <T>(suffix: string): Promise<T[]> => {
       const rows: T[] = [];
       let page: number | null = 1;
@@ -93,6 +100,7 @@ export class AcademyAssignmentsApi {
         this.check(scope);
         if (result.meta.company_id !== this.store.companyId())
           throw Error('Assignment workspace mismatch.');
+        if (!suffix) reminderWindow = result.meta.dueSoonDays ?? null;
         rows.push(...result.results);
         page = result.next;
       }
@@ -111,6 +119,7 @@ export class AcademyAssignmentsApi {
         this.people.set(people);
         this.catalogue.set(catalogue);
         this.records.set(assignments);
+        this.reminderWindow.set(reminderWindow);
         this.loaded.set(scope);
       } catch (e) {
         if (scope === this.scope()) {

@@ -118,6 +118,13 @@ describe('Academy results and retakes API', () => {
     });
     api = TestBed.inject(AcademyResultsApi);
   });
+  it('uses the saved due-soon window for learner records and clears it with access', async () => {
+    request.mockResolvedValueOnce({results:[learning()], next:null, meta:{company_id:'company',person,dueSoonDays:47}});
+    await api.load(true);
+    expect(api.dueSoonDays()).toBe(47);
+    allowed.set(false);
+    expect(api.dueSoonDays()).toBeNull();
+  });
   it('loads server results, identities, histories and policy inputs', async () => {
     await api.load();
     expect(api.attempts()[0].score).toBe(0);

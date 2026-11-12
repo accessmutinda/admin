@@ -1,8 +1,10 @@
 import { Injectable, inject } from '@angular/core';
+import { AcademySettingsApi } from './academy-settings-api.service';
 import { AcademyService } from './academy.service';
 @Injectable({ providedIn: 'root' })
 export class AcademyAssets {
   private readonly academy = inject(AcademyService);
+  private readonly settings = inject(AcademySettingsApi);
   async upload(file: File, workspace: string): Promise<string> {
     if (workspace !== this.academy.store.companyId() || !this.academy.can('author'))
       throw Error('The workspace or media permission changed.');
@@ -13,7 +15,10 @@ export class AcademyAssets {
     return asset.id;
   }
   async url(id: string): Promise<string> {
-    return URL.createObjectURL(await (this.academy.api.available() ? this.academy.api.blob(id) : this.academy.resultsApi.blob(id)));
+    const settingsImage = await this.settings.brandingBlob(id);
+    if (settingsImage) return URL.createObjectURL(settingsImage);
+    const certificateImage = await this.academy.certificatesApi.brandingBlob(id);
+    return URL.createObjectURL(certificateImage ?? await (this.academy.api.available() ? this.academy.api.blob(id) : this.academy.resultsApi.blob(id)));
   }
   async download(id: string): Promise<void> {
     const asset = this.academy.state().assets.find((a) => a.id === id);
