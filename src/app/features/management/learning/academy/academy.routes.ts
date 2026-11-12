@@ -46,6 +46,20 @@ const capability =
       ),
     );
   };
+const assignmentsLoaded: CanActivateFn = async () => {
+  const router = inject(Router);
+  const context = inject(EnvironmentInjector);
+  const m = await import('./academy-assignments-api.service');
+  const api = runInInjectionContext(context, () => inject(m.AcademyAssignmentsApi));
+  if (!api.available()) return router.createUrlTree(['/access-denied']);
+  try {
+    await api.load(true);
+  } catch {
+    /* The page displays the access or connection error. */
+  }
+  return true;
+};
+
 const academyLoaded: CanActivateFn = async (route) => {
   const context = inject(EnvironmentInjector);
   const m = await import('./academy.service');
@@ -150,7 +164,7 @@ export const ACADEMY_ADMIN_ROUTES: Routes = [
   })),
   ...['rules', 'rules/:courseId'].map((path) => ({
     path,
-    canActivate: [capability('assign'), academyLoaded, uploadsPlaced],
+    canActivate: [capability('assign'), academyLoaded, assignmentsLoaded, uploadsPlaced],
     canDeactivate: [leave],
     title: 'Assessment rules & staff assignments · CareVerity',
     loadComponent: () =>
@@ -179,7 +193,7 @@ export const ACADEMY_ADMIN_ROUTES: Routes = [
   },
   {
     path: 'manage',
-    canActivate: [capability('assign')],
+    canActivate: [assignmentsLoaded],
     canDeactivate: [leave],
     title: 'Manage training · CareVerity',
     loadComponent: () => import('./academy-manage').then((m) => m.AcademyManage),

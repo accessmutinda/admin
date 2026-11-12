@@ -6,7 +6,8 @@
   </div>
   <a class="academy-button" routerLink="/manage/learning/reports">View training reports →</a>
 </div>
-<cv-academy-message [error]="error()" [notice]="notice()" />
+<cv-academy-message [error]="error() || academy.assignmentApi.error()" [notice]="notice()" />
+@if (!academy.assignmentApi.error()) {
 <div class="stats" [style.--academy-metric-columns]="stats().length">
   @for (stat of stats(); track stat.label; let index = $index) {
     <div class="stat cv-metric" [attr.data-card-tone]="['orange', 'teal', 'green', 'blue'][index]">
@@ -117,17 +118,17 @@
     <div class="actions">
       <button
         class="academy-button primary"
-        [disabled]="!selectedStaff().length"
+        [disabled]="!selectedStaff().length || !academy.assignmentApi.canCreate()"
         (click)="open('assign')"
       >
         Assign training</button
-      ><button class="academy-button" [disabled]="!selectedStaff().length" (click)="remind()">
+      ><button class="academy-button" [disabled]="!selectedStaff().length || !academy.assignmentApi.canEdit()" (click)="remind()">
         Record reminder</button
-      ><button class="academy-button" [disabled]="!selectedStaff().length" (click)="open('extend')">
+      ><button class="academy-button" [disabled]="!selectedStaff().length || !academy.assignmentApi.canEdit()" (click)="open('extend')">
         Extend deadline</button
       ><button
         class="academy-button"
-        [disabled]="!selectedStaff().length"
+        [disabled]="!selectedStaff().length || !academy.assignmentApi.canCreate()"
         (click)="open('mandatory')"
       >
         Assign mandatory programme
@@ -175,7 +176,7 @@
             <td>
               <div class="tag-list assigned-course-list">
                 @for (assignment of assignments(person.id).slice(0, 2); track assignment.id) {
-                  <span class="badge">{{ academy.course(assignment.courseId)?.title }}</span>
+                  <span class="badge">{{ assignment.courseSnapshot?.title }}</span>
                 }
                 @if (assignments(person.id).length > 2) {
                   <span class="assigned-course-overflow"
@@ -243,7 +244,7 @@
         <p>{{ person.name }} · {{ person.role }}</p>
       }
     </details>
-    <cv-academy-message [error]="error()" />
+    <cv-academy-message [error]="error() || academy.assignmentApi.error()" />
     @if (drawer() !== 'extend') {
       <h2>Courses to assign</h2>
       <label class="field">Search courses<input type="search" [(ngModel)]="courseSearch" /></label>
@@ -278,14 +279,14 @@
         ><input type="checkbox" [(ngModel)]="renew" />Start a new learning cycle and archive any
         current assignment</label
       ><label class="check"
-        ><input type="checkbox" [(ngModel)]="notify" />Record a portal notification for staff</label
+        ><input type="checkbox" [(ngModel)]="notify" />Request a portal notification for staff</label
       ><label class="field"
         >Message (optional)<textarea rows="3" [(ngModel)]="message"></textarea>
       </label>
     }
     <label class="field">Due date<input type="date" [(ngModel)]="due" /></label>
     <div class="notice">
-      Notifications are stored in this device’s portal. Recurrence is recorded for refresher
+      Notification requests are saved with the assignment. Recurrence is recorded for refresher
       planning; it does not silently create a new course cycle.
     </div>
     <div class="footer actions">
@@ -299,4 +300,6 @@
       </button>
     </div>
   </section>
+}
+
 }

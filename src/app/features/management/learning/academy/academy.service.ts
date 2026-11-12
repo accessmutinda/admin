@@ -1,3 +1,4 @@
+import { AcademyAssignmentsApi } from './academy-assignments-api.service';
 import { AcademyApi } from './academy-api.service';
 import { CompanyAccessService } from '../../../../core/access/company-access.service';
 import {
@@ -42,6 +43,7 @@ export class AcademyService {
   private readonly access = inject(CompanyAccessService);
   readonly store = inject(ManagementStore);
   readonly api = inject(AcademyApi);
+  readonly assignmentApi = inject(AcademyAssignmentsApi);
   readonly auth = inject(AuthService);
   readonly state = computed(() => {
     const records = this.api.courses();
@@ -56,6 +58,7 @@ export class AcademyService {
       questionDrafts: records.flatMap((r) => r.questions.filter((q) => q.status === 'Draft')),
       courseVersions: records.flatMap((r) => r.versions),
       assets: this.api.assets(),
+      assignments: this.assignmentApi.assignments(),
     };
   });
   async persistCourse(
@@ -149,23 +152,7 @@ export class AcademyService {
       );
     return matches.length === 1 ? matches[0] : undefined;
   });
-  readonly assignments = computed(() => {
-    const saved = this.state().assignments;
-    return [
-      ...saved,
-      ...this.store
-        .staff()
-        .flatMap((p) =>
-          p.learning
-            .filter(
-              (id) =>
-                this.state().courses.some((c) => c.id === id) &&
-                !saved.some((a) => a.personId === p.id && a.courseId === id),
-            )
-            .map((id) => legacyAssignment(p, id)),
-        ),
-    ];
-  });
+  readonly assignments = computed(() => this.assignmentApi.assignments());
   owns(personId: string): boolean {
     return this.enabled() && this.me()?.id === personId;
   }
@@ -1481,231 +1468,19 @@ export class AcademyService {
     workspace: string,
     options: AcademyAssignmentOptions = {},
   ): string | null {
-    return this.change(
-      workspace,
-      'Training assigned',
-      `${personIds.length} staff · ${courseIds.length} courses`,
-      (d) =>
-        this.applyAssignments(
-          d,
-          personIds,
-          courseIds,
-          due,
-          recurrenceMonths,
-          message,
-          notify,
-          renew,
-          workspace,
-          options,
-        ),
-    );
-  }
-  private applyAssignments(
-    d: AcademyData,
-    personIds: string[],
-    courseIds: string[],
-    due: string,
-    recurrenceMonths: number,
-    message: string,
-    notify: boolean,
-    renew: boolean,
-    workspace: string,
-    options: AcademyAssignmentOptions,
-  ): string | null {
-    if (
-      (options.source &&
-        !['By Role', 'By Team', 'Individual Worker', 'From HR Staff Profile'].includes(
-          options.source,
-        )) ||
-      (options.priority && !['Normal', 'High', 'Urgent'].includes(options.priority)) ||
-      options.notificationChannels?.some((c) => !['Email', 'App', 'In-platform'].includes(c))
-    )
-      return 'Choose valid assignment source, priority and notification channels.';
-
-    if (
-      options.expectedCourseUpdatedAt !== undefined &&
-      courseIds.some(
-        (id) => d.courses.find((c) => c.id === id)?.updatedAt !== options.expectedCourseUpdatedAt,
-      )
-    )
-      return 'The published course changed. Reload and review the assignment again.';
-    if (
-      !personIds.length ||
-      !courseIds.length ||
-      personIds.some(
-        (id) =>
-          !this.store
-            .staff()
-            .some(
-              (p) =>
-                p.id === id &&
-                !['Inactive', 'Left'].includes(p.hr?.status ?? '') &&
-                !['Inactive', 'Left', 'Leaver', 'Terminated'].includes(p.stage),
-            ),
-      ) ||
-      courseIds.some(
-        (id) =>
-          !d.courses.some(
-            (c) =>
-              c.id === id &&
-              c.status === 'Published' &&
-              c.active !== false &&
-              (!c.effectiveDate || c.effectiveDate <= londonDate()),
-          ),
-      ) ||
-      !validDate(due) ||
-      !Number.isInteger(recurrenceMonths) ||
-      recurrenceMonths < 0 ||
-      recurrenceMonths > 120
-    )
-      return 'Choose current staff, published courses, a valid due date and recurrence.';
-    if (
-      courseIds.some((id) => {
-        const course = d.courses.find((c) => c.id === id)!;
-        return (
-          (!!course.targetRoles?.length || !!course.targetBranches?.length) &&
-          personIds.some(
-            (personId) =>
-              !courseApplies(
-                course,
-                this.store.staff().find((p) => p.id === personId)!,
-              ),
-          )
-        );
-      })
-    )
-      return 'One or more staff roles are outside this course’s approved audience.';
-    if (
-      options.supervisorId &&
-      !this.store
-        .staff()
-        .some(
-          (p) =>
-            p.id === options.supervisorId && !['Inactive', 'Left'].includes(p.hr?.status ?? ''),
-        )
-    )
-      return 'Choose an active supervisor.';
-    for (const personId of new Set(personIds))
-      for (const courseId of new Set(courseIds)) {
-        const person = this.store.staff().find((p) => p.id === personId)!;
-        const requirement = requirementsFor(d, person).find((r) => r.courseId === courseId);
-        if (
-          requirement &&
-          (d.courses.find((c) => c.id === courseId)?.version ?? 0) < requirement.minimumVersion
-        )
-          return 'Publish a course version meeting the current requirement before assigning it.';
-        let assignment = d.assignments.find(
-          (a) => a.personId === personId && a.courseId === courseId && !a.archived,
-        );
-        if (assignment && !renew) {
-          assignment.due = due;
-          assignment.recurrenceMonths = recurrenceMonths;
-        } else {
-          if (assignment) assignment.archived = true;
-          assignment = {
-            ...legacyAssignment(
-              this.store.staff().find((p) => p.id === personId)!,
-              courseId,
-            ),
-            id: crypto.randomUUID(),
-            assignedAt: new Date().toISOString(),
-            assignedBy: this.auth.currentUser()!.name,
-            due,
-            recurrenceMonths,
-            tenantId: workspace,
-            courseVersion: d.courses.find((c) => c.id === courseId)!.version,
-            renewalPolicyId: requirement?.id,
-            courseSnapshot: {
-              ...this.snapshotCourse(
-                d.courses.find((c) => c.id === courseId)!,
-                d.settings,
-              ),
-              ...(requirement ? { validityMonths: requirement.renewalMonths } : {}),
-            },
-            questionSnapshot: structuredClone(
-              d.courses.find((c) => c.id === courseId)!.assessmentQuestions ??
-                d.questions.filter((q) => q.courseId === courseId && q.status === 'Published'),
-            ),
-            policySnapshot: this.policyFor(
-              d.courses.find((c) => c.id === courseId)!,
-              d.settings,
-            ),
-            source: options.source ?? 'Academy / existing HR staff profile',
-            priority: options.priority ?? 'Normal',
-            supervisorId: options.supervisorId,
-            type: renew ? 'Refresher' : 'Initial',
-          };
-          d.assignments.push(assignment);
-        }
-        if (options.priority) assignment.priority = options.priority;
-        if (options.supervisorId !== undefined) assignment.supervisorId = options.supervisorId;
-        const channels = notify
-          ? [...new Set(options.notificationChannels ?? ['In-platform' as const])]
-          : [];
-        assignment.notificationChannels = channels;
-        const requests = channels.map((channel) => ({
-          channel,
-          status:
-            channel === 'Email' || !d.settings.portalNotifications
-              ? ('Not configured' as const)
-              : ('Recorded' as const),
-          at: new Date().toISOString(),
-        }));
-        assignment.notificationRequests = [...(assignment.notificationRequests ?? []), ...requests];
-        if (d.governance)
-          for (const request of requests.filter((r) => r.channel !== 'In-platform'))
-            d.governance.deliveries.push({
-              id: crypto.randomUUID(),
-              personId,
-              assignmentId: assignment.id,
-              channel: request.channel,
-              title: 'Course assigned',
-              text: message || 'Review your assigned training.',
-              status: 'Queued',
-              attempts: 0,
-              nextAttemptAt: '',
-              updatedAt: request.at,
-              providerId: '',
-              error: '',
-              history: [
-                {
-                  at: request.at,
-                  status: 'Queued',
-                  detail: 'Requested channel; local simulation only',
-                },
-              ],
-            });
-
-        if (requests.some((r) => r.status === 'Recorded'))
-          d.notices.unshift({
-            id: crypto.randomUUID(),
-            assignmentId: assignment.id,
-            personId,
-            title: 'Course assigned',
-            text:
-              this.template(
-                d.settings.notificationTemplates.assigned,
-                d.courses.find((c) => c.id === courseId)!.title,
-                due,
-              ) + (message.trim() ? '\n' + message.trim() : ''),
-            at: new Date().toISOString(),
-            key: crypto.randomUUID(),
-          });
-      }
-    return null;
+    return 'Open Manage training to save assignments to the current company.';
   }
   assignmentTargets(course: AcademyCourse, plan: AcademyAssignmentPlan) {
-    return this.store
+    return this.assignmentApi
       .staff()
       .filter(
         (p) =>
-          !['Inactive', 'Left'].includes(p.hr?.status ?? '') &&
-          !['Inactive', 'Left', 'Leaver', 'Terminated'].includes(p.stage) &&
+          p.status === 'Active' &&
           (!course.targetRoles?.length || course.targetRoles.includes(p.role)) &&
           (!course.targetBranches?.length || course.targetBranches.includes(p.location)),
       )
       .filter((p) => {
-        const team = p.hr?.employment.department || 'Unassigned';
+        const team = p.department;
         return plan.method === 'By Role'
           ? plan.roles.includes(p.role) && (plan.team === 'All' || team === plan.team)
           : plan.method === 'By Team'
@@ -1721,38 +1496,7 @@ export class AcademyService {
     expected: string,
     workspace: string,
   ): string | null {
-    return this.change(
-      workspace,
-      'Rules published and training assigned',
-      course.id + ' · ' + personIds.length + ' staff',
-      (d) => {
-        const plan = course.assignmentPlan;
-        if (!plan) return 'Configure the assignment plan before assigning training.';
-        const targets = this.assignmentTargets(course, plan)
-          .map((p) => p.id)
-          .sort();
-        if (
-          (plan.method === 'From HR Staff Profile' && plan.personIds.length !== 1) ||
-          JSON.stringify([...new Set(personIds)].sort()) !== JSON.stringify(targets)
-        )
-          return 'The selected staff do not match the reviewed assignment plan.';
-
-        const error = this.applyCourse(d, { ...course, status: 'Published' }, expected);
-        if (error) return error;
-        return this.applyAssignments(
-          d,
-          personIds,
-          [course.id],
-          plan.due,
-          plan.recurrenceMonths,
-          plan.message,
-          plan.channels.length > 0,
-          plan.refresher,
-          workspace,
-          { source: plan.method, priority: plan.priority, notificationChannels: plan.channels },
-        );
-      },
-    );
+    return 'Open Rules and assignments to publish and assign training.';
   }
   bulk(
     personIds: string[],
@@ -1760,46 +1504,7 @@ export class AcademyService {
     due: string,
     workspace: string,
   ): string | null {
-    return this.change(
-      workspace,
-      action === 'remind' ? 'Training reminders recorded' : 'Training deadlines extended',
-      `${personIds.length} staff`,
-      (d) => {
-        if (action === 'remind' && !d.settings.portalNotifications)
-          return 'Portal notifications are disabled in academy settings.';
-        const assignments = d.assignments.filter(
-          (a) => personIds.includes(a.personId) && !a.archived && !a.completedAt,
-        );
-        if (
-          !assignments.length ||
-          personIds.some((id) => !this.store.staff().some((p) => p.id === id))
-        )
-          return 'Select staff with unfinished assignments.';
-        if (
-          action === 'extend' &&
-          (!validDate(due) || assignments.some((a) => a.due && due <= a.due))
-        )
-          return 'The new deadline must be later than every selected existing deadline.';
-        if (action === 'extend') assignments.forEach((a) => (a.due = due));
-        else
-          assignments.forEach((a) =>
-            d.notices.unshift({
-              id: crypto.randomUUID(),
-              assignmentId: a.id,
-              personId: a.personId,
-              title: 'Training reminder',
-              text: this.template(
-                d.settings.notificationTemplates.assigned,
-                d.courses.find((c) => c.id === a.courseId)?.title ?? 'Course',
-                a.due || 'Not set',
-              ),
-              at: new Date().toISOString(),
-              key: crypto.randomUUID(),
-            }),
-          );
-        return null;
-      },
-    );
+    return 'Open Manage training to save assignment changes.';
   }
   enrol(courseId: string, workspace: string): string | null {
     const person = this.me();

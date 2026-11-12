@@ -5,7 +5,7 @@ import { A11yModule } from '@angular/cdk/a11y';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../../shared/ui/select';
 import { addDays, londonDate } from '../../rota/rota.models';
-import { Person } from '../../shared/management.store';
+import { AssignmentStaff } from './academy-assignments-api.service';
 import { AcademyService } from './academy.service';
 import { AcademyCourseSteps } from './academy-course-steps';
 import {
@@ -21,8 +21,8 @@ import { AcademyDate } from './academy-date';
 @Component({
   host: {
     class: 'module-page academy-page',
-    '[attr.inert]': 'academy.api.saving() ? "" : null',
-    '[attr.aria-busy]': 'academy.api.saving()',
+    '[attr.inert]': '(academy.api.saving() || academy.assignmentApi.saving()) ? "" : null',
+    '[attr.aria-busy]': 'academy.api.saving() || academy.assignmentApi.saving()',
   },
   selector: 'cv-academy-rules-assignments',
   imports: [
@@ -53,7 +53,7 @@ export class AcademyRulesAssignments {
   protected readonly saving = signal(false);
   private readonly reviewIds = signal<string[]>([]);
   protected reviewPeople() {
-    return this.academy.store.staff().filter((p) => this.reviewIds().includes(p.id));
+    return this.academy.assignmentApi.staff().filter((p) => this.reviewIds().includes(p.id));
   }
   protected page = 1;
   protected sort: 'name' | 'role' | 'due' | 'status' | 'type' = 'name';
@@ -233,13 +233,7 @@ export class AcademyRulesAssignments {
         : this.plan.personIds.slice(0, 1);
   }
   protected activeStaff() {
-    return this.academy.store
-      .staff()
-      .filter(
-        (p) =>
-          !['Inactive', 'Left'].includes(p.hr?.status ?? '') &&
-          !['Inactive', 'Left', 'Leaver', 'Terminated'].includes(p.stage),
-      );
+    return this.academy.assignmentApi.staff().filter((p) => p.status === 'Active');
   }
   protected roles() {
     return [...new Set(this.activeStaff().map((p) => p.role))].sort();
@@ -247,8 +241,8 @@ export class AcademyRulesAssignments {
   protected teams() {
     return [...new Set(this.activeStaff().map((p) => this.team(p)))].sort();
   }
-  private team(person: Person) {
-    return person.hr?.employment.department || 'Unassigned';
+  private team(person: AssignmentStaff) {
+    return person.department;
   }
   protected eligibleStaff() {
     return this.activeStaff().filter(
@@ -259,7 +253,7 @@ export class AcademyRulesAssignments {
     return this.course ? this.academy.assignmentTargets(this.course, this.plan) : [];
   }
   protected contextPerson() {
-    return this.academy.store.staff().find((p) => p.id === this.staffContext);
+    return this.academy.assignmentApi.staff().find((p) => p.id === this.staffContext);
   }
   protected timed() {
     return !!this.course?.policy?.timeLimitMinutes;
@@ -301,15 +295,9 @@ export class AcademyRulesAssignments {
       ).length;
   }
   protected notificationSummary() {
-    const messages: string[] = [];
-    if (this.plan.channels.some((channel) => channel !== 'Email'))
-      messages.push(
-        this.academy.state().settings.portalNotifications
-          ? 'App/platform requests are recorded locally.'
-          : 'App/platform notifications are disabled in Academy settings.',
-      );
-    if (this.plan.channels.includes('Email')) messages.push('Email delivery is not configured.');
-    return messages.join(' ') || 'No notifications requested.';
+    return this.plan.channels.length
+      ? 'Notification requests are queued for delivery.'
+      : 'No notifications requested.';
   }
   protected hasChannel(channel: AcademyNotificationChannel) {
     return this.plan.channels.includes(channel);
@@ -323,7 +311,7 @@ export class AcademyRulesAssignments {
     return this.academy.assignments().filter((a) => a.courseId === this.course?.id && !a.archived);
   }
   protected person(id: string) {
-    return this.academy.store.staff().find((p) => p.id === id);
+    return this.academy.assignmentApi.staff().find((p) => p.id === id);
   }
   protected assignmentFor(id: string) {
     return this.assignments().find((a) => a.personId === id);
@@ -457,7 +445,7 @@ export class AcademyRulesAssignments {
     this.reviewIds.set(staff.map((p) => p.id));
     this.reviewOpen.set(true);
   }
-  protected confirmAssign() {
+  protected async confirmAssign() {
     if (!this.course || !this.reviewOpen() || this.saving()) return;
     if (!this.validPassMark()) return;
     if (this.reviewedBank !== this.bankFingerprint()) {
@@ -483,8 +471,14 @@ export class AcademyRulesAssignments {
     const candidate = { ...this.course, assignmentPlan: structuredClone(this.plan) };
     const ids = this.recipients().map((p) => p.id);
     const error = this.needsPublication()
-      ? this.academy.saveRulesAndAssign(candidate, ids, this.expected, this.workspace)
-      : this.academy.assign(
+      ? await this.academy.assignmentApi.publishAndAssign(
+          candidate,
+          ids,
+          this.expected,
+          this.workspace,
+          this.supervisorId,
+        )
+      : await this.academy.assignmentApi.assign(
           ids,
           [this.course.id],
           this.plan.due,
@@ -496,6 +490,8 @@ export class AcademyRulesAssignments {
           {
             supervisorId: this.supervisorId,
             source: this.plan.method,
+            roles: this.plan.roles,
+            team: this.plan.team,
             priority: this.plan.priority,
             notificationChannels: this.plan.channels,
             expectedCourseUpdatedAt: this.expected,
@@ -524,7 +520,7 @@ export class AcademyRulesAssignments {
   }
   canLeave() {
     if (!this.canEdit()) return true;
-    if (this.academy.api.saving()) return false;
+    if (this.academy.api.saving() || this.academy.assignmentApi.saving()) return false;
     return (
       this.snapshot() === this.original ||
       window.confirm('Discard unsaved assessment rules and assignment setup?')

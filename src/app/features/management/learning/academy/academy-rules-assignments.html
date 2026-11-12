@@ -28,11 +28,11 @@
     aria-label="Learning supervisor"
     [(ngModel)]="supervisorId"
     ><mat-option value="">Not assigned</mat-option>
-    @for (p of academy.store.staff(); track p.id) {
+    @for (p of activeStaff(); track p.id) {
       <mat-option [value]="p.id">{{ p.name }}</mat-option>
     }
   </mat-select></label
-><cv-academy-message [error]="error() || academy.api.error()" [notice]="notice()" />
+><cv-academy-message [error]="error() || academy.api.error() || academy.assignmentApi.error()" [notice]="notice()" />
 @if (course) {
   <cv-academy-course-steps [courseId]="course.id" [current]="5" />
   <div class="rules-course-context">
@@ -613,7 +613,7 @@
         <span class="material-symbols-outlined" aria-hidden="true">close</span>
       </button>
     </div>
-    <cv-academy-message [error]="error() || academy.api.error()" />
+    <cv-academy-message [error]="error() || academy.api.error() || academy.assignmentApi.error()" />
     <h3>{{ course.title }}</h3>
     <p>
       {{ reviewPeople().length }} staff · Due {{ plan.due | ukDate: 'd MMM yyyy' }} ·
@@ -646,8 +646,8 @@
       </p>
     } @else {
       <p>
-        Existing learning cycles keep their original course version. Their deadlines are updated;
-        use a refresher to start a new cycle.
+        Existing learning cycles keep their original course version. Extend their deadlines from Manage
+        training, or use a refresher to start a new cycle.
       </p>
     }
     <div class="review-staff-list">
@@ -659,7 +659,7 @@
             ><small>{{ person.role }} · {{ person.location }}</small>
           </div>
           <span class="type-pill" [class.refresher]="plan.refresher">{{
-            plan.refresher ? 'Refresher' : assignmentFor(person.id) ? 'Update deadline' : 'Initial'
+            plan.refresher ? 'Refresher' : assignmentFor(person.id) ? 'Already assigned' : 'Initial'
           }}</span>
         </article>
       }

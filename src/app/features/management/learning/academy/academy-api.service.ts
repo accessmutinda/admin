@@ -182,7 +182,7 @@ export class AcademyApi {
     this.media.set([]);
     this.loadedScope.set('');
   }
-  private body(course: AcademyCourse) {
+  body(course: AcademyCourse) {
     const {
       id,
       version,

@@ -4,12 +4,16 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../../shared/ui/select';
-import { Person } from '../../shared/management.store';
+import { AssignmentStaff } from './academy-assignments-api.service';
 import { londonDate, addDays } from '../../rota/rota.models';
 import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 import { AcademyService } from './academy.service';
 @Component({
-  host: { class: 'module-page academy-page' },
+  host: {
+    class: 'module-page academy-page',
+    '[attr.inert]': 'academy.assignmentApi.saving() ? "" : null',
+    '[attr.aria-busy]': 'academy.assignmentApi.saving()',
+  },
   selector: 'cv-academy-manage',
   imports: [
     FormsModule,
@@ -32,7 +36,7 @@ export class AcademyManage {
   protected readonly academy = inject(AcademyService);
   private workspace = this.academy.store.companyId();
   private readonly route = inject(ActivatedRoute);
-  private readonly staffContext = this.academy.store
+  private readonly staffContext = this.academy.assignmentApi
     .staff()
     .find((p) => p.id === this.route.snapshot.queryParamMap.get('person'))?.id;
   protected search = '';
@@ -45,9 +49,9 @@ export class AcademyManage {
   protected page = 1;
   protected selected = new Set<string>(this.staffContext ? [this.staffContext] : []);
   protected courseIds = new Set<string>(
-    this.academy
-      .state()
-      .courses.filter(
+    this.academy.assignmentApi
+      .courses()
+      .filter(
         (c) =>
           c.id === this.route.snapshot.queryParamMap.get('course') &&
           c.status === 'Published' &&
@@ -85,17 +89,13 @@ export class AcademyManage {
     );
   }
   protected readonly branches = () =>
-    [...new Set(this.academy.store.staff().map((p) => p.location))].sort();
+    [...new Set(this.academy.assignmentApi.staff().map((p) => p.location))].sort();
   protected readonly roles = () =>
-    [...new Set(this.academy.store.staff().map((p) => p.role))].sort();
+    [...new Set(this.academy.assignmentApi.staff().map((p) => p.role))].sort();
   protected readonly groups = () =>
-    [
-      ...new Set(
-        this.academy.store.staff().map((p) => p.hr?.employment.department || 'Unassigned'),
-      ),
-    ].sort();
+    [...new Set(this.academy.assignmentApi.staff().map((p) => p.department))].sort();
   protected filtered() {
-    return this.academy.store
+    return this.academy.assignmentApi
       .staff()
       .filter(
         (p) =>
@@ -104,11 +104,11 @@ export class AcademyManage {
             .includes(this.search.trim().toLowerCase()) &&
           (this.branch === 'All' || p.location === this.branch) &&
           (this.role === 'All' || p.role === this.role) &&
-          (this.group === 'All' || (p.hr?.employment.department || 'Unassigned') === this.group) &&
+          (this.group === 'All' || p.department === this.group) &&
           (this.status === 'All' || this.personStatus(p.id) === this.status) &&
           (this.type === 'All' ||
             this.assignments(p.id).some(
-              (a) => this.academy.course(a.courseId)?.mandatory === (this.type === 'Mandatory'),
+              (a) => a.courseSnapshot?.mandatory === (this.type === 'Mandatory'),
             )) &&
           (this.recurrence === 'All' ||
             this.assignments(p.id).some(
@@ -133,11 +133,11 @@ export class AcademyManage {
   protected allSelected() {
     return this.rows().length > 0 && this.rows().every((p) => this.selected.has(p.id));
   }
-  protected selectedStaff(): Person[] {
-    return this.academy.store.staff().filter((p) => this.selected.has(p.id));
+  protected selectedStaff(): AssignmentStaff[] {
+    return this.academy.assignmentApi.staff().filter((p) => this.selected.has(p.id));
   }
   protected stats() {
-    const staff = this.academy.store.staff();
+    const staff = this.academy.assignmentApi.staff();
     return [
       {
         label: 'Overdue / expired',
@@ -181,16 +181,16 @@ export class AcademyManage {
     this.drawer.set(mode);
     if (mode === 'mandatory')
       this.courseIds = new Set(
-        this.academy
-          .state()
-          .courses.filter((c) => c.status === 'Published' && c.mandatory)
+        this.academy.assignmentApi
+          .courses()
+          .filter((c) => c.status === 'Published' && c.mandatory)
           .map((c) => c.id),
       );
   }
   protected courses() {
-    return this.academy
-      .state()
-      .courses.filter(
+    return this.academy.assignmentApi
+      .courses()
+      .filter(
         (c) =>
           c.status === 'Published' &&
           c.title.toLowerCase().includes(this.courseSearch.toLowerCase()),
@@ -199,12 +199,12 @@ export class AcademyManage {
   protected toggleCourse(id: string) {
     this.courseIds.has(id) ? this.courseIds.delete(id) : this.courseIds.add(id);
   }
-  protected submit() {
+  protected async submit() {
     const ids = this.selectedStaff().map((p) => p.id);
     const error =
       this.drawer() === 'extend'
-        ? this.academy.bulk(ids, 'extend', this.due, this.workspace)
-        : this.academy.assign(
+        ? await this.academy.assignmentApi.bulk(ids, 'extend', this.due, this.workspace)
+        : await this.academy.assignmentApi.assign(
             ids,
             [...this.courseIds],
             this.due,
@@ -219,27 +219,25 @@ export class AcademyManage {
       this.drawer.set('');
       this.selected.clear();
       this.notice.set(
-        'Training records saved. Requested notifications are device-local portal records.',
+        'Training assignments saved. Requested notifications are queued for delivery.',
       );
     }
   }
-  protected remind() {
-    const error = this.academy.bulk(
+  protected async remind() {
+    const error = await this.academy.assignmentApi.bulk(
       this.selectedStaff().map((p) => p.id),
       'remind',
       '',
       this.academy.store.companyId(),
     );
     this.error.set(error ?? '');
-    if (!error)
-      this.notice.set(
-        'Portal reminders recorded for selected unfinished assignments. No external email was sent.',
-      );
+    if (!error) this.notice.set('Reminder requests saved for the selected assignments.');
   }
   protected close() {
     if (this.canLeave()) this.drawer.set('');
   }
   canLeave(): boolean {
+    if (this.academy.assignmentApi.saving()) return false;
     return !this.drawer() || window.confirm('Discard the unsaved training assignment?');
   }
   @HostListener('window:beforeunload', ['$event']) protected unload(event: BeforeUnloadEvent) {

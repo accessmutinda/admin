@@ -93,6 +93,8 @@ export type AcademyNotificationChannel = 'Email' | 'App' | 'In-platform';
 export type AcademyAssignmentMethod =
   'By Role' | 'By Team' | 'Individual Worker' | 'From HR Staff Profile';
 export interface AcademyAssignmentOptions {
+  roles?: string[];
+  team?: string;
   supervisorId?: string;
   expectedCourseUpdatedAt?: string;
   source?: AcademyAssignmentMethod;
