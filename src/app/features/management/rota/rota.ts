@@ -61,10 +61,29 @@ export class Rota {
   protected readonly handoffClientId = this.route.snapshot.queryParamMap.get('client') || '';
   protected readonly clientFiles = !!this.route.snapshot.data['clientFiles'];
   protected readonly riskFlags = RISK_FLAGS;
-  private readonly callStyles = computed(() => ({
-    ...emptyEcm().styles,
-    ...this.service.data().ecm?.styles,
-  }));
+  private readonly callStyles = computed(() => {
+    if (this.section === 'call-packages') {
+      const defaults: Record<
+        string,
+        {
+          duration: number;
+          priority: 'Standard' | 'High' | undefined;
+          skills: string[];
+          active: boolean;
+        }
+      > = {};
+      for (const call of this.service.data().calls)
+        if (call.scheduleRecorded && call.active)
+          defaults[call.name] = {
+            duration: (minutes(call.end) - minutes(call.start) + 1440) % 1440,
+            priority: call.priority,
+            skills: call.skills,
+            active: call.active,
+          };
+      return defaults;
+    }
+    return { ...emptyEcm().styles, ...this.service.data().ecm?.styles };
+  });
   protected readonly callTypes = computed(() => Object.keys(this.callStyles()));
   protected readonly tab = signal('Overview');
   protected readonly tabs = [
@@ -122,7 +141,27 @@ export class Rota {
       description: 'Trace planning, allocation, publishing and attendance changes.',
     },
   ];
-  protected readonly courses = COURSES;
+  protected get courses() {
+    if (this.section === 'publishing')
+      return (this.service.publishing()?.training_options ?? []).map((c) => ({
+        id: c.id,
+        title: c.name,
+      }));
+    if (!['call-packages', 'history'].includes(this.section || '')) return COURSES;
+    const options = new Map(
+      (
+        (this.section === 'history' ? this.service.historyMeta() : this.service.packageMeta())
+          ?.training_options ?? []
+      ).map((c) => [c.id, { id: c.id, title: c.name }]),
+    );
+    for (const code of [...this.service.data().calls.flatMap((c) => c.skills), ...this.call.skills])
+      if (!options.has(code)) options.set(code, { id: code, title: code });
+    return [...options.values()];
+  }
+  private openGeneration = 0;
+  private readonly selectedVersions = new Map<string, string>();
+  private linkedReview = false;
+  protected callWasActive = false;
   protected readonly weekdays = [
     { id: 1, name: 'Mon' },
     { id: 2, name: 'Tue' },
@@ -146,7 +185,7 @@ export class Rota {
   protected readonly step = signal(1);
   protected readonly clock = signal(Date.now());
   protected month = this.today.slice(0, 7);
-  protected travel = this.service.data().travelMinutes;
+  protected travel: number | null = null;
   protected copy = { source: addDays(this.today, -7), target: this.today };
   protected allocation = {
     clientId: '',
@@ -193,32 +232,32 @@ export class Rota {
   protected readonly sectionStats = computed(() => {
     const data = this.service.data();
     if (this.section === 'call-packages') {
-      const calls = data.calls.filter((call) => call.active);
+      const metrics = this.service.packageMeta()?.metrics;
       return [
         {
           label: 'Active service users',
-          value: data.clients.filter((c) => c.active).length,
+          value: metrics?.active_clients ?? '—',
           icon: 'groups',
           tone: 'blue',
           detail: 'Current care records',
         },
         {
           label: 'Active call packages',
-          value: calls.length,
+          value: metrics?.active_packages ?? '—',
           icon: 'event_repeat',
           tone: 'teal',
           detail: 'Recurring care calls',
         },
         {
           label: 'Regular carers',
-          value: new Set(calls.flatMap((c) => c.regularStaffIds)).size,
+          value: metrics?.regular_carers ?? '—',
           icon: 'person_check',
           tone: 'green',
           detail: 'Assigned to active packages',
         },
         {
           label: 'High-priority packages',
-          value: calls.filter((c) => c.priority === 'High').length,
+          value: metrics?.priority_packages ?? '—',
           icon: 'priority_high',
           tone: 'orange',
           detail: 'Active priority calls',
@@ -226,66 +265,64 @@ export class Rota {
       ];
     }
     if (this.section === 'publishing') {
-      const drafts = data.visits.filter((v) => v.state === 'Draft' && v.date >= this.today);
+      const metrics = this.service.publishing()?.metrics;
       return [
         {
           label: 'Draft visits',
-          value: drafts.length,
+          value: metrics?.drafts ?? '—',
           icon: 'edit_calendar',
           tone: 'blue',
-          detail: 'Today and future drafts',
+          detail: 'Today and future drafts in the selected period',
         },
         {
           label: 'Drafts needing carers',
-          value: drafts.filter(
-            (v) => v.requirementsRecorded === false || v.staffIds.length < v.carers,
-          ).length,
+          value: metrics?.unallocated ?? '—',
           icon: 'person_alert',
           tone: 'orange',
           detail: 'Missing required carer places',
         },
         {
           label: 'Drafts with conflicts',
-          value: drafts.filter((v) => this.service.conflicts(v).length > 0).length,
+          value: metrics?.conflicts ?? '—',
           icon: 'warning',
           tone: 'pink',
           detail: 'Review before publishing',
         },
         {
           label: 'Published visits',
-          value: data.visits.filter((v) => v.state === 'Published' && v.date >= this.today).length,
+          value: metrics?.published ?? '—',
           icon: 'event_available',
           tone: 'green',
-          detail: 'Today and future allocations',
+          detail: 'Today and future allocations in the selected period',
         },
       ];
     }
-    const history = data.visits.filter((v) => v.date <= this.today);
+    const metrics = this.service.historyMeta()?.metrics;
     return [
       {
         label: 'Visit history',
-        value: history.length,
+        value: metrics?.visits ?? '—',
         icon: 'history',
         tone: 'blue',
-        detail: 'Visits through today',
+        detail: 'Recorded visits in the selected period',
       },
       {
         label: 'Completed visits',
-        value: history.filter((v) => v.state !== 'Cancelled' && completedVisit(v)).length,
+        value: metrics?.completed ?? '—',
         icon: 'task_alt',
         tone: 'green',
         detail: 'Recorded attendance complete',
       },
       {
         label: 'Cancelled visits',
-        value: history.filter((v) => v.state === 'Cancelled').length,
+        value: metrics?.cancelled ?? '—',
         icon: 'event_busy',
         tone: 'orange',
         detail: 'Retained historical records',
       },
       {
         label: 'Audit events',
-        value: data.audit.length,
+        value: metrics?.audit ?? '—',
         icon: 'manage_search',
         tone: 'purple',
         detail: 'Recorded rota changes',
@@ -329,25 +366,77 @@ export class Rota {
       ),
   );
   protected readonly audit = computed(() =>
-    [...this.service.data().audit]
-      .reverse()
-      .filter((a) =>
-        `${a.action} ${a.detail} ${a.user}`.toLowerCase().includes(this.query().toLowerCase()),
-      ),
+    (this.section === 'history'
+      ? [...this.service.data().audit]
+      : [...this.service.data().audit].reverse()
+    ).filter((a) =>
+      `${a.action} ${a.detail} ${a.user}`.toLowerCase().includes(this.query().toLowerCase()),
+    ),
   );
   constructor() {
     effect(() => {
       this.service.scope();
-      const from = this.from() || addDays(this.to(), -30),
+      const from =
+          this.section === 'history' ? this.from() : this.from() || addDays(this.to(), -30),
         to = this.to() || addDays(from, 30);
-      if (this.service.can('view')) untracked(() => void this.loadPeriod(from, to));
+      const client = this.section === 'call-packages' ? this.packageClient() : '';
+      const history =
+        this.section === 'history'
+          ? {
+              start: from,
+              end: to,
+              client: this.clientFilter(),
+              staff: this.staffFilter(),
+              search: this.query(),
+              view: this.tab() === 'Audit' ? 'audit' : 'visits',
+            }
+          : undefined;
+      untracked(() => {
+        if (this.service.can('view')) {
+          if (this.section === 'call-packages') {
+            void this.service.loadPackages(client);
+            if (client) void this.service.records.detail(client);
+          } else void this.loadPeriod(from, to, history);
+        }
+      });
     });
     effect(() => {
       this.service.scope();
+      this.service.readable();
+      if (this.section === 'call-packages') this.packageClient();
       untracked(() => {
+        this.openGeneration++;
+        this.call = this.blankCall();
+        this.travel = null;
         this.modal.set('');
         this.selectedIds.set([]);
+        this.selectedVersions.clear();
         this.selected.set('');
+      });
+    });
+    effect(() => {
+      const loading = this.service.loading();
+      const rows = this.filtered();
+      const reviews = this.service.publishing()?.reviews;
+      if (this.section !== 'publishing' || loading) return;
+      untracked(() => {
+        const valid = new Map(
+          rows
+            .filter(
+              (v) =>
+                v.state === 'Draft' &&
+                reviews?.[v.id]?.ready === true &&
+                reviews[v.id].etag === v.etag,
+            )
+            .map((v) => [v.id, v.etag]),
+        );
+        this.selectedIds.update((ids) =>
+          ids.filter((id) => valid.has(id) && valid.get(id) === this.selectedVersions.get(id)),
+        );
+        for (const id of this.selectedVersions.keys())
+          if (!this.selectedIds().includes(id)) this.selectedVersions.delete(id);
+        if (this.selected() && !this.service.data().visits.some((v) => v.id === this.selected()))
+          this.selected.set(null);
       });
     });
     if (this.clientFiles) this.tab.set('Service users');
@@ -390,8 +479,28 @@ export class Rota {
     const timer = setInterval(() => this.clock.set(Date.now()), 60000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }
-  private async loadPeriod(from: string, to: string): Promise<void> {
-    if (await this.service.load(from, to)) this.travel = this.service.data().travelMinutes;
+  private async loadPeriod(
+    from: string,
+    to: string,
+    history?: Record<string, string>,
+  ): Promise<void> {
+    this.travel = null;
+    if (
+      history
+        ? await this.service.loadHistory(history)
+        : await this.service.load(from, to, '', false, undefined, this.section === 'publishing')
+    ) {
+      this.travel = this.service.raw()?.travelMinutes ?? null;
+      const id = this.route.snapshot.queryParamMap.get('visit');
+      if (['publishing', 'history'].includes(this.section || '') && id && !this.linkedReview) {
+        const row = this.service.data().visits.find((v) => v.id === id);
+        if (row) {
+          this.linkedReview = true;
+          this.selected.set(row.id);
+          this.clientFilter.set(row.clientId);
+        }
+      }
+    }
   }
   private blankClient(): RotaClient {
     return {
@@ -454,6 +563,13 @@ export class Rota {
       : [...(this.client.riskFlags ?? []), flag];
   }
   protected choose(view: string): void {
+    if (this.section === 'history' && ['History', 'Audit'].includes(view)) {
+      this.tab.set(view);
+      this.query.set('');
+      this.selected.set(null);
+      this.error.set('');
+      return;
+    }
     if (view === 'Live board') {
       void this.router.navigate(['/manage/ecm']);
       return;
@@ -562,6 +678,7 @@ export class Rota {
     if (v.state === 'Cancelled') return 'Cancelled';
     if (v.requirementsRecorded === false || v.staffIds.length < v.carers) return 'Unallocated';
     if (v.state === 'Draft') return 'Draft';
+    if (this.service.raw()?.attendance_available === false) return 'Attendance unavailable';
     if (completedVisit(v)) return 'Completed';
     if (v.attendance.length) return 'Part complete';
     const end = londonInstant(v.end > v.start ? v.date : addDays(v.date, 1), v.end);
@@ -584,9 +701,12 @@ export class Rota {
       timeZoneName: 'short',
     }).format(new Date(at));
   }
+  protected canClient(action: string): boolean {
+    return this.service.can('view') && this.service.access.can('care', 'records', action);
+  }
   protected async open(kind: string, id = ''): Promise<void> {
     if (this.service.saving()) return;
-    if (this.section && kind === 'allocation') {
+    if (this.section && kind === 'allocation' && this.service.can('create')) {
       void this.router.navigate(['/manage/rota/planner'], {
         queryParams: { plan: 'true', client: this.packageClient() || null },
       });
@@ -599,29 +719,45 @@ export class Rota {
       return;
     }
     if (
-      !this.service.can(
-        kind === 'attendance'
-          ? 'attendance'
-          : kind === 'cancel'
-            ? 'archive'
-            : (kind === 'call' || kind === 'client') && !id
-              ? 'create'
-              : kind === 'allocation' || kind === 'copy'
-                ? 'create'
-                : 'edit',
-      )
+      !(kind === 'client'
+        ? this.canClient(id ? 'edit' : 'create')
+        : this.service.can(
+            kind === 'attendance'
+              ? 'attendance'
+              : kind === 'cancel'
+                ? 'archive'
+                : (kind === 'call' || kind === 'client') && !id
+                  ? 'create'
+                  : kind === 'allocation' || kind === 'copy'
+                    ? 'create'
+                    : 'edit',
+          ))
     )
       return;
     const scope = this.service.scope();
+    const generation = ++this.openGeneration;
+    const client = this.packageClient();
+    let call: RotaCall | undefined;
     try {
       if (kind === 'client' && id) await this.service.records.detail(id);
-      if (kind === 'call' && id) this.call = await this.service.detailCall(id);
+      if (kind === 'call' && id) call = await this.service.detailCall(id);
       if (['cover', 'cancel', 'attendance'].includes(kind)) {
         const visit = await this.service.detailVisit(id || this.selected()!);
         this.selected.set(visit.id);
       }
-      if (scope !== this.service.scope()) return;
+      if (
+        scope !== this.service.scope() ||
+        generation !== this.openGeneration ||
+        client !== this.packageClient()
+      )
+        return;
+      if (call) {
+        if (client && call.clientId !== client)
+          throw Error('This call package belongs to another service user.');
+        this.call = call;
+      }
     } catch (e) {
+      if (scope !== this.service.scope() || generation !== this.openGeneration) return;
       this.error.set(e instanceof Error ? e.message : 'This record is unavailable.');
       return;
     }
@@ -639,7 +775,10 @@ export class Rota {
             },
           }
         : this.blankClient();
-    if (kind === 'call') this.call = id ? this.call : this.blankCall();
+    if (kind === 'call') {
+      this.call = id ? this.call : this.blankCall();
+      this.callWasActive = !!id && this.call.active;
+    }
     if (kind === 'allocation') {
       this.allocation = {
         clientId: this.packageClient(),
@@ -672,6 +811,7 @@ export class Rota {
   }
   protected close(): void {
     if (this.service.saving()) return;
+    this.openGeneration++;
     this.modal.set('');
     this.error.set('');
   }
@@ -773,33 +913,96 @@ export class Rota {
     this.error.set('');
     setTimeout(() => document.getElementById('rota-visit-title')?.focus(), 0);
   }
-  protected toggleVisit(id: string): void {
-    this.selectedIds.update((ids) =>
-      ids.includes(id) ? ids.filter((v) => v !== id) : [...ids, id],
+  protected selectable(v: RotaVisit): boolean {
+    return (
+      this.section !== 'history' &&
+      v.state === 'Draft' &&
+      this.service.can('publish') &&
+      !this.service.loading() &&
+      !this.service.saving() &&
+      (this.section !== 'publishing' ||
+        (this.service.publishing()?.reviews[v.id]?.ready === true &&
+          this.service.publishing()?.reviews[v.id]?.etag === v.etag))
     );
   }
+  protected toggleVisit(id: string): void {
+    const row = this.filtered().find((v) => v.id === id);
+    if (!row || !this.selectable(row)) return;
+    if (this.selectedIds().includes(id)) {
+      this.selectedVersions.delete(id);
+      this.selectedIds.update((ids) => ids.filter((value) => value !== id));
+    } else {
+      this.selectedVersions.set(id, row.etag!);
+      this.selectedIds.update((ids) => [...ids, id]);
+    }
+  }
   protected toggleAll(): void {
-    const ids = this.filtered()
-      .filter((v) => v.state === 'Draft')
-      .map((v) => v.id);
-    this.selectedIds.set(ids.every((id) => this.selectedIds().includes(id)) ? [] : ids);
+    const rows = this.filtered().filter((v) => this.selectable(v));
+    if (rows.every((v) => this.selectedIds().includes(v.id))) {
+      this.selectedIds.set([]);
+      this.selectedVersions.clear();
+    } else {
+      this.selectedIds.set(rows.map((v) => v.id));
+      this.selectedVersions.clear();
+      for (const row of rows) this.selectedVersions.set(row.id, row.etag!);
+    }
   }
   protected allSelected(): boolean {
-    const ids = this.filtered()
-      .filter((v) => v.state === 'Draft')
-      .map((v) => v.id);
-    return !!ids.length && ids.every((id) => this.selectedIds().includes(id));
+    const rows = this.filtered().filter((v) => this.selectable(v));
+    return !!rows.length && rows.every((v) => this.selectedIds().includes(v.id));
   }
   protected async publish(): Promise<void> {
-    const result = await this.service.publish(this.selectedIds());
+    if (
+      !this.service.can('publish') ||
+      this.service.loading() ||
+      this.service.saving() ||
+      !this.selectedIds().length
+    )
+      return;
+    const visible = this.filtered().filter(
+      (v) =>
+        this.selectedIds().includes(v.id) &&
+        this.selectable(v) &&
+        v.etag === this.selectedVersions.get(v.id),
+    );
+    if (visible.length !== this.selectedIds().length) {
+      this.error.set('The selected drafts changed. Review the selection before publishing.');
+      return;
+    }
+    const scope = this.service.scope();
+    const result = await this.service.publish(
+      this.selectedIds(),
+      Object.fromEntries(this.selectedVersions),
+    );
+    if (scope !== this.service.scope()) return;
     this.error.set(result ?? '');
     if (!result) {
       this.selectedIds.set([]);
+      this.selectedVersions.clear();
       this.toast.success('Rota published. Confirmed visits are saved.');
     }
   }
   protected async saveTravel(): Promise<void> {
+    if (
+      !this.service.can('edit') ||
+      this.service.saving() ||
+      this.service.loading() ||
+      this.service.raw()?.company_id !== this.service.records.companyId()
+    )
+      return;
+    if (
+      this.travel === null ||
+      !Number.isInteger(this.travel) ||
+      this.travel < 0 ||
+      this.travel > 120
+    ) {
+      this.error.set('Enter a travel buffer between 0 and 120 minutes.');
+      return;
+    }
+    const scope = this.service.scope();
     const result = await this.service.saveTravel(this.travel);
+    if (scope !== this.service.scope()) return;
+    this.travel = this.service.raw()?.travelMinutes ?? null;
     this.error.set(result ?? '');
     if (!result) this.toast.success('Planning rules saved.');
   }

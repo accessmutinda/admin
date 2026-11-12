@@ -66,7 +66,7 @@
                 <option value="Month">Month</option>
               </select>
             </label>
-            @if (service.can('manage')) {
+            @if (service.can('create')) {
               <button class="care-button primary" [disabled]="service.saving()" (click)="create()">
                 <span class="material-symbols-outlined" aria-hidden="true">add</span>Add Visit
               </button>
@@ -363,8 +363,10 @@
                             >
                           </td>
                           <td>
-                            @if (service.can('manage')) {
-                              <button class="care-button" (click)="edit(v)">View / Allocate</button>
+                            @if (service.can('view')) {
+                              <button class="care-button" (click)="edit(v)">
+                                {{ service.can('edit') ? 'View / Allocate' : 'View' }}
+                              </button>
                             }
                           </td>
                         </tr>
@@ -560,17 +562,22 @@
                     <button class="care-button" (click)="findAvailable()">
                       Find Available Staff
                     </button>
-                    @if (service.can('manage')) {
+                    @if (service.can('edit')) {
                       <button
                         class="care-button"
                         (click)="prepareAuto()"
-                        [disabled]="!unallocated().length"
+                        [disabled]="
+                          !unallocated().length ||
+                          service.loading() ||
+                          service.saving() ||
+                          preparing()
+                        "
                       >
                         Auto Allocate</button
                       ><button
                         class="care-button"
                         (click)="prepareBulk()"
-                        [disabled]="!selected().length"
+                        [disabled]="!selected().length || service.loading() || service.saving()"
                       >
                         Bulk Allocate
                       </button>
@@ -614,7 +621,7 @@
                   ><small>{{ v.callName }} · {{ v.address }}</small>
                 </div>
                 <button class="care-button" (click)="edit(v)">
-                  {{ service.can('manage') ? 'Assign Staff' : 'Review' }}
+                  {{ service.can('edit') ? 'Assign Staff' : 'Review' }}
                 </button>
                 <button
                   class="roster-visit-menu"
@@ -626,8 +633,24 @@
               </div>
             } @empty {
               <p class="planner-empty">
-                <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>All
-                matching visits have staff allocated.
+                <span class="material-symbols-outlined" aria-hidden="true">{{
+                  service.loading()
+                    ? 'hourglass_empty'
+                    : !service.raw()
+                      ? 'info'
+                      : visits().length
+                        ? 'check_circle'
+                        : 'event_busy'
+                }}</span
+                >{{
+                  service.loading()
+                    ? 'Loading visits…'
+                    : !service.raw()
+                      ? 'Visit allocation information is unavailable.'
+                      : visits().length
+                        ? 'All matching visits have staff allocated.'
+                        : 'No visits match the current filters.'
+                }}
               </p>
             }
           </section>
@@ -643,7 +666,7 @@
               <button
                 class="planner-issue"
                 (click)="reviewAlert(alert.kind)"
-                [disabled]="!alert.count"
+                [disabled]="!alert.count || alert.count === '—'"
               >
                 <span
                   class="material-symbols-outlined"
@@ -666,12 +689,14 @@
               </h2>
             </div>
             <div class="planner-quick-grid">
-              @if (service.can('manage')) {
+              @if (service.can('edit')) {
                 <button
                   class="planner-quick"
                   data-tone="blue"
                   (click)="prepareAuto()"
-                  [disabled]="!unallocated().length"
+                  [disabled]="
+                    !unallocated().length || service.loading() || service.saving() || preparing()
+                  "
                 >
                   <span class="material-symbols-outlined" aria-hidden="true">group_add</span
                   ><span><strong>Auto Allocate</strong><small>Suggest best matches</small></span>
@@ -993,10 +1018,12 @@
               @if (modal() !== 'view') {
                 <button
                   class="care-button primary"
-                  [disabled]="service.saving()"
                   type="submit"
-                  [disabled]="service.saving()"
-                  [disabled]="modal() === 'auto' && !plans.length"
+                  [disabled]="
+                    service.saving() ||
+                    preparing() ||
+                    ((modal() === 'auto' || modal() === 'bulk') && !plans.length)
+                  "
                 >
                   Confirm {{ modal() === 'visit' ? 'visit changes' : 'allocation' }}
                 </button>

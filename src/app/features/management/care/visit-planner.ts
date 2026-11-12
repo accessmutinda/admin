@@ -59,30 +59,65 @@ import { csv, validDate, weekDates } from './care.models';
 export class VisitPlanner {
   @ViewChild(ProfileVisits) private profileVisits?: ProfileVisits;
   protected readonly now = signal(Date.now());
+  protected readonly preparing = signal(false);
+  private suggestionGeneration = 0;
+  private editorGeneration = 0;
+  private pendingPlan: { scope: string; client: string } | null = null;
   constructor() {
     effect(() => {
-      this.service.scope();
+      const scope = this.service.scope();
       const id = this.clientId();
+      const readable = this.service.readable();
       untracked(() => {
+        if (this.pendingPlan && (this.pendingPlan.scope !== scope || !readable))
+          this.pendingPlan = null;
+        this.suggestionGeneration++;
+        this.editorGeneration++;
+        this.preparing.set(false);
+        this.plans = [];
+        this.unfilled = [];
         this.modal.set('');
         this.draft = null;
         this.selected.set([]);
-        if (id && this.service.can('view')) void this.service.records.detail(id);
+        if (id && readable) void this.service.records.detail(id);
       });
     });
     effect(() => {
       this.service.scope();
-      const id = this.clientId(),
-        start = addDays(this.start(), -7),
-        end = this.view() === 'Month' ? this.monthDays().at(-1)! : this.end();
-      if (!id && this.service.can('view')) untracked(() => void this.loadPeriod(start, end));
+      const id = this.clientId();
+      const start = this.overviewView ? this.start() : addDays(this.start(), -7);
+      const end =
+        this.view() === 'Month' && !this.overviewView ? this.monthDays().at(-1)! : this.end();
+      const filters = this.overviewView
+        ? {
+            client: this.clientFilter(),
+            staff: this.staffFilter(),
+            location: this.locationFilter(),
+            skill: this.skillFilter(),
+            gender: this.genderFilter(),
+            driver: this.driverFilter(),
+            availability: String(!!this.availabilityFilter()),
+            show_unallocated: String(this.showUnallocated()),
+            allocation: this.allocationFilter(),
+            search: this.query().trim(),
+            ...this.trainingFilters(),
+          }
+        : undefined;
+      if (this.overviewView) this.now();
+      if (!id)
+        untracked(() => {
+          if (this.service.can('view')) void this.loadPeriod(start, end, filters);
+        });
     });
     const timer = setInterval(() => this.now.set(Date.now()), 60000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }
   private async openLinkedVisit(id: string): Promise<void> {
+    const scope = this.service.scope();
+    const generation = ++this.editorGeneration;
     try {
       const row = await this.service.detailVisit(id);
+      if (scope !== this.service.scope() || generation !== this.editorGeneration) return;
       if (this.clientId() && row.clientId !== this.clientId())
         throw Error('This visit belongs to another service user.');
       this.anchor.set(row.date);
@@ -97,13 +132,37 @@ export class VisitPlanner {
       this.error.set(e instanceof Error ? e.message : 'This visit is unavailable.');
     }
   }
-  private async loadPeriod(start: string, end: string): Promise<void> {
-    if (!(await this.service.load(start, end))) return;
+  private async loadPeriod(
+    start: string,
+    end: string,
+    filters?: Record<string, string>,
+  ): Promise<void> {
+    if (filters) for (const key of Object.keys(filters)) if (!filters[key]) delete filters[key];
+    if (!(await this.service.load(start, end, '', false, filters))) return;
+    const visible = new Set(this.visits().map((v) => v.id));
+    this.selected.update((ids) => ids.filter((id) => visible.has(id)));
     const id = this.route.snapshot.queryParamMap.get('visit');
     if (id && !this.modal()) {
       const row = this.service.data().visits.find((v) => v.id === id);
       if (row) await this.edit(row);
     }
+    this.openPendingPlan();
+  }
+  private openPendingPlan(): void {
+    const pending = this.pendingPlan;
+    if (!pending) return;
+    if (
+      pending.scope !== this.service.scope() ||
+      !this.service.can('create') ||
+      pending.client !== (this.clientId() || this.clientFilter())
+    ) {
+      this.pendingPlan = null;
+      return;
+    }
+    if (!this.service.raw() || this.service.loading() || this.modal()) return;
+    this.pendingPlan = null;
+    this.create();
+    this.plan.clientId = pending.client;
   }
   ngOnInit(): void {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
@@ -122,9 +181,12 @@ export class VisitPlanner {
         this.view.set('List');
       }
       if (validDate(params.get('from') ?? '')) this.anchor.set(params.get('from')!);
-      if (params.get('plan') === 'true' && this.service.can('manage')) {
-        this.create();
-        this.plan.clientId = this.clientId() || params.get('client') || '';
+      if (params.get('plan') === 'true' && this.service.can('create')) {
+        this.pendingPlan = {
+          scope: this.service.scope(),
+          client: this.clientId() || params.get('client') || '',
+        };
+        queueMicrotask(() => this.openPendingPlan());
       }
       if (params.get('visit')) {
         void this.openLinkedVisit(params.get('visit')!);
@@ -152,6 +214,7 @@ export class VisitPlanner {
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
   });
+  protected readonly overviewView = this.route.snapshot.data['visitsOverview'] === true;
   protected readonly workspaceView = this.route.snapshot.data['visitsWorkspace'] === true;
   protected readonly clientId = computed(() => this.params().get('id') ?? '');
   protected readonly client = computed(() =>
@@ -286,7 +349,14 @@ export class VisitPlanner {
           .map((leave) => leave.personId ?? leave.person),
       ).size,
   );
-  protected readonly courses = COURSES;
+  protected get courses() {
+    return this.overviewView
+      ? (this.service.overview()?.training_options ?? []).map((course) => ({
+          id: course.id,
+          title: course.name,
+        }))
+      : COURSES;
+  }
   protected readonly start = computed(() => {
     const date = this.anchor();
     return this.view() === 'Month'
@@ -310,11 +380,14 @@ export class VisitPlanner {
       .filter(
         (p) =>
           (!this.staffFilter() || p.id === this.staffFilter()) &&
+          (!(this.overviewView && !this.service.access.can('people', 'records', 'read')) ||
+            !Object.values(this.trainingFilters()).some(Boolean)) &&
           Object.entries(this.trainingFilters()).every(
             ([course, required]) => !required || this.trained(p, course) === (required === 'Yes'),
           ) &&
           (!this.availabilityFilter() ||
-            this.days().some((date) => p.hr.availableDays?.includes(date) === true)) &&
+            p.hr.availableDays?.some((date) => date >= this.start() && date <= this.end()) ===
+              true) &&
           (!this.genderFilter() || p.hr?.personal.gender === this.genderFilter()) &&
           (!this.driverFilter() || p.hr?.personal.driver === (this.driverFilter() === 'Yes')) &&
           (!this.skillFilter() ||
@@ -327,8 +400,17 @@ export class VisitPlanner {
               (p.progress[this.skillFilter()] ?? 0) >= 100)),
       ),
   );
-  protected readonly visits = computed(() =>
-    this.service.can('view')
+  protected readonly visits = computed(() => {
+    if (this.overviewView) {
+      const ids = new Set(this.service.overview()?.matching_visit_ids ?? []);
+      return this.service.can('view')
+        ? this.service
+            .data()
+            .visits.filter((v) => ids.has(v.id))
+            .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))
+        : [];
+    }
+    return this.service.can('view')
       ? this.service
           .data()
           .visits.filter(
@@ -364,8 +446,8 @@ export class VisitPlanner {
                 .includes(this.query().trim().toLowerCase()),
           )
           .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))
-      : [],
-  );
+      : [];
+  });
   protected readonly unallocated = computed(() =>
     this.visits().filter((v) => !v.requirementsRecorded || v.staffIds.length < v.carers),
   );
@@ -375,56 +457,96 @@ export class VisitPlanner {
     ),
   );
   protected readonly doubleUps = computed(() => this.visits().filter((v) => v.carers === 2));
-  protected readonly rosterStats = computed(() => [
-    {
-      label: 'Total Weekly Visits',
-      value: this.visits().length,
-      icon: 'calendar_month',
-      tone: 'blue',
-      detail: this.weeklyChange(),
-      ring: -1,
-    },
-    {
-      label: 'Allocated Visits',
-      value: this.allocated().length,
-      icon: 'group',
-      tone: 'green',
-      detail: this.percentage(this.allocated().length) + '% of total',
-      ring: this.percentage(this.allocated().length),
-    },
-    {
-      label: 'Unallocated Visits',
-      value: this.unallocated().length,
-      icon: 'warning',
-      tone: 'red',
-      detail: this.percentage(this.unallocated().length) + '% of total',
-      ring: this.percentage(this.unallocated().length),
-    },
-    {
-      label: 'Double-up Visits',
-      value: this.doubleUps().length,
-      icon: 'groups',
-      tone: 'purple',
-      detail: this.percentage(this.doubleUps().length) + '% of visits',
-      ring: this.percentage(this.doubleUps().length),
-    },
-    {
-      label: 'Staff on Rota',
-      value: this.staffOnRota(),
-      icon: 'person',
-      tone: 'blue',
-      detail: this.staffOnLeave() + ' on annual leave',
-      ring: -1,
-    },
-    {
-      label: 'Late / At Risk Visits',
-      value: this.late().length,
-      icon: 'warning',
-      tone: 'red',
-      detail: this.percentage(this.late().length) + '% of visits',
-      ring: this.percentage(this.late().length),
-    },
-  ]);
+  protected readonly rosterStats = computed(() => {
+    if (this.overviewView) return this.overviewStats();
+    return [
+      {
+        label: 'Total Weekly Visits',
+        value: this.visits().length,
+        icon: 'calendar_month',
+        tone: 'blue',
+        detail: this.weeklyChange(),
+        ring: -1,
+      },
+      {
+        label: 'Allocated Visits',
+        value: this.allocated().length,
+        icon: 'group',
+        tone: 'green',
+        detail: this.percentage(this.allocated().length) + '% of total',
+        ring: this.percentage(this.allocated().length),
+      },
+      {
+        label: 'Unallocated Visits',
+        value: this.unallocated().length,
+        icon: 'warning',
+        tone: 'red',
+        detail: this.percentage(this.unallocated().length) + '% of total',
+        ring: this.percentage(this.unallocated().length),
+      },
+      {
+        label: 'Double-up Visits',
+        value: this.doubleUps().length,
+        icon: 'groups',
+        tone: 'purple',
+        detail: this.percentage(this.doubleUps().length) + '% of visits',
+        ring: this.percentage(this.doubleUps().length),
+      },
+      {
+        label: 'Staff on Rota',
+        value: this.staffOnRota(),
+        icon: 'person',
+        tone: 'blue',
+        detail: this.staffOnLeave() + ' on annual leave',
+        ring: -1,
+      },
+      {
+        label: 'Late / At Risk Visits',
+        value: this.late().length,
+        icon: 'warning',
+        tone: 'red',
+        detail: this.percentage(this.late().length) + '% of visits',
+        ring: this.percentage(this.late().length),
+      },
+    ];
+  });
+  private overviewStats() {
+    const data = this.service.overview();
+    const definitions = [
+      ['total', 'Total Weekly Visits', 'calendar_month', 'blue'],
+      ['allocated', 'Allocated Visits', 'group', 'green'],
+      ['unallocated', 'Unallocated Visits', 'warning', 'red'],
+      ['double_up', 'Double-up Visits', 'groups', 'purple'],
+      ['staff', 'Staff on Rota', 'person', 'blue'],
+      ['late', 'Late / At Risk Visits', 'warning', 'red'],
+    ];
+    return definitions.map(([key, label, icon, tone]) => {
+      const metric = data?.metrics.find((m) => m.key === key);
+      let detail =
+        metric?.percentage == null
+          ? 'Unavailable'
+          : metric.percentage + (key === 'double_up' ? '% of visits' : '% of total');
+      if (key === 'total')
+        detail = data
+          ? data.change_percentage == null
+            ? 'No visits in previous period'
+            : data.change_percentage + '% vs previous period'
+          : 'Unavailable';
+      if (key === 'staff')
+        detail =
+          data?.staff_on_leave == null
+            ? 'Annual leave unavailable'
+            : data.staff_on_leave + ' on annual leave';
+      return {
+        label,
+        icon,
+        tone,
+        value: metric?.value ?? '—',
+        detail,
+        ring: metric?.percentage ?? -1,
+      };
+    });
+  }
   protected readonly totalHours = computed(() =>
     this.visits().reduce((sum, v) => sum + this.duration(v) / 60, 0),
   );
@@ -468,48 +590,58 @@ export class VisitPlanner {
       names.length ? names : Object.keys(this.service.data().ecm?.styles ?? emptyEcm().styles)
     ).map((name) => ({ name, background: this.callBackground(name) }));
   });
-  protected readonly alerts = computed(() => [
-    {
-      kind: 'conflicts',
-      label: 'Rota conflicts',
-      count: this.conflicts().length,
-      description: 'Assignments requiring review',
-      icon: 'event_busy',
-      tone: 'red',
-    },
-    {
-      kind: 'late',
-      label: 'Late / at risk visits',
-      count: this.late().length,
-      description: 'Published visits at risk of delay',
-      icon: 'warning',
-      tone: 'red',
-    },
-    {
-      kind: 'skills',
-      label: 'Missing required skills',
-      count: this.conflicts().filter((row) => row.issue.includes('has not completed')).length,
-      description: 'Assigned carers requiring training',
-      icon: 'health_and_safety',
-      tone: 'red',
-    },
-    {
-      kind: 'travel',
-      label: 'Large travel gaps',
-      count: this.travelGaps().length,
-      description: 'Carers with gaps over 60 minutes',
-      icon: 'commute',
-      tone: 'amber',
-    },
-    {
-      kind: 'overtime',
-      label: 'Overtime risk',
-      count: this.overtime().length,
-      description: 'Staff exceeding contracted hours',
-      icon: 'schedule',
-      tone: 'amber',
-    },
-  ]);
+  protected readonly alerts = computed(() => {
+    const rows = [
+      {
+        kind: 'conflicts',
+        label: 'Rota conflicts',
+        count: this.overviewView ? 0 : this.conflicts().length,
+        description: 'Assignments requiring review',
+        icon: 'event_busy',
+        tone: 'red',
+      },
+      {
+        kind: 'late',
+        label: 'Late / at risk visits',
+        count: this.late().length,
+        description: 'Published visits at risk of delay',
+        icon: 'warning',
+        tone: 'red',
+      },
+      {
+        kind: 'skills',
+        label: 'Missing required skills',
+        count: this.overviewView
+          ? 0
+          : this.conflicts().filter((row) => row.issue.includes('has not completed')).length,
+        description: 'Assigned carers requiring training',
+        icon: 'health_and_safety',
+        tone: 'red',
+      },
+      {
+        kind: 'travel',
+        label: 'Large travel gaps',
+        count: this.overviewView ? 0 : this.travelGaps().length,
+        description: 'Carers with gaps over 60 minutes',
+        icon: 'commute',
+        tone: 'amber',
+      },
+      {
+        kind: 'overtime',
+        label: 'Overtime risk',
+        count: this.overviewView ? 0 : this.overtime().length,
+        description: 'Staff exceeding contracted hours',
+        icon: 'schedule',
+        tone: 'amber',
+      },
+    ];
+    return this.overviewView
+      ? rows.map((row) => ({
+          ...row,
+          count: this.service.overview()?.alerts.find((a) => a.kind === row.kind)?.count ?? '—',
+        }))
+      : rows;
+  });
   protected viewLabel(view: string): string {
     return (
       (
@@ -535,6 +667,12 @@ export class VisitPlanner {
     return ['#5badd7', '#6392d8', '#aa79dc', '#4bbd91', '#e9b54e', '#db84b3'][index % 6];
   }
   protected reviewAlert(kind: string): void {
+    if (this.overviewView) {
+      const id = this.service.overview()?.alerts.find((a) => a.kind === kind)?.visit_id;
+      const visit = this.visits().find((v) => v.id === id);
+      if (visit) this.edit(visit);
+      return;
+    }
     const visit =
       kind === 'skills'
         ? this.conflicts().find((row) => row.issue.includes('has not completed'))?.visit
@@ -652,8 +790,12 @@ export class VisitPlanner {
     );
   }
   protected status(v: RotaVisit): string {
+    if (this.overviewView)
+      return this.service.overview()?.visit_statuses?.[v.id] ?? 'Status unavailable';
     if (v.state === 'Cancelled') return 'Cancelled';
     if (v.requirementsRecorded === false) return 'Requirements not recorded';
+    if (v.state === 'Published' && this.service.raw()?.attendance_available === false)
+      return 'Attendance unavailable';
     return v.staffIds.length < v.carers
       ? 'Needs staff'
       : completedVisit(v)
@@ -712,7 +854,7 @@ export class VisitPlanner {
   }
   @HostListener('window:beforeunload', ['$event'])
   protected beforeUnload(event: BeforeUnloadEvent): void {
-    if (!!this.modal()) {
+    if (this.modal() && this.modal() !== 'view') {
       event.preventDefault();
       event.returnValue = '';
     }
@@ -729,11 +871,19 @@ export class VisitPlanner {
   protected close(): void {
     if (this.service.saving()) return;
     if (this.canLeave()) {
+      this.suggestionGeneration++;
+      this.editorGeneration++;
+      this.preparing.set(false);
       this.modal.set('');
       this.error.set('');
     }
   }
   private begin(kind: string): void {
+    this.editorGeneration++;
+    this.suggestionGeneration++;
+    this.preparing.set(false);
+    this.plans = [];
+    this.unfilled = [];
     this.workspace = this.store.companyId();
     this.sourceId = this.clientId();
     this.reason = '';
@@ -743,9 +893,10 @@ export class VisitPlanner {
   protected async edit(v: RotaVisit): Promise<void> {
     if (!this.service.can('view') || this.service.saving()) return;
     const scope = this.service.scope();
+    const generation = ++this.editorGeneration;
     try {
       const fresh = await this.service.detailVisit(v.id);
-      if (scope !== this.service.scope()) return;
+      if (scope !== this.service.scope() || generation !== this.editorGeneration) return;
       this.begin(
         this.service.can('edit') &&
           fresh.requirementsRecorded &&
@@ -758,7 +909,8 @@ export class VisitPlanner {
       this.original = JSON.stringify(fresh);
       void this.service.loadCandidates(fresh);
     } catch (e) {
-      this.error.set(e instanceof Error ? e.message : 'This visit is unavailable.');
+      if (scope === this.service.scope() && generation === this.editorGeneration)
+        this.error.set(e instanceof Error ? e.message : 'This visit is unavailable.');
     }
   }
   protected findAvailable(): void {
@@ -777,9 +929,10 @@ export class VisitPlanner {
   }
   protected create(): void {
     if (!this.service.can('create') || this.service.saving()) return;
+    this.pendingPlan = null;
     this.begin('plan');
     this.plan = {
-      clientId: this.clientId() || '',
+      clientId: this.clientId() || this.clientFilter() || '',
       callIds: [],
       from: this.start(),
       to: this.end(),
@@ -793,33 +946,64 @@ export class VisitPlanner {
       .calls.filter((c) => c.clientId === this.plan.clientId && c.active && c.scheduleRecorded);
   }
   protected async prepareAuto(): Promise<void> {
+    if (
+      !this.service.can('edit') ||
+      this.service.saving() ||
+      this.service.loading() ||
+      this.preparing()
+    )
+      return;
+    const ids = this.selected().length
+      ? this.visits()
+          .filter((v) => this.selected().includes(v.id))
+          .map((v) => v.id)
+      : this.unallocated().map((v) => v.id);
+    if (!ids.length) return;
     this.begin('auto');
+    const generation = this.suggestionGeneration;
+    const scope = this.service.scope();
+    this.preparing.set(true);
     try {
       const result = await this.service.suggest(
-        this.selected().length ? this.selected() : this.unallocated().map((v) => v.id),
+        ids,
         this.staff().map((p) => p.id),
       );
+      if (
+        generation !== this.suggestionGeneration ||
+        scope !== this.service.scope() ||
+        this.modal() !== 'auto'
+      )
+        return;
       this.plans = result.plans;
       this.unfilled = result.unfilled;
       this.reason = 'Assign available trained carers, preferring continuity and balanced hours.';
     } catch (e) {
-      this.error.set(e instanceof Error ? e.message : 'Suggestions are unavailable.');
+      if (generation === this.suggestionGeneration && scope === this.service.scope())
+        this.error.set(e instanceof Error ? e.message : 'Suggestions are unavailable.');
+    } finally {
+      if (generation === this.suggestionGeneration) this.preparing.set(false);
     }
   }
   protected prepareBulk(): void {
+    if (!this.service.can('edit') || this.service.saving() || this.service.loading()) return;
+    const rows = this.visits().filter((v) => this.selected().includes(v.id));
+    if (!rows.length) return;
     this.begin('bulk');
     this.bulkStaff = [];
-    this.plans = this.service
-      .data()
-      .visits.filter((v) => this.selected().includes(v.id))
-      .map((v) => ({ id: v.id, staffIds: [], original: JSON.stringify(v) }));
+    this.plans = rows.map((v) => ({ id: v.id, staffIds: [], original: JSON.stringify(v) }));
   }
   protected previewName(id: string): string {
     const v = this.service.data().visits.find((v) => v.id === id);
     return v ? `${v.date} ${v.start} · ${v.clientName} · ${v.callName}` : id;
   }
   protected async save(): Promise<void> {
-    if (this.service.saving()) return;
+    if (this.service.saving() || this.preparing()) return;
+    if (
+      !this.service.can(this.modal() === 'plan' ? 'create' : 'edit') ||
+      !['plan', 'visit', 'bulk', 'auto'].includes(this.modal())
+    )
+      return;
+    if (['auto', 'bulk'].includes(this.modal()) && !this.plans.length) return;
     const scope = this.service.scope();
     if (this.sourceId !== this.clientId()) {
       this.error.set('Selected service user changed. Reopen the planner.');

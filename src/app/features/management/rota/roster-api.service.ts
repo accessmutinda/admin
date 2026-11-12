@@ -13,12 +13,18 @@ import {
 } from './rota.models';
 import type {
   RosterWorkspace,
+  RosterPublishingRead,
+  RosterPackagePage,
+  RosterOverviewRead,
   RosterVisitRead,
   RosterCallRead,
   RosterCandidates,
   RosterMutation,
   RosterSuggestionRead,
   RosterInputs,
+  RosterHistoryPage,
+  RosterHistoryAuditPage,
+  RosterHistoryEvent,
 } from './roster.generated';
 
 @Injectable()
@@ -28,12 +34,25 @@ export class RosterApi {
   readonly scope = this.records.scope;
   readonly access = this.records.access;
   readonly raw = signal<RosterWorkspace | null>(null);
+  readonly overview = signal<RosterOverviewRead | null>(null);
+  readonly publishing = signal<RosterPublishingRead | null>(null);
+  readonly packageMeta = signal<RosterPackagePage['meta'] | null>(null);
+  readonly historyMeta = signal<RosterHistoryPage['meta'] | null>(null);
   readonly error = signal('');
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly denied = signal(false);
+  readonly readable = computed(() => this.can('view'));
   readonly candidateRows = signal<RosterCandidates['candidates']>([]);
-  private period = { start: londonDate(), end: addDays(londonDate(), 30), client: '' };
+  private period: {
+    start: string;
+    end: string;
+    client: string;
+    overview?: Record<string, string>;
+    packages?: string;
+    publishing?: boolean;
+    history?: Record<string, string>;
+  } = { start: londonDate(), end: addDays(londonDate(), 30), client: '' };
   private generation = 0;
   private candidateGeneration = 0;
   private destroyed = false;
@@ -98,6 +117,10 @@ export class RosterApi {
         this.generation++;
         this.candidateGeneration++;
         this.raw.set(null);
+        this.overview.set(null);
+        this.publishing.set(null);
+        this.packageMeta.set(null);
+        this.historyMeta.set(null);
         this.candidateRows.set([]);
         this.error.set('');
         this.intents.clear();
@@ -110,6 +133,10 @@ export class RosterApi {
       this.generation++;
       this.candidateGeneration++;
       this.raw.set(null);
+      this.overview.set(null);
+      this.publishing.set(null);
+      this.packageMeta.set(null);
+      this.historyMeta.set(null);
     });
   }
   can(action: string): boolean {
@@ -143,6 +170,10 @@ export class RosterApi {
         [401, 403].includes((error as { status?: number })?.status ?? 0)
       ) {
         this.raw.set(null);
+        this.overview.set(null);
+        this.publishing.set(null);
+        this.packageMeta.set(null);
+        this.historyMeta.set(null);
         this.candidateRows.set([]);
         this.denied.set(true);
         this.error.set(error instanceof Error ? error.message : 'Roster access is unavailable.');
@@ -191,18 +222,44 @@ export class RosterApi {
       toleranceMinutes: c.toleranceMinutes ?? undefined,
     };
   }
-  async load(start: string, end: string, client = '', exporting = false): Promise<boolean> {
-    this.period = { start, end, client };
+  async load(
+    start: string,
+    end: string,
+    client = '',
+    exporting = false,
+    overview?: Record<string, string>,
+    publishing = false,
+  ): Promise<boolean> {
+    if (!exporting) this.period = { start, end, client, overview, publishing };
     const scope = this.scope(),
       generation = ++this.generation;
     this.loading.set(true);
     this.error.set('');
-    if (!exporting) this.raw.set(null);
+    if (!exporting) {
+      this.raw.set(null);
+      this.overview.set(null);
+      this.publishing.set(null);
+      this.packageMeta.set(null);
+      this.historyMeta.set(null);
+    }
     try {
-      const query = new URLSearchParams({ start, end });
+      const query = new URLSearchParams({ start, end, ...overview });
       const value = this.check(
         await this.request<RosterWorkspace>(
-          this.root() + (exporting ? '/export' : '') + '?' + query,
+          this.root() +
+            (publishing
+              ? exporting
+                ? '/publishing/export'
+                : '/publishing'
+              : overview
+                ? exporting
+                  ? '/overview/export'
+                  : '/overview'
+                : exporting
+                  ? '/export'
+                  : '') +
+            '?' +
+            query,
         ),
         scope,
       );
@@ -215,10 +272,74 @@ export class RosterApi {
       )
         throw Error('The schedule does not match this service user. Reopen Visits & Allocation.');
       this.raw.set(value);
+      this.overview.set(overview ? (value as RosterOverviewRead) : null);
+      this.publishing.set(publishing ? (value as RosterPublishingRead) : null);
       return true;
     } catch (e) {
       if (this.current(scope) && generation === this.generation) {
         this.raw.set(null);
+        this.overview.set(null);
+        this.publishing.set(null);
+        this.packageMeta.set(null);
+        this.error.set(this.message(e));
+      }
+      return false;
+    } finally {
+      if (generation === this.generation) this.loading.set(false);
+    }
+  }
+  async loadPackages(client = ''): Promise<boolean> {
+    const scope = this.scope(),
+      generation = ++this.generation;
+    this.period = { start: londonDate(), end: londonDate(), client: '', packages: client };
+    this.raw.set(null);
+    this.overview.set(null);
+    this.publishing.set(null);
+    this.packageMeta.set(null);
+    this.historyMeta.set(null);
+    this.error.set('');
+    this.loading.set(true);
+    try {
+      const root = this.root(true) + '/call-packages/workspace';
+      const query = new URLSearchParams({ page_size: '100' });
+      if (client) query.set('client', client);
+      let page = this.check(await this.request<RosterPackagePage>(root + '?' + query), scope);
+      const context = page.context,
+        meta = page.meta,
+        count = page.count;
+      if (!context || context.company_id !== this.records.companyId())
+        throw Error('Call package sources are unavailable. Reload the register.');
+      if (client && count > 2000)
+        throw Error('Select a service user with at most 2000 call packages.');
+      const calls = client ? [...page.results] : [];
+      const visited = new Set<string>();
+      while (client && page.next) {
+        if (generation !== this.generation) return false;
+        if (!page.next.startsWith(root + '?') || visited.has(page.next))
+          throw Error('Call package pagination is invalid. Reload the register.');
+        visited.add(page.next);
+        if (calls.length > 2000)
+          throw Error('Select a service user with at most 2000 call packages.');
+        page = this.check(await this.request<RosterPackagePage>(page.next), scope);
+        if (page.meta.revision !== meta.revision || page.count !== count)
+          throw Error('Call packages changed. Reload the register before continuing.');
+        calls.push(...page.results);
+      }
+      if (generation !== this.generation) return false;
+      if (
+        client &&
+        (calls.length !== count ||
+          new Set(calls.map((c) => c.id)).size !== count ||
+          calls.some((c) => c.clientId !== client || c.company_id !== this.records.companyId()))
+      )
+        throw Error('The call packages do not match this service user. Reload the register.');
+      this.raw.set({ ...context, calls });
+      this.packageMeta.set(meta);
+      return true;
+    } catch (e) {
+      if (this.current(scope) && generation === this.generation) {
+        this.raw.set(null);
+        this.packageMeta.set(null);
         this.error.set(this.message(e));
       }
       return false;
@@ -228,7 +349,97 @@ export class RosterApi {
   }
   async refresh(exporting = false): Promise<boolean> {
     const p = this.period;
-    return this.load(p.start, p.end, p.client, exporting);
+    if (p.history) return this.loadHistory(p.history, exporting);
+    if (p.packages !== undefined) {
+      if (exporting) {
+        this.error.set('Package exports are unavailable from this view.');
+        return false;
+      }
+      return this.loadPackages(p.packages);
+    }
+    return this.load(p.start, p.end, p.client, exporting, p.overview, p.publishing);
+  }
+  async loadHistory(filters: Record<string, string>, exporting = false): Promise<boolean> {
+    const scope = this.scope(),
+      generation = ++this.generation;
+    if (!exporting)
+      this.period = {
+        start: filters['start'] || '',
+        end: filters['end'] || '',
+        client: '',
+        history: { ...filters },
+      };
+    this.raw.set(null);
+    this.overview.set(null);
+    this.publishing.set(null);
+    this.packageMeta.set(null);
+    this.historyMeta.set(null);
+    this.error.set('');
+    this.loading.set(true);
+    try {
+      const audit = filters['view'] === 'audit';
+      if (audit && exporting) throw Error('Use visit history to export recorded visits.');
+      const root =
+        this.root(true) + (exporting ? '/history/export' : audit ? '/history/audit' : '/history');
+      const query = new URLSearchParams({ page_size: '100' });
+      for (const [key, value] of Object.entries(filters))
+        if (value && key !== 'view') query.set(key, value);
+      let page = this.check(
+        await this.request<RosterHistoryPage | RosterHistoryAuditPage>(root + '?' + query),
+        scope,
+      );
+      const context = page.context,
+        meta = page.meta,
+        count = page.count;
+      if (!context || context.company_id !== this.records.companyId())
+        throw Error('History sources are unavailable. Reload the register.');
+      if (count > 5000) throw Error('Narrow the history dates to at most 5000 records.');
+      const results: (RosterVisitRead | RosterHistoryEvent)[] = [...page.results];
+      const visited = new Set<string>();
+      while (page.next) {
+        if (generation !== this.generation) return false;
+        if (!page.next.startsWith(root + '?') || visited.has(page.next))
+          throw Error('History pagination is invalid. Reload the register.');
+        visited.add(page.next);
+        if (results.length >= count)
+          throw Error('History pagination is incomplete. Reload the register.');
+        page = this.check(
+          await this.request<RosterHistoryPage | RosterHistoryAuditPage>(page.next),
+          scope,
+        );
+        if (
+          page.meta.revision !== meta.revision ||
+          page.meta.as_of !== meta.as_of ||
+          page.count !== count
+        )
+          throw Error('History changed. Reload the register before continuing.');
+        results.push(...page.results);
+      }
+      if (generation !== this.generation) return false;
+      if (results.length !== count || new Set(results.map((row) => row.id)).size !== count)
+        throw Error('History pagination is incomplete. Reload the register.');
+      if (
+        !audit &&
+        results.some((row) => (row as RosterVisitRead).company_id !== this.records.companyId())
+      )
+        throw Error('History does not match this company. Reload the register.');
+      this.raw.set({
+        ...context,
+        visits: audit ? [] : (results as RosterVisitRead[]),
+        audit: audit ? (results as RosterHistoryEvent[]) : [],
+      });
+      this.historyMeta.set(meta);
+      return true;
+    } catch (error) {
+      if (this.current(scope) && generation === this.generation) {
+        this.raw.set(null);
+        this.historyMeta.set(null);
+        this.error.set(this.message(error));
+      }
+      return false;
+    } finally {
+      if (generation === this.generation) this.loading.set(false);
+    }
   }
   async detailVisit(id: string): Promise<RotaVisit> {
     const scope = this.scope();
@@ -270,10 +481,12 @@ export class RosterApi {
     method: 'POST' | 'PATCH' | 'DELETE' = 'POST',
     etag?: string,
     companyWide = false,
+    reloadOnConflict = false,
   ): Promise<string | null> {
     if (this.saving()) return 'A roster change is already in progress.';
     const scope = this.scope();
     const period = { ...this.period };
+    const intent = scope + path + JSON.stringify(body);
     this.saving.set(true);
     try {
       const headers: Record<string, string> = { 'Idempotency-Key': this.key(path, body) };
@@ -288,9 +501,17 @@ export class RosterApi {
             'The change was saved, but the schedule could not be reloaded. Refresh the page before editing again.',
           );
       if (!this.current(scope)) throw Error('The workspace changed. Reopen the roster.');
+      this.intents.delete(intent);
       return null;
     } catch (e) {
-      return this.message(e);
+      const message = this.message(e);
+      if (
+        reloadOnConflict &&
+        this.current(scope) &&
+        [409, 412].includes((e as { status?: number })?.status ?? 0)
+      )
+        await this.refresh();
+      return message;
     } finally {
       this.saving.set(false);
     }
@@ -354,9 +575,9 @@ export class RosterApi {
     });
   }
   async saveCall(c: RotaCall): Promise<string | null> {
-    const original = this.raw()?.calls.find((row) => row.id === c.id);
+    const existing = !!c.etag;
     return this.mutate(
-      '/call-packages' + (original ? '/' + c.id : ''),
+      '/call-packages' + (existing ? '/' + c.id : ''),
       {
         ...this.inputs(c),
         clientId: c.clientId,
@@ -369,15 +590,21 @@ export class RosterApi {
         active: c.active,
         reason: 'Save call package configuration',
       },
-      original ? 'PATCH' : 'POST',
+      existing ? 'PATCH' : 'POST',
       c.etag,
     );
   }
   async saveClient(c: RotaClient): Promise<string | null> {
     try {
       const original = this.records.selected()?.id === c.id ? this.records.selected() : null;
-      await this.records.save(c, original, this.scope());
-      await this.refresh();
+      const scope = this.scope();
+      const saved = await this.records.save(c, original, scope);
+      if (!this.current(scope)) throw Error('The workspace changed. Reopen the register.');
+      c.id = saved.id;
+      if (!(await this.refresh()))
+        throw Error(
+          'The service user was saved, but call packages could not be reloaded. Reload the register before continuing.',
+        );
       return null;
     } catch (e) {
       return this.message(e);
@@ -413,11 +640,21 @@ export class RosterApi {
       reason,
     });
   }
-  async publish(ids: string[]): Promise<string | null> {
-    return this.mutate('/publish', {
-      visits: ids.map((id) => ({ id, etag: this.data().visits.find((v) => v.id === id)?.etag })),
-      reason: 'Publish reviewed visit allocations',
-    });
+  async publish(ids: string[], versions?: Record<string, string>): Promise<string | null> {
+    return this.mutate(
+      '/publish',
+      {
+        visits: ids.map((id) => ({
+          id,
+          etag: versions ? versions[id] : this.data().visits.find((v) => v.id === id)?.etag,
+        })),
+        reason: 'Publish reviewed visit allocations',
+      },
+      'POST',
+      undefined,
+      false,
+      true,
+    );
   }
   async cancel(id: string, reason: string): Promise<string | null> {
     return this.mutate(
@@ -441,6 +678,7 @@ export class RosterApi {
       'PATCH',
       this.raw()?.settings_etag || undefined,
       true,
+      true,
     );
   }
   async recordAttendance(
@@ -462,6 +700,12 @@ export class RosterApi {
   }
   conflicts(v: RotaVisit, _all?: RotaVisit[]): string[] {
     if (v.state === 'Cancelled') return [];
+    if (this.publishing()) {
+      const review = this.publishing()!.reviews[v.id];
+      return review?.etag === v.etag
+        ? review.issues
+        : ['Publishing review is unavailable or stale. Reload before continuing.'];
+    }
     return [
       ...(!v.requirementsRecorded ? ['Carer requirements have not been recorded.'] : []),
       ...(v.carers > v.staffIds.length ? ['Carer allocation is incomplete.'] : []),

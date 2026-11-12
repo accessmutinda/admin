@@ -21,7 +21,7 @@ export const VISITS_ROUTES: Routes = [
   {
     path: 'overview',
     title: 'Visits & Rostering · CareVerity',
-    data: { module: 'Care delivery', visitsWorkspace: true },
+    data: { module: 'Care delivery', visitsWorkspace: true, visitsOverview: true },
     canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
     loadComponent: () => import('../care/visit-planner').then((m) => m.VisitPlanner),
   },

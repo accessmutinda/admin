@@ -2,6 +2,15 @@
 @if (service.error()) {
   <p class="co-error" role="alert">{{ service.error() }}</p>
 }
+@if (
+  (section === 'call-packages' || section === 'publishing' || section === 'history') &&
+  service.raw()?.unavailable_sources?.length
+) {
+  <p role="status">{{ service.raw()?.unavailable_sources?.join(' ') }}</p>
+}
+@if (section === 'call-packages' && service.records.error()) {
+  <p class="co-error" role="alert">{{ service.records.error() }}</p>
+}
 @if (service.loading()) {
   <p role="status">Loading visits and allocations…</p>
 }
@@ -65,7 +74,7 @@
             Audit log
           </button>
         }
-        @if (service.can('manage')) {
+        @if (service.can('create')) {
           <button class="button primary" (click)="open('allocation')">
             <span class="material-symbols-outlined" aria-hidden="true">add</span>Plan visits
           </button>
@@ -308,10 +317,10 @@
               ><span class="badge" [class.success]="c.active">{{
                 c.active ? c.priority + ' priority' : 'Inactive'
               }}</span>
-              @if (service.can('manage')) {
+              @if (canClient('edit')) {
                 <button
                   class="icon-button"
-                  [disabled]="!service.can('edit')"
+                  [disabled]="!canClient('edit')"
                   aria-label="Edit {{ c.name }}"
                   (click)="open('client', c.id)"
                 >
@@ -322,7 +331,15 @@
           } @empty {
             <div class="rota-empty">
               <span class="material-symbols-outlined" aria-hidden="true">person_add</span
-              ><strong>Add your first service user</strong>
+              ><strong>{{
+                service.loading()
+                  ? 'Loading service users…'
+                  : service.error()
+                    ? 'Service users unavailable'
+                    : query()
+                      ? 'No matching service users'
+                      : 'Add your first service user'
+              }}</strong>
               <p>Create their care calls before allocating staff.</p>
             </div>
           }
@@ -409,7 +426,15 @@
           } @empty {
             <div class="rota-empty">
               <span class="material-symbols-outlined" aria-hidden="true">schedule</span
-              ><strong>{{ packageClient() ? 'No calls yet' : 'Choose a service user' }}</strong>
+              ><strong>{{
+                service.loading()
+                  ? 'Loading call packages…'
+                  : service.error()
+                    ? 'Call packages unavailable'
+                    : packageClient()
+                      ? 'No calls yet'
+                      : 'Choose a service user'
+              }}</strong>
               <p>Set times, weekdays, training requirements and the number of carers.</p>
             </div>
           }
@@ -445,7 +470,19 @@
             </div>
           </li>
         } @empty {
-          <li><p>No saved rota changes yet.</p></li>
+          <li>
+            <p>
+              {{
+                service.loading()
+                  ? 'Loading saved rota changes…'
+                  : service.error()
+                    ? 'Audit log unavailable.'
+                    : query()
+                      ? 'No matching rota changes.'
+                      : 'No saved rota changes in this period.'
+              }}
+            </p>
+          </li>
         }
       </ol>
     </section>
@@ -466,7 +503,7 @@
                 (ngModelChange)="setMonth($event)"
             /></label>
           }
-          @if (service.can('manage')) {
+          @if (service.can('create')) {
             <button class="button" (click)="open('copy')">
               <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>Copy
               week</button
@@ -517,14 +554,20 @@
             [(ngModel)]="travel"
             min="0"
             max="120"
-            [disabled]="!service.can('manage')"
+            [disabled]="!service.can('edit') || service.saving() || service.loading()"
         /></label>
         <p>
           Minimum time between calls for different service users. This is a planning buffer, not a
           journey-time estimate.
         </p>
-        @if (service.can('manage')) {
-          <button class="button" (click)="saveTravel()">Save rules</button>
+        @if (service.can('edit')) {
+          <button
+            class="button"
+            [disabled]="service.loading() || service.saving()"
+            (click)="saveTravel()"
+          >
+            Save rules
+          </button>
         }
       </div>
     </section>
@@ -561,7 +604,11 @@
             </button>
           }
           @if (service.can('publish') && (tab() === 'Allocations' || tab() === 'Unallocated')) {
-            <button class="button primary" [disabled]="!selectedIds().length" (click)="publish()">
+            <button
+              class="button primary"
+              [disabled]="!selectedIds().length || service.loading() || service.saving()"
+              (click)="publish()"
+            >
               Publish {{ selectedIds().length ? selectedIds().length + ' selected' : 'selected' }}
             </button>
           }
@@ -665,12 +712,13 @@
               @for (v of filtered(); track v.id) {
                 <tr>
                   <td data-label="Select">
-                    @if (v.state === 'Draft' && service.can('publish')) {
+                    @if (section !== 'history' && v.state === 'Draft' && service.can('publish')) {
                       <label class="rota-check"
                         ><input
                           type="checkbox"
                           aria-label="Select {{ v.clientName }} {{ v.date }} {{ v.start }}"
                           [checked]="selectedIds().includes(v.id)"
+                          [disabled]="!selectable(v)"
                           (change)="toggleVisit(v.id)"
                       /></label>
                     }
@@ -713,7 +761,7 @@
                   <td data-label="Conflict" class="rota-warning">
                     {{
                       service.conflicts(v).length && v.state !== 'Cancelled'
-                        ? 'Availability conflict'
+                        ? 'Review required'
                         : '—'
                     }}
                   </td>
@@ -1119,8 +1167,12 @@
                 [(ngModel)]="call.tasks"
               ></textarea></label
             ><label class="check-label full-width"
-              ><input type="checkbox" name="active" [(ngModel)]="call.active" />Active call
-              package</label
+              ><input
+                type="checkbox"
+                name="active"
+                [(ngModel)]="call.active"
+                [disabled]="callWasActive && !service.can('archive')"
+              />Active call package</label
             >
           } @else if (modal() === 'allocation') {
             @if (step() === 1) {
