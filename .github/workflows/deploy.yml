@@ -2,19 +2,19 @@ name: Deploy admin
 
 on:
   push:
-    branches: [main]
+    branches: [main, development]
     paths-ignore:
       - "**/*.md"
       - ".vscode/**"
   workflow_dispatch:
 
 concurrency:
-  group: deploy-admin
+  group: deploy-admin-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Build and publish to /var/www/admin
+    name: Publish ${{ github.ref_name == 'main' && 'production' || 'live' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,6 +31,17 @@ jobs:
 
       - name: Production build
         run: npm run build -- --configuration production
+
+      - name: Choose the site
+        id: site
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "path=/var/www/admin/" >> "$GITHUB_OUTPUT"
+            echo "url=https://admin.neuraledge.co.ke" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=/var/www/live/" >> "$GITHUB_OUTPUT"
+            echo "url=https://live.neuraledge.co.ke" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Configure SSH
         env:
@@ -53,6 +64,8 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_PATH: ${{ steps.site.outputs.path }}
+          DEPLOY_URL: ${{ steps.site.outputs.url }}
         run: |
           if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ]; then
             echo "Set DEPLOY_HOST and DEPLOY_USER in repository secrets."
@@ -60,7 +73,8 @@ jobs:
           fi
           test -f dist/admin/browser/index.html
           port="${DEPLOY_PORT:-22}"
+          echo "Publishing to ${DEPLOY_URL}"
           rsync -rlz --delete --omit-dir-times --chmod=D755,F644 \
             -e "ssh -i $HOME/.ssh/deploy_key -p ${port} -o IdentitiesOnly=yes" \
             dist/admin/browser/ \
-            "${DEPLOY_USER}@${DEPLOY_HOST}:/var/www/admin/"
+            "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}"
