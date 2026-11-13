@@ -1,6 +1,38 @@
 import { CompanyAccessService } from '../../../../core/access/company-access.service';
 import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
 import { CanActivateFn, Router, Routes } from '@angular/router';
+import { ACADEMY_LEARNER_PROVIDERS } from './academy-learner.providers';
+const staffLearningLoaded: CanActivateFn = async (route) => {
+  const context = inject(EnvironmentInjector);
+  const module = await import('./academy-my-learning-api.service');
+  const api = runInInjectionContext(context, () => inject(module.AcademyMyLearningApi));
+  await api.load(
+    ['courses', 'course', 'lesson'].includes(route.data['view']),
+    ['assessments', 'assessment', 'result'].includes(route.data['view']),
+    ['history', 'certificates', 'certificate'].includes(route.data['view']),
+    route.data['view'] === 'refreshers',
+  );
+  if (api.snapshot()) {
+    try {
+      const results = await import('./academy-results-api.service');
+      const records = runInInjectionContext(context, () => inject(results.AcademyResultsApi));
+      const attempt = route.paramMap.get('attemptId');
+      if (attempt) await records.detail(attempt, true);
+      const certificate = route.paramMap.get('certificateId');
+      if (certificate) {
+        const source = await import('./academy-certificates-api.service');
+        await runInInjectionContext(context, () => inject(source.AcademyCertificatesApi)).detail(
+          certificate,
+          true,
+        );
+      }
+    } catch (error) {
+      api.fail(error);
+    }
+  }
+  return true;
+};
+
 const access =
   (scope: 'manage' | 'learner' | 'evidence'): CanActivateFn =>
   () => {
@@ -114,22 +146,37 @@ const governanceLoaded: CanActivateFn = async () => {
   return true;
 };
 const dashboardLoaded: CanActivateFn = async () => {
-  const context=inject(EnvironmentInjector), router=inject(Router);
-  const module=await import('./academy-dashboard-api.service');
-  const api=runInInjectionContext(context,()=>inject(module.AcademyDashboardApi));
+  const context = inject(EnvironmentInjector),
+    router = inject(Router);
+  const module = await import('./academy-dashboard-api.service');
+  const api = runInInjectionContext(context, () => inject(module.AcademyDashboardApi));
   if (!api.available()) return router.createUrlTree(['/access-denied']);
-  try {await api.load(30,true);} catch { /* The dashboard shows its source error. */ }
+  try {
+    await api.load(30, true);
+  } catch {
+    /* The dashboard shows its source error. */
+  }
   return true;
 };
 const settingsLoaded: CanActivateFn = async () => {
-  const context = inject(EnvironmentInjector), router = inject(Router);
+  const context = inject(EnvironmentInjector),
+    router = inject(Router);
   const module = await import('./academy-settings-api.service');
   const api = runInInjectionContext(context, () => inject(module.AcademySettingsApi));
   if (!api.available()) return router.createUrlTree(['/access-denied']);
-  try { await api.load(true); } catch { /* The page shows the source error. */ }
+  try {
+    await api.load(true);
+  } catch {
+    /* The page shows the source error. */
+  }
   const media = await import('./academy-api.service');
   const assets = runInInjectionContext(context, () => inject(media.AcademyApi));
-  if (assets.available()) try {await assets.load();} catch { /* Media remains unavailable. */ }
+  if (assets.available())
+    try {
+      await assets.load();
+    } catch {
+      /* Media remains unavailable. */
+    }
   return true;
 };
 const requirementsLoaded: CanActivateFn = async () => {
@@ -376,7 +423,8 @@ export const ACADEMY_STAFF_ROUTES: Routes = [
   ].map((view) => ({
     path: 'training/' + view,
     data: { view },
-    canActivate: [learner, previewLoaded, learningLoaded],
+    providers: ACADEMY_LEARNER_PROVIDERS,
+    canActivate: [staffLearningLoaded],
     canDeactivate: [leave],
     title: 'My CareVerity Academy · CareVerity',
     loadComponent: () => import('./academy-learner').then((m) => m.AcademyLearner),
@@ -384,7 +432,8 @@ export const ACADEMY_STAFF_ROUTES: Routes = [
   {
     path: 'training/courses/:courseId',
     data: { view: 'course' },
-    canActivate: [learner, previewLoaded, learningLoaded],
+    providers: ACADEMY_LEARNER_PROVIDERS,
+    canActivate: [staffLearningLoaded],
     canDeactivate: [leave],
     title: 'Learning course · CareVerity',
     loadComponent: () => import('./academy-learner').then((m) => m.AcademyLearner),
@@ -392,7 +441,8 @@ export const ACADEMY_STAFF_ROUTES: Routes = [
   {
     path: 'training/courses/:courseId/lessons/:lessonId',
     data: { view: 'lesson' },
-    canActivate: [learner, previewLoaded, learningLoaded],
+    providers: ACADEMY_LEARNER_PROVIDERS,
+    canActivate: [staffLearningLoaded],
     canDeactivate: [leave],
     title: 'Course lesson · CareVerity',
     loadComponent: () => import('./academy-learner').then((m) => m.AcademyLearner),
@@ -400,7 +450,8 @@ export const ACADEMY_STAFF_ROUTES: Routes = [
   ...['assessment', 'results'].map((view) => ({
     path: 'training/' + view + '/:attemptId',
     data: { view: view === 'results' ? 'result' : 'assessment' },
-    canActivate: [learner, previewLoaded, learningLoaded],
+    providers: ACADEMY_LEARNER_PROVIDERS,
+    canActivate: [staffLearningLoaded],
     canDeactivate: [leave],
     title: 'Training assessment · CareVerity',
     loadComponent: () => import('./academy-assessment').then((m) => m.AcademyAssessment),
@@ -408,7 +459,8 @@ export const ACADEMY_STAFF_ROUTES: Routes = [
   {
     path: 'training/certificates/:certificateId',
     data: { view: 'certificate' },
-    canActivate: [learner, previewLoaded, learningLoaded],
+    providers: ACADEMY_LEARNER_PROVIDERS,
+    canActivate: [staffLearningLoaded],
     canDeactivate: [leave],
     title: 'Training certificate · CareVerity',
     loadComponent: () => import('./academy-learner').then((m) => m.AcademyLearner),

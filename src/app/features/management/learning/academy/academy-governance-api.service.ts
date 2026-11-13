@@ -1,3 +1,9 @@
+import { AcademyResultsApi } from './academy-results-api.service';
+import type {
+  AcademyTrainingMessageRead,
+  AcademyTrainingMessagePage,
+} from './academy-messages.generated';
+import { ACADEMY_LEARNER_ONLY } from './academy-learner-context';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CompanyAccessService } from '../../../../core/access/company-access.service';
@@ -43,11 +49,16 @@ interface ManagerData {
 }
 @Injectable({ providedIn: 'root' })
 export class AcademyGovernanceApi {
+  readonly learnerOnly = inject(ACADEMY_LEARNER_ONLY, { optional: true }) === true;
   private readonly auth = inject(AuthService);
+  private readonly results = inject(AcademyResultsApi);
+  private readonly messagePermission = signal(false);
   private readonly access = inject(CompanyAccessService);
   private readonly store = inject(ManagementStore);
   readonly scope = inject(AcademyApi).scope;
-  readonly available = computed(() => this.access.can('academy', 'governance', 'read'));
+  readonly available = computed(
+    () => !this.learnerOnly && this.access.can('academy', 'governance', 'read'),
+  );
   canRead(kind: string) {
     const sources: Record<string, string[]> = {
       reviews: ['assignments', 'courses', 'results'],
@@ -65,7 +76,10 @@ export class AcademyGovernanceApi {
     );
   }
   readonly canAcknowledge = computed(
-    () => this.learnerAvailable() && this.access.can('academy', 'learner', 'create'),
+    () =>
+      this.learnerAvailable() &&
+      this.access.can('academy', 'learner', 'create') &&
+      (!this.learnerOnly || this.messagePermission()),
   );
   readonly learnerAvailable = computed(() => this.access.can('academy', 'learner', 'read'));
   can(action: string) {
@@ -119,6 +133,7 @@ export class AcademyGovernanceApi {
       this.ownTicket++;
       this.manager.set(null);
       this.learner.set(null);
+      this.messagePermission.set(false);
       this.retry = undefined;
       this.committed = undefined;
       this.error.set('');
@@ -153,6 +168,7 @@ export class AcademyGovernanceApi {
       this.ownTicket++;
       this.manager.set(null);
       this.learner.set(null);
+      this.messagePermission.set(false);
       this.loading.set(false);
       const mode = learner ? 1 : 0;
       if (status !== 401 && this.deniedScopes[mode] !== scope) {
@@ -181,6 +197,61 @@ export class AcademyGovernanceApi {
     }
     return values;
   }
+  readonly messages = computed(() =>
+    this.learnerOnly ? (this.notifications() as AcademyTrainingMessageRead[]) : [],
+  );
+  private async staffMessages(scope: string) {
+    const data: AcademyTrainingMessageRead[] = [],
+      seen = new Set<number>(),
+      ids = new Set<string>();
+    let page: number | null = 1,
+      permission: boolean | undefined,
+      count: number | undefined;
+    while (page !== null) {
+      if (seen.has(page)) throw Error('The API returned a repeated message page.');
+      seen.add(page);
+      const response: AcademyTrainingMessagePage = await this.auth.api(
+        this.root() + `/learning/messages?page=${page}&page_size=100`,
+      );
+      this.check(scope, true);
+      if (
+        response.meta.company_id !== this.store.companyId() ||
+        String(response.meta.actor_id) !== String(this.auth.profile()?.id) ||
+        response.meta.person_id !== this.results.me()?.id ||
+        typeof response.meta.can_acknowledge !== 'boolean' ||
+        (permission !== undefined && permission !== response.meta.can_acknowledge)
+      )
+        throw Error('These training messages do not belong to your current staff account.');
+      if (
+        !Number.isInteger(response.count) ||
+        response.count < 0 ||
+        (count !== undefined && count !== response.count)
+      )
+        throw Error('Your training messages changed while loading. Please try again.');
+      count = response.count;
+      permission = response.meta.can_acknowledge;
+      for (const row of response.results) {
+        const assignment = this.results.assignments().find((a) => a.id === row.assignmentId);
+        if (
+          ids.has(row.id) ||
+          row.company_id !== this.store.companyId() ||
+          row.personId !== response.meta.person_id ||
+          !assignment ||
+          assignment.personId !== row.personId ||
+          (row.course_id !== null &&
+            (assignment.archived || row.course_id !== assignment.courseId)) ||
+          (!row.course_id && !row.course_reason)
+        )
+          throw Error('Your training messages changed while loading. Please try again.');
+        ids.add(row.id);
+        data.push(row);
+      }
+      page = response.next;
+    }
+    if (data.length !== count)
+      throw Error('Your training messages changed while loading. Please try again.');
+    return { data, permission: !!permission };
+  }
   async load(learner = false) {
     this.syncScope();
     const scope = this.scope(),
@@ -194,15 +265,15 @@ export class AcademyGovernanceApi {
     try {
       this.check(scope, learner);
       if (learner) {
-        const data = await this.pages<AcademyNotificationRead>(
-          '/learning/notifications',
-          scope,
-          true,
-        );
+        const staff = this.learnerOnly ? await this.staffMessages(scope) : null;
+        const data =
+          staff?.data ??
+          (await this.pages<AcademyNotificationRead>('/learning/notifications', scope, true));
         if (ticket === this.ownTicket) {
           if (this.committed?.scope === scope && this.committed.learner) this.committed = undefined;
           this.deniedScopes[1] = undefined;
           this.learner.set({ scope, data });
+          this.messagePermission.set(staff?.permission ?? false);
         }
       } else {
         const [
@@ -509,7 +580,9 @@ export class AcademyGovernanceApi {
       'create',
       async (scope) => {
         await this.send<AcademyNotificationRead>(
-          '/learning/notifications/' + id + '/acknowledge',
+          (this.learnerOnly ? '/learning/messages/' : '/learning/notifications/') +
+            id +
+            '/acknowledge',
           {},
           'POST',
           scope,

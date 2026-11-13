@@ -1,8 +1,8 @@
 import { PageNavigation } from '../../../core/navigation/page-navigation.service';
 import { PageLoading } from '../../../shared/layouts/page-loading';
 import { CompanyAccessService } from '../../../core/access/company-access.service';
-import { AcademyDemoWorkflow } from '../learning/academy/academy-demo-workflow';
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, Injector, computed, effect, inject, signal } from '@angular/core';
+import { StaffDashboardApi } from './staff-dashboard-api.service';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { A11yModule } from '@angular/cdk/a11y';
 import { BreakpointObserver } from '@angular/cdk/layout';
@@ -199,7 +199,13 @@ import { ModuleDesign } from '../shared/module-design';
         <footer class="app-footer">
           <span>CareVerity · {{ store.company()?.name }}</span
           ><span role="status">{{
-            store.storageAvailable() ? 'Changes saved on this device' : 'Storage unavailable'
+            dashboardView()
+              ? dashboard.company()
+                ? 'Company records connected'
+                : 'Staff account verification'
+              : store.storageAvailable()
+                ? 'Changes saved on this device'
+                : 'Storage unavailable'
           }}</span>
         </footer>
       </div>
@@ -209,11 +215,27 @@ export class PortalShell {
   protected readonly access = inject(CompanyAccessService);
   protected readonly navigationState = inject(PageNavigation);
   protected readonly auth = inject(AuthService);
-  protected readonly store = inject(ManagementStore);
+  private readonly injector = inject(Injector);
+  protected readonly dashboard = inject(StaffDashboardApi);
+  protected readonly store = {
+    company: computed(() =>
+      this.dashboardView()
+        ? this.dashboard.company()
+        : this.injector.get(ManagementStore).company(),
+    ),
+    storageAvailable: () =>
+      this.dashboardView()
+        ? !this.dashboard.error()
+        : this.injector.get(ManagementStore).storageAvailable(),
+  };
   protected readonly router = inject(Router);
   protected readonly trainingExpanded = signal(false);
   private readonly navigation = toSignal(this.router.events);
-  private readonly academyWorkflow = inject(AcademyDemoWorkflow);
+  protected readonly dashboardView = computed(() => {
+    this.navigation();
+    const target = this.router.currentNavigation()?.extractedUrl.toString() || this.router.url;
+    return /^\/staff-portal(?:\/(dashboard|dashboard-2|training(?:\/[^?#]*)?))?(?:[?#]|$)/.test(target);
+  });
   constructor() {
     effect(() => {
       if (

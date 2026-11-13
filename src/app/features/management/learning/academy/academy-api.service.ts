@@ -1,3 +1,4 @@
+import { ACADEMY_LEARNER_ONLY } from './academy-learner-context';
 import type { AcademyCourseWrite, AcademyBankWrite } from './academy.generated';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -19,6 +20,7 @@ export interface CourseRecord {
 }
 @Injectable({ providedIn: 'root' })
 export class AcademyApi {
+  readonly learnerOnly = inject(ACADEMY_LEARNER_ONLY, { optional: true }) === true;
   private readonly auth = inject(AuthService);
   private readonly store = inject(ManagementStore);
   private readonly access = inject(CompanyAccessService);
@@ -43,6 +45,7 @@ export class AcademyApi {
   });
   readonly available = computed(
     () =>
+      !this.learnerOnly &&
       this.access.can('academy', 'courses', 'read') &&
       this.access.can('academy', 'courses', 'edit'),
   );

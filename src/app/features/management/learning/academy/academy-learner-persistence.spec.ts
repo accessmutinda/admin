@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 import { AcademyLearner } from './academy-learner';
 import { AcademyService } from './academy.service';
 import { AcademyAssets } from './academy-assets.service';
+import { CompanyAccessService } from '../../../../core/access/company-access.service';
 
 describe('Learner note persistence', () => {
   it('joins blur and button saves so completion can await the same request', async () => {
@@ -36,6 +37,10 @@ describe('Learner note persistence', () => {
         },
         { provide: AcademyAssets, useValue: { url: vi.fn() } },
         {
+          provide: CompanyAccessService,
+          useValue: { can: () => true, context: () => null, companyId: () => 'company' },
+        },
+        {
           provide: AcademyService,
           useValue: {
             canManage: () => false,
@@ -49,6 +54,9 @@ describe('Learner note persistence', () => {
             auth: { currentUser: () => ({ id: 'actor' }) },
             store: { companyId: () => 'company' },
             resultsApi: { saving: signal(false) },
+            myCoursesApi: { saving: signal(false) },
+            certificatesApi: { saving: signal(false) },
+            governanceApi: { saving: signal(false) },
           },
         },
       ],

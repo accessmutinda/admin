@@ -13,6 +13,7 @@ import {
 } from './portal.models';
 @Injectable({ providedIn: 'root' })
 export class PortalService {
+  readonly connected = false;
   readonly store = inject(ManagementStore);
   readonly journal = inject(JournalService);
   readonly care = inject(CareService);

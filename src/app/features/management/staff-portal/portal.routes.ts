@@ -1,6 +1,9 @@
 import { ACADEMY_STAFF_ROUTES } from '../learning/academy/academy.routes';
 import { Routes, Router } from '@angular/router';
 import { inject } from '@angular/core';
+import { PortalService } from './portal.service';
+import { StaffDashboardApi } from './staff-dashboard-api.service';
+import { JournalService, STAFF_JOURNAL } from '../journal/journal.service';
 const leave = (c: { canLeave: () => boolean }) => c.canLeave();
 export const PORTAL_ROUTES: Routes = [
   ...ACADEMY_STAFF_ROUTES,
@@ -16,6 +19,14 @@ export const PORTAL_ROUTES: Routes = [
   },
   ...['dashboard', 'oversight'].map((view) => ({
     path: view,
+    providers:
+      view === 'dashboard'
+        ? [
+            { provide: PortalService, useExisting: StaffDashboardApi },
+            JournalService,
+            { provide: STAFF_JOURNAL, useValue: true },
+          ]
+        : [],
     title:
       (view === 'oversight' ? 'Manager communication oversight' : 'Staff dashboard') +
       ' · CareVerity',
@@ -25,12 +36,14 @@ export const PORTAL_ROUTES: Routes = [
   })),
   {
     path: 'journal',
+    providers: [JournalService, { provide: STAFF_JOURNAL, useValue: true }],
     title: 'Staff journal & communications · CareVerity',
     canDeactivate: [leave],
     loadComponent: () => import('../journal/staff-journal').then((m) => m.StaffJournal),
   },
   {
     path: 'tasks',
+    providers: [PortalService, JournalService, { provide: STAFF_JOURNAL, useValue: true }],
     title: 'Staff profile & tasks · CareVerity',
     canDeactivate: [leave],
     loadComponent: () => import('./portal-tasks').then((m) => m.PortalTasks),

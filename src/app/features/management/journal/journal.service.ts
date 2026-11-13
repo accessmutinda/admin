@@ -4,7 +4,16 @@ import type {
   JournalEntryRead,
   JournalTaskRead,
 } from './journal.generated';
-import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  DestroyRef,
+  Injectable,
+  InjectionToken,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { ApiError } from '../../../core/auth/auth-api';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CompanyAccessService } from '../../../core/access/company-access.service';
@@ -19,6 +28,7 @@ import {
 type Options = JournalOptions;
 type Contact = Options['contacts'][number];
 type Visit = Options['visits'][number];
+export const STAFF_JOURNAL = new InjectionToken<boolean>('staffJournal');
 type Page = JournalPage;
 export interface JournalQuery {
   client_id?: string;
@@ -31,6 +41,7 @@ export interface JournalQuery {
 }
 @Injectable({ providedIn: 'root' })
 export class JournalService {
+  private readonly staffPortal = inject(STAFF_JOURNAL, { optional: true });
   readonly auth = inject(AuthService);
   readonly access = inject(CompanyAccessService);
   readonly email = computed(() => this.auth.currentUser()?.email.toLowerCase() ?? '');
@@ -150,7 +161,7 @@ export class JournalService {
   private root() {
     if (!this.allowed() || !this.access.companyId())
       throw Error('Client Journal access is unavailable.');
-    return `/companies/${this.access.companyId()}/journal`;
+    return `/companies/${this.access.companyId()}/${this.staffPortal ? 'staff-portal/journal' : 'journal'}`;
   }
   private validate<T extends { company_id?: string }>(value: T): T {
     if (value.company_id !== this.access.companyId())

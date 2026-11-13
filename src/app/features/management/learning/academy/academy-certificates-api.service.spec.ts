@@ -460,4 +460,25 @@ describe('Academy certificates source adapter', () => {
     expect(api.certificates()).toHaveLength(1);
     expect(api.certificates()[0].state).toBe('Revoked');
   });
+  it.each([404, 0])(
+    'handles a records-request retry after status %s without replaying a rejected ownership key',
+    async (status) => {
+      request.mockRejectedValueOnce(
+        Object.assign(new Error('Request did not complete'), status ? { status } : {}),
+      );
+      await expect(api.requestRecords()).rejects.toThrow('did not complete');
+      const first = request.mock.calls[0][3]['Idempotency-Key'];
+      request.mockImplementation(async (_path: string, body?: unknown) =>
+        body
+          ? { id: 'request', company_id: 'company', personId: 'worker', status: 'Requested' }
+          : { results: [], next: null, meta: { company_id: 'company' } },
+      );
+      await api.requestRecords();
+      const second = request.mock.calls.filter((call) => call[2] === 'POST').at(-1)![3][
+        'Idempotency-Key'
+      ];
+      if (status) expect(second).not.toBe(first);
+      else expect(second).toBe(first);
+    },
+  );
 });

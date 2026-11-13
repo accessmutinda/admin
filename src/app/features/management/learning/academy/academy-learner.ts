@@ -1,3 +1,8 @@
+import { AcademyRefreshersApi } from './academy-refreshers-api.service';
+import { AcademyTrainingRecordApi } from './academy-training-record-api.service';
+import { AcademyMyAssessmentsApi } from './academy-my-assessments-api.service';
+import { CompanyAccessService } from '../../../../core/access/company-access.service';
+import { AcademyMyLearningApi } from './academy-my-learning-api.service';
 import {
   Component,
   DestroyRef,
@@ -8,7 +13,6 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { addDays, londonDate } from '../../rota/rota.models';
 import { AcademyDate } from './academy-date';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -18,7 +22,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../../shared/ui/select';
 import { AcademyService } from './academy.service';
 import { AcademyAssets } from './academy-assets.service';
-import { AcademyCertificate, AcademyQuestionGroup } from './academy.models';
+import { AcademyCertificate, AcademyQuestionGroup, AcademyAssignment } from './academy.models';
 import { AcademyImage } from './academy-image';
 import { AcademyCertificateView } from './academy-certificate';
 import { AcademyMessage } from './academy-shared';
@@ -27,8 +31,10 @@ import { downloadAcademyCertificate } from './academy-pdf';
 @Component({
   host: {
     class: 'module-page academy-page',
-    '[attr.inert]': 'academy.resultsApi.saving() ? "" : null',
-    '[attr.aria-busy]': 'academy.resultsApi.saving()',
+    '[attr.inert]':
+      'academy.resultsApi.saving() || academy.myCoursesApi.saving() || academy.certificatesApi.saving() || academy.governanceApi.saving() ? "" : null',
+    '[attr.aria-busy]':
+      'academy.resultsApi.saving() || academy.myCoursesApi.saving() || academy.certificatesApi.saving() || academy.governanceApi.saving()',
   },
   selector: 'cv-academy-learner',
   imports: [
@@ -52,6 +58,11 @@ import { downloadAcademyCertificate } from './academy-pdf';
   ],
 })
 export class AcademyLearner {
+  private readonly access = inject(CompanyAccessService);
+  protected readonly refreshers = inject(AcademyRefreshersApi);
+  protected readonly trainingRecord = inject(AcademyTrainingRecordApi);
+  protected readonly myAssessments = inject(AcademyMyAssessmentsApi);
+  protected readonly myLearning = inject(AcademyMyLearningApi, { optional: true });
   protected readonly academy = inject(AcademyService);
   protected readonly files = inject(AcademyAssets);
   private readonly router = inject(Router);
@@ -65,6 +76,7 @@ export class AcademyLearner {
   private readonly data = toSignal(this.route.data, { initialValue: this.route.snapshot.data });
   protected readonly view = computed(() => this.data()['view'] as string);
   protected readonly person = computed(() => {
+    if (this.myLearning) return this.academy.me();
     const selected = this.query().get('person');
     return this.academy.canManage() && selected
       ? this.academy.resultsApi.people().find((p) => p.id === selected)
@@ -90,6 +102,17 @@ export class AcademyLearner {
   protected readonly assignment = computed(() =>
     this.assignments().find((a) => a.courseId === this.course()?.id),
   );
+  protected readonly canRecordLearning = computed(() => {
+    const assignment = this.assignment();
+    return (
+      !!assignment &&
+      !assignment.archived &&
+      !assignment.completedAt &&
+      !this.preview() &&
+      this.academy.owns(assignment.personId) &&
+      this.access.can('academy', 'learner', 'edit')
+    );
+  });
   protected readonly lesson = computed(() => {
     const course = this.course();
     const index = course?.lessons.findIndex((l) => l.id === this.params().get('lessonId')) ?? -1;
@@ -103,13 +126,25 @@ export class AcademyLearner {
   protected readonly attempts = computed(() =>
     this.academy
       .state()
-      .attempts.filter((a) => a.personId === this.person()?.id)
+      .attempts.filter(
+        (a) =>
+          a.personId === this.person()?.id &&
+          (this.view() !== 'dashboard' ||
+            !this.myLearning ||
+            !!this.myLearning.snapshot()?.recent_attempt_ids.includes(a.id)),
+      )
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
   );
   protected readonly certificates = computed(() =>
     this.academy
       .state()
-      .certificates.filter((c) => c.personId === this.person()?.id)
+      .certificates.filter(
+        (c) =>
+          c.personId === this.person()?.id &&
+          (this.view() !== 'dashboard' ||
+            !this.myLearning ||
+            c.id === this.myLearning.snapshot()?.latest_certificate_id),
+      )
       .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt)),
   );
   protected readonly certificate = computed(() =>
@@ -121,8 +156,8 @@ export class AcademyLearner {
       .notices.filter((n) => n.personId === this.person()?.id)
       .slice(0, 100),
   );
-  protected search = '';
-  protected category = 'All';
+  protected readonly search = signal('');
+  protected readonly category = signal('All');
   protected tab = 'Lesson details';
   protected readonly error = signal('');
   protected readonly notice = signal('');
@@ -139,10 +174,33 @@ export class AcademyLearner {
   );
   private readonly clock = signal(Date.now());
   constructor() {
+    this.myLearning?.activate();
     const timer = inject(NgZone).runOutsideAngular(() =>
-      setInterval(() => this.clock.set(Date.now()), 30000),
+      setInterval(() => {
+        this.clock.set(Date.now());
+        if (
+          [
+            'dashboard',
+            'courses',
+            'assessments',
+            'history',
+            'certificates',
+            'refreshers',
+            'messages',
+          ].includes(this.view()) &&
+          this.myLearning &&
+          !this.myLearning.loading() &&
+          !this.academy.resultsApi.saving() &&
+          !this.academy.governanceApi.saving() &&
+          document.visibilityState !== 'hidden'
+        )
+          void this.myLearning.load();
+      }, 30000),
     );
-    inject(DestroyRef).onDestroy(() => clearInterval(timer));
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(timer);
+      this.myLearning?.stop();
+    });
     effect((cleanup) => {
       const key = this.mediaKey();
       let disposed = false;
@@ -219,8 +277,10 @@ export class AcademyLearner {
         (c) =>
           c.status === 'Published' &&
           this.academy.canBrowseCourse(c) &&
-          `${c.title} ${c.description}`.toLowerCase().includes(this.search.toLowerCase()) &&
-          (this.category === 'All' || c.category === this.category),
+          `${c.title} ${c.description}`
+            .toLowerCase()
+            .includes(this.search().trim().toLowerCase()) &&
+          (this.category() === 'All' || c.category === this.category()),
       );
   }
   protected categories() {
@@ -264,9 +324,35 @@ export class AcademyLearner {
   }
   protected status(courseId: string) {
     const a = this.assignments().find((a) => a.courseId === courseId);
-    return a ? this.academy.status(a) : 'Not assigned';
+    return a ? this.assignmentStatus(a) : 'Not assigned';
+  }
+  protected assignmentStatus(assignment: AcademyAssignment) {
+    return this.myLearning?.snapshot()?.statuses[assignment.id] || this.academy.status(assignment);
+  }
+  protected assessmentStatus(attemptId: string) {
+    return this.myAssessments.attempt(attemptId)?.status;
+  }
+  protected assessmentAction(attemptId: string) {
+    return this.myAssessments.attempt(attemptId)?.action;
+  }
+  protected assessmentReason(attemptId: string) {
+    return this.myAssessments.attempt(attemptId)?.reason;
   }
   protected stats() {
+    if (this.myLearning) {
+      const stats = this.myLearning.snapshot()?.stats;
+      return [
+        { label: 'Assigned courses', value: stats?.assigned ?? '—', icon: 'school' },
+        { label: 'Due soon', value: stats?.due_soon ?? '—', icon: 'schedule' },
+        { label: 'Completed', value: stats?.completed ?? '—', icon: 'check_circle' },
+        { label: 'Overdue / expired', value: stats?.overdue ?? '—', icon: 'error' },
+        {
+          label: 'Average score',
+          value: stats?.average_score == null ? '—' : stats.average_score + '%',
+          icon: 'star',
+        },
+      ];
+    }
     const a = this.assignments();
     const attempts = this.attempts().filter((v) => v.submittedAt);
     return [
@@ -395,32 +481,15 @@ export class AcademyLearner {
       .sort((a, b) => b.assignedAt.localeCompare(a.assignedAt));
   }
   protected latestAttempt(assignmentId: string) {
+    const row = this.trainingRecord.row(assignmentId);
+    if (row) return this.attempts().find((a) => a.id === row.attempt_id);
     return this.attempts().find((a) => a.assignmentId === assignmentId && !a.groupId);
   }
-  protected renewals() {
-    const latest = this.certificates().filter(
-      (c, i, all) => all.findIndex((v) => v.courseId === c.courseId) === i,
-    );
-    return latest
-      .filter(
-        (c) =>
-          c.expires &&
-          c.expires <= addDays(londonDate(), this.academy.state().settings.refresherDays),
-      )
-      .sort((a, b) => a.expires.localeCompare(b.expires));
+  protected renewalReviews() {
+    return this.refreshers.snapshot()?.reviews ?? [];
   }
-  protected refresherAssignments() {
-    return this.assignments().filter(
-      (a) =>
-        !a.completedAt &&
-        (a.type === 'Refresher' || ['Overdue', 'Due soon'].includes(this.academy.status(a))),
-    );
-  }
-  protected noticeCourse(id: string) {
-    return (
-      this.academy.assignments().find((a) => a.id === id && a.personId === this.person()?.id)
-        ?.courseId ?? ''
-    );
+  protected refresherRows() {
+    return this.refreshers.snapshot()?.assignments ?? [];
   }
   protected requests() {
     return (
@@ -428,13 +497,22 @@ export class AcademyLearner {
     );
   }
   protected async requestRecords() {
-    if (this.preview()) return;
+    if (
+      this.preview() ||
+      !this.academy.certificatesApi.canRequestRecords() ||
+      this.trainingRecord.snapshot()?.can_request_records === false
+    )
+      return;
     const error = await this.academy.requestTrainingRecords(this.academy.store.companyId());
     this.error.set(error ?? '');
+    if (!error && this.myLearning) await this.myLearning.load(false, false, true);
     if (!error)
       this.notice.set(
         'Your training-record access request is recorded for HR review. No external message has been sent.',
       );
+  }
+  protected trainingMessages() {
+    return this.academy.governanceApi.messages();
   }
   protected notificationAcknowledged(id: string) {
     return this.academy.governanceApi
@@ -447,7 +525,13 @@ export class AcademyLearner {
       this.error.set('');
       this.notice.set('Notification acknowledgement saved.');
     } catch (error) {
-      this.error.set((error as Error).message);
+      if ([401, 403].includes((error as { status?: number }).status ?? 0))
+        this.myLearning?.fail(error);
+      else if (this.myLearning) await this.myLearning.load();
+      if (this.myLearning?.snapshot() && this.notificationAcknowledged(id)) {
+        this.error.set('');
+        this.notice.set('Notification acknowledgement saved.');
+      } else this.error.set((error as Error).message);
     }
   }
   protected pendingRequest() {
@@ -493,7 +577,12 @@ export class AcademyLearner {
       : undefined;
   }
   protected async start(assignmentId: string, groupId = '') {
-    if (this.preview()) return;
+    if (
+      this.preview() ||
+      !this.academy.resultsApi.canStart() ||
+      !this.academy.resultsApi.canAnswer()
+    )
+      return;
     const result = await this.academy.startAttempt(
       assignmentId,
       this.academy.store.companyId(),
@@ -505,7 +594,7 @@ export class AcademyLearner {
   protected async complete() {
     const a = this.assignment();
     const lesson = this.lesson();
-    if (!a || !lesson || this.preview()) return;
+    if (!a || !lesson || !this.canRecordLearning()) return;
     if (!(await this.flushNote())) return;
     const error = await this.academy.saveLesson(
       a.id,
@@ -520,6 +609,7 @@ export class AcademyLearner {
       this.notice.set('Lesson completed. Complete every lesson to unlock the assessment.');
   }
   protected editNote(value: string) {
+    if (!this.canRecordLearning()) return;
     this.note = value;
     this.notePending.set(true);
   }
@@ -535,6 +625,12 @@ export class AcademyLearner {
   }
   private async persistNote(): Promise<boolean> {
     if (!this.notePending() || !this.noteKey) return true;
+    if (!this.canRecordLearning()) {
+      this.error.set(
+        'This learning cycle is now read-only. Reopen the course to review your saved notes.',
+      );
+      return false;
+    }
     const error = await this.academy.saveLesson(
       this.noteAssignment,
       this.noteLesson,
@@ -562,7 +658,7 @@ export class AcademyLearner {
   protected position(event: Event) {
     const a = this.assignment();
     const lesson = this.lesson();
-    if (!a || !lesson || this.preview()) return;
+    if (!a || !lesson || !this.canRecordLearning()) return;
     const video = event.target as HTMLVideoElement;
     if (!Number.isFinite(video.duration) || video.duration <= 0) return;
     const now = performance.now();
@@ -593,7 +689,7 @@ export class AcademyLearner {
     try {
       await this.files.download(id);
       const assignment = this.assignment();
-      if (assignment && !this.preview()) {
+      if (assignment && this.canRecordLearning()) {
         const error = await this.academy.recordResourceOpen(
           assignment.id,
           id,
@@ -607,7 +703,7 @@ export class AcademyLearner {
   }
   protected async acknowledge(id: string) {
     const a = this.assignment();
-    if (!a || this.preview()) return;
+    if (!a || !this.canRecordLearning()) return;
     const error = await this.academy.acknowledgeResource(a.id, id, this.academy.store.companyId());
     this.error.set(error ?? '');
     if (!error) this.notice.set('Resource read acknowledgement saved.');
@@ -622,20 +718,38 @@ export class AcademyLearner {
       this.error.set((e as Error).message);
     }
   }
-  protected enrol() {
-    if (!this.course()) return;
-    const error = this.academy.enrol(this.course()!.id, this.academy.store.companyId());
-    this.error.set(error ?? '');
-    if (!error) this.notice.set('You are enrolled on this course.');
+  protected async enrol() {
+    const course = this.course();
+    if (!course || !this.myLearning) return;
+    this.error.set('');
+    try {
+      await this.academy.myCoursesApi.enrol(course.id);
+      await this.myLearning.load(true);
+      if (this.myLearning.snapshot()) this.notice.set('You are enrolled on this course.');
+    } catch (error) {
+      await this.myLearning.load(true);
+      this.error.set((error as Error).message);
+    }
   }
   protected deadlines() {
     return this.assignments()
-      .filter((a) => !a.completedAt && a.due)
+      .filter(
+        (a) =>
+          !a.completedAt &&
+          a.due &&
+          (!this.myLearning || !!this.myLearning.snapshot()?.deadline_ids.includes(a.id)),
+      )
       .sort((a, b) => a.due.localeCompare(b.due))
       .slice(0, 5);
   }
   async canLeave(): Promise<boolean> {
-    if (this.academy.resultsApi.saving()) return false;
+    if (
+      this.academy.resultsApi.saving() ||
+      this.academy.myCoursesApi.saving() ||
+      this.academy.certificatesApi.saving() ||
+      this.academy.governanceApi.saving()
+    )
+      return false;
     return (
       (await this.flushNote()) ||
       window.confirm(

@@ -1,3 +1,5 @@
+import { AcademyMyCoursesApi } from './academy-my-courses-api.service';
+import { ACADEMY_LEARNER_ONLY } from './academy-learner-context';
 import { AcademyGovernanceApi } from './academy-governance-api.service';
 import { AcademyCertificatesApi } from './academy-certificates-api.service';
 import { AcademyResultsApi } from './academy-results-api.service';
@@ -44,6 +46,8 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class AcademyService {
+  readonly myCoursesApi = inject(AcademyMyCoursesApi);
+  readonly learnerOnly = inject(ACADEMY_LEARNER_ONLY, { optional: true }) === true;
   private readonly access = inject(CompanyAccessService);
   readonly store = inject(ManagementStore);
   readonly api = inject(AcademyApi);
@@ -61,6 +65,7 @@ export class AcademyService {
         )
         .map((c) => [c.id, c]),
     );
+    if (this.learnerOnly) for (const c of this.myCoursesApi.courses()) courses.set(c.id, c);
     for (const a of [...this.resultsApi.assignments()]
       .filter((a) => !a.archived)
       .sort((a, b) => b.assignedAt.localeCompare(a.assignedAt))) {
@@ -69,8 +74,16 @@ export class AcademyService {
     return {
       ...emptyAcademy(),
       settings: {
-        ...emptyAcademy().settings, ...this.api.settings(),
-        dueSoonDays: this.assignmentApi.dueSoonDays() ?? this.resultsApi.dueSoonDays() ?? this.api.settings().dueSoonDays ?? emptyAcademy().settings.dueSoonDays,
+        ...emptyAcademy().settings,
+        ...this.api.settings(),
+        ...(this.learnerOnly
+          ? { allowSelfEnrolment: this.myCoursesApi.snapshot()?.allow_self_enrolment ?? false }
+          : {}),
+        dueSoonDays:
+          this.assignmentApi.dueSoonDays() ??
+          this.resultsApi.dueSoonDays() ??
+          this.api.settings().dueSoonDays ??
+          emptyAcademy().settings.dueSoonDays,
       },
       courses: [...courses.values()],
       courseDrafts: records.filter((r) => r.course.status === 'Draft').map((r) => r.course),
@@ -79,6 +92,7 @@ export class AcademyService {
       courseVersions: records.flatMap((r) => r.versions),
       assets: [
         ...this.api.assets(),
+        ...(this.learnerOnly ? this.myCoursesApi.assets() : []),
         ...this.resultsApi.assets().filter((a) => !this.api.assets().some((v) => v.id === a.id)),
       ],
       assignments: this.assignments(),
@@ -150,9 +164,25 @@ export class AcademyService {
     ),
   );
   readonly canViewEvidence = computed(
-    () => this.access.can('academy', 'results') || this.access.can('academy', 'certificates'),
+    () =>
+      !this.learnerOnly &&
+      (this.access.can('academy', 'results') || this.access.can('academy', 'certificates')),
   );
   can(capability: AcademyCapability, personId = ''): boolean {
+    if (
+      this.learnerOnly &&
+      [
+        'author',
+        'publish',
+        'assign',
+        'review',
+        'correct',
+        'configure',
+        'diagnostics',
+        'evidence',
+      ].includes(capability)
+    )
+      return false;
     const features: Record<string, string> = {
       author: 'courses',
       publish: 'governance',
@@ -199,14 +229,15 @@ export class AcademyService {
     if (this.canManage()) return true;
     const person = this.me();
     if (!person) return false;
-    if (course.targetBranches?.length && !course.targetBranches.includes(person.location))
-      return false;
     if (
       this.assignments().some(
         (a) => a.personId === person.id && a.courseId === course.id && !a.archived,
       )
     )
       return true;
+    if (this.learnerOnly) return this.myCoursesApi.courses().some((c) => c.id === course.id);
+    if (course.targetBranches?.length && !course.targetBranches.includes(person.location))
+      return false;
     return (
       course.status === 'Published' &&
       course.active !== false &&

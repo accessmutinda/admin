@@ -1,3 +1,4 @@
+import { ACADEMY_LEARNER_ONLY } from './academy-learner-context';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CompanyAccessService } from '../../../../core/access/company-access.service';
@@ -59,13 +60,22 @@ function unique<T extends { id: string; version?: number }>(rows: T[]): T[] {
 
 @Injectable({ providedIn: 'root' })
 export class AcademyResultsApi {
+  readonly learnerOnly = inject(ACADEMY_LEARNER_ONLY, { optional: true }) === true;
   private readonly auth = inject(AuthService);
   private readonly access = inject(CompanyAccessService);
   private readonly store = inject(ManagementStore);
   private readonly academy = inject(AcademyApi);
   readonly scope = this.academy.scope;
-  readonly available = computed(() => this.access.can('academy', 'results', 'read'));
+  readonly available = computed(
+    () => !this.learnerOnly && this.access.can('academy', 'results', 'read'),
+  );
   readonly learnerAvailable = computed(() => this.access.can('academy', 'learner', 'read'));
+  readonly canStart = computed(
+    () => this.learnerAvailable() && this.access.can('academy', 'learner', 'create'),
+  );
+  readonly canAnswer = computed(
+    () => this.learnerAvailable() && this.access.can('academy', 'learner', 'edit'),
+  );
   readonly canEdit = computed(
     () => this.available() && this.access.can('academy', 'results', 'edit'),
   );
@@ -151,6 +161,9 @@ export class AcademyResultsApi {
     this.learning.set([]);
     this.resultScope.set('');
     this.learnerScope.set('');
+  }
+  private learnerAttempts() {
+    return this.learnerOnly ? '/learning/assessments/attempts' : '/learning/attempts';
   }
   private root() {
     return `/companies/${this.store.companyId()}/academy`;
@@ -268,7 +281,7 @@ export class AcademyResultsApi {
     try {
       this.accept(
         await this.auth.api<ResultRecord>(
-          `${this.root()}/${learner ? 'learning/attempts' : 'results'}/${id}`,
+          `${this.root()}/${learner ? this.learnerAttempts().slice(1) : 'results'}/${id}`,
         ),
         scope,
         learner,
@@ -336,7 +349,7 @@ export class AcademyResultsApi {
     const result = this.activeResults().find((r) => r.assets.some((a) => a.id === id));
     if (!learning && !result) throw Error('Assigned media is unavailable.');
     const path = learning
-      ? `/learning/assignments/${learning.assignment.id}/media/${id}/content`
+      ? `${this.learnerOnly ? '/learning/assessments' : '/learning'}/assignments/${learning.assignment.id}/media/${id}/content`
       : `/results/${result!.attempt.id}/media/${id}/content`;
     try {
       const blob = await this.auth.api<Blob>(
@@ -373,7 +386,7 @@ export class AcademyResultsApi {
   }
   async requestSupport(id: string) {
     return this.write(
-      `/learning/attempts/${id}/request-support`,
+      `${this.learnerAttempts()}/${id}/request-support`,
       {},
       true,
       'POST',
@@ -394,7 +407,7 @@ export class AcademyResultsApi {
   }
   async start(assignmentId: string, groupId = '') {
     return (await this.write(
-      '/learning/attempts',
+      this.learnerAttempts(),
       { assignmentId, groupId },
       true,
     )) as ResultRecord;
@@ -405,10 +418,22 @@ export class AcademyResultsApi {
       answers,
       ...(flagged === null ? {} : { flagged }),
     };
-    return this.write(`/learning/attempts/${id}`, body, true, 'PATCH', this.reviewed(id).etag);
+    return this.write(
+      `${this.learnerAttempts()}/${id}`,
+      body,
+      true,
+      'PATCH',
+      this.reviewed(id).etag,
+    );
   }
   async submit(id: string) {
-    return this.write(`/learning/attempts/${id}/submit`, {}, true, 'POST', this.reviewed(id).etag);
+    return this.write(
+      `${this.learnerAttempts()}/${id}/submit`,
+      {},
+      true,
+      'POST',
+      this.reviewed(id).etag,
+    );
   }
   async event(assignmentId: string, body: AcademyLearningWrite) {
     return this.write(`/learning/assignments/${assignmentId}/events`, body, true);

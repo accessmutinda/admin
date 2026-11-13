@@ -17,8 +17,15 @@ export class AcademyAssets {
   async url(id: string): Promise<string> {
     const settingsImage = await this.settings.brandingBlob(id);
     if (settingsImage) return URL.createObjectURL(settingsImage);
+    if (this.academy.learnerOnly && this.academy.myCoursesApi.assets().some((a) => a.id === id))
+      return URL.createObjectURL(await this.academy.myCoursesApi.blob(id));
     const certificateImage = await this.academy.certificatesApi.brandingBlob(id);
-    return URL.createObjectURL(certificateImage ?? await (this.academy.api.available() ? this.academy.api.blob(id) : this.academy.resultsApi.blob(id)));
+    return URL.createObjectURL(
+      certificateImage ??
+        (await (this.academy.api.available()
+          ? this.academy.api.blob(id)
+          : this.academy.resultsApi.blob(id))),
+    );
   }
   async download(id: string): Promise<void> {
     const asset = this.academy.state().assets.find((a) => a.id === id);

@@ -300,8 +300,11 @@
               [disabled]="!api.canEdit() || api.saving()"
             />Complete lessons in order</label
           ><label class="check"
-            ><input type="checkbox" disabled [(ngModel)]="draft.allowSelfEnrolment" />Allow staff to
-            enrol themselves on published optional courses</label
+            ><input
+              type="checkbox"
+              [disabled]="!api.canEdit() || api.saving()"
+              [(ngModel)]="draft.allowSelfEnrolment"
+            />Allow staff to enrol themselves on published optional courses</label
           ><label class="check"
             ><input
               type="checkbox"
@@ -312,8 +315,8 @@
         </div>
         <p>
           Assessment answers and video positions are saved securely to your workspace. Timers
-          continue while an assessment is closed. Self-enrolment requires a configured
-          optional-course enrolment adapter. Learners can enlarge question text and use keyboard
+          continue while an assessment is closed. Optional enrolment follows the published course
+          audience and enrolment deadline. Learners can enlarge question text and use keyboard
           navigation.
         </p>
       </section>

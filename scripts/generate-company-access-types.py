@@ -166,3 +166,38 @@ quality_names = [name for name in schemas if name.startswith('Quality')]
 quality_target = root / 'src/app/features/management/quality/quality.generated.ts'
 quality_target.write_text('// Generated from backend OpenAPI.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in quality_names) + '\n')
 subprocess.run(['npx', 'prettier', '--write', str(quality_target)], cwd=root, check=True, capture_output=True)
+
+portal_names = [name for name in schemas if name.startswith('StaffDashboard')]
+portal_target = root / 'src/app/features/management/staff-portal/staff-dashboard.generated.ts'
+portal_target.write_text('// Generated from backend OpenAPI.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in portal_names) + '\n')
+subprocess.run(['npx', 'prettier', '--write', str(portal_target)], cwd=root, check=True, capture_output=True)
+
+my_learning_names = [name for name in schemas if name.startswith('AcademyMyLearning')]
+my_learning_target = root / 'src/app/features/management/learning/academy/academy-my-learning.generated.ts'
+my_learning_target.write_text('// Generated from backend OpenAPI.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in my_learning_names) + '\n')
+subprocess.run(['npx', 'prettier', '--write', str(my_learning_target)], cwd=root, check=True, capture_output=True)
+
+my_courses_names = [name for name in schemas if name.startswith('AcademyMyCourses')]
+my_courses_target = root / 'src/app/features/management/learning/academy/academy-my-courses.generated.ts'
+my_courses_target.write_text('// Generated from backend OpenAPI.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in my_courses_names) + '\n')
+subprocess.run(['npx', 'prettier', '--write', str(my_courses_target)], cwd=root, check=True, capture_output=True)
+
+my_assessments_names = [name for name in schemas if name.startswith('AcademyMyAssessments')]
+my_assessments_target = root / 'src/app/features/management/learning/academy/academy-my-assessments.generated.ts'
+my_assessments_target.write_text('// Generated from backend OpenAPI.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in my_assessments_names) + '\n')
+subprocess.run(['npx', 'prettier', '--write', str(my_assessments_target)], cwd=root, check=True, capture_output=True)
+
+training_record_names = [name for name in schemas if name.startswith('AcademyTrainingRecord')]
+training_record_target = root / 'src/app/features/management/learning/academy/academy-training-record.generated.ts'
+training_record_target.write_text('// Generated from backend OpenAPI.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in training_record_names) + '\n')
+subprocess.run(['npx', 'prettier', '--write', str(training_record_target)], cwd=root, check=True, capture_output=True)
+
+refresher_names = [name for name in schemas if name.startswith(("AcademyRefreshers", "AcademyRefresherAssignment", "AcademyRefresherReview"))]
+refresher_target = root / "src/app/features/management/learning/academy/academy-refreshers.generated.ts"
+refresher_target.write_text("// Generated from backend OpenAPI.\n\n" + "\n\n".join("export type " + name + " = " + render(schemas[name]) + ";" for name in refresher_names) + "\n")
+subprocess.run(["npx", "prettier", "--write", str(refresher_target)], cwd=root, check=True, capture_output=True)
+
+message_names = [name for name in schemas if name.startswith("AcademyTrainingMessage")]
+message_target = root / "src/app/features/management/learning/academy/academy-messages.generated.ts"
+message_target.write_text("// Generated from backend OpenAPI.\n\n" + "\n\n".join("export type " + name + " = " + render(schemas[name]) + ";" for name in message_names) + "\n")
+subprocess.run(["npx", "prettier", "--write", str(message_target)], cwd=root, check=True, capture_output=True)

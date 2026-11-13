@@ -1,3 +1,5 @@
+import { AcademyMyAssessmentsApi } from './academy-my-assessments-api.service';
+import { AcademyMyLearningApi } from './academy-my-learning-api.service';
 import { Component, DestroyRef, NgZone, computed, effect, inject, signal } from '@angular/core';
 import { AcademyDate } from './academy-date';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -28,6 +30,8 @@ import { downloadAcademyCertificate } from './academy-pdf';
   ],
 })
 export class AcademyAssessment {
+  private readonly myAssessments = inject(AcademyMyAssessmentsApi);
+  protected readonly myLearning = inject(AcademyMyLearningApi, { optional: true });
   protected readonly academy = inject(AcademyService);
   private readonly files = inject(AcademyAssets);
   private readonly router = inject(Router);
@@ -37,7 +41,9 @@ export class AcademyAssessment {
   });
   private readonly data = toSignal(this.route.data, { initialValue: this.route.snapshot.data });
   protected readonly attempt = computed(() =>
-    this.academy.attempt(this.params().get('attemptId') ?? ''),
+    !this.myLearning || this.myLearning.snapshot()
+      ? this.academy.attempt(this.params().get('attemptId') ?? '')
+      : undefined,
   );
   protected readonly result = computed(() => this.data()['view'] === 'result');
   protected readonly now = signal(Date.now());
@@ -57,12 +63,30 @@ export class AcademyAssessment {
     () =>
       this.attempt()?.questions.filter((q) => !!this.attempt()?.answers[q.id]?.length).length ?? 0,
   );
+  private readonly blocked = computed(
+    () =>
+      this.myAssessments.attempt(this.attempt()?.id ?? '')?.reason ||
+      this.academy.resultsApi.attempts().find((a) => a.id === this.attempt()?.id)?.availability
+        ?.reason ||
+      '',
+  );
+  protected readonly untimed = computed(() => this.attempt()?.policy?.timeLimitMinutes === 0);
   protected readonly canEdit = computed(
     () =>
       !!this.attempt() &&
+      this.academy.resultsApi.canAnswer() &&
       this.academy.owns(this.attempt()!.personId) &&
       !this.attempt()!.submittedAt &&
-      this.seconds() > 0,
+      !this.blocked() &&
+      (this.untimed() || this.seconds() > 0),
+  );
+  protected readonly canSubmit = computed(
+    () =>
+      !!this.attempt() &&
+      this.academy.resultsApi.canAnswer() &&
+      this.academy.owns(this.attempt()!.personId) &&
+      !this.attempt()!.submittedAt &&
+      !this.blocked(),
   );
   protected readonly certificate = computed(() =>
     this.academy
@@ -104,16 +128,23 @@ export class AcademyAssessment {
   protected readonly questionCorrect = questionCorrect;
   private expiryAttempt = '';
   constructor() {
+    this.myLearning?.activate();
     const timer = inject(NgZone).runOutsideAngular(() =>
       setInterval(() => this.now.set(Date.now()), 1000),
     );
-    inject(DestroyRef).onDestroy(() => clearInterval(timer));
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(timer);
+      this.myLearning?.stop();
+    });
     effect(() => {
       const a = this.attempt();
       if (
         !a ||
+        !this.academy.resultsApi.canAnswer() ||
         this.academy.resultsApi.saving() ||
         a.submittedAt ||
+        this.untimed() ||
+        !!this.blocked() ||
         !this.academy.owns(a.personId) ||
         this.seconds() > 0 ||
         this.expiryAttempt === a.id
@@ -232,7 +263,7 @@ export class AcademyAssessment {
   }
   protected async submit(expired = false) {
     const a = this.attempt();
-    if (!a || !this.academy.owns(a.personId)) return;
+    if (!a || !this.canSubmit() || (expired && this.untimed())) return;
     if (
       !expired &&
       !window.confirm(
@@ -245,6 +276,7 @@ export class AcademyAssessment {
     const error = await this.academy.submit(a.id, this.academy.store.companyId());
     this.error.set(error ?? '');
     if (!error) void this.router.navigate(['/staff-portal/training/results', a.id]);
+    else if (this.myLearning) await this.myLearning.load(false, true);
   }
   protected attemptNumber() {
     return this.history().findIndex((attempt) => attempt.id === this.attempt()?.id) + 1;

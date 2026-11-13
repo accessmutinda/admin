@@ -1,3 +1,4 @@
+import { ACADEMY_LEARNER_ONLY } from './academy-learner-context';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CompanyAccessService } from '../../../../core/access/company-access.service';
@@ -77,18 +78,24 @@ function latestCertificates(entries: ReadCertificate[]): ReadCertificate[] {
 }
 @Injectable({ providedIn: 'root' })
 export class AcademyCertificatesApi {
+  readonly learnerOnly = inject(ACADEMY_LEARNER_ONLY, { optional: true }) === true;
   private readonly auth = inject(AuthService);
   private readonly access = inject(CompanyAccessService);
   private readonly store = inject(ManagementStore);
   private readonly academy = inject(AcademyApi);
   readonly scope = this.academy.scope;
-  readonly available = computed(() => this.access.can('academy', 'certificates', 'read'));
+  readonly available = computed(
+    () => !this.learnerOnly && this.access.can('academy', 'certificates', 'read'),
+  );
   readonly learnerAvailable = computed(() => this.access.can('academy', 'learner', 'read'));
   readonly canIssue = computed(
     () => this.available() && this.access.can('academy', 'certificates', 'create'),
   );
   readonly canRevoke = computed(
     () => this.available() && this.access.can('academy', 'certificates', 'approve'),
+  );
+  readonly canRequestRecords = computed(
+    () => this.learnerAvailable() && this.access.can('academy', 'learner', 'create'),
   );
   readonly canLearnerExport = computed(
     () => this.learnerAvailable() && this.access.can('academy', 'learner', 'export'),
@@ -204,6 +211,9 @@ export class AcademyCertificatesApi {
     this.ownRequests.set([]);
     this.error.set('');
   }
+  private learnerPrefix() {
+    return this.learnerOnly ? '/learning/training-record' : '/learning';
+  }
   private root() {
     return `/companies/${this.store.companyId()}/academy`;
   }
@@ -262,7 +272,7 @@ export class AcademyCertificatesApi {
     target.set([]);
     try {
       const result = await this.pages<CertificateRecord>(
-        learner ? '/learning/certificates' : '/certificates',
+        learner ? this.learnerPrefix() + '/certificates' : '/certificates',
         scope,
         learner,
       );
@@ -287,7 +297,7 @@ export class AcademyCertificatesApi {
       if (!current()) return;
       const requests = (
         await this.pages<SourceRequest>(
-          learner ? '/learning/records-requests' : '/records-requests',
+          learner ? this.learnerPrefix() + '/records-requests' : '/records-requests',
           scope,
           learner,
         )
@@ -382,7 +392,7 @@ export class AcademyCertificatesApi {
     const current = () => scope === this.scope() && this.latestDetails[mode] === ticket;
     try {
       const record = await this.auth.api<CertificateRecord>(
-        `${this.root()}${learner ? '/learning' : ''}/certificates/${id}`,
+        `${this.root()}${learner ? this.learnerPrefix() : ''}/certificates/${id}`,
       );
       if (!current()) return;
       this.accept(record, scope, learner, ticket);
@@ -443,6 +453,8 @@ export class AcademyCertificatesApi {
       return result;
     } catch (e) {
       if (scope === this.scope()) {
+        if ([400, 401, 403, 404, 409, 412, 428].includes((e as { status?: number }).status ?? 0))
+          this.retry = undefined;
         if ([401, 403, 404].includes((e as { status?: number }).status ?? 0)) this.clear();
         this.error.set((e as Error).message);
         if ([409, 412].includes((e as { status?: number }).status ?? 0)) {
@@ -485,7 +497,7 @@ export class AcademyCertificatesApi {
     return this.write(`/records-requests/${id}/acknowledge`, {}, row.etag);
   }
   async requestRecords() {
-    return this.write('/learning/records-requests', {}, undefined, true);
+    return this.write(this.learnerPrefix() + '/records-requests', {}, undefined, true);
   }
   async saveRequirement(rule: AcademyRequirement) {
     if (!this.canSaveRequirement(rule))
@@ -531,7 +543,7 @@ export class AcademyCertificatesApi {
     this.check(scope, learner);
     try {
       const blob = await this.auth.api<Blob>(
-        `${this.root()}${learner ? '/learning' : ''}/certificates/${id}/content`,
+        `${this.root()}${learner ? this.learnerPrefix() : ''}/certificates/${id}/content`,
         undefined,
         undefined,
         undefined,
@@ -557,7 +569,7 @@ export class AcademyCertificatesApi {
     this.check(scope, learner);
     try {
       const blob = await this.auth.api<Blob>(
-        `${this.root()}${learner ? '/learning' : ''}/certificates/${certificate.id}/media/${assetId}/content`,
+        `${this.root()}${learner ? this.learnerPrefix() : ''}/certificates/${certificate.id}/media/${assetId}/content`,
         undefined,
         undefined,
         undefined,

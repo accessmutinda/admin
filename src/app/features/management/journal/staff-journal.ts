@@ -4,6 +4,7 @@ import {
   inject,
   signal,
   input,
+  output,
   effect,
   DestroyRef,
   untracked,
@@ -122,6 +123,7 @@ export class StaffJournal {
       }
   }
   protected readonly service = inject(JournalService);
+  readonly saved = output<void>();
   protected readonly view = signal('Journal');
   protected readonly folder = signal('Inbox');
   protected readonly search = signal('');
@@ -340,6 +342,7 @@ export class StaffJournal {
         ? 'Journal entry sent to the selected recipients in this workspace.'
         : 'Draft saved. You can continue it from Drafts.',
     );
+    this.saved.emit();
   }
   protected cancelCompose(): void {
     if (this.discard()) this.composing.set(false);

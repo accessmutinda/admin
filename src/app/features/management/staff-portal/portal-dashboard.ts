@@ -1,5 +1,8 @@
 import { AcademyPortalSummary } from '../learning/academy/academy-portal-summary';
-import { Component, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
+import { StaffDashboardApi } from './staff-dashboard-api.service';
+import { AuthService } from '../../../core/auth/auth.service';
+import { Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -24,6 +27,19 @@ import { PortalService } from './portal.service';
 })
 export class PortalDashboard {
   protected readonly portal = inject(PortalService);
+  protected readonly api = this.portal.connected
+    ? (this.portal as unknown as StaffDashboardApi)
+    : null;
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  constructor() {
+    this.api?.start();
+    inject(DestroyRef).onDestroy(() => this.api?.stop());
+  }
+  protected signOut() {
+    this.auth.signOut();
+    void this.router.navigateByUrl('/auth/sign-in');
+  }
   protected readonly clientJournalEntries = computed(() =>
     this.portal.journal.entries().filter((e) => !!e.clientId && e.state === 'Sent'),
   );
@@ -36,7 +52,11 @@ export class PortalDashboard {
   protected readonly inboxQuery = signal('');
   protected readonly awaiting = this.portal.awaitingResponses;
   protected readonly professionalAwaiting = this.portal.professionalAwaiting;
-  protected readonly completedVisits = computed(() => this.visits().filter(completedVisit).length);
+  protected readonly completedVisits = computed(() =>
+    this.api
+      ? (this.api.metric('completed_visits') ?? 0)
+      : this.visits().filter(completedVisit).length,
+  );
   protected readonly dueThisWeek = computed(
     () =>
       this.openTasks().filter(
@@ -166,8 +186,10 @@ export class PortalDashboard {
           !e.readBy.includes(this.portal.journal.email()),
       ),
   );
-  protected readonly teamVisits = computed(() =>
-    ['CA', 'RM', 'CC'].includes(this.portal.journal.auth.currentUser()?.roleCode ?? ''),
+  protected readonly teamVisits = computed(
+    () =>
+      !this.api &&
+      ['CA', 'RM', 'CC'].includes(this.portal.journal.auth.currentUser()?.roleCode ?? ''),
   );
   protected readonly visits = computed(() => {
     const staff = this.portal.store
@@ -352,6 +374,16 @@ export class PortalDashboard {
       this.portal.store.staff().find((p) => p.email.toLowerCase() === email)?.hr?.personal.photo ??
       ''
     );
+  }
+  protected timestamp(value: string, mode: 'date' | 'time' | 'activity'): string {
+    const zone = this.api?.snapshot()?.meta.timezone || 'Europe/London';
+    const options: Intl.DateTimeFormatOptions =
+      mode === 'date'
+        ? { day: 'numeric', month: 'short', year: 'numeric' }
+        : mode === 'time'
+          ? { hour: '2-digit', minute: '2-digit' }
+          : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
+    return new Intl.DateTimeFormat('en-GB', { timeZone: zone, ...options }).format(new Date(value));
   }
   canLeave(): boolean {
     return this.compose()?.canLeave() ?? true;

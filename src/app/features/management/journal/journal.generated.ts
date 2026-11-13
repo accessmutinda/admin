@@ -306,3 +306,8 @@ export type JournalTaskPage = {
     }[];
   }[];
 };
+
+export type JournalClientRead = {
+  id: string;
+  name: string;
+};

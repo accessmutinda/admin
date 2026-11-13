@@ -1,10 +1,49 @@
-@if (academy.state().governance?.offline) {
-  <p class="panel" role="status">
-    Offline demonstration: responses are saved on this device and recorded for local reconciliation.
-    No server acknowledgement is claimed.
-  </p>
+@if (myLearning && !myLearning.snapshot()) {
+  <section
+    class="panel"
+    role="status"
+    [attr.aria-busy]="myLearning.loading()"
+    aria-labelledby="my-learning-state"
+  >
+    <h1 id="my-learning-state">
+      <span class="material-symbols-outlined" aria-hidden="true">{{
+        myLearning.loading() ? 'school' : 'lock_person'
+      }}</span>
+      {{
+        myLearning.loading()
+          ? 'Loading your learning record'
+          : myLearning.code() === 'staff_inactive'
+            ? 'Your staff record is inactive'
+            : myLearning.code() === 'staff_not_linked'
+              ? 'Link your staff account to continue'
+              : 'Your learning record is unavailable'
+      }}
+    </h1>
+    <p [attr.role]="myLearning.error() ? 'alert' : null">
+      {{
+        myLearning.loading()
+          ? 'We are checking your staff account and loading your assigned learning.'
+          : myLearning.error()
+      }}
+    </p>
+    @if (!myLearning.loading()) {
+      <div class="row">
+        <button class="academy-button primary" type="button" (click)="myLearning.load()">
+          Try again</button
+        ><a class="academy-button" routerLink="/account/security">Account &amp; support</a
+        ><a class="academy-button" routerLink="/staff-portal/dashboard">Back to staff dashboard</a>
+      </div>
+    }
+  </section>
+} @else {
+  @if (academy.state().governance?.offline) {
+    <p class="panel" role="status">
+      Offline demonstration: responses are saved on this device and recorded for local
+      reconciliation. No server acknowledgement is claimed.
+    </p>
+  }
+  <cv-academy-message [error]="error() || academy.resultsApi.learnerError()" [notice]="notice()" />
 }
-<cv-academy-message [error]="error() || academy.resultsApi.learnerError()" [notice]="notice()" />
 @if (attempt(); as a) {
   @if (!academy.owns(a.personId)) {
     <div class="notice">
@@ -670,7 +709,11 @@
             }}
           }
         </p>
-        <button class="academy-button submit-assessment" [disabled]="!canEdit()" (click)="submit()">
+        <button
+          class="academy-button submit-assessment"
+          [disabled]="!canSubmit()"
+          (click)="submit()"
+        >
           <span class="material-symbols-outlined" aria-hidden="true">check</span
           >{{ a.groupKind === 'Survey' ? 'Submit Survey' : 'Submit Assessment' }}
         </button>
@@ -695,7 +738,7 @@
       >
     </section>
   }
-} @else {
+} @else if (!myLearning || myLearning.snapshot()) {
   <section class="panel empty">
     <h1>Assessment unavailable</h1>
     <p>This assessment is not available to your account in the current workspace.</p>
