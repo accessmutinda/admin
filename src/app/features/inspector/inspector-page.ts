@@ -1,4 +1,5 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { CompanyDatePipe } from '../../shared/pipes/company-date.pipe';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -66,7 +67,7 @@ export class InspectorPage {
   readonly page = computed(
     () => INSPECTOR_PAGES.find((p) => p.path === this.routeData()['page']) ?? INSPECTOR_PAGES[0],
   );
-  readonly company = this.data.store.company;
+  readonly company = this.data.company;
   readonly questions = QUESTIONS;
   readonly categories = CATEGORIES;
   readonly ratings = RATINGS;
@@ -104,7 +105,7 @@ export class InspectorPage {
   readonly dirty = signal(false);
   readonly noteTab = signal('Overall Summary');
   readonly noteTabs = ['Overall Summary', ...QUESTIONS.map((q) => q.key), 'Additional Notes'];
-  readonly contextId = signal(this.data.store.companyId());
+  readonly contextId = signal(this.data.companyId());
   readonly modalOpen = signal(false);
   readonly modalKind = signal<'detail' | 'upload' | 'finding' | 'report' | 'setup'>('detail');
   readonly modalTitle = signal('');
@@ -238,6 +239,18 @@ export class InspectorPage {
   ]);
   readonly readyCount = computed(() => this.readiness().filter((r) => r.complete).length);
   constructor() {
+    if (this.data.backend) {
+      this.data.backend.start();
+      inject(DestroyRef).onDestroy(() => this.data.backend?.stop());
+      effect(() => {
+        const state = this.data.state();
+        if (!this.data.backend?.ready()) {
+          this.dirty.set(false);
+          this.modalOpen.set(false);
+          this.draft.set(structuredClone(state.draft));
+        } else if (!this.dirty()) this.draft.set(structuredClone(state.draft));
+      });
+    }
     effect(() => {
       this.page();
       this.params();
@@ -253,7 +266,7 @@ export class InspectorPage {
       this.activeTab.set('Overview');
     });
     effect(() => {
-      const id = this.data.store.companyId();
+      const id = this.data.companyId();
       if (id !== this.contextId()) {
         this.contextId.set(id);
         this.draft.set(structuredClone(this.data.state().draft));
@@ -276,7 +289,10 @@ export class InspectorPage {
       !this.dirty() || window.confirm('Leave this page and discard unsaved inspection changes?')
     );
   }
+  private readonly providerDates = new CompanyDatePipe();
   date(value: string | undefined): string {
+    if (this.data.backend)
+      return this.providerDates.transform(value, this.data.backend.value()?.meta.timezone, 'date');
     if (!value) return 'Not recorded';
     const date = new Date(value);
     return Number.isNaN(date.getTime())
@@ -330,6 +346,37 @@ export class InspectorPage {
   updateRating(question: string, rating: string): void {
     this.draft.update((d) => ({ ...d, ratings: { ...d.ratings, [question]: rating } }));
     this.dirty.set(true);
+  }
+  reviewProviderRatings(event: Event): void {
+    if (!this.data.backend) return;
+    event.preventDefault();
+    this.openRecord({
+      id: 'provider-recommendations',
+      cells: ['Recorded inspection recommendations'],
+      detail: Object.fromEntries(
+        QUESTIONS.map((question) => [
+          question.key,
+          this.data.state().draft.ratings[question.key] || 'Not assessed',
+        ]),
+      ),
+    });
+  }
+  async saveDetails(): Promise<void> {
+    if (!this.data.backend) {
+      if (this.save()) this.closeModal();
+      return;
+    }
+    this.error.set('');
+    this.message.set('');
+    const success = await this.data.backend.saveDetails(this.draft(), this.contextId());
+    if (!success) {
+      this.error.set(this.data.backend.error());
+      return;
+    }
+    this.draft.set(structuredClone(this.data.state().draft));
+    this.dirty.set(false);
+    this.modalOpen.set(false);
+    this.message.set('Inspection details saved.');
   }
   save(): boolean {
     this.error.set('');
@@ -508,6 +555,10 @@ export class InspectorPage {
     );
   }
   downloadDocument(document: InspectorDocument): void {
+    if (this.data.backend) {
+      void this.data.backend.download(document.id).catch((error) => this.error.set(error.message));
+      return;
+    }
     try {
       download(
         decodeDocument(document.content) as BlobPart,

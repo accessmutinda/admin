@@ -1,3 +1,6 @@
+import { InspectorProviderApi } from './inspector-provider-api.service';
+import { NavigationEnd } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { PageNavigation } from '../../core/navigation/page-navigation.service';
 import { PageLoading } from '../../shared/layouts/page-loading';
 import { CompanyAccessService } from '../../core/access/company-access.service';
@@ -102,11 +105,16 @@ import { InspectorService } from './inspector.service';
         </div>
       </main>
       <footer>
-        <span>CareVerity · {{ data.store.company()?.name }}</span
-        ><span
-          >Local workspace ·
-          {{ data.store.storageAvailable() ? 'Saved on this device' : 'Storage unavailable' }}</span
-        >
+        <span
+          >CareVerity · {{ providerMode() ? provider.company()?.name : data.company()?.name }}</span
+        ><span>{{
+          providerMode()
+            ? provider.ready()
+              ? 'Provider records connected'
+              : 'Provider records unavailable'
+            : 'Local workspace · ' +
+              (data.store.storageAvailable() ? 'Saved on this device' : 'Storage unavailable')
+        }}</span>
       </footer>
     </div>
   `,
@@ -117,6 +125,15 @@ export class InspectorLayout {
   readonly data = inject(InspectorService);
   readonly router = inject(Router);
   readonly access = inject(CompanyAccessService);
+  readonly provider = inject(InspectorProviderApi);
+  private readonly url = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      map(() => this.router.url),
+    ),
+    { initialValue: this.router.getCurrentNavigation()?.finalUrl?.toString() ?? this.router.url },
+  );
+  readonly providerMode = computed(() => /^\/inspector\/provider(?:[?#]|$)/.test(this.url()));
   readonly pages = computed(() =>
     INSPECTOR_PAGES.filter((page) => this.access.canPath('/inspector/' + page.path)),
   );
@@ -126,7 +143,9 @@ export class InspectorLayout {
   readonly userRole = computed(() => ROLES[this.auth.currentUser()?.roleCode ?? 'CW'].label);
   search(event: Event, term: string): void {
     event.preventDefault();
-    this.router.navigate(['/inspector/documents'], { queryParams: { q: term } });
+    this.router.navigate([this.providerMode() ? '/inspector/provider' : '/inspector/documents'], {
+      queryParams: { q: term },
+    });
   }
   switchWorkspace(): void {
     this.router.navigateByUrl('/select-workspace');
