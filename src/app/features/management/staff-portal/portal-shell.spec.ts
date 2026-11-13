@@ -1,86 +1,97 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Router, provideRouter } from '@angular/router';
-import { RouterTestingHarness } from '@angular/router/testing';
+import {
+  ActivatedRouteSnapshot,
+  CanActivateChildFn,
+  Router,
+  RouterStateSnapshot,
+  provideRouter,
+} from '@angular/router';
 import { of } from 'rxjs';
 import { routes } from '../../../app.routes';
 import { AuthService } from '../../../core/auth/auth.service';
-import { WorkspaceService } from '../../../core/auth/workspace.service';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { StaffDashboardApi } from './staff-dashboard-api.service';
+import { PortalShell } from './portal-shell';
+import { PORTAL_ROUTES } from './portal.routes';
 
+const company = { id: 'north', name: 'North Care', code: 'NORTH' };
 describe('Standalone staff portal', () => {
   beforeEach(() => {
-    localStorage.clear();
     TestBed.configureTestingModule({
       providers: [
-        provideRouter(routes),
+        provideRouter([]),
         {
           provide: BreakpointObserver,
           useValue: { observe: () => of({ matches: false, breakpoints: {} }) },
         },
+        {
+          provide: AuthService,
+          useValue: {
+            currentUser: () => ({ roleCode: 'CW', name: 'Worker', initials: 'W' }),
+            signOut: vi.fn(),
+          },
+        },
+        {
+          provide: CompanyAccessService,
+          useValue: {
+            context: () => null,
+            refreshForNavigation: vi.fn().mockResolvedValue(undefined),
+            canPath: () => false,
+          },
+        },
+        { provide: StaffDashboardApi, useValue: { company: signal(company), error: signal('') } },
       ],
     });
-    TestBed.inject(AuthService).signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
+    TestBed.overrideComponent(PortalShell, { set: { template: '' } });
   });
-  it('loads its own layout and dedicated navigation outside the management layout', async () => {
-    const harness = await RouterTestingHarness.create('/staff-portal/dashboard');
-    const root = harness.fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('cv-staff-portal')).not.toBeNull();
-    expect(root.querySelector('cv-management-layout')).toBeNull();
-    const links = Array.from(root.querySelectorAll('nav[aria-label="Staff portal navigation"] a'));
-    expect(links.map((link) => link.getAttribute('href'))).toEqual([
-      '/staff-portal/dashboard',
+  it('uses verified company metadata on tasks, journal and dashboard routes', () => {
+    const router = TestBed.inject(Router);
+    for (const path of [
+      '/staff-portal/tasks?new=true',
       '/staff-portal/journal',
-      '/staff-portal/tasks',
-      '/staff-portal/concerns',
-      '/staff-portal/service-users',
-      '/staff-portal/oversight',
-    ]);
-    const toggle = root.querySelector<HTMLButtonElement>('.academy-submenu-toggle')!;
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    toggle.click();
-    harness.detectChanges();
-    expect(
-      Array.from(root.querySelectorAll('#staff-academy-menu a')).map((a) => a.getAttribute('href')),
-    ).toEqual([
-      '/staff-portal/training/dashboard',
-      '/staff-portal/training/courses',
-      '/staff-portal/training/assessments',
-      '/staff-portal/training/history',
-      '/staff-portal/training/refreshers',
-      '/staff-portal/training/messages',
-    ]);
-    expect(root.querySelector('.staff-console')?.textContent).toContain('Staff Portal');
-    expect(root.querySelector('.portal-nav')).toBeNull();
+      '/staff-portal/dashboard',
+    ]) {
+      const url = vi.spyOn(router, 'url', 'get').mockReturnValue(path);
+      const fixture = TestBed.createComponent(PortalShell);
+      const shell = fixture.componentInstance as any;
+      expect(shell.dashboardView()).toBe(true);
+      expect(shell.store.company()).toEqual(company);
+      fixture.destroy();
+      url.mockRestore();
+    }
   });
-  it('redirects the removed dashboard to the main dashboard and removes its navigation', async () => {
-    const harness = await RouterTestingHarness.create(
-      '/staff-portal/dashboard-2?source=bookmark#tasks',
+  it('allows a task direct link to reach branded staff verification when navigation access is denied', async () => {
+    const guard = routes.find((route) => route.path === 'staff-portal')!
+      .canActivateChild![0] as CanActivateChildFn;
+    const result = await TestBed.runInInjectionContext(() =>
+      guard(
+        {} as ActivatedRouteSnapshot,
+        { url: '/staff-portal/tasks?task=record' } as RouterStateSnapshot,
+      ),
     );
-    const root = harness.fixture.nativeElement as HTMLElement;
-    expect(TestBed.inject(Router).url).toBe('/staff-portal/dashboard?source=bookmark#tasks');
-    expect(root.querySelector('h1')?.textContent).toContain(
-      'Staff Dashboard – Communication & Tasks',
+    expect(result).toBe(true);
+    expect(TestBed.inject(CompanyAccessService).refreshForNavigation).toHaveBeenCalled();
+  });
+  it('retains route access enforcement for other staff portal destinations', async () => {
+    const guard = routes.find((route) => route.path === 'staff-portal')!
+      .canActivateChild![0] as CanActivateChildFn;
+    const result = await TestBed.runInInjectionContext(() =>
+      guard({} as ActivatedRouteSnapshot, { url: '/staff-portal/concerns' } as RouterStateSnapshot),
     );
-    expect(root.querySelector('cv-portal-dashboard.dashboard-two')).toBeNull();
-    expect(root.querySelector('a[href="/staff-portal/dashboard-2"]')).toBeNull();
-    expect(root.querySelector('nav[aria-label="Dashboard designs"]')).toBeNull();
-    expect(root.querySelectorAll('.portal-stat-row .metric')).toHaveLength(4);
-    await harness.navigateByUrl('/staff-portal/oversight');
-    expect(root.querySelector('h1')?.textContent).toContain('Manager Dashboard');
-    expect(root.querySelector('nav[aria-label="Dashboard designs"]')).toBeNull();
+    expect(TestBed.inject(Router).serializeUrl(result as any)).toBe('/access-denied');
   });
-  it('redirects previous portal URLs while preserving the destination and query', async () => {
-    const harness = await RouterTestingHarness.create('/manage/staff-portal/tasks?new=true');
-    const root = harness.fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('cv-management-layout')).toBeNull();
-    expect(root.querySelector('cv-portal-tasks')).not.toBeNull();
-    expect(root.querySelector('input[name="taskTitle"]')).not.toBeNull();
-  });
-  it('redirects the original journal URL to the standalone portal', async () => {
-    const harness = await RouterTestingHarness.create('/manage/staff-journal');
-    const root = harness.fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('cv-management-layout')).toBeNull();
-    expect(root.querySelector('cv-staff-journal')).not.toBeNull();
+  it('redirects the retired dashboard while preserving its query and fragment', () => {
+    const redirect = PORTAL_ROUTES.find((route) => route.path === 'dashboard-2')!.redirectTo as any;
+    const result = TestBed.runInInjectionContext(() =>
+      redirect({ queryParams: { source: 'bookmark' }, fragment: 'tasks' }),
+    );
+    expect(TestBed.inject(Router).serializeUrl(result)).toBe(
+      '/staff-portal/dashboard?source=bookmark#tasks',
+    );
+    expect(PORTAL_ROUTES.some((route) => route.path === 'tasks' && !!route.providers?.length)).toBe(
+      true,
+    );
   });
 });

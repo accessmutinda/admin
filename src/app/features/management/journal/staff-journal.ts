@@ -64,6 +64,7 @@ export class StaffJournal {
     effect(() => {
       const clientId = this.clientId(),
         scope = this.service.scope();
+      this.service.staffReady();
       untracked(() => {
         this.service.selectClient(clientId);
         this.openGeneration++;
@@ -77,11 +78,13 @@ export class StaffJournal {
         this.error.set('');
         this.notice.set('');
         this.checked.set([]);
-        if (this.service.allowed()) void this.service.loadOptions(clientId);
+        if (this.service.allowed() && this.service.staffReady())
+          void this.service.loadOptions(clientId);
       });
     });
     effect((onCleanup) => {
       this.service.scope();
+      this.service.staffReady();
       const query = {
         client_id: this.clientId() || undefined,
         folder: this.folder(),
@@ -93,7 +96,7 @@ export class StaffJournal {
       };
       this.service.invalidateList();
       const timer = setTimeout(() => {
-        if (this.service.allowed()) void this.service.setQuery(query);
+        if (this.service.allowed() && this.service.staffReady()) void this.service.setQuery(query);
       }, 200);
       onCleanup(() => clearTimeout(timer));
     });
@@ -105,12 +108,20 @@ export class StaffJournal {
     });
   }
   async ngOnInit(): Promise<void> {
+    await this.service.connectStaff();
+    if (!this.service.staffReady()) return;
     const view = this.route.snapshot.queryParamMap.get('view');
-    if (view && ['Journal', 'Tasks & actions', 'Activity timeline'].includes(view))
+    if (
+      view &&
+      ['Journal', 'Tasks & actions', 'Activity timeline'].includes(view) &&
+      (view !== 'Tasks & actions' || this.service.tasksAllowed())
+    )
       this.view.set(view);
     const id = this.route.snapshot.queryParamMap.get('entry');
     if (id)
       try {
+        await this.service.loadOptions(this.clientId());
+        if (!this.service.staffReady()) return;
         const entry = await this.service.getEntry(id);
         if (!this.clientId() || entry.clientId === this.clientId()) {
           this.folder.set(entry.authorEmail === this.service.email() ? 'Sent' : 'Inbox');
@@ -123,6 +134,10 @@ export class StaffJournal {
       }
   }
   protected readonly service = inject(JournalService);
+  protected async retryStaff() {
+    await this.service.connectStaff();
+    if (this.service.staffReady()) await this.ngOnInit();
+  }
   readonly saved = output<void>();
   protected readonly view = signal('Journal');
   protected readonly folder = signal('Inbox');
@@ -245,6 +260,7 @@ export class StaffJournal {
       .join('');
   }
   protected changeView(view: string): void {
+    if (view === 'Tasks & actions' && !this.service.tasksAllowed()) return;
     this.view.set(view);
     this.search.set('');
   }

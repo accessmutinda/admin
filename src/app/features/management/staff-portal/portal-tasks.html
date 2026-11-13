@@ -1,4 +1,42 @@
-@if (!portal.journal.allowed()) {
+@if (portal.journal.staffPortal && !portal.journal.staffReady()) {
+  <section
+    class="portal-panel"
+    role="status"
+    [attr.aria-busy]="portal.journal.staffLoading()"
+    aria-labelledby="staff-task-state"
+  >
+    <div class="portal-panel-body">
+      <h1 id="staff-task-state">
+        <span class="material-symbols-outlined" aria-hidden="true">{{
+          portal.journal.staffLoading() ? 'assignment' : 'lock_person'
+        }}</span>
+        {{
+          portal.journal.staffLoading()
+            ? 'Loading your staff tasks'
+            : portal.journal.staffCode() === 'staff_inactive'
+              ? 'Your staff record is inactive'
+              : portal.journal.staffCode() === 'staff_not_linked'
+                ? 'Link your staff account to continue'
+                : 'Your staff tasks are unavailable'
+        }}
+      </h1>
+      <p [attr.role]="portal.journal.staffError() ? 'alert' : null">
+        {{
+          portal.journal.staffLoading()
+            ? 'We are checking your staff account and loading your tasks.'
+            : portal.journal.staffError()
+        }}
+      </p>
+      @if (!portal.journal.staffLoading()) {
+        <div class="portal-form-actions">
+          <button class="button primary" type="button" (click)="retryStaff()">Try again</button
+          ><a class="button" routerLink="/account/security">Account &amp; support</a
+          ><a class="button" routerLink="/staff-portal/dashboard">Back to staff dashboard</a>
+        </div>
+      }
+    </div>
+  </section>
+} @else if (!portal.journal.allowed()) {
   <cv-access-required
     feature="Client journal tasks"
     module="Care Recording"
@@ -17,6 +55,7 @@
       class="staff-picker"
       aria-label="Select staff member"
       [ngModel]="staff()"
+      [disabled]="portal.journal.staffTasks"
       (ngModelChange)="changeStaff($event)"
     >
       @for (p of portal.contacts(); track p.email) {
@@ -43,32 +82,46 @@
         <h2>
           {{ person()?.name ?? 'Staff member' }}
           <span class="portal-badge" data-tone="green">{{
-            record()?.hr?.status ?? 'Not recorded'
+            profile()?.status ?? record()?.hr?.status ?? 'Not recorded'
           }}</span>
         </h2>
-        <p>{{ person()?.role ?? 'Care team' }}</p>
+        <p>{{ person()?.role || 'Not recorded' }}</p>
         <small
           >Staff reference:
-          {{ record()?.hr?.reference ?? record()?.id ?? 'Workspace account' }}</small
+          {{
+            profile()?.reference || record()?.hr?.reference || record()?.id || 'Not recorded'
+          }}</small
         ><a [href]="'mailto:' + staff()">{{ staff() }}</a>
-        @if (record()?.hr?.personal?.phone) {
-          <a [href]="'tel:' + record()!.hr!.personal.phone">{{ record()!.hr!.personal.phone }}</a>
+        @if (profile()?.phone || record()?.hr?.personal?.phone) {
+          <a [href]="'tel:' + (profile()?.phone || record()!.hr!.personal.phone)">{{
+            profile()?.phone || record()!.hr!.personal.phone
+          }}</a>
         }
       </div>
       <div class="staff-employment">
-        <strong>{{ portal.store.company()?.name }}</strong
-        ><small>{{ record()?.location ?? 'Company workspace' }}</small
+        <strong>{{
+          portal.journal.staffContext()?.company?.name ?? portal.store.company()?.name
+        }}</strong
+        ><small>{{ profile()?.location || record()?.location || 'Not recorded' }}</small
         ><strong>{{
-          record()?.start ? (record()?.start | date: 'd MMM y') : 'Not recorded'
+          profile()?.start || record()?.start
+            ? (profile()?.start || record()?.start | date: 'd MMM y')
+            : 'Not recorded'
         }}</strong
         ><small>Start date</small
-        ><strong>{{ record()?.hr?.employment?.type ?? 'Employment details not recorded' }}</strong>
+        ><strong>{{
+          profile()?.employment_type ||
+            record()?.hr?.employment?.type ||
+            'Employment details not recorded'
+        }}</strong>
       </div>
       <div class="staff-supervisor">
         <span class="material-symbols-outlined" aria-hidden="true">supervisor_account</span>
         <div>
           <small>Supervisor / manager</small
-          ><strong>{{ record()?.hr?.employment?.manager || 'Not assigned' }}</strong
+          ><strong>{{
+            profile()?.manager || record()?.hr?.employment?.manager || 'Not assigned'
+          }}</strong
           ><a class="portal-link" routerLink="/staff-portal/journal"
             >Open communication journal →</a
           >
@@ -80,8 +133,11 @@
         <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
         <div>
           <h2>Outstanding tasks</h2>
-          <strong>{{ pending().length }}</strong
-          ><small>{{ overdueCount() }} overdue · {{ dueWeek() }} due this week</small>
+          <strong>{{ portal.journal.ready() ? pending().length : '—' }}</strong
+          ><small
+            >{{ portal.journal.ready() ? overdueCount() : '—' }} overdue ·
+            {{ portal.journal.ready() ? dueWeek() : '—' }} due this week</small
+          >
         </div>
       </div>
       <a
@@ -99,7 +155,7 @@
         <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">flag</span>
         <div>
           <h2>Awaiting Replies</h2>
-          <strong>{{ awaitingReplies() }}</strong
+          <strong>{{ portal.journal.ready() ? (awaitingReplies() ?? '—') : '—' }}</strong
           ><small>Need attention</small>
         </div>
       </div>
@@ -107,7 +163,7 @@
         <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">task_alt</span>
         <div>
           <h2>Resolved This Week</h2>
-          <strong>{{ resolved().length }}</strong
+          <strong>{{ portal.journal.ready() ? resolved().length : '—' }}</strong
           ><small>Completed follow-ups</small>
         </div>
       </div>
@@ -136,7 +192,13 @@
             <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Tasks &
             Actions
           </h2>
-          <button class="button primary" (click)="edit()">+ Add task</button>
+          <button
+            class="button primary"
+            [disabled]="!portal.journal.ready() || !portal.journal.capabilities().can_create"
+            (click)="edit()"
+          >
+            + Add task
+          </button>
         </div>
         <nav class="portal-filters" aria-label="Task status filters">
           @for (
@@ -210,8 +272,27 @@
                       <span class="material-symbols-outlined" aria-hidden="true"
                         >assignment_turned_in</span
                       >
-                      <h3>No tasks in this view</h3>
-                      <p>Create a task to record your next action and follow it through.</p>
+                      <h3>
+                        {{
+                          portal.journal.loading()
+                            ? 'Loading your tasks'
+                            : portal.journal.ready()
+                              ? 'No tasks in this view'
+                              : 'Tasks are unavailable'
+                        }}
+                      </h3>
+                      <p>
+                        {{
+                          portal.journal.loading()
+                            ? 'Please wait while your current tasks load.'
+                            : portal.journal.ready()
+                              ? 'Create a task to record your next action and follow it through.'
+                              : 'Try again to load your current tasks.'
+                        }}
+                      </p>
+                      @if (!portal.journal.loading() && !portal.journal.ready()) {
+                        <button class="button" (click)="portal.journal.refresh()">Try again</button>
+                      }
                     </div>
                   </td>
                 </tr>
@@ -229,21 +310,18 @@
             <h2>Task details</h2>
             <span class="portal-badge">{{ task.status }}</span>
           </div>
-          <form
-            class="portal-form"
-            (ngSubmit)="save()"
-            [inert]="
-              portal.journal.busy() ||
-              !(task.etag
-                ? portal.journal.capabilities().can_edit
-                : portal.journal.capabilities().can_create)
-            "
-          >
+          <form class="portal-form" (ngSubmit)="save()" [inert]="portal.journal.busy()">
             <label
               >Task title <span class="portal-required">*</span
-              ><input name="taskTitle" [(ngModel)]="task.title" required maxlength="200" /></label
+              ><input
+                [disabled]="!canWriteTask()"
+                name="taskTitle"
+                [(ngModel)]="task.title"
+                required
+                maxlength="200" /></label
             ><label
               >Related client<mat-select
+                [disabled]="!canWriteTask()"
                 cvSelect
                 aria-label="Related client"
                 name="clientId"
@@ -260,6 +338,7 @@
                 cvSelect
                 aria-label="Task assignee"
                 name="owner"
+                [disabled]="portal.journal.staffTasks || !canWriteTask()"
                 [(ngModel)]="task.owner"
               >
                 @for (c of portal.contacts(); track c.email) {
@@ -270,6 +349,7 @@
             <div class="portal-form-pair">
               <label
                 >Priority<mat-select
+                  [disabled]="!canWriteTask()"
                   cvSelect
                   aria-label="Task priority"
                   name="priority"
@@ -281,13 +361,24 @@
                 </mat-select></label
               ><label
                 >Due date <span class="portal-required">*</span
-                ><input type="date" name="due" [(ngModel)]="task.due" required
+                ><input
+                  [disabled]="!canWriteTask()"
+                  type="date"
+                  name="due"
+                  [(ngModel)]="task.due"
+                  required
               /></label>
             </div>
             <div class="portal-form-pair">
-              <label>Due time<input type="time" name="dueTime" [(ngModel)]="task.dueTime" /></label
+              <label
+                >Due time<input
+                  [disabled]="!canWriteTask()"
+                  type="time"
+                  name="dueTime"
+                  [(ngModel)]="task.dueTime" /></label
               ><label
                 >Follow-up time<input
+                  [disabled]="!canWriteTask()"
                   type="time"
                   name="followUpTime"
                   [(ngModel)]="task.followUpTime"
@@ -295,6 +386,7 @@
             </div>
             <label
               >Related Visit<mat-select
+                [disabled]="!canWriteTask()"
                 cvSelect
                 name="visit"
                 aria-label="Task related visit"
@@ -322,6 +414,7 @@
             }
             <label
               >Status<mat-select
+                [disabled]="!canWriteTask()"
                 cvSelect
                 aria-label="Task status"
                 name="status"
@@ -336,12 +429,14 @@
               </mat-select></label
             ><label
               >Investigation notes<textarea
+                [disabled]="!canWriteTask()"
                 name="notes"
                 [(ngModel)]="task.notes"
                 rows="3"
               ></textarea></label
             ><label
               >Action taken<textarea
+                [disabled]="!canWriteTask()"
                 name="actions"
                 [(ngModel)]="task.actions"
                 rows="3"
@@ -349,6 +444,7 @@
               ></textarea></label
             ><label
               >Follow-up date<input
+                [disabled]="!canWriteTask()"
                 type="date"
                 name="followUp"
                 [(ngModel)]="task.followUp" /></label
@@ -358,6 +454,8 @@
                   ? portal.journal.capabilities().can_edit
                   : portal.journal.capabilities().can_create)
               "
+              [uploadEnabled]="portal.journal.capabilities().can_create"
+              [downloadEnabled]="portal.journal.capabilities().can_export"
               [uploadHandler]="uploadEvidence"
               [downloadHandler]="downloadEvidence"
               [files]="task.attachments ?? []"
@@ -367,11 +465,12 @@
             <div class="portal-form-actions">
               <button type="button" class="button" (click)="cancel()" [disabled]="uploading()">
                 Cancel</button
-              ><button class="button" [disabled]="uploading()">Save updates</button
+              ><button class="button" [disabled]="uploading() || !canWriteTask()">
+                Save updates</button
               ><button
                 type="button"
                 class="button primary"
-                [disabled]="uploading()"
+                [disabled]="uploading() || !canWriteTask()"
                 (click)="save(true)"
               >
                 Mark as resolved
@@ -393,11 +492,11 @@
           <dt>Email</dt>
           <dd>{{ staff() }}</dd>
           <dt>Phone</dt>
-          <dd>{{ record()?.hr?.personal?.phone || 'Not recorded' }}</dd>
+          <dd>{{ profile()?.phone || record()?.hr?.personal?.phone || 'Not recorded' }}</dd>
           <dt>Location</dt>
-          <dd>{{ record()?.location || 'Not recorded' }}</dd>
+          <dd>{{ profile()?.location || record()?.location || 'Not recorded' }}</dd>
           <dt>Supervisor</dt>
-          <dd>{{ record()?.hr?.employment?.manager || 'Not assigned' }}</dd>
+          <dd>{{ profile()?.manager || record()?.hr?.employment?.manager || 'Not assigned' }}</dd>
         </dl>
       </div>
     </section>
@@ -418,8 +517,20 @@
           </article>
         } @empty {
           <div class="portal-empty">
-            <h3>No staff notes recorded</h3>
-            <p>Staff notes are linked to the existing employment record.</p>
+            <h3>
+              {{
+                portal.journal.staffTasks
+                  ? 'Employment notes are unavailable here'
+                  : 'No staff notes recorded'
+              }}
+            </h3>
+            <p>
+              {{
+                portal.journal.staffTasks
+                  ? 'Use the notes and action fields on your tasks to record follow-up work.'
+                  : 'Staff notes are linked to the existing employment record.'
+              }}
+            </p>
           </div>
         }
       </div>

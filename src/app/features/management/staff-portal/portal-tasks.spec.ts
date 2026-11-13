@@ -54,6 +54,7 @@ describe('Client journal task scope', () => {
     };
     journal = {
       scope: signal('north:worker'),
+      loading: signal(false),
       allowed: () => true,
       email: () => 'worker@example.com',
       activate: () => () => {},
@@ -127,5 +128,67 @@ describe('Client journal task scope', () => {
     await editor.save();
     expect(portal.saveTask).not.toHaveBeenCalled();
     expect(editor.error()).toContain('different service user');
+  });
+  it('waits for staff verification and ignores a different staff query parameter', async () => {
+    route.snapshot.data = {};
+    query.next(convertToParamMap({ staff: 'other@example.com' }));
+    journal.staffPortal = true;
+    journal.staffTasks = true;
+    journal.staffReady = signal(false);
+    await flush();
+    expect(journal.loadOptions).not.toHaveBeenCalled();
+    journal.staffReady.set(true);
+    await flush();
+    expect(editor.staff()).toBe('worker@example.com');
+    expect(journal.loadOptions).toHaveBeenCalled();
+    editor.changeStaff('other@example.com');
+    expect(editor.staff()).toBe('worker@example.com');
+  });
+  it('clears the editor when staff access is revoked', async () => {
+    journal.staffPortal = true;
+    journal.staffTasks = true;
+    journal.staffReady = signal(true);
+    await flush();
+    editor.edit();
+    editor.task.title = 'Unsaved private task';
+    journal.staffReady.set(false);
+    await flush();
+    expect(editor.editing()).toBe(false);
+    expect(editor.task.title).not.toBe('Unsaved private task');
+  });
+  it('rejects opening another staff member task in staff mode', async () => {
+    journal.staffTasks = true;
+    await flush();
+    editor.edit({ ...task('client-a'), owner: 'other@example.com' });
+    expect(editor.editing()).toBe(false);
+    expect(editor.error()).toContain('does not belong');
+  });
+  it('keeps task details read-only when edit access is unavailable', async () => {
+    journal.capabilities = signal({ can_create: true, can_edit: false, can_export: false });
+    await flush();
+    editor.edit({ ...task('client-a'), etag: '"v1"' });
+    expect(editor.canWriteTask()).toBe(false);
+    editor.cancel();
+    expect(editor.editing()).toBe(false);
+    editor.edit();
+    expect(editor.canWriteTask()).toBe(true);
+  });
+
+  it('loads related visit choices when opening an existing client task', async () => {
+    await flush();
+    journal.loadOptions.mockClear();
+    editor.edit({ ...task('client-a'), visitId: 'visit-a' });
+    expect(journal.loadOptions).toHaveBeenLastCalledWith('client-a');
+  });
+  it('prevents switching tasks while evidence is uploading', async () => {
+    await flush();
+    editor.edit(task('client-a', 'first-task'));
+    editor.uploading.set(true);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    editor.edit(task('client-a', 'second-task'));
+    expect(editor.task.id).toBe('first-task');
+    expect(editor.canLeave()).toBe(false);
+    expect(confirm).not.toHaveBeenCalled();
+    confirm.mockRestore();
   });
 });

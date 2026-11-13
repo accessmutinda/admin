@@ -1,8 +1,11 @@
+import { StaffDashboardApi } from '../staff-portal/staff-dashboard-api.service';
 import type {
   JournalOptions,
   JournalPage,
   JournalEntryRead,
   JournalTaskRead,
+  JournalStaffContext,
+  StaffTaskContext,
 } from './journal.generated';
 import {
   DestroyRef,
@@ -29,6 +32,7 @@ type Options = JournalOptions;
 type Contact = Options['contacts'][number];
 type Visit = Options['visits'][number];
 export const STAFF_JOURNAL = new InjectionToken<boolean>('staffJournal');
+export const STAFF_TASKS = new InjectionToken<boolean>('staffTasks');
 type Page = JournalPage;
 export interface JournalQuery {
   client_id?: string;
@@ -41,11 +45,46 @@ export interface JournalQuery {
 }
 @Injectable({ providedIn: 'root' })
 export class JournalService {
-  private readonly staffPortal = inject(STAFF_JOURNAL, { optional: true });
+  readonly staffTasks = inject(STAFF_TASKS, { optional: true }) === true;
+  readonly staffPortal = inject(STAFF_JOURNAL, { optional: true }) === true || this.staffTasks;
+  private readonly staffDashboard = this.staffPortal ? inject(StaffDashboardApi) : null;
+  private readonly staffRaw = signal<{
+    scope: string;
+    data: JournalStaffContext | StaffTaskContext;
+  } | null>(null);
+  readonly staffReady = computed(
+    () => !this.staffPortal || this.staffRaw()?.scope === this.scope(),
+  );
+  readonly staffContext = computed(() =>
+    this.staffTasks && this.staffReady() ? (this.staffRaw()?.data as StaffTaskContext) : null,
+  );
+  readonly staffLoading = signal(false);
+  readonly staffError = signal('');
+  readonly staffCode = signal('');
+  private staffGeneration = 0;
+  private staffPending?: { scope: string; promise: Promise<void> };
   readonly auth = inject(AuthService);
   readonly access = inject(CompanyAccessService);
-  readonly email = computed(() => this.auth.currentUser()?.email.toLowerCase() ?? '');
-  readonly allowed = computed(() => this.access.can('care', 'recording', 'read'));
+  readonly email = computed(() =>
+    this.staffPortal && this.staffReady()
+      ? this.staffRaw()!.data.email
+      : (this.auth.currentUser()?.email.toLowerCase() ?? ''),
+  );
+  readonly allowed = computed(
+    () =>
+      this.access.can('care', 'recording', 'read') &&
+      (!this.staffPortal ||
+        this.access.can('staff_portal', this.staffTasks ? 'tasks' : 'journal', 'read')),
+  );
+  readonly tasksAllowed = computed(
+    () => !this.staffPortal || this.access.can('staff_portal', 'tasks', 'read'),
+  );
+  readonly canCreateTasks = computed(
+    () =>
+      this.tasksAllowed() &&
+      this.access.can('care', 'recording', 'create') &&
+      (!this.staffPortal || this.access.can('staff_portal', 'tasks', 'create')),
+  );
   readonly scope = computed(() => {
     const context = this.access.context();
     return JSON.stringify({
@@ -102,6 +141,9 @@ export class JournalService {
   private generation = 0;
   private detailGeneration = 0;
   private optionGeneration = 0;
+  private optionsClientId = '';
+  private optionsError = '';
+  private pendingOptions?: { scope: string; clientId: string; promise: Promise<void> };
   private destroyed = false;
   private active = 0;
   private pendingSend = new Map<string, string>();
@@ -109,13 +151,21 @@ export class JournalService {
   private requests = new Map<string, string>();
   private timer: ReturnType<typeof setInterval>;
   constructor() {
+    let previous = this.scope();
     effect(() => {
-      this.scope();
-      untracked(() => this.clear());
+      const scope = this.scope();
+      untracked(() => {
+        if (scope === previous) return;
+        previous = scope;
+        this.clear();
+        if (this.staffPortal && this.active) void this.connectStaff();
+      });
     });
     const refresh = () => {
-      if (this.active && document.visibilityState !== 'hidden' && this.allowed() && !this.busy())
-        void this.refresh();
+      if (this.active && document.visibilityState !== 'hidden' && !this.busy()) {
+        if (this.staffPortal && !this.staffReady()) void this.connectStaff();
+        else if (this.allowed()) void this.refresh();
+      }
     };
     this.timer = setInterval(refresh, 15000);
     document.addEventListener('visibilitychange', refresh);
@@ -128,14 +178,100 @@ export class JournalService {
   }
   activate(): () => void {
     this.active++;
+    if (this.staffPortal && !this.staffReady()) void this.connectStaff();
     return () => {
       this.active = Math.max(0, this.active - 1);
     };
   }
+  async connectStaff(refresh = false): Promise<void> {
+    if (!this.staffPortal || (this.staffReady() && !refresh)) return;
+    const scope = this.scope();
+    if (this.staffPending?.scope === scope) return this.staffPending.promise;
+    const generation = ++this.staffGeneration;
+    this.staffLoading.set(true);
+    this.staffError.set('');
+    this.staffCode.set('');
+    const promise = (async () => {
+      try {
+        const data = await this.auth.api<JournalStaffContext | StaffTaskContext>(
+          `/companies/${this.access.companyId()}/staff-portal/${this.staffTasks ? 'tasks' : 'journal'}/context`,
+        );
+        if (scope !== this.scope() || generation !== this.staffGeneration) return;
+        if (
+          data.company_id !== this.access.companyId() ||
+          data.company.id !== data.company_id ||
+          String(data.actor_id) !== String(this.auth.profile()?.id) ||
+          !data.person_id ||
+          !data.employment_id ||
+          !data.email
+        )
+          throw Error('This journal context does not belong to your current staff account.');
+        this.staffRaw.set({ scope, data });
+        this.staffDashboard?.rememberCompany(data.company, data.actor_id);
+      } catch (error) {
+        if (scope === this.scope() && generation === this.staffGeneration) {
+          this.clear();
+          this.staffCode.set((error as { code?: string }).code || 'unavailable');
+          this.staffError.set(
+            error instanceof Error
+              ? error.message
+              : 'Your staff journal is unavailable. Please try again.',
+          );
+        }
+      } finally {
+        if (generation === this.staffGeneration) {
+          this.staffLoading.set(false);
+          this.staffPending = undefined;
+        }
+      }
+    })();
+    this.staffPending = { scope, promise };
+    return promise;
+  }
+  private staffDenied(error: unknown) {
+    if (!this.staffPortal || ![401, 403].includes((error as { status?: number }).status ?? 0))
+      return;
+    this.clear();
+    this.staffCode.set((error as { code?: string }).code || 'permission_denied');
+    this.staffError.set(
+      error instanceof Error ? error.message : 'Your staff journal is unavailable.',
+    );
+  }
+  private async api<T>(
+    path: string,
+    body?: unknown,
+    method?: 'POST' | 'PATCH' | 'DELETE',
+    headers?: Record<string, string>,
+    responseType: 'json' | 'blob' = 'json',
+  ): Promise<T> {
+    const scope = this.scope();
+    if (this.staffPortal && !this.staffReady()) {
+      await this.connectStaff();
+      if (!this.staffReady())
+        throw Error(this.staffError() || 'Your staff journal is unavailable.');
+    }
+    if (scope !== this.scope() || this.destroyed)
+      throw Error('The workspace changed. Reopen the journal.');
+    try {
+      return await this.auth.api<T>(path, body, method, headers, responseType);
+    } catch (error) {
+      if (scope === this.scope() && !this.destroyed) this.staffDenied(error);
+      throw error;
+    }
+  }
   private clear() {
+    this.staffGeneration++;
+    this.staffRaw.set(null);
+    this.staffPending = undefined;
+    this.staffLoading.set(false);
+    this.staffError.set('');
+    this.staffCode.set('');
     this.generation++;
     this.detailGeneration++;
     this.optionGeneration++;
+    this.optionsClientId = '';
+    this.optionsError = '';
+    this.pendingOptions = undefined;
     this.entries.set([]);
     this.taskRecords.set([]);
     this.events.set([]);
@@ -156,12 +292,15 @@ export class JournalService {
     this.pendingSend.clear();
   }
   private current(scope: string) {
-    return !this.destroyed && scope === this.scope() && this.allowed();
+    return !this.destroyed && scope === this.scope() && this.allowed() && this.staffReady();
   }
   private root() {
     if (!this.allowed() || !this.access.companyId())
       throw Error('Client Journal access is unavailable.');
-    return `/companies/${this.access.companyId()}/${this.staffPortal ? 'staff-portal/journal' : 'journal'}`;
+    return `/companies/${this.access.companyId()}/${this.staffTasks ? 'staff-portal/tasks' : this.staffPortal ? 'staff-portal/journal' : 'journal'}`;
+  }
+  private taskRoot() {
+    return this.staffTasks ? this.root() : `${this.root()}/tasks`;
   }
   private validate<T extends { company_id?: string }>(value: T): T {
     if (value.company_id !== this.access.companyId())
@@ -185,6 +324,19 @@ export class JournalService {
     return this.contacts();
   }
   async loadOptions(clientId = ''): Promise<void> {
+    this.optionsClientId = clientId;
+    const scope = this.scope();
+    if (this.pendingOptions?.scope === scope && this.pendingOptions.clientId === clientId)
+      return this.pendingOptions.promise;
+    const promise = this.fetchOptions(clientId);
+    this.pendingOptions = { scope, clientId, promise };
+    try {
+      await promise;
+    } finally {
+      if (this.pendingOptions?.promise === promise) this.pendingOptions = undefined;
+    }
+  }
+  private async fetchOptions(clientId = ''): Promise<void> {
     const scope = this.scope(),
       generation = ++this.optionGeneration;
     const contacts: Contact[] = [],
@@ -195,7 +347,7 @@ export class JournalService {
       while (page) {
         const params: URLSearchParams = new URLSearchParams({ page: String(page) });
         if (clientId) params.set('client_id', clientId);
-        const result: Options = await this.auth.api<Options>(`${this.root()}/options?${params}`);
+        const result: Options = await this.api<Options>(`${this.root()}/options?${params}`);
         if (!this.current(scope) || generation !== this.optionGeneration) return;
         this.validate(result);
         contacts.push(...result.contacts);
@@ -204,6 +356,7 @@ export class JournalService {
         this.capabilities.set(result);
         page = result.next_page;
       }
+      this.optionsError = '';
       this.contacts.set(contacts);
       this.clients.set(clients);
       this.visits.set(visits);
@@ -213,7 +366,9 @@ export class JournalService {
         this.clients.set([]);
         this.visits.set([]);
         this.capabilities.set({ can_create: false, can_edit: false, can_export: false });
-        this.error.set(error instanceof Error ? error.message : 'Journal options are unavailable.');
+        this.optionsError =
+          error instanceof Error ? error.message : 'Journal options are unavailable.';
+        this.error.set(this.optionsError);
       }
     }
   }
@@ -245,6 +400,7 @@ export class JournalService {
   }
   async refresh() {
     if (!this.allowed()) return;
+    if (this.staffTasks) return this.refreshStaffTasks();
     const scope = this.scope(),
       generation = ++this.generation;
     const query = { ...this.query };
@@ -253,7 +409,7 @@ export class JournalService {
       if (value !== undefined && value !== '') params.set(key, String(value));
     this.loading.set(true);
     try {
-      const page = await this.auth.api<Page>(`${this.root()}?${params}`);
+      const page = await this.api<Page>(`${this.root()}?${params}`);
       if (!this.current(scope) || generation !== this.generation) return;
       this.validate(page.meta);
       if (query.client_id && page.results.some((row) => row.clientId !== query.client_id))
@@ -268,7 +424,7 @@ export class JournalService {
       await this.refreshAuxiliary(scope, '', generation);
       const selected = this.detail();
       if (selected && this.current(scope) && generation === this.generation) {
-        const fresh = await this.auth.api<JournalEntryRead>(`${this.root()}/${selected.id}`);
+        const fresh = await this.api<JournalEntryRead>(`${this.root()}/${selected.id}`);
         if (this.current(scope) && generation === this.generation)
           this.detail.set(this.normalize(fresh));
       }
@@ -292,6 +448,60 @@ export class JournalService {
       if (this.current(scope) && generation === this.generation) this.loading.set(false);
     }
   }
+  private async refreshStaffTasks() {
+    const scope = this.scope(),
+      generation = ++this.generation;
+    this.loading.set(true);
+    try {
+      await this.connectStaff(true);
+      if (!this.current(scope) || generation !== this.generation) return;
+      const rows: JournalTaskRead[] = [];
+      let page: number | null = 1;
+      while (page) {
+        const params: URLSearchParams = new URLSearchParams({ page: String(page) });
+        if (this.query.client_id) params.set('client_id', this.query.client_id);
+        const result: { company_id: string; results: JournalTaskRead[]; next_page: number | null } =
+          await this.api<{
+            company_id: string;
+            results: JournalTaskRead[];
+            next_page: number | null;
+          }>(`${this.taskRoot()}?${params}`);
+        if (!this.current(scope) || generation !== this.generation) return;
+        this.validate(result);
+        if (
+          result.results.some(
+            (task) =>
+              task.owner !== this.email() ||
+              (this.query.client_id && task.clientId !== this.query.client_id),
+          )
+        )
+          throw Error('The task response does not belong to your current staff account.');
+        rows.push(...result.results);
+        page = result.next_page;
+      }
+      await this.loadOptions(this.optionsClientId);
+      if (!this.current(scope) || generation !== this.generation) return;
+      if (this.optionsError) throw Error(this.optionsError);
+      this.taskRecords.set(
+        rows.map((task) => ({
+          ...task,
+          resolvedAt: task.resolvedAt ?? undefined,
+          attachments: (task.attachments ?? []).map((file) => ({ ...file, content: '' })),
+        })),
+      );
+      this.summary.update((value) => ({ ...value, local_date: this.staffContext()!.local_date }));
+      this.ready.set(true);
+      this.error.set('');
+    } catch (error) {
+      if (this.current(scope) && generation === this.generation) {
+        this.taskRecords.set([]);
+        this.ready.set(false);
+        this.error.set(error instanceof Error ? error.message : 'Your tasks could not be loaded.');
+      }
+    } finally {
+      if (scope === this.scope() && generation === this.generation) this.loading.set(false);
+    }
+  }
   private async refreshAuxiliary(scope: string, clientId: string, generation: number) {
     const load = async <T>(kind: string) => {
       const rows: T[] = [];
@@ -300,7 +510,7 @@ export class JournalService {
         const params: URLSearchParams = new URLSearchParams({ page: String(page) });
         if (clientId) params.set('client_id', clientId);
         const result: { company_id: string; next_page: number | null; results: T[] } =
-          await this.auth.api<{ company_id: string; next_page: number | null; results: T[] }>(
+          await this.api<{ company_id: string; next_page: number | null; results: T[] }>(
             `${this.root()}/${kind}?${params}`,
           );
         if (!this.current(scope) || generation !== this.generation) return null;
@@ -311,7 +521,7 @@ export class JournalService {
       return rows;
     };
     const [tasks, events] = await Promise.all([
-      load<JournalTaskRead>('tasks'),
+      this.tasksAllowed() ? load<JournalTaskRead>('tasks') : Promise.resolve([]),
       load<JournalEvent>('activity'),
     ]);
     if (this.current(scope) && generation === this.generation && tasks && events) {
@@ -335,7 +545,7 @@ export class JournalService {
       const query = new URLSearchParams();
       for (const [key, value] of Object.entries(this.query))
         if (value !== undefined && value !== '') query.set(key, String(value));
-      const result = await this.auth.api<JournalPage>(`${this.root()}/print?${query}`);
+      const result = await this.api<JournalPage>(`${this.root()}/print?${query}`);
       if (!this.current(scope) || generation !== this.generation)
         throw Error('The workspace or journal view changed.');
       this.validate(result.meta);
@@ -352,7 +562,7 @@ export class JournalService {
   async getEntry(id: string): Promise<JournalEntry> {
     const scope = this.scope(),
       generation = ++this.detailGeneration;
-    const value = await this.auth.api<JournalEntryRead>(`${this.root()}/${id}`);
+    const value = await this.api<JournalEntryRead>(`${this.root()}/${id}`);
     if (!this.current(scope) || value.id !== id)
       throw Error('The workspace or selected entry changed.');
     const entry = this.normalize(value);
@@ -361,7 +571,7 @@ export class JournalService {
   }
   async getTask(id: string): Promise<JournalTask> {
     const scope = this.scope();
-    const row = await this.auth.api<JournalTaskRead>(`${this.root()}/tasks/${id}`);
+    const row = await this.api<JournalTaskRead>(`${this.taskRoot()}/${id}`);
     if (!this.current(scope) || row.id !== id) throw Error('The workspace changed.');
     this.validate(row);
     return {
@@ -448,7 +658,7 @@ export class JournalService {
       const unchanged = !!input.etag && !!cached && JSON.stringify(this.body(cached)) === hash;
       if (!send || (!unchanged && this.pendingSend.get(input.id) !== hash)) {
         const existing = !!input.etag;
-        const saved = await this.auth.api<JournalEntryRead>(
+        const saved = await this.api<JournalEntryRead>(
           existing ? `${this.root()}/${input.id}` : this.root(),
           body,
           existing ? 'PATCH' : 'POST',
@@ -461,7 +671,7 @@ export class JournalService {
         if (send) this.pendingSend.set(input.id, JSON.stringify(this.body(input)));
       }
       if (send) {
-        const sent = await this.auth.api<JournalEntryRead>(
+        const sent = await this.api<JournalEntryRead>(
           `${this.root()}/${input.id}/send`,
           {},
           'POST',
@@ -497,7 +707,7 @@ export class JournalService {
           return { id, etag: row.state_etag! };
         }),
       };
-      const result = await this.auth.api<{ company_id: string; results: JournalEntryRead[] }>(
+      const result = await this.api<{ company_id: string; results: JournalEntryRead[] }>(
         `${this.root()}/bulk-state`,
         body,
         'POST',
@@ -525,7 +735,7 @@ export class JournalService {
     if (!row) return 'This journal entry is unavailable.';
     this.busy.set(true);
     try {
-      const saved = await this.auth.api<JournalEntryRead>(
+      const saved = await this.api<JournalEntryRead>(
         `${this.root()}/${id}/state`,
         { field, enabled },
         'PATCH',
@@ -567,8 +777,8 @@ export class JournalService {
         actions: input.actions ?? '',
         attachment_ids: (input.attachments ?? []).map((file) => file.id),
       };
-      const row = await this.auth.api<JournalTaskRead>(
-        input.etag ? `${this.root()}/tasks/${input.id}` : `${this.root()}/tasks`,
+      const row = await this.api<JournalTaskRead>(
+        input.etag ? `${this.taskRoot()}/${input.id}` : this.taskRoot(),
         body,
         input.etag ? 'PATCH' : 'POST',
         input.etag
@@ -590,7 +800,7 @@ export class JournalService {
     const scope = this.scope();
     const form = new FormData();
     form.append('file', file);
-    const row = await this.auth.api<JournalAttachment & { company_id: string }>(
+    const row = await this.api<JournalAttachment & { company_id: string }>(
       `${this.root()}/files`,
       form,
       'POST',
@@ -613,7 +823,7 @@ export class JournalService {
   }
   async checkFile(id: string): Promise<JournalAttachment> {
     const scope = this.scope();
-    const row = await this.auth.api<JournalAttachment & { company_id: string }>(
+    const row = await this.api<JournalAttachment & { company_id: string }>(
       `${this.root()}/files/${id}`,
     );
     if (!this.current(scope) || row.id !== id) throw Error('The workspace changed.');
@@ -622,7 +832,7 @@ export class JournalService {
   }
   async download(file: JournalAttachment): Promise<void> {
     const scope = this.scope();
-    const blob = await this.auth.api<Blob>(
+    const blob = await this.api<Blob>(
       `${this.root()}/files/${file.id}/content`,
       undefined,
       undefined,

@@ -307,7 +307,58 @@ export type JournalTaskPage = {
   }[];
 };
 
+export type JournalStaffContext = {
+  company_id: string;
+  actor_id: string;
+  person_id: string;
+  employment_id: string;
+  name: string;
+  email: string;
+  company: {
+    id: string;
+    name: string;
+    code: string;
+  };
+};
+
 export type JournalClientRead = {
   id: string;
   name: string;
+};
+
+export type StaffTaskProfile = {
+  role: string;
+  reference: string;
+  status: string;
+  location: string;
+  start: string;
+  employment_type: string;
+  manager: string;
+  phone: string;
+};
+
+export type StaffTaskContext = {
+  company_id: string;
+  actor_id: string;
+  person_id: string;
+  employment_id: string;
+  name: string;
+  email: string;
+  company: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  profile: {
+    role: string;
+    reference: string;
+    status: string;
+    location: string;
+    start: string;
+    employment_type: string;
+    manager: string;
+    phone: string;
+  };
+  local_date: string;
+  awaiting_replies: number | null;
 };

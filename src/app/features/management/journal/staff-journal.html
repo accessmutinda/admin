@@ -1,5 +1,41 @@
 <cv-module-design />
-@if (!service.allowed()) {
+@if (service.staffPortal && !service.staffReady()) {
+  <section
+    class="journal-panel"
+    role="status"
+    [attr.aria-busy]="service.staffLoading()"
+    aria-labelledby="staff-journal-state"
+  >
+    <h1 id="staff-journal-state">
+      <span class="material-symbols-outlined" aria-hidden="true">{{
+        service.staffLoading() ? 'forum' : 'lock_person'
+      }}</span>
+      {{
+        service.staffLoading()
+          ? 'Loading your journal'
+          : service.staffCode() === 'staff_inactive'
+            ? 'Your staff record is inactive'
+            : service.staffCode() === 'staff_not_linked'
+              ? 'Link your staff account to continue'
+              : 'Your staff journal is unavailable'
+      }}
+    </h1>
+    <p [attr.role]="service.staffError() ? 'alert' : null">
+      {{
+        service.staffLoading()
+          ? 'We are checking your staff account and loading your messages.'
+          : service.staffError()
+      }}
+    </p>
+    @if (!service.staffLoading()) {
+      <div class="row">
+        <button class="button primary" type="button" (click)="retryStaff()">Try again</button
+        ><a class="button" routerLink="/account/security">Account &amp; support</a
+        ><a class="button" routerLink="/staff-portal/dashboard">Back to staff dashboard</a>
+      </div>
+    }
+  </section>
+} @else if (!service.allowed()) {
   <cv-access-required
     feature="Client journal"
     module="Care Recording"
@@ -46,7 +82,7 @@
         <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">mail</span>
         <div>
           <h2>Unread messages</h2>
-          <strong>{{ unread() }}</strong
+          <strong>{{ service.ready() ? unread() : '—' }}</strong
           ><small>Updates from your team</small>
         </div>
       </button>
@@ -60,19 +96,22 @@
         <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">flag</span>
         <div>
           <h2>Awaiting My Response</h2>
-          <strong>{{ service.summary().awaiting }}</strong
+          <strong>{{ service.ready() ? service.summary().awaiting : '—' }}</strong
           ><small>Messages needing your attention</small>
         </div>
       </button>
       <button
         class="metric co-stat co-surface"
         data-tone="blue"
+        [disabled]="!service.tasksAllowed()"
         (click)="changeView('Tasks & actions')"
       >
         <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
         <div>
           <h2>Tasks Mentioned</h2>
-          <strong>{{ linkedTasks().length }}</strong
+          <strong>{{
+            service.ready() && service.tasksAllowed() ? linkedTasks().length : '—'
+          }}</strong
           ><small>Assigned to you</small>
         </div>
       </button>
@@ -86,7 +125,7 @@
         >
         <div>
           <h2>Team mentions</h2>
-          <strong>{{ mentions() }}</strong
+          <strong>{{ service.ready() ? mentions() : '—' }}</strong
           ><small>Conversations you’re copied into</small>
         </div>
       </button>
@@ -583,7 +622,9 @@
               @if (entry.state === 'Sent' && service.capabilities().can_create) {
                 <a
                   class="button"
-                  [routerLink]="taskRoute()"
+                  [attr.aria-disabled]="service.canCreateTasks() ? null : true"
+                  [attr.tabindex]="service.canCreateTasks() ? null : -1"
+                  [routerLink]="service.canCreateTasks() ? taskRoute() : null"
                   [queryParams]="{
                     new: 'true',
                     client: entry.clientId,
@@ -639,7 +680,9 @@
   } @else if (view() === 'Tasks & actions') {
     <section class="journal-panel panel-heading">
       <h2>Tasks & Actions</h2>
-      <a class="button primary" [routerLink]="taskRoute()">Open tasks & actions</a>
+      <a class="button primary" [routerLink]="service.tasksAllowed() ? taskRoute() : null"
+        >Open tasks & actions</a
+      >
     </section>
   } @else {
     <section class="journal-panel">

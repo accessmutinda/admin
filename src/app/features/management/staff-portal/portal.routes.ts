@@ -2,8 +2,9 @@ import { ACADEMY_STAFF_ROUTES } from '../learning/academy/academy.routes';
 import { Routes, Router } from '@angular/router';
 import { inject } from '@angular/core';
 import { PortalService } from './portal.service';
+import { StaffTasksPortal } from './staff-tasks-portal.service';
 import { StaffDashboardApi } from './staff-dashboard-api.service';
-import { JournalService, STAFF_JOURNAL } from '../journal/journal.service';
+import { JournalService, STAFF_JOURNAL, STAFF_TASKS } from '../journal/journal.service';
 const leave = (c: { canLeave: () => boolean }) => c.canLeave();
 export const PORTAL_ROUTES: Routes = [
   ...ACADEMY_STAFF_ROUTES,
@@ -43,7 +44,12 @@ export const PORTAL_ROUTES: Routes = [
   },
   {
     path: 'tasks',
-    providers: [PortalService, JournalService, { provide: STAFF_JOURNAL, useValue: true }],
+    providers: [
+      StaffTasksPortal,
+      { provide: PortalService, useExisting: StaffTasksPortal },
+      JournalService,
+      { provide: STAFF_TASKS, useValue: true },
+    ],
     title: 'Staff profile & tasks · CareVerity',
     canDeactivate: [leave],
     loadComponent: () => import('./portal-tasks').then((m) => m.PortalTasks),

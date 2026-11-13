@@ -51,9 +51,13 @@ export class PortalTasks {
   protected readonly staff = signal(
     this.route.snapshot.queryParamMap.get('staff') ?? this.portal.journal.email(),
   );
-  protected readonly person = computed(() =>
-    this.portal.contacts().find((p) => p.email.toLowerCase() === this.staff()),
-  );
+  protected readonly profile = computed(() => this.portal.journal.staffContext()?.profile ?? null);
+  protected readonly person = computed(() => {
+    const context = this.portal.journal.staffContext();
+    return context
+      ? { name: context.name, email: context.email, role: context.profile.role }
+      : this.portal.contacts().find((p) => p.email.toLowerCase() === this.staff());
+  });
   protected readonly record = computed(
     () => undefined as ReturnType<typeof this.portal.store.staff>[number] | undefined,
   );
@@ -99,17 +103,18 @@ export class PortalTasks {
       (t) => t.status === 'Resolved' && (t.resolvedAt ?? '').slice(0, 10) >= this.portal.weekStart,
     ),
   );
-  protected readonly awaitingReplies = computed(
-    () =>
-      this.portal.journal
-        .entries()
-        .filter(
-          (e) =>
-            e.authorEmail === this.staff() &&
-            e.state === 'Sent' &&
-            e.responseRequired &&
-            e.responseStatus !== 'Responded',
-        ).length,
+  protected readonly awaitingReplies = computed(() =>
+    this.portal.journal.staffTasks
+      ? (this.portal.journal.staffContext()?.awaiting_replies ?? null)
+      : this.portal.journal
+          .entries()
+          .filter(
+            (e) =>
+              e.authorEmail === this.staff() &&
+              e.state === 'Sent' &&
+              e.responseRequired &&
+              e.responseStatus !== 'Responded',
+          ).length,
   );
   protected readonly overdueCount = computed(
     () => this.pending().filter((t) => t.due < this.portal.today).length,
@@ -141,17 +146,24 @@ export class PortalTasks {
     });
     effect(() => {
       this.portal.journal.scope();
+      const ready = !this.portal.journal.staffPortal || this.portal.journal.staffReady();
       this.params();
       this.queries();
       untracked(() => {
         this.generation++;
+        this.error.set('');
+        this.notice.set('');
+        if (this.portal.journal.staffTasks) this.staff.set(this.portal.journal.email());
         this.editing.set(false);
         this.task = this.portal.newTask();
         this.clean = JSON.stringify(this.task);
         this.portal.journal.selectClient(this.clientContext());
-        if (this.portal.journal.allowed()) void this.initialize();
+        if (ready && this.portal.journal.allowed()) void this.initialize();
       });
     });
+  }
+  protected async retryStaff(): Promise<void> {
+    await this.portal.journal.connectStaff();
   }
   private async initialize(): Promise<void> {
     const service = this.portal.journal,
@@ -164,6 +176,7 @@ export class PortalTasks {
       generation === this.generation &&
       scope === service.scope() &&
       clientId === this.clientContext();
+    service.loading.set(true);
     await service.loadOptions(clientId);
     if (!current()) return;
     await service.setQuery({
@@ -197,13 +210,17 @@ export class PortalTasks {
     file: import('../journal/journal.models').JournalAttachment,
   ) => this.portal.journal.download(file);
   protected changeStaff(email: string): void {
-    if (!this.canLeave()) return;
+    if (this.portal.journal.staffTasks || !this.canLeave()) return;
     this.staff.set(email);
     this.editing.set(false);
   }
   protected edit(task?: JournalTask): void {
     if (task && this.lockedClient && task.clientId !== this.clientContext()) {
       this.error.set('This task belongs to a different service user.');
+      return;
+    }
+    if (this.portal.journal.staffTasks && task && task.owner !== this.portal.journal.email()) {
+      this.error.set('This task does not belong to your staff account.');
       return;
     }
     if (!this.canLeave()) return;
@@ -215,6 +232,7 @@ export class PortalTasks {
       this.task.concernId = this.route.snapshot.queryParamMap.get('concern') ?? '';
       this.task.visitId = this.route.snapshot.queryParamMap.get('visit') ?? '';
     }
+    void this.portal.journal.loadOptions(this.task.clientId);
     this.clean = JSON.stringify(this.task);
     this.editing.set(true);
     this.error.set('');
@@ -261,11 +279,15 @@ export class PortalTasks {
       this.notice.set(resolve ? 'Task marked as resolved.' : 'Task updates saved.');
     }
   }
+  protected canWriteTask(): boolean {
+    const capabilities = this.portal.journal.capabilities();
+    return this.task.etag ? capabilities.can_edit : capabilities.can_create;
+  }
   protected cancel(): void {
     if (this.canLeave()) this.editing.set(false);
   }
   canLeave(): boolean {
-    if (this.portal.journal.busy()) return false;
+    if (this.portal.journal.busy() || this.uploading()) return false;
     return (
       (!this.uploading() && (!this.editing() || JSON.stringify(this.task) === this.clean)) ||
       window.confirm('Discard unsaved task changes?')

@@ -47,7 +47,7 @@ const portalAccessGuard = async (
       const access = inject(m.CompanyAccessService);
       const router = inject(Router);
       await access.refreshForNavigation();
-      if (/^\/staff-portal(?:\/(dashboard|dashboard-2|training(?:\/(?:dashboard|history|certificates(?:\/[^/?#]+)?|assessments|assessment\/[^/?#]+|results\/[^/?#]+|courses(?:\/[^?#]*)?))?))?(?:[?#]|$)/.test(state.url)) return true;
+      if (/^\/staff-portal(?:\/(dashboard|dashboard-2|journal|tasks|training(?:\/(?:dashboard|history|certificates(?:\/[^/?#]+)?|assessments|assessment\/[^/?#]+|results\/[^/?#]+|courses(?:\/[^?#]*)?))?))?(?:[?#]|$)/.test(state.url)) return true;
       return access.canPath(state.url) || router.createUrlTree(['/access-denied']);
     }),
   );
