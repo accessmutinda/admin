@@ -36,6 +36,7 @@ export class InspectorService {
   get store(): ManagementStore {
     return this.injector.get(ManagementStore);
   }
+  readonly qualityBackend?: import('./inspector-quality-api.service').InspectorQualityApi;
   readonly incidentsBackend?: import('./inspector-incidents-api.service').InspectorIncidentsApi;
   readonly medicationBackend?: import('./inspector-medication-api.service').InspectorMedicationApi;
   readonly staffBackend?: import('./inspector-staff-api.service').InspectorStaffApi;
@@ -68,7 +69,10 @@ export class InspectorService {
     ),
   );
   readonly staff = computed<InspectorStaff[]>(() => this.store.staff());
-  readonly quality = computed(() => this.store.data().quality ?? { assessments: [], actions: [] });
+  readonly quality = computed<{
+    assessments: import('./inspector-provider.generated').InspectorQualityAssessment[];
+    actions: import('./inspector-provider.generated').InspectorQualityAction[];
+  }>(() => ({ assessments: [], actions: [] }));
   readonly visits = computed(() =>
     (this.store.data().rota?.visits ?? []).filter((v) => v.state === 'Published'),
   );
@@ -157,22 +161,7 @@ export class InspectorService {
           source: 'Care record',
         })),
     );
-    const quality = this.quality().assessments.flatMap((a) =>
-      a.evidence.map((d) => ({
-        id: 'quality:' + a.id + ':' + d.id,
-        name: d.name,
-        category: 'Audits',
-        questions: ['Well-led'] as Question[],
-        owner: a.assessorName,
-        updated: a.date,
-        version: String(a.revision),
-        expiry: '',
-        status: a.status === 'Signed off' ? 'Verified' : 'Pending review',
-        content: d.content,
-        source: 'Quality assessment',
-      })),
-    );
-    return [...compliance, ...staff, ...care, ...quality, ...this.state().documents].map((d) => ({
+    return [...compliance, ...staff, ...care, ...this.state().documents].map((d) => ({
       ...d,
       status: documentStatus(d, this.today),
     }));

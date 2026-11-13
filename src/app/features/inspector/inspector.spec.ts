@@ -1,3 +1,4 @@
+import { InspectorQualityApi } from './inspector-quality-api.service';
 import { InspectorIncidentsApi } from './inspector-incidents-api.service';
 import { InspectorMedicationApi } from './inspector-medication-api.service';
 import { TestBed } from '@angular/core/testing';
@@ -96,6 +97,7 @@ describe('Inspector portal routes and availability', () => {
           InspectorStaffApi,
           InspectorMedicationApi,
           InspectorIncidentsApi,
+          InspectorQualityApi,
         ].map((provide) => ({
           provide,
           useValue: { company, ready },
@@ -189,6 +191,7 @@ describe('Inspector portal routes and availability', () => {
       '/inspector/staffing',
       '/inspector/medication',
       '/inspector/incidents',
+      '/inspector/quality',
     ]);
     expect(fixture.nativeElement.textContent).not.toContain('Local workspace');
     expect(fixture.nativeElement.textContent).toContain('Inspection reviewer');

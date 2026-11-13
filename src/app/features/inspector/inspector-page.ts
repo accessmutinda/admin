@@ -63,7 +63,8 @@ export class InspectorPage {
     this.data.clientsBackend ??
     this.data.staffBackend ??
     this.data.medicationBackend ??
-    this.data.incidentsBackend;
+    this.data.incidentsBackend ??
+    this.data.qualityBackend;
   private readonly route = inject(ActivatedRoute);
   readonly routeData = toSignal(this.route.data, { initialValue: this.route.snapshot.data });
   readonly params = toSignal(this.route.queryParamMap, {
@@ -199,7 +200,9 @@ export class InspectorPage {
       .sort((a, b) => {
         const primary = a.cells[0].localeCompare(b.cells[0]);
         const tie =
-          this.data.medicationBackend || this.data.incidentsBackend ? a.id.localeCompare(b.id) : 0;
+          this.data.medicationBackend || this.data.incidentsBackend || this.data.qualityBackend
+            ? a.id.localeCompare(b.id)
+            : 0;
         return (primary || tie) * this.sortDirection();
       });
   });
@@ -232,29 +235,57 @@ export class InspectorPage {
       };
     });
   });
-  readonly readiness = computed(() => [
-    { label: 'Provider registration recorded', complete: !!this.company()?.compliance?.cqcNumber },
-    {
-      label: 'Evidence available for all five key questions',
-      complete: QUESTIONS.every((q) =>
-        this.data.documents().some((d) => d.questions.includes(q.key)),
-      ),
-    },
-    {
-      label: 'All inspection findings resolved',
-      complete:
-        this.findings().length > 0 && this.findings().every((f) => f.status === 'Completed'),
-    },
-    {
-      label: 'All key questions assessed',
-      complete: QUESTIONS.every(
-        (q) =>
-          !!this.data.state().draft.ratings[q.key] &&
-          this.data.state().draft.ratings[q.key] !== 'Not assessed',
-      ),
-    },
-    { label: 'Inspection summary recorded', complete: !!this.data.state().draft.summary.trim() },
-  ]);
+  readonly readiness = computed(() =>
+    this.data.qualityBackend
+      ? [
+          {
+            label: 'Provider registration recorded',
+            complete: !!this.data.qualityBackend.value()?.preparation.registration_recorded,
+          },
+          {
+            label: 'Evidence available for all five key questions',
+            complete: (this.data.qualityBackend.summary()?.covered_questions ?? 0) === 5,
+          },
+          {
+            label:
+              this.data.qualityBackend.value()?.preparation.findings_resolved === null
+                ? 'All inspection findings resolved (incident access required)'
+                : 'All inspection findings resolved',
+            complete: this.data.qualityBackend.value()?.preparation.findings_resolved === true,
+          },
+          { label: 'All key questions assessed (recommendations not recorded)', complete: false },
+          { label: 'Inspection summary recorded (not recorded)', complete: false },
+        ]
+      : [
+          {
+            label: 'Provider registration recorded',
+            complete: !!this.company()?.compliance?.cqcNumber,
+          },
+          {
+            label: 'Evidence available for all five key questions',
+            complete: QUESTIONS.every((q) =>
+              this.data.documents().some((d) => d.questions.includes(q.key)),
+            ),
+          },
+          {
+            label: 'All inspection findings resolved',
+            complete:
+              this.findings().length > 0 && this.findings().every((f) => f.status === 'Completed'),
+          },
+          {
+            label: 'All key questions assessed',
+            complete: QUESTIONS.every(
+              (q) =>
+                !!this.data.state().draft.ratings[q.key] &&
+                this.data.state().draft.ratings[q.key] !== 'Not assessed',
+            ),
+          },
+          {
+            label: 'Inspection summary recorded',
+            complete: !!this.data.state().draft.summary.trim(),
+          },
+        ],
+  );
   readonly readyCount = computed(() => this.readiness().filter((r) => r.complete).length);
   constructor() {
     if (this.connected) {
@@ -274,7 +305,10 @@ export class InspectorPage {
             this.message.set('');
           }
         } else if (this.record() && this.modalKind() === 'detail') {
-          const updated = records.find((r) => r.id === this.record()?.id);
+          const updated =
+            this.data.qualityBackend && this.record()?.id === 'provider-recommendations'
+              ? this.record()!
+              : records.find((r) => r.id === this.record()?.id);
           this.record.set(updated ?? null);
           if (this.data.clientsBackend)
             this.client.set(this.data.clients().find((r) => r.id === updated?.id) ?? null);
@@ -437,7 +471,7 @@ export class InspectorPage {
     this.dirty.set(true);
   }
   reviewProviderRatings(event: Event): void {
-    if (!this.data.backend) return;
+    if (!this.data.backend && !this.data.qualityBackend) return;
     event.preventDefault();
     this.openRecord({
       id: 'provider-recommendations',
@@ -1022,27 +1056,31 @@ export class InspectorPage {
         return [
           metric(
             'Assessments',
-            this.data.quality().assessments.length,
+            this.data.qualityBackend?.summary()?.assessments ??
+              this.data.quality().assessments.length,
             'Saved quality records',
             'fact_check',
           ),
           metric(
             'Signed off',
-            this.data.quality().assessments.filter((a) => a.status === 'Signed off').length,
+            this.data.qualityBackend?.summary()?.signed_off ??
+              this.data.quality().assessments.filter((a) => a.status === 'Signed off').length,
             'Completed review and sign-off',
             'verified',
             '#00a34e',
           ),
           metric(
             'Open corrective actions',
-            this.data.quality().actions.filter((a) => a.status !== 'Completed').length,
+            this.data.qualityBackend?.summary()?.open_actions ??
+              this.data.quality().actions.filter((a) => a.status !== 'Completed').length,
             'From quality assessments',
             'assignment',
             '#ff8a00',
           ),
           metric(
             'Evidence coverage',
-            QUESTIONS.filter((q) => this.evidenceCount(q.key)).length + '/5',
+            (this.data.qualityBackend?.summary()?.covered_questions ??
+              QUESTIONS.filter((q) => this.evidenceCount(q.key)).length) + '/5',
             'Key questions with linked files',
             'description',
             '#008d9f',
@@ -1440,23 +1478,48 @@ export class InspectorPage {
             row(
               a.id,
               [
-                a.context || a.templateId,
-                a.subjectName,
-                a.assessorName,
+                a.title,
+                a.subject_name ?? 'Not recorded',
+                a.assessor_name ?? 'Not recorded',
                 this.date(a.date),
-                this.date(a.reviewDate),
+                this.date(a.review_date ?? undefined),
                 a.status,
               ],
               {
-                Subject: a.subjectName,
-                Assessor: a.assessorName,
-                Date: a.date,
+                Subject: a.subject_name,
+                Assessor: a.assessor_name,
+                Context: a.context,
+                Date: this.date(a.date),
                 Status: a.status,
                 Answers: a.answers,
                 Outcome: a.outcome,
                 Recommendations: a.recommendations,
-                Signature: a.signature ?? 'Not recorded',
-                'Audit history': a.audit,
+                Signature: a.signature
+                  ? {
+                      Name: a.signature.name,
+                      Role: a.signature.role,
+                      'Signed at': this.providerDates.transform(
+                        a.signature.at,
+                        this.data.qualityBackend?.value()?.meta.timezone,
+                      ),
+                      Declaration: a.signature.declaration,
+                    }
+                  : 'Not recorded',
+                'Audit history': a.audit.map((entry) => ({
+                  At: this.providerDates.transform(
+                    entry.at,
+                    this.data.qualityBackend?.value()?.meta.timezone,
+                  ),
+                  Actor: entry.actor,
+                  Action: entry.action,
+                  Detail: entry.detail,
+                })),
+                'Linked evidence': a.evidence.map((file) => ({
+                  Name: file.name,
+                  Caption: file.caption,
+                  Type: file.content_type,
+                  Size: file.size,
+                })),
               },
             ),
           ),

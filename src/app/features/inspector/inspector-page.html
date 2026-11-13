@@ -24,7 +24,7 @@
   </div>
   @if (connected && !connected.ready()) {
     <section class="panel" [attr.role]="connected.error() ? 'alert' : 'status'">
-      <h2>{{ connected.loading() ? (data.incidentsBackend ? 'Loading incidents and safeguarding' : data.medicationBackend ? 'Loading medication records' : data.staffBackend ? 'Loading staffing records' : 'Loading service users') : (data.incidentsBackend ? 'Incidents and safeguarding unavailable' : data.medicationBackend ? 'Medication records unavailable' : data.staffBackend ? 'Staffing records unavailable' : 'Service users unavailable') }}</h2>
+      <h2>{{ connected.loading() ? (data.qualityBackend ? 'Loading quality and compliance' : data.incidentsBackend ? 'Loading incidents and safeguarding' : data.medicationBackend ? 'Loading medication records' : data.staffBackend ? 'Loading staffing records' : 'Loading service users') : (data.qualityBackend ? 'Quality and compliance unavailable' : data.incidentsBackend ? 'Incidents and safeguarding unavailable' : data.medicationBackend ? 'Medication records unavailable' : data.staffBackend ? 'Staffing records unavailable' : 'Service users unavailable') }}</h2>
       <p>{{ connected.error() || 'Connecting to the provider records…' }}</p>
       <button class="secondary" [disabled]="connected.loading()" (click)="connected.load()">Retry</button>
     </section>
@@ -111,7 +111,7 @@
             <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>CQC key
             questions — evidence overview
           </h2>
-          @if (data.backend) {
+          @if (data.backend || data.qualityBackend) {
           <a href="#provider-recommendations" (click)="reviewProviderRatings($event)">Review ratings →</a>
         } @else {
           <a routerLink="/inspector/reports">Review ratings →</a>
@@ -120,7 +120,7 @@
         <cv-inspection-questions [draft]="data.state().draft" [documents]="data.documents()" />
         <p class="footnote">
           Ratings are inspector recommendations. Evidence counts indicate available files, rather
-          than a compliance decision.
+          than a compliance decision. @if (data.qualityBackend) { Audit files are grouped under Well-led. Other key-question mappings, inspector recommendations and summaries are not recorded here. }
         </p>
       </section>
       <section class="panel">
@@ -204,7 +204,7 @@
     <section class="panel">
       <div class="section-heading">
         <h2>Recorded inspection recommendations</h2>
-        @if (data.backend) {
+        @if (data.backend || data.qualityBackend) {
           <a href="#provider-recommendations" (click)="reviewProviderRatings($event)">Review ratings →</a>
         } @else {
           <a routerLink="/inspector/reports">Review ratings →</a>
@@ -572,7 +572,7 @@
             @for (action of data.quality().actions; track action.id) {
               <tr>
                 <td>{{ action.title }}</td>
-                <td>{{ staffName(action.ownerId) }}</td>
+                <td>{{ action.owner_name }}</td>
                 <td>{{ date(action.due) }}</td>
                 <td>{{ action.priority }}</td>
                 <td>

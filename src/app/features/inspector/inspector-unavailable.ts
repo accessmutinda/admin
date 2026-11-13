@@ -22,7 +22,7 @@ import { INSPECTOR_PAGES } from './inspector.models';
         are unavailable here.
       </p>
       <p>
-        Provider Profile, Service Users, Staffing, Medication and Incidents &amp; Safeguarding use connected records when your inspection
+        Provider Profile, Service Users, Staffing, Medication Incidents &amp; Safeguarding and Quality &amp; Compliance use connected records when your inspection
         access permits them.
       </p>
       <a class="secondary" [routerLink]="destination() || '/account/security'">{{

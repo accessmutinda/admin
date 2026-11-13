@@ -19,6 +19,7 @@ export const CONNECTED_INSPECTOR_PAGES = [
   'staffing',
   'medication',
   'incidents',
+  'quality',
 ] as const;
 export function isConnectedInspectorPage(page: string): boolean {
   return (CONNECTED_INSPECTOR_PAGES as readonly string[]).includes(page);
