@@ -259,6 +259,7 @@ export class AuthService {
         '/inspector/medication',
         '/inspector/incidents',
         '/inspector/quality',
+        '/inspector/documents',
         '/manage/rota/overview',
         '/manage/people',
         '/manage/people/users',

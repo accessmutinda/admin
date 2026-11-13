@@ -96,6 +96,9 @@ export const INSPECTOR_PAGES = [
   },
 ] as const;
 export interface InspectorDocument {
+  source_version?: number;
+  downloadable?: boolean;
+  state?: string;
   id: string;
   name: string;
   category: string;

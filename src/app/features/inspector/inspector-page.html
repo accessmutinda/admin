@@ -24,7 +24,7 @@
   </div>
   @if (connected && !connected.ready()) {
     <section class="panel" [attr.role]="connected.error() ? 'alert' : 'status'">
-      <h2>{{ connected.loading() ? (data.qualityBackend ? 'Loading quality and compliance' : data.incidentsBackend ? 'Loading incidents and safeguarding' : data.medicationBackend ? 'Loading medication records' : data.staffBackend ? 'Loading staffing records' : 'Loading service users') : (data.qualityBackend ? 'Quality and compliance unavailable' : data.incidentsBackend ? 'Incidents and safeguarding unavailable' : data.medicationBackend ? 'Medication records unavailable' : data.staffBackend ? 'Staffing records unavailable' : 'Service users unavailable') }}</h2>
+      <h2>{{ connected.loading() ? (data.documentsBackend ? 'Loading documents and evidence' : data.qualityBackend ? 'Loading quality and compliance' : data.incidentsBackend ? 'Loading incidents and safeguarding' : data.medicationBackend ? 'Loading medication records' : data.staffBackend ? 'Loading staffing records' : 'Loading service users') : (data.documentsBackend ? 'Documents and evidence unavailable' : data.qualityBackend ? 'Quality and compliance unavailable' : data.incidentsBackend ? 'Incidents and safeguarding unavailable' : data.medicationBackend ? 'Medication records unavailable' : data.staffBackend ? 'Staffing records unavailable' : 'Service users unavailable') }}</h2>
       <p>{{ connected.error() || 'Connecting to the provider records…' }}</p>
       <button class="secondary" [disabled]="connected.loading()" (click)="connected.load()">Retry</button>
     </section>
@@ -713,7 +713,7 @@
               <span class="material-symbols-outlined" aria-hidden="true">folder</span>Documents
               &amp; Evidence
             </h2>
-            <button class="primary" (click)="openUpload()">
+            <button class="primary" [disabled]="data.documentsBackend && !data.documentsBackend.canUpload()" (click)="openUpload()">
               <span class="material-symbols-outlined" aria-hidden="true">upload</span>Upload
               Document
             </button>
@@ -764,7 +764,7 @@
                 (ngModelChange)="statusFilter.set($event); filterChanged()"
                 ><mat-option value="">All statuses</mat-option>
                 @for (
-                  value of ['Recorded', 'Verified', 'Pending review', 'Review due', 'Expired'];
+                  value of ['Recorded', 'Verified', 'Pending review', 'Review due', 'Expired', 'Security check failed'];
                   track value
                 ) {
                   <mat-option [value]="value">{{ value }}</mat-option>
@@ -819,6 +819,7 @@
                       <input
                         type="checkbox"
                         [attr.aria-label]="'Select ' + document.name"
+                        [disabled]="data.documentsBackend && !document.downloadable"
                         [checked]="selected().includes(document.id)"
                         (change)="toggleDocument(document.id, $any($event.target).checked)"
                       />
@@ -839,7 +840,7 @@
                       <span
                         class="badge"
                         [class.warning]="document.status !== 'Verified'"
-                        [class.danger]="document.status === 'Expired'"
+                        [class.danger]="document.status === 'Expired' || document.status === 'Security check failed'"
                         >{{ document.status }}</span
                       >
                     </td>
@@ -848,6 +849,8 @@
                       <button
                         class="icon-button"
                         [attr.aria-label]="'Download ' + document.name"
+                        [disabled]="data.documentsBackend && !document.downloadable"
+                        [title]="data.documentsBackend && !document.downloadable ? (document.state === 'metadata_only' ? 'Source metadata only; no inspector file is shared.' : document.state === 'infected' || document.state === 'rejected' ? 'Security check failed. Upload a safe new file or contact the provider administrator.' : document.state === 'quarantined' ? 'Security scanning is pending.' : 'A clean file and source export permission are required.') : 'Download original file'"
                         (click)="downloadDocument(document)"
                       >
                         <span class="material-symbols-outlined" aria-hidden="true">download</span>
@@ -877,6 +880,7 @@
           <p class="muted">
             Select documents to build a ZIP of original evidence files with an index.
           </p>
+          @if (data.documentsBackend) { <p class="footnote">Up to 50 files and 25 MB per pack. Files need clean security scans and current source access. Staff records provide metadata only.</p> }
           <button class="primary full" [disabled]="!selectedDocuments().length" (click)="pack()">
             <span class="material-symbols-outlined" aria-hidden="true">download</span>Download Pack
             ({{ selectedDocuments().length }})
@@ -1557,8 +1561,7 @@
                 (ngModelChange)="uploadExpiry.set($event)"
             /></label>
             <p class="footnote">
-              Evidence is saved on this device as pending review. Uploading does not mark it
-              approved.
+              @if (data.documentsBackend) { Evidence is saved to this provider workspace and quarantined for security scanning. Uploading does not mark it approved. } @else { Evidence is saved on this device as pending review. Uploading does not mark it approved. }
             </p>
             <div class="modal-actions">
               <button

@@ -64,7 +64,8 @@ export class InspectorPage {
     this.data.staffBackend ??
     this.data.medicationBackend ??
     this.data.incidentsBackend ??
-    this.data.qualityBackend;
+    this.data.qualityBackend ??
+    this.data.documentsBackend;
   private readonly route = inject(ActivatedRoute);
   readonly routeData = toSignal(this.route.data, { initialValue: this.route.snapshot.data });
   readonly params = toSignal(this.route.queryParamMap, {
@@ -117,6 +118,8 @@ export class InspectorPage {
   readonly modalTitle = signal('');
   readonly record = signal<RegisterRow | null>(null);
   readonly client = signal<RotaClient | null>(null);
+  private readonly selectedVersions = new Map<string, number | undefined>();
+  private uploadAttempt?: { file: File; metadata: string; key: string };
   readonly uploadFile = signal<File | null>(null);
   readonly uploading = signal(false);
   readonly uploadName = signal('');
@@ -146,16 +149,19 @@ export class InspectorPage {
             d.questions.some((q) => this.questionFilter().includes(q)))
         );
       })
-      .sort((a, b) => a.name.localeCompare(b.name) * this.sortDirection()),
+      .sort(
+        (a, b) => (a.name.localeCompare(b.name) || a.id.localeCompare(b.id)) * this.sortDirection(),
+      ),
   );
   readonly selectedDocuments = computed(() =>
     this.data.documents().filter((d) => this.selected().includes(d.id)),
   );
-  readonly allSelected = computed(
-    () =>
-      this.visibleDocuments().length > 0 &&
-      this.visibleDocuments().every((d) => this.selected().includes(d.id)),
-  );
+  readonly allSelected = computed(() => {
+    const available = this.visibleDocuments().filter(
+      (d) => !this.data.documentsBackend || d.downloadable,
+    );
+    return available.length > 0 && available.every((d) => this.selected().includes(d.id));
+  });
   readonly visibleDocuments = computed(() =>
     this.documents().slice((this.currentPage() - 1) * 8, this.currentPage() * 8),
   );
@@ -288,6 +294,27 @@ export class InspectorPage {
   );
   readonly readyCount = computed(() => this.readiness().filter((r) => r.complete).length);
   constructor() {
+    if (this.data.documentsBackend) {
+      effect(() => {
+        const rows = this.data.documents();
+        const versions = new Map(
+          rows.filter((r) => r.downloadable).map((r) => [r.id, r.source_version]),
+        );
+        const available = this.selected().filter(
+          (id) => versions.has(id) && this.selectedVersions.get(id) === versions.get(id),
+        );
+        if (available.length !== this.selected().length) {
+          this.selected.set(available);
+          this.message.set('Selected evidence changed. Review and reselect current files.');
+        }
+        if (!this.data.documentsBackend!.ready()) {
+          this.uploadFile.set(null);
+          this.uploadAttempt = undefined;
+          this.modalOpen.set(false);
+          this.message.set('');
+        }
+      });
+    }
     if (this.connected) {
       this.connected.start();
       inject(DestroyRef).onDestroy(() => this.connected?.stop());
@@ -451,6 +478,12 @@ export class InspectorPage {
     this.filterChanged();
   }
   toggleDocument(id: string, checked: boolean): void {
+    if (this.data.documentsBackend && checked) {
+      const row = this.data.documents().find((r) => r.id === id);
+      if (!row?.downloadable) return;
+      this.selectedVersions.set(id, row.source_version);
+    }
+
     this.selected.update((ids) =>
       checked ? [...new Set([...ids, id])] : ids.filter((value) => value !== id),
     );
@@ -556,6 +589,8 @@ export class InspectorPage {
       .toUpperCase();
   }
   openUpload(): void {
+    if (this.data.documentsBackend && !this.data.documentsBackend.canUpload()) return;
+    this.uploadAttempt = undefined;
     this.uploadFile.set(null);
     this.uploadName.set('');
     this.uploadExpiry.set('');
@@ -580,6 +615,41 @@ export class InspectorPage {
     }
     if (!/\.(pdf|png|jpe?g|txt|csv|docx|xlsx)$/i.test(file.name)) {
       this.modalError.set('Use PDF, PNG, JPG, TXT, CSV, DOCX or XLSX.');
+      return;
+    }
+    if (this.data.documentsBackend) {
+      const metadata = {
+        name: this.uploadName().trim(),
+        category: this.uploadCategory(),
+        question: this.uploadQuestion(),
+        expiry: this.uploadExpiry() || null,
+      };
+      const signature = JSON.stringify(metadata);
+      if (this.uploadAttempt?.file !== file || this.uploadAttempt.metadata !== signature)
+        this.uploadAttempt = { file, metadata: signature, key: crypto.randomUUID() };
+      this.uploading.set(true);
+      try {
+        if (
+          await this.data.documentsBackend.upload(
+            file,
+            metadata as import('./inspector-provider.generated').InspectorDocumentMetadata,
+            this.uploadAttempt.key,
+          )
+        ) {
+          this.modalOpen.set(false);
+          this.uploadFile.set(null);
+          this.uploadAttempt = undefined;
+          this.message.set(
+            'Evidence saved to the provider workspace. Scanning and source review are pending.',
+          );
+        }
+      } catch (error) {
+        this.modalError.set(
+          error instanceof Error ? error.message : 'Evidence could not be saved. Retry the upload.',
+        );
+      } finally {
+        this.uploading.set(false);
+      }
       return;
     }
     this.uploading.set(true);
@@ -750,6 +820,14 @@ export class InspectorPage {
     );
   }
   downloadDocument(document: InspectorDocument): void {
+    if (this.data.documentsBackend) {
+      this.error.set('');
+      void this.data.documentsBackend
+        .download(document.id)
+        .catch((error) => this.error.set(error.message));
+      return;
+    }
+
     if (this.data.clientsBackend) {
       this.error.set('');
       this.modalError.set('');
@@ -776,6 +854,16 @@ export class InspectorPage {
   pack(all = false): void {
     this.error.set('');
     const documents = all ? this.data.documents() : this.selectedDocuments();
+    if (this.data.documentsBackend) {
+      void this.data.documentsBackend
+        .pack(
+          documents.map((d) => d.id),
+          Object.fromEntries(documents.map((d) => [d.id, this.selectedVersions.get(d.id)])),
+        )
+        .catch((error) => this.error.set(error.message));
+      return;
+    }
+
     if (!documents.length) {
       this.error.set('Select at least one document for the evidence pack.');
       return;
