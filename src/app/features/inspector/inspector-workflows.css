@@ -211,3 +211,7 @@
   text-align: center;
   line-height: 16px;
 }
+
+.documents-layout > div {
+  min-width: 0;
+}
