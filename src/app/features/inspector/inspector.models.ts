@@ -109,6 +109,8 @@ export interface InspectorDocument {
   source: string;
 }
 export interface InspectorFinding {
+  version?: number;
+  evidenceVersions?: Record<string, number>;
   id: string;
   question: Question;
   type: 'Strength' | 'Concern' | 'Required action';

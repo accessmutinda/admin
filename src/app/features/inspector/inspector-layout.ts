@@ -1,3 +1,7 @@
+import { InspectorIncidentsApi } from './inspector-incidents-api.service';
+import { InspectorMedicationApi } from './inspector-medication-api.service';
+import { inspectorEntryPath, isConnectedInspectorPage } from '../../core/access/inspector-routes';
+import { InspectorStaffApi } from './inspector-staff-api.service';
 import { InspectorClientsApi } from './inspector-clients-api.service';
 import { InspectorProviderApi } from './inspector-provider-api.service';
 import { NavigationEnd } from '@angular/router';
@@ -13,7 +17,6 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ROLES } from '../../core/auth/models/role';
 import { AuthService } from '../../core/auth/auth.service';
 import { INSPECTOR_PAGES } from './inspector.models';
-import { InspectorService } from './inspector.service';
 
 @Component({
   selector: 'cv-inspector-layout',
@@ -31,7 +34,7 @@ import { InspectorService } from './inspector.service';
       [cdkTrapFocusAutoCapture]="!!mobile()?.matches && menuOpen()"
       (keydown.escape)="menuOpen.set(false)"
     >
-      <a class="brand" routerLink="/inspector/dashboard"
+      <a class="brand" [routerLink]="entryPath() || '/access-denied'"
         ><img src="/brand/logo-full-reversed.png" alt="CareVerity"
       /></a>
       <p class="nav-label">INSPECTOR PORTAL</p>
@@ -54,10 +57,12 @@ import { InspectorService } from './inspector.service';
             >Admin Console</a
           >
         }
-        <button (click)="switchWorkspace()">
-          <span class="material-symbols-outlined" aria-hidden="true">swap_horiz</span>Switch
-          workspace
-        </button>
+        @if (auth.canSwitchWorkspace()) {
+          <button (click)="switchWorkspace()">
+            <span class="material-symbols-outlined" aria-hidden="true">swap_horiz</span>Switch
+            workspace
+          </button>
+        }
         <a routerLink="/account/security"
           ><span class="material-symbols-outlined" aria-hidden="true">help_outline</span>Account
           &amp; Support</a
@@ -80,8 +85,8 @@ import { InspectorService } from './inspector.service';
           <span class="material-symbols-outlined" aria-hidden="true">search</span
           ><input
             #searchBox
-            aria-label="Search inspection documents"
-            placeholder="Search documents and evidence…"
+            aria-label="Search inspector records"
+            placeholder="Search records and evidence…"
             type="search"
           />
         </form>
@@ -107,15 +112,12 @@ import { InspectorService } from './inspector.service';
       </main>
       <footer>
         <span
-          >CareVerity ·
-          {{
-            providerMode()
-              ? provider.company()?.name
-              : clientsMode()
-                ? clients.company()?.name
-                : data.company()?.name
-          }}</span
-        ><span>{{
+          >CareVerity
+          @if (companyName()) {
+            · {{ companyName() }}
+          }
+        </span>
+        <span>{{
           providerMode()
             ? provider.ready()
               ? 'Provider records connected'
@@ -124,8 +126,19 @@ import { InspectorService } from './inspector.service';
               ? clients.ready()
                 ? 'Service user records connected'
                 : 'Service user records unavailable'
-              : 'Local workspace · ' +
-                (data.store.storageAvailable() ? 'Saved on this device' : 'Storage unavailable')
+              : staffMode()
+                ? staff.ready()
+                  ? 'Staffing records connected'
+                  : 'Staffing records unavailable'
+                : this.medicationMode()
+                  ? this.medication.ready()
+                    ? 'Medication records connected'
+                    : 'Medication records unavailable'
+                  : this.incidentsMode()
+                    ? this.incidents.ready()
+                      ? 'Incident records connected'
+                      : 'Incident records unavailable'
+                    : 'Live workflow unavailable'
         }}</span>
       </footer>
     </div>
@@ -134,11 +147,13 @@ import { InspectorService } from './inspector.service';
 export class InspectorLayout {
   readonly navigationState = inject(PageNavigation);
   readonly auth = inject(AuthService);
-  readonly data = inject(InspectorService);
   readonly router = inject(Router);
   readonly access = inject(CompanyAccessService);
   readonly provider = inject(InspectorProviderApi);
   readonly clients = inject(InspectorClientsApi);
+  readonly staff = inject(InspectorStaffApi);
+  readonly medication = inject(InspectorMedicationApi);
+  readonly incidents = inject(InspectorIncidentsApi);
   private readonly url = toSignal(
     this.router.events.pipe(
       filter((event) => event instanceof NavigationEnd),
@@ -148,13 +163,44 @@ export class InspectorLayout {
   );
   readonly providerMode = computed(() => /^\/inspector\/provider(?:[?#]|$)/.test(this.url()));
   readonly clientsMode = computed(() => /^\/inspector\/service-users(?:[?#]|$)/.test(this.url()));
+  readonly staffMode = computed(() => /^\/inspector\/staffing(?:[?#]|$)/.test(this.url()));
+  readonly medicationMode = computed(() => /^\/inspector\/medication(?:[?#]|$)/.test(this.url()));
+  readonly incidentsMode = computed(() => /^\/inspector\/incidents(?:[?#]|$)/.test(this.url()));
+  readonly companyName = computed(() =>
+    this.providerMode()
+      ? this.provider.company()?.name
+      : this.clientsMode()
+        ? this.clients.company()?.name
+        : this.staffMode()
+          ? this.staff.company()?.name
+          : this.medicationMode()
+            ? this.medication.company()?.name
+            : this.incidentsMode()
+              ? this.incidents.company()?.name
+              : null,
+  );
   readonly pages = computed(() =>
-    INSPECTOR_PAGES.filter((page) => this.access.canPath('/inspector/' + page.path)),
+    INSPECTOR_PAGES.filter(
+      (page) =>
+        isConnectedInspectorPage(page.path) && this.access.canPath('/inspector/' + page.path),
+    ),
   );
   readonly menuOpen = signal(false);
   readonly mobile = toSignal(inject(BreakpointObserver).observe('(max-width: 1023px)'));
-  readonly canManage = computed(() => this.auth.isAuthenticated());
-  readonly userRole = computed(() => ROLES[this.auth.currentUser()?.roleCode ?? 'CW'].label);
+  readonly entryPath = computed(() => inspectorEntryPath((path) => this.access.canPath(path)));
+  readonly canManage = computed(
+    () => this.auth.isSuperAdmin() || this.access.core('company.profile.read'),
+  );
+  readonly userRole = computed(() => {
+    const context = this.access.context();
+    const names =
+      context?.company_id === this.access.companyId()
+        ? context.roles.map((role) => role.name).filter(Boolean)
+        : [];
+    return this.auth.isSuperAdmin()
+      ? ROLES.PO.label
+      : names.join(', ') || ROLES[this.auth.currentUser()?.roleCode ?? 'IN'].label;
+  });
   search(event: Event, term: string): void {
     event.preventDefault();
     this.router.navigate(
@@ -163,7 +209,13 @@ export class InspectorLayout {
           ? '/inspector/provider'
           : this.clientsMode()
             ? '/inspector/service-users'
-            : '/inspector/documents',
+            : this.staffMode()
+              ? '/inspector/staffing'
+              : this.medicationMode()
+                ? '/inspector/medication'
+                : this.incidentsMode()
+                  ? '/inspector/incidents'
+                  : this.entryPath() || '/access-denied',
       ],
       {
         queryParams: { q: term },
@@ -171,7 +223,7 @@ export class InspectorLayout {
     );
   }
   switchWorkspace(): void {
-    this.router.navigateByUrl('/select-workspace');
+    if (this.auth.canSwitchWorkspace()) this.router.navigateByUrl('/select-workspace');
   }
   signOut(): void {
     this.auth.signOut();

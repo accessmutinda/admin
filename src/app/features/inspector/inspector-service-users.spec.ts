@@ -35,10 +35,8 @@ describe('Inspector service user directory', () => {
         {
           provide: InspectorService,
           useValue: {
-            store: {
-              company: signal({ name: 'Example Care', active: true }),
-              companyId: signal('example'),
-            },
+            company: signal({ name: 'Example Care', active: true }),
+            companyId: signal('example'),
             today: '2026-11-13',
             state: signal(emptyInspection()),
             clients: signal(structuredClone(clients)),

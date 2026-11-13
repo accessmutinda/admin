@@ -98,6 +98,17 @@ describe('CareVerity API authentication', () => {
     vi.useRealTimers();
   });
 
+  it.each([
+    '/inspector/provider',
+    '/inspector/service-users',
+    '/inspector/staffing',
+    '/inspector/medication',
+    '/inspector/incidents',
+  ])('uses the server-selected inspector home %s', async (home) => {
+    profile = { ...companyUser, home_path: home };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    expect(auth.nextRoute()).toBe(home);
+  });
   it('opens account setup while onboarding and reports password-only sign-in accurately', async () => {
     profile = {
       ...companyUser,

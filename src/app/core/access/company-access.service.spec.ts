@@ -35,6 +35,29 @@ describe('Company product access', () => {
     });
     access = TestBed.inject(CompanyAccessService);
   });
+
+  it('uses each inspector module permission and accepts a connected restricted entry', () => {
+    access.context.set({ ...context, permissions: ['inspector_portal.provider.read'] });
+    expect(access.canPath('/inspector/provider')).toBe(true);
+    expect(access.canPath('/inspector/documents')).toBe(false);
+    expect(access.canPath('/inspector/notes')).toBe(false);
+    expect(access.canPath('/inspector/unknown')).toBe(false);
+    access.context.set({ ...context, permissions: ['inspector_portal.quality.read'] });
+    expect(access.canPath('/inspector/documents')).toBe(true);
+    expect(access.canPath('/inspector/notes')).toBe(false);
+    access.context.set({ ...context, permissions: ['inspector_portal.reports.read'] });
+    expect(access.canPath('/inspector/notes')).toBe(true);
+    access.context.set({ ...context, permissions: ['inspector_portal.staff.read'] });
+    expect(access.canPath('/inspector')).toBe(true);
+    expect(access.canPath('/inspector/')).toBe(true);
+    expect(access.canPath('/inspector/provider')).toBe(false);
+    access.context.set({
+      ...context,
+      company_active: false,
+      permissions: ['inspector_portal.staff.read'],
+    });
+    expect(access.canPath('/inspector')).toBe(false);
+  });
   it('denies missing grants, actions and other-company contexts', () => {
     expect(access.can('care', 'records')).toBe(false);
     access.context.set(context);
@@ -57,7 +80,17 @@ describe('Company product access', () => {
     expect(access.context()).toBeNull();
     expect(access.can('care', 'records')).toBe(false);
   });
-  it.each(['/staff-portal/oversight','/staff-portal/dashboard','/staff-portal/journal','/staff-portal/tasks','/staff-portal/concerns/one','/staff-portal/service-users/one/overview','/staff-portal/training/refreshers','/staff-portal/training/messages','/staff-portal/training/courses/course/lessons/lesson'])('lets %s verify its staff identity without granting navigation authority', async (path) => {
+  it.each([
+    '/staff-portal/oversight',
+    '/staff-portal/dashboard',
+    '/staff-portal/journal',
+    '/staff-portal/tasks',
+    '/staff-portal/concerns/one',
+    '/staff-portal/service-users/one/overview',
+    '/staff-portal/training/refreshers',
+    '/staff-portal/training/messages',
+    '/staff-portal/training/courses/course/lessons/lesson',
+  ])('lets %s verify its staff identity without granting navigation authority', async (path) => {
     const router = TestBed.inject(Router);
     vi.spyOn(router, 'url', 'get').mockReturnValue(path);
     const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);

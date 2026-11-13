@@ -1,3 +1,4 @@
+import { INSPECTOR_SUBMODULES, inspectorEntryPath } from './inspector-routes';
 import { isConnectedStaffPortalRoute } from './staff-portal-routes';
 import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
@@ -206,19 +207,9 @@ export function routeAccess(url: string): [string, string][] {
     };
     return [['family_portal', map[area ?? ''] ?? 'care']];
   }
-  if (path.startsWith('/inspector')) {
-    const area = path.split('/')[2] ?? '';
-    const map: Record<string, string> = {
-      'service-users': 'clients',
-      clients: 'clients',
-      staff: 'staff',
-      medication: 'medication',
-      incidents: 'incidents',
-      quality: 'quality',
-      visits: 'visits',
-      reports: 'reports',
-    };
-    return [['inspector_portal', map[area] ?? 'provider']];
+  if (path === '/inspector' || path.startsWith('/inspector/')) {
+    const area = path.split('/')[2] ?? 'provider';
+    return [['inspector_portal', INSPECTOR_SUBMODULES[area] ?? 'unmapped']];
   }
   return [];
 }
@@ -359,6 +350,8 @@ export class CompanyAccessService {
   }
   canPath(url: string, action = 'read'): boolean {
     const path = url.split(/[?#]/)[0];
+    if (path.replace(/\/$/, '') === '/inspector')
+      return !!inspectorEntryPath((route) => this.canPath(route, action));
     if (path === '/manage/reviews' || /^\/manage\/people\/staff\/[^/]+\/reviews$/.test(path))
       return this.can('people', 'records', 'read') && this.can('people', 'performance', action);
     if (/^\/manage\/people\/staff\/[^/]+\/(notes|audit)$/.test(path))

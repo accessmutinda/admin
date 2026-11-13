@@ -18,12 +18,27 @@ import {
   documentStatus,
 } from './inspector.models';
 
+export interface InspectorStaff {
+  id: string;
+  name: string;
+  role: string;
+  location: string;
+  documents?: import('../management/shared/management.store').StaffDocument[];
+  hr?: Pick<
+    import('../management/people/hr.models').StaffRecord,
+    'status' | 'checks' | 'training' | 'references'
+  > & { employment: { type: string } };
+}
+
 @Injectable({ providedIn: 'root' })
 export class InspectorService {
   private readonly injector = inject(Injector);
   get store(): ManagementStore {
     return this.injector.get(ManagementStore);
   }
+  readonly incidentsBackend?: import('./inspector-incidents-api.service').InspectorIncidentsApi;
+  readonly medicationBackend?: import('./inspector-medication-api.service').InspectorMedicationApi;
+  readonly staffBackend?: import('./inspector-staff-api.service').InspectorStaffApi;
   readonly clientsBackend?: import('./inspector-clients-api.service').InspectorClientsApi;
   readonly backend?: import('./inspector-provider-api.service').InspectorProviderApi;
   readonly company = computed(() => this.store.company());
@@ -36,7 +51,9 @@ export class InspectorService {
   >(() => this.store.data().locations ?? []);
   readonly serviceUserCount = computed(() => this.clients().length);
   readonly auth = inject(AuthService);
-  readonly today = londonDate();
+  get today() {
+    return londonDate();
+  }
   readonly state = computed(() => this.store.data().inspection ?? emptyInspection());
   readonly clients = computed(() => this.store.data().rota?.clients ?? []);
   readonly careInstructions = computed(() =>
@@ -50,7 +67,7 @@ export class InspectorService {
       })),
     ),
   );
-  readonly staff = computed(() => this.store.staff());
+  readonly staff = computed<InspectorStaff[]>(() => this.store.staff());
   readonly quality = computed(() => this.store.data().quality ?? { assessments: [], actions: [] });
   readonly visits = computed(() =>
     (this.store.data().rota?.visits ?? []).filter((v) => v.state === 'Published'),
@@ -76,47 +93,15 @@ export class InspectorService {
       )
       .sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start)),
   );
-  readonly prescriptions = computed(() =>
-    this.clients().flatMap((c) =>
-      (c.file?.medications ?? []).map((p) => ({ ...p, client: c.name, clientId: c.id })),
-    ),
+  readonly prescriptions = computed<
+    import('./inspector-provider.generated').InspectorMedicationPrescriptionDetail[]
+  >(() => []);
+  readonly administrations = computed<
+    import('./inspector-provider.generated').InspectorMedicationAdministrationDetail[]
+  >(() => []);
+  readonly incidents = computed<import('./inspector-provider.generated').InspectorIncidentRead[]>(
+    () => [],
   );
-  readonly administrations = computed(() =>
-    this.clients().flatMap((c) =>
-      (c.file?.administrations ?? []).map((a) => ({
-        ...a,
-        client: c.name,
-        clientId: c.id,
-        medication:
-          c.file?.medications?.find((p) => p.id === a.medicationId)?.name ?? 'Unknown medicine',
-      })),
-    ),
-  );
-  readonly incidents = computed(() => [
-    ...(this.store.data().rota?.ecm?.evidence ?? [])
-      .filter(
-        (e) => e.type === 'Safeguarding' || e.type === 'Wound / skin' || e.type === 'Other concern',
-      )
-      .map((e) => ({
-        id: e.id,
-        name: e.type,
-        detail: e.note,
-        date: e.at.slice(0, 10),
-        level: 'Not assessed',
-        status: e.reviewedAt ? 'Reviewed' : 'Awaiting review',
-        client: this.visits().find((v) => v.id === e.visitId)?.clientName ?? 'Visit record',
-        category: e.type === 'Safeguarding' ? 'Safeguarding' : 'Incident',
-      })),
-    ...this.clients().flatMap((c) =>
-      ['incidents', 'safeguarding'].flatMap((key) =>
-        (c.file?.entries[key] ?? []).map((e) => ({
-          ...e,
-          client: c.name,
-          category: key === 'safeguarding' ? 'Safeguarding' : 'Incident',
-        })),
-      ),
-    ),
-  ]);
   readonly documents = computed<InspectorDocument[]>(() => {
     const compliance = Object.entries(this.store.company()?.compliance?.documents ?? {}).map(
       ([key, d]) => ({

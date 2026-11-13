@@ -59,6 +59,11 @@ interface RegisterRow {
 })
 export class InspectorPage {
   readonly data = inject(InspectorService);
+  readonly connected =
+    this.data.clientsBackend ??
+    this.data.staffBackend ??
+    this.data.medicationBackend ??
+    this.data.incidentsBackend;
   private readonly route = inject(ActivatedRoute);
   readonly routeData = toSignal(this.route.data, { initialValue: this.route.snapshot.data });
   readonly params = toSignal(this.route.queryParamMap, {
@@ -173,7 +178,7 @@ export class InspectorPage {
   );
   readonly filteredRows = computed(() => {
     const directory = this.page().path === 'service-users';
-    const term = (directory ? this.search().trim() : this.search()).toLowerCase();
+    const term = (directory || this.connected ? this.search().trim() : this.search()).toLowerCase();
     return this.register()
       .rows.filter(
         (r) =>
@@ -191,7 +196,12 @@ export class InspectorPage {
               ? r.cells[6] === this.statusFilter()
               : r.cells.includes(this.statusFilter()))),
       )
-      .sort((a, b) => a.cells[0].localeCompare(b.cells[0]) * this.sortDirection());
+      .sort((a, b) => {
+        const primary = a.cells[0].localeCompare(b.cells[0]);
+        const tie =
+          this.data.medicationBackend || this.data.incidentsBackend ? a.id.localeCompare(b.id) : 0;
+        return (primary || tie) * this.sortDirection();
+      });
   });
   readonly visibleRows = computed(() =>
     this.filteredRows().slice((this.currentPage() - 1) * 8, this.currentPage() * 8),
@@ -247,24 +257,60 @@ export class InspectorPage {
   ]);
   readonly readyCount = computed(() => this.readiness().filter((r) => r.complete).length);
   constructor() {
-    if (this.data.clientsBackend) {
-      this.data.clientsBackend.start();
-      inject(DestroyRef).onDestroy(() => this.data.clientsBackend?.stop());
+    if (this.connected) {
+      this.connected.start();
+      inject(DestroyRef).onDestroy(() => this.connected?.stop());
       effect(() => {
-        const records = this.data.clients();
-        if (!this.data.clientsBackend?.ready()) {
+        const records = this.register().rows;
+        if (!this.connected?.ready()) {
           this.client.set(null);
           this.record.set(null);
           this.modalOpen.set(false);
           this.selected.set([]);
           this.error.set('');
-        } else if (this.client()) {
-          const updated = records.find((row) => row.id === this.client()?.id);
-          this.client.set(updated ?? null);
-          const record = this.register().rows.find((row) => row.id === updated?.id);
-          this.record.set(record ?? null);
-          if (updated) this.modalTitle.set(updated.name);
-          if (!updated) this.modalOpen.set(false);
+          if (this.data.incidentsBackend) {
+            this.finding.set(this.emptyFinding());
+            this.modalError.set('');
+            this.message.set('');
+          }
+        } else if (this.record() && this.modalKind() === 'detail') {
+          const updated = records.find((r) => r.id === this.record()?.id);
+          this.record.set(updated ?? null);
+          if (this.data.clientsBackend)
+            this.client.set(this.data.clients().find((r) => r.id === updated?.id) ?? null);
+          if (updated) this.modalTitle.set(updated.cells[0]);
+          else this.modalOpen.set(false);
+        }
+        if (
+          this.data.incidentsBackend?.ready() &&
+          this.modalOpen() &&
+          this.modalKind() === 'finding' &&
+          !this.data.incidentsBackend.saving()
+        ) {
+          const available = new Set(this.data.documents().map((row) => row.id));
+          const versions = new Map(
+            this.data.incidentsBackend.records().map((row) => [row.id, row.version]),
+          );
+          if (this.finding().evidenceIds.some((id) => !available.has(id))) {
+            this.finding.update((value) => ({
+              ...value,
+              evidenceIds: value.evidenceIds.filter((id) => available.has(id)),
+              evidenceVersions: Object.fromEntries(
+                Object.entries(value.evidenceVersions ?? {}).filter(([id]) => available.has(id)),
+              ),
+            }));
+            this.modalError.set(
+              'Some source evidence is no longer available. Review the remaining references before saving.',
+            );
+          } else if (
+            this.finding().evidenceIds.some(
+              (id) => this.finding().evidenceVersions?.[id] !== versions.get(id),
+            )
+          ) {
+            this.modalError.set(
+              'Referenced source evidence changed. Review and reselect it before saving.',
+            );
+          }
         }
       });
     }
@@ -320,12 +366,8 @@ export class InspectorPage {
   }
   private readonly providerDates = new CompanyDatePipe();
   date(value: string | undefined): string {
-    if (this.data.clientsBackend)
-      return this.providerDates.transform(
-        value,
-        this.data.clientsBackend.value()?.meta.timezone,
-        'date',
-      );
+    if (this.connected)
+      return this.providerDates.transform(value, this.connected.value()?.meta.timezone, 'date');
     if (this.data.backend)
       return this.providerDates.transform(value, this.data.backend.value()?.meta.timezone, 'date');
     if (!value) return 'Not recorded';
@@ -343,9 +385,21 @@ export class InspectorPage {
     return total ? Math.round((count / total) * 100) + '%' : '—';
   }
   filterChanged(): void {
+    if (this.data.medicationBackend)
+      this.error.set(
+        this.rangeStart() && this.rangeEnd() && this.rangeEnd() < this.rangeStart()
+          ? 'The end date must be on or after the start date.'
+          : '',
+      );
     this.currentPage.set(1);
   }
   clearFilters(): void {
+    if (this.data.medicationBackend) {
+      this.selectedClient.set('');
+      this.rangeStart.set('');
+      this.rangeEnd.set('');
+      this.error.set('');
+    }
     this.riskFilter.set('');
     this.fundingFilter.set('');
     this.locationFilter.set('');
@@ -444,7 +498,7 @@ export class InspectorPage {
     this.modalOpen.set(true);
   }
   closeModal(): void {
-    if (this.uploading()) return;
+    if (this.uploading() || this.data.incidentsBackend?.saving()) return;
     this.modalOpen.set(false);
   }
   openRecord(row: RegisterRow): void {
@@ -454,7 +508,7 @@ export class InspectorPage {
         ? (this.data.clients().find((c) => c.id === row.id) ?? null)
         : null,
     );
-    this.activeTab.set('Overview');
+    if (this.page().path !== 'medication') this.activeTab.set('Overview');
     this.openModal('detail', row.cells[0]);
   }
   initials(name: string): string {
@@ -542,21 +596,44 @@ export class InspectorPage {
     };
   }
   openFinding(value?: InspectorFinding): void {
-    this.finding.set(value ? structuredClone(value) : this.emptyFinding());
+    if (
+      this.data.incidentsBackend &&
+      !(value ? this.data.incidentsBackend.canEdit() : this.data.incidentsBackend.canCreate())
+    ) {
+      this.error.set('Recording inspection findings is not permitted.');
+      return;
+    }
+    const next = value ? structuredClone(value) : this.emptyFinding();
+    if (this.data.incidentsBackend)
+      next.evidenceVersions = Object.fromEntries(
+        this.data.incidentsBackend
+          .records()
+          .filter((row) => next.evidenceIds.includes(row.id))
+          .map((row) => [row.id, row.version]),
+      );
+    this.finding.set(next);
     this.openModal('finding', value ? 'Edit finding' : 'Add inspection finding');
   }
   findingField(key: string, value: string): void {
     this.finding.update((f) => ({ ...f, [key]: value }));
   }
   findingEvidence(id: string, checked: boolean): void {
-    this.finding.update((f) => ({
-      ...f,
-      evidenceIds: checked
-        ? [...new Set([...f.evidenceIds, id])]
-        : f.evidenceIds.filter((value) => value !== id),
-    }));
+    const version = this.data.incidentsBackend?.records().find((row) => row.id === id)?.version;
+    this.finding.update((f) => {
+      const versions = { ...f.evidenceVersions };
+      if (checked && version !== undefined) versions[id] = version;
+      else delete versions[id];
+      return {
+        ...f,
+        evidenceIds: checked
+          ? [...new Set([...f.evidenceIds, id])]
+          : f.evidenceIds.filter((value) => value !== id),
+        ...(this.data.incidentsBackend ? { evidenceVersions: versions } : {}),
+      };
+    });
+    this.modalError.set('');
   }
-  saveFinding(): void {
+  async saveFinding(): Promise<void> {
     const value = this.finding();
     if (!value.text.trim()) {
       this.modalError.set('Enter the finding.');
@@ -564,6 +641,20 @@ export class InspectorPage {
     }
     if (value.type === 'Required action' && (!value.owner.trim() || !value.due)) {
       this.modalError.set('Required actions need an owner and due date.');
+      return;
+    }
+    if (this.data.incidentsBackend) {
+      this.modalError.set('');
+      try {
+        if (await this.data.incidentsBackend.saveFinding(value)) {
+          this.modalOpen.set(false);
+          this.message.set('Inspection finding saved.');
+        }
+      } catch (error) {
+        this.modalError.set(
+          error instanceof Error ? error.message : 'The finding could not be saved. Please retry.',
+        );
+      }
       return;
     }
     const next = {
@@ -582,16 +673,37 @@ export class InspectorPage {
     else this.modalError.set(this.error());
   }
   exportRegister(): void {
-    if (this.data.clientsBackend) {
+    if (this.connected) {
+      if (
+        this.data.medicationBackend &&
+        this.rangeStart() &&
+        this.rangeEnd() &&
+        this.rangeEnd() < this.rangeStart()
+      ) {
+        this.error.set('The end date must be on or after the start date.');
+        return;
+      }
       this.error.set('');
-      void this.data.clientsBackend
+      void this.connected
         .export({
           q: this.search(),
           ordering: this.sortDirection() === 1 ? 'name' : '-name',
-          risk: this.riskFilter(),
-          funding: this.fundingFilter(),
-          postcode: this.locationFilter(),
-          status: this.statusFilter(),
+          ...(this.data.medicationBackend
+            ? {
+                view: this.activeTab(),
+                ...(this.selectedClient() ? { client: this.selectedClient() } : {}),
+                ...(this.rangeStart() ? { start: this.rangeStart() } : {}),
+                ...(this.rangeEnd() ? { end: this.rangeEnd() } : {}),
+              }
+            : {}),
+          ...(this.data.clientsBackend
+            ? {
+                risk: this.riskFilter(),
+                funding: this.fundingFilter(),
+                postcode: this.locationFilter(),
+                status: this.statusFilter(),
+              }
+            : {}),
         })
         .catch((error) => this.error.set(error.message));
       return;
@@ -698,12 +810,14 @@ export class InspectorPage {
     return key.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
   }
   pipelineCount(stage: string): number {
+    if (this.data.staffBackend) return this.data.staffBackend.summary()?.pipeline[stage] ?? 0;
     return this.data.store.applicants().filter((p) => p.stage === stage).length;
   }
   categoryCount(category: string): number {
     return this.data.documents().filter((d) => d.category === category).length;
   }
   reviewedIncidents(): number {
+    if (this.data.incidentsBackend) return this.data.incidentsBackend.summary()?.reviewed ?? 0;
     return this.data.incidents().filter((i) => i.status === 'Reviewed' || i.status === 'Completed')
       .length;
   }
@@ -779,6 +893,32 @@ export class InspectorPage {
           ),
         ];
       case 'staffing':
+        if (this.data.staffBackend) {
+          const summary = this.data.staffBackend.summary();
+          return [
+            metric('Total staff', summary?.total_staff ?? 0, 'Current workforce records', 'groups'),
+            metric(
+              'Open vacancies',
+              summary?.open_vacancies ?? 0,
+              'Published and open for applications',
+              'work',
+            ),
+            metric(
+              'Verified DBS checks',
+              summary?.verified_dbs ?? 0,
+              'Current verified evidence',
+              'shield',
+              '#00a34e',
+            ),
+            metric(
+              'Training certificates',
+              summary?.training_certificates ?? 0,
+              'Current recorded training evidence',
+              'school',
+              '#008d9f',
+            ),
+          ];
+        }
         return [
           metric('Total staff', staff.length, 'Hired workforce records', 'groups'),
           metric(
@@ -810,19 +950,12 @@ export class InspectorPage {
           ),
         ];
       case 'medication': {
-        const mar = this.scopedMar();
+        const mar = this.scopedMar().filter((a) => !a.superseded && a.outcome !== 'Void');
         const given = mar.filter((a) => a.outcome === 'Given').length;
         return [
           metric(
             'Active prescriptions',
-            this.data
-              .prescriptions()
-              .filter(
-                (p) =>
-                  !p.discontinuedAt &&
-                  (!p.end || p.end >= this.data.today) &&
-                  (!p.start || p.start <= this.data.today),
-              ).length,
+            this.data.medicationBackend?.summary()?.active_prescriptions ?? 0,
             'All service users',
             'medication',
           ),
@@ -854,23 +987,25 @@ export class InspectorPage {
         return [
           metric(
             'Recorded incidents',
-            this.data.incidents().length,
+            this.data.incidentsBackend?.summary()?.recorded ?? this.data.incidents().length,
             'Care and visit evidence',
             'warning',
             '#ff3047',
           ),
           metric(
             'Safeguarding concerns',
-            this.data.incidents().filter((i) => i.category === 'Safeguarding').length,
+            this.data.incidentsBackend?.summary()?.safeguarding ??
+              this.data.incidents().filter((i) => i.category === 'Safeguarding').length,
             'Recorded concerns',
             'shield',
             '#00a34e',
           ),
           metric(
             'Awaiting review',
-            this.data
-              .incidents()
-              .filter((i) => i.status === 'Awaiting review' || i.status === 'Active').length,
+            this.data.incidentsBackend?.summary()?.awaiting_review ??
+              this.data
+                .incidents()
+                .filter((i) => i.status === 'Awaiting review' || i.status === 'Active').length,
             'Source record status',
             'pending_actions',
             '#ff8a00',
@@ -1052,6 +1187,71 @@ export class InspectorPage {
           ),
         };
       case 'staffing':
+        if (this.data.staffBackend)
+          return {
+            title: 'Workforce compliance records',
+            columns: [
+              'Name',
+              'Role',
+              'Location',
+              'Employment',
+              'Verified checks',
+              'Training records',
+              'Status',
+            ],
+            rows: this.data.staffBackend.records().map((p) =>
+              row(
+                p.id,
+                [
+                  p.name,
+                  p.role,
+                  p.location,
+                  p.employment_type,
+                  p.checks.filter((c) => c.current && c.status === 'Verified').length,
+                  p.training.length,
+                  p.status,
+                ],
+                {
+                  Reference: p.reference,
+                  Role: p.role,
+                  Location: p.location,
+                  Employment: p.employment_type,
+                  Status: p.status,
+                  Checks: p.checks.map((c) => ({
+                    Check: c.title,
+                    Status: c.status,
+                    'Effective state': c.effective_state,
+                    Current: c.current,
+                    Completed: this.date(c.completed ?? undefined),
+                    Expiry: this.date(c.expiry ?? undefined),
+                  })),
+                  Training: p.training.map((t) => ({
+                    Course: t.title,
+                    Version: t.course_version,
+                    Completed: this.date(t.completed ?? undefined),
+                    Expiry: this.date(t.expiry ?? undefined),
+                    Status: t.status,
+                    Competency: t.competency,
+                    Source: t.source,
+                  })),
+                  References: p.references.map((r) => ({
+                    Name: r.name,
+                    Organisation: r.organisation,
+                    Status: r.status,
+                  })),
+                  'File evidence': p.documents.map((d) => ({
+                    Name: d.name,
+                    Category: d.category,
+                    Version: d.version,
+                    Expiry: this.date(d.expiry ?? undefined),
+                    Status: d.status,
+                    Source: d.source,
+                  })),
+                  'Last updated': this.date(p.updated_at),
+                },
+              ),
+            ),
+          };
         return {
           title: 'Workforce compliance records',
           columns: [
@@ -1103,7 +1303,10 @@ export class InspectorPage {
               (p) =>
                 (!this.selectedClient() || p.clientId === this.selectedClient()) &&
                 (this.activeTab() !== 'Controlled drugs' || p.controlled) &&
-                (this.activeTab() !== 'PRN prescriptions' || p.frequency === 'PRN'),
+                (this.activeTab() !== 'PRN prescriptions' || p.frequency === 'PRN') &&
+                (!this.rangeStart() || !p.end || p.end >= this.rangeStart()) &&
+                (!this.rangeEnd() || p.start <= this.rangeEnd()) &&
+                (!this.rangeStart() || !this.rangeEnd() || this.rangeEnd() >= this.rangeStart()),
             );
           return {
             title: this.activeTab(),
@@ -1126,10 +1329,14 @@ export class InspectorPage {
                   p.route,
                   p.frequency,
                   p.controlled ? 'Yes' : 'No',
-                  p.discontinuedAt ? 'Discontinued' : 'Active',
+                  p.status,
                 ],
                 {
                   Medicine: p.name,
+                  'Service user': p.client,
+                  Start: this.date(p.start),
+                  End: p.end ? this.date(p.end) : 'Not recorded',
+                  Status: p.status,
                   Strength: p.strength,
                   Dose: p.dose,
                   Frequency: p.frequency,
@@ -1167,20 +1374,30 @@ export class InspectorPage {
                 this.date(a.date),
                 a.time,
                 a.medication,
-                a.outcome,
+                a.superseded ? 'Superseded · ' + a.outcome : a.outcome,
                 a.by,
                 a.witness || 'Not recorded',
               ],
               {
                 Medicine: a.medication,
-                Date: a.date,
+                'Service user': a.client,
+                'Dose units': a.doseUnits,
+                'Record state': a.superseded
+                  ? 'Superseded'
+                  : a.outcome === 'Void'
+                    ? 'Withdrawn'
+                    : 'Current',
+                Date: this.date(a.date),
                 Time: a.time,
                 Outcome: a.outcome,
                 Reason: a.reason,
                 Response: a.response,
                 'Recorded by': a.by,
                 Witness: a.witness || 'Not recorded',
-                'Recorded at': a.at,
+                'Recorded at': this.providerDates.transform(
+                  a.at,
+                  this.data.medicationBackend?.value()?.meta.timezone,
+                ),
                 'Correction of': a.correctionOf || 'Not applicable',
               },
             ),
@@ -1192,14 +1409,27 @@ export class InspectorPage {
           title: 'Incident & safeguarding timeline',
           columns: ['Event', 'Service user', 'Date', 'Category', 'Risk level', 'Status'],
           rows: this.data.incidents().map((i) =>
-            row(i.id, [i.name, i.client, this.date(i.date), i.category, i.level, i.status], {
-              Event: i.name,
-              'Service user': i.client,
-              Date: i.date,
-              Category: i.category,
-              Detail: i.detail,
-              Status: i.status,
-            }),
+            row(
+              i.id,
+              [
+                i.name,
+                i.client,
+                this.date(i.date),
+                i.category,
+                i.level ?? 'Not assessed',
+                i.status,
+              ],
+              {
+                Event: i.name,
+                'Service user': i.client,
+                Date: this.date(i.date),
+                'Risk level': i.level ?? 'Not assessed',
+                Source: i.source_type === 'care' ? 'Care incident' : 'Visit concern',
+                Category: i.category,
+                Detail: i.detail,
+                Status: i.status,
+              },
+            ),
           ),
         };
       case 'quality':

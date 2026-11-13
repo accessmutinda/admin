@@ -1,3 +1,11 @@
+import { InspectorIncidentsService } from './features/inspector/inspector-incidents.service';
+import { InspectorMedicationService } from './features/inspector/inspector-medication.service';
+import { isConnectedInspectorPage } from './core/access/inspector-routes';
+import {
+  inspectorEntryGuard,
+  inspectorWorkspaceGuard,
+} from './features/inspector/inspector-entry.guard';
+import { InspectorStaffService } from './features/inspector/inspector-staff.service';
 import { InspectorClientsService } from './features/inspector/inspector-clients.service';
 import { isConnectedStaffPortalRoute } from './core/access/staff-portal-routes';
 import { InspectorService } from './features/inspector/inspector.service';
@@ -103,8 +111,8 @@ export const routes: Routes = [
   },
   {
     path: 'inspector',
-    canActivate: [workspaceGuard, portalAccessGuard],
-    canActivateChild: [portalAccessGuard],
+    canActivate: [inspectorWorkspaceGuard, portalAccessGuard],
+    canActivateChild: [inspectorWorkspaceGuard, portalAccessGuard],
     loadComponent: () =>
       import('./features/inspector/inspector-layout').then((m) => m.InspectorLayout),
     children: [
@@ -128,13 +136,23 @@ export const routes: Routes = [
             ? [{ provide: InspectorService, useClass: InspectorProviderService }]
             : page === 'service-users'
               ? [{ provide: InspectorService, useClass: InspectorClientsService }]
-              : [],
+              : page === 'staffing'
+                ? [{ provide: InspectorService, useClass: InspectorStaffService }]
+                : page === 'medication'
+                  ? [{ provide: InspectorService, useClass: InspectorMedicationService }]
+                  : page === 'incidents'
+                    ? [{ provide: InspectorService, useClass: InspectorIncidentsService }]
+                    : [],
         title: `${page.replaceAll('-', ' ')} · Inspector Portal · CareVerity`,
         loadComponent: () =>
-          import('./features/inspector/inspector-page').then((m) => m.InspectorPage),
+          isConnectedInspectorPage(page)
+            ? import('./features/inspector/inspector-page').then((m) => m.InspectorPage)
+            : import('./features/inspector/inspector-unavailable').then(
+                (m) => m.InspectorUnavailable,
+              ),
         canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
       })),
-      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      { path: '', pathMatch: 'full', canActivate: [inspectorEntryGuard], children: [] },
     ],
   },
   {

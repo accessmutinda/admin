@@ -253,6 +253,11 @@ export class AuthService {
     if (this.profile()?.company_entry_state === 'ready') {
       const home = this.profile()?.home_path;
       const homes = [
+        '/inspector/provider',
+        '/inspector/service-users',
+        '/inspector/staffing',
+        '/inspector/medication',
+        '/inspector/incidents',
         '/manage/rota/overview',
         '/manage/people',
         '/manage/people/users',

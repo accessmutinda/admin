@@ -1,359 +1,259 @@
+import { InspectorIncidentsApi } from './inspector-incidents-api.service';
+import { InspectorMedicationApi } from './inspector-medication-api.service';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { BehaviorSubject } from 'rxjs';
-import { InspectorService } from './inspector.service';
-import { InspectorPage } from './inspector-page';
+import { signal } from '@angular/core';
 import {
-  CATEGORIES,
-  INSPECTOR_PAGES,
-  InspectorDocument,
-  csv,
-  documentStatus,
-} from './inspector.models';
-import { ManagementStore } from '../management/shared/management.store';
-import { WorkspaceService } from '../../core/auth/workspace.service';
-import { ROLES } from '../../core/auth/models/role';
+  ActivatedRoute,
+  ActivatedRouteSnapshot,
+  CanActivateFn,
+  Router,
+  RouterStateSnapshot,
+  provideRouter,
+} from '@angular/router';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { of } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
-import { DEMO_USER } from '../../demo/business-fixtures';
+import { CompanyAccessService, routeAccess } from '../../core/access/company-access.service';
+import {
+  CONNECTED_INSPECTOR_PAGES,
+  inspectorEntryPath,
+  isConnectedInspectorPage,
+} from '../../core/access/inspector-routes';
+import { ManagementStore } from '../management/shared/management.store';
+import { InspectorService } from './inspector.service';
+import { InspectorLayout } from './inspector-layout';
+import { InspectorUnavailable } from './inspector-unavailable';
+import { InspectorProviderApi } from './inspector-provider-api.service';
+import { InspectorClientsApi } from './inspector-clients-api.service';
+import { InspectorStaffApi } from './inspector-staff-api.service';
+import { inspectorEntryGuard, inspectorWorkspaceGuard } from './inspector-entry.guard';
+import { INSPECTOR_PAGES, csv, documentStatus } from './inspector.models';
 import { decodeDocument, zip } from './inspector-download';
 import { routes } from '../../app.routes';
-import { RouterTestingHarness } from '@angular/router/testing';
 
-function session(roleCode = 'IN'): void {
-  localStorage.setItem(
-    'cv_session',
-    JSON.stringify({
-      user: { ...DEMO_USER, roleCode },
-      workspaceId: 'lqcs',
-      mfaVerified: true,
-      signedInAt: new Date().toISOString(),
-    }),
-  );
-}
-function document(id = 'evidence-1'): InspectorDocument {
-  return {
-    id,
-    name: 'Safeguarding policy.txt',
-    category: 'Policies',
-    questions: ['Safe'],
-    owner: 'Review lead',
-    updated: '2026-10-18',
-    version: '1.0',
-    expiry: '',
-    status: 'Pending review',
-    content: 'data:text/plain;base64,cG9saWN5',
-    source: 'Inspection upload',
+describe('Inspector portal routes and availability', () => {
+  const allowed = signal(new Set<string>()),
+    switching = signal(false),
+    authenticated = signal(true),
+    admin = signal(false),
+    core = signal(new Set<string>());
+  const route = { snapshot: { data: { page: 'reports' } } };
+  const workspace = signal<string | null>('one');
+  let access: {
+    canPath: (path: string) => boolean;
+    core: (permission: string) => boolean;
+    refreshForNavigation: () => Promise<void>;
+    companyId: () => string;
+    context: () => { company_id: string; roles: { id: string; name: string; code: string }[] };
   };
-}
-describe('Inspector workspace', () => {
-  let data: InspectorService;
-  let store: ManagementStore;
+  const company = signal({ id: 'one', name: 'Current provider' }),
+    ready = signal(true);
   beforeEach(() => {
-    localStorage.clear();
-    session();
-    TestBed.configureTestingModule({ imports: [InspectorPage], providers: [provideRouter([])] });
-    data = TestBed.inject(InspectorService);
-    store = data.store;
-  });
-  afterEach(() => vi.restoreAllMocks());
-  it('keeps inspection records isolated and preserves unrelated workspace data', () => {
-    const people = structuredClone(store.data().people);
-    const draft = structuredClone(data.state().draft);
-    draft.summary = 'Review summary';
-    expect(data.saveDraft(draft, 'lqcs')).toBe('');
-    expect(data.addDocument(document(), 'lqcs')).toBe('');
-    expect(store.data().people).toEqual(people);
-    TestBed.inject(WorkspaceService).switchWorkspace('riverside');
-    expect(data.state().draft.summary).toBe('');
-    expect(data.documents()).toHaveLength(0);
-    expect(data.saveDraft(draft, 'lqcs')).toContain('workspace changed');
-    expect(data.addDocument(document(), 'lqcs')).toContain('workspace changed');
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    expect(data.state().draft.summary).toBe('Review summary');
-    expect(data.documents()).toHaveLength(1);
-  });
-  it('rejects a stale draft without losing the newer saved findings', () => {
-    const draft = structuredClone(data.state().draft);
-    expect(data.saveDraft({ ...draft, summary: 'Newer saved content' }, 'lqcs')).toBe('');
-    expect(data.saveDraft({ ...draft, summary: 'Stale content' }, 'lqcs')).toContain(
-      'another window',
-    );
-    expect(data.state().draft.summary).toBe('Newer saved content');
-  });
-  it('does not report success or update records when persistence fails', () => {
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('Full');
-    });
-    expect(data.addDocument(document(), 'lqcs')).toContain('Could not save');
-    expect(data.saveDraft({ ...data.state().draft, summary: 'Unsaved' }, 'lqcs')).toContain(
-      'Could not save',
-    );
-    expect(data.documents()).toHaveLength(0);
-    expect(data.state().draft.summary).toBe('');
-  });
-  it('aggregates source evidence without mutating the source record', () => {
-    const person = structuredClone(store.staff()[0]);
-    person.documents = [
-      {
-        id: 'dbs',
-        name: 'DBS file.pdf',
-        type: 'application/pdf',
-        content: 'data:application/pdf;base64,cG9saWN5',
-        status: 'Verified',
-        uploadedAt: '2026-10-18',
-        expiry: '2020-01-01',
-      },
-    ];
-    store.updatePerson(person);
-    const before = structuredClone(store.data());
-    expect(data.documents()[0].status).toBe('Expired');
-    expect(data.documents()[0].source).toBe('Staff record');
-    expect(store.data()).toEqual(before);
-  });
-});
-
-describe('Inspector pages', () => {
-  const routeData = new BehaviorSubject({ page: 'documents' });
-  beforeEach(() => {
-    localStorage.clear();
-    session();
-    routeData.next({ page: 'documents' });
+    allowed.set(new Set(CONNECTED_INSPECTOR_PAGES.map((page) => '/inspector/' + page)));
+    workspace.set('one');
+    switching.set(false);
+    authenticated.set(true);
+    admin.set(false);
+    core.set(new Set());
+    route.snapshot.data.page = 'reports';
+    ready.set(true);
+    access = {
+      companyId: () => 'one',
+      context: () => ({
+        company_id: 'one',
+        roles: [{ id: 'role', name: 'Inspection reviewer', code: 'CUSTOM' }],
+      }),
+      canPath: vi.fn((path: string) => allowed().has(path)),
+      core: vi.fn((permission: string) => core().has(permission)),
+      refreshForNavigation: vi.fn().mockResolvedValue(undefined),
+    };
     TestBed.configureTestingModule({
-      imports: [InspectorPage],
+      imports: [InspectorLayout, InspectorUnavailable],
       providers: [
         provideRouter([]),
+        { provide: ActivatedRoute, useValue: route },
         {
-          provide: ActivatedRoute,
+          provide: BreakpointObserver,
+          useValue: { observe: () => of({ matches: false, breakpoints: {} }) },
+        },
+        {
+          provide: AuthService,
           useValue: {
-            data: routeData,
-            queryParamMap: new BehaviorSubject(convertToParamMap({})),
-            snapshot: { data: { page: 'documents' }, queryParamMap: convertToParamMap({}) },
+            currentUser: () => ({ roleCode: 'IN', name: 'Inspector', initials: 'I' }),
+            isAuthenticated: () => authenticated(),
+            isSuperAdmin: () => admin(),
+            canSwitchWorkspace: () => switching(),
+            nextRoute: () => '/auth/sign-in',
+            signOut: vi.fn(),
+            session: () => ({ workspaceId: workspace() }),
+            profile: () => ({ company_entry_state: 'ready', company_id: 'one' }),
+          },
+        },
+        { provide: CompanyAccessService, useValue: access },
+        ...[
+          InspectorProviderApi,
+          InspectorClientsApi,
+          InspectorStaffApi,
+          InspectorMedicationApi,
+          InspectorIncidentsApi,
+        ].map((provide) => ({
+          provide,
+          useValue: { company, ready },
+        })),
+        {
+          provide: ManagementStore,
+          useFactory: () => {
+            throw Error('Inspector routes must not load the browser workspace');
+          },
+        },
+        {
+          provide: InspectorService,
+          useFactory: () => {
+            throw Error('The portal shell must not construct a legacy inspector service');
           },
         },
       ],
     });
   });
   afterEach(() => vi.restoreAllMocks());
-  function create() {
-    const fixture = TestBed.createComponent(InspectorPage);
+  it.each([
+    ['dashboard', 'provider'],
+    ['provider', 'provider'],
+    ['service-users', 'clients'],
+    ['staffing', 'staff'],
+    ['medication', 'medication'],
+    ['incidents', 'incidents'],
+    ['quality', 'quality'],
+    ['documents', 'quality'],
+    ['visits', 'visits'],
+    ['reports', 'reports'],
+    ['notes', 'reports'],
+  ])('maps %s to the owning %s submodule', (page, sub) => {
+    expect(routeAccess('/inspector/' + page)).toEqual([['inspector_portal', sub]]);
+  });
+  it('does not map unknown inspector areas to Provider Profile permission', () => {
+    expect(routeAccess('/inspector/unknown')).toEqual([['inspector_portal', 'unmapped']]);
+  });
+  it('chooses an available connected entry for limited inspectors', () => {
+    allowed.set(new Set(['/inspector/staffing']));
+    expect(inspectorEntryPath((path) => access.canPath(path))).toBe('/inspector/staffing');
+    const result = TestBed.runInInjectionContext(() =>
+      inspectorEntryGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
+    );
+    expect(TestBed.inject(Router).serializeUrl(result as import('@angular/router').UrlTree)).toBe(
+      '/inspector/staffing',
+    );
+  });
+  it('denies portal entry when no connected modules are available', () => {
+    allowed.set(new Set(['/inspector/reports']));
+    const result = TestBed.runInInjectionContext(() =>
+      inspectorEntryGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
+    );
+    expect(TestBed.inject(Router).serializeUrl(result as import('@angular/router').UrlTree)).toBe(
+      '/access-denied',
+    );
+  });
+  it('requires authentication before entering the portal', async () => {
+    authenticated.set(false);
+    const guard = routes.find((route) => route.path === 'inspector')!
+      .canActivate![0] as CanActivateFn;
+    const result = await TestBed.runInInjectionContext(() =>
+      guard({} as ActivatedRouteSnapshot, { url: '/inspector/staffing' } as RouterStateSnapshot),
+    );
+    expect(TestBed.inject(Router).serializeUrl(result as import('@angular/router').UrlTree)).toBe(
+      '/auth/sign-in',
+    );
+  });
+  it('does not grant module access from an Inspector role label', async () => {
+    allowed.set(new Set());
+    const guard = routes.find((route) => route.path === 'inspector')!
+      .canActivate![1] as CanActivateFn;
+    const result = await TestBed.runInInjectionContext(() =>
+      guard({} as ActivatedRouteSnapshot, { url: '/inspector/notes' } as RouterStateSnapshot),
+    );
+    expect(access.refreshForNavigation).toHaveBeenCalledOnce();
+    expect(TestBed.inject(Router).serializeUrl(result as import('@angular/router').UrlTree)).toBe(
+      '/access-denied',
+    );
+  });
+  it('shows only implemented, permitted modules in navigation', () => {
+    allowed.set(new Set(INSPECTOR_PAGES.map((page) => '/inspector/' + page.path)));
+    const fixture = TestBed.createComponent(InspectorLayout);
     fixture.detectChanges();
-    return { fixture, page: fixture.componentInstance, service: TestBed.inject(InspectorService) };
-  }
-  it.each(INSPECTOR_PAGES.map((p) => [p.path, p.label]))(
-    'renders %s with its full page heading',
-    (path, label) => {
-      routeData.next({ page: path });
-      const { fixture } = create();
-      expect(fixture.nativeElement.querySelector('h1').textContent).toBe(label);
-      expect(fixture.nativeElement.textContent).toContain('London Quality Care Services');
-      expect(fixture.nativeElement.querySelectorAll('button').length).toBeGreaterThan(0);
+    const links = fixture.nativeElement.querySelectorAll(
+      'nav[aria-label="Inspector navigation"] a',
+    );
+    expect(Array.from(links, (link) => (link as HTMLAnchorElement).getAttribute('href'))).toEqual([
+      '/inspector/provider',
+      '/inspector/service-users',
+      '/inspector/staffing',
+      '/inspector/medication',
+      '/inspector/incidents',
+    ]);
+    expect(fixture.nativeElement.textContent).not.toContain('Local workspace');
+    expect(fixture.nativeElement.textContent).toContain('Inspection reviewer');
+    expect(fixture.nativeElement.querySelector('a[href="/manage/companies"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Switch workspace');
+  });
+  it('only exposes workspace selection and admin links with matching authority', () => {
+    switching.set(true);
+    admin.set(true);
+    const fixture = TestBed.createComponent(InspectorLayout);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('a[href="/manage/companies"]')).not.toBeNull();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    fixture.componentInstance.switchWorkspace();
+    expect(navigate).toHaveBeenCalledWith('/select-workspace');
+    switching.set(false);
+    navigate.mockClear();
+    fixture.componentInstance.switchWorkspace();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+  it('keeps the logo and header search on an available live module', () => {
+    allowed.set(new Set(['/inspector/staffing']));
+    const fixture = TestBed.createComponent(InspectorLayout);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('a.brand').getAttribute('href')).toBe(
+      '/inspector/staffing',
+    );
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture.componentInstance.search(new Event('submit'), 'Jane');
+    expect(navigate).toHaveBeenCalledWith(['/inspector/staffing'], { queryParams: { q: 'Jane' } });
+  });
+  it.each(INSPECTOR_PAGES.filter((page) => !isConnectedInspectorPage(page.path)))(
+    'renders $path as explicitly unavailable without local records or save controls',
+    (page) => {
+      route.snapshot.data.page = page.path;
+      const fixture = TestBed.createComponent(InspectorUnavailable);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain(page.label);
+      expect(fixture.nativeElement.textContent).toContain('Live workflow unavailable');
+      expect(fixture.nativeElement.textContent).toContain('not connected to the backend');
+      expect(fixture.nativeElement.querySelector('form')).toBeNull();
+      expect(fixture.nativeElement.textContent).not.toContain('Save draft');
+      expect(fixture.componentInstance.canLeave()).toBe(true);
     },
   );
-  it('keeps clinical risk separate from a high visit priority', () => {
-    const { page } = create();
-    const client: Parameters<InspectorPage['clientRisk']>[0] = {
-      id: 'client',
-      name: 'Test person',
-      reference: 'REF',
-      address: '',
-      postcode: '',
-      funding: 'Private',
-      priority: 'High',
-      active: true,
-    };
-    expect(page.clientRisk(client)).toBe('Not assessed');
-    client.file = {
-      details: {},
-      sections: {},
-      updatedAt: '',
-      entries: {
-        risks: [
-          {
-            id: 'risk',
-            name: 'Mobility',
-            detail: '',
-            date: '2026-10-18',
-            level: 'Medium',
-            status: 'Active',
-          },
-        ],
-      },
-    };
-    expect(page.clientRisk(client)).toBe('Medium');
-  });
-  it('filters the full document set and keeps selection across eight-row pages', () => {
-    const { fixture, page, service } = create();
-    for (let i = 0; i < 10; i++)
-      service.addDocument(
-        { ...document(String(i)), name: `Policy ${i}.txt`, category: CATEGORIES[i % 2] },
-        'lqcs',
-      );
-    fixture.detectChanges();
-    expect(page.visibleDocuments()).toHaveLength(8);
-    page.toggleVisible(true);
-    page.currentPage.set(2);
-    expect(page.visibleDocuments()).toHaveLength(2);
-    page.toggleVisible(true);
-    expect(page.selectedDocuments()).toHaveLength(10);
-    page.category.set('Policies');
-    page.filterChanged();
-    expect(page.documents()).toHaveLength(5);
-    expect(page.selectedDocuments()).toHaveLength(10);
-    page.search.set('Policy 9');
-    page.category.set('');
-    page.filterChanged();
-    expect(page.documents()).toHaveLength(1);
-    expect(page.documents()[0].id).toBe('9');
-  });
-  it('retains an unsaved note after failure and saves it successfully on retry', () => {
-    routeData.next({ page: 'notes' });
-    const { page, service } = create();
-    page.updateNote('Reviewed person-centred care evidence.');
-    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('Full');
-    });
-    expect(page.save()).toBe(false);
-    expect(page.dirty()).toBe(true);
-    expect(page.draft().notes['Overall Summary']).toContain('person-centred');
-    spy.mockRestore();
-    expect(page.save()).toBe(true);
-    expect(page.dirty()).toBe(false);
-    expect(service.state().draft.notes['Overall Summary']).toContain('person-centred');
-  });
-  it('validates required-action ownership and persists evidence references', () => {
-    routeData.next({ page: 'notes' });
-    const { page, service } = create();
-    service.addDocument(document(), 'lqcs');
-    page.openFinding();
-    page.findingField('type', 'Required action');
-    page.findingField('text', 'Review policy evidence');
-    page.saveFinding();
-    expect(page.modalError()).toContain('owner and due date');
-    page.findingField('owner', 'Registered Manager');
-    page.findingField('due', '2026-12-01');
-    page.findingEvidence('evidence-1', true);
-    page.saveFinding();
-    expect(service.state().draft.findings).toHaveLength(1);
-    expect(service.state().draft.findings[0].evidenceIds).toEqual(['evidence-1']);
-  });
-  it('does not duplicate a new finding after a failed save and retry', () => {
-    routeData.next({ page: 'notes' });
-    const { page, service } = create();
-    page.openFinding();
-    page.findingField('text', 'Evidence reviewed');
-    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('Full');
-    });
-    page.saveFinding();
-    expect(page.modalOpen()).toBe(true);
-    spy.mockRestore();
-    page.saveFinding();
-    expect(service.state().draft.findings).toHaveLength(1);
-  });
-  it('clears selected evidence and a pending modal when the workspace changes', () => {
-    const { fixture, page, service } = create();
-    service.addDocument(document(), 'lqcs');
-    page.toggleDocument('evidence-1', true);
-    page.openUpload();
-    fixture.detectChanges();
-    TestBed.inject(WorkspaceService).switchWorkspace('riverside');
-    fixture.detectChanges();
-    expect(page.selectedDocuments()).toHaveLength(0);
-    expect(page.modalOpen()).toBe(false);
-  });
-  it('rejects an upload above the size limit without writing a document', async () => {
-    const { page, service } = create();
-    page.uploadName.set('Large evidence.pdf');
-    page.uploadFile.set(new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'large.pdf'));
-    await page.upload();
-    expect(page.modalError()).toContain('up to 5 MB');
-    expect(service.documents()).toHaveLength(0);
-  });
-  it('opens a usable category selector from the upload dialog', async () => {
-    const { fixture, page } = create();
-    page.openUpload();
-    fixture.detectChanges();
-    const selector: HTMLElement = fixture.nativeElement.querySelector(
-      '[aria-label="Upload category"] .mat-mdc-select-trigger',
+  it('requires Super Admin to select a company before opening inspector records', () => {
+    admin.set(true);
+    switching.set(true);
+    workspace.set(null);
+    const result = TestBed.runInInjectionContext(() =>
+      inspectorWorkspaceGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
     );
-    selector.click();
-    fixture.detectChanges();
-    await fixture.whenStable();
-    const options = [...window.document.querySelectorAll('mat-option')];
-    const audits = options.find((option) => option.textContent?.trim() === 'Audits') as HTMLElement;
-    expect(audits).toBeTruthy();
-    audits.click();
-    fixture.detectChanges();
-    expect(page.uploadCategory()).toBe('Audits');
-    expect(fixture.nativeElement.querySelector('[role="dialog"]').getAttribute('aria-modal')).toBe(
-      'true',
+    expect(TestBed.inject(Router).serializeUrl(result as import('@angular/router').UrlTree)).toBe(
+      '/select-workspace',
     );
   });
-  it('saves an uploaded file with its category, question and pending status', async () => {
-    const { page, service } = create();
-    page.uploadName.set('Review evidence.txt');
-    page.uploadFile.set(new File(['evidence'], 'review.txt', { type: 'text/plain' }));
-    page.uploadQuestion.set('Responsive');
-    await page.upload();
-    expect(service.documents()[0].questions).toEqual(['Responsive']);
-    expect(service.documents()[0].status).toBe('Pending review');
-    expect(new TextDecoder().decode(decodeDocument(service.documents()[0].content))).toBe(
-      'evidence',
-    );
-  });
-});
-
-describe('Inspector routing', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    TestBed.configureTestingModule({ providers: [provideRouter(routes)] });
-  });
-  it('shows one inspector portal switch link for the standard demo account', async () => {
-    session('CW');
-    const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/manage/companies');
-    const sidebar = harness.routeNativeElement?.querySelector('.app-sidebar');
-    expect(sidebar?.textContent).toContain('Inspector Portal');
-    const links = [...(sidebar?.querySelectorAll('a[href^="/inspector/"]') ?? [])];
-    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/inspector/dashboard']);
-  });
-  it('opens the inspector portal for the standard care-worker account', async () => {
-    session('CW');
-    const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/inspector/documents');
-    expect(TestBed.inject(Router).url).toBe('/inspector/documents');
-    expect(harness.routeNativeElement?.textContent).toContain('Documents & Evidence');
-  });
-  it.each(Object.keys(ROLES))('opens every inspector page for the %s role', async (role) => {
-    session(role);
-    const harness = await RouterTestingHarness.create();
-    for (const page of INSPECTOR_PAGES) {
-      await harness.navigateByUrl('/inspector/' + page.path);
-      expect(TestBed.inject(Router).url).toBe('/inspector/' + page.path);
-      expect(harness.routeNativeElement?.querySelector('h1')?.textContent).toBe(page.label);
+  it('routes unfinished sections away from the legacy workflow component', async () => {
+    const parent = routes.find((route) => route.path === 'inspector')!;
+    for (const page of INSPECTOR_PAGES.filter((page) => !isConnectedInspectorPage(page.path))) {
+      const child = parent.children!.find((route) => route.path === page.path)!;
+      const load = child.loadComponent as () => Promise<unknown>;
+      expect(await load()).toBe(InspectorUnavailable);
     }
-    expect(harness.routeNativeElement?.querySelector('a[href="/manage/companies"]')).toBeTruthy();
-  });
-  it('still requires sign-in before opening inspector pages', async () => {
-    const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/inspector/documents');
-    expect(TestBed.inject(Router).url).toBe('/auth/sign-in');
-  });
-  it('supports the inspector demo invitation without changing the normal sign-in role', () => {
-    const auth = TestBed.inject(AuthService);
-    auth.acceptInvite('inspector-demo').subscribe();
-    expect(auth.currentUser()?.roleCode).toBe('IN');
-    expect(DEMO_USER.roleCode).toBe('CW');
-  });
-  it('opens deep links for an inspector with a selected workspace', async () => {
-    session();
-    const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/inspector/documents?q=policy');
-    expect(TestBed.inject(Router).url).toBe('/inspector/documents?q=policy');
-    expect(harness.routeNativeElement?.textContent).toContain('Documents & Evidence');
   });
 });
-
 describe('Evidence exports', () => {
   it('preserves original file bytes in a ZIP with a valid central directory', () => {
     const bytes = zip([

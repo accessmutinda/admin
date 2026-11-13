@@ -11,8 +11,8 @@
         ><button class="primary" (click)="save()">
           <span class="material-symbols-outlined" aria-hidden="true">save</span>Save draft
         </button>
-      } @else if (data.clientsBackend) {
-        <button class="secondary" [disabled]="!data.clientsBackend.canViewProvider()" routerLink="/inspector/provider">
+      } @else if (connected) {
+        <button class="secondary" [disabled]="!connected!.canViewProvider()" routerLink="/inspector/provider">
           <span class="material-symbols-outlined" aria-hidden="true">event</span>Inspection details
         </button>
       } @else {
@@ -22,11 +22,11 @@
       }
     </div>
   </div>
-  @if (data.clientsBackend && !data.clientsBackend.ready()) {
-    <section class="panel" [attr.role]="data.clientsBackend.error() ? 'alert' : 'status'">
-      <h2>{{ data.clientsBackend.loading() ? 'Loading service users' : 'Service users unavailable' }}</h2>
-      <p>{{ data.clientsBackend.error() || 'Connecting to the provider records…' }}</p>
-      <button class="secondary" [disabled]="data.clientsBackend.loading()" (click)="data.clientsBackend.load()">Retry</button>
+  @if (connected && !connected.ready()) {
+    <section class="panel" [attr.role]="connected.error() ? 'alert' : 'status'">
+      <h2>{{ connected.loading() ? (data.incidentsBackend ? 'Loading incidents and safeguarding' : data.medicationBackend ? 'Loading medication records' : data.staffBackend ? 'Loading staffing records' : 'Loading service users') : (data.incidentsBackend ? 'Incidents and safeguarding unavailable' : data.medicationBackend ? 'Medication records unavailable' : data.staffBackend ? 'Staffing records unavailable' : 'Service users unavailable') }}</h2>
+      <p>{{ connected.error() || 'Connecting to the provider records…' }}</p>
+      <button class="secondary" [disabled]="connected.loading()" (click)="connected.load()">Retry</button>
     </section>
   } @else if (data.backend && !data.backend.ready()) {
     <section class="panel" [attr.role]="data.backend.error() ? 'alert' : 'status'">
@@ -403,8 +403,7 @@
           &amp; Competency
         </h2>
         <p class="footnote">
-          Verified workforce training records. Academy lesson progress is separate from recorded
-          training.
+          {{ data.staffBackend ? 'Current training evidence for active and onboarding staff. Academy lesson progress does not imply practical competency.' : 'Verified workforce training records. Academy lesson progress is separate from recorded training.' }}
         </p>
         <div class="table-scroll">
           <table>
@@ -418,7 +417,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (training of data.training(); track training.name) {
+              @for (training of data.training(); track $index) {
                 <tr>
                   <td>{{ training.name }}</td>
                   <td class="positive-cell">{{ training.current }}</td>
@@ -429,6 +428,7 @@
               }
             </tbody>
           </table>
+          @if (data.staffBackend && !data.training().length) { <p class="empty">No mandatory training requirements are recorded for this workforce.</p> }
         </div>
       </section>
       <section class="panel">
@@ -466,7 +466,7 @@
             [ngModel]="selectedClient()"
             (ngModelChange)="selectedClient.set($event); filterChanged()"
             ><mat-option value="">All service users</mat-option>
-            @for (person of data.clients(); track person.id) {
+            @for (person of (data.medicationBackend?.records() ?? data.clients()); track person.id) {
               <mat-option [value]="person.id">{{ person.name }}</mat-option>
             }
           </mat-select></label
@@ -498,7 +498,7 @@
         }
       </div>
       <p class="footnote">
-        Recorded administrations only; this view does not infer omitted doses from prescription
+        Recorded administrations only; superseded and withdrawn entries are history and excluded from outcome totals. This view does not infer omitted doses from prescription
         schedules. Controlled drug balances are recorded stock, with no independent reconciliation
         implied.
       </p>
@@ -525,6 +525,16 @@
         <div class="list-row">
           <span>Completed inspection actions</span><strong>{{ completedFindings() }}</strong>
         </div>
+        @for (finding of findings(); track finding.id) {
+          <div class="finding-row">
+            <div><span class="badge" [class.warning]="finding.type !== 'Strength'">{{ finding.type }}</span>
+              <strong>{{ finding.text }}</strong>
+              <small>{{ finding.question }} · {{ finding.status }} · {{ finding.owner || 'Owner not assigned' }}{{ finding.due ? ' · Due ' + date(finding.due) : '' }}</small>
+              <small>{{ finding.evidenceIds.length }} evidence references</small>
+            </div>
+            <button class="secondary" [disabled]="!data.incidentsBackend?.canEdit()" (click)="openFinding(finding)">Edit</button>
+          </div>
+        }
       </section>
       <section class="panel">
         <h2>
@@ -532,10 +542,10 @@
           >Safeguarding review
         </h2>
         <p class="empty">
-          Events below include recorded visit concerns and saved care incidents. External
+          Events below include recorded visit concerns and saved care incidents. Private staff investigations are excluded. External
           notifications and statutory reporting decisions are not recorded by this portal.
         </p>
-        <a class="secondary" routerLink="/inspector/notes">Record a finding →</a>
+        <button class="secondary" [disabled]="!data.incidentsBackend?.canCreate()" (click)="openFinding()">Record a finding →</button>
       </section>
     </div>
   }
@@ -1199,7 +1209,7 @@
               </button>
             </div>
           }
-          <button class="secondary" [disabled]="data.clientsBackend && !data.clientsBackend.canDownload()" (click)="exportRegister()">
+          <button class="secondary" [disabled]="connected && !connected.canDownload()" (click)="exportRegister()">
             <span class="material-symbols-outlined" aria-hidden="true">download</span>Export CSV
           </button>
         </div>
@@ -1448,7 +1458,7 @@
         <button
           class="icon-button"
           aria-label="Close dialog"
-          [disabled]="uploading()"
+          [disabled]="uploading() || !!data.incidentsBackend?.saving()"
           (click)="closeModal()"
         >
           ×
@@ -1565,7 +1575,7 @@
           </form>
         }
         @case ('finding') {
-          <form (submit)="$event.preventDefault(); saveFinding()">
+          <form (submit)="$event.preventDefault(); saveFinding()" [attr.inert]="data.incidentsBackend?.saving() ? '' : null">
             <div class="two-grid">
               <label
                 >Type<mat-select
@@ -1645,13 +1655,13 @@
                 >
               } @empty {
                 <p class="empty">
-                  No evidence documents available. You can add references after uploading evidence.
+                  {{ data.incidentsBackend ? 'No source events are available to reference.' : 'No evidence documents available. You can add references after uploading evidence.' }}
                 </p>
               }
             </fieldset>
             <div class="modal-actions">
               <button class="secondary" type="button" (click)="closeModal()">Cancel</button
-              ><button class="primary" type="submit">Save finding &amp; draft</button>
+              ><button class="primary" type="submit" [disabled]="!!data.incidentsBackend?.saving()">{{ data.incidentsBackend ? (data.incidentsBackend.saving() ? 'Saving…' : 'Save finding') : 'Save finding & draft' }}</button>
             </div>
           </form>
         }

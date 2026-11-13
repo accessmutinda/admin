@@ -272,8 +272,8 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           <span class="material-symbols-outlined" aria-hidden="true">forum</span>Staff portal
         </a>
         <a
-          routerLink="/inspector/dashboard"
-          [hidden]="!access.canPath('/inspector/dashboard')"
+          routerLink="/inspector"
+          [hidden]="!access.canPath('/inspector')"
           (click)="menuOpen.set(false)"
           ><span class="material-symbols-outlined" aria-hidden="true">policy</span>Inspector
           Portal</a
