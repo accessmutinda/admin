@@ -53,6 +53,7 @@ interface RegisterRow {
     './inspector-workflows.css',
     './inspector-page.css',
     './inspector-records.css',
+    './inspector-service-users.css',
   ],
 })
 export class InspectorPage {
@@ -84,6 +85,17 @@ export class InspectorPage {
   readonly error = signal('');
   readonly activeTab = signal('Overview');
   readonly selectedClient = signal('');
+  readonly directoryView = signal<'list' | 'cards'>('list');
+  readonly hasDirectoryFilters = computed(
+    () =>
+      !!(
+        this.search() ||
+        this.riskFilter() ||
+        this.fundingFilter() ||
+        this.locationFilter() ||
+        this.statusFilter()
+      ),
+  );
   readonly month = signal(this.data.today.slice(0, 7));
   readonly selectedDay = signal('');
   readonly rangeStart = signal('');
@@ -363,6 +375,16 @@ export class InspectorPage {
     this.activeTab.set('Overview');
     this.openModal('detail', row.cells[0]);
   }
+  initials(name: string): string {
+    return name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+  }
   openUpload(): void {
     this.uploadFile.set(null);
     this.uploadName.set('');
@@ -612,6 +634,37 @@ export class InspectorPage {
       staff = this.data.staff(),
       visits = this.scopedVisits();
     switch (this.page().path) {
+      case 'service-users':
+        return [
+          metric(
+            'Service users',
+            this.data.clients().length,
+            'In this provider workspace',
+            'group',
+            '#087cf0',
+          ),
+          metric(
+            'Active service users',
+            this.data.clients().filter((c) => c.active).length,
+            'Active provider records',
+            'person_check',
+            '#0ca67d',
+          ),
+          metric(
+            'High risk',
+            this.data.clients().filter((c) => this.clientRisk(c) === 'High').length,
+            'Recorded clinical risk level',
+            'health_and_safety',
+            '#f59216',
+          ),
+          metric(
+            'Risk not assessed',
+            this.data.clients().filter((c) => this.clientRisk(c) === 'Not assessed').length,
+            'No recorded clinical risk level',
+            'assignment_late',
+            '#9434ed',
+          ),
+        ];
       case 'staffing':
         return [
           metric('Total staff', staff.length, 'Hired workforce records', 'groups'),

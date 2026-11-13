@@ -1,4 +1,4 @@
-<div class="inspection-page">
+<div class="inspection-page" [class.service-users-page]="page().path === 'service-users'">
   <div class="page-heading">
     <div>
       <h1>{{ page().label }}</h1>
@@ -1071,29 +1071,6 @@
     </div>
   }
 
-  @if (page().path === 'service-users') {
-    <section class="panel">
-      <h2>Approved care instructions shared with inspectors</h2>
-      @for (section of data.careInstructions(); track $index) {
-        <details>
-          <summary>{{ section.client }} · {{ section.name }}</summary>
-          @if (section.partialDemo) {
-            <p>
-              <strong>Partial demo approval - 14 care areas deferred.</strong> Not a complete
-              approved care plan.
-            </p>
-          }
-          <p>{{ section.instructions }}</p>
-          <p>{{ section.actions }}</p>
-          <p><strong>Outcome:</strong> {{ section.outcome }}</p>
-          <p><strong>Escalation:</strong> {{ section.escalation }}</p>
-        </details>
-      } @empty {
-        <p>No approved care instructions have been shared.</p>
-      }
-    </section>
-  }
-
   @if (!['documents', 'provider', 'reports', 'notes'].includes(page().path)) {
     <section class="panel filters" aria-label="Register filters">
       <div class="filter-row">
@@ -1101,7 +1078,11 @@
           >Search {{ page().label.toLowerCase()
           }}<input
             type="search"
-            placeholder="Search records…"
+            [placeholder]="
+              page().path === 'service-users'
+                ? 'Search name, reference or address…'
+                : 'Search records…'
+            "
             [ngModel]="search()"
             (ngModelChange)="search.set($event); filterChanged()"
         /></label>
@@ -1158,67 +1139,248 @@
       </div>
     </section>
     <section class="panel register">
-      <div class="section-heading">
-        <h2>
-          {{ register().title }} <span class="muted">({{ filteredRows().length }})</span>
-        </h2>
-        <button class="secondary" (click)="exportRegister()">
-          <span class="material-symbols-outlined" aria-hidden="true">download</span>Export CSV
-        </button>
-      </div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              @for (column of register().columns; track column; let i = $index) {
-                <th
-                  [attr.aria-sort]="
-                    i === 0 ? (sortDirection() === 1 ? 'ascending' : 'descending') : null
-                  "
-                >
-                  @if (i === 0) {
-                    <button class="sort" (click)="sortDirection.set(-sortDirection())">
-                      {{ column }} ↕
-                    </button>
-                  } @else {
-                    {{ column }}
-                  }
-                </th>
-              }
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of visibleRows(); track row.id) {
-              <tr>
-                @for (cell of row.cells; track $index; let i = $index) {
-                  <td [class.record-name]="i === 0">{{ cell }}</td>
-                }
-                <td>
-                  <button
-                    class="text-link"
-                    (click)="openRecord(row)"
-                    [attr.aria-label]="'View ' + row.cells[0]"
-                  >
-                    View →
-                  </button>
-                </td>
-              </tr>
-            } @empty {
-              <tr>
-                <td [attr.colspan]="register().columns.length + 1" class="empty">
-                  No records match this view. Records will appear when saved in the source
-                  workspace.
-                </td>
-              </tr>
+      <div class="section-heading directory-toolbar">
+        <div>
+          <h2>
+            @if (page().path === 'service-users') {
+              <span class="material-symbols-outlined" aria-hidden="true">group</span>
             }
-          </tbody>
-        </table>
+            {{ register().title }} <span class="muted">({{ filteredRows().length }})</span>
+          </h2>
+          @if (page().path === 'service-users') {
+            <p class="directory-caption">
+              Review care, risks and supporting evidence for each person.
+            </p>
+          }
+        </div>
+        <div class="actions">
+          @if (page().path === 'service-users') {
+            <div class="directory-view" role="group" aria-label="Directory view">
+              <button
+                [class.selected]="directoryView() === 'list'"
+                [attr.aria-pressed]="directoryView() === 'list'"
+                aria-label="List view"
+                (click)="directoryView.set('list')"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">view_list</span>
+              </button>
+              <button
+                [class.selected]="directoryView() === 'cards'"
+                [attr.aria-pressed]="directoryView() === 'cards'"
+                aria-label="Card view"
+                (click)="directoryView.set('cards')"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">grid_view</span>
+              </button>
+            </div>
+          }
+          <button class="secondary" (click)="exportRegister()">
+            <span class="material-symbols-outlined" aria-hidden="true">download</span>Export CSV
+          </button>
+        </div>
       </div>
+      @if (page().path === 'service-users') {
+        <div class="directory-context">
+          <span class="material-symbols-outlined" aria-hidden="true">lock</span
+          ><span>Read-only access · Source records stay with the care provider.</span>
+        </div>
+      }
+      @if (page().path === 'service-users' && directoryView() === 'cards') {
+        <div class="person-grid">
+          @for (row of visibleRows(); track row.id) {
+            <article class="person-card">
+              <div class="person-card-heading">
+                <span class="person-avatar" aria-hidden="true">{{ initials(row.cells[0]) }}</span>
+                <div>
+                  <button class="record-link" (click)="openRecord(row)">{{ row.cells[0] }}</button
+                  ><small>{{ row.cells[1] }}</small>
+                </div>
+                <span class="person-status" [class.is-active]="row.cells[6] === 'Active'">{{
+                  row.cells[6]
+                }}</span>
+              </div>
+              <p class="person-address">
+                <span class="material-symbols-outlined" aria-hidden="true">location_on</span
+                >{{ row.cells[2] }}
+              </p>
+              <dl class="person-facts">
+                <div>
+                  <dt>Care plan review</dt>
+                  <dd>{{ row.cells[3] }}</dd>
+                </div>
+                <div>
+                  <dt>Funding</dt>
+                  <dd>{{ row.cells[5] }}</dd>
+                </div>
+              </dl>
+              <div class="person-card-footer">
+                <span
+                  class="risk-label"
+                  [class.risk-high]="row.cells[4] === 'High'"
+                  [class.risk-medium]="row.cells[4] === 'Medium'"
+                  [class.risk-low]="row.cells[4] === 'Low'"
+                  >{{
+                    row.cells[4] === 'Not assessed' ? 'Risk not assessed' : row.cells[4] + ' risk'
+                  }}</span
+                ><button
+                  class="text-link"
+                  (click)="openRecord(row)"
+                  [attr.aria-label]="'View ' + row.cells[0]"
+                >
+                  View record <span aria-hidden="true">→</span>
+                </button>
+              </div>
+            </article>
+          } @empty {
+            <ng-container *ngTemplateOutlet="directoryEmpty" />
+          }
+        </div>
+      } @else {
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                @for (column of register().columns; track column; let i = $index) {
+                  <th
+                    [attr.aria-sort]="
+                      i === 0 ? (sortDirection() === 1 ? 'ascending' : 'descending') : null
+                    "
+                  >
+                    @if (i === 0) {
+                      <button class="sort" (click)="sortDirection.set(-sortDirection())">
+                        {{ column }} ↕
+                      </button>
+                    } @else {
+                      {{ column }}
+                    }
+                  </th>
+                }
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of visibleRows(); track row.id) {
+                <tr>
+                  @for (cell of row.cells; track $index; let i = $index) {
+                    <td [class.record-name]="i === 0">
+                      @if (page().path === 'service-users') {
+                        @switch (i) {
+                          @case (0) {
+                            <div class="person-name">
+                              <span class="person-avatar" aria-hidden="true">{{
+                                initials(cell)
+                              }}</span
+                              ><button class="record-link" (click)="openRecord(row)">
+                                {{ cell }}
+                              </button>
+                            </div>
+                          }
+                          @case (4) {
+                            <span
+                              class="risk-label"
+                              [class.risk-high]="cell === 'High'"
+                              [class.risk-medium]="cell === 'Medium'"
+                              [class.risk-low]="cell === 'Low'"
+                              >{{ cell }}</span
+                            >
+                          }
+                          @case (6) {
+                            <span class="person-status" [class.is-active]="cell === 'Active'">{{
+                              cell
+                            }}</span>
+                          }
+                          @default {
+                            {{ cell }}
+                          }
+                        }
+                      } @else {
+                        {{ cell }}
+                      }
+                    </td>
+                  }
+                  <td>
+                    <button
+                      class="text-link"
+                      (click)="openRecord(row)"
+                      [attr.aria-label]="'View ' + row.cells[0]"
+                    >
+                      View →
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td [attr.colspan]="register().columns.length + 1" class="empty">
+                    @if (page().path === 'service-users') {
+                      <ng-container *ngTemplateOutlet="directoryEmpty" />
+                    } @else {
+                      No records match this view. Records will appear when saved in the source
+                      workspace.
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
       <ng-container *ngTemplateOutlet="pagination" />
     </section>
   }
+  @if (page().path === 'service-users') {
+    <section class="panel shared-instructions" aria-label="Shared care instructions">
+      <div class="section-heading">
+        <div>
+          <h2>
+            <span class="material-symbols-outlined" aria-hidden="true">assignment_turned_in</span
+            >Shared care instructions
+          </h2>
+          <p class="directory-caption">
+            Approved instructions the provider has shared with inspectors.
+          </p>
+        </div>
+        <span class="instruction-count">{{ data.careInstructions().length }} sections</span>
+      </div>
+      @for (section of data.careInstructions(); track $index) {
+        <details>
+          <summary>
+            <span>{{ section.client }}</span
+            ><span class="muted">{{ section.name }}</span>
+          </summary>
+          @if (section.partialDemo) {
+            <p class="notice error">
+              Partial demo approval — 14 care areas deferred. Not a complete approved care plan.
+            </p>
+          }
+          <div class="instruction-body">
+            <p>{{ section.instructions }}</p>
+            <p>{{ section.actions }}</p>
+            <p><strong>Outcome:</strong> {{ section.outcome }}</p>
+            <p><strong>Escalation:</strong> {{ section.escalation }}</p>
+          </div>
+        </details>
+      } @empty {
+        <p class="instructions-empty">No approved care instructions have been shared.</p>
+      }
+    </section>
+  }
 </div>
+<ng-template #directoryEmpty>
+  <div class="directory-empty">
+    <span class="material-symbols-outlined" aria-hidden="true">person_search</span>
+    <h3>{{ hasDirectoryFilters() ? 'No matching service users' : 'No service users recorded' }}</h3>
+    <p>
+      {{
+        hasDirectoryFilters()
+          ? 'Try a different search or clear your filters.'
+          : 'Service users will appear when saved in the provider workspace.'
+      }}
+    </p>
+    @if (hasDirectoryFilters()) {
+      <button class="secondary" (click)="clearFilters()">Clear filters</button>
+    }
+  </div>
+</ng-template>
 
 <ng-template #pagination
   ><div class="pagination">
@@ -1252,6 +1414,7 @@
       cdkTrapFocus
       [cdkTrapFocusAutoCapture]="true"
       [class.report-modal]="modalKind() === 'report'"
+      [class.service-user-drawer]="page().path === 'service-users' && modalKind() === 'detail'"
       (keydown.escape)="closeModal()"
     >
       <div class="modal-heading">
@@ -1468,6 +1631,20 @@
         }
         @case ('detail') {
           @if (client(); as person) {
+            <div class="person-drawer-identity">
+              <span class="person-avatar" aria-hidden="true">{{ initials(person.name) }}</span>
+              <div>
+                <h3>{{ person.name }}</h3>
+                <p>{{ person.reference }} · {{ person.postcode || 'Postcode not recorded' }}</p>
+              </div>
+              <span class="person-status" [class.is-active]="person.active">{{
+                person.active ? 'Active' : 'Inactive'
+              }}</span>
+            </div>
+            <div class="directory-context">
+              <span class="material-symbols-outlined" aria-hidden="true">lock</span>Read-only
+              service user record
+            </div>
             <div class="tabs" role="group" aria-label="Service user record sections">
               @for (tab of ['Overview', 'Care & Health', 'Risk & Alerts', 'Documents']; track tab) {
                 <button

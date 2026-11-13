@@ -1,0 +1,330 @@
+.service-users-page .filters {
+  padding: 8px;
+}
+.service-users-page .filter-row {
+  gap: 6px;
+}
+.service-users-page .filter-row input,
+.service-users-page .filter-row mat-select {
+  min-height: 32px;
+}
+.service-users-page .register {
+  padding: 0;
+  overflow: hidden;
+}
+.service-users-page .directory-toolbar {
+  padding: 12px;
+  margin: 0;
+  gap: 12px;
+}
+.directory-caption {
+  color: #657184;
+  font-size: 11px;
+  margin-top: 3px;
+}
+.directory-context {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: #f0faff;
+  color: #536781;
+  font-size: 11px;
+  border-block: 1px solid #e4f2fb;
+}
+.directory-context .material-symbols-outlined {
+  font-size: 15px;
+  color: #007caa;
+  flex: none;
+}
+.directory-view {
+  display: flex;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid #dfe8ed;
+  border-radius: 6px;
+  background: #f6f9fb;
+}
+.directory-view button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #617087;
+  width: 30px;
+  min-height: 28px;
+}
+.directory-view button.selected {
+  background: #007caa;
+  color: #fff;
+}
+.directory-view .material-symbols-outlined {
+  font-size: 18px;
+}
+.service-users-page th {
+  padding: 8px 10px;
+}
+.service-users-page td {
+  padding: 12px 10px;
+}
+.service-users-page td:nth-child(3) {
+  min-width: 160px;
+  max-width: 250px;
+}
+.service-users-page td:last-child {
+  white-space: nowrap;
+}
+.service-users-page .pagination {
+  padding: 10px 12px;
+  background: #fcfefe;
+}
+.person-name,
+.person-card-heading,
+.person-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.person-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #eaf5fc;
+  color: #007caa;
+  border: 1px solid #d9edf8;
+  font-size: 11px;
+  font-weight: 700;
+}
+.record-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #0b315c;
+  font-weight: 700;
+  text-align: left;
+  line-height: 1.4;
+}
+.record-link:hover {
+  color: #007caa;
+  text-decoration: underline;
+}
+.person-status,
+.risk-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 4px;
+  padding: 3px 7px;
+  font-size: 11px;
+  line-height: 1.4;
+  background: #eff3f6;
+  color: #536781;
+  white-space: nowrap;
+}
+.person-status::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #a3aeb8;
+}
+.person-status.is-active,
+.risk-label.risk-low {
+  background: #effbf6;
+  color: #087337;
+}
+.person-status.is-active::before {
+  background: #13b76b;
+}
+.risk-label.risk-high {
+  color: #b42334;
+  background: #fff1f3;
+}
+.risk-label.risk-medium {
+  color: #92550d;
+  background: #fff8e9;
+}
+.person-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+.person-card {
+  border: 1px solid #e2eaf0;
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 0;
+  background: linear-gradient(120deg, #fff, #fcfefe);
+}
+.person-card:hover {
+  border-color: #b8d9ed;
+}
+.person-card-heading > div {
+  flex: 1;
+  min-width: 0;
+}
+.person-card-heading .record-link {
+  overflow-wrap: anywhere;
+}
+.person-card-heading .person-status {
+  margin-left: auto;
+}
+.person-address {
+  display: flex;
+  align-items: start;
+  gap: 5px;
+  margin: 12px 0;
+  color: #617087;
+  font-size: 11px;
+}
+.person-address .material-symbols-outlined {
+  font-size: 16px;
+  flex: none;
+}
+.person-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.person-facts dt {
+  font-size: 10px;
+  color: #657184;
+}
+.person-facts dd {
+  margin: 3px 0 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.person-card-footer {
+  justify-content: space-between;
+  border-top: 1px solid #edf2f5;
+  margin-top: 12px;
+  padding-top: 8px;
+  flex-wrap: wrap;
+}
+.directory-empty {
+  grid-column: 1 / -1;
+  padding: 28px 12px;
+  text-align: center;
+  color: #657184;
+}
+.directory-empty > .material-symbols-outlined {
+  font-size: 30px;
+  color: #007caa;
+}
+.directory-empty h3 {
+  margin: 6px 0;
+}
+.directory-empty button {
+  margin-top: 12px;
+}
+.shared-instructions .section-heading {
+  padding-bottom: 8px;
+}
+.instruction-count {
+  font-size: 11px;
+  border-radius: 4px;
+  background: #eff5f8;
+  padding: 3px 8px;
+  color: #536781;
+}
+.shared-instructions details {
+  border-top: 1px solid #edf2f5;
+}
+.shared-instructions summary {
+  cursor: pointer;
+  padding: 10px 4px;
+  color: #0b315c;
+}
+.shared-instructions summary span + span {
+  margin-left: 8px;
+}
+.instruction-body {
+  padding: 0 8px 12px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.instruction-body p + p {
+  margin-top: 8px;
+}
+.instructions-empty {
+  border-top: 1px solid #edf2f5;
+  padding: 12px 0 2px;
+  color: #657184;
+  font-size: 11px;
+}
+.record-dialog.service-user-drawer {
+  position: absolute;
+  inset: 0 0 0 auto;
+  height: 100dvh;
+  max-height: 100dvh;
+  width: min(720px, 100vw);
+  margin: 0;
+  border-radius: 0;
+  padding: 16px;
+}
+.person-drawer-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 16px;
+}
+.person-drawer-identity .person-avatar {
+  width: 44px;
+  height: 44px;
+  font-size: 14px;
+}
+.person-drawer-identity h3 {
+  margin: 0 0 3px;
+  font-size: 16px;
+}
+.person-drawer-identity p {
+  color: #657184;
+  font-size: 11px;
+}
+.person-drawer-identity .person-status {
+  margin-left: auto;
+}
+.service-user-drawer .tabs {
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+@media (max-width: 1250px) {
+  .person-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px), (pointer: coarse) {
+  .service-users-page .filter-row input,
+  .service-users-page .filter-row mat-select,
+  .directory-view button,
+  .service-users-page .record-link,
+  .service-users-page .text-link,
+  .service-user-drawer button {
+    min-height: 44px;
+  }
+  .directory-view button {
+    min-width: 44px;
+  }
+}
+@media (max-width: 600px) {
+  .person-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .service-users-page .filter-row label {
+    min-width: calc(50% - 6px);
+  }
+  .service-users-page .filter-row .search-field {
+    min-width: 100%;
+  }
+  .service-users-page .directory-toolbar > .actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
