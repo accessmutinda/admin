@@ -1,13 +1,20 @@
 import { QualityNavigation } from './quality-navigation-bar';
 import { ModuleDesign } from '../shared/module-design';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
+import { QualityApi } from './quality-api.service';
 import { QualityService } from './quality.service';
-import { Assessment, QualityEvidence, templateFor, ukTimestamp } from './quality.models';
+import {
+  Assessment,
+  AssessmentTemplate,
+  QualityEvidence,
+  templateFor,
+  ukTimestamp,
+} from './quality.models';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { AccessRequired } from '../shared/access-required';
 
@@ -32,18 +39,32 @@ import { AccessRequired } from '../shared/access-required';
 })
 export class AssessmentEditor {
   protected readonly service = inject(QualityService);
+  protected readonly api = this.service.connected ? (this.service as unknown as QualityApi) : null;
   protected timestamp = ukTimestamp;
+  protected readonly ready = signal(!this.api);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly id = this.route.snapshot.paramMap.get('id');
-  protected readonly templateId =
-    this.route.snapshot.paramMap.get('type') ??
-    this.service.data().assessments.find((a) => a.id === this.id)?.templateId ??
-    '';
-  protected readonly template = templateFor(this.templateId);
-  protected readonly found =
-    !!this.template && (!this.id || this.service.data().assessments.some((a) => a.id === this.id));
+  protected get templateId(): string {
+    return (
+      this.record?.templateId ||
+      this.route.snapshot.paramMap.get('type') ||
+      this.service.data().assessments.find((a) => a.id === this.id)?.templateId ||
+      ''
+    );
+  }
+  protected get template(): AssessmentTemplate | undefined {
+    return this.api
+      ? (this.record as any)?.template || this.api.templates().find((t) => t.id === this.templateId)
+      : templateFor(this.templateId);
+  }
+  protected get found(): boolean {
+    if (this.api && !this.ready()) return false;
+    return (
+      !!this.template && (!this.id || this.service.data().assessments.some((a) => a.id === this.id))
+    );
+  }
   protected record: Assessment = structuredClone(
     this.service.data().assessments.find((a) => a.id === this.id) ??
       this.service.newAssessment(this.templateId),
@@ -59,16 +80,63 @@ export class AssessmentEditor {
   protected declaration = false;
   protected reopenReason = '';
   protected readonly current = computed(() =>
-    this.service.data().assessments.find((a) => a.id === this.record.id),
+    this.service
+      .data()
+      .assessments.find(
+        (a) => a.id === (this.id || this.api?.savedId(this.record.id) || this.record.id),
+      ),
   );
+  constructor() {
+    inject(DestroyRef).onDestroy(() => this.api?.disconnect());
+    if (this.api) {
+      void this.api.openAssessment(this.id, this.route.snapshot.paramMap.get('type')).then((ok) => {
+        if (!ok) return;
+        this.record = structuredClone(
+          this.id
+            ? this.service.data().assessments.find((a) => a.id === this.id)!
+            : this.api!.newAssessment(this.route.snapshot.paramMap.get('type') || ''),
+        );
+        this.baseline = JSON.stringify(this.record);
+        this.ready.set(true);
+        this.step.set(['Submitted', 'Signed off'].includes(this.record.status) ? 4 : 0);
+      });
+    }
+    const context = computed(() =>
+      this.api ? `${this.api.scope()}:${this.api.can('view')}` : null,
+    );
+    let first = true;
+    effect(() => {
+      if (context()) {
+        if (first) {
+          first = false;
+          return;
+        }
+        untracked(() => {
+          this.record = this.service.newAssessment(this.route.snapshot.paramMap.get('type') || '');
+          this.baseline = JSON.stringify(this.record);
+          this.signatureName = '';
+          this.declaration = false;
+          this.reopenReason = '';
+          this.error.set('The authorised workspace changed. Reopen this assessment.');
+        });
+      }
+    });
+  }
   protected canEdit(): boolean {
+    if (this.api && (!this.ready() || this.api.saving())) return false;
     return (
       ['Draft', 'Scheduled'].includes(this.record.status) &&
       this.service.can(this.record.revision ? 'edit' : 'create')
     );
   }
   isDirty(): boolean {
-    return this.canEdit() && (JSON.stringify(this.record) !== this.baseline || this.busy());
+    return (
+      this.busy() ||
+      !!this.api?.saving() ||
+      (['Draft', 'Scheduled'].includes(this.record.status) &&
+        this.service.can(this.record.revision ? 'edit' : 'create') &&
+        JSON.stringify(this.record) !== this.baseline)
+    );
   }
   protected beforeUnload(event: BeforeUnloadEvent): void {
     if (this.isDirty()) {
@@ -96,6 +164,7 @@ export class AssessmentEditor {
         : 'Service';
   }
   protected assessors() {
+    if (this.api) return this.api.assessors();
     const user = this.service.auth.currentUser();
     return user && !this.service.assessors().some((m) => m.id === user.id)
       ? [{ id: user.id, name: user.name }, ...this.service.assessors()]
@@ -128,13 +197,18 @@ export class AssessmentEditor {
     }
     this.step.update((n) => Math.min(4, n + 1));
   }
-  protected save(mode: 'draft' | 'schedule' | 'submit'): void {
+  protected async save(mode: 'draft' | 'schedule' | 'submit'): Promise<void> {
     if (this.busy()) return;
-    const error = this.service.saveAssessment(this.record, mode);
+    this.busy.set(true);
+    const error = await (this.service.saveAssessment(this.record, mode) as
+      string | null | Promise<string | null>);
+    this.busy.set(false);
     this.error.set(error ?? '');
     if (error) return;
     this.record = structuredClone(
-      this.service.data().assessments.find((a) => a.id === this.record.id)!,
+      this.service
+        .data()
+        .assessments.find((a) => a.id === (this.api?.savedId(this.record.id) || this.record.id))!,
     );
     this.baseline = JSON.stringify(this.record);
     this.toast.success(
@@ -166,21 +240,25 @@ export class AssessmentEditor {
       this.declaration = false;
     }
   }
-  protected signOff(): void {
-    const error = this.service.signOff(
+  protected async signOff(): Promise<void> {
+    const error = await (this.service.signOff(
       this.record.id,
       this.record.revision,
       this.signatureName,
       this.declaration,
-    );
+    ) as string | null | Promise<string | null>);
     this.error.set(error ?? '');
     if (!error) {
       this.reload();
       this.toast.success('Assessment signed off.');
     }
   }
-  protected reopen(): void {
-    const error = this.service.reopen(this.record.id, this.record.revision, this.reopenReason);
+  protected async reopen(): Promise<void> {
+    const error = await (this.service.reopen(
+      this.record.id,
+      this.record.revision,
+      this.reopenReason,
+    ) as string | null | Promise<string | null>);
     this.error.set(error ?? '');
     if (!error) {
       this.reload();
@@ -205,6 +283,8 @@ export class AssessmentEditor {
     }
     this.error.set('');
     this.busy.set(true);
+    const scope = this.api?.scope(),
+      recordId = this.record.id;
     try {
       const evidence = await Promise.all(
         files.map(
@@ -225,6 +305,7 @@ export class AssessmentEditor {
             }),
         ),
       );
+      if ((this.api && scope !== this.api.scope()) || recordId !== this.record.id) return;
       this.record.evidence.push(...evidence);
     } catch {
       this.error.set('Could not read the selected file. Choose it again.');
@@ -236,13 +317,23 @@ export class AssessmentEditor {
     this.record.evidence = this.record.evidence.filter((e) => e.id !== id);
   }
   protected downloadEvidence(e: QualityEvidence): void {
-    if (!this.service.can('export')) return;
+    if (this.api && !e.content.startsWith('data:')) {
+      void this.api.downloadEvidence(e).catch((error) => this.error.set(error.message));
+      return;
+    }
+    if (this.api ? !this.api.canExportAssessment(this.record) : !this.service.can('export')) return;
     const link = document.createElement('a');
     link.href = e.content;
     link.download = e.name;
     link.click();
   }
   protected exportAssessment(): void {
+    if (this.api) {
+      void this.api
+        .exportAssessment(this.record.id)
+        .catch((error) => this.error.set(error.message));
+      return;
+    }
     if (!this.service.can('export') || !this.current()) return;
     const a = this.current()!;
     const report = {

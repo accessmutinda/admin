@@ -1,6 +1,7 @@
 import { AuthService } from './core/auth/auth.service';
 import { Router, Routes } from '@angular/router';
 import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
+import { QUALITY_PROVIDERS } from './features/management/quality/quality.providers';
 import { ECM_PROVIDERS } from './features/management/ecm/ecm.providers';
 import { CARE_PLAN_PROVIDERS } from './features/management/care/care-plan.providers';
 import {
@@ -459,6 +460,7 @@ export const routes: Routes = [
       },
       {
         path: 'supervisor',
+        providers: QUALITY_PROVIDERS,
         data: { module: 'Quality & compliance', supervisor: true },
         title: 'Supervisor dashboard · CareVerity',
         loadComponent: () => import('./features/management/quality/quality').then((m) => m.Quality),
@@ -483,12 +485,14 @@ export const routes: Routes = [
       },
       {
         path: 'quality/workspace',
+        providers: QUALITY_PROVIDERS,
         data: { module: 'Quality & compliance' },
         title: 'Quality assessment workspace · CareVerity',
         loadComponent: () => import('./features/management/quality/quality').then((m) => m.Quality),
       },
       ...['new/:type', 'assessments/:id'].map((path) => ({
         path: 'quality/' + path,
+        providers: QUALITY_PROVIDERS,
         data: { module: 'Quality & compliance' },
         title: 'Quality assessment · CareVerity',
         loadComponent: () =>

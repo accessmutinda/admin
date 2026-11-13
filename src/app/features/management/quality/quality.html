@@ -5,12 +5,21 @@
 @if (!supervisor) {
   <cv-quality-navigation />
 }
+@if (api?.loading()) {
+  <p role="status">Loading supervisor and quality records…</p>
+}
+@if (api?.error()) {
+  <p role="alert">{{ api?.error() }}</p>
+}
+@if (api?.unavailable()?.length) {
+  <p role="status">{{ api?.unavailable()?.join(' ') }}</p>
+}
 <div class="page-heading">
   <div>
     <h1>{{ supervisor ? 'Supervisor dashboard' : 'Quality & QA' }}</h1>
     <p>Assess care, support your team and follow every improvement through.</p>
   </div>
-  @if (service.can('create')) {
+  @if (canCreateAssessment()) {
     <button class="button primary" (click)="switchTab('Assessment library')">
       <span class="material-symbols-outlined" aria-hidden="true">add</span>New assessment
     </button>
@@ -29,8 +38,15 @@
       <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
       <div>
         <h2>Assessments to finish</h2>
-        <strong>{{ openAssessments().length }}</strong
-        ><small>{{ overdueAssessments().length }} overdue</small>
+        <strong>{{
+          api ? (api.metrics()['open_assessments'] ?? '—') : openAssessments().length
+        }}</strong
+        ><small
+          >{{
+            api ? (api.metrics()['overdue_assessments'] ?? '—') : overdueAssessments().length
+          }}
+          overdue</small
+        >
       </div>
     </button>
     <button
@@ -41,7 +57,9 @@
       <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">fact_check</span>
       <div>
         <h2>Spot checks & quality visits</h2>
-        <strong>{{ countType('spot') + countType('visit') }}</strong
+        <strong>{{
+          api ? (api.metrics()['spot_checks'] ?? '—') : countType('spot') + countType('visit')
+        }}</strong
         ><small>Recorded in this workspace</small>
       </div>
     </button>
@@ -53,7 +71,9 @@
       <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">draw</span>
       <div>
         <h2>Awaiting sign-off</h2>
-        <strong>{{ pendingSignOff().length }}</strong
+        <strong>{{
+          api ? (api.metrics()['pending_sign_off'] ?? '—') : pendingSignOff().length
+        }}</strong
         ><small>Submitted for review</small>
       </div>
     </button>
@@ -65,8 +85,13 @@
       <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">task_alt</span>
       <div>
         <h2>Open quality actions</h2>
-        <strong>{{ openActions().length }}</strong
-        ><small>{{ overdueActions().length }} overdue</small>
+        <strong>{{ api ? (api.metrics()['open_actions'] ?? '—') : openActions().length }}</strong
+        ><small
+          >{{
+            api ? (api.metrics()['overdue_actions'] ?? '—') : overdueActions().length
+          }}
+          overdue</small
+        >
       </div>
     </button>
   </div>
@@ -114,9 +139,9 @@
       <section
         cvQuickActions
         headingId="quality-quick-actions"
-        [actionCount]="service.can('create') ? 3 : 2"
+        [actionCount]="canCreateAssessment() ? 3 : 2"
       >
-        @if (service.can('create')) {
+        @if (canCreateAssessment()) {
           <button class="co-primary" (click)="switchTab('Assessment library')">
             <span class="material-symbols-outlined" aria-hidden="true">add</span>New assessment<span
               class="material-symbols-outlined"
@@ -188,7 +213,9 @@
           >
         </div>
         <div class="quality-summary">
-          <strong>{{ store.data().reviews.length }}</strong
+          <strong>{{
+            api ? (api.metrics()['reviews'] ?? '—') : store.data().reviews.length
+          }}</strong
           ><span>supervision and appraisal records</span>
         </div>
         <a class="button" routerLink="/manage/reviews"
@@ -208,7 +235,9 @@
           >
         </div>
         <div class="quality-summary">
-          <strong>{{ overdueActions().length }}</strong
+          <strong>{{
+            api ? (api.metrics()['overdue_actions'] ?? '—') : overdueActions().length
+          }}</strong
           ><span>overdue corrective actions</span>
         </div>
         <button class="button" (click)="switchTab('Corrective actions')">
@@ -265,7 +294,7 @@
               <p>{{ t.description }}</p>
               <span class="muted">{{ countType(t.id) }} saved records</span>
             </div>
-            @if (service.can('create')) {
+            @if (canCreateAssessment()) {
               <a
                 class="button"
                 [routerLink]="['/manage/quality/new', t.id]"
@@ -300,7 +329,10 @@
               }}
             </p>
           </div>
-          @if (tab() === 'Corrective actions' && service.can('create')) {
+          @if (
+            tab() === 'Corrective actions' &&
+            (api ? api.canAction('create') : canCreateAssessment())
+          ) {
             <button class="button primary" (click)="editAction()">
               <span class="material-symbols-outlined" aria-hidden="true">add</span>Add action
             </button>
@@ -576,8 +608,11 @@
     </section>
   }
   <p class="quality-demo">
-    Device demo · Use sample information. Dates and audit times use UK time. Records and files are
-    saved in this browser; shared routing and external delivery require connected services.
+    {{
+      api
+        ? 'Assessments, review decisions and quality actions are saved to the company record. Dates follow the company timezone; audit times are shown in UK time.'
+        : 'Device demo · Use sample information. Dates and audit times use UK time. Records and files are saved in this browser; shared routing and external delivery require connected services.'
+    }}
   </p>
 }
 @if (actionModal() && service.can('view')) {
@@ -601,10 +636,7 @@
         </button>
       </div>
       <form (ngSubmit)="saveAction()">
-        <fieldset
-          [disabled]="!service.can(action.revision ? 'edit' : 'create')"
-          class="quality-fieldset"
-        >
+        <fieldset [disabled]="!canEditAction()" class="quality-fieldset">
           <div class="form-grid">
             <label class="full-width"
               >Action required<textarea
@@ -620,9 +652,9 @@
                 [(ngModel)]="action.ownerId"
                 required
                 aria-label="Action owner"
-                [disabled]="!service.can(action.revision ? 'edit' : 'create')"
+                [disabled]="!canEditAction()"
               >
-                @for (m of service.assessors(); track m.id) {
+                @for (m of api ? api.owners() : service.assessors(); track m.id) {
                   <mat-option [value]="m.id">{{ m.name }}</mat-option>
                 }
               </mat-select></label
@@ -634,7 +666,7 @@
                 name="priority"
                 [(ngModel)]="action.priority"
                 aria-label="Action priority"
-                [disabled]="!service.can(action.revision ? 'edit' : 'create')"
+                [disabled]="!canEditAction()"
               >
                 @for (s of ['Standard', 'High']; track s) {
                   <mat-option [value]="s">{{ s }}</mat-option>
@@ -646,7 +678,7 @@
                 name="status"
                 [(ngModel)]="action.status"
                 aria-label="Action status"
-                [disabled]="!service.can(action.revision ? 'edit' : 'create')"
+                [disabled]="!canEditAction()"
               >
                 @for (s of ['Open', 'In progress', 'Completed']; track s) {
                   <mat-option [value]="s">{{ s }}</mat-option>
@@ -658,7 +690,7 @@
                 name="source"
                 [(ngModel)]="action.assessmentId"
                 aria-label="Source assessment"
-                [disabled]="!service.can(action.revision ? 'edit' : 'create')"
+                [disabled]="!canEditAction()"
                 ><mat-option value="">General quality action</mat-option>
                 @for (a of service.data().assessments; track a.id) {
                   <mat-option [value]="a.id"
@@ -684,7 +716,7 @@
         }
         <div class="quality-actions">
           <button type="button" class="button" (click)="actionModal.set(false)">Close</button>
-          @if (service.can(action.revision ? 'edit' : 'create')) {
+          @if (canEditAction()) {
             <button type="submit" class="button primary">Save action</button>
           }
         </div>

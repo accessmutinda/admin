@@ -3,15 +3,17 @@ import { QualityNavigation } from './quality-navigation-bar';
 import { WorkspaceCards } from '../shared/workspace-cards';
 import { QuickActions } from '../shared/quick-actions';
 import { ModuleDesign } from '../shared/module-design';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { AccessRequired } from '../shared/access-required';
+import { QualityApi } from './quality-api.service';
 import { QualityService } from './quality.service';
 import {
   ASSESSMENT_TEMPLATES,
@@ -44,6 +46,7 @@ import {
 })
 export class Quality {
   protected readonly service = inject(QualityService);
+  protected readonly api = this.service.connected ? (this.service as unknown as QualityApi) : null;
   protected readonly access = inject(CompanyAccessService);
   protected readonly store = this.service.store;
   private readonly route = inject(ActivatedRoute);
@@ -93,7 +96,9 @@ export class Quality {
   protected readonly search = signal('');
   protected readonly category = signal('All');
   protected readonly status = signal('All');
-  protected readonly templates = ASSESSMENT_TEMPLATES;
+  protected get templates() {
+    return this.api ? this.api.templates() : ASSESSMENT_TEMPLATES;
+  }
   protected readonly categories = [
     'All',
     'Care assessments',
@@ -104,6 +109,7 @@ export class Quality {
   protected readonly actionModal = signal(false);
   protected readonly error = signal('');
   protected action!: CorrectiveAction;
+  private calendarScope: string | null = null;
   protected readonly filteredTemplates = computed(() =>
     this.templates.filter(
       (t) =>
@@ -119,7 +125,7 @@ export class Quality {
           (this.status() === 'All' ||
             a.status === this.status() ||
             (this.status() === 'Overdue' && assessmentOverdue(a, this.service.today()))) &&
-          `${templateFor(a.templateId)?.title} ${a.subjectName} ${a.assessorName} ${a.date} ${a.status}`
+          `${this.template(a.templateId)?.title} ${a.subjectName} ${a.assessorName} ${a.date} ${a.status}`
             .toLowerCase()
             .includes(this.search().toLowerCase()),
       )
@@ -166,7 +172,7 @@ export class Quality {
         a.audit.map((e) => ({
           ...e,
           auditId: e.id,
-          title: templateFor(a.templateId)?.title,
+          title: this.template(a.templateId)?.title,
           id: a.id,
           kind: 'assessment',
         })),
@@ -186,7 +192,7 @@ export class Quality {
         {
           id: a.id,
           date: a.date,
-          title: templateFor(a.templateId)?.title ?? 'Assessment',
+          title: this.template(a.templateId)?.title ?? 'Assessment',
           person: a.subjectName || 'Context needed',
           status: a.status,
           kind: 'assessment',
@@ -196,7 +202,7 @@ export class Quality {
               {
                 id: a.id,
                 date: a.reviewDate,
-                title: 'Next review · ' + templateFor(a.templateId)?.title,
+                title: 'Next review · ' + this.template(a.templateId)?.title,
                 person: a.subjectName,
                 status: 'Follow-up',
                 kind: 'assessment',
@@ -243,17 +249,65 @@ export class Quality {
       })),
     ];
   });
-  protected template = templateFor;
+  protected template = (id: string) =>
+    this.api
+      ? (this.service.data().assessments.find((a) => a.templateId === id) as any)?.template ||
+        this.api.templates().find((t) => t.id === id)
+      : templateFor(id);
+  constructor() {
+    inject(DestroyRef).onDestroy(() => this.api?.disconnect());
+    this.api?.connect(this.tab());
+    effect(() => {
+      const scope = this.api?.scope();
+      const company = this.api?.store.company();
+      const today = this.api?.today();
+      if (company && scope && today && this.calendarScope !== scope) {
+        this.calendarScope = scope;
+        untracked(() => this.month.set(today.slice(0, 7)));
+      }
+    });
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const selected = params.get('tab') ?? 'Overview';
+      const next = this.tabs.includes(selected) ? selected : 'Overview';
+      if (next !== this.tab()) {
+        this.tab.set(next);
+        this.api?.setView(next);
+        this.search.set('');
+        this.status.set('All');
+        this.category.set('All');
+      }
+    });
+    const context = computed(() =>
+      this.api ? `${this.api.scope()}:${this.api.can('view')}` : null,
+    );
+    effect(() => {
+      if (context())
+        untracked(() => {
+          this.actionModal.set(false);
+          this.error.set('');
+          this.action = undefined as any;
+          this.search.set('');
+          this.status.set('All');
+        });
+    });
+  }
   protected timestamp = ukTimestamp;
+  protected canCreateAssessment() {
+    return this.api ? this.api.canCreateAssessment() : this.service.can('create');
+  }
   protected isOverdue = (a: Assessment) => assessmentOverdue(a, this.service.today());
   protected actionLate = (a: CorrectiveAction) => actionOverdue(a, this.service.today());
   protected owner(id: string): string {
-    return this.service.assessors().find((m) => m.id === id)?.name ?? 'Former team member';
+    return (
+      (this.api ? this.api.members() : this.service.assessors()).find((m) => m.id === id)?.name ??
+      'Former team member'
+    );
   }
   protected events(date: string) {
     return this.monthEvents().filter((e) => e.date === date);
   }
   protected canTab(tab: string): boolean {
+    if (this.api) return this.api.canTab(tab);
     return this.access.can(
       'quality',
       this.supervisor
@@ -268,6 +322,7 @@ export class Quality {
   protected switchTab(tab: string): void {
     if (!this.canTab(tab)) return;
     this.tab.set(tab);
+    this.api?.setView(tab);
     this.search.set('');
     this.status.set('All');
     this.category.set('All');
@@ -278,6 +333,13 @@ export class Quality {
     const next = new Date(Date.UTC(y, m - 1 + offset, 1));
     this.month.set(next.toISOString().slice(0, 7));
   }
+  protected canEditAction(): boolean {
+    return this.api
+      ? this.api.canAction(this.action.revision ? 'edit' : 'create') &&
+          !this.api.saving() &&
+          this.service.data().actions.find((a) => a.id === this.action.id)?.status !== 'Completed'
+      : this.service.can(this.action.revision ? 'edit' : 'create');
+  }
   protected editAction(a?: CorrectiveAction): void {
     this.action = a
       ? structuredClone(a)
@@ -285,7 +347,7 @@ export class Quality {
           id: crypto.randomUUID(),
           assessmentId: '',
           title: '',
-          ownerId: this.service.assessors()[0]?.id ?? '',
+          ownerId: (this.api ? this.api.owners() : this.service.assessors())[0]?.id ?? '',
           due: this.service.today(),
           priority: 'Standard',
           status: 'Open',
@@ -296,8 +358,9 @@ export class Quality {
     this.error.set('');
     this.actionModal.set(true);
   }
-  protected saveAction(): void {
-    const error = this.service.saveAction(this.action);
+  protected async saveAction(): Promise<void> {
+    const error = await (this.service.saveAction(this.action) as
+      string | null | Promise<string | null>);
     this.error.set(error ?? '');
     if (!error) {
       this.actionModal.set(false);
@@ -319,6 +382,10 @@ export class Quality {
       .assessments.filter((a) => a.templateId === id && (!status || a.status === status)).length;
   }
   protected exportReport(): void {
+    if (this.api) {
+      void this.api.exportReport().catch((error) => this.error.set(error.message));
+      return;
+    }
     if (!this.service.can('export')) return;
     const report = {
       company: this.store.company()?.name,

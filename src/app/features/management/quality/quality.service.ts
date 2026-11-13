@@ -19,6 +19,7 @@ import {
 type QualityPermission = 'view' | 'create' | 'edit' | 'export';
 @Injectable({ providedIn: 'root' })
 export class QualityService {
+  readonly connected: boolean = false;
   private readonly access = inject(CompanyAccessService);
   private readonly router = inject(Router);
   readonly store = inject(ManagementStore);

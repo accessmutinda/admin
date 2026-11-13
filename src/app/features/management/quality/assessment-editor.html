@@ -1,4 +1,10 @@
 <cv-module-design />
+@if (api && !ready() && !api.error()) {
+  <p role="status">Loading the saved assessment…</p>
+}
+@if (api?.error()) {
+  <p role="alert">{{ api?.error() }}</p>
+}
 <a class="text-link" routerLink="/manage/quality/workspace" [queryParams]="{ tab: 'Assessments' }"
   ><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to
   assessments</a
@@ -11,6 +17,7 @@
     viewPermission="View"
     permissionsTitle="Quality & compliance"
   />
+} @else if (api && !ready() && !api.error()) {
 } @else if (!found) {
   <section class="panel empty-state">
     <h1>Assessment not found</h1>
@@ -165,7 +172,11 @@
       }
       @if (step() === 3) {
         <p class="quality-hint">
-          Optional supporting photos and documents. Use sample files in this device demo.
+          {{
+            api
+              ? 'Optional supporting photos and documents. Files are scanned before they can be attached to the saved record.'
+              : 'Optional supporting photos and documents. Use sample files in this device demo.'
+          }}
         </p>
         @if (canEdit()) {
           <label class="quality-upload"
@@ -202,7 +213,7 @@
                 /></label>
               </div>
               <div class="evidence-actions">
-                @if (service.can('export')) {
+                @if (api ? api.canExportAssessment(record) : service.can('export')) {
                   <button
                     class="icon-button"
                     [attr.aria-label]="'Download ' + e.name"
@@ -274,7 +285,10 @@
           <p>{{ record.recommendations || 'Not recorded' }}</p>
         </div>
         <p class="quality-hint">{{ record.evidence.length }} evidence files attached.</p>
-        @if (record.status === 'Submitted' && service.can('edit')) {
+        @if (
+          record.status === 'Submitted' &&
+          (api ? api.canSource('assessments', 'approve') : service.can('edit'))
+        ) {
           <section class="quality-signature">
             <h3>Reviewer sign-off</h3>
             <p>
@@ -285,7 +299,13 @@
             ><label class="quality-checkbox"
               ><input type="checkbox" [(ngModel)]="declaration" />I have reviewed this assessment
               and confirm the recorded outcome and follow-up.</label
-            ><button class="button primary" (click)="signOff()">Sign off assessment</button>
+            ><button
+              class="button primary"
+              [disabled]="!!api?.saving() || busy()"
+              (click)="signOff()"
+            >
+              Sign off assessment
+            </button>
           </section>
         }
         @if (record.signature) {
@@ -303,10 +323,12 @@
           <div class="assessment-review-block">
             <label
               >Reason for reopening<textarea [(ngModel)]="reopenReason" rows="2"></textarea></label
-            ><button class="button" (click)="reopen()">Reopen assessment</button>
+            ><button class="button" [disabled]="!!api?.saving() || busy()" (click)="reopen()">
+              Reopen assessment
+            </button>
           </div>
         }
-        @if (current() && service.can('export')) {
+        @if (current() && (api ? api.canExportAssessment(record) : service.can('export'))) {
           <button class="button" (click)="exportAssessment()">
             <span class="material-symbols-outlined" aria-hidden="true">download</span>Download saved
             assessment
@@ -387,8 +409,10 @@
     </aside>
   </div>
   <p class="quality-demo">
-    Device demo · Use sample information. Evidence and typed sign-off are stored in this browser.
-    This is a recorded acknowledgement; verified external signing and shared storage require
-    connected services.
+    {{
+      api
+        ? 'Assessments and evidence are saved to the company record. Sign-off records the authenticated independent reviewer and their declaration.'
+        : 'Device demo · Use sample information. Evidence and typed sign-off are stored in this browser. This is a recorded acknowledgement; verified external signing and shared storage require connected services.'
+    }}
   </p>
 }

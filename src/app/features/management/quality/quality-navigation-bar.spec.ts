@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { QualityNavigation } from './quality-navigation-bar';
 
 @Component({ template: '' })
@@ -14,6 +15,7 @@ describe('Rich KPI More navigation', () => {
   beforeEach(() =>
     TestBed.configureTestingModule({
       providers: [
+        { provide: CompanyAccessService, useValue: { canPath: () => true } },
         provideRouter([
           { path: 'manage/quality', component: Destination },
           { path: 'manage/quality/:page', component: Destination },
@@ -97,5 +99,11 @@ describe('Rich KPI More navigation', () => {
     await fixture.whenStable();
     expect(more.getAttribute('aria-expanded')).toBe('false');
     expect(document.activeElement).toBe(more);
+  });
+  it('hides destinations that the current account cannot access', async () => {
+    TestBed.overrideProvider(CompanyAccessService, { useValue: { canPath: () => false } });
+    const { nav, root } = await setup(2000);
+    expect(nav.querySelectorAll(':scope > a')).toHaveLength(0);
+    expect(root.querySelector('.quality-more-trigger')).toBeNull();
   });
 });

@@ -161,3 +161,8 @@ ecm_names = [name for name in schemas if name.startswith('Ecm')]
 ecm_target = root / 'src/app/features/management/ecm/ecm.generated.ts'
 ecm_target.write_text('// Generated from backend OpenAPI.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in ecm_names) + '\n')
 subprocess.run(['npx', 'prettier', '--write', str(ecm_target)], cwd=root, check=True, capture_output=True)
+
+quality_names = [name for name in schemas if name.startswith('Quality')]
+quality_target = root / 'src/app/features/management/quality/quality.generated.ts'
+quality_target.write_text('// Generated from backend OpenAPI.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in quality_names) + '\n')
+subprocess.run(['npx', 'prettier', '--write', str(quality_target)], cwd=root, check=True, capture_output=True)
