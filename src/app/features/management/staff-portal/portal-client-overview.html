@@ -23,15 +23,19 @@
       ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
       <div>
         <h2>Open tasks</h2>
-        <strong>{{ openTasks().length }}</strong
-        ><small>{{ overdue() }} overdue · {{ openTasks().length - overdue() }} upcoming</small>
+        <strong>{{ available('tasks') ? openTasks().length : '—' }}</strong
+        ><small>{{
+          available('tasks')
+            ? overdue() + ' overdue · ' + (openTasks().length - overdue()) + ' upcoming'
+            : 'Staff tasks unavailable'
+        }}</small>
       </div></a
     >
     <a class="metric co-stat co-surface" data-tone="purple" [routerLink]="['../journal']"
       ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">menu_book</span>
       <div>
         <h2>Journal entries</h2>
-        <strong>{{ journalCount() }}</strong
+        <strong>{{ available('journal') ? journalCount() : '—' }}</strong
         ><small>Staff and team updates</small>
       </div></a
     >
@@ -39,7 +43,7 @@
       ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">groups</span>
       <div>
         <h2>Professional communications</h2>
-        <strong>{{ recentCommunications().length }}</strong
+        <strong>{{ available('communications') ? recentCommunications().length : '—' }}</strong
         ><small>GP, nursing and care team</small>
       </div></a
     >
@@ -47,7 +51,7 @@
       ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">warning</span>
       <div>
         <h2>Escalations & concerns</h2>
-        <strong>{{ escalations().length }}</strong
+        <strong>{{ available('concerns') ? escalations().length : '—' }}</strong
         ><small>Investigation and review</small>
       </div></a
     >
@@ -104,7 +108,7 @@
         <dt>Allergies</dt>
         <dd>{{ allergies() }}</dd>
         <dt>Time-sensitive Calls</dt>
-        <dd>{{ timeSensitive() ? 'Yes' : 'No' }}</dd>
+        <dd>{{ available('rostering') ? (timeSensitive() ? 'Yes' : 'No') : 'Not available' }}</dd>
         <dt>Communication</dt>
         <dd>{{ section('diagnoses', 'communication') }}</dd>
         <dt>Care needs</dt>
@@ -203,7 +207,13 @@
             <tr>
               <td colspan="6">
                 <div class="portal-empty">
-                  <h3>No professional communications yet</h3>
+                  <h3>
+                    {{
+                      available('communications')
+                        ? 'No professional communications yet'
+                        : 'Professional communications unavailable'
+                    }}
+                  </h3>
                   <p>Record a call, note or update in the professionals workspace.</p>
                 </div>
               </td>
@@ -214,7 +224,7 @@
     </div>
     <p class="portal-register-count">
       Showing {{ recentCommunications().length > 5 ? 5 : recentCommunications().length }} of
-      {{ recentCommunications().length }} communications
+      {{ available('communications') ? recentCommunications().length : '—' }} communications
     </p>
   </section>
   <section class="portal-panel">
@@ -241,7 +251,7 @@
         </article>
       } @empty {
         <div class="portal-empty">
-          <h3>No outstanding actions</h3>
+          <h3>{{ available('tasks') ? 'No outstanding actions' : 'Staff tasks unavailable' }}</h3>
           <p>Follow-up tasks linked to this person appear here.</p>
         </div>
       }

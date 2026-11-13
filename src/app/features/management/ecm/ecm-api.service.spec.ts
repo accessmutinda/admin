@@ -1,3 +1,4 @@
+import { STAFF_CLIENTS, StaffClientsApi } from '../staff-portal/staff-clients-api.service';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Ecm } from './ecm';
@@ -274,5 +275,61 @@ describe('Connected live visits', () => {
     expect(api.payroll.can('create')).toBe(false);
     expect(api.rota.sendToPayroll('2026-11-13')).toContain('not configured');
     expect(request).not.toHaveBeenCalled();
+  });
+});
+
+describe('Staff service-user visit evidence isolation', () => {
+  let api: EcmApi, request: ReturnType<typeof vi.fn<(...args: any[]) => Promise<any>>>;
+  const client = signal('patient'),
+    ready = signal(true);
+  beforeEach(() => {
+    client.set('patient');
+    ready.set(true);
+    request = vi.fn(async () => board());
+    TestBed.configureTestingModule({
+      providers: [
+        EcmApi,
+        { provide: STAFF_CLIENTS, useValue: true },
+        {
+          provide: StaffClientsApi,
+          useValue: { currentId: client, ready, request: (...args: any[]) => request(...args) },
+        },
+        {
+          provide: AuthService,
+          useValue: { currentUser: () => ({ email: 'worker@example.test' }) },
+        },
+        {
+          provide: ServiceUsersApi,
+          useValue: {
+            scope: () => 'north:actor',
+            companyId: () => 'north',
+            allowed: () => true,
+            access: { can: () => true },
+          },
+        },
+      ],
+    });
+    api = TestBed.inject(EcmApi);
+    TestBed.tick();
+  });
+  afterEach(() => TestBed.resetTestingModule());
+  it('invalidates visit evidence when the selected service user changes', async () => {
+    await api.load('2026-11-13');
+    expect(api.visits()).toHaveLength(1);
+    const original = api.scope();
+    ready.set(false);
+    client.set('other-client');
+    expect(api.scope()).not.toBe(original);
+    expect(api.visits()).toEqual([]);
+    TestBed.tick();
+    ready.set(true);
+    expect(api.visits()).toEqual([]);
+  });
+  it('rejects another client returned from the selected staff transport', async () => {
+    client.set('other-client');
+    TestBed.tick();
+    expect(await api.load('2026-11-13')).toBe(false);
+    expect(api.visits()).toEqual([]);
+    expect(api.error()).toContain('another selected service user');
   });
 });

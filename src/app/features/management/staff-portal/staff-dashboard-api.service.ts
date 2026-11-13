@@ -1,11 +1,14 @@
 import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CompanyAccessService } from '../../../core/access/company-access.service';
+import type { StaffOversightRead } from './staff-oversight.generated';
 import type { StaffDashboardRead } from './staff-dashboard.generated';
 
+type StaffPortalDashboardRead = StaffDashboardRead & Partial<StaffOversightRead>;
 @Injectable({ providedIn: 'root' })
 export class StaffDashboardApi {
   readonly connected = true;
+  readonly oversight: boolean = false;
   readonly auth = inject(AuthService);
   readonly access = inject(CompanyAccessService);
   readonly scope = computed(() => {
@@ -25,7 +28,7 @@ export class StaffDashboardApi {
         : null,
     });
   });
-  private readonly raw = signal<{ scope: string; data: StaffDashboardRead } | null>(null);
+  private readonly raw = signal<{ scope: string; data: StaffPortalDashboardRead } | null>(null);
   private readonly companyRecord = signal<{
     scope: string;
     company: StaffDashboardRead['company'];
@@ -44,17 +47,25 @@ export class StaffDashboardApi {
   private currentScope = this.scope();
   readonly tasks = computed(() => this.snapshot()?.tasks || []);
   readonly clients = computed(() => this.snapshot()?.clients || []);
-  readonly concerns = computed<any[]>(() => []);
-  readonly communications = computed<any[]>(() => []);
-  readonly professionalAwaiting = computed<any[]>(() => []);
-  readonly openConcerns = computed<any[]>(() => []);
+  readonly concerns = computed<any[]>(() => this.snapshot()?.concerns ?? []);
+  readonly communications = computed<any[]>(() => this.snapshot()?.communications ?? []);
+  readonly professionalAwaiting = computed<any[]>(() =>
+    this.communications().filter(
+      (c) => c.responseRequired && c.responseStatus !== 'Responded' && c.status !== 'Resolved',
+    ),
+  );
+  readonly openConcerns = computed<any[]>(() =>
+    this.concerns().filter((c) => !['Resolved', 'Closed'].includes(c.status)),
+  );
   readonly timeline = computed(() => this.snapshot()?.activity || []);
   readonly training = computed(() => this.snapshot()?.training || null);
   readonly contacts = computed(() => [
     ...(this.snapshot()
       ? [{ name: this.snapshot()!.staff.name, email: this.snapshot()!.staff.email }]
       : []),
-    ...(this.snapshot()?.inbox.map((e) => ({ name: e.author, email: e.authorEmail })) || []),
+    ...(!this.oversight
+      ? this.snapshot()?.inbox.map((e) => ({ name: e.author, email: e.authorEmail })) || []
+      : []),
   ]);
   readonly journal = {
     auth: this.auth,
@@ -131,7 +142,7 @@ export class StaffDashboardApi {
   }
   rememberCompany(company: StaffDashboardRead['company'], actor: string) {
     if (company.id === this.access.companyId() && String(actor) === String(this.auth.profile()?.id))
-      this.companyRecord.set({scope: this.scope(), company});
+      this.companyRecord.set({ scope: this.scope(), company });
   }
   clientName(id: string) {
     return (
@@ -141,6 +152,7 @@ export class StaffDashboardApi {
   person(email: string) {
     return this.contacts().find((c) => c.email === email)?.name || email;
   }
+  protected received(_company: StaffDashboardRead['company'], _actor: string) {}
   async load() {
     const scope = this.scope(),
       generation = ++this.generation;
@@ -150,13 +162,27 @@ export class StaffDashboardApi {
     try {
       const company = this.access.companyId();
       if (!company) throw Error('Select your company before opening the Staff Portal.');
-      const data = await this.auth.api<StaffDashboardRead>(
-        `/companies/${company}/staff-portal/dashboard`,
+      const data = await this.auth.api<StaffPortalDashboardRead>(
+        `/companies/${company}/staff-portal/${this.oversight ? 'oversight' : 'dashboard'}`,
       );
       if (scope !== this.scope() || generation !== this.generation) return;
       if (data.company_id !== company || String(data.actor_id) !== String(this.auth.profile()?.id))
         throw Error('This dashboard does not belong to your current staff account.');
+      if (
+        this.oversight &&
+        (!data.staff?.id ||
+          !data.staff.employment_id ||
+          data.company.id !== company ||
+          data.tasks.some((t) => t.owner.toLowerCase() !== data.staff.email.toLowerCase()) ||
+          (data.communications ?? []).some(
+            (c) =>
+              c.loggedByEmail.toLowerCase() !== data.staff.email.toLowerCase() ||
+              !data.clients.some((p) => p.id === c.clientId),
+          ))
+      )
+        throw Error('The oversight response does not match your staff records.');
       this.raw.set({ scope, data });
+      this.received(data.company, data.actor_id);
       this.companyRecord.set({ scope, company: data.company });
     } catch (error) {
       if (scope !== this.scope() || generation !== this.generation) return;

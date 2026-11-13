@@ -113,7 +113,34 @@ export class PortalClientAudit {
     this.to.set('');
     this.page.set(1);
   }
-  protected export(): void {
+  protected readonly exporting = signal(false);
+  protected readonly exportError = signal('');
+  protected async export(): Promise<void> {
+    if (this.context.staffApi) {
+      if (this.exporting()) return;
+      this.exporting.set(true);
+      this.exportError.set('');
+      const query = new URLSearchParams({
+        category: this.category(),
+        type: this.type(),
+        direction: this.direction(),
+        user: this.user(),
+        status: this.status(),
+        search: this.query(),
+      });
+      if (this.from()) query.set('start', this.from());
+      if (this.to()) query.set('end', this.to());
+      try {
+        await this.context.staffApi.exportAudit(this.context.id(), query);
+      } catch (error) {
+        this.exportError.set(
+          error instanceof Error ? error.message : 'The audit could not be exported.',
+        );
+      } finally {
+        this.exporting.set(false);
+      }
+      return;
+    }
     const rows = [
       [
         'Date / time',

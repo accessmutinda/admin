@@ -148,7 +148,7 @@
         ><span class="co-stat-icon material-symbols-outlined" aria-hidden="true">warning</span>
         <div>
           <h2>Unresolved concerns</h2>
-          <strong>—</strong><small>Investigation and review</small>
+          <strong>{{ portal.journal.ready() ? portal.journal.staffContext()?.open_concerns ?? '—' : '—' }}</strong><small>Investigation and review</small>
         </div></a
       >
       <div class="metric co-stat co-surface" data-tone="purple">

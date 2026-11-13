@@ -349,6 +349,7 @@ export type StaffTaskContext = {
     name: string;
     code: string;
   };
+  open_concerns: number | null;
   profile: {
     role: string;
     reference: string;

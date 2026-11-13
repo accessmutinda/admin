@@ -1,18 +1,21 @@
 import { Component, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { StaffClientState } from './staff-client-state';
 import { PortalClientContext } from './portal-client-context';
 import { age } from '../care/care.models';
 @Component({
   selector: 'cv-portal-client-shell',
   providers: [PortalClientContext],
-  imports: [DatePipe, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [DatePipe, RouterLink, RouterLinkActive, RouterOutlet, StaffClientState],
   styleUrls: ['./portal-ui.css', './portal-client.css'],
   template: ` <nav class="co-breadcrumb" aria-label="Breadcrumb">
       <a routerLink="/staff-portal/service-users">Service users</a
       ><span> › {{ context.client()?.name ?? 'Service user' }}</span>
     </nav>
-    @if (context.client(); as client) {
+    @if (context.staffApi && !context.staffApi.ready()) {
+      <cv-staff-client-state [api]="context.staffApi" />
+    } @else if (context.client(); as client) {
       <section class="portal-panel client-identity">
         <div class="client-photo">
           @if (client.file?.photo) {
@@ -66,7 +69,14 @@ import { age } from '../care/care.models';
             {{ client.file?.sections?.['capacity']?.['financeLpa'] || 'Not recorded' }}</span
           >
           <span class="portal-badge" data-tone="red"
-            >Time-sensitive calls: {{ timeSensitive() ? 'Yes' : 'No' }}</span
+            >Time-sensitive calls:
+            {{
+              context.staffApi && !context.staffApi.available('rostering')
+                ? 'Not available'
+                : timeSensitive()
+                  ? 'Yes'
+                  : 'No'
+            }}</span
           >
           <span class="portal-badge" data-tone="green"
             >Key safe:

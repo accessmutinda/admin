@@ -57,6 +57,17 @@ describe('Company product access', () => {
     expect(access.context()).toBeNull();
     expect(access.can('care', 'records')).toBe(false);
   });
+  it('lets oversight verify its staff identity without granting navigation authority', async () => {
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/staff-portal/oversight');
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    await access.refresh();
+    expect(access.canPath('/staff-portal/oversight')).toBe(false);
+    expect(navigate).not.toHaveBeenCalled();
+    api.mockRejectedValue(Error('Unavailable'));
+    await access.refresh();
+    expect(navigate).not.toHaveBeenCalled();
+  });
   it('gives Super Admin every module and submodule independently of company activation', () => {
     vi.spyOn(TestBed.inject(AuthService), 'isSuperAdmin').mockReturnValue(true);
     access.context.set(null);
@@ -133,7 +144,11 @@ describe('Company product access', () => {
     expect(api).toHaveBeenCalledTimes(2);
   });
   it('maps feature routes independently of role labels', () => {
-    expect(routeAccess('/manage/learning')).toEqual(['reports','courses','assignments','results','certificates','governance'].map(feature => ['academy',feature]));
+    expect(routeAccess('/manage/learning')).toEqual(
+      ['reports', 'courses', 'assignments', 'results', 'certificates', 'governance'].map(
+        (feature) => ['academy', feature],
+      ),
+    );
     expect(routeAccess('/manage/learning/certificates')).toEqual([['academy', 'certificates']]);
     expect(routeAccess('/manage/people/staff/one/documents')).toEqual([['people', 'records']]);
     expect(routeAccess('/staff-portal/training')).toEqual([

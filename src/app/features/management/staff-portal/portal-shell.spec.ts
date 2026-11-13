@@ -78,7 +78,7 @@ describe('Standalone staff portal', () => {
     const guard = routes.find((route) => route.path === 'staff-portal')!
       .canActivateChild![0] as CanActivateChildFn;
     const result = await TestBed.runInInjectionContext(() =>
-      guard({} as ActivatedRouteSnapshot, { url: '/staff-portal/concerns' } as RouterStateSnapshot),
+      guard({} as ActivatedRouteSnapshot, { url: '/staff-portal/unconnected' } as RouterStateSnapshot),
     );
     expect(TestBed.inject(Router).serializeUrl(result as any)).toBe('/access-denied');
   });

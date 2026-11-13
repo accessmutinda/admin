@@ -58,6 +58,9 @@ export class PortalClientOverview {
   protected readonly escalations = computed(() =>
     this.context.concerns().filter((c) => !['Resolved', 'Closed'].includes(c.status)),
   );
+  protected available(source: string) {
+    return !this.context.staffApi || this.context.staffApi.available(source);
+  }
   protected details(key: string): string {
     return this.client()?.file?.details?.[key] || 'Not recorded';
   }

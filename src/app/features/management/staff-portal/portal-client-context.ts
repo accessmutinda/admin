@@ -1,10 +1,16 @@
-import { Injectable, computed, inject } from '@angular/core';
+import { Injectable, computed, inject, effect } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { StaffClientsApi } from './staff-clients-api.service';
+import { StaffClientsPortal } from './staff-clients-portal.service';
 import { PortalService } from './portal.service';
 @Injectable()
 export class PortalClientContext {
   readonly portal = inject(PortalService);
+  readonly staffApi = inject(StaffClientsApi, { optional: true });
+  constructor() {
+    if (this.staffApi) effect(() => this.staffApi!.select(this.id()));
+  }
   private readonly route = inject(ActivatedRoute);
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
@@ -19,7 +25,10 @@ export class PortalClientContext {
     this.portal.concerns().filter((c) => c.clientId === this.id()),
   );
   readonly journal = computed(() =>
-    this.portal.journal.entries().filter((e) => e.clientId === this.id()),
+    (this.staffApi
+      ? (this.portal as unknown as StaffClientsPortal).journalEntries()
+      : this.portal.journal.entries()
+    ).filter((e) => e.clientId === this.id()),
   );
   readonly contacts = computed(() => this.client()?.file?.contacts ?? []);
   readonly keyContacts = computed(() =>

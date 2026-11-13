@@ -1,4 +1,5 @@
 import { Injectable, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
+import { STAFF_CLIENTS, StaffClientsApi } from '../staff-portal/staff-clients-api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
 import { RotaData, RotaVisit, londonDate, londonInstant } from '../rota/rota.models';
@@ -20,10 +21,16 @@ const unavailableData = (): EcmData => ({
 });
 @Injectable()
 export class EcmApi {
+  readonly staffMode = inject(STAFF_CLIENTS, { optional: true }) === true;
+  private readonly staff = this.staffMode ? inject(StaffClientsApi) : null;
   readonly connected = true;
   private readonly auth = inject(AuthService);
   readonly records = inject(ServiceUsersApi);
-  readonly scope = this.records.scope;
+  readonly scope = computed(() =>
+    this.staff
+      ? JSON.stringify([this.records.scope(), this.staff.currentId()])
+      : this.records.scope(),
+  );
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly error = signal('');
@@ -176,9 +183,16 @@ export class EcmApi {
   can(action: string) {
     if (
       this.denied() ||
+      (this.staff !== null && !this.staff.ready()) ||
       !this.records.allowed() ||
       !this.records.access.can('care', 'rostering', 'read') ||
       !this.records.access.can('care', 'ecm', 'read')
+    )
+      return false;
+    if (
+      this.staffMode &&
+      (!this.records.access.can('staff_portal', 'clients', action === 'view' ? 'read' : action) ||
+        action === 'manage')
     )
       return false;
     if (action === 'view') return true;
@@ -203,7 +217,9 @@ export class EcmApi {
     if (this.target() !== date) this.target.set(date);
   }
   private root() {
-    return `/companies/${this.records.companyId()}/ecm`;
+    return this.staff
+      ? `/companies/${this.records.companyId()}/staff-portal/service-users/${this.staff.currentId()}/ecm`
+      : `/companies/${this.records.companyId()}/ecm`;
   }
   private current(scope: string) {
     return !this.destroyed && scope === this.scope() && this.can('view');
@@ -222,7 +238,9 @@ export class EcmApi {
   ): Promise<T> {
     const scope = this.scope();
     try {
-      return await this.auth.api<T>(path, body, method, headers, type);
+      return this.staff
+        ? await this.staff.request<T>(path, body, method, headers, type)
+        : await this.auth.api<T>(path, body, method, headers, type);
     } catch (error) {
       if (scope === this.scope() && [401, 403].includes((error as any)?.status)) {
         this.clear();
@@ -266,6 +284,8 @@ export class EcmApi {
         throw Error('Monitoring pagination is incomplete. Reload the board.');
       if (!this.current(scope) || generation !== this.generation) return false;
       const clientIds = new Set(((first.context as any)['clients'] || []).map((c: any) => c.id));
+      if (this.staff && [...clientIds].some((id) => id !== this.staff!.currentId()))
+        throw Error('The visit evidence belongs to another selected service user.');
       if (
         rows.some(
           (r) =>

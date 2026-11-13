@@ -8,9 +8,12 @@ import type {
   ProfessionalContactRead,
   ProfessionalContactWrite,
 } from './professional.generated';
+import { STAFF_CLIENTS, StaffClientsApi } from './staff-clients-api.service';
 import { JournalAttachment } from '../journal/journal.models';
 @Injectable()
 export class ProfessionalApi {
+  readonly staffMode = inject(STAFF_CLIENTS, { optional: true }) === true;
+  private readonly staff = this.staffMode ? inject(StaffClientsApi) : null;
   readonly records = inject(ServiceUsersApi);
   readonly access = this.records.access;
   readonly scope = this.records.scope;
@@ -18,17 +21,33 @@ export class ProfessionalApi {
   can(action: string): boolean {
     return (
       this.records.allowed() &&
+      (!this.staffMode || this.access.can('staff_portal', 'clients', action)) &&
       this.access.can('care', 'communications', 'read') &&
       this.access.can('care', 'communications', action) &&
       (action !== 'export' || this.access.can('care', 'records', 'export'))
     );
   }
   canContact(action: string): boolean {
-    return this.records.allowed() && this.access.can('care', 'records', action);
+    return (
+      this.records.allowed() &&
+      (!this.staffMode || this.access.can('staff_portal', 'clients', action)) &&
+      this.access.can('care', 'records', action)
+    );
   }
   private root(id: string): string {
     if (!this.can('read') || !id) throw Error('Professional communications are unavailable.');
-    return `/companies/${this.records.companyId()}/service-users/${id}`;
+    return `/companies/${this.records.companyId()}/${this.staffMode ? 'staff-portal/' : ''}service-users/${id}`;
+  }
+  private request<T>(
+    path: string,
+    body?: unknown,
+    method?: 'POST' | 'PATCH',
+    headers?: Record<string, string>,
+    responseType: 'json' | 'blob' = 'json',
+  ): Promise<T> {
+    return this.staff
+      ? this.staff.request<T>(path, body, method, headers, responseType)
+      : this.auth.api<T>(path, body, method, headers, responseType);
   }
   private check<T extends { company_id: string }>(value: T, scope: string): T {
     if (
@@ -42,7 +61,7 @@ export class ProfessionalApi {
   async load(id: string, query: URLSearchParams, printing = false): Promise<ProfessionalWorkspace> {
     const scope = this.scope();
     const value = this.check(
-      await this.auth.api<ProfessionalWorkspace>(
+      await this.request<ProfessionalWorkspace>(
         `${this.root(id)}/professional-communications${printing ? '/print' : ''}?${query}`,
       ),
       scope,
@@ -58,7 +77,7 @@ export class ProfessionalApi {
   async detail(id: string, record: string): Promise<ProfessionalRead> {
     const scope = this.scope();
     const value = this.check(
-      await this.auth.api<ProfessionalRead>(
+      await this.request<ProfessionalRead>(
         `${this.root(id)}/professional-communications/${record}`,
       ),
       scope,
@@ -75,7 +94,7 @@ export class ProfessionalApi {
   ): Promise<void> {
     const scope = this.scope();
     this.check(
-      await this.auth.api<ProfessionalRead>(
+      await this.request<ProfessionalRead>(
         `${this.root(id)}/professional-communications${original ? '/' + original.id : ''}`,
         body,
         original ? 'PATCH' : 'POST',
@@ -83,11 +102,12 @@ export class ProfessionalApi {
       ),
       scope,
     );
+    if (this.staff) await this.staff.detail(id, true);
   }
   async contact(id: string, contact: string): Promise<ProfessionalContactRead> {
     const scope = this.scope();
     const value = this.check(
-      await this.auth.api<ProfessionalContactRead>(`${this.root(id)}/contacts/${contact}`),
+      await this.request<ProfessionalContactRead>(`${this.root(id)}/contacts/${contact}`),
       scope,
     );
     if (value.service_user_id !== id || value.id !== contact)
@@ -102,7 +122,7 @@ export class ProfessionalApi {
   ): Promise<void> {
     const scope = this.scope();
     this.check(
-      await this.auth.api<ProfessionalContactRead>(
+      await this.request<ProfessionalContactRead>(
         `${this.root(id)}/contacts${original ? '/' + original.id : ''}`,
         body,
         original ? 'PATCH' : 'POST',
@@ -117,7 +137,7 @@ export class ProfessionalApi {
     form.append('file', file);
     return {
       ...this.check(
-        await this.auth.api<JournalAttachment & { company_id: string }>(
+        await this.request<JournalAttachment & { company_id: string }>(
           `${this.root(id)}/professional-communications/files`,
           form,
           'POST',
@@ -131,7 +151,7 @@ export class ProfessionalApi {
   async checkFile(id: string, file: string): Promise<JournalAttachment> {
     const scope = this.scope();
     const value = this.check(
-      await this.auth.api<JournalAttachment & { company_id: string }>(
+      await this.request<JournalAttachment & { company_id: string }>(
         `${this.root(id)}/professional-communications/files/${file}`,
       ),
       scope,
@@ -143,7 +163,7 @@ export class ProfessionalApi {
     const scope = this.scope();
     if (!this.can('export'))
       throw Error('Downloading attachments requires communications and records export access.');
-    const blob = await this.auth.api<Blob>(
+    const blob = await this.request<Blob>(
       `${this.root(id)}/professional-communications/files/${file.id}/content`,
       undefined,
       undefined,

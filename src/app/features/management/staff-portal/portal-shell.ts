@@ -234,7 +234,7 @@ export class PortalShell {
   protected readonly dashboardView = computed(() => {
     this.navigation();
     const target = this.router.currentNavigation()?.extractedUrl.toString() || this.router.url;
-    return /^\/staff-portal(?:\/(dashboard|dashboard-2|journal|tasks|training(?:\/[^?#]*)?))?(?:[?#]|$)/.test(target);
+    return /^\/staff-portal(?:\/(dashboard|dashboard-2|oversight|service-users(?:\/[^/?#]+(?:\/[^/?#]+)?)?|journal|tasks|concerns(?:\/[^/?#]+)?|training(?:\/[^?#]*)?))?(?:[?#]|$)/.test(target);
   });
   constructor() {
     effect(() => {

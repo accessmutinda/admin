@@ -1,3 +1,4 @@
+import { toSignal } from '@angular/core/rxjs-interop';
 import { AcademyPortalSummary } from '../learning/academy/academy-portal-summary';
 import { Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
 import { StaffDashboardApi } from './staff-dashboard-api.service';
@@ -31,6 +32,10 @@ export class PortalDashboard {
     ? (this.portal as unknown as StaffDashboardApi)
     : null;
   private readonly auth = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly queryParams = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
   private readonly router = inject(Router);
   constructor() {
     this.api?.start();
@@ -43,13 +48,18 @@ export class PortalDashboard {
   protected readonly clientJournalEntries = computed(() =>
     this.portal.journal.entries().filter((e) => !!e.clientId && e.state === 'Sent'),
   );
-  protected readonly manager = inject(ActivatedRoute).snapshot.data['portalView'] === 'oversight';
+  protected readonly manager = this.route.snapshot.data['portalView'] === 'oversight';
   protected readonly query = signal('');
   protected readonly scope = signal('All');
   protected readonly period = signal('This Week');
   protected readonly taskScope = signal('My Tasks');
   protected readonly inboxScope = signal('All');
   protected readonly inboxQuery = signal('');
+  protected readonly activity = computed(() =>
+    this.manager && this.queryParams().get('activity') === 'all'
+      ? this.portal.timeline()
+      : this.portal.timeline().slice(0, 6),
+  );
   protected readonly awaiting = this.portal.awaitingResponses;
   protected readonly professionalAwaiting = this.portal.professionalAwaiting;
   protected readonly completedVisits = computed(() =>
@@ -85,7 +95,7 @@ export class PortalDashboard {
         (t) =>
           (this.taskScope() !== 'Escalated' || t.status === 'Escalated') && t.status !== 'Resolved',
       )
-      .sort((a, b) => a.due.localeCompare(b.due)),
+      .sort((a, b) => (a.due || '9999-12-31').localeCompare(b.due || '9999-12-31')),
   );
   protected isProfessional(email: string, clientId: string): boolean {
     return (this.portal.clients().find((c) => c.id === clientId)?.file?.contacts ?? []).some(
@@ -105,51 +115,67 @@ export class PortalDashboard {
           )),
     ),
   );
-  protected readonly miniStats = computed(() => [
-    {
-      name: 'Open Client Journals',
-      count: this.clientJournalEntries().filter(
-        (e) => e.responseRequired && e.responseStatus !== 'Responded',
-      ).length,
-      icon: 'description',
-      tone: 'blue',
-    },
-    {
-      name: 'Staff Actions Awaiting Review',
-      count: this.portal.tasks().filter((t) => t.status === 'Awaiting response').length,
-      icon: 'groups',
-      tone: 'purple',
-    },
-    {
-      name: 'District Nurse Responses',
-      count: this.portal.professionalAwaiting().filter((c) => c.type === 'District nurse note')
-        .length,
-      icon: 'medical_services',
-      tone: 'green',
-    },
-    {
-      name: 'GP Notes Received',
-      count: this.portal
-        .communications()
-        .filter((c) => c.type === 'GP note' && c.direction === 'Received').length,
-      icon: 'stethoscope',
-      tone: 'blue',
-    },
-    {
-      name: 'Social Worker Follow-ups',
-      count: this.portal
-        .communications()
-        .filter((c) => c.type === 'Social worker email' && c.status !== 'Resolved').length,
-      icon: 'groups',
-      tone: 'purple',
-    },
-    {
-      name: 'Resolved This Week',
-      count: this.resolvedThisWeek(),
-      icon: 'check_circle',
-      tone: 'green',
-    },
-  ]);
+  protected readonly miniStats = computed(() =>
+    [
+      {
+        name: 'Open Client Journals',
+        count: this.clientJournalEntries().filter(
+          (e) => e.responseRequired && e.responseStatus !== 'Responded',
+        ).length,
+        icon: 'description',
+        tone: 'blue',
+      },
+      {
+        name: 'Staff Actions Awaiting Review',
+        count: this.portal.tasks().filter((t) => t.status === 'Awaiting response').length,
+        icon: 'groups',
+        tone: 'purple',
+      },
+      {
+        name: 'District Nurse Responses',
+        count: this.portal.professionalAwaiting().filter((c) => c.type === 'District nurse note')
+          .length,
+        icon: 'medical_services',
+        tone: 'green',
+      },
+      {
+        name: 'GP Notes Received',
+        count: this.portal
+          .communications()
+          .filter((c) => c.type === 'GP note' && c.direction === 'Received').length,
+        icon: 'stethoscope',
+        tone: 'blue',
+      },
+      {
+        name: 'Social Worker Follow-ups',
+        count: this.portal
+          .communications()
+          .filter((c) => c.type === 'Social worker email' && c.status !== 'Resolved').length,
+        icon: 'groups',
+        tone: 'purple',
+      },
+      {
+        name: 'Resolved This Week',
+        count: this.resolvedThisWeek(),
+        icon: 'check_circle',
+        tone: 'green',
+      },
+    ].map((stat, index) => ({
+      ...stat,
+      count: this.api?.oversight
+        ? (this.api.snapshot()?.mini_stats?.[
+            [
+              'open_client_journals',
+              'staff_awaiting_review',
+              'district_nurse_responses',
+              'gp_notes_received',
+              'social_worker_followups',
+              'resolved_this_week',
+            ][index]
+          ] ?? null)
+        : stat.count,
+    })),
+  );
   protected readonly drillClient = signal('');
   protected readonly drillStaff = signal('');
   protected readonly drillType = signal('All');
@@ -229,7 +255,7 @@ export class PortalDashboard {
         detail: c.description,
         clientId: c.clientId,
         person: c.assignedTo,
-        due: c.visitDate,
+        due: (c as typeof c & { due?: string | null }).due || '',
         status: c.status,
         high: c.priority === 'High',
         path: '/staff-portal/concerns/' + c.id,
@@ -248,7 +274,7 @@ export class PortalDashboard {
             .find((p) => p.name === c.loggedBy)
             ?.email.toLowerCase() ??
           c.loggedBy,
-        due: c.followUp || c.at.slice(0, 10),
+        due: c.followUp || '',
         status: c.status,
         high: false,
         path: '/staff-portal/service-users/' + c.clientId + '/communications',
@@ -261,12 +287,15 @@ export class PortalDashboard {
           (!q ||
             [
               row.subject,
+              row.detail,
               row.type,
               this.portal.clientName(row.clientId),
               this.portal.person(row.person),
             ].some((v) => v.toLowerCase().includes(q))) &&
           (this.scope() !== 'Overdue' ||
-            (row.due < this.portal.today && !['Resolved', 'Closed'].includes(row.status))) &&
+            (!!row.due &&
+              row.due < this.portal.today &&
+              !['Resolved', 'Closed'].includes(row.status))) &&
           (this.scope() !== 'High priority' || row.high) &&
           (this.scope() !== 'Client concerns' || row.type === 'Client concern') &&
           (this.scope() !== 'Professional' ||
@@ -281,13 +310,20 @@ export class PortalDashboard {
                     ? row.type === 'Staff action'
                     : !['Client concern', 'Staff action'].includes(row.type))) &&
               (this.drillStatus() === 'All' || row.status === this.drillStatus()) &&
-              (!this.from() || row.due >= this.from()) &&
-              (!this.to() || row.due <= this.to())))
+              (!this.from() || (!!row.due && row.due >= this.from())) &&
+              (!this.to() || (!!row.due && row.due <= this.to()))))
         );
       })
-      .sort((a, b) => Number(b.high) - Number(a.high) || a.due.localeCompare(b.due)),
+      .sort(
+        (a, b) =>
+          Number(['Resolved', 'Closed'].includes(a.status)) -
+            Number(['Resolved', 'Closed'].includes(b.status)) ||
+          Number(b.high) - Number(a.high) ||
+          (a.due || '9999-12-31').localeCompare(b.due || '9999-12-31'),
+      ),
   );
   protected readonly summary = computed(() => {
+    if (this.api?.oversight) return this.api.snapshot()?.summaries?.[this.period()] ?? [];
     const monthStart = this.portal.today.slice(0, 7) + '-01';
     const start =
       this.period() === 'This Week'
@@ -336,22 +372,27 @@ export class PortalDashboard {
       color: ['#3ca6ef', '#a06ef0', '#f6a551', '#35c89a', '#6874dc', '#29ad78'][i],
     }));
   });
-  protected readonly maxCount = computed(() => Math.max(1, ...this.summary().map((s) => s.count)));
+  protected readonly maxCount = computed(() =>
+    Math.max(1, ...this.summary().map((s) => s.count ?? 0)),
+  );
   protected readonly statuses = computed(() =>
-    ['Open', 'Awaiting response', 'Overdue', 'In progress', 'Escalated', 'Resolved'].map(
-      (name, i) => ({
-        name,
-        count:
-          name === 'Overdue'
-            ? this.openTasks().filter((t) => t.due < this.portal.today).length
-            : this.tasks().filter(
-                (t) => t.status === name && (name === 'Resolved' || t.due >= this.portal.today),
-              ).length,
-        color: ['#f8cc58', '#a56bea', '#ff496b', '#63aff0', '#ef8794', '#30b77e'][i],
-      }),
-    ),
+    this.api?.oversight
+      ? (this.api.snapshot()?.statuses ?? [])
+      : ['Open', 'Awaiting response', 'Overdue', 'In progress', 'Escalated', 'Resolved'].map(
+          (name, i) => ({
+            name,
+            count:
+              name === 'Overdue'
+                ? this.openTasks().filter((t) => t.due < this.portal.today).length
+                : this.tasks().filter(
+                    (t) => t.status === name && (name === 'Resolved' || t.due >= this.portal.today),
+                  ).length,
+            color: ['#f8cc58', '#a56bea', '#ff496b', '#63aff0', '#ef8794', '#30b77e'][i],
+          }),
+        ),
   );
   protected readonly doughnut = computed(() => {
+    if (this.api?.oversight && !this.api.snapshot()?.task_total) return '#e6edf4';
     let angle = 0;
     const total = this.tasks().length || 1;
     return (
@@ -359,15 +400,17 @@ export class PortalDashboard {
       this.statuses()
         .map((s) => {
           const start = angle;
-          angle += (s.count / total) * 360;
+          angle += ((s.count ?? 0) / total) * 360;
           return s.color + ' ' + start + 'deg ' + angle + 'deg';
         })
         .join(',') +
       ')'
     );
   });
-  protected percent(count: number): number {
-    return Math.round((count / Math.max(1, this.tasks().length)) * 100);
+  protected percent(count: number | null, name = ''): number | null {
+    if (this.api?.oversight)
+      return this.api.snapshot()?.statuses?.find((s) => s.name === name)?.percent ?? null;
+    return Math.round(((count ?? 0) / Math.max(1, this.tasks().length)) * 100);
   }
   protected photo(email: string): string {
     return (
@@ -384,6 +427,17 @@ export class PortalDashboard {
           ? { hour: '2-digit', minute: '2-digit' }
           : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
     return new Intl.DateTimeFormat('en-GB', { timeZone: zone, ...options }).format(new Date(value));
+  }
+  protected resetDrill() {
+    this.applied.set(false);
+    this.query.set('');
+    this.scope.set('All');
+    this.drillClient.set('');
+    this.drillStaff.set('');
+    this.drillType.set('All');
+    this.drillStatus.set('All');
+    this.from.set('');
+    this.to.set('');
   }
   canLeave(): boolean {
     return this.compose()?.canLeave() ?? true;

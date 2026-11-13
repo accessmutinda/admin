@@ -2,9 +2,7 @@
   <div class="portal-panel-header">
     <div>
       <h2>Visit tasks & evidence</h2>
-      <p class="portal-muted">
-        Frontend demo · approved care tasks → recorded evidence → care-plan review
-      </p>
+      <p class="portal-muted">Approved care tasks → recorded evidence → care-plan review</p>
     </div>
   </div>
   <label class="portal-form"
@@ -22,7 +20,7 @@
     <button
       type="button"
       class="button primary"
-      [disabled]="!pendingEvidenceVisit || !!evidenceVisitId()"
+      [disabled]="!pendingEvidenceVisit || !!evidenceVisitId() || !!evidenceApi?.loading()"
       (click)="openEvidence()"
     >
       Open visit evidence
@@ -67,7 +65,11 @@
         </h2>
         <a [routerLink]="['/manage/clients', context.id(), 'visits']">Manage call templates</a>
       </div>
-      <form class="portal-form" (ngSubmit)="allocate()">
+      <form
+        class="portal-form"
+        (ngSubmit)="allocate()"
+        [inert]="context.staffApi && !context.staffApi.context()?.capabilities?.['can_allocate']"
+      >
         <label
           >Call types <span class="portal-required">*</span
           ><mat-select
@@ -178,7 +180,14 @@
         </p>
         <div class="portal-form-actions">
           <button type="button" class="button" (click)="reset()">Cancel</button
-          ><button class="button primary" [disabled]="!calls().length">Allocate calls</button>
+          ><button
+            class="button primary"
+            [disabled]="
+              !calls().length || !context.staffApi?.context()?.capabilities?.['can_allocate']
+            "
+          >
+            Allocate calls
+          </button>
         </div>
       </form>
     </section>
@@ -189,12 +198,16 @@
           <p class="portal-muted">{{ visits().length }} visits in this month</p>
         </div>
         <div class="portal-actions">
-          <button class="button" (click)="editAllocation()" [disabled]="!cancellable().length">
+          <button
+            class="button"
+            (click)="editAllocation()"
+            [disabled]="!cancellable().length || !rota.can('manage')"
+          >
             Edit Allocation</button
           ><button
             class="button"
-            (click)="cancelAllocationMode = true; selected = 'allocation'; cancelReason = ''"
-            [disabled]="!cancellable().length"
+            (click)="beginCancel('allocation')"
+            [disabled]="!cancellable().length || !canCancel()"
           >
             Cancel Allocation
           </button>
@@ -226,7 +239,11 @@
                 <button
                   type="button"
                   (click)="openVisit(visit)"
-                  [disabled]="visit.attendance.length > 0"
+                  [disabled]="
+                    visit.attendance.length > 0 ||
+                    (context.staffApi && visit.carers !== 1) ||
+                    !rota.can('manage')
+                  "
                   [title]="visit.callName + ' ' + visit.start"
                   [attr.aria-label]="visit.callName + ' at ' + visit.start + ' on ' + day"
                 >
@@ -274,15 +291,23 @@
                   <td>
                     <button
                       class="portal-text-button"
-                      [disabled]="v.attendance.length > 0"
+                      [disabled]="
+                        v.attendance.length > 0 ||
+                        (context.staffApi && v.carers !== 1) ||
+                        !rota.can('manage')
+                      "
                       (click)="openVisit(v)"
                     >
                       Edit
                     </button>
                     <button
                       class="portal-text-button"
-                      [disabled]="v.attendance.length > 0"
-                      (click)="selected = v.id; cancelReason = ''"
+                      [disabled]="
+                        v.attendance.length > 0 ||
+                        (context.staffApi && v.carers !== 1) ||
+                        !canCancel()
+                      "
+                      (click)="beginCancel(v.id)"
                     >
                       Cancel visit
                     </button>
@@ -435,7 +460,13 @@
               </div>
             </article>
           } @empty {
-            <p class="portal-muted">No missed calls recorded this month.</p>
+            <p class="portal-muted">
+              {{
+                context.staffApi && !context.staffApi.available('ecm')
+                  ? 'Attendance is unavailable with your current access.'
+                  : 'No missed calls recorded this month.'
+              }}
+            </p>
           }
         }
         @for (e of journalFilter() === 'Missed Calls' ? [] : events(); track e.id) {

@@ -1,3 +1,6 @@
+@if (exportError()) {
+  <div class="portal-alert error" role="alert">{{ exportError() }}</div>
+}
 <div class="page-heading">
   <div>
     <h1>Audit Trail & Communication Timeline</h1>
@@ -5,7 +8,15 @@
       Communications, journal entries, allocations and actions for {{ context.client()?.name }}.
     </p>
   </div>
-  <button class="button" (click)="export()">Export filtered records</button>
+  <button
+    class="button"
+    (click)="export()"
+    [disabled]="
+      exporting() || (context.staffApi && !context.staffApi.context()?.capabilities?.['can_export'])
+    "
+  >
+    Export filtered records
+  </button>
 </div>
 <div class="metrics four audit-summary">
   @for (stat of summary(); track stat.name) {

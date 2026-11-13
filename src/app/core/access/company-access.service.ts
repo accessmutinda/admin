@@ -105,7 +105,10 @@ export function routeAccess(url: string): [string, string][] {
   }
   if (path.startsWith('/manage/learning')) {
     const area = path.split('/')[3] ?? '';
-    if (!area) return ['reports','courses','assignments','results','certificates','governance'].map((feature): [string, string] => ['academy',feature]);
+    if (!area)
+      return ['reports', 'courses', 'assignments', 'results', 'certificates', 'governance'].map(
+        (feature): [string, string] => ['academy', feature],
+      );
     const map: Record<string, string> = {
       courses: 'courses',
       content: 'courses',
@@ -317,14 +320,22 @@ export class CompanyAccessService {
         if (generation !== this.generation) return this.refresh();
         this.context.set(value);
         this.error.set('');
-        if (!this.canPath(this.router.url)) void this.router.navigateByUrl('/access-denied');
+        if (
+          !this.canPath(this.router.url) &&
+          !/^\/staff-portal\/oversight(?:[?#]|$)/.test(this.router.url)
+        )
+          void this.router.navigateByUrl('/access-denied');
         return;
       })
       .catch((error) => {
         if (id === this.companyId() && generation !== this.generation) return this.refresh();
         if (id === this.companyId() && generation === this.generation) {
           this.context.set(null);
-          if (routeAccess(this.router.url).length) void this.router.navigateByUrl('/access-denied');
+          if (
+            routeAccess(this.router.url).length &&
+            !/^\/staff-portal\/oversight(?:[?#]|$)/.test(this.router.url)
+          )
+            void this.router.navigateByUrl('/access-denied');
           this.error.set(
             error instanceof Error ? error.message : 'Access information unavailable.',
           );

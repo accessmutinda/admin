@@ -1,4 +1,5 @@
 import { VisitEvidence } from '../ecm/visit-evidence';
+import { EcmApi } from '../ecm/ecm-api.service';
 import { EcmService } from '../ecm/ecm.service';
 import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
@@ -28,12 +29,17 @@ export class PortalAllocation {
   protected readonly portal = this.context.portal;
   protected readonly rota = this.portal.care.rota;
   protected readonly evidenceService = inject(EcmService);
+  protected readonly evidenceApi = inject(EcmApi, { optional: true });
   protected readonly evidenceVisitId = signal('');
   private readonly evidenceForm = viewChild(VisitEvidence);
   protected readonly evidenceVisits = computed(() =>
-    this.visits().filter((visit) => this.evidenceService.canCaptureEvidence(visit.id)),
+    this.visits().filter((visit) =>
+      this.evidenceApi
+        ? this.evidenceApi.can('create') && visit.state === 'Published'
+        : this.evidenceService.canCaptureEvidence(visit.id),
+    ),
   );
-  protected changeEvidenceVisit(id: string) {
+  protected async changeEvidenceVisit(id: string) {
     if (
       this.evidenceForm()?.hasUnsavedChanges() &&
       !window.confirm('Discard unsaved visit evidence?')
@@ -42,6 +48,13 @@ export class PortalAllocation {
     this.evidenceVisitId.set('');
     // A different source visit must receive a fresh evidence form.
     this.pendingEvidenceVisit = id;
+    if (this.evidenceApi && id) {
+      const visit = this.visits().find((v) => v.id === id);
+      if (visit) {
+        this.evidenceApi.selectDate(visit.date);
+        await this.evidenceApi.load(visit.date);
+      }
+    }
   }
   protected pendingEvidenceVisit = '';
   protected openEvidence() {
@@ -91,14 +104,15 @@ export class PortalAllocation {
   protected readonly missed = computed(() =>
     this.visits().filter(
       (v) =>
+        (!this.context.staffApi || this.context.staffApi.available('ecm')) &&
         v.state === 'Published' &&
         v.date < this.portal.today &&
-        !completedVisit(v) &&
+        !this.completed(v) &&
         !v.attendance.length,
     ),
   );
   protected readonly cancellable = computed(() =>
-    this.visits().filter((v) => !v.attendance.length),
+    this.visits().filter((v) => !v.attendance.length && (!this.context.staffApi || v.carers === 1)),
   );
   protected icon(name: string): string {
     const lower = name.toLowerCase();
@@ -131,9 +145,9 @@ export class PortalAllocation {
     this.originalVisit = JSON.stringify(visit);
     this.editReason = '';
   }
-  protected saveVisit(): void {
+  protected async saveVisit(): Promise<void> {
     if (!this.editVisit) return;
-    const error = this.rota.updateVisit(
+    const error = await this.rota.updateVisit(
       this.editVisit,
       this.portal.store.companyId(),
       this.originalVisit,
@@ -161,9 +175,16 @@ export class PortalAllocation {
   protected readonly composer = viewChild(StaffJournal);
   protected selected = '';
   protected cancelReason = '';
-  protected readonly completed = completedVisit;
+  protected readonly completed = (v: RotaVisit) =>
+    this.context.staffApi
+      ? v.state === 'Published' &&
+        v.attendance.some(
+          (a) => a.personId === this.context.staffApi!.context()?.person_id && !!a.end,
+        )
+      : completedVisit(v);
   private clean = '';
   constructor() {
+    if (this.evidenceApi?.can('view')) this.evidenceApi.selectDate(this.portal.today);
     this.to.set(addDays(this.portal.today, 30));
     this.clean = this.snapshot();
   }
@@ -179,8 +200,8 @@ export class PortalAllocation {
       this.individual,
     ]);
   }
-  protected allocate(): void {
-    const error = this.rota.generate(
+  protected async allocate(): Promise<void> {
+    const error = await this.rota.generate(
       this.context.id(),
       this.callIds,
       this.from(),
@@ -209,13 +230,47 @@ export class PortalAllocation {
   protected staffName(id: string): string {
     return this.portal.store.staff().find((p) => p.id === id)?.name ?? 'Unassigned';
   }
-  protected cancelVisit(): void {
-    const error = this.cancelAllocationMode
-      ? this.rota.cancelAllocation(
-          this.cancellable().map((v) => v.id),
-          this.cancelReason,
-        )
-      : this.rota.cancel(this.selected, this.cancelReason);
+  protected canCancel() {
+    const api = this.context.staffApi;
+    return api
+      ? api.ready() &&
+          api.available('rostering') &&
+          api.access.can('staff_portal', 'clients', 'edit') &&
+          api.access.can('care', 'rostering', 'archive')
+      : this.rota.can('manage');
+  }
+  private cancelVersions: { id: string; etag: string }[] = [];
+  protected beginCancel(id: string) {
+    this.cancelAllocationMode = id === 'allocation';
+    this.selected = id;
+    this.cancelReason = '';
+    const rows = this.cancelAllocationMode
+      ? this.cancellable()
+      : this.visits().filter((v) => v.id === id);
+    this.cancelVersions = rows.map((v) => ({ id: v.id, etag: v.etag ?? '' }));
+  }
+  protected async cancelVisit(): Promise<void> {
+    const api = this.context.staffApi;
+    const error = await (api
+      ? this.cancelAllocationMode
+        ? api.allocation(
+            this.context.id(),
+            { reason: this.cancelReason, visits: this.cancelVersions },
+            '/cancel-batch',
+          )
+        : api.allocation(
+            this.context.id(),
+            { reason: this.cancelReason },
+            '/' + this.selected + '/cancel',
+            'POST',
+            this.cancelVersions[0]?.etag,
+          )
+      : this.cancelAllocationMode
+        ? this.rota.cancelAllocation(
+            this.cancellable().map((v) => v.id),
+            this.cancelReason,
+          )
+        : this.rota.cancel(this.selected, this.cancelReason));
     this.error.set(error ?? '');
     if (!error) {
       this.selected = '';

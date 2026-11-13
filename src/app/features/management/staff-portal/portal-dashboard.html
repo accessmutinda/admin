@@ -57,7 +57,7 @@
       <p>
         {{
           manager
-            ? 'Monitor staff and client communications, outstanding actions and follow-ups across all services.'
+            ? 'Review your assigned communications, outstanding actions and follow-ups.'
             : 'Manage your communications, journal entries and outstanding actions all in one place.'
         }}
       </p>
@@ -112,7 +112,7 @@
         </h2>
         <strong>{{
           api
-            ? (api.metric('visits') ?? '—')
+            ? (api.metric(manager ? 'professional_awaiting' : 'visits') ?? '—')
             : manager
               ? professionalAwaiting().length
               : visits().length
@@ -142,7 +142,11 @@
       <div>
         <h2>{{ manager ? 'Overdue Follow-ups' : 'Awaiting Response' }}</h2>
         <strong>{{
-          api ? (api.metric('awaiting') ?? '—') : manager ? overdueFollowUps() : awaiting().length
+          api
+            ? (api.metric(manager ? 'overdue_followups' : 'awaiting') ?? '—')
+            : manager
+              ? overdueFollowUps()
+              : awaiting().length
         }}</strong
         ><small>{{
           manager
@@ -166,7 +170,7 @@
           ><span class="co-stat-icon material-symbols-outlined">{{ stat.icon }}</span>
           <div>
             <h2>{{ stat.name }}</h2>
-            <strong>{{ stat.count }}</strong>
+            <strong>{{ stat.count ?? '—' }}</strong>
           </div></a
         >
       }
@@ -183,7 +187,13 @@
             <span class="material-symbols-outlined">assignment</span
             >{{ manager ? 'Top Priority Communications & Actions' : 'Tasks & Actions' }}
           </h2>
-          <a class="button primary" routerLink="/staff-portal/tasks" [queryParams]="{ new: 'true' }"
+          <a
+            class="button primary"
+            [routerLink]="
+              api?.oversight && !api?.snapshot()?.can_create_task ? null : '/staff-portal/tasks'
+            "
+            [attr.aria-disabled]="api?.oversight && !api?.snapshot()?.can_create_task ? true : null"
+            [queryParams]="{ new: 'true' }"
             >+ {{ manager ? 'Add Action' : 'Add Task' }}</a
           >
         </div>
@@ -229,8 +239,14 @@
                     </td>
                     <td>{{ portal.clientName(row.clientId) }}</td>
                     <td>{{ portal.person(row.person) }}</td>
-                    <td [class.overdue-text]="row.due < portal.today && row.status !== 'Resolved'">
-                      {{ row.due | date: 'd MMM y' }}
+                    <td
+                      [class.overdue-text]="
+                        !!row.due &&
+                        row.due < portal.today &&
+                        !['Resolved', 'Closed'].includes(row.status)
+                      "
+                    >
+                      {{ row.due ? (row.due | date: 'd MMM y') : 'Not scheduled' }}
                     </td>
                     <td>
                       <span
@@ -327,9 +343,9 @@
             <div class="bar-chart">
               @for (bar of summary(); track bar.name) {
                 <div>
-                  <strong>{{ bar.count }}</strong
+                  <strong>{{ bar.count ?? '—' }}</strong
                   ><span
-                    [style.height.px]="12 + (bar.count / maxCount()) * 110"
+                    [style.height.px]="bar.count === null ? 0 : 12 + (bar.count / maxCount()) * 110"
                     [style.background]="bar.color"
                   ></span
                   ><small>{{ bar.name }}</small>
@@ -344,7 +360,11 @@
                 class="status-doughnut"
                 [style.background]="doughnut()"
                 role="img"
-                [attr.aria-label]="tasks().length + ' total tasks; status breakdown alongside'"
+                [attr.aria-label]="
+                  api?.oversight && api?.snapshot()?.task_total === null
+                    ? 'Task status data unavailable'
+                    : tasks().length + ' total tasks; status breakdown alongside'
+                "
               >
                 <div>
                   <strong>{{ tasks().length }}</strong
@@ -355,7 +375,11 @@
                 @for (status of statuses(); track status.name) {
                   <div>
                     <span [style.background]="status.color"></span>{{ status.name
-                    }}<strong>{{ status.count }} ({{ percent(status.count) }}%)</strong>
+                    }}<strong
+                      >{{ status.count ?? '—' }} ({{
+                        percent(status.count, status.name) ?? '—'
+                      }}%)</strong
+                    >
                   </div>
                 }
               </div>
@@ -506,11 +530,7 @@
               ><label>To<input type="date" name="to" [(ngModel)]="to" /></label>
             </div>
             <button class="button primary">View Communications</button
-            ><button
-              class="portal-text-button"
-              type="button"
-              (click)="applied.set(false); query.set(''); scope.set('All')"
-            >
+            ><button class="portal-text-button" type="button" (click)="resetDrill()">
               Reset filters
             </button>
           </form>
@@ -534,12 +554,14 @@
             <span class="material-symbols-outlined">history</span
             >{{ manager ? 'Recent Communications Activity' : 'Audit Trail / Activity Timeline' }}
           </h2>
-          <a routerLink="/staff-portal/journal" [queryParams]="{ view: 'Activity timeline' }"
+          <a
+            [routerLink]="manager ? '/staff-portal/oversight' : '/staff-portal/journal'"
+            [queryParams]="manager ? { activity: 'all' } : { view: 'Activity timeline' }"
             >View all</a
           >
         </div>
         <div class="portal-activity">
-          @for (event of portal.timeline().slice(0, 6); track event.id) {
+          @for (event of activity(); track event.id) {
             <article>
               <span class="portal-dot"></span>
               <div>
@@ -552,7 +574,7 @@
               }}</time>
             </article>
           } @empty {
-            <div class="portal-empty">Your team’s activity will appear here.</div>
+            <div class="portal-empty">Your permitted activity will appear here.</div>
           }
         </div>
       </section>

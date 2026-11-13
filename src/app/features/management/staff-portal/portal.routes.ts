@@ -2,9 +2,27 @@ import { ACADEMY_STAFF_ROUTES } from '../learning/academy/academy.routes';
 import { Routes, Router } from '@angular/router';
 import { inject } from '@angular/core';
 import { PortalService } from './portal.service';
+import { StaffClientsApi, STAFF_CLIENTS } from './staff-clients-api.service';
+import { StaffClientsPortal } from './staff-clients-portal.service';
+import { ServiceUsersApi } from '../clients/service-users-api.service';
+import { CareService } from '../care/care.service';
+import { EcmApi } from '../ecm/ecm-api.service';
+import { EcmService } from '../ecm/ecm.service';
+import { StaffConcernsApi } from './staff-concerns-api.service';
 import { StaffTasksPortal } from './staff-tasks-portal.service';
+import { StaffOversightApi } from './staff-oversight-api.service';
 import { StaffDashboardApi } from './staff-dashboard-api.service';
 import { JournalService, STAFF_JOURNAL, STAFF_TASKS } from '../journal/journal.service';
+const CLIENT_PROVIDERS = [
+  StaffClientsApi,
+  StaffClientsPortal,
+  { provide: PortalService, useExisting: StaffClientsPortal },
+  { provide: ServiceUsersApi, useExisting: StaffClientsApi },
+  { provide: CareService, useFactory: () => inject(StaffClientsPortal).care },
+  JournalService,
+  { provide: STAFF_JOURNAL, useValue: true },
+  { provide: STAFF_CLIENTS, useValue: true },
+];
 const leave = (c: { canLeave: () => boolean }) => c.canLeave();
 export const PORTAL_ROUTES: Routes = [
   ...ACADEMY_STAFF_ROUTES,
@@ -27,7 +45,12 @@ export const PORTAL_ROUTES: Routes = [
             JournalService,
             { provide: STAFF_JOURNAL, useValue: true },
           ]
-        : [],
+        : [
+            StaffOversightApi,
+            { provide: PortalService, useExisting: StaffOversightApi },
+            JournalService,
+            { provide: STAFF_JOURNAL, useValue: true },
+          ],
     title:
       (view === 'oversight' ? 'Manager communication oversight' : 'Staff dashboard') +
       ' · CareVerity',
@@ -56,23 +79,27 @@ export const PORTAL_ROUTES: Routes = [
   },
   {
     path: 'concerns',
+    providers: [StaffConcernsApi],
     title: 'Staff concerns · CareVerity',
     canDeactivate: [leave],
     loadComponent: () => import('./portal-concerns').then((m) => m.PortalConcerns),
   },
   {
     path: 'concerns/:concernId',
+    providers: [StaffConcernsApi],
     title: 'Staff concern investigation · CareVerity',
     canDeactivate: [leave],
     loadComponent: () => import('./portal-concerns').then((m) => m.PortalConcerns),
   },
   {
     path: 'service-users',
+    providers: CLIENT_PROVIDERS,
     title: 'Staff portal service users · CareVerity',
     loadComponent: () => import('./portal-clients').then((m) => m.PortalClients),
   },
   {
     path: 'service-users/:id',
+    providers: CLIENT_PROVIDERS,
     loadComponent: () => import('./portal-client-shell').then((m) => m.PortalClientShell),
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'overview' },
@@ -95,6 +122,11 @@ export const PORTAL_ROUTES: Routes = [
       },
       {
         path: 'allocation',
+        providers: [
+          EcmApi,
+          { provide: EcmService, useExisting: EcmApi },
+          { provide: CareService, useFactory: () => inject(EcmApi).care },
+        ],
         title: 'Client allocation & follow-up · CareVerity',
         canDeactivate: [leave],
         loadComponent: () => import('./portal-allocation').then((m) => m.PortalAllocation),
