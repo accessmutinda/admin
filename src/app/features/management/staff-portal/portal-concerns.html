@@ -119,7 +119,7 @@
                 <tr>
                   <td>
                     <strong>{{ c.title }}</strong
-                    ><small>{{ c.reference }} · {{ c.raisedAt | date: 'd MMM y' }}</small>
+                    ><small>{{ c.reference }} · {{ c.raisedAt | companyDate: portal.context()?.timezone : 'date' }}</small>
                   </td>
                   <td>{{ portal.clientName(c.clientId) }}</td>
                   <td>{{ portal.person(c.assignedTo) }}</td>
@@ -323,7 +323,7 @@
             <dt>Assigned to</dt>
             <dd>{{ portal.person(concern.assignedTo) }}</dd>
             <dt>Date raised</dt>
-            <dd>{{ concern.raisedAt | date: 'd MMM y, HH:mm' }}</dd>
+            <dd>{{ concern.raisedAt | companyDate: portal.context()?.timezone : 'datetime' }}</dd>
           </dl>
         </section>
         <nav class="portal-filters concern-tabs" aria-label="Investigation sections">
@@ -365,7 +365,7 @@
                       <strong>{{ i + 1 }}. {{ s }}</strong
                       ><small>{{ stageRecord(s) ? stageRecord(s)!.actor : stageText(s) }}</small>
                       @if (stageRecord(s); as record) {
-                        <time>{{ record.at | date: 'd MMM y, HH:mm' }}</time>
+                        <time>{{ record.at | companyDate: portal.context()?.timezone : 'datetime' }}</time>
                       }
                     </div>
                   </li>
@@ -614,7 +614,7 @@
                     <p>{{ e.detail }}</p>
                     <small class="portal-muted">{{ e.actor }} · {{ e.status }}</small>
                   </div>
-                  <time>{{ e.at | date: 'd MMM y, HH:mm' }}</time>
+                  <time>{{ e.at | companyDate: portal.context()?.timezone : 'datetime' }}</time>
                 </article>
               }
             </div>
@@ -688,7 +688,7 @@
                     [downloadEnabled]="!!portal.capabilities()['can_export']"
                     [downloadHandler]="downloadEvidence"
                   />
-                  <small class="portal-muted">{{ note.at | date: 'd MMM y, HH:mm' }}</small>
+                  <small class="portal-muted">{{ note.at | companyDate: portal.context()?.timezone : 'datetime' }}</small>
                 </div>
               </article>
             } @empty {

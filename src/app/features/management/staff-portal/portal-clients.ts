@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, effect } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal, effect } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -82,6 +82,7 @@ export class PortalClients {
   protected readonly query = signal('');
   constructor() {
     this.api.start();
+    inject(DestroyRef).onDestroy(() => this.api.stop());
     effect(() => this.query.set(this.params().get('q') ?? ''));
   }
   protected readonly clients = computed(() =>

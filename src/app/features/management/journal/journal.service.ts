@@ -117,7 +117,11 @@ export class JournalService {
     awaiting: number;
     mentions: number;
     local_date: string;
+    timezone?: string;
   }>({ folders: {}, unread: 0, awaiting: 0, mentions: 0, local_date: '' });
+  readonly timezone = computed(() =>
+    this.summary().timezone || (this.staffPortal && this.staffReady() ? this.staffRaw()?.data.timezone : null) || 'UTC'
+  );
   readonly loading = signal(false);
   readonly ready = signal(false);
   readonly busy = signal(false);

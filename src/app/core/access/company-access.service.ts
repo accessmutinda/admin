@@ -1,3 +1,4 @@
+import { isConnectedStaffPortalRoute } from './staff-portal-routes';
 import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
@@ -320,10 +321,7 @@ export class CompanyAccessService {
         if (generation !== this.generation) return this.refresh();
         this.context.set(value);
         this.error.set('');
-        if (
-          !this.canPath(this.router.url) &&
-          !/^\/staff-portal\/oversight(?:[?#]|$)/.test(this.router.url)
-        )
+        if (!this.canPath(this.router.url) && !isConnectedStaffPortalRoute(this.router.url))
           void this.router.navigateByUrl('/access-denied');
         return;
       })
@@ -331,10 +329,7 @@ export class CompanyAccessService {
         if (id === this.companyId() && generation !== this.generation) return this.refresh();
         if (id === this.companyId() && generation === this.generation) {
           this.context.set(null);
-          if (
-            routeAccess(this.router.url).length &&
-            !/^\/staff-portal\/oversight(?:[?#]|$)/.test(this.router.url)
-          )
+          if (routeAccess(this.router.url).length && !isConnectedStaffPortalRoute(this.router.url))
             void this.router.navigateByUrl('/access-denied');
           this.error.set(
             error instanceof Error ? error.message : 'Access information unavailable.',

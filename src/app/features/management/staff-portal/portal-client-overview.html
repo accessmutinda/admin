@@ -190,7 +190,7 @@
                 <strong>{{ record.subject }}</strong
                 ><small>{{ record.details.slice(0, 90) }}</small>
               </td>
-              <td>{{ record.at | date: 'd MMM y' }}</td>
+              <td>{{ record.at | companyDate: context.staffApi?.context()?.timezone : 'date' }}</td>
               <td>
                 <span class="portal-badge">{{ record.type }}</span>
               </td>

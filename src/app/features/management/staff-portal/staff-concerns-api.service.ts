@@ -82,6 +82,8 @@ export class StaffConcernsApi {
   private auditTarget = '';
   private pending?: Promise<void>;
   private destroyed = false;
+  private active = false;
+  private stopped = false;
   private timer?: ReturnType<typeof setInterval>;
   private requests = new Map<string, string>();
   constructor() {
@@ -92,7 +94,7 @@ export class StaffConcernsApi {
         prior = current;
         untracked(() => {
           this.clear();
-          void this.load();
+          if (this.active) void this.load();
         });
       }
     });
@@ -103,10 +105,19 @@ export class StaffConcernsApi {
     });
   }
   start() {
+    this.active = true;
+    this.stopped = false;
     void this.load();
     this.timer ??= setInterval(() => {
-      if (document.visibilityState !== 'hidden' && !this.busy()) void this.load();
+      if (this.active && document.visibilityState !== 'hidden' && !this.busy()) void this.load();
     }, 15000);
+  }
+  stop() {
+    this.active = false;
+    this.stopped = true;
+    if (this.timer) clearInterval(this.timer);
+    this.timer = undefined;
+    this.clear();
   }
   private clear() {
     this.generation++;
@@ -127,7 +138,9 @@ export class StaffConcernsApi {
     return `/companies/${this.access.companyId()}/staff-portal/concerns`;
   }
   private current(scope: string, generation = this.generation) {
-    return !this.destroyed && scope === this.scope() && generation === this.generation;
+    return (
+      !this.destroyed && !this.stopped && scope === this.scope() && generation === this.generation
+    );
   }
   private validate(value: { company_id?: string }) {
     if (value.company_id !== this.access.companyId())
@@ -158,7 +171,7 @@ export class StaffConcernsApi {
     }
   }
   async load(): Promise<void> {
-    if (this.destroyed) return;
+    if (this.destroyed || this.stopped) return;
     if (this.pending) return this.pending;
     const scope = this.scope(),
       generation = ++this.generation;

@@ -1,3 +1,4 @@
+import { CompanyDatePipe } from '../../../shared/pipes/company-date.pipe';
 import { Component, computed, inject, signal, effect, untracked, DestroyRef } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -11,7 +12,7 @@ import { JournalAttachment } from '../journal/journal.models';
 import { PortalEvidence } from './portal-evidence';
 @Component({
   selector: 'cv-portal-concerns',
-  imports: [DatePipe, FormsModule, RouterLink, MatSelectModule, CvSelect, PortalEvidence],
+  imports: [CompanyDatePipe, DatePipe, FormsModule, RouterLink, MatSelectModule, CvSelect, PortalEvidence],
   templateUrl: './portal-concerns.html',
   styleUrls: ['./portal-ui.css', './portal-forms.css', './portal-concerns.css'],
 })
@@ -135,7 +136,10 @@ export class PortalConcerns {
   private generation = 0;
   constructor() {
     this.portal.start();
-    inject(DestroyRef).onDestroy(() => this.generation++);
+    inject(DestroyRef).onDestroy(() => {
+      this.generation++;
+      this.portal.stop();
+    });
     effect(() => {
       const ready = this.portal.staffReady() && this.portal.ready();
       const id = this.id;

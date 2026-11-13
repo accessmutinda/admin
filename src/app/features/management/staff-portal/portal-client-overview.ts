@@ -1,3 +1,4 @@
+import { CompanyDatePipe } from '../../../shared/pipes/company-date.pipe';
 import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -5,7 +6,7 @@ import { RouterLink } from '@angular/router';
 import { PortalClientContext } from './portal-client-context';
 @Component({
   selector: 'cv-portal-client-overview',
-  imports: [DatePipe, RouterLink, FormsModule],
+  imports: [CompanyDatePipe, DatePipe, RouterLink, FormsModule],
   templateUrl: './portal-client-overview.html',
   styleUrls: ['./portal-ui.css', './portal-forms.css', './portal-client.css'],
 })

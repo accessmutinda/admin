@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, effect } from '@angular/core';
+import { Injectable, computed, inject, effect, untracked, DestroyRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { StaffClientsApi } from './staff-clients-api.service';
@@ -9,7 +9,13 @@ export class PortalClientContext {
   readonly portal = inject(PortalService);
   readonly staffApi = inject(StaffClientsApi, { optional: true });
   constructor() {
-    if (this.staffApi) effect(() => this.staffApi!.select(this.id()));
+    if (this.staffApi) {
+      effect(() => {
+        const id = this.id();
+        untracked(() => this.staffApi!.select(id));
+      });
+      inject(DestroyRef).onDestroy(() => this.staffApi!.stop());
+    }
   }
   private readonly route = inject(ActivatedRoute);
   private readonly params = toSignal(this.route.paramMap, {

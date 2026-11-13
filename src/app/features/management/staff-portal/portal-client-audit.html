@@ -136,7 +136,7 @@
           @for (e of visible(); track e.id) {
             <tr [class.audit-selected]="selected()?.id === e.id">
               <td>
-                {{ e.at | date: 'd MMM y' }}<small>{{ e.at | date: 'HH:mm' }}</small>
+                {{ e.at | companyDate: context.staffApi?.context()?.timezone : 'date' }}<small>{{ e.at | companyDate: context.staffApi?.context()?.timezone : 'time' }}</small>
               </td>
               <td>
                 <span class="portal-badge" data-tone="purple">{{ e.category }}</span>
@@ -228,7 +228,7 @@
         <h2 class="audit-detail-title">{{ entry.action }}</h2>
         <dl class="portal-definition">
           <dt>Date & time</dt>
-          <dd>{{ entry.at | date: 'd MMM y, HH:mm' }}</dd>
+          <dd>{{ entry.at | companyDate: context.staffApi?.context()?.timezone : 'datetime' }}</dd>
           <dt>Recorded by</dt>
           <dd>{{ entry.actor }}</dd>
           <dt>Related to</dt>
@@ -288,11 +288,11 @@
         <dl class="portal-definition">
           <dt>Created</dt>
           <dd>
-            {{ communication()?.createdAt || entry.createdAt || entry.at | date: 'd MMM y, HH:mm' }}
+            {{ communication()?.createdAt || entry.createdAt || entry.at | companyDate: context.staffApi?.context()?.timezone : 'datetime' }}
           </dd>
           <dt>Last Modified</dt>
           <dd>
-            {{ communication()?.updatedAt || entry.updatedAt || entry.at | date: 'd MMM y, HH:mm' }}
+            {{ communication()?.updatedAt || entry.updatedAt || entry.at | companyDate: context.staffApi?.context()?.timezone : 'datetime' }}
             · {{ communication()?.updatedBy || entry.updatedBy || entry.actor }}
           </dd>
           <dt>Record ID</dt>

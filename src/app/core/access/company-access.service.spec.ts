@@ -57,12 +57,12 @@ describe('Company product access', () => {
     expect(access.context()).toBeNull();
     expect(access.can('care', 'records')).toBe(false);
   });
-  it('lets oversight verify its staff identity without granting navigation authority', async () => {
+  it.each(['/staff-portal/oversight','/staff-portal/dashboard','/staff-portal/journal','/staff-portal/tasks','/staff-portal/concerns/one','/staff-portal/service-users/one/overview','/staff-portal/training/refreshers','/staff-portal/training/messages','/staff-portal/training/courses/course/lessons/lesson'])('lets %s verify its staff identity without granting navigation authority', async (path) => {
     const router = TestBed.inject(Router);
-    vi.spyOn(router, 'url', 'get').mockReturnValue('/staff-portal/oversight');
+    vi.spyOn(router, 'url', 'get').mockReturnValue(path);
     const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     await access.refresh();
-    expect(access.canPath('/staff-portal/oversight')).toBe(false);
+    expect(access.canPath(path)).toBe(false);
     expect(navigate).not.toHaveBeenCalled();
     api.mockRejectedValue(Error('Unavailable'));
     await access.refresh();

@@ -1,3 +1,4 @@
+import { isConnectedStaffPortalRoute } from '../../../core/access/staff-portal-routes';
 import { PageNavigation } from '../../../core/navigation/page-navigation.service';
 import { PageLoading } from '../../../shared/layouts/page-loading';
 import { CompanyAccessService } from '../../../core/access/company-access.service';
@@ -111,21 +112,24 @@ import { ModuleDesign } from '../shared/module-design';
           }
         </nav>
         <div class="sidebar-bottom">
-          <a routerLink="/manage/companies" (click)="menuOpen.set(false)"
-            ><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span
-            >Admin Console</a
-          >
+          @if (access.canPath('/manage/companies')) {
+            <a routerLink="/manage/companies" (click)="menuOpen.set(false)"
+              ><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span
+              >Admin Console</a>
+          }
           <a
-            [hidden]="!access.canPath('/inspector/dashboard')"
-            routerLink="/inspector/dashboard"
+            [hidden]="!access.canPath('/inspector/provider')"
+            routerLink="/inspector/provider"
             (click)="menuOpen.set(false)"
             ><span class="material-symbols-outlined" aria-hidden="true">policy</span>Inspector
             portal</a
           >
-          <button (click)="switchWorkspace()">
-            <span class="material-symbols-outlined" aria-hidden="true">swap_horiz</span>Switch
-            workspace
-          </button>
+          @if (auth.canSwitchWorkspace()) {
+            <button (click)="switchWorkspace()">
+              <span class="material-symbols-outlined" aria-hidden="true">swap_horiz</span>Switch
+              workspace
+            </button>
+          }
           <a routerLink="/account/security" (click)="menuOpen.set(false)"
             ><span class="material-symbols-outlined" aria-hidden="true">help_outline</span>Account &
             support</a
@@ -155,6 +159,7 @@ import { ModuleDesign } from '../shared/module-design';
           <button
             type="button"
             class="workspace-control"
+            [disabled]="!auth.canSwitchWorkspace()"
             (click)="switchWorkspace()"
             [attr.aria-label]="
               'Switch workspace. Current workspace: ' + (store.company()?.name ?? '')
@@ -174,6 +179,7 @@ import { ModuleDesign } from '../shared/module-design';
               (keydown.escape)="searchBox.blur()"
               type="search"
               aria-label="Search service users"
+              [disabled]="!access.canPath('/staff-portal/service-users')"
               placeholder="Search service users…"
             />
           </form>
@@ -234,7 +240,7 @@ export class PortalShell {
   protected readonly dashboardView = computed(() => {
     this.navigation();
     const target = this.router.currentNavigation()?.extractedUrl.toString() || this.router.url;
-    return /^\/staff-portal(?:\/(dashboard|dashboard-2|oversight|service-users(?:\/[^/?#]+(?:\/[^/?#]+)?)?|journal|tasks|concerns(?:\/[^/?#]+)?|training(?:\/[^?#]*)?))?(?:[?#]|$)/.test(target);
+    return isConnectedStaffPortalRoute(target);
   });
   constructor() {
     effect(() => {
@@ -279,11 +285,13 @@ export class PortalShell {
   }
   protected search(event: Event, term: string): void {
     event.preventDefault();
+    if (!this.access.canPath('/staff-portal/service-users')) return;
     void this.router.navigate(['/staff-portal/service-users'], {
       queryParams: { q: term.trim() || null },
     });
   }
   protected switchWorkspace(): void {
+    if (!this.auth.canSwitchWorkspace()) return;
     this.menuOpen.set(false);
     void this.router.navigateByUrl('/select-workspace');
   }

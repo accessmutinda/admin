@@ -31,6 +31,7 @@ describe('Standalone staff portal', () => {
           useValue: {
             currentUser: () => ({ roleCode: 'CW', name: 'Worker', initials: 'W' }),
             signOut: vi.fn(),
+            canSwitchWorkspace: vi.fn().mockReturnValue(false),
           },
         },
         {
@@ -52,6 +53,12 @@ describe('Standalone staff portal', () => {
       '/staff-portal/tasks?new=true',
       '/staff-portal/journal',
       '/staff-portal/dashboard',
+      '/staff-portal/oversight?activity=all',
+      '/staff-portal/concerns/one',
+      '/staff-portal/service-users/one/overview',
+      '/staff-portal/training/refreshers',
+      '/staff-portal/training/messages',
+      '/staff-portal/training/courses/course/lessons/lesson',
     ]) {
       const url = vi.spyOn(router, 'url', 'get').mockReturnValue(path);
       const fixture = TestBed.createComponent(PortalShell);
@@ -62,13 +69,13 @@ describe('Standalone staff portal', () => {
       url.mockRestore();
     }
   });
-  it('allows a task direct link to reach branded staff verification when navigation access is denied', async () => {
+  it.each(['/staff-portal/tasks?task=record','/staff-portal/training/refreshers','/staff-portal/training/messages','/staff-portal/service-users/one/audit'])('allows %s to reach branded staff verification when navigation access is denied', async (path) => {
     const guard = routes.find((route) => route.path === 'staff-portal')!
       .canActivateChild![0] as CanActivateChildFn;
     const result = await TestBed.runInInjectionContext(() =>
       guard(
         {} as ActivatedRouteSnapshot,
-        { url: '/staff-portal/tasks?task=record' } as RouterStateSnapshot,
+        { url: path } as RouterStateSnapshot,
       ),
     );
     expect(result).toBe(true);
@@ -94,4 +101,21 @@ describe('Standalone staff portal', () => {
       true,
     );
   });
+  it('keeps workspace switching limited to accounts with explicit selector authority', () => {
+    const router=TestBed.inject(Router);
+    const navigate=vi.spyOn(router,'navigateByUrl').mockResolvedValue(true);
+    const shell=TestBed.createComponent(PortalShell).componentInstance as any;
+    shell.switchWorkspace();expect(navigate).not.toHaveBeenCalled();
+    vi.mocked(TestBed.inject(AuthService).canSwitchWorkspace).mockReturnValue(true);
+    shell.switchWorkspace();expect(navigate).toHaveBeenCalledWith('/select-workspace');
+  });
+  it('does not send the shared search into an unavailable staff directory', () => {
+    const router=TestBed.inject(Router),navigate=vi.spyOn(router,'navigate').mockResolvedValue(true);
+    const shell=TestBed.createComponent(PortalShell).componentInstance as any;
+    shell.search(new Event('submit'),'Assigned person');expect(navigate).not.toHaveBeenCalled();
+    vi.spyOn(TestBed.inject(CompanyAccessService),'canPath').mockReturnValue(true);
+    shell.search(new Event('submit'),' Assigned person ');
+    expect(navigate).toHaveBeenCalledWith(['/staff-portal/service-users'],{queryParams:{q:'Assigned person'}});
+  });
+
 });
