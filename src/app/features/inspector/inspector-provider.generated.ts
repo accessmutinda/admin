@@ -351,6 +351,144 @@ export type InspectorDetailsWrite = {
   end: string | null;
 };
 
+export type InspectorDocumentContentQuery = {
+  source_version: number;
+};
+
+export type InspectorDocumentMetadata = {
+  name: string;
+  category:
+    | 'Policies'
+    | 'Procedures'
+    | 'Staffing Records'
+    | 'Training Certificates'
+    | 'Care Plan Samples'
+    | 'MAR Records'
+    | 'Audits'
+    | 'Incident Records'
+    | 'Contracts'
+    | 'Insurance'
+    | 'Business Continuity'
+    | 'Data Protection';
+  question: 'Safe' | 'Effective' | 'Caring' | 'Responsive' | 'Well-led';
+  expiry?: string | null;
+};
+
+export type InspectorDocumentPack = {
+  documents: {
+    id: string;
+    source_version: number;
+  }[];
+};
+
+export type InspectorDocumentPage = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: {
+    id: string;
+    version: string;
+    source_version: number;
+    name: string;
+    filename: string;
+    category: string;
+    questions: ('Safe' | 'Effective' | 'Caring' | 'Responsive' | 'Well-led')[];
+    owner: string;
+    updated: string;
+    expiry: string | null;
+    status: string;
+    source: string;
+    state: string;
+    content_type: string;
+    size: number | null;
+    downloadable: boolean;
+  }[];
+  company: {
+    logo_available: boolean;
+    head_office_address: string | null;
+    postcode: string | null;
+    id: string;
+    name: string;
+    code: string;
+    active: boolean;
+    sector: string | null;
+    registered_places: number | null;
+    updated_at: string;
+  };
+  inspection: {
+    id: string | null;
+    version: number;
+    etag: string;
+    type: string | null;
+    start: string | null;
+    end: string | null;
+    updated: string | null;
+    by: string | null;
+  };
+  capabilities: Record<string, boolean>;
+  meta: {
+    company_id: string;
+    as_of: string;
+    timezone: string;
+    request_id: string;
+    filters: Record<string, number>;
+    disclosure: string;
+    revision: string;
+  };
+};
+
+export type InspectorDocumentRead = {
+  id: string;
+  version: string;
+  source_version: number;
+  name: string;
+  filename: string;
+  category: string;
+  questions: ('Safe' | 'Effective' | 'Caring' | 'Responsive' | 'Well-led')[];
+  owner: string;
+  updated: string;
+  expiry: string | null;
+  status: string;
+  source: string;
+  state: string;
+  content_type: string;
+  size: number | null;
+  downloadable: boolean;
+};
+
+export type InspectorDocumentReference = {
+  id: string;
+  source_version: number;
+};
+
+export type InspectorDocumentUpload = {
+  file: string;
+  metadata: {
+    name: string;
+    category:
+      | 'Policies'
+      | 'Procedures'
+      | 'Staffing Records'
+      | 'Training Certificates'
+      | 'Care Plan Samples'
+      | 'MAR Records'
+      | 'Audits'
+      | 'Incident Records'
+      | 'Contracts'
+      | 'Insurance'
+      | 'Business Continuity'
+      | 'Data Protection';
+    question: 'Safe' | 'Effective' | 'Caring' | 'Responsive' | 'Well-led';
+    expiry?: string | null;
+  };
+};
+
+export type InspectorDocumentUploaded = {
+  id: string;
+  version: number;
+  state: string;
+};
+
 export type InspectorEngagementPage = {
   count: number;
   next: string | null;
