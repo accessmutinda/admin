@@ -1,3 +1,9 @@
+@if (api?.loading()) {
+  <p role="status">Loading current visit records…</p>
+}
+@if (api?.error()) {
+  <p role="alert">{{ api?.error() }}</p>
+}
 <cv-module-design />
 <nav class="co-breadcrumb" aria-label="Breadcrumb">
   <a routerLink="/manage/rota">Care Delivery</a><span aria-hidden="true">›</span
@@ -40,7 +46,9 @@
   } @else {
     <div class="row ecm-heading-actions" style="margin-bottom: 12px; flex-wrap: wrap">
       <a class="button" routerLink="/manage/clients">Client files</a
-      ><a class="button" routerLink="/manage/ecm/workflows">Demo, mobile & follow-up workflows</a>
+      ><a class="button" routerLink="/manage/ecm/workflows">{{
+        api ? 'Attendance & follow-up workflows' : 'Demo, mobile & follow-up workflows'
+      }}</a>
     </div>
     <div class="ecm-live-strip">
       <div class="ecm-clock-group">
@@ -54,8 +62,8 @@
       </div>
       <div>
         <small
-          >Last updated at {{ time(refreshed().toString(), true) }} · Auto-refresh every 3
-          min</small
+          >Last updated at {{ time(refreshed().toString(), true) }} · Auto-refresh every
+          {{ api ? '15 sec' : '3 min' }}</small
         ><button class="button" (click)="refresh()">
           <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Refresh
         </button>
@@ -66,8 +74,8 @@
         <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">event_note</span>
         <div>
           <h2>Expected visits</h2>
-          <strong>{{ totals().total }}</strong
-          ><small>{{ totals().high }} high-risk calls</small>
+          <strong>{{ api && !api.loadedAt() ? '—' : totals().total }}</strong
+          ><small>{{ api && !api.loadedAt() ? '—' : totals().high }} high-risk calls</small>
         </div>
       </button>
       <button
@@ -80,8 +88,11 @@
         >
         <div>
           <h2>Needs attention</h2>
-          <strong>{{ totals().urgent }}</strong
-          ><small>{{ totals().red }} red · {{ totals().amber }} amber alerts</small>
+          <strong>{{ api && !api.loadedAt() ? '—' : totals().urgent }}</strong
+          ><small
+            >{{ api && !api.loadedAt() ? '—' : totals().red }} red ·
+            {{ api && !api.loadedAt() ? '—' : totals().amber }} amber alerts</small
+          >
         </div>
       </button>
       <button
@@ -92,7 +103,7 @@
         <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">monitor_heart</span>
         <div>
           <h2>Care in progress</h2>
-          <strong>{{ totals().progress }}</strong
+          <strong>{{ api && !api.loadedAt() ? '—' : totals().progress }}</strong
           ><small>All required carers arrived</small>
         </div>
       </button>
@@ -100,7 +111,7 @@
         <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">task_alt</span>
         <div>
           <h2>Completed</h2>
-          <strong>{{ totals().completed }}</strong
+          <strong>{{ api && !api.loadedAt() ? '—' : totals().completed }}</strong
           ><small>All carers checked out</small>
         </div>
       </button>
@@ -452,8 +463,11 @@
       </div>
     </section>
     <p class="ecm-demo">
-      Frontend demo · Mobile attendance updates other open tabs in this browser. Messages,
-      escalations, billing and evidence use dummy records. Use sample photos and voice notes only.
+      {{
+        api
+          ? 'Published visits, allocated staff and attendance come from Visits & Rostering. Follow-ups and evidence are saved to the company record.'
+          : 'Frontend demo · Mobile attendance updates other open tabs in this browser. Messages, escalations, billing and evidence use dummy records. Use sample photos and voice notes only.'
+      }}
     </p>
   }
   @if (modal() && service.rota.can('view')) {
@@ -497,7 +511,8 @@
                 }
               </div>
               <p>{{ v.address }}</p>
-              <p>{{ v.tasks || 'No additional care tasks recorded.' }}</p><cv-approved-care-instructions [clientId]="v.clientId" [visitId]="v.id" />
+              <p>{{ v.tasks || 'No additional care tasks recorded.' }}</p>
+              <cv-approved-care-instructions [clientId]="v.clientId" [visitId]="v.id" />
               <div class="row" style="flex-wrap: wrap">
                 @for (f of flags(v); track f) {
                   <span class="ecm-priority">{{ f }}</span>
@@ -641,7 +656,11 @@
                   </mat-select></label
                 >
                 <p class="full-width">
-                  Save a follow-up record. Queue a dummy notification or assign an escalation below.
+                  {{
+                    api
+                      ? 'Save a follow-up record. Queue a notification or assign an escalation below.'
+                      : 'Save a follow-up record. Queue a dummy notification or assign an escalation below.'
+                  }}
                 </p>
                 <label class="check-label full-width"
                   ><input
@@ -649,7 +668,7 @@
                     name="queueMessage"
                     [(ngModel)]="action.queueMessage"
                     (ngModelChange)="recipient()"
-                  />Queue demo notification</label
+                  />{{ api ? 'Queue notification' : 'Queue demo notification' }}</label
                 >
                 @if (action.queueMessage) {
                   <label

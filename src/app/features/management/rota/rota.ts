@@ -10,7 +10,6 @@ import { CvSelect } from '../../../shared/ui/select';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { COURSES } from '../shared/management.store';
 import { RosterApi } from './roster-api.service';
-import { emptyEcm } from '../ecm/ecm.models';
 import { AccessRequired } from '../shared/access-required';
 import { validVacancyDate } from '../recruitment/vacancy-deadline';
 import {
@@ -66,14 +65,14 @@ export class Rota {
       const defaults: Record<
         string,
         {
-          duration: number;
-          priority: 'Standard' | 'High' | undefined;
-          skills: string[];
-          active: boolean;
+          duration?: number;
+          priority?: 'Standard' | 'High';
+          skills?: string[];
+          active?: boolean;
         }
-      > = {};
+      > = { ...this.service.data().ecm?.styles };
       for (const call of this.service.data().calls)
-        if (call.scheduleRecorded && call.active)
+        if (call.scheduleRecorded && call.active && !defaults[call.name])
           defaults[call.name] = {
             duration: (minutes(call.end) - minutes(call.start) + 1440) % 1440,
             priority: call.priority,
@@ -82,7 +81,7 @@ export class Rota {
           };
       return defaults;
     }
-    return { ...emptyEcm().styles, ...this.service.data().ecm?.styles };
+    return this.service.data().ecm?.styles ?? {};
   });
   protected readonly callTypes = computed(() => Object.keys(this.callStyles()));
   protected readonly tab = signal('Overview');

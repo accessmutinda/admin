@@ -9,7 +9,7 @@ export type RosterAllocationPlan = {
 export type RosterAttendanceRead = {
   personId: string;
   start: string;
-  end: string;
+  end: string | null;
 };
 
 export type RosterAttendanceWrite = {
@@ -197,6 +197,23 @@ export type RosterHistoryAuditPage = {
     request_id: string;
   }[];
   context: {
+    ecm?: {
+      lateMinutes: number;
+      riskMinutes: number;
+      missedMinutes: number;
+      styles: Record<
+        string,
+        {
+          background: string;
+          color: string;
+          label: string;
+          duration?: number;
+          priority?: 'Standard' | 'High';
+          skills?: string[];
+          active?: boolean;
+        }
+      >;
+    } | null;
     attendance_available: boolean;
     leaves: {
       personId: string;
@@ -272,7 +289,7 @@ export type RosterHistoryAuditPage = {
       attendance: {
         personId: string;
         start: string;
-        end: string;
+        end: string | null;
       }[];
       exception: string;
       timeSensitive: boolean;
@@ -395,7 +412,7 @@ export type RosterHistoryPage = {
     attendance: {
       personId: string;
       start: string;
-      end: string;
+      end: string | null;
     }[];
     exception: string;
     timeSensitive: boolean;
@@ -408,6 +425,23 @@ export type RosterHistoryPage = {
     travelMinutes: number | null;
   }[];
   context: {
+    ecm?: {
+      lateMinutes: number;
+      riskMinutes: number;
+      missedMinutes: number;
+      styles: Record<
+        string,
+        {
+          background: string;
+          color: string;
+          label: string;
+          duration?: number;
+          priority?: 'Standard' | 'High';
+          skills?: string[];
+          active?: boolean;
+        }
+      >;
+    } | null;
     attendance_available: boolean;
     leaves: {
       personId: string;
@@ -483,7 +517,7 @@ export type RosterHistoryPage = {
       attendance: {
         personId: string;
         start: string;
-        end: string;
+        end: string | null;
       }[];
       exception: string;
       timeSensitive: boolean;
@@ -613,6 +647,23 @@ export type RosterOverviewQuery = {
 };
 
 export type RosterOverviewRead = {
+  ecm?: {
+    lateMinutes: number;
+    riskMinutes: number;
+    missedMinutes: number;
+    styles: Record<
+      string,
+      {
+        background: string;
+        color: string;
+        label: string;
+        duration?: number;
+        priority?: 'Standard' | 'High';
+        skills?: string[];
+        active?: boolean;
+      }
+    >;
+  } | null;
   attendance_available: boolean;
   leaves: {
     personId: string;
@@ -688,7 +739,7 @@ export type RosterOverviewRead = {
     attendance: {
       personId: string;
       start: string;
-      end: string;
+      end: string | null;
     }[];
     exception: string;
     timeSensitive: boolean;
@@ -804,6 +855,23 @@ export type RosterPackagePage = {
     regularStaffIds: string[];
   }[];
   context: {
+    ecm?: {
+      lateMinutes: number;
+      riskMinutes: number;
+      missedMinutes: number;
+      styles: Record<
+        string,
+        {
+          background: string;
+          color: string;
+          label: string;
+          duration?: number;
+          priority?: 'Standard' | 'High';
+          skills?: string[];
+          active?: boolean;
+        }
+      >;
+    } | null;
     attendance_available: boolean;
     leaves: {
       personId: string;
@@ -879,7 +947,7 @@ export type RosterPackagePage = {
       attendance: {
         personId: string;
         start: string;
-        end: string;
+        end: string | null;
       }[];
       exception: string;
       timeSensitive: boolean;
@@ -955,6 +1023,23 @@ export type RosterPublishingQuery = {
 };
 
 export type RosterPublishingRead = {
+  ecm?: {
+    lateMinutes: number;
+    riskMinutes: number;
+    missedMinutes: number;
+    styles: Record<
+      string,
+      {
+        background: string;
+        color: string;
+        label: string;
+        duration?: number;
+        priority?: 'Standard' | 'High';
+        skills?: string[];
+        active?: boolean;
+      }
+    >;
+  } | null;
   attendance_available: boolean;
   leaves: {
     personId: string;
@@ -1030,7 +1115,7 @@ export type RosterPublishingRead = {
     attendance: {
       personId: string;
       start: string;
-      end: string;
+      end: string | null;
     }[];
     exception: string;
     timeSensitive: boolean;
@@ -1209,7 +1294,7 @@ export type RosterVisitRead = {
   attendance: {
     personId: string;
     start: string;
-    end: string;
+    end: string | null;
   }[];
   exception: string;
   timeSensitive: boolean;
@@ -1244,6 +1329,23 @@ export type RosterVisitWrite = {
 };
 
 export type RosterWorkspace = {
+  ecm?: {
+    lateMinutes: number;
+    riskMinutes: number;
+    missedMinutes: number;
+    styles: Record<
+      string,
+      {
+        background: string;
+        color: string;
+        label: string;
+        duration?: number;
+        priority?: 'Standard' | 'High';
+        skills?: string[];
+        active?: boolean;
+      }
+    >;
+  } | null;
   attendance_available: boolean;
   leaves: {
     personId: string;
@@ -1319,7 +1421,7 @@ export type RosterWorkspace = {
     attendance: {
       personId: string;
       start: string;
-      end: string;
+      end: string | null;
     }[];
     exception: string;
     timeSensitive: boolean;

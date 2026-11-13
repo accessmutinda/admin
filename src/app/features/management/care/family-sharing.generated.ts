@@ -316,7 +316,7 @@ export type FamilyPortalRead = {
         attendance: {
           name: string;
           start: string;
-          end: string;
+          end: string | null;
           duration: number | null;
         }[];
       }[]
@@ -562,7 +562,7 @@ export type FamilySharedAllergy = {
 export type FamilySharedAttendance = {
   name: string;
   start: string;
-  end: string;
+  end: string | null;
   duration: number | null;
 };
 
@@ -649,7 +649,7 @@ export type FamilySharedVisit = {
   attendance: {
     name: string;
     start: string;
-    end: string;
+    end: string | null;
     duration: number | null;
   }[];
 };
@@ -720,7 +720,7 @@ export type FamilyVisitsExportRead = {
     attendance: {
       name: string;
       start: string;
-      end: string;
+      end: string | null;
       duration: number | null;
     }[];
   }[];

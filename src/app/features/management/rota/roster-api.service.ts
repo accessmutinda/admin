@@ -60,6 +60,18 @@ export class RosterApi {
   readonly data = computed<RotaData>(() => {
     const r = this.can('view') ? this.raw() : null;
     return {
+      ecm: r?.ecm
+        ? {
+            ...r.ecm,
+            records: [],
+            evidence: [],
+            notifications: [],
+            escalations: [],
+            invoices: [],
+            packs: [],
+            feed: [],
+          }
+        : undefined,
       clients: (r?.clients ?? []).map((c) => ({
         ...c,
         funding: c.funding as RotaClient['funding'],
@@ -199,6 +211,7 @@ export class RosterApi {
   private visitProjection(v: RosterVisitRead): RotaVisit {
     return {
       ...v,
+      attendance: v.attendance.map((a) => ({ ...a, end: a.end ?? '' })),
       carers: v.carers ?? 0,
       state: v.state as RotaVisit['state'],
       allocation: v.allocation as RotaVisit['allocation'],

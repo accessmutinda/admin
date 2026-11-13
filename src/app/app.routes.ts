@@ -1,6 +1,7 @@
 import { AuthService } from './core/auth/auth.service';
 import { Router, Routes } from '@angular/router';
 import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
+import { ECM_PROVIDERS } from './features/management/ecm/ecm.providers';
 import { CARE_PLAN_PROVIDERS } from './features/management/care/care-plan.providers';
 import {
   authGuard,
@@ -409,6 +410,7 @@ export const routes: Routes = [
       },
       {
         path: 'ecm/workflows',
+        providers: ECM_PROVIDERS,
         data: { module: 'Care delivery' },
         title: 'ECM workflows · CareVerity',
         loadComponent: () =>
@@ -416,6 +418,7 @@ export const routes: Routes = [
       },
       {
         path: 'ecm/wallboard',
+        providers: ECM_PROVIDERS,
         data: { module: 'Care delivery', wallboard: true },
         title: 'Live ECM wallboard · CareVerity',
         loadComponent: () =>
@@ -423,6 +426,7 @@ export const routes: Routes = [
       },
       {
         path: 'ecm',
+        providers: ECM_PROVIDERS,
         data: { module: 'Care delivery' },
         title: 'Live ECM board · CareVerity',
         loadComponent: () => import('./features/management/ecm/ecm').then((m) => m.Ecm),

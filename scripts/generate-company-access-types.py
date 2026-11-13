@@ -156,3 +156,8 @@ care_plan_names = [name for name in schemas if name.startswith('CarePlan')]
 care_plan_target = root / 'src/app/features/management/care/care-plan.generated.ts'
 care_plan_target.write_text('// Generated from backend OpenAPI.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in care_plan_names) + '\n')
 subprocess.run(['npx', 'prettier', '--write', str(care_plan_target)], cwd=root, check=True, capture_output=True)
+
+ecm_names = [name for name in schemas if name.startswith('Ecm')]
+ecm_target = root / 'src/app/features/management/ecm/ecm.generated.ts'
+ecm_target.write_text('// Generated from backend OpenAPI.\n\n' + '\n\n'.join('export type '+name+' = '+render(schemas[name])+';' for name in ecm_names) + '\n')
+subprocess.run(['npx', 'prettier', '--write', str(ecm_target)], cwd=root, check=True, capture_output=True)

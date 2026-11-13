@@ -17,6 +17,7 @@ import { EcmData, EcmEscalation, emptyEcm, liveVisit, onBoardDate } from './ecm.
 
 @Injectable({ providedIn: 'root' })
 export class EcmOperations {
+  readonly connected: boolean = false;
   readonly store = inject(ManagementStore);
   readonly rota = inject(RotaService);
   readonly payroll = inject(PayrollService);

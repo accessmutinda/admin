@@ -1,3 +1,9 @@
+@if (api?.loading()) {
+  <p role="status">Loading current visit records…</p>
+}
+@if (api?.error()) {
+  <p role="alert">{{ api?.error() }}</p>
+}
 <cv-module-design />
 <nav class="co-breadcrumb" aria-label="Breadcrumb">
   <a routerLink="/manage/ecm">Care Delivery</a>
@@ -5,7 +11,13 @@
 <div class="page-heading">
   <div>
     <h1>ECM workflows</h1>
-    <p>Coordinate visits and follow their records through the demo.</p>
+    <p>
+      {{
+        api
+          ? 'Coordinate visits and follow their recorded outcomes.'
+          : 'Coordinate visits and follow their records through the demo.'
+      }}
+    </p>
   </div>
   <a class="button" routerLink="/manage/ecm">Live board</a>
 </div>
@@ -18,9 +30,15 @@
   />
 } @else {
   <p class="workflow-context">
-    Frontend demo · dummy records are saved in this browser. Open tabs in the same browser share
-    updates. Notification delivery and routed cases are simulated.
+    {{
+      api
+        ? 'Current company records are loaded from the service. Notification outcomes require delivery receipts.'
+        : 'Frontend demo · dummy records are saved in this browser. Open tabs in the same browser share updates. Notification delivery and routed cases are simulated.'
+    }}
   </p>
+  @if (api?.unavailable()?.length) {
+    <p role="status">{{ api?.unavailable()?.join(' ') }}</p>
+  }
   <nav class="workflow-nav" aria-label="ECM workflows">
     @for (t of tabs; track t) {
       <button
@@ -49,7 +67,7 @@
           </p>
           <button
             class="button primary"
-            [disabled]="!service.rota.can('manage') || !service.rota.can('publish')"
+            [disabled]="!!api || !service.rota.can('manage') || !service.rota.can('publish')"
             (click)="setup()"
           >
             Create today's demo workflow</button
@@ -112,8 +130,11 @@
         <div class="panel-toolbar"><h2>Staff visit preview</h2></div>
         <div class="panel-body">
           <p>
-            Choose a dummy care worker to preview their mobile visit workflow. This manager preview
-            uses your attendance permissions.
+            {{
+              api
+                ? 'Choose an allocated care worker to record actual attendance. This manager preview uses your attendance permissions.'
+                : 'Choose a dummy care worker to preview their mobile visit workflow. This manager preview uses your attendance permissions.'
+            }}
           </p>
           <div class="workflow-header">
             <label
@@ -203,9 +224,13 @@
             @if (service.rota.can('manage')) {
               <div class="workflow-actions">
                 @if (n.state === 'Queued') {
-                  <button class="button primary" (click)="deliver(n.id, 'Delivered')">
+                  <button
+                    class="button primary"
+                    [disabled]="!!api"
+                    (click)="deliver(n.id, 'Delivered')"
+                  >
                     Simulate delivery</button
-                  ><button class="button" (click)="deliver(n.id, 'Failed')">
+                  ><button class="button" [disabled]="!!api" (click)="deliver(n.id, 'Failed')">
                     Simulate failure
                   </button>
                 }
@@ -216,7 +241,7 @@
             }
           </article>
         } @empty {
-          <p>Open a visit on the live board and queue a demo notification in Record follow-up.</p>
+          <p>Open a visit on the live board and queue a notification in Record follow-up.</p>
         }
       </div>
     </section>
@@ -236,6 +261,7 @@
                 >Assigned owner<mat-select
                   cvSelect
                   [attr.aria-label]="'Owner for ' + title(c.visitId)"
+                  [disabled]="c.state === 'Resolved' || !!api?.saving()"
                   [(ngModel)]="caseForm(c).owner"
                 >
                   @for (m of ops.store.data().members; track m.id) {
@@ -248,6 +274,7 @@
                 >Case status<mat-select
                   cvSelect
                   aria-label="Case status"
+                  [disabled]="c.state === 'Resolved' || !!api?.saving()"
                   [(ngModel)]="caseForm(c).state"
                 >
                   @for (s of ['Open', 'In review', 'Resolved']; track s) {
@@ -257,9 +284,16 @@
               ><label
                 >Review / resolution note<textarea
                   rows="2"
+                  [disabled]="c.state === 'Resolved' || !!api?.saving()"
                   [(ngModel)]="caseForm(c).note"
                 ></textarea></label
-              ><button class="button primary" (click)="updateCase(c)">Save case update</button>
+              ><button
+                class="button primary"
+                [disabled]="c.state === 'Resolved' || !!api?.saving()"
+                (click)="updateCase(c)"
+              >
+                Save case update
+              </button>
             }
             @for (h of c.history; track $index) {
               <small>{{ stamp(h.at) }} · {{ h.user }} · {{ h.note }}</small>

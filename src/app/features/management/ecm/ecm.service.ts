@@ -8,6 +8,7 @@ import { EcmData, EcmRecord, EcmEvidence, ECM_ACTIONS, emptyEcm } from './ecm.mo
 
 @Injectable({ providedIn: 'root' })
 export class EcmService {
+  readonly connected: boolean = false;
   private readonly store = inject(ManagementStore);
   private readonly auth = inject(AuthService);
   readonly rota = inject(RotaService);

@@ -1,3 +1,9 @@
+@if (api?.loading()) {
+  <p role="status">Loading current visit records…</p>
+}
+@if (api?.error()) {
+  <p role="alert">{{ api?.error() }}</p>
+}
 <section class="tv" aria-label="Live ECM TV wallboard">
   <header class="tv-header">
     <div class="tv-brand">
@@ -48,7 +54,9 @@
             }}<span class="material-symbols-outlined" aria-hidden="true">{{
               metric.icon
             }}</span></span
-          ><strong>{{ metric.value.toString().padStart(2, '0') }}</strong
+          ><strong>{{
+            api && !api.loadedAt() ? '—' : metric.value.toString().padStart(2, '0')
+          }}</strong
           ><small>{{
             metric.view === 'Missed visits' && metric.value
               ? 'Immediate attention required'

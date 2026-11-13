@@ -1,5 +1,5 @@
 import { ModuleDesign } from '../shared/module-design';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -7,6 +7,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { AccessRequired } from '../shared/access-required';
+import { EcmApi } from './ecm-api.service';
 import { EcmService } from './ecm.service';
 import { EcmOperations } from './ecm.operations';
 import { EcmDemo } from './ecm.demo';
@@ -128,6 +129,7 @@ import { liveVisit, EcmEscalation, ClientInvoice } from './ecm.models';
 })
 export class EcmWorkflows {
   protected readonly service = inject(EcmService);
+  protected readonly api = this.service.connected ? (this.service as unknown as EcmApi) : null;
   protected readonly ops = inject(EcmOperations);
   protected readonly demo = inject(EcmDemo);
   private readonly toast = inject(ToastService);
@@ -138,7 +140,7 @@ export class EcmWorkflows {
     'Escalations',
     'Billing & outcomes',
   ];
-  protected readonly tab = signal('Demo setup');
+  protected readonly tab = signal(this.api ? 'Staff visit preview' : 'Demo setup');
   protected readonly date = signal(londonDate());
   protected readonly error = signal('');
   protected readonly running = signal(false);
@@ -157,13 +159,41 @@ export class EcmWorkflows {
   protected readonly kpis = computed(() => this.ops.kpis(this.date()));
   private timer: ReturnType<typeof setInterval> | null = null;
   constructor() {
+    this.api?.connect(this.date());
+    const authorization = computed(() =>
+      this.api ? `${this.api.scope()}:${this.api.can('view')}` : null,
+    );
+    effect(() => {
+      if (!authorization()) return;
+      untracked(() => {
+        this.person.set('');
+        this.evidence.set('');
+        this.cases = {};
+        this.error.set('');
+      });
+    });
+    effect(() => {
+      if (this.api) this.api.selectDate(this.date());
+    });
     inject(DestroyRef).onDestroy(() => this.stop());
   }
-  protected result(error: string | null, success = 'Demo record saved.'): void {
+  protected result(error: string | null | Promise<string | null>, success = 'Record saved.'): void {
+    if (error instanceof Promise) {
+      void error
+        .then((value) => this.result(value, success))
+        .catch((value) =>
+          this.error.set(value instanceof Error ? value.message : 'The monitoring request failed.'),
+        );
+      return;
+    }
     this.error.set(error ?? '');
     if (!error) this.toast.success(success);
   }
   protected setup(): void {
+    if (this.api) {
+      this.error.set(this.api.preview.setup());
+      return;
+    }
     this.result(this.demo.setup(), 'Demo clients, carers and visits are ready.');
     this.date.set(londonDate());
     this.person.set(this.demo.visits().at(-1)?.staffIds[0] ?? '');
@@ -202,7 +232,9 @@ export class EcmWorkflows {
   }
   protected title(id: string): string {
     const v = this.service.rota.data().visits.find((v) => v.id === id);
-    return v ? `${v.clientName} · ${v.callName} · ${v.date} ${v.start}` : 'Visit unavailable';
+    return v
+      ? `${v.clientName} · ${v.callName} · ${v.date} ${v.start}`
+      : 'Visit outside the current date filter';
   }
   protected attendance(id: string, kind: 'Check in' | 'Check out'): void {
     this.result(
@@ -211,7 +243,7 @@ export class EcmWorkflows {
         this.person(),
         new Date().toISOString(),
         kind,
-        'Actual time recorded in the dummy mobile preview.',
+        'Actual attendance time verified by the signed-in operator.',
       ),
     );
   }
@@ -229,15 +261,34 @@ export class EcmWorkflows {
       ?.attendance.some((a) => a.personId === this.person() && a.end);
   }
   protected complete = completedVisit;
-  protected cases: Record<string, { owner: string; state: EcmEscalation['state']; note: string }> =
-    {};
+  protected cases: Record<
+    string,
+    { owner: string; state: EcmEscalation['state']; note: string; etag?: string }
+  > = {};
   protected caseForm(c: EcmEscalation) {
-    return (this.cases[c.id] ??= { owner: c.ownerId, state: c.state, note: '' });
+    return (this.cases[c.id] ??= {
+      owner: c.ownerId,
+      state: c.state,
+      note: '',
+      etag: (c as any).etag,
+    });
   }
   protected updateCase(c: EcmEscalation): void {
     const f = this.caseForm(c);
-    this.result(this.ops.escalation(c.id, f.owner, f.state, f.note));
-    if (!this.error()) f.note = '';
+    const saved = (
+      this.api
+        ? this.api.escalation(c.id, f.owner, f.state, f.note, f.etag)
+        : this.ops.escalation(c.id, f.owner, f.state, f.note)
+    ) as string | null | Promise<string | null>;
+    if (saved instanceof Promise) {
+      void saved.then((error) => {
+        this.result(error);
+        if (!error) delete this.cases[c.id];
+      });
+    } else {
+      this.result(saved);
+      if (!saved) f.note = '';
+    }
   }
   protected deliver(id: string, state: 'Delivered' | 'Failed' | 'Queued'): void {
     this.result(this.ops.delivery(id, state));
@@ -275,6 +326,10 @@ export class EcmWorkflows {
   }
   protected downloadPack(id: string): void {
     if (!this.service.rota.can('export')) return;
+    if (this.api) {
+      void this.api.downloadPack(id).catch((error) => this.error.set(error.message));
+      return;
+    }
     const p = this.ops.data().packs.find((p) => p.id === id);
     if (p) this.ops.store.download(`care-evidence-${p.date}.json`, p.snapshot, 'application/json');
   }

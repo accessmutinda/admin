@@ -30,7 +30,13 @@ interface Recognition {
     <form (ngSubmit)="save()" novalidate>
       @if (tasks().length) {
         <section class="visit-task-capture">
-          <h3>Approved care-plan tasks · demo evidence</h3>
+          <h3>
+            {{
+              service.connected
+                ? 'Approved care-plan tasks'
+                : 'Approved care-plan tasks · demo evidence'
+            }}
+          </h3>
           <p>
             Record the tasks you carried out. Each result retains its approved plan version for the
             next review.
@@ -68,8 +74,11 @@ interface Recognition {
 
       <div class="panel-body form-grid">
         <p class="full-width">
-          Demo capture · use sample details. Nothing is sent to a care service or saved to a phone
-          gallery by this page.
+          {{
+            service.connected
+              ? 'Record actual care evidence. Submitted notes and scanned attachments are saved to the company record.'
+              : 'Demo capture · use sample details. Nothing is sent to a care service or saved to a phone gallery by this page.'
+          }}
         </p>
         @if (error()) {
           <p class="ecm-error full-width" role="alert">{{ error() }}</p>
@@ -88,7 +97,13 @@ interface Recognition {
         >
         <div class="row full-width evidence-actions">
           <button type="button" class="button" (click)="startCamera()">Take photo</button
-          ><button type="button" class="button" (click)="samplePhoto()">Use sample photo</button
+          ><button
+            type="button"
+            class="button"
+            [disabled]="service.connected"
+            (click)="samplePhoto()"
+          >
+            Use sample photo</button
           ><button type="button" class="button" (click)="recording() ? stopVoice() : startVoice()">
             {{ recording() ? 'Stop recording' : 'Record voice note' }}</button
           ><button type="button" class="button" (click)="dictating() ? stopDictation() : dictate()">
@@ -96,6 +111,7 @@ interface Recognition {
           ><button
             type="button"
             class="button"
+            [disabled]="service.connected"
             (click)="
               note =
                 'Sample note: Breakfast prepared, medication prompt given and wellbeing checked. No concerns observed.'
@@ -120,7 +136,11 @@ interface Recognition {
           </div>
         }
         <label class="full-width"
-          >Upload sample photo (optional, up to 500 KB)<input
+          >{{
+            service.connected
+              ? 'Upload photo (optional, up to 500 KB)'
+              : 'Upload sample photo (optional, up to 500 KB)'
+          }}<input
             #fileInput
             type="file"
             accept="image/png,image/jpeg,image/webp"
@@ -161,8 +181,11 @@ interface Recognition {
           ></textarea>
         </label>
         <p class="full-width">
-          Review dictation before saving. Browser speech-to-text may use its provider; demo
-          transcript works without microphone access.
+          {{
+            service.connected
+              ? 'Review dictation before saving. Browser speech-to-text may use its provider.'
+              : 'Review dictation before saving. Browser speech-to-text may use its provider; demo transcript works without microphone access.'
+          }}
         </p>
         <label class="check-label full-width"
           ><input type="checkbox" name="consent" [(ngModel)]="consent" />Consent, care-plan
@@ -285,7 +308,7 @@ export class VisitEvidence {
   readonly visitId = input.required<string>();
   readonly saved = output<void>();
   readonly cancelled = output<void>();
-  private readonly service = inject(EcmService);
+  protected readonly service = inject(EcmService);
   protected readonly types: EcmEvidence['type'][] = [
     'Care note',
     'Safeguarding',
@@ -529,7 +552,19 @@ export class VisitEvidence {
       },
       this.consent,
     );
-    this.error.set(result ?? '');
-    if (!result) this.saved.emit();
+    const pending = result as string | null | Promise<string | null>;
+    const finish = (error: string | null) => {
+      this.busy.set(false);
+      this.error.set(error || '');
+      if (!error) this.saved.emit();
+    };
+    if (pending instanceof Promise) {
+      this.busy.set(true);
+      void pending
+        .then(finish)
+        .catch((error) =>
+          finish(error instanceof Error ? error.message : 'Evidence could not be saved.'),
+        );
+    } else finish(pending);
   }
 }

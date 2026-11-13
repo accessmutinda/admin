@@ -15,6 +15,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { Router } from '@angular/router';
 import { A11yModule } from '@angular/cdk/a11y';
+import { EcmApi } from './ecm-api.service';
 import { EcmService } from './ecm.service';
 import { liveVisit, onBoardDate } from './ecm.models';
 import { RISK_FLAGS, RiskFlag, RotaVisit, londonDate } from '../rota/rota.models';
@@ -31,6 +32,7 @@ import { Logo } from '../../../shared/ui/logo';
 })
 export class EcmWallboard {
   protected readonly service = inject(EcmService);
+  protected readonly api = this.service.connected ? (this.service as unknown as EcmApi) : null;
   protected readonly store = inject(ManagementStore);
   private readonly router = inject(Router);
   protected readonly now = signal(Date.now());
@@ -176,16 +178,17 @@ export class EcmWallboard {
   );
 
   constructor() {
+    this.api?.connect();
     afterNextRender(() => document.getElementById('tv-wallboard-title')?.focus());
     effect(() => {
       this.service.data();
       this.service.rota.data();
-      this.refreshed.set(Date.now());
+      this.refreshed.set(this.api ? Date.parse(this.api.loadedAt()) || 0 : Date.now());
     });
     let rotation = 0;
     const timer = setInterval(() => {
       this.now.set(Date.now());
-      if (this.now() - this.refreshed() >= 180000) this.refreshed.set(this.now());
+      if (!this.api && this.now() - this.refreshed() >= 180000) this.refreshed.set(this.now());
       if (!this.paused() && !this.filtersOpen() && ++rotation >= 15) {
         this.next();
         rotation = 0;
@@ -236,7 +239,9 @@ export class EcmWallboard {
   }
   protected names(v: RotaVisit): string {
     const names = v.staffIds.map(
-      (id) => this.store.data().people.find((p) => p.id === id)?.name ?? 'Former staff member',
+      (id) =>
+        this.store.data().people.find((p) => p.id === id)?.name ??
+        (this.api ? 'Staff details unavailable' : 'Former staff member'),
     );
     while (names.length < v.carers) names.push('Unallocated');
     return names.join(' + ');

@@ -1,6 +1,6 @@
 import { ApprovedCareInstructions } from '../care/approved-care-instructions';
 import { ModuleDesign } from '../shared/module-design';
-import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
 import { RouterLink, ActivatedRoute } from '@angular/router';
@@ -15,6 +15,7 @@ import { COURSES } from '../shared/management.store';
 import { ManagementStore } from '../shared/management.store';
 import { AccessRequired } from '../shared/access-required';
 import { RotaVisit, londonDate, londonInstant } from '../rota/rota.models';
+import { EcmApi } from './ecm-api.service';
 import { EcmService } from './ecm.service';
 import {
   ECM_ACTIONS,
@@ -45,13 +46,16 @@ import {
 export class Ecm {
   protected readonly tv = inject(WallboardLauncher);
   protected readonly ops = inject(EcmOperations);
-  protected readonly courses = COURSES;
+  protected get courses() {
+    return this.api ? this.api.trainingOptions() : COURSES;
+  }
   protected readonly riskFlags = RISK_FLAGS;
   protected readonly risk = signal('');
   protected readonly audio = signal('');
   protected change = { date: londonDate(), start: '', reason: '', accepted: false };
   protected override = { staffIds: [] as string[], reason: '', accepted: false };
   protected readonly service = inject(EcmService);
+  protected readonly api = this.service.connected ? (this.service as unknown as EcmApi) : null;
   protected readonly store = inject(ManagementStore);
   private readonly toast = inject(ToastService);
   protected readonly wallboard = inject(ActivatedRoute).snapshot.data['wallboard'] === true;
@@ -205,21 +209,45 @@ export class Ecm {
       .reverse(),
   );
   constructor() {
+    this.api?.connect(this.date());
+    const authorization = computed(() =>
+      this.api ? `${this.api.scope()}:${this.api.can('view')}` : null,
+    );
+    effect(() => {
+      if (!authorization()) return;
+      untracked(() => {
+        this.close();
+        this.selected.set('');
+        this.action = this.blankAction();
+        this.change = { date: this.date(), start: '', reason: '', accepted: false };
+        this.override = { staffIds: [], reason: '', accepted: false };
+        this.cover = { staffIds: [], reason: '' };
+        this.settings = structuredClone(this.service.data());
+        this.clear();
+      });
+    });
+    effect(() => {
+      if (this.api) this.api.selectDate(this.date());
+    });
     effect(() => {
       this.service.data();
       this.service.rota.data();
-      this.refreshed.set(Date.now());
+      this.refreshed.set(this.api ? Date.parse(this.api.loadedAt()) || 0 : Date.now());
     });
     const timer = setInterval(() => {
       const previousDay = londonDate(new Date(this.now()));
       const day = londonDate();
       if (day !== previousDay && this.date() === previousDay) this.date.set(day);
       this.now.set(Date.now());
-      if (Date.now() - this.refreshed() >= 180000) this.refresh();
+      if (!this.api && Date.now() - this.refreshed() >= 180000) this.refresh();
     }, 1000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }
   protected refresh(): void {
+    if (this.api) {
+      void this.api.load(this.date());
+      return;
+    }
     this.now.set(Date.now());
     this.refreshed.set(Date.now());
   }
@@ -246,7 +274,10 @@ export class Ecm {
     this.quick.set(view);
   }
   protected name(id: string): string {
-    return this.store.data().people.find((p) => p.id === id)?.name ?? 'Former staff member';
+    return (
+      this.store.data().people.find((p) => p.id === id)?.name ??
+      (this.api ? 'Staff details unavailable' : 'Former staff member')
+    );
   }
   protected live(v: RotaVisit) {
     return liveVisit(v, this.now(), this.service.data());
@@ -307,6 +338,7 @@ export class Ecm {
     this.open('Visit details');
   }
   protected open(kind: string): void {
+    this.api?.beginEdit(kind, this.selected());
     this.error.set('');
     this.photo.set('');
     this.audio.set('');
@@ -352,6 +384,7 @@ export class Ecm {
     setTimeout(() => document.getElementById('ecm-dialog-title')?.focus(), 0);
   }
   protected close(): void {
+    this.api?.endEdit();
     this.modal.set('');
     this.audio.set('');
     this.photo.set('');
@@ -373,7 +406,7 @@ export class Ecm {
       this.settings.styles[this.styleCall] = { ...this.style(this.styleCall) };
   }
   protected save(): void {
-    let result: string | null = 'Choose a valid action.';
+    let result: string | null | Promise<string | null> = 'Choose a valid action.';
     if (this.modal() === 'Reschedule visit')
       result = this.ops.reschedule(
         this.selected(),
@@ -412,12 +445,24 @@ export class Ecm {
           )
         : 'Enter an unambiguous actual UK time.';
     }
-    this.error.set(result ?? '');
-    if (!result) {
+    this.finish(result, () => {
       this.close();
-      this.refresh();
+      if (!this.api) this.refresh();
       this.toast.success('ECM record saved.');
-    }
+    });
+  }
+  private finish(result: string | null | Promise<string | null>, success: () => void) {
+    const apply = (error: string | null) => {
+      this.error.set(error || '');
+      if (!error) success();
+    };
+    if (result instanceof Promise)
+      void result
+        .then(apply)
+        .catch((error) =>
+          this.error.set(error instanceof Error ? error.message : 'The monitoring request failed.'),
+        );
+    else apply(result);
   }
   protected flags(v: RotaVisit): RiskFlag[] {
     return (
@@ -428,8 +473,7 @@ export class Ecm {
   }
   protected viewAudio(e: EcmEvidence): void {
     const error = this.service.viewAudio(e.id);
-    this.error.set(error ?? '');
-    if (!error) this.audio.set(e.audio ?? '');
+    this.finish(error, () => this.audio.set(e.audio ?? ''));
   }
   protected savedEvidence(): void {
     this.close();
@@ -444,20 +488,36 @@ export class Ecm {
         ? (c?.representative?.email ?? '')
         : this.action.channel === 'SMS'
           ? (c?.representative?.phone ?? '')
-          : this.name(v?.staffIds[0] ?? '');
+          : this.api
+            ? this.api.members().find((m) => m.personId === v?.staffIds[0])?.id || ''
+            : this.name(v?.staffIds[0] ?? '');
   }
   protected review(id: string): void {
     const result = this.service.reviewEvidence(id);
-    this.error.set(result ?? '');
-    if (!result) this.toast.success('Evidence reviewed.');
+    this.finish(result, () => this.toast.success('Evidence reviewed.'));
   }
   protected viewPhoto(e: EcmEvidence): void {
     const result = this.service.viewPhoto(e.id);
-    this.error.set(result ?? '');
-    if (!result) this.photo.set(e.photo);
+    this.finish(result, () => this.photo.set(e.photo));
   }
   protected exportReport(): void {
     if (!this.service.rota.can('export')) return;
+    if (this.api) {
+      void this.api
+        .exportReport({
+          date: this.date(),
+          search: this.search(),
+          client: this.client(),
+          staff: this.staff(),
+          call: this.call(),
+          status: this.status(),
+          risk: this.risk(),
+          double: String(this.double()),
+          high: String(this.high()),
+        })
+        .catch((error) => this.error.set(error.message));
+      return;
+    }
     const escape = (s: string) =>
       '"' + (/^[=+\-@\t\r]/.test(s) ? "'" : '') + s.replaceAll('"', '""') + '"';
     const rows = [

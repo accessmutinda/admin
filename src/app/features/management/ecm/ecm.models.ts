@@ -189,8 +189,10 @@ export function onBoardDate(v: RotaVisit, date: string): boolean {
   return v.date === date || (v.date === addDays(date, -1) && v.end <= v.start);
 }
 export function liveVisit(v: RotaVisit, now: number, rules = emptyEcm()) {
-  const start = londonInstant(v.date, v.start);
-  const end = londonInstant(v.end > v.start ? v.date : addDays(v.date, 1), v.end);
+  const start = (v as typeof v & { startsAt?: string }).startsAt || londonInstant(v.date, v.start);
+  const end =
+    (v as typeof v & { endsAt?: string }).endsAt ||
+    londonInstant(v.end > v.start ? v.date : addDays(v.date, 1), v.end);
   const starts = v.attendance.filter((a) => v.staffIds.includes(a.personId) && a.start);
   const ends = starts.filter((a) => a.end);
   const arrived =

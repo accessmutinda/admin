@@ -119,6 +119,36 @@ describe('Connected rota screens', () => {
       ],
     });
   });
+  it('uses saved monitoring defaults for a new package without changing existing calls', async () => {
+    TestBed.inject(ActivatedRoute).snapshot.data = { rotaSection: 'call-packages' };
+    workspace.ecm = {
+      lateMinutes: 6,
+      riskMinutes: 15,
+      missedMinutes: 30,
+      styles: {
+        'Morning care': {
+          background: '#ffffff',
+          color: '#000000',
+          label: 'Morning',
+          duration: 55,
+          priority: 'High',
+          skills: [],
+          active: true,
+        },
+      },
+    };
+    const fixture = TestBed.createComponent(Rota);
+    await settle(fixture);
+    const editor = fixture.componentInstance as any;
+    editor.packageClient.set('client');
+    await settle(fixture);
+    editor.call = { ...editor.call, name: 'Morning care', start: '08:00' };
+    editor.callDefaults();
+    expect(editor.call.end).toBe('08:55');
+    expect(editor.call.priority).toBe('High');
+    expect(editor.service.data().calls[0].end).toBe('08:30');
+    fixture.destroy();
+  });
   it('renders call packages from the API without allocation workflow cards', async () => {
     TestBed.inject(ActivatedRoute).snapshot.data = { rotaSection: 'call-packages' };
     const fixture = TestBed.createComponent(Rota);
