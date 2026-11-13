@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Publish ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    name: Publish ${{ github.ref_name == 'main' && 'production' || 'live' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,8 +39,8 @@ jobs:
             echo "path=/var/www/admin/" >> "$GITHUB_OUTPUT"
             echo "url=https://admin.neuraledge.co.ke" >> "$GITHUB_OUTPUT"
           else
-            echo "path=/var/www/admin-staging/" >> "$GITHUB_OUTPUT"
-            echo "url=https://staging.neuraledge.co.ke" >> "$GITHUB_OUTPUT"
+            echo "path=/var/www/live/" >> "$GITHUB_OUTPUT"
+            echo "url=https://live.neuraledge.co.ke" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Configure SSH
