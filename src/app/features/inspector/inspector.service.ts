@@ -24,6 +24,7 @@ export class InspectorService {
   get store(): ManagementStore {
     return this.injector.get(ManagementStore);
   }
+  readonly clientsBackend?: import('./inspector-clients-api.service').InspectorClientsApi;
   readonly backend?: import('./inspector-provider-api.service').InspectorProviderApi;
   readonly company = computed(() => this.store.company());
   readonly companyId = computed(() => this.store.companyId());

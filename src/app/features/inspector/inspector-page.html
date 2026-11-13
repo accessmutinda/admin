@@ -11,6 +11,10 @@
         ><button class="primary" (click)="save()">
           <span class="material-symbols-outlined" aria-hidden="true">save</span>Save draft
         </button>
+      } @else if (data.clientsBackend) {
+        <button class="secondary" [disabled]="!data.clientsBackend.canViewProvider()" routerLink="/inspector/provider">
+          <span class="material-symbols-outlined" aria-hidden="true">event</span>Inspection details
+        </button>
       } @else {
         <button class="secondary" [disabled]="data.backend && (!data.backend.ready() || !data.backend.canEdit())" (click)="openModal('setup', 'Inspection details')">
           <span class="material-symbols-outlined" aria-hidden="true">event</span>Inspection details
@@ -18,7 +22,13 @@
       }
     </div>
   </div>
-  @if (data.backend && !data.backend.ready()) {
+  @if (data.clientsBackend && !data.clientsBackend.ready()) {
+    <section class="panel" [attr.role]="data.clientsBackend.error() ? 'alert' : 'status'">
+      <h2>{{ data.clientsBackend.loading() ? 'Loading service users' : 'Service users unavailable' }}</h2>
+      <p>{{ data.clientsBackend.error() || 'Connecting to the provider records…' }}</p>
+      <button class="secondary" [disabled]="data.clientsBackend.loading()" (click)="data.clientsBackend.load()">Retry</button>
+    </section>
+  } @else if (data.backend && !data.backend.ready()) {
     <section class="panel" [attr.role]="data.backend.error() ? 'alert' : 'status'">
       <h2>{{ data.backend.loading() ? 'Loading provider profile' : 'Provider profile unavailable' }}</h2>
       <p>{{ data.backend.error() || 'Connecting to the provider records…' }}</p>
@@ -1164,7 +1174,7 @@
           </h2>
           @if (page().path === 'service-users') {
             <p class="directory-caption">
-              Review care, risks and supporting evidence for each person.
+              {{ data.clientsBackend ? 'Review approved care and evidence shared with inspectors.' : 'Review care, risks and supporting evidence for each person.' }}
             </p>
           }
         </div>
@@ -1189,7 +1199,7 @@
               </button>
             </div>
           }
-          <button class="secondary" (click)="exportRegister()">
+          <button class="secondary" [disabled]="data.clientsBackend && !data.clientsBackend.canDownload()" (click)="exportRegister()">
             <span class="material-symbols-outlined" aria-hidden="true">download</span>Export CSV
           </button>
         </div>
@@ -1686,12 +1696,12 @@
                 @for (document of clientDocuments(person.id); track document.id) {
                   <div class="list-row">
                     <strong>{{ document.name }}</strong
-                    ><button class="secondary" (click)="downloadDocument(document)">
+                    ><button class="secondary" [disabled]="data.clientsBackend && !data.clientsBackend.canDownload()" (click)="downloadDocument(document)">
                       Download
                     </button>
                   </div>
                 } @empty {
-                  <p class="empty">No file evidence recorded for this person.</p>
+                  <p class="empty">{{ data.clientsBackend ? 'No documents have been shared with inspectors for this person.' : 'No file evidence recorded for this person.' }}</p>
                 }
               }
               @default {

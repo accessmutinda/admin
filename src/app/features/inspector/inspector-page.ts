@@ -171,20 +171,28 @@ export class InspectorPage {
   readonly locations = computed(() =>
     [...new Set(this.data.clients().map((c) => c.postcode))].filter(Boolean).sort(),
   );
-  readonly filteredRows = computed(() =>
-    this.register()
+  readonly filteredRows = computed(() => {
+    const directory = this.page().path === 'service-users';
+    const term = (directory ? this.search().trim() : this.search()).toLowerCase();
+    return this.register()
       .rows.filter(
         (r) =>
-          (!this.riskFilter() || r.cells.includes(this.riskFilter())) &&
-          (!this.fundingFilter() || r.cells.includes(this.fundingFilter())) &&
+          (!this.riskFilter() ||
+            (directory ? r.cells[4] === this.riskFilter() : r.cells.includes(this.riskFilter()))) &&
+          (!this.fundingFilter() ||
+            (directory
+              ? r.cells[5] === this.fundingFilter()
+              : r.cells.includes(this.fundingFilter()))) &&
           (!this.locationFilter() ||
             this.data.clients().find((c) => c.id === r.id)?.postcode === this.locationFilter()) &&
-          (!this.search() ||
-            r.cells.join(' ').toLowerCase().includes(this.search().toLowerCase())) &&
-          (!this.statusFilter() || r.cells.includes(this.statusFilter())),
+          (!term || r.cells.join(' ').toLowerCase().includes(term)) &&
+          (!this.statusFilter() ||
+            (directory
+              ? r.cells[6] === this.statusFilter()
+              : r.cells.includes(this.statusFilter()))),
       )
-      .sort((a, b) => a.cells[0].localeCompare(b.cells[0]) * this.sortDirection()),
-  );
+      .sort((a, b) => a.cells[0].localeCompare(b.cells[0]) * this.sortDirection());
+  });
   readonly visibleRows = computed(() =>
     this.filteredRows().slice((this.currentPage() - 1) * 8, this.currentPage() * 8),
   );
@@ -239,6 +247,27 @@ export class InspectorPage {
   ]);
   readonly readyCount = computed(() => this.readiness().filter((r) => r.complete).length);
   constructor() {
+    if (this.data.clientsBackend) {
+      this.data.clientsBackend.start();
+      inject(DestroyRef).onDestroy(() => this.data.clientsBackend?.stop());
+      effect(() => {
+        const records = this.data.clients();
+        if (!this.data.clientsBackend?.ready()) {
+          this.client.set(null);
+          this.record.set(null);
+          this.modalOpen.set(false);
+          this.selected.set([]);
+          this.error.set('');
+        } else if (this.client()) {
+          const updated = records.find((row) => row.id === this.client()?.id);
+          this.client.set(updated ?? null);
+          const record = this.register().rows.find((row) => row.id === updated?.id);
+          this.record.set(record ?? null);
+          if (updated) this.modalTitle.set(updated.name);
+          if (!updated) this.modalOpen.set(false);
+        }
+      });
+    }
     if (this.data.backend) {
       this.data.backend.start();
       inject(DestroyRef).onDestroy(() => this.data.backend?.stop());
@@ -291,6 +320,12 @@ export class InspectorPage {
   }
   private readonly providerDates = new CompanyDatePipe();
   date(value: string | undefined): string {
+    if (this.data.clientsBackend)
+      return this.providerDates.transform(
+        value,
+        this.data.clientsBackend.value()?.meta.timezone,
+        'date',
+      );
     if (this.data.backend)
       return this.providerDates.transform(value, this.data.backend.value()?.meta.timezone, 'date');
     if (!value) return 'Not recorded';
@@ -547,6 +582,20 @@ export class InspectorPage {
     else this.modalError.set(this.error());
   }
   exportRegister(): void {
+    if (this.data.clientsBackend) {
+      this.error.set('');
+      void this.data.clientsBackend
+        .export({
+          q: this.search(),
+          ordering: this.sortDirection() === 1 ? 'name' : '-name',
+          risk: this.riskFilter(),
+          funding: this.fundingFilter(),
+          postcode: this.locationFilter(),
+          status: this.statusFilter(),
+        })
+        .catch((error) => this.error.set(error.message));
+      return;
+    }
     const register = this.register();
     download(
       csv([register.columns, ...this.filteredRows().map((r) => r.cells)]),
@@ -555,6 +604,15 @@ export class InspectorPage {
     );
   }
   downloadDocument(document: InspectorDocument): void {
+    if (this.data.clientsBackend) {
+      this.error.set('');
+      this.modalError.set('');
+      void this.data.clientsBackend.download(document.id).catch((error) => {
+        this.error.set(error.message);
+        if (this.modalOpen()) this.modalError.set(error.message);
+      });
+      return;
+    }
     if (this.data.backend) {
       void this.data.backend.download(document.id).catch((error) => this.error.set(error.message));
       return;
@@ -704,14 +762,18 @@ export class InspectorPage {
           metric(
             'High risk',
             this.data.clients().filter((c) => this.clientRisk(c) === 'High').length,
-            'Recorded clinical risk level',
+            this.data.clientsBackend
+              ? 'Shared approved clinical risk level'
+              : 'Recorded clinical risk level',
             'health_and_safety',
             '#f59216',
           ),
           metric(
             'Risk not assessed',
             this.data.clients().filter((c) => this.clientRisk(c) === 'Not assessed').length,
-            'No recorded clinical risk level',
+            this.data.clientsBackend
+              ? 'No shared clinical risk level'
+              : 'No recorded clinical risk level',
             'assignment_late',
             '#9434ed',
           ),

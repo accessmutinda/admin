@@ -15,6 +15,194 @@ export type InspectorAddressRead = {
   country: string | null;
 };
 
+export type InspectorClientCompanyRead = {
+  logo_available: boolean;
+  head_office_address: string | null;
+  postcode: string | null;
+  id: string;
+  name: string;
+  code: string;
+  active: boolean;
+  sector: string | null;
+  registered_places: number | null;
+  updated_at: string;
+};
+
+export type InspectorClientDocumentRead = {
+  id: string;
+  service_user_id: string;
+  name: string;
+  category: string;
+  version: number;
+  updated: string;
+  expiry: string | null;
+  content_type: string;
+  size: number;
+  owner: string | null;
+  status: string;
+};
+
+export type InspectorClientExportQuery = {
+  ordering?: 'name' | '-name';
+  q?: string;
+  risk?: '' | 'High' | 'Medium' | 'Low' | 'Not assessed';
+  funding?: '' | 'Local authority' | 'Private' | 'NHS';
+  postcode?: string;
+  status?: '' | 'Active' | 'Inactive';
+};
+
+export type InspectorClientInstructionRead = {
+  name: string;
+  instructions: string;
+  preferences: string;
+  escalation: string;
+  outcome: string;
+  actions: string;
+  client: string;
+};
+
+export type InspectorClientMetaRead = {
+  company_id: string;
+  as_of: string;
+  timezone: string;
+  request_id: string;
+  filters: Record<string, number>;
+  disclosure: string;
+};
+
+export type InspectorClientPage = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: {
+    id: string;
+    version: number;
+    name: string;
+    reference: string;
+    address: string;
+    postcode: string;
+    funding: 'Local authority' | 'Private' | 'NHS';
+    priority: 'Standard' | 'High';
+    active: boolean;
+    updated_at: string;
+    sections: Record<string, Record<string, string>>;
+    risks: {
+      id: string;
+      name: string;
+      detail: string;
+      date: string;
+      level: 'Low' | 'Medium' | 'High';
+      status: 'Active';
+    }[];
+    instructions: {
+      name: string;
+      instructions: string;
+      preferences: string;
+      escalation: string;
+      outcome: string;
+      actions: string;
+      client: string;
+    }[];
+    documents: {
+      id: string;
+      service_user_id: string;
+      name: string;
+      category: string;
+      version: number;
+      updated: string;
+      expiry: string | null;
+      content_type: string;
+      size: number;
+      owner: string | null;
+      status: string;
+    }[];
+  }[];
+  company: {
+    logo_available: boolean;
+    head_office_address: string | null;
+    postcode: string | null;
+    id: string;
+    name: string;
+    code: string;
+    active: boolean;
+    sector: string | null;
+    registered_places: number | null;
+    updated_at: string;
+  };
+  inspection: {
+    id: string | null;
+    version: number;
+    etag: string;
+    type: string | null;
+    start: string | null;
+    end: string | null;
+    updated: string | null;
+    by: string | null;
+  };
+  capabilities: Record<string, boolean>;
+  meta: {
+    company_id: string;
+    as_of: string;
+    timezone: string;
+    request_id: string;
+    filters: Record<string, number>;
+    disclosure: string;
+  };
+};
+
+export type InspectorClientRead = {
+  id: string;
+  version: number;
+  name: string;
+  reference: string;
+  address: string;
+  postcode: string;
+  funding: 'Local authority' | 'Private' | 'NHS';
+  priority: 'Standard' | 'High';
+  active: boolean;
+  updated_at: string;
+  sections: Record<string, Record<string, string>>;
+  risks: {
+    id: string;
+    name: string;
+    detail: string;
+    date: string;
+    level: 'Low' | 'Medium' | 'High';
+    status: 'Active';
+  }[];
+  instructions: {
+    name: string;
+    instructions: string;
+    preferences: string;
+    escalation: string;
+    outcome: string;
+    actions: string;
+    client: string;
+  }[];
+  documents: {
+    id: string;
+    service_user_id: string;
+    name: string;
+    category: string;
+    version: number;
+    updated: string;
+    expiry: string | null;
+    content_type: string;
+    size: number;
+    owner: string | null;
+    status: string;
+  }[];
+};
+
+export type InspectorClientRiskRead = {
+  id: string;
+  name: string;
+  detail: string;
+  date: string;
+  level: 'Low' | 'Medium' | 'High';
+  status: 'Active';
+};
+
 export type InspectorCompanyRead = {
   id: string;
   name: string;

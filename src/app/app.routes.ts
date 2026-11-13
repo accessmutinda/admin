@@ -1,3 +1,4 @@
+import { InspectorClientsService } from './features/inspector/inspector-clients.service';
 import { isConnectedStaffPortalRoute } from './core/access/staff-portal-routes';
 import { InspectorService } from './features/inspector/inspector.service';
 import { InspectorProviderService } from './features/inspector/inspector-provider.service';
@@ -125,7 +126,9 @@ export const routes: Routes = [
         providers:
           page === 'provider'
             ? [{ provide: InspectorService, useClass: InspectorProviderService }]
-            : [],
+            : page === 'service-users'
+              ? [{ provide: InspectorService, useClass: InspectorClientsService }]
+              : [],
         title: `${page.replaceAll('-', ' ')} · Inspector Portal · CareVerity`,
         loadComponent: () =>
           import('./features/inspector/inspector-page').then((m) => m.InspectorPage),

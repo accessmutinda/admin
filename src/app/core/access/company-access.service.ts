@@ -209,6 +209,7 @@ export function routeAccess(url: string): [string, string][] {
   if (path.startsWith('/inspector')) {
     const area = path.split('/')[2] ?? '';
     const map: Record<string, string> = {
+      'service-users': 'clients',
       clients: 'clients',
       staff: 'staff',
       medication: 'medication',
