@@ -98,6 +98,24 @@ describe('CareVerity API authentication', () => {
     vi.useRealTimers();
   });
 
+  it('opens account setup while onboarding and reports password-only sign-in accurately', async () => {
+    profile = {
+      ...companyUser,
+      platform_roles: ['CW'],
+      home_path: '/account/security',
+      authentication: { mfa_required: false, mfa_verified_at: new Date().toISOString() },
+    };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    expect(auth.nextRoute()).toBe('/account/security');
+    expect(auth.currentUser()?.mfaEnabled).toBe(false);
+  });
+
+  it('opens the server-authorised staff portal after sign-in', async () => {
+    profile = { ...companyUser, platform_roles: ['CW'], home_path: '/staff-portal/dashboard' };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    expect(auth.nextRoute()).toBe('/staff-portal/dashboard');
+  });
+
   it('sends CSRF and credentials, loads /me and enters the assigned company without persisting a token', async () => {
     await firstValueFrom(auth.signIn(' person@example.com ', 'password'));
     expect(fetchMock.mock.calls[0][0]).toBe('https://care.neuraledge.co.ke/api/v1/auth/csrf');

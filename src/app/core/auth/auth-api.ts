@@ -21,7 +21,9 @@ export interface MeProfile {
   company_entry_state:
     'platform' | 'ready' | 'pending_setup' | 'suspended' | 'archived' | 'unavailable' | 'no_access';
   can_select_workspace: boolean;
+  home_path?: string;
   authentication?: {
+    mfa_required?: boolean;
     mfa_verified_at?: string | null;
     primary_method?: string;
     trusted_device_used?: boolean;

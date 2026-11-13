@@ -55,3 +55,42 @@ describe('Account security API identity', () => {
     });
   }
 });
+
+describe('New staff account setup', () => {
+  it('keeps onboarding staff in account setup and reports MFA off accurately', () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            profile: () => ({
+              home_path: '/account/security',
+              authentication: { mfa_required: false },
+            }),
+            currentUser: () => ({
+              name: 'John Smith',
+              initials: 'JS',
+              email: 'jsmith@careverity.com',
+              roleCode: 'CW',
+              mfaEnabled: false,
+              mfaMethod: null,
+            }),
+            session: () => ({ mfaVerified: false, signedInAt: null }),
+          },
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(SecuritySettings);
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Your sign-in account is ready');
+    expect(text).toContain('active staff record and enabled permissions');
+    expect(text).toContain('MFA off');
+    expect(text).not.toContain('Your sign-in uses an additional verification step');
+    expect(fixture.nativeElement.querySelector('a[href="/manage/companies"]')).toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('a[href="/account/change-password"]'),
+    ).not.toBeNull();
+  });
+});
