@@ -23,7 +23,7 @@
       <a class="hr-button" routerLink="/manage/people/users">User Management</a>
     }
 
-    @if (hr.can('create')) {
+    @if (canAddStaff()) {
       <a
         class="hr-button primary"
         routerLink="/manage/recruitment"
@@ -221,13 +221,12 @@
           }
         </div>
       </section>
-      <section cvQuickActions headingId="hr-quick-actions" [actionCount]="hr.can('create') ? 6 : 5">
-        @if (hr.can('create')) {
+      <section cvQuickActions headingId="hr-quick-actions" [actionCount]="canAddStaff() ? 6 : 5">
+        @if (canAddStaff()) {
           <a
             class="co-primary"
-            [routerLink]="null"
-            aria-disabled="true"
-            title="Staff creation is not available yet"
+            routerLink="/manage/recruitment"
+            title="Create staff from an accepted recruitment offer"
             ><span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add Staff
             Member</a
           >

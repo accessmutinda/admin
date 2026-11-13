@@ -32,6 +32,13 @@ import { HrService } from './hr.service';
 export class HrWorkspace {
   protected readonly hr = inject(HrService);
   protected readonly api = inject(PeopleApiService);
+  protected readonly canAddStaff = computed(
+    () =>
+      this.hr.can('create') &&
+      this.api.access.canPath('/manage/recruitment') &&
+      this.api.access.can('people', 'recruitment', 'create') &&
+      this.api.access.can('people', 'onboarding', 'create'),
+  );
   protected readonly company = computed(() => {
     const value = this.api.summary()?.company;
     return value
