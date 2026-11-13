@@ -2,6 +2,7 @@
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
@@ -51,6 +52,16 @@ def render(schema):
             "boolean": "boolean",
         }.get(schema.get("type"), "unknown")
     return result + (" | null" if schema.get("nullable") else "")
+
+
+inspector_names = [name for name in schemas if name.startswith("Inspector")]
+inspector_target = root / "src/app/features/inspector/inspector-provider.generated.ts"
+inspector_target.write_text("// Generated from backend OpenAPI.\n\n" + "\n\n".join(
+    "export type " + name + " = " + render(schemas[name]) + ";" for name in inspector_names
+) + "\n")
+subprocess.run(["npx", "prettier", "--write", str(inspector_target)], cwd=root, check=True, capture_output=True)
+if "--only-inspector" in sys.argv:
+    raise SystemExit(0)
 
 
 output = "// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.\n\n"

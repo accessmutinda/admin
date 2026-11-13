@@ -1,8 +1,9 @@
-// Generated from the backend inspector provider OpenAPI contract.
+// Generated from backend OpenAPI.
+
 export type InspectorError = {
   code: string;
   detail: string;
-  field_errors: Record<string, unknown>;
+  field_errors: {};
   request_id: string;
 };
 
@@ -365,7 +366,7 @@ export type InspectorEngagementPage = {
     version: number;
     etag: string;
   }[];
-  meta: Record<string, Record<string, unknown>>;
+  meta: Record<string, {}>;
 };
 
 export type InspectorEngagementQuery = {
@@ -405,12 +406,373 @@ export type InspectorEvidenceRead = {
   scan_state: string;
 };
 
+export type InspectorFindingRead = {
+  id: string;
+  version: number;
+  question: 'Safe' | 'Effective' | 'Caring' | 'Responsive' | 'Well-led';
+  type: 'Strength' | 'Concern' | 'Required action';
+  text: string;
+  owner: string;
+  due: string;
+  status: 'Open' | 'In progress' | 'Completed';
+  evidenceIds: string[];
+  at: string;
+  by: string;
+};
+
+export type InspectorFindingWrite = {
+  question: 'Safe' | 'Effective' | 'Caring' | 'Responsive' | 'Well-led';
+  type: 'Strength' | 'Concern' | 'Required action';
+  text: string;
+  owner: string;
+  due: string | null;
+  status: 'Open' | 'In progress' | 'Completed';
+  evidenceIds: string[];
+  evidenceVersions: Record<string, number>;
+};
+
+export type InspectorIncidentPage = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: {
+    id: string;
+    source_id: string;
+    source_type: 'care' | 'visit';
+    version: number;
+    name: string;
+    detail: string;
+    client: string;
+    client_id: string;
+    date: string;
+    category: 'Incident' | 'Safeguarding';
+    level: string | null;
+    status: string;
+    reviewed: boolean;
+    updated_at: string;
+  }[];
+  findings: {
+    id: string;
+    version: number;
+    question: 'Safe' | 'Effective' | 'Caring' | 'Responsive' | 'Well-led';
+    type: 'Strength' | 'Concern' | 'Required action';
+    text: string;
+    owner: string;
+    due: string;
+    status: 'Open' | 'In progress' | 'Completed';
+    evidenceIds: string[];
+    at: string;
+    by: string;
+  }[];
+  company: {
+    logo_available: boolean;
+    head_office_address: string | null;
+    postcode: string | null;
+    id: string;
+    name: string;
+    code: string;
+    active: boolean;
+    sector: string | null;
+    registered_places: number | null;
+    updated_at: string;
+  };
+  inspection: {
+    id: string | null;
+    version: number;
+    etag: string;
+    type: string | null;
+    start: string | null;
+    end: string | null;
+    updated: string | null;
+    by: string | null;
+  };
+  summary: {
+    recorded: number;
+    safeguarding: number;
+    awaiting_review: number;
+    reviewed: number;
+    concerns: number;
+    required_actions: number;
+    completed_actions: number;
+  };
+  capabilities: Record<string, boolean>;
+  meta: {
+    company_id: string;
+    as_of: string;
+    timezone: string;
+    request_id: string;
+    filters: Record<string, number>;
+    disclosure: string;
+  };
+};
+
+export type InspectorIncidentRead = {
+  id: string;
+  source_id: string;
+  source_type: 'care' | 'visit';
+  version: number;
+  name: string;
+  detail: string;
+  client: string;
+  client_id: string;
+  date: string;
+  category: 'Incident' | 'Safeguarding';
+  level: string | null;
+  status: string;
+  reviewed: boolean;
+  updated_at: string;
+};
+
+export type InspectorIncidentSummary = {
+  recorded: number;
+  safeguarding: number;
+  awaiting_review: number;
+  reviewed: number;
+  concerns: number;
+  required_actions: number;
+  completed_actions: number;
+};
+
 export type InspectorLocationRead = {
   id: string;
   name: string;
   type: string | null;
   registered_places: number | null;
   status: string;
+};
+
+export type InspectorMedicationAdministration = {
+  id: string;
+  version: number;
+  medicationId: string;
+  medication: string;
+  date: string;
+  time: string;
+  outcome: string;
+  reason: string;
+  response: string;
+  witness: string;
+  by: string;
+  at: string;
+  doseUnits: string;
+  correctionOf: string | null;
+  superseded: boolean;
+};
+
+export type InspectorMedicationAdministrationDetail = {
+  id: string;
+  version: number;
+  medicationId: string;
+  medication: string;
+  date: string;
+  time: string;
+  outcome: string;
+  reason: string;
+  response: string;
+  witness: string;
+  by: string;
+  at: string;
+  doseUnits: string;
+  correctionOf: string | null;
+  superseded: boolean;
+  client: string;
+  clientId: string;
+};
+
+export type InspectorMedicationClient = {
+  id: string;
+  name: string;
+  prescriptions: {
+    status: string;
+    id: string;
+    version: number;
+    name: string;
+    strength: string;
+    dose: string;
+    route: string;
+    frequency: string;
+    times: string[];
+    start: string;
+    end: string | null;
+    controlled: boolean;
+    discontinuedAt: string;
+    indication: string;
+    prescriber: string;
+    pharmacy: string;
+    stock: string | null;
+    stockLocation: string;
+    prnIndication: string;
+    prnMax: string | null;
+    notes: string;
+  }[];
+  administrations: {
+    id: string;
+    version: number;
+    medicationId: string;
+    medication: string;
+    date: string;
+    time: string;
+    outcome: string;
+    reason: string;
+    response: string;
+    witness: string;
+    by: string;
+    at: string;
+    doseUnits: string;
+    correctionOf: string | null;
+    superseded: boolean;
+  }[];
+};
+
+export type InspectorMedicationExportQuery = {
+  q?: string;
+  ordering?: 'name' | '-name';
+  view?: 'Overview' | 'Controlled drugs' | 'PRN prescriptions' | 'Medication profiles';
+  client?: string;
+  start?: string;
+  end?: string;
+};
+
+export type InspectorMedicationPage = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: {
+    id: string;
+    name: string;
+    prescriptions: {
+      status: string;
+      id: string;
+      version: number;
+      name: string;
+      strength: string;
+      dose: string;
+      route: string;
+      frequency: string;
+      times: string[];
+      start: string;
+      end: string | null;
+      controlled: boolean;
+      discontinuedAt: string;
+      indication: string;
+      prescriber: string;
+      pharmacy: string;
+      stock: string | null;
+      stockLocation: string;
+      prnIndication: string;
+      prnMax: string | null;
+      notes: string;
+    }[];
+    administrations: {
+      id: string;
+      version: number;
+      medicationId: string;
+      medication: string;
+      date: string;
+      time: string;
+      outcome: string;
+      reason: string;
+      response: string;
+      witness: string;
+      by: string;
+      at: string;
+      doseUnits: string;
+      correctionOf: string | null;
+      superseded: boolean;
+    }[];
+  }[];
+  company: {
+    logo_available: boolean;
+    head_office_address: string | null;
+    postcode: string | null;
+    id: string;
+    name: string;
+    code: string;
+    active: boolean;
+    sector: string | null;
+    registered_places: number | null;
+    updated_at: string;
+  };
+  inspection: {
+    id: string | null;
+    version: number;
+    etag: string;
+    type: string | null;
+    start: string | null;
+    end: string | null;
+    updated: string | null;
+    by: string | null;
+  };
+  summary: {
+    active_prescriptions: number;
+    prescriptions: number;
+    administrations: number;
+  };
+  capabilities: Record<string, boolean>;
+  meta: {
+    company_id: string;
+    as_of: string;
+    timezone: string;
+    request_id: string;
+    filters: Record<string, number>;
+    disclosure: string;
+  };
+};
+
+export type InspectorMedicationPrescription = {
+  status: string;
+  id: string;
+  version: number;
+  name: string;
+  strength: string;
+  dose: string;
+  route: string;
+  frequency: string;
+  times: string[];
+  start: string;
+  end: string | null;
+  controlled: boolean;
+  discontinuedAt: string;
+  indication: string;
+  prescriber: string;
+  pharmacy: string;
+  stock: string | null;
+  stockLocation: string;
+  prnIndication: string;
+  prnMax: string | null;
+  notes: string;
+};
+
+export type InspectorMedicationPrescriptionDetail = {
+  status: string;
+  id: string;
+  version: number;
+  name: string;
+  strength: string;
+  dose: string;
+  route: string;
+  frequency: string;
+  times: string[];
+  start: string;
+  end: string | null;
+  controlled: boolean;
+  discontinuedAt: string;
+  indication: string;
+  prescriber: string;
+  pharmacy: string;
+  stock: string | null;
+  stockLocation: string;
+  prnIndication: string;
+  prnMax: string | null;
+  notes: string;
+  client: string;
+  clientId: string;
+};
+
+export type InspectorMedicationSummary = {
+  active_prescriptions: number;
+  prescriptions: number;
+  administrations: number;
 };
 
 export type InspectorPrimaryRead = {
@@ -539,4 +901,234 @@ export type InspectorProviderRead = {
 
 export type InspectorRevokeWrite = {
   reason: string;
+};
+
+export type InspectorStaffCheck = {
+  code: string;
+  id: string;
+  title: string;
+  status: string;
+  current: boolean;
+  completed: string | null;
+  expiry: string | null;
+  effective_state: string;
+};
+
+export type InspectorStaffDocument = {
+  id: string;
+  name: string;
+  category: string;
+  expiry: string | null;
+  status: string;
+  version: number;
+  source: string;
+};
+
+export type InspectorStaffExportQuery = {
+  q?: string;
+  ordering?: 'name' | '-name';
+};
+
+export type InspectorStaffPage = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: {
+    id: string;
+    person_id: string;
+    version: number;
+    name: string;
+    role: string | null;
+    location: string | null;
+    reference: string | null;
+    department: string | null;
+    employment_type: string;
+    status: string;
+    checks: {
+      code: string;
+      id: string;
+      title: string;
+      status: string;
+      current: boolean;
+      completed: string | null;
+      expiry: string | null;
+      effective_state: string;
+    }[];
+    training: {
+      id: string;
+      course_id: string;
+      course_version: number;
+      completed_at: string | null;
+      title: string;
+      completed: string | null;
+      expiry: string | null;
+      current: boolean;
+      competency: 'Not assessed' | 'Competent' | 'Needs development';
+      source: 'HR' | 'Academy';
+      certificate_id: string | null;
+      status: string;
+    }[];
+    references: {
+      id: string;
+      name: string;
+      organisation: string;
+      status: string;
+    }[];
+    documents: {
+      id: string;
+      name: string;
+      category: string;
+      expiry: string | null;
+      status: string;
+      version: number;
+      source: string;
+    }[];
+    updated_at: string;
+  }[];
+  company: {
+    logo_available: boolean;
+    head_office_address: string | null;
+    postcode: string | null;
+    id: string;
+    name: string;
+    code: string;
+    active: boolean;
+    sector: string | null;
+    registered_places: number | null;
+    updated_at: string;
+  };
+  inspection: {
+    id: string | null;
+    version: number;
+    etag: string;
+    type: string | null;
+    start: string | null;
+    end: string | null;
+    updated: string | null;
+    by: string | null;
+  };
+  summary: {
+    total_staff: number;
+    open_vacancies: number;
+    verified_dbs: number;
+    training_certificates: number;
+    pipeline: Record<string, number>;
+    training: {
+      id: string;
+      name: string;
+      current: number;
+      expired: number;
+      missing: number;
+      competent: number;
+    }[];
+  };
+  capabilities: Record<string, boolean>;
+  meta: {
+    company_id: string;
+    as_of: string;
+    timezone: string;
+    request_id: string;
+    filters: Record<string, number>;
+    disclosure: string;
+  };
+};
+
+export type InspectorStaffRead = {
+  id: string;
+  person_id: string;
+  version: number;
+  name: string;
+  role: string | null;
+  location: string | null;
+  reference: string | null;
+  department: string | null;
+  employment_type: string;
+  status: string;
+  checks: {
+    code: string;
+    id: string;
+    title: string;
+    status: string;
+    current: boolean;
+    completed: string | null;
+    expiry: string | null;
+    effective_state: string;
+  }[];
+  training: {
+    id: string;
+    course_id: string;
+    course_version: number;
+    completed_at: string | null;
+    title: string;
+    completed: string | null;
+    expiry: string | null;
+    current: boolean;
+    competency: 'Not assessed' | 'Competent' | 'Needs development';
+    source: 'HR' | 'Academy';
+    certificate_id: string | null;
+    status: string;
+  }[];
+  references: {
+    id: string;
+    name: string;
+    organisation: string;
+    status: string;
+  }[];
+  documents: {
+    id: string;
+    name: string;
+    category: string;
+    expiry: string | null;
+    status: string;
+    version: number;
+    source: string;
+  }[];
+  updated_at: string;
+};
+
+export type InspectorStaffReference = {
+  id: string;
+  name: string;
+  organisation: string;
+  status: string;
+};
+
+export type InspectorStaffSummary = {
+  total_staff: number;
+  open_vacancies: number;
+  verified_dbs: number;
+  training_certificates: number;
+  pipeline: Record<string, number>;
+  training: {
+    id: string;
+    name: string;
+    current: number;
+    expired: number;
+    missing: number;
+    competent: number;
+  }[];
+};
+
+export type InspectorStaffTraining = {
+  id: string;
+  course_id: string;
+  course_version: number;
+  completed_at: string | null;
+  title: string;
+  completed: string | null;
+  expiry: string | null;
+  current: boolean;
+  competency: 'Not assessed' | 'Competent' | 'Needs development';
+  source: 'HR' | 'Academy';
+  certificate_id: string | null;
+  status: string;
+};
+
+export type InspectorStaffTrainingSummary = {
+  id: string;
+  name: string;
+  current: number;
+  expired: number;
+  missing: number;
+  competent: number;
 };
