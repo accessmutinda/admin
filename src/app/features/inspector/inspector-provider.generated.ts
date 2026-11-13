@@ -899,6 +899,211 @@ export type InspectorProviderRead = {
   request_id: string;
 };
 
+export type InspectorQualityAction = {
+  id: string;
+  version: number;
+  assessment_id: string | null;
+  title: string;
+  owner_name: string;
+  due: string;
+  priority: 'Standard' | 'High';
+  status: 'Open' | 'In progress' | 'Completed';
+  resolution: string;
+};
+
+export type InspectorQualityAssessment = {
+  id: string;
+  version: number;
+  template_code: string;
+  title: string;
+  subject_name: string | null;
+  assessor_name: string | null;
+  date: string;
+  review_date: string | null;
+  context: string;
+  status: 'Draft' | 'Scheduled' | 'Submitted' | 'Signed off';
+  answers: Record<string, string>;
+  outcome: string;
+  recommendations: string;
+  signature: {
+    name: string;
+    role: string;
+    at: string;
+    declaration: boolean;
+  } | null;
+  evidence: {
+    id: string;
+    version: number;
+    name: string;
+    content_type: string;
+    size: number;
+    caption: string;
+  }[];
+  audit: {
+    id: string;
+    at: string;
+    actor: string;
+    action: string;
+    detail: string;
+  }[];
+};
+
+export type InspectorQualityAudit = {
+  id: string;
+  at: string;
+  actor: string;
+  action: string;
+  detail: string;
+};
+
+export type InspectorQualityEvidence = {
+  id: string;
+  version: number;
+  name: string;
+  content_type: string;
+  size: number;
+  caption: string;
+};
+
+export type InspectorQualityMeta = {
+  company_id: string;
+  as_of: string;
+  timezone: string;
+  request_id: string;
+  filters: Record<string, number>;
+  disclosure: string;
+  revision: string;
+};
+
+export type InspectorQualityPage = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: {
+    id: string;
+    version: number;
+    template_code: string;
+    title: string;
+    subject_name: string | null;
+    assessor_name: string | null;
+    date: string;
+    review_date: string | null;
+    context: string;
+    status: 'Draft' | 'Scheduled' | 'Submitted' | 'Signed off';
+    answers: Record<string, string>;
+    outcome: string;
+    recommendations: string;
+    signature: {
+      name: string;
+      role: string;
+      at: string;
+      declaration: boolean;
+    } | null;
+    evidence: {
+      id: string;
+      version: number;
+      name: string;
+      content_type: string;
+      size: number;
+      caption: string;
+    }[];
+    audit: {
+      id: string;
+      at: string;
+      actor: string;
+      action: string;
+      detail: string;
+    }[];
+  }[];
+  actions: {
+    id: string;
+    version: number;
+    assessment_id: string | null;
+    title: string;
+    owner_name: string;
+    due: string;
+    priority: 'Standard' | 'High';
+    status: 'Open' | 'In progress' | 'Completed';
+    resolution: string;
+  }[];
+  findings: {
+    id: string;
+    version: number;
+    question: 'Safe' | 'Effective' | 'Caring' | 'Responsive' | 'Well-led';
+    type: 'Strength' | 'Concern' | 'Required action';
+    text: string;
+    owner: string;
+    due: string;
+    status: 'Open' | 'In progress' | 'Completed';
+    evidenceIds: string[];
+    at: string;
+    by: string;
+  }[];
+  company: {
+    logo_available: boolean;
+    head_office_address: string | null;
+    postcode: string | null;
+    id: string;
+    name: string;
+    code: string;
+    active: boolean;
+    sector: string | null;
+    registered_places: number | null;
+    updated_at: string;
+  };
+  inspection: {
+    id: string | null;
+    version: number;
+    etag: string;
+    type: string | null;
+    start: string | null;
+    end: string | null;
+    updated: string | null;
+    by: string | null;
+  };
+  summary: {
+    assessments: number;
+    signed_off: number;
+    open_actions: number;
+    clean_evidence: number;
+    covered_questions: number;
+  };
+  preparation: {
+    registration_recorded: boolean;
+    findings_resolved: boolean | null;
+  };
+  capabilities: Record<string, boolean>;
+  meta: {
+    company_id: string;
+    as_of: string;
+    timezone: string;
+    request_id: string;
+    filters: Record<string, number>;
+    disclosure: string;
+    revision: string;
+  };
+};
+
+export type InspectorQualityPreparation = {
+  registration_recorded: boolean;
+  findings_resolved: boolean | null;
+};
+
+export type InspectorQualitySignature = {
+  name: string;
+  role: string;
+  at: string;
+  declaration: boolean;
+};
+
+export type InspectorQualitySummary = {
+  assessments: number;
+  signed_off: number;
+  open_actions: number;
+  clean_evidence: number;
+  covered_questions: number;
+};
+
 export type InspectorRevokeWrite = {
   reason: string;
 };
