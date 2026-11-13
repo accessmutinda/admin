@@ -21,6 +21,7 @@ export class CarePlanPersonalCare implements OnDestroy {
   readonly approved = input<PlanVersion>();
   readonly previous = input<PlanSection>();
   readonly editable = input(false);
+  readonly connected = input(false);
   readonly manager = input(false);
   readonly completed = input(0);
   readonly actor = input('Care manager');
@@ -200,6 +201,12 @@ export class CarePlanPersonalCare implements OnDestroy {
     this.changed();
   }
   generate() {
+    if (this.connected()) {
+      this.error.set(
+        'A wording provider is not configured. Record the assessed instructions directly.',
+      );
+      return;
+    }
     if (!this.editable()) return;
     const text = this.transcript().trim() || this.section.fields['situation'] || '';
     this.proposalBase = this.section.fields['situation'] || '';

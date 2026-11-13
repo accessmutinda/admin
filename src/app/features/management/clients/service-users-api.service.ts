@@ -137,7 +137,7 @@ export class ServiceUsersApi {
       },
     };
   }
-  private projectOverview(value: ServiceUserOverview): DirectoryUser {
+  projectOverview(value: ServiceUserOverview): DirectoryUser {
     const row = this.project(value.record),
       c = value.clinical;
     row.overview = value;

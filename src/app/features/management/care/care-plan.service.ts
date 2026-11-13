@@ -14,6 +14,7 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class CarePlanService {
+  readonly connected: boolean = false;
   readonly care = inject(CareService);
   canEdit() {
     return (
@@ -30,7 +31,7 @@ export class CarePlanService {
   read(id: string) {
     return this.care.client(id)?.file?.carePlan;
   }
-  initialise(id: string, workspace: string): string | null {
+  initialise(id: string, workspace: string): string | null | Promise<string | null> {
     if (this.read(id)) return null;
     const c = this.care.client(id);
     if (!c || !this.canEdit()) return 'Care management permission is required.';
@@ -58,7 +59,7 @@ export class CarePlanService {
     action: 'save' | 'submit' | 'approve' | 'return' | 'review' | 'package',
     reason = '',
     signature?: { name: string; confirmed: boolean },
-  ): string | null {
+  ): string | null | Promise<string | null> {
     const current = this.read(id),
       client = this.care.client(id),
       actor = this.care.auth.currentUser();

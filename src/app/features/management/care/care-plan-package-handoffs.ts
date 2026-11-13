@@ -1,12 +1,15 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CarePlanService } from './care-plan.service';
+import { CareDocumentsApi } from './care-documents-api.service';
+import { CarePlanApi } from './care-plan-api.service';
 import { PackageHandoff } from './care-plan.models';
 
 @Component({
   selector: 'cv-care-plan-package-handoffs',
+  providers: [CareDocumentsApi, CarePlanApi],
   imports: [FormsModule, DatePipe, RouterLink],
   styleUrls: [
     './care-shared.css',
@@ -36,8 +39,8 @@ import { PackageHandoff } from './care-plan.models';
           : 'Simulated handoff only. These steps do not alter recurring calls or published allocations.'
       }}
     </p>
-    @if (error()) {
-      <p class="message error" role="alert">{{ error() }}</p>
+    @if (error() || (connected() && api.error())) {
+      <p class="message error" role="alert">{{ error() || api.error() }}</p>
     }
     @if (notice()) {
       <p class="message success" role="status">{{ notice() }}</p>
@@ -59,7 +62,7 @@ import { PackageHandoff } from './care-plan.models';
             </li>
           }
         </ol>
-        @if (row.handoff.status === 'Authorised' && service.canEdit()) {
+        @if (row.handoff.status === 'Authorised' && canManage()) {
           <button
             type="button"
             class="button primary"
@@ -68,12 +71,14 @@ import { PackageHandoff } from './care-plan.models';
             Send to rota queue
           </button>
         }
-        @if (row.handoff.status === 'Awaiting rota update' && rotaMode() && service.canEdit()) {
+        @if (row.handoff.status === 'Awaiting rota update' && rotaMode() && canManage()) {
           <label
-            >Simulated update / completion note<textarea
+            >{{
+              connected() ? 'Rota update / completion note' : 'Simulated update / completion note'
+            }}<textarea
               rows="2"
               [(ngModel)]="notes[row.handoff.id]"
-              placeholder="Describe the demo package update and outcome"
+              placeholder="Describe the package update and outcome"
             ></textarea>
           </label>
           <button
@@ -81,7 +86,7 @@ import { PackageHandoff } from './care-plan.models';
             class="button primary"
             (click)="advance(row.client.id, row.handoff, row.revision)"
           >
-            Complete simulated rota update
+            {{ connected() ? 'Complete rota update' : 'Complete simulated rota update' }}
           </button>
         }
         @if (row.handoff.note) {
@@ -108,7 +113,7 @@ import { PackageHandoff } from './care-plan.models';
       <p>
         {{
           connected()
-            ? 'An approved care-plan handoff service is not available. Existing call packages remain available below.'
+            ? 'No authorised care-plan recommendations are awaiting a rota update.'
             : 'No authorised recommendations yet. Save a package change in the care-plan review, then ask a different manager to authorise it.'
         }}
       </p>
@@ -121,6 +126,17 @@ export class CarePlanPackageHandoffs {
   readonly rotaMode = input(false);
   readonly changed = output<void>();
   protected readonly service = inject(CarePlanService);
+  protected readonly api = inject(CarePlanApi);
+  constructor() {
+    effect(() => {
+      if (this.connected()) this.api.connect(this.clientId());
+    });
+  }
+  protected canManage() {
+    return this.connected()
+      ? this.api.canRead() && this.api.canManageHandoffs()
+      : this.service.canEdit();
+  }
   protected readonly steps: PackageHandoff['status'][] = [
     'Authorised',
     'Awaiting rota update',
@@ -131,7 +147,7 @@ export class CarePlanPackageHandoffs {
   protected readonly notice = signal('');
   protected readonly rows = computed(() =>
     this.connected()
-      ? []
+      ? this.api.handoffRows()
       : this.service.care
           .clients()
           .filter((client) => !this.clientId() || client.id === this.clientId())
@@ -143,18 +159,23 @@ export class CarePlanPackageHandoffs {
             })),
           ),
   );
-  protected advance(clientId: string, handoff: PackageHandoff, revision: number) {
+  protected async advance(clientId: string, handoff: PackageHandoff, revision: number) {
     this.notice.set('');
-    const error = this.service.advancePackageHandoff(
+    const service = this.connected() ? this.api : this.service;
+    const error = await service.advancePackageHandoff(
       clientId,
-      this.service.care.store.companyId(),
+      service.care.store.companyId(),
       handoff.id,
       revision,
       this.notes[handoff.id] || '',
     );
     this.error.set(error || '');
     if (!error) {
-      this.notice.set('Demo handoff updated. Live rota unchanged.');
+      this.notice.set(
+        this.connected()
+          ? 'Care-package handoff updated.'
+          : 'Demo handoff updated. Live rota unchanged.',
+      );
       this.changed.emit();
     }
   }

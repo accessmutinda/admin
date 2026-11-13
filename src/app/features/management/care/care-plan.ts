@@ -48,6 +48,7 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe, Location } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CarePlanService } from './care-plan.service';
+import { CarePlanApi } from './care-plan-api.service';
 import {
   ABOUT_ME_FIELDS,
   BodyObservation,
@@ -92,6 +93,7 @@ import {
 })
 export class CarePlan implements OnDestroy {
   protected readonly service = inject(CarePlanService);
+  protected readonly api = this.service.connected ? (this.service as unknown as CarePlanApi) : null;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
@@ -116,6 +118,10 @@ export class CarePlan implements OnDestroy {
       .sort((a, b) => b.evidence.at.localeCompare(a.evidence.at));
   });
   protected setDemoScope(enabled: boolean) {
+    if (this.api) {
+      this.error.set('Production approval requires review of every configured care area.');
+      return;
+    }
     if (!this.plan || !this.editable()) return;
     this.plan.demoScope = enabled ? 'available-sections' : undefined;
   }
@@ -128,6 +134,10 @@ export class CarePlan implements OnDestroy {
     );
   }
   protected refreshHandoffRevision() {
+    if (this.api) {
+      void this.api.load(this.id).then(() => this.load(this.plan?.id));
+      return;
+    }
     this.record = structuredClone(this.service.read(this.id));
   }
   protected reviewedEvidence(id: string) {
@@ -191,12 +201,11 @@ export class CarePlan implements OnDestroy {
       'save',
       '',
     );
-    this.error.set(error || '');
-    if (!error) {
+    this.finish(error, () => {
       this.load(plan.id);
       this.cancelAboutEdit();
       this.notice.set('About Me changes saved.');
-    }
+    });
   }
   protected readonly careAreas = CARE_AREA_TABS;
   protected readonly workflowSteps = CARE_WORKFLOW_TABS;
@@ -332,6 +341,7 @@ export class CarePlan implements OnDestroy {
   protected reason = '';
   private clean = '';
   constructor() {
+    this.api?.connect(this.id);
     const stage = this.route.snapshot.queryParamMap.get('stage');
     this.tab = (stage && STAGE_TABS[stage]) || 'Overview';
     const requestedView = this.route.snapshot.queryParamMap.get('view');
@@ -380,6 +390,13 @@ export class CarePlan implements OnDestroy {
       this.changeDetector.markForCheck();
     });
     effect(() => {
+      if (this.api && !this.service.read(this.id)) {
+        this.record = undefined;
+        this.plan = undefined;
+        this.clean = JSON.stringify(undefined);
+        this.editingAboutMe = false;
+        this.aboutEditDirty = false;
+      }
       if (this.service.read(this.id) && !this.record) this.load();
     });
   }
@@ -398,21 +415,47 @@ export class CarePlan implements OnDestroy {
     this.signatureName = '';
     this.signatureConfirmed = false;
     this.clean = JSON.stringify(this.plan);
-    this.report = structuredClone(this.plan?.reviewReport || seededReviewReport());
+    this.report = structuredClone(
+      this.plan?.reviewReport ||
+        (this.api
+          ? { mode: 'Recorded', generatedAt: '', sources: [], findings: [] }
+          : seededReviewReport()),
+    );
     this.wordingProposals = [];
     this.wordingStatus = 'Ready';
   }
   protected start() {
-    this.error.set(this.service.initialise(this.id, this.workspace) || '');
-    this.load();
+    this.finish(this.service.initialise(this.id, this.workspace), () => this.load());
+  }
+  private finish(
+    result: string | null | Promise<string | null>,
+    success: () => void,
+  ): void | Promise<void> {
+    const apply = (error: string | null) => {
+      if (
+        error &&
+        this.api &&
+        this.api.read(this.id) &&
+        this.api.read(this.id)!.revision !== this.record?.revision
+      )
+        this.load(this.plan?.id);
+      this.error.set(error || '');
+      if (!error) success();
+      this.changeDetector.markForCheck();
+    };
+    if (result instanceof Promise) return result.then(apply);
+    apply(result);
   }
   protected editable() {
-    return this.plan?.status === 'Draft' && this.service.canEdit();
+    return (
+      this.plan?.status === 'Draft' && (this.api ? this.api.can('edit') : this.service.canEdit())
+    );
   }
   protected dirty() {
     return JSON.stringify(this.plan) !== this.clean;
   }
   canLeave() {
+    if (this.api?.saving() || this.api?.uploading()) return false;
     return (
       (!this.dirty() && !this.aboutEditDirty) ||
       window.confirm('Discard unsaved care-plan changes?')
@@ -720,8 +763,7 @@ export class CarePlan implements OnDestroy {
         ? { name: this.signatureName, confirmed: this.signatureConfirmed }
         : undefined,
     );
-    this.error.set(error || '');
-    if (!error) {
+    return this.finish(error, () => {
       this.notice.set(
         action === 'save'
           ? 'Draft saved. The approved plan and live rota are unchanged.'
@@ -730,7 +772,7 @@ export class CarePlan implements OnDestroy {
       this.load(action === 'review' ? 'working' : id);
       if (action === 'approve') void this.download();
       if (action === 'review') this.openWorkflowTab('Client details');
-    }
+    });
   }
   protected markComplete() {
     const error = sectionError(this.section);
@@ -813,6 +855,10 @@ export class CarePlan implements OnDestroy {
         ?.suggested || '';
   }
   protected loadWordingExample() {
+    if (this.api) {
+      this.error.set('Prepared example wording is unavailable for production records.');
+      return;
+    }
     if (!this.editable()) return;
     this.transcript = wordingExample(this.section, this.wordingScenario, this.fields).transcript;
     this.wordingProposals = [];
@@ -821,6 +867,12 @@ export class CarePlan implements OnDestroy {
     this.error.set('');
   }
   protected suggest() {
+    if (this.api) {
+      this.error.set(
+        'A wording provider is not configured. Record the assessed instructions directly.',
+      );
+      return;
+    }
     if (!this.editable()) return;
     if (!this.transcript.trim()) {
       this.error.set('Record or load a transcript first.');
@@ -905,6 +957,16 @@ export class CarePlan implements OnDestroy {
       .forEach((s) => (s.enabled = enabled));
   }
   protected runReview() {
+    if (this.api) {
+      this.report = structuredClone(
+        this.plan?.reviewReport || { mode: 'Recorded', generatedAt: '', sources: [], findings: [] },
+      );
+      this.reviewStatus = 'Checks from the saved care-plan inputs';
+      this.notice.set(
+        'Saved care-plan checks loaded. Save draft changes to recalculate the review.',
+      );
+      return;
+    }
     this.report.generatedAt = new Date().toISOString();
     this.reviewStatus = 'Review completed';
     this.selectedSource = undefined;
@@ -1052,6 +1114,16 @@ export class CarePlan implements OnDestroy {
       this.error.set('Choose a PNG or JPEG photograph under 350 KB.');
       return;
     }
+    if (this.api) {
+      try {
+        Object.assign(this.observation, await this.api.uploadPhoto(this.id, file));
+      } catch (error) {
+        this.error.set(
+          error instanceof Error ? error.message : 'The photograph could not be uploaded.',
+        );
+      }
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => (this.observation.photo = String(reader.result));
     reader.readAsDataURL(file);
@@ -1086,8 +1158,12 @@ export class CarePlan implements OnDestroy {
       },
     ];
     this.plan.body = [...this.plan.body.filter((o) => o.id !== b.id), structuredClone(b)];
-    this.save();
-    if (!this.error()) this.observation = this.blankObservation();
+    const result = this.save();
+    if (result instanceof Promise)
+      void result.then(() => {
+        if (!this.error()) this.observation = this.blankObservation();
+      });
+    else if (!this.error()) this.observation = this.blankObservation();
   }
   protected blankAssessment(): PlanAssessment {
     return {
@@ -1156,8 +1232,12 @@ export class CarePlan implements OnDestroy {
       s.review = a.review;
       s.complete = false;
     }
-    this.save();
-    if (!this.error()) this.assessment = this.blankAssessment();
+    const result = this.save();
+    if (result instanceof Promise)
+      void result.then(() => {
+        if (!this.error()) this.assessment = this.blankAssessment();
+      });
+    else if (!this.error()) this.assessment = this.blankAssessment();
   }
   protected get assessmentFields() {
     return ASSESSMENT_FIELDS[this.assessment.name] || [];
@@ -1167,6 +1247,12 @@ export class CarePlan implements OnDestroy {
     this.assessment.section = ASSESSMENT_AREAS[this.assessment.name] || 'About Me';
   }
   protected loadAssessmentExample() {
+    if (this.api) {
+      this.error.set(
+        'Prepared assessment examples are unavailable for production records. Enter the assessed findings.',
+      );
+      return;
+    }
     if (!this.editable()) return;
     const existing = this.plan!.assessments.find((a) => a.name === this.assessment.name);
     this.assessment = {
@@ -1176,6 +1262,10 @@ export class CarePlan implements OnDestroy {
     this.notice.set('Fictional assessment example loaded. Review the findings before saving.');
   }
   protected editAssessment(a: PlanAssessment) {
+    if (this.api && (a as any).source_revision) {
+      this.openServiceUserRecord('risks');
+      return;
+    }
     this.assessment = { ...structuredClone(a), fields: structuredClone(a.fields || {}) };
   }
 
@@ -1188,6 +1278,14 @@ export class CarePlan implements OnDestroy {
   }
   protected async previewPdf() {
     if (!this.plan || !this.service.care.rota.can('export')) return;
+    if (this.api) {
+      try {
+        await this.api.download(this.id, this.plan.id);
+      } catch (error) {
+        this.error.set(error instanceof Error ? error.message : 'Care-plan export is unavailable.');
+      }
+      return;
+    }
     if (['Approved', 'Superseded'].includes(this.plan.status)) {
       await this.download();
       return;
@@ -1201,6 +1299,14 @@ export class CarePlan implements OnDestroy {
   }
   protected async download(version?: PlanVersion) {
     const p = version || this.plan;
+    if (this.api && p) {
+      try {
+        await this.api.download(this.id, p.id);
+      } catch (error) {
+        this.error.set(error instanceof Error ? error.message : 'Care-plan export is unavailable.');
+      }
+      return;
+    }
     if (
       !p ||
       !['Approved', 'Superseded'].includes(p.status) ||

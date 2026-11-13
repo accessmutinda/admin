@@ -1,4 +1,10 @@
 <section class="care-register module-page">
+  @if (api?.loading()) {
+    <p role="status">Loading care plans…</p>
+  }
+  @if (api?.error()) {
+    <p class="message error" role="alert">{{ api?.error() }}</p>
+  }
   <header class="register-heading">
     <div>
       <p class="register-eyebrow">CARE DELIVERY / CARE PLANS</p>
@@ -24,7 +30,7 @@
       <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
       <div>
         <h2>Service users</h2>
-        <strong>{{ rows().length }}</strong>
+        <strong>{{ api ? (api.registerMetrics()?.users ?? '—') : rows().length }}</strong>
         <p>In this workspace</p>
       </div>
     </button>

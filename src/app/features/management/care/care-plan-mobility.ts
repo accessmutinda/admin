@@ -23,6 +23,7 @@ export class CarePlanMobility {
   readonly approved = input<PlanVersion>();
   readonly previous = input<PlanSection>();
   readonly editable = input(false);
+  readonly connected = input(false);
   readonly canAddDocuments = input(false);
   readonly manager = input(false);
   readonly actor = input('Care manager');
@@ -146,6 +147,10 @@ export class CarePlanMobility {
     }
   }
   applySuggestion() {
+    if (this.connected()) {
+      this.error.set('A wording provider is not configured. Record the reviewed changes directly.');
+      return;
+    }
     if (!this.editable()) return;
     const previous = this.section.fields['changes'] || '';
     if (this.section.fields['changes'] === this.suggestion) {

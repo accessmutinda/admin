@@ -24,7 +24,7 @@ export interface ReviewFinding {
   rationale: string;
 }
 export interface ReviewReport {
-  mode: 'Demo';
+  mode: 'Demo' | 'Recorded';
   generatedAt: string;
   sources: ReviewSource[];
   findings: ReviewFinding[];

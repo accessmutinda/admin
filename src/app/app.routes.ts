@@ -1,6 +1,7 @@
 import { AuthService } from './core/auth/auth.service';
 import { Router, Routes } from '@angular/router';
 import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
+import { CARE_PLAN_PROVIDERS } from './features/management/care/care-plan.providers';
 import {
   authGuard,
   managementAccessGuard,
@@ -378,6 +379,7 @@ export const routes: Routes = [
       },
       {
         path: 'care-plans/:id',
+        providers: CARE_PLAN_PROVIDERS,
         data: { module: 'Care delivery', carePlanWorkspace: true },
         title: 'Care plan workspace · CareVerity',
         canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
@@ -385,6 +387,7 @@ export const routes: Routes = [
       },
       {
         path: 'care-plans',
+        providers: CARE_PLAN_PROVIDERS,
         data: { module: 'Care delivery' },
         title: 'Care plan management · CareVerity',
         loadComponent: () =>

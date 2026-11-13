@@ -1,3 +1,12 @@
+@if (api?.loading()) {
+  <p role="status">Loading care plan…</p>
+}
+@if (api?.error()) {
+  <p class="message error" role="alert">{{ api?.error() }}</p>
+}
+@if (api?.unavailable()?.length) {
+  <p role="status">{{ api?.unavailable()?.join(' ') }}</p>
+}
 @if (client(); as c) {
   <div
     class="dedicated-care-plan"
@@ -345,18 +354,21 @@
                         service.canApprove() &&
                         p.packageDecision === 'Change required' &&
                         ['Pending approval', 'Not requested'].includes(p.packageStatus) &&
-                        !['Approved', 'Superseded'].includes(p.status)
+                        (service.connected
+                          ? p.status === 'Approved'
+                          : !['Approved', 'Superseded'].includes(p.status))
                       ) {
                         <button class="button" [disabled]="dirty()" (click)="save('package')">
                           Authorise recommendation
                         </button>
                       }
                       <p class="muted">
-                        Save the recommendation first. A different manager authorises it; the demo
+                        Save the recommendation first. A different manager authorises it; the
                         handoff then continues in Call packages.
                       </p>
                       <cv-care-plan-package-handoffs
                         [clientId]="id"
+                        [connected]="service.connected"
                         (changed)="refreshHandoffRevision()"
                       />
                     </section>
@@ -375,6 +387,7 @@
                       />
                     } @else if (index === 1) {
                       <cv-care-plan-personal-care
+                        [connected]="service.connected"
                         [client]="c"
                         [plan]="p"
                         [approved]="approvedPlan"
@@ -387,6 +400,7 @@
                       />
                     } @else if (index === 2) {
                       <cv-care-plan-mobility
+                        [connected]="service.connected"
                         [canAddDocuments]="service.care.canManageDocuments()"
                         [plan]="p"
                         [client]="c"
@@ -757,7 +771,9 @@
                       <div class="card-heading">
                         <div>
                           <h2>Linked assessments</h2>
-                          <a class="button" [routerLink]="['/manage/clients', c.id, 'risks']">Open Risk Assessments →</a>
+                          <a class="button" [routerLink]="['/manage/clients', c.id, 'risks']"
+                            >Open Risk Assessments →</a
+                          >
                           <p>
                             Recommend assessments where needs are identified. Completed findings
                             feed into the linked care area.
@@ -860,8 +876,14 @@
                         </div>
                         <a
                           class="button"
-                          [routerLink]="['/staff-portal/service-users', id, 'allocation']"
-                          >Record visit task evidence</a
+                          [routerLink]="
+                            service.connected
+                              ? ['/manage/clients', id, 'visit-notes']
+                              : ['/staff-portal/service-users', id, 'allocation']
+                          "
+                          >{{
+                            service.connected ? 'Open visit notes' : 'Record visit task evidence'
+                          }}</a
                         >
                       </div>
                       <p>
@@ -922,8 +944,11 @@
                         </article>
                       } @empty {
                         <p class="message">
-                          No task-linked evidence recorded yet. Open an assigned published visit,
-                          record task outcomes and submit the evidence, then return here.
+                          {{
+                            service.connected
+                              ? 'Task-linked visit evidence is unavailable in this workspace. Review existing Visit Notes in the service-user record.'
+                              : 'No task-linked evidence recorded yet. Open an assigned published visit, record task outcomes and submit the evidence, then return here.'
+                          }}
                         </p>
                       }
                     </section>
@@ -931,17 +956,38 @@
                     <section class="plan-card review-banner">
                       <div class="card-heading">
                         <div>
-                          <p class="eyebrow">AI REVIEW • FRONTEND DEMO</p>
-                          <h2>AI care-plan review and quality checking</h2>
+                          <p class="eyebrow">
+                            {{
+                              service.connected
+                                ? 'CARE PLAN QUALITY REVIEW'
+                                : 'CARE PLAN REVIEW • WORKFLOW PREVIEW'
+                            }}
+                          </p>
+                          <h2>
+                            {{
+                              service.connected
+                                ? 'Care-plan readiness and recorded review'
+                                : 'Care-plan review and quality checking'
+                            }}
+                          </h2>
                           <p>
-                            Explore evidence selection, discrepancies and human review decisions.
+                            {{
+                              service.connected
+                                ? 'Review the saved plan inputs and record follow-up decisions.'
+                                : 'Explore evidence selection, discrepancies and human review decisions.'
+                            }}
                           </p>
                         </div>
-                        <button class="button primary" (click)="runReview()">Run AI review</button>
+                        <button class="button primary" (click)="runReview()">
+                          {{ service.connected ? 'Refresh saved checks' : 'Run review' }}
+                        </button>
                       </div>
                       <p class="message">
-                        AI suggestion – management/supervisor review required. These are clearly
-                        identified fictional examples; no live AI request is sent.
+                        {{
+                          service.connected
+                            ? 'These checks use saved care-plan inputs. Automated suggestions are unavailable; management review remains required.'
+                            : 'Suggested wording requires management or supervisor review. These are fictional examples; no external review request is sent.'
+                        }}
                       </p>
                       <div class="review-metrics">
                         <div>
@@ -966,10 +1012,19 @@
                       </p>
                     </section>
                     <section class="plan-card">
-                      <h2>Permitted linked evidence · seeded examples</h2>
+                      <h2>
+                        {{
+                          service.connected
+                            ? 'Recorded review sources'
+                            : 'Permitted linked evidence · seeded examples'
+                        }}
+                      </h2>
                       <p>
-                        Choose the evidence categories included in this demo review. Turning a
-                        category off excludes findings that depend on it.
+                        {{
+                          service.connected
+                            ? 'Required readiness checks use the saved plan and its authorised linked records.'
+                            : 'Choose the evidence categories included in this demo review. Turning a category off excludes findings that depend on it.'
+                        }}
                       </p>
                       <div class="evidence-options">
                         @for (category of sourceCategories; track category) {
@@ -977,13 +1032,20 @@
                             ><input
                               type="checkbox"
                               [ngModel]="categoryEnabled(category)"
+                              [disabled]="service.connected"
                               (ngModelChange)="toggleSourceCategory(category, $event)"
                             />{{ category }}</label
                           >
                         }
                       </div>
                       <details>
-                        <summary>Browse the fictional evidence records</summary>
+                        <summary>
+                          {{
+                            service.connected
+                              ? 'Browse recorded review sources'
+                              : 'Browse the fictional evidence records'
+                          }}
+                        </summary>
                         <div class="evidence-list">
                           @for (source of report.sources; track source.id) {
                             <button
@@ -1153,17 +1215,25 @@
                     <section class="plan-card">
                       <h2>Versions and approval</h2>
                       <div class="demo-approval-scope">
-                        <p class="eyebrow">FRONTEND WORKFLOW DEMONSTRATION</p>
+                        <p class="eyebrow">
+                          {{
+                            service.connected
+                              ? 'CARE PLAN REVIEW'
+                              : 'FRONTEND WORKFLOW DEMONSTRATION'
+                          }}
+                        </p>
                         <h3>Review the three available care areas</h3>
                         <p>
-                          About Me, Personal Care and Mobility can be completed in this demo. The
-                          other 14 screens await supplied designs and remain deferred.
+                          About Me, Personal Care and Mobility have editors available. The other 14
+                          screens remain deferred. Full approval requires all required care areas to
+                          be reviewed.
                         </p>
                         @if (editable()) {
                           <label class="check"
                             ><input
                               type="checkbox"
                               [ngModel]="p.demoScope === 'available-sections'"
+                              [disabled]="service.connected"
                               (ngModelChange)="setDemoScope($event)"
                             />Use the three-section demo approval workflow</label
                           >
@@ -1248,20 +1318,31 @@
                           </button>
                         }
                         @if (p.status === 'In review' && service.canApprove()) {
-                          @if (p.demoScope) {
+                          @if (p.demoScope || service.connected) {
                             <section class="demo-signoff">
-                              <h3>Demonstration signature</h3>
+                              <h3>
+                                {{
+                                  service.connected
+                                    ? 'Approval confirmation'
+                                    : 'Demonstration signature'
+                                }}
+                              </h3>
                               <p>
-                                Type your signed-in name. This demo sign-off appears in the PDF and
-                                is not a verified electronic signature.
+                                {{
+                                  service.connected
+                                    ? 'Type your signed-in account name to confirm approval. The account and approval time are recorded with the approved version.'
+                                    : 'Type your signed-in name. This demo sign-off appears in the PDF and is not a verified electronic signature.'
+                                }}
                               </p>
                               <label
                                 >Approver name<input [(ngModel)]="signatureName" autocomplete="off"
                               /></label>
                               <label class="check"
-                                ><input type="checkbox" [(ngModel)]="signatureConfirmed" />I
-                                reviewed the three available sections and acknowledge the 14
-                                deferred areas.</label
+                                ><input type="checkbox" [(ngModel)]="signatureConfirmed" />{{
+                                  service.connected
+                                    ? 'I reviewed all required care areas and confirm approval.'
+                                    : 'I reviewed the three available sections and acknowledge the 14 deferred areas.'
+                                }}</label
                               >
                             </section>
                           }
