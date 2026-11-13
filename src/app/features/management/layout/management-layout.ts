@@ -174,15 +174,6 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
         (click)="menuOpen.set(false)"
         ><span class="material-symbols-outlined" aria-hidden="true">groups</span>People & HR</a
       >
-      <a
-        routerLink="/manage/people/users"
-        [hidden]="!access.canPath('/manage/people/users')"
-        routerLinkActive="active"
-        ariaCurrentWhenActive="page"
-        (click)="menuOpen.set(false)"
-        ><span class="material-symbols-outlined" aria-hidden="true">manage_accounts</span>User
-        Management</a
-      >
       <button
         type="button"
         class="academy-submenu-toggle"
