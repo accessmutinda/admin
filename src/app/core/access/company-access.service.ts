@@ -66,9 +66,10 @@ export function routeAccess(url: string): [string, string][] {
   if (path.startsWith('/manage/rota')) return [['care', 'rostering']];
   if (
     /^\/manage\/people\/[^/]+$/.test(path) &&
-    !['staff', 'onboarding', 'compliance'].includes(path.split('/').at(-1)!)
+    !['staff', 'onboarding', 'compliance', 'users'].includes(path.split('/').at(-1)!)
   )
     return [['people', 'recruitment']];
+  if (path === '/manage/people/users') return [['people', 'users']];
   if (path.startsWith('/manage/recruitment')) return [['people', 'recruitment']];
   if (path.startsWith('/manage/leave')) return [['people', 'leave']];
   if (path.startsWith('/manage/reviews')) return [['people', 'performance']];

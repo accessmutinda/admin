@@ -557,6 +557,14 @@ export const routes: Routes = [
           import('./features/management/people/hr-workspace').then((m) => m.HrWorkspace),
       },
       {
+        path: 'people/users',
+        canActivate: [peopleGuard],
+        data: { module: 'People & HR' },
+        title: 'User Management · CareVerity',
+        loadComponent: () =>
+          import('./features/management/people/staff-accounts').then((m) => m.StaffAccounts),
+      },
+      {
         path: 'people/onboarding',
         canActivate: [peopleGuard],
         data: { module: 'People & HR' },

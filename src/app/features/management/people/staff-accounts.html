@@ -1,0 +1,139 @@
+<nav class="hr-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/people">People & HR</a><span aria-hidden="true">›</span
+  ><span aria-current="page">User Management</span>
+</nav>
+<div class="hr-heading">
+  <div>
+    <h1>User Management</h1>
+    <p>Manage staff sign-in, passwords, authenticators and account access.</p>
+  </div>
+  <div class="hr-actions">
+    @if (api.canManage() && api.access.can('people', 'records', 'read')) {
+      <button class="hr-button primary" [disabled]="api.saving()" (click)="open(null, 'provision')">
+        Create staff login
+      </button>
+    }
+    <button class="hr-button" [disabled]="api.loading() || api.saving()" (click)="reload()">
+      Refresh
+    </button>
+  </div>
+</div>
+@if (!api.canRead()) {
+  <p role="alert">Your role cannot view staff login accounts in this company.</p>
+}
+@if (api.notice()) {
+  <p class="hr-notice" role="status">{{ api.notice() }}</p>
+}
+@if (api.error()) {
+  <p class="hr-error" role="alert">{{ api.error() }}</p>
+}
+<section class="hr-panel" [attr.aria-busy]="api.loading()">
+  <form class="hr-filters" (ngSubmit)="reload(0)">
+    <label
+      >Search accounts<input
+        type="search"
+        name="search"
+        [(ngModel)]="search"
+        maxlength="200"
+        placeholder="Name or login email" /></label
+    ><label
+      >Status<select name="status" [(ngModel)]="status">
+        <option value="">All statuses</option>
+        <option value="active">Active</option>
+        <option value="suspended">Suspended</option>
+        <option value="invited">Invited</option>
+      </select></label
+    ><button class="hr-button" type="submit" [disabled]="api.loading() || api.saving()">
+      Search
+    </button>
+  </form>
+  @if (api.loading()) {
+    <p role="status" class="account-empty">Loading staff accounts…</p>
+  } @else {
+    <div class="hr-table-wrap">
+      <table class="hr-table">
+        <thead>
+          <tr>
+            <th scope="col">Staff member</th>
+            <th scope="col">Account</th>
+            <th scope="col">Password</th>
+            <th scope="col">MFA</th>
+            <th scope="col">Sessions</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of api.page().results; track row.id) {
+            <tr>
+              <td>
+                <strong>{{ row.name }}</strong
+                ><small>{{ row.email }}</small>
+              </td>
+              <td>
+                {{ row.status }}
+                @if (!row.account_active) {
+                  <small>System account disabled</small>
+                }
+              </td>
+              <td>
+                {{ row.must_change_password ? 'Change required at sign-in' : 'User password set'
+                }}<small>Last sign-in: {{ (row.last_login_at | date: 'medium') || 'Never' }}</small>
+              </td>
+              <td>
+                {{ row.mfa_required ? 'Required' : 'Off'
+                }}<small
+                  >{{ row.mfa_enrolled ? 'Authenticator enrolled' : 'No authenticator enrolled' }} ·
+                  {{ row.mfa_override === 'inherit' ? 'Role default' : 'User override' }}</small
+                >
+              </td>
+              <td>{{ row.active_sessions }}</td>
+              <td>
+                @if (api.canManage() && !api.isSelf(row)) {
+                  <div class="security-actions">
+                    @for (action of actions(row); track action) {
+                      <button
+                        class="hr-button"
+                        [disabled]="api.saving()"
+                        (click)="open(row, action)"
+                        [attr.aria-label]="labels[action] + ' for ' + row.name"
+                      >
+                        {{ labels[action] }}
+                      </button>
+                    }
+                  </div>
+                } @else if (api.isSelf(row)) {
+                  <a routerLink="/account/security">My security settings</a>
+                } @else {
+                  <span>View only</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="account-empty">
+                No staff accounts found. Hiring creates a login automatically. Use Create staff
+                login for existing staff.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="account-pagination">
+      <span>{{ api.page().count }} {{ api.page().count === 1 ? 'account' : 'accounts' }}</span
+      ><button
+        class="hr-button"
+        [disabled]="!offset() || api.saving()"
+        (click)="reload(offset() - 50)"
+      >
+        Previous</button
+      ><button
+        class="hr-button"
+        [disabled]="offset() + 50 >= api.page().count || api.saving()"
+        (click)="reload(offset() + 50)"
+      >
+        Next
+      </button>
+    </div>
+  }
+</section>

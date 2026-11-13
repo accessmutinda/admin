@@ -19,12 +19,15 @@
     </p>
   </div>
   <div class="hr-actions">
+    @if (api.access.canPath('/manage/people/users')) {
+      <a class="hr-button" routerLink="/manage/people/users">User Management</a>
+    }
+
     @if (hr.can('create')) {
       <a
         class="hr-button primary"
-        [routerLink]="null"
-        aria-disabled="true"
-        title="Staff creation is not available yet"
+        routerLink="/manage/recruitment"
+        title="Create staff from an accepted recruitment offer"
         ><span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add Staff
         Member</a
       >

@@ -217,6 +217,12 @@ export class HrWorkspace {
   }
   private readonly allOverviewLinks = [
     {
+      title: 'User Management',
+      description: 'Staff login accounts, password resets and MFA security.',
+      icon: 'manage_accounts',
+      path: '/manage/people/users',
+    },
+    {
       title: 'Staff Directory',
       description: 'Find employees, manage records and view readiness.',
       icon: 'groups',
