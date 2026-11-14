@@ -171,7 +171,7 @@ export class InspectorStaffApi {
           );
           if (!this.current(scope, generation)) return;
           this.validate(next);
-          if (next.count !== first.count || !next.results.length)
+          if (next.count !== first.count || next.meta.revision !== first.meta.revision || !next.results.length)
             throw Error('Staff records changed while loading. Please retry.');
           results.push(...next.results);
         }
@@ -217,6 +217,8 @@ export class InspectorStaffApi {
     return task;
   }
   private validate(page: InspectorStaffPage) {
+    if (!/^[a-f0-9]{64}$/.test(page.meta.revision))
+      throw Error('The register response is incomplete. Please retry.');
     if (page.summary.total_staff !== page.count)
       throw Error('The workforce summary is incomplete. Please retry.');
     if (page.company.id !== this.companyId() || page.meta.company_id !== this.companyId())

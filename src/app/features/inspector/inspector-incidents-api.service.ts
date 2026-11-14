@@ -157,7 +157,7 @@ export class InspectorIncidentsApi {
           );
           if (!this.current(scope, generation)) return;
           this.validate(next);
-          if (next.count !== first.count || !next.results.length)
+          if (next.count !== first.count || next.meta.revision !== first.meta.revision || !next.results.length)
             throw Error('Incident records changed while loading. Please retry.');
           results.push(...next.results);
         }
@@ -207,6 +207,8 @@ export class InspectorIncidentsApi {
     return task;
   }
   private validate(page: InspectorIncidentPage) {
+    if (!/^[a-f0-9]{64}$/.test(page.meta.revision))
+      throw Error('The register response is incomplete. Please retry.');
     if (page.count < 0 || page.count > 20000)
       throw Error('The incident register exceeds the supported review size.');
     if (page.company.id !== this.companyId() || page.meta.company_id !== this.companyId())

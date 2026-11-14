@@ -193,7 +193,7 @@ export class InspectorClientsApi {
           );
           if (!this.current(scope, generation)) return;
           this.validate(next);
-          if (next.count !== first.count || !next.results.length)
+          if (next.count !== first.count || next.meta.revision !== first.meta.revision || !next.results.length)
             throw Error('Service user records changed while loading. Please retry.');
           results.push(...next.results);
         }
@@ -241,6 +241,8 @@ export class InspectorClientsApi {
     return task;
   }
   private validate(page: InspectorClientPage) {
+    if (!/^[a-f0-9]{64}$/.test(page.meta.revision))
+      throw Error('The register response is incomplete. Please retry.');
     if (page.company.id !== this.companyId() || page.meta.company_id !== this.companyId())
       throw Error('The service user response does not match this workspace.');
   }
