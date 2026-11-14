@@ -133,7 +133,7 @@ export class AcademyContentEditor {
       [this.lesson?.videoId, this.videoUrl],
       [this.lesson?.captionId, this.captionUrl],
     ] as const) {
-      if (!id) continue;
+      if (!id || !['READY', 'CAPTIONS_REVIEW'].includes(this.asset(id)?.status ?? '')) continue;
       try {
         const url = await this.files.url(id);
         if (this.disposed || generation !== this.generation) URL.revokeObjectURL(url);
@@ -519,6 +519,13 @@ export class AcademyContentEditor {
       this.course = structuredClone(this.academy.course(this.course.id)!);
       this.lesson = courseMediaLessons(this.course).find((l) => l.id === this.lesson?.id);
       this.original = JSON.stringify(this.course);
+      if (
+        (this.lesson?.videoId && !this.videoUrl() && this.processed(this.lesson.videoId)) ||
+        (this.lesson?.captionId &&
+          !this.captionUrl() &&
+          this.asset(this.lesson.captionId)?.status === 'READY')
+      )
+        await this.loadMedia();
       this.notice.set(
         publish
           ? 'Course content published.'
