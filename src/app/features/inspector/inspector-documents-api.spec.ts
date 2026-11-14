@@ -386,4 +386,40 @@ describe('Inspector documents and evidence integration', () => {
     expect(api.ready()).toBe(true);
     expect(f.nativeElement.textContent).toContain('No documents match these filters');
   });
+  it.each(['download', 'pack'] as const)(
+    'blocks a delayed %s after the selected file version changes',
+    async (action) => {
+      await load();
+      let resolve!: (value: Blob) => void;
+      request.mockImplementationOnce(() => new Promise((r) => (resolve = r)));
+      const pending =
+        action === 'download' ? api.download('inspection:one') : api.pack(['inspection:one']);
+      const newer = response();
+      newer.results[0].source_version = 3;
+      request.mockResolvedValue(newer);
+      await api.load();
+      resolve(new Blob(['old source bytes']));
+      await expect(pending).rejects.toThrow('Selected evidence changed');
+      expect(click).not.toHaveBeenCalled();
+    },
+  );
+  it('keeps a reopened upload busy when the previous upload completes late', async () => {
+    await load();
+    let oldDone!: (value: unknown) => void, newDone!: (value: unknown) => void;
+    const file = new File(['x'], 'x.txt', { type: 'text/plain' }),
+      metadata = { name: 'x', category: 'Policies' as const, question: 'Safe' as const, expiry: null };
+    request.mockImplementationOnce(() => new Promise((r) => (oldDone = r)));
+    const old = api.upload(file, metadata, 'old');
+    api.stop();
+    api.start();
+    await api.load();
+    request.mockImplementationOnce(() => new Promise((r) => (newDone = r)));
+    const current = api.upload(file, metadata, 'new');
+    oldDone({ id: 'inspection:old', version: 1, state: 'quarantined' });
+    await old;
+    expect(api.saving()).toBe(true);
+    newDone({ id: 'inspection:new', version: 1, state: 'quarantined' });
+    await current;
+    expect(api.saving()).toBe(false);
+  });
 });

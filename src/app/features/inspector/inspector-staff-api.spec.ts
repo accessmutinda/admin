@@ -120,6 +120,7 @@ function response(): InspectorStaffPage {
       ],
     },
     meta: {
+      revision: 'a'.repeat(64),
       company_id: 'one',
       as_of: '2026-11-13T12:00:00Z',
       timezone: 'Europe/London',
@@ -400,4 +401,16 @@ describe('Inspector staffing integration', () => {
     expect(api.records()).toEqual([]);
     expect(api.error()).toContain('incomplete');
   });
+  it('rejects pages from different source revisions even when their counts match', async () => {
+    const first = response(), second = response();
+    first.count = second.count = first.results.length + 1;
+    second.meta.revision = 'b'.repeat(64);
+    first.summary.total_staff = second.summary.total_staff = first.count;
+    request.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+    await load();
+    expect(api.ready()).toBe(false);
+    expect(api.error()).toContain('changed while loading');
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
 });

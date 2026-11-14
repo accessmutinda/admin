@@ -91,6 +91,7 @@ function response(): InspectorMedicationPage {
     summary: { active_prescriptions: 1, prescriptions: 1, administrations: 1 },
     capabilities: { export: true, view_provider: true },
     meta: {
+      revision: 'a'.repeat(64),
       company_id: 'one',
       as_of: '2026-11-14T12:00:00Z',
       timezone: 'Europe/London',
@@ -401,4 +402,16 @@ describe('Inspector medication integration', () => {
     expect(click).not.toHaveBeenCalled();
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:medication');
   });
+  it('rejects pages from different source revisions even when their counts match', async () => {
+    const first = response(), second = response();
+    first.count = second.count = first.results.length + 1;
+    second.meta.revision = 'b'.repeat(64);
+
+    request.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+    await load();
+    expect(api.ready()).toBe(false);
+    expect(api.error()).toContain('changed while loading');
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
 });

@@ -13,6 +13,7 @@ import { InspectorProviderRead } from './inspector-provider.generated';
 
 function response(): InspectorProviderRead {
   return {
+    recommendations: { version: 0, ratings: {}, summary: '' },
     company_id: 'one',
     company: {
       id: 'one',
@@ -467,5 +468,60 @@ describe('Connected inspector provider profile', () => {
     await expect(pending).rejects.toThrow('evidence changed');
     expect(click).not.toHaveBeenCalled();
     expect(api.ready()).toBe(true);
+  });
+  it('keeps recommendation cards and an open detail dialog aligned with current report access', async () => {
+    const saved = response();
+    saved.recommendations = {
+      version: 2,
+      ratings: { Safe: 'Good' },
+      summary: 'Shared report summary',
+    };
+    request.mockResolvedValue(saved);
+    const f = TestBed.createComponent(InspectorPage);
+    f.detectChanges();
+    await api.load();
+    f.detectChanges();
+    const p = f.componentInstance;
+    p.reviewProviderRatings(new Event('click'));
+    f.detectChanges();
+    expect(p.record()?.detail['Safe']).toBe('Good');
+    const changed = response();
+    changed.recommendations = {
+      version: 3,
+      ratings: { Safe: 'Inadequate' },
+      summary: 'Updated summary',
+    };
+    request.mockResolvedValue(changed);
+    await api.load();
+    f.detectChanges();
+    expect(p.record()?.detail['Safe']).toBe('Inadequate');
+    const revoked = response();
+    revoked.recommendations = null;
+    revoked.service_user_count = null;
+    request.mockResolvedValue(revoked);
+    await api.load();
+    f.detectChanges();
+    expect(p.record()?.detail['Safe']).toBe('Report access required');
+    expect(f.nativeElement.querySelector('[role=dialog]').textContent).not.toContain('Inadequate');
+    expect(api.serviceUserCount()).toBeNull();
+    expect(f.nativeElement.textContent).toContain('Service user access required');
+  });
+  it('keeps a reopened details save busy when the previous save completes late', async () => {
+    api.start();
+    await api.load();
+    let oldDone!: (value: unknown) => void, newDone!: (value: unknown) => void;
+    request.mockImplementationOnce(() => new Promise((r) => (oldDone = r)));
+    const old = api.saveDetails(api.state().draft, 'one');
+    api.stop();
+    api.start();
+    await api.load();
+    request.mockImplementationOnce(() => new Promise((r) => (newDone = r)));
+    const current = api.saveDetails(api.state().draft, 'one');
+    oldDone({ ...response().inspection, company_id: 'one' });
+    await old;
+    expect(api.busy()).toBe(true);
+    newDone({ ...response().inspection, company_id: 'one' });
+    await current;
+    expect(api.busy()).toBe(false);
   });
 });

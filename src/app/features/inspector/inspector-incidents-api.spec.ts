@@ -99,6 +99,7 @@ function response(): InspectorIncidentPage {
     },
     capabilities: { create: true, edit: true, export: true, view_provider: true },
     meta: {
+      revision: 'a'.repeat(64),
       company_id: 'one',
       as_of: '2026-11-14T12:00:00Z',
       timezone: 'Europe/London',
@@ -413,4 +414,16 @@ describe('Inspector incidents and safeguarding integration', () => {
     expect(api.ready()).toBe(true);
     expect(f.nativeElement.textContent).toContain('No records match this view');
   });
+  it('rejects pages from different source revisions even when their counts match', async () => {
+    const first = response(), second = response();
+    first.count = second.count = first.results.length + 1;
+    second.meta.revision = 'b'.repeat(64);
+    first.summary.recorded = second.summary.recorded = first.count;
+    request.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+    await load();
+    expect(api.ready()).toBe(false);
+    expect(api.error()).toContain('changed while loading');
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
 });

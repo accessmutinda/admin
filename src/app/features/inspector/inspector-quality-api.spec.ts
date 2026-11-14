@@ -13,6 +13,7 @@ import { InspectorQualityPage } from './inspector-provider.generated';
 
 function response(): InspectorQualityPage {
   return {
+    recommendations: { version: 0, ratings: {}, summary: '' },
     count: 1,
     next: null,
     previous: null,
@@ -378,5 +379,36 @@ describe('Inspector quality and compliance integration', () => {
     const f = await page();
     expect(api.ready()).toBe(true);
     expect(f.nativeElement.textContent).toContain('No corrective actions recorded');
+  });
+  it('uses saved report recommendations and clears them from the open drawer when revoked', async () => {
+    const saved = response();
+    saved.recommendations = {
+      version: 2,
+      ratings: Object.fromEntries(
+        ['Safe', 'Effective', 'Caring', 'Responsive', 'Well-led'].map((q) => [q, 'Good']),
+      ),
+      summary: 'Shared current summary',
+    };
+    request.mockResolvedValue(saved);
+    const f = await page(),
+      p = f.componentInstance;
+    expect(p.readyCount()).toBe(3);
+    p.reviewProviderRatings(new Event('click'));
+    f.detectChanges();
+    expect(p.record()?.detail['Safe']).toBe('Good');
+    const changed = response();
+    changed.recommendations = { version: 3, ratings: { Safe: 'Inadequate' }, summary: '' };
+    request.mockResolvedValue(changed);
+    await api.load();
+    f.detectChanges();
+    expect(p.record()?.detail['Safe']).toBe('Inadequate');
+    const revoked = response();
+    revoked.recommendations = null;
+    request.mockResolvedValue(revoked);
+    await api.load();
+    f.detectChanges();
+    expect(p.record()?.detail['Safe']).toBe('Report access required');
+    expect(f.nativeElement.querySelector('[role=dialog]').textContent).not.toContain('Inadequate');
+    expect(p.readyCount()).toBe(1);
   });
 });
