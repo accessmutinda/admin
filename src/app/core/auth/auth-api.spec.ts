@@ -104,7 +104,7 @@ describe('CareVerity API authentication', () => {
     '/inspector/staffing',
     '/inspector/medication',
     '/inspector/incidents',
-    '/inspector/quality', '/inspector/documents',
+    '/inspector/quality', '/inspector/documents', '/inspector/visits',
   ])('uses the server-selected inspector home %s', async (home) => {
     profile = { ...companyUser, home_path: home };
     await firstValueFrom(auth.signIn('person@example.com', 'password'));

@@ -1,3 +1,4 @@
+import { InspectorVisitsApi } from './inspector-visits-api.service';
 import { InspectorDocumentsApi } from './inspector-documents-api.service';
 import { InspectorQualityApi } from './inspector-quality-api.service';
 import { InspectorIncidentsApi } from './inspector-incidents-api.service';
@@ -100,6 +101,7 @@ describe('Inspector portal routes and availability', () => {
           InspectorIncidentsApi,
           InspectorQualityApi,
           InspectorDocumentsApi,
+          InspectorVisitsApi,
         ].map((provide) => ({
           provide,
           useValue: { company, ready },
@@ -195,6 +197,7 @@ describe('Inspector portal routes and availability', () => {
       '/inspector/incidents',
       '/inspector/quality',
       '/inspector/documents',
+      '/inspector/visits',
     ]);
     expect(fixture.nativeElement.textContent).not.toContain('Local workspace');
     expect(fixture.nativeElement.textContent).toContain('Inspection reviewer');
