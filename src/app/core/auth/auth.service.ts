@@ -539,7 +539,9 @@ export class AuthService {
       response = await fetch(`${API_BASE}${path}`, {
         method: requestMethod,
         credentials: 'include',
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(
+          multipart ? 15 * 60_000 : responseType === 'blob' ? 5 * 60_000 : 15_000,
+        ),
         headers,
         cache: 'no-store',
         body: multipart ? body : body === undefined ? undefined : JSON.stringify(body),

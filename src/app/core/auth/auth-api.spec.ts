@@ -104,7 +104,11 @@ describe('CareVerity API authentication', () => {
     '/inspector/staffing',
     '/inspector/medication',
     '/inspector/incidents',
-    '/inspector/quality', '/inspector/documents', '/inspector/visits', '/inspector/reports', '/inspector/notes',
+    '/inspector/quality',
+    '/inspector/documents',
+    '/inspector/visits',
+    '/inspector/reports',
+    '/inspector/notes',
   ])('uses the server-selected inspector home %s', async (home) => {
     profile = { ...companyUser, home_path: home };
     await firstValueFrom(auth.signIn('person@example.com', 'password'));
@@ -217,6 +221,51 @@ describe('CareVerity API authentication', () => {
       'blob',
     );
     expect(await file.text()).toBe('saved bytes');
+  });
+
+  it('lets slow file transfers finish while keeping ordinary API requests bounded', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    const original = fetchMock.getMockImplementation()!;
+    const timeout = vi.spyOn(AbortSignal, 'timeout').mockImplementation((milliseconds) => {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), milliseconds);
+      return controller.signal;
+    });
+    fetchMock.mockImplementation((url, options) => {
+      if (!url.includes('/slow-')) return original(url, options);
+      return new Promise<Response>((resolve, reject) => {
+        const timer = setTimeout(
+          () =>
+            resolve(
+              url.endsWith('/slow-download')
+                ? new Response('video bytes')
+                : Response.json({ id: 'uploaded-video' }),
+            ),
+          20_000,
+        );
+        options?.signal?.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(timer);
+            reject(new DOMException('Request timed out', 'AbortError'));
+          },
+          { once: true },
+        );
+      });
+    });
+    try {
+      const upload = auth.api('/slow-upload', new FormData(), 'POST');
+      await vi.advanceTimersByTimeAsync(20_000);
+      await expect(upload).resolves.toEqual({ id: 'uploaded-video' });
+      const download = auth.api<Blob>('/slow-download', undefined, undefined, undefined, 'blob');
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(await (await download).text()).toBe('video bytes');
+      const ordinary = auth.api('/slow-json').catch((error) => error);
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect(String(await ordinary)).toContain('Unable to reach CareVerity');
+    } finally {
+      timeout.mockRestore();
+    }
   });
 
   it('follows MFA enrolment, password gate, and session revocation on password change', async () => {
