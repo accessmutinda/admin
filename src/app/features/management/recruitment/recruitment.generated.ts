@@ -85,6 +85,7 @@ export type RecruitmentApplication = {
     id: string;
     name: string;
     type: string;
+    documentType?: string;
     size: number;
     state: string;
     version: number;
@@ -201,6 +202,7 @@ export type RecruitmentUpload = {
   id: string;
   name: string;
   type: string;
+  documentType?: string;
   size: number;
   state: string;
   version: number;
@@ -471,6 +473,7 @@ export type RecruitmentApplicationPage = {
       id: string;
       name: string;
       type: string;
+      documentType?: string;
       size: number;
       state: string;
       version: number;
@@ -578,4 +581,8 @@ export type RecruitmentOnboardingPage = {
       drafts: string | null;
     };
   };
+};
+
+export type RecruitmentDocumentTypeWrite = {
+  document_type: string;
 };

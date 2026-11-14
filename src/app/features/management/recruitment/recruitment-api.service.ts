@@ -346,6 +346,27 @@ export class RecruitmentApi {
     if (company !== this.companyId() || scope !== this.scope() || !this.allowed()) return;
     downloadBlob(data, file.name);
   }
+  async setDocumentType(file: Upload, type: string): Promise<Upload> {
+    const scope = this.scope(),
+      application = this.record()?.id;
+    if (!this.can('edit') || !application)
+      throw Error('Reload the applicant before editing documents.');
+    const documentType = type.trim();
+    if (!documentType || documentType.length > 100)
+      throw Error('Enter a document type using 1–100 characters.');
+    const saved = await this.auth.api<Upload>(
+      this.path(`/recruitment/files/${encodeURIComponent(file.id)}`),
+      { document_type: documentType },
+      'PATCH',
+      { 'If-Match': file.etag },
+    );
+    if (scope !== this.scope() || application !== this.record()?.id || !this.allowed())
+      throw Error('The selected company or applicant changed. Reopen the document.');
+    if (saved.id !== file.id)
+      throw Error('The saved document does not match this applicant. Reload before editing.');
+    await this.detail(application);
+    return saved;
+  }
   async removeFile(file: Upload): Promise<void> {
     const scope = this.scope(),
       source = `file:${file.id}:archive:${file.etag}`;
@@ -524,6 +545,7 @@ export function asPerson(
     documents: (row.documents ?? []).map((document) => ({
       ...document,
       requirementId: document.requirementId ?? undefined,
+      category: document.documentType || 'Other Records',
       content: '',
     })),
     checks: checks.map(

@@ -25,10 +25,12 @@ import {
 } from '../recruitment/recruitment-api.service';
 import { PageLoading } from '../../../shared/layouts/page-loading';
 import { CompanyUnavailable } from '../shared/company-unavailable';
+import { StaffDocumentType } from './staff-document-type';
 
 @Component({
   selector: 'cv-person-detail',
   imports: [
+    StaffDocumentType,
     DatePipe,
     ManagementRole,
     A11yModule,
@@ -290,13 +292,17 @@ export class PersonDetail {
     if (!vacancy) throw Error('This vacancy is unavailable.');
     return vacancy;
   }
-  protected async downloadUploaded(_content: string, name: string): Promise<void> {
-    const file = this.api.record()?.documents?.find((row) => row.name === name);
+  protected async downloadUploaded(id: string): Promise<void> {
+    const file = this.api.record()?.documents?.find((row) => row.id === id);
     if (file) await this.run(() => this.api.download(file), '');
   }
   protected async removeDocument(id: string): Promise<void> {
     const file = this.api.record()?.documents?.find((row) => row.id === id);
     if (file) await this.run(() => this.api.removeFile(file), 'Attachment removed.');
   }
-  protected downloadDocument(_name: string): void {}
+  protected async setDocumentType(id: string, type: string): Promise<void> {
+    if (!this.api.can('edit')) return;
+    const file = this.api.record()?.documents?.find((file) => file.id === id);
+    if (file) await this.run(() => this.api.setDocumentType(file, type), 'Document type saved.');
+  }
 }

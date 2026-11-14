@@ -521,15 +521,7 @@
       <div class="hr-panel-head"><h2>Upload Documents</h2></div>
       <div class="hr-panel-body hr-form">
         <label
-          >Category<mat-select cvSelect [(ngModel)]="category" aria-label="Category">
-            <mat-option value="Employment & HR">Employment & HR</mat-option>
-            <mat-option value="Right to Work & Identity">Right to Work & Identity</mat-option>
-            <mat-option value="DBS & Background Checks">DBS & Background Checks</mat-option>
-            <mat-option value="Professional & Training">Professional & Training</mat-option>
-            <mat-option value="References">References</mat-option>
-            <mat-option value="Driving & Vehicle">Driving & Vehicle</mat-option>
-            <mat-option value="Other Records">Other Records</mat-option>
-          </mat-select></label
+          >Document type<cv-staff-document-type [value]="category" [disabled]="busy()" (typeChange)="category = $event" /></label
         ><label
           >Replace an existing document<mat-select
             cvSelect
@@ -561,7 +553,7 @@
           <thead>
             <tr>
               <th scope="col">Document</th>
-              <th scope="col">Category</th>
+              <th scope="col">Document type</th>
               <th scope="col">Status</th>
               <th scope="col">Version</th>
               <th scope="col">Expiry / Renewal</th>
@@ -576,7 +568,11 @@
                     <small>Replacement; previous version retained</small>
                   }
                 </td>
-                <td>{{ d.category || 'Other Records' }}</td>
+                <td>
+                  @if (!d.sourceCertificateId) {
+                    <cv-staff-document-type [value]="d.category || 'Other Records'" [label]="'Document type for ' + d.name" [disabled]="busy()" (typeChange)="d.category = $event" />
+                  } @else { {{ d.category || 'Other Records' }} }
+                </td>
                 <td>{{ d.status || 'Pending review' }}</td>
                 <td>{{ d.version || 1 }}</td>
                 <td>

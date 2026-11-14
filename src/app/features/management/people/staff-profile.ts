@@ -30,6 +30,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { HrService } from './hr.service';
 import { StaffFields } from './staff-fields';
+import { StaffDocumentType } from './staff-document-type';
 import { STAFF_TABS, StaffCheck } from './hr.models';
 import { Person, StaffDocument } from '../shared/management.store';
 import { staffRecord, checkState, dateValid } from './hr.models';
@@ -42,6 +43,7 @@ import { londonInstant } from '../rota/rota.models';
   },
   providers: [OnboardingStaffApi, AvailabilityLeaveApi, StaffReviewsApi],
   imports: [
+    StaffDocumentType,
     CompanyUnavailable,
     PageLoading,
     AcademyStaffTraining,
@@ -572,19 +574,49 @@ export class StaffProfile {
   }
   protected readonly documentEvent = (event: { action: string }) =>
     event.action.toLowerCase().includes('document');
-  protected uploadCategory = 'Employment & HR';
+  protected uploadCategory = 'Other Records';
   protected readonly pendingDocument = signal<StaffDocument | null>(null);
   protected readonly uploadBusy = signal(false);
-  protected readonly documentTypes = [
-    'Right to Work & Identity',
-    'DBS & Background Checks',
-    'Professional & Training',
-    'Employment & HR',
-    'References',
-    'Driving & Vehicle',
-    'Other Records',
-  ];
+  protected get documentTypes(): string[] {
+    return this.documentCategories();
+  }
+  protected async setDocumentType(id: string, type: string): Promise<void> {
+    const person = this.person();
+    const document = person?.documents?.find((doc) => doc.id === id);
+    if (
+      !person ||
+      !document ||
+      document.sourceCertificateId ||
+      !this.canEdit() ||
+      this.busy() ||
+      this.uploadBusy() ||
+      this.editing()
+    )
+      return;
+    const category = type.trim();
+    if (!category || category.length > 100) {
+      this.error.set('Enter a document type using 1–100 characters.');
+      return;
+    }
+    const updated = structuredClone(person);
+    updated.documents!.find((doc) => doc.id === id)!.category = category;
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.staffApi.save(
+        updated as OnboardingPerson,
+        'documents',
+        this.staffApi.value()!.etag,
+      );
+      this.notice.set('Document type saved.');
+    } catch (error) {
+      this.error.set(this.staffApi.message(error));
+    } finally {
+      this.busy.set(false);
+    }
+  }
   protected chooseDocument(): void {
+    if (this.busy() || this.uploadBusy() || this.editing()) return;
     document.getElementById('staff-document-input')?.click();
   }
   protected async documentInput(event: Event): Promise<void> {
@@ -599,16 +631,19 @@ export class StaffProfile {
     if (file) await this.uploadFile(file);
   }
   private async uploadFile(file: File): Promise<void> {
-    if (!this.canEdit() || this.uploadBusy()) return;
+    if (!this.canEdit() || this.uploadBusy() || this.busy() || this.editing()) return;
     const id = this.id;
     this.uploadBusy.set(true);
     this.error.set('');
     try {
-      const doc = await this.staffApi.upload(file, this.uploadCategory);
+      await this.staffApi.upload(file, this.uploadCategory);
       if (id !== this.id || this.companyId !== this.hr.store.companyId())
         throw new Error('The staff selection changed. Choose the document again.');
       this.pendingDocument.set(null);
-      this.notice.set('Document uploaded securely.');
+      this.documentCategory = '';
+      this.documentQuery = '';
+      this.documentStatus = '';
+      this.notice.set('Document uploaded. Choose its document type in Document Records.');
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'The file could not be uploaded.');
     } finally {

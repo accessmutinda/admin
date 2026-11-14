@@ -2,6 +2,7 @@ import type { WorkforceLeave } from './availability-leave.generated';
 import { OnboardingStaffApi } from './onboarding-staff-api.service';
 import { RecruitmentApi } from '../recruitment/recruitment-api.service';
 import { StaffAvailability } from './staff-availability';
+import { StaffDocumentType } from './staff-document-type';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { Component, DestroyRef, Input, Output, EventEmitter, inject, signal } from '@angular/core';
@@ -12,7 +13,7 @@ import { StaffTraining, StaffCheck, checkState, today } from './hr.models';
 @Component({
   selector: 'cv-staff-fields',
   host: { '[class.hr-compact-editor]': 'compact' },
-  imports: [StaffAvailability, MatSelectModule, CvSelect, FormsModule],
+  imports: [StaffDocumentType, StaffAvailability, MatSelectModule, CvSelect, FormsModule],
   templateUrl: './staff-fields.html',
   styleUrls: ['./hr.css', './hr-forms.css', './staff-editor.css'],
 })
@@ -37,7 +38,7 @@ export class StaffFields {
     inject(DestroyRef).onDestroy(() => this.photoUrls.forEach((url) => URL.revokeObjectURL(url)));
   }
   protected replacementId = '';
-  protected category = 'Employment & HR';
+  protected category = 'Other Records';
   protected readonly error = signal('');
   protected readonly busy = signal(false);
   protected recruitment() {
@@ -149,7 +150,8 @@ export class StaffFields {
       .find((row) => row.id === application?.vacancyId);
     if (!vacancy || application?.id !== this.applicationId)
       throw Error('Reload the application before uploading.');
-    const document = await this.recruitmentApi.upload(file, vacancy, undefined, this.applicationId);
+    const uploaded = await this.recruitmentApi.upload(file, vacancy, undefined, this.applicationId);
+    const document = await this.recruitmentApi.setDocumentType(uploaded, category);
     return {
       id: document.id,
       name: document.name,

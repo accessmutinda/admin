@@ -333,7 +333,7 @@
               tabIcons[tabs.indexOf(tab())]
             }}</span>
             <div>
-              <h2>Contract & document hub</h2>
+              <h2>Applicant Documents</h2>
               <p>Upload and manage the applicant’s supporting documents.</p>
             </div>
             <span class="badge">Documents</span>
@@ -342,11 +342,12 @@
             <label class="upload-area"
               ><span class="material-symbols-outlined" aria-hidden="true">upload_file</span
               ><strong>Add a supporting document</strong
-              ><small>Saved on this device · up to 1 MB</small
+              ><small>Uploaded securely · PDF, Word, JPG or PNG · up to 1 MB</small
               ><input
                 type="file"
                 [disabled]="busy() || !api.can('edit')"
                 (change)="uploadDocument($event)"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                 aria-label="Upload supporting document"
             /></label>
             @for (doc of p.documents || []; track doc.id) {
@@ -356,10 +357,18 @@
                   ><small>{{ doc.requirement || 'Uploaded document' }}</small></span
                 >
                 <div class="row">
+                  @if (api.can('edit')) {
+                    <cv-staff-document-type
+                      [value]="doc.category || 'Other Records'"
+                      [label]="'Document type for ' + doc.name"
+                      [disabled]="busy()"
+                      (typeChange)="setDocumentType(doc.id, $event)"
+                    />
+                  } @else { <span>{{ doc.category || 'Other Records' }}</span> }
                   <button
                     class="icon-button"
                     [attr.aria-label]="'Download ' + doc.name"
-                    (click)="downloadUploaded(doc.content, doc.name)"
+                    (click)="downloadUploaded(doc.id)"
                   >
                     <span class="material-symbols-outlined" aria-hidden="true"
                       >download</span
@@ -375,35 +384,10 @@
                 </div>
               </div>
             }
-            @for (
-              doc of [
-                'Employment contract',
-                'Job description',
-                'Staff handbook',
-                'Code of conduct',
-              ];
-              track doc
-            ) {
-              <div class="list-row">
-                <div class="person-cell">
-                  <span class="document-icon material-symbols-outlined" aria-hidden="true"
-                    >description</span
-                  ><span
-                    ><strong>{{ doc }}</strong
-                    ><small>Upload the issued document using the upload area.</small></span
-                  >
-                </div>
-                <button
-                  class="icon-button"
-                  [attr.aria-label]="'Document template unavailable: ' + doc"
-                  disabled
-                  title="Document templates are not configured"
-                  (click)="downloadDocument(doc)"
-                >
-                  <span class="material-symbols-outlined" aria-hidden="true">download</span>
-                </button>
-              </div>
+            @if (!p.documents?.length) {
+              <p class="hr-muted">No supporting documents uploaded. Add a file, then choose its document type.</p>
             }
+
           </div>
         }
 

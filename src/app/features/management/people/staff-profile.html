@@ -69,6 +69,7 @@
       @if (steps[section] !== undefined && !editing() && canEdit()) {
         <button
           class="hr-button primary"
+          [disabled]="busy() || uploadBusy()"
           (click)="section === 'documents' ? chooseDocument() : edit()"
         >
           {{ section === 'documents' ? 'Upload Document' : 'Edit Profile' }}
@@ -1291,7 +1292,7 @@
           </article>
         }
       </div>
-      <div class="hr-document-tabs" role="group" aria-label="Document categories">
+      <div class="hr-document-tabs" role="group" aria-label="Document types">
         <button [class.active]="!documentCategory" (click)="documentCategory = ''">
           All Documents
         </button>
@@ -1321,10 +1322,10 @@
                 >Search documents<input
                   type="search"
                   [(ngModel)]="documentQuery"
-                  placeholder="Document name or category" /></label
+                  placeholder="Document name or type" /></label
               ><label
-                >Category<mat-select cvSelect [(ngModel)]="documentCategory" aria-label="Category">
-                  <mat-option value="">All categories</mat-option>
+                >Document type<mat-select cvSelect [(ngModel)]="documentCategory" aria-label="Document type filter">
+                  <mat-option value="">All document types</mat-option>
                   @for (category of documentCategories(); track category) {
                     <mat-option [value]="category">{{ category }}</mat-option>
                   }
@@ -1343,7 +1344,7 @@
                 <thead>
                   <tr>
                     <th scope="col">Document</th>
-                    <th scope="col">Category</th>
+                    <th scope="col">Document type</th>
                     <th scope="col">Uploaded</th>
                     <th scope="col">Status</th>
                     <th scope="col">Reviewed by</th>
@@ -1356,7 +1357,16 @@
                       <td>
                         {{ d.name }}<small>Version {{ d.version || 1 }}</small>
                       </td>
-                      <td>{{ d.category || 'Other Records' }}</td>
+                      <td>
+                        @if (canEdit() && !d.sourceCertificateId) {
+                          <cv-staff-document-type
+                            [value]="d.category || 'Other Records'"
+                            [label]="'Document type for ' + d.name"
+                            [disabled]="busy() || uploadBusy() || editing()"
+                            (typeChange)="setDocumentType(d.id, $event)"
+                          />
+                        } @else { {{ d.category || 'Other Records' }} }
+                      </td>
                       <td>
                         {{ d.uploadedAt ? (d.uploadedAt | date: 'd MMM yyyy') : 'Not recorded' }}
                       </td>
@@ -1425,17 +1435,8 @@
             </div>
             <div class="hr-panel-body hr-form">
               @if (canEdit()) {
-                <label class="wide"
-                  >Category<mat-select
-                    cvSelect
-                    [(ngModel)]="uploadCategory"
-                    aria-label="Upload document category"
-                  >
-                    @for (category of documentTypes; track category) {
-                      <mat-option [value]="category">{{ category }}</mat-option>
-                    }
-                  </mat-select></label
-                ><label
+                <p class="hr-muted wide">Upload a file, then choose its document type in Document Records.</p>
+                <label
                   class="hr-document-drop wide"
                   (dragover)="$event.preventDefault()"
                   (drop)="dropDocument($event)"
@@ -1446,12 +1447,12 @@
                     id="staff-document-input"
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                    [disabled]="uploadBusy()"
+                    [disabled]="uploadBusy() || busy() || editing()"
                     (change)="documentInput($event)"
                     aria-label="Choose staff document" /></label
                 ><button
                   class="hr-button primary wide"
-                  [disabled]="uploadBusy()"
+                  [disabled]="uploadBusy() || busy() || editing()"
                   (click)="chooseDocument()"
                 >
                   <span class="material-symbols-outlined" aria-hidden="true">upload</span
@@ -1471,7 +1472,7 @@
             <div class="hr-panel-head">
               <h2>
                 <span class="material-symbols-outlined" aria-hidden="true">folder_copy</span
-                >Document Categories
+                >Document Types
               </h2>
             </div>
             <div class="hr-panel-body">
