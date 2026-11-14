@@ -242,7 +242,7 @@ export class InspectorDocumentsApi {
       this.failure(error, scope, lifecycle);
       return false;
     } finally {
-      this.saving.set(false);
+      if (scope === this.scope() && lifecycle === this.lifecycle) this.saving.set(false);
     }
   }
   async download(id: string): Promise<void> {
@@ -253,6 +253,7 @@ export class InspectorDocumentsApi {
       '/' + encodeURIComponent(id) + '/content?source_version=' + row.source_version,
       row.filename,
       row.content_type,
+      [{ id: row.id, source_version: row.source_version }],
     );
   }
   async pack(
@@ -269,14 +270,21 @@ export class InspectorDocumentsApi {
       );
     if (selectedVersions && rows.some((r) => selectedVersions[r!.id] !== r!.source_version))
       throw Error('Selected evidence changed. Review and reselect the current versions.');
-    await this.binary('/pack', 'inspection-evidence.zip', 'application/zip', {
+    const references = rows.map((r) => ({ id: r!.id, source_version: r!.source_version }));
+    await this.binary('/pack', 'inspection-evidence.zip', 'application/zip', references, {
       documents: rows.map((r) => ({
         id: r!.id,
         source_version: selectedVersions ? selectedVersions[r!.id] : r!.source_version,
       })),
     });
   }
-  private async binary(path: string, filename: string, mime: string, body?: unknown) {
+  private async binary(
+    path: string,
+    filename: string,
+    mime: string,
+    sources: ReadonlyArray<{ id: string; source_version: number }>,
+    body?: unknown,
+  ) {
     const scope = this.scope(),
       lifecycle = this.lifecycle;
     try {
@@ -289,6 +297,18 @@ export class InspectorDocumentsApi {
       );
       if (!this.active || scope !== this.scope() || lifecycle !== this.lifecycle) return;
       if (!this.canDownload()) throw Error('Evidence download access changed. Reload and retry.');
+      if (
+        sources.some(
+          (source) =>
+            !this.records().some(
+              (row) =>
+                row.downloadable &&
+                row.id === source.id &&
+                row.source_version === source.source_version,
+            ),
+        )
+      )
+        throw Error('Selected evidence changed. Review and reselect current files.');
       download(blob, filename, mime);
     } catch (error) {
       this.failure(error, scope, lifecycle);
