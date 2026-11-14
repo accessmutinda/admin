@@ -10,7 +10,15 @@ import { A11yModule } from '@angular/cdk/a11y';
 import { MAT_SELECT_CONFIG } from '@angular/material/select';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Component, ViewEncapsulation, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  ViewEncapsulation,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ROLES } from '../../../core/auth/models/role';
 import { ManagementRole } from '../shared/role-pill';
@@ -319,13 +327,61 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
         @defer (on idle) {
           <cv-workspace-tools />
         }
-        <a routerLink="/account/security" class="user-control" aria-label="Account settings"
-          ><span class="avatar small">{{ auth.currentUser()?.initials }}</span
-          ><span
-            >{{ auth.currentUser()?.name
-            }}<small><cv-management-role [label]="userRole()" /></small></span
-          ><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></a
-        >
+        <div class="user-menu" (click)="$event.stopPropagation()">
+          <button
+            type="button"
+            class="user-control"
+            [attr.aria-label]="
+              'Open profile for ' + (auth.currentUser()?.name || 'signed-in user')
+            "
+            aria-haspopup="dialog"
+            aria-controls="user-profile-menu"
+            [attr.aria-expanded]="profileOpen()"
+            (click)="profileOpen.set(!profileOpen())"
+          >
+            <span class="avatar small">{{ auth.currentUser()?.initials }}</span>
+            <span class="user-control-identity">
+              <span class="user-control-name">{{ auth.currentUser()?.name }}</span>
+              <cv-management-role [label]="userRole()" />
+            </span>
+            <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>
+          </button>
+          @if (profileOpen()) {
+            <div
+              id="user-profile-menu"
+              class="user-profile-menu"
+              role="dialog"
+              aria-labelledby="user-profile-title"
+            >
+              <h2 id="user-profile-title">User Profile</h2>
+              <div class="user-profile-identity">
+                <span class="avatar">{{ auth.currentUser()?.initials }}</span>
+                <div>
+                  <strong>{{ auth.currentUser()?.name }}</strong>
+                  <span>{{ userRole() }}</span>
+                  @if (auth.currentUser()?.email) {
+                    <p class="user-profile-email">
+                      <span class="material-symbols-outlined" aria-hidden="true">mail</span>
+                      {{ auth.currentUser()?.email }}
+                    </p>
+                  }
+                </div>
+              </div>
+              <hr />
+              <a
+                class="user-profile-account"
+                routerLink="/account/security"
+                (click)="profileOpen.set(false)"
+              >
+                <span class="user-profile-account-icon" aria-hidden="true">
+                  <span class="material-symbols-outlined">person</span>
+                </span>
+                <span><strong>Account</strong><small>Account Settings</small></span>
+              </a>
+              <button type="button" class="user-profile-logout" (click)="signOut()">Logout</button>
+            </div>
+          }
+        </div>
       </header>
       <main
         id="main-content"
@@ -379,6 +435,15 @@ export class ManagementLayout {
   }
   protected readonly mobile = toSignal(inject(BreakpointObserver).observe('(max-width: 1023px)'));
   protected readonly menuOpen = signal(false);
+  protected readonly profileOpen = signal(false);
+  @HostListener('document:click')
+  protected closeProfile(): void {
+    this.profileOpen.set(false);
+  }
+  @HostListener('document:keydown.escape')
+  protected closeProfileOnEscape(): void {
+    this.profileOpen.set(false);
+  }
   protected readonly finance = FINANCE_AREAS;
   protected readonly academyLinks: {
     path: string;

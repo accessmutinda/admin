@@ -1,0 +1,36 @@
+<input
+  role="combobox"
+  aria-autocomplete="list"
+  [id]="inputId()"
+  [name]="name()"
+  [value]="query()"
+  [required]="required()"
+  [attr.maxlength]="80"
+  [attr.aria-expanded]="open()"
+  [attr.aria-controls]="open() ? listId() : null"
+  [attr.aria-activedescendant]="open() ? activeId() : null"
+  [attr.aria-invalid]="invalid()"
+  [attr.aria-describedby]="describedBy()"
+  autocomplete="off"
+  placeholder="Search languages"
+  (input)="type($event)"
+  (focus)="focus()"
+  (keydown)="key($event)"
+/>
+@if (open()) {
+  <ul [id]="listId()" role="listbox">
+    @for (option of options(); track option.value; let index = $index) {
+      <li
+        role="option"
+        [id]="inputId() + '-option-' + index"
+        [attr.aria-selected]="option.value === value()"
+        [class.active]="index === active()"
+        (mousedown)="choose(option.value, $event)"
+      >
+        {{ option.label }}
+      </li>
+    } @empty {
+      <li class="empty">Type a language name to search.</li>
+    }
+  </ul>
+}

@@ -1,0 +1,48 @@
+:host {
+  position: relative;
+  display: block;
+}
+
+:host.open {
+  z-index: 30;
+}
+
+ul {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  margin: 0;
+  padding: 4px;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid #dfe6eb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgb(18 51 82 / 12%);
+}
+
+li {
+  padding: 6px 8px;
+  border-radius: 5px;
+  color: #123352;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+li.active,
+li:hover {
+  background: #e7f3f2;
+}
+
+li.empty {
+  color: #5d7286;
+  cursor: default;
+}
+
+li.empty:hover {
+  background: transparent;
+}

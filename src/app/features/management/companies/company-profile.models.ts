@@ -1,6 +1,40 @@
 import type { CompanyDetail } from './companies-api.models';
 import type { Company } from '../shared/management.store';
 
+export interface CompanyProfileUpdate {
+  name: string;
+  trading_name: string;
+  code: string;
+  service_type: string;
+  description: string | null;
+  staff_size_band: string | null;
+  registration_number: string | null;
+  head_office_name: string | null;
+  registered_places: number | null;
+  primary_language: string | null;
+  date_established: string | null;
+}
+
+export function companyProfileUpdate(company: Company): CompanyProfileUpdate {
+  const text = (value: string | undefined) => {
+    const trimmed = value?.trim() ?? '';
+    return trimmed || null;
+  };
+  return {
+    name: company.name.trim(),
+    trading_name: company.tradingName?.trim() ?? '',
+    code: company.code.trim(),
+    service_type: company.sector.trim(),
+    description: text(company.description),
+    staff_size_band: text(company.size),
+    registration_number: text(company.registration),
+    head_office_name: text(company.headOfficeName),
+    registered_places: wholePlaces(company.registeredPlaces),
+    primary_language: text(company.primaryLanguage),
+    date_established: text(company.establishedDate),
+  };
+}
+
 export function companyProfileFields(detail: CompanyDetail): Partial<Company> {
   const address = detail.head_office_address;
   return {
@@ -21,7 +55,7 @@ export function companyProfileFields(detail: CompanyDetail): Partial<Company> {
           .join(', ')
       : '',
     postcode: address?.postcode ?? detail.postcode ?? '',
-    registeredPlaces: detail.registered_places ?? null,
+    registeredPlaces: wholePlaces(detail.registered_places),
     primaryLanguage: detail.primary_language ?? '',
     tagline: detail.tagline ?? '',
     lifecycle: detail.lifecycle,
@@ -61,10 +95,14 @@ export function generalInformationComplete(company: Company | undefined): boolea
       company.establishedDate,
       company.headOfficeName,
       company.primaryLanguage,
-    ].every((value) => !!value?.trim()) &&
-    Number.isInteger(company.registeredPlaces) &&
-    Number(company.registeredPlaces) >= 0
+    ].every((value) => !!value?.trim()) && wholePlaces(company.registeredPlaces) != null
   );
+}
+
+export function wholePlaces(value: unknown): number | null {
+  if (value == null || (typeof value === 'string' && value.trim() === '')) return null;
+  const places = typeof value === 'number' ? value : Number(String(value).trim());
+  return Number.isInteger(places) && places >= 0 ? places : null;
 }
 
 export function companyModifiedAt(value: string | undefined): string {

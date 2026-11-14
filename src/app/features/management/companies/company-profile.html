@@ -190,6 +190,35 @@
                         /><span>{{ draft.active ? 'Active' : 'Inactive' }}</span>
                       </div>
                     }
+                    @case ('language') {
+                      <cv-language-field
+                        [inputId]="'input-' + field.key"
+                        [name]="field.key"
+                        [value]="'' + (draft[field.key] ?? '')"
+                        (valueChange)="setField(field.key, $event)"
+                        [required]="!!field.required"
+                        [invalid]="!!error(field)"
+                        [describedBy]="
+                          'hint-' + field.key + (error(field) ? ' error-' + field.key : '')
+                        "
+                      />
+                    }
+                    @case ('number') {
+                      <input
+                        type="number"
+                        [id]="'input-' + field.key"
+                        [name]="field.key"
+                        [ngModel]="draft[field.key]"
+                        (ngModelChange)="setField(field.key, $event)"
+                        min="0"
+                        step="1"
+                        [required]="!!field.required"
+                        [attr.aria-invalid]="!!error(field)"
+                        [attr.aria-describedby]="
+                          'hint-' + field.key + (error(field) ? ' error-' + field.key : '')
+                        "
+                      />
+                    }
                     @default {
                       <input
                         [id]="'input-' + field.key"
@@ -199,9 +228,7 @@
                         (ngModelChange)="setField(field.key, $event)"
                         [required]="!!field.required"
                         [attr.maxlength]="field.max ?? null"
-                        [attr.min]="field.type === 'number' ? 0 : null"
                         [attr.max]="field.type === 'date' ? today : null"
-                        [attr.step]="field.type === 'number' ? 1 : null"
                         [attr.aria-invalid]="!!error(field)"
                         [attr.aria-describedby]="
                           'hint-' + field.key + (error(field) ? ' error-' + field.key : '')

@@ -4,12 +4,14 @@ import { API_BASE, API_BASE_PATH } from '../../../core/auth/auth-api';
 import {
   CompanyPage,
   CompanyDetail,
+  CompanyLifecycle,
   CompanyOverviewStats,
   CompanySummary,
   CreateCompanyRequest,
   CreatedCompany,
   COMPANY_LIFECYCLE_LABELS,
 } from './companies-api.models';
+import type { CompanyProfileUpdate } from './company-profile.models';
 
 @Injectable({ providedIn: 'root' })
 export class CompaniesApiService {
@@ -89,7 +91,7 @@ export class CompaniesApiService {
         detail.version < 1
       )
         throw new Error('The company profile could not be read. Please retry.');
-      this.detailSnapshot.set({ context, records: { ...this.details(), [id]: detail } });
+      this.rememberDetail(context, detail);
     } catch (error) {
       if (request !== this.detailRequest || context !== this.context()) return;
       this.detailFailures.set({
@@ -199,6 +201,78 @@ export class CompaniesApiService {
         'The creation response could not be read. Retry this request to check its result.',
       );
     return result;
+  }
+
+  async updateDetail(id: string, changes: CompanyProfileUpdate): Promise<CompanyDetail> {
+    const context = this.context();
+    const current = this.details()[id];
+    if (!context || !this.auth.canAccessCompany(id))
+      throw new Error('Reload the company profile before saving.');
+    if (!current?.etag) throw new Error('Reload the company profile before saving.');
+    const detail = await this.auth.api<CompanyDetail>(
+      `/companies/${encodeURIComponent(id)}`,
+      changes,
+      'PATCH',
+      { 'If-Match': current.etag },
+    );
+    if (context !== this.context())
+      throw new Error('The company context changed. Reload before saving again.');
+    this.readDetail(id, detail);
+    this.rememberDetail(context, detail);
+    return detail;
+  }
+
+  async changeLifecycle(id: string, lifecycle: CompanyLifecycle): Promise<void> {
+    const context = this.context();
+    if (!context || !this.auth.canAccessCompany(id))
+      throw new Error('Reload the company profile before saving.');
+    const result = await this.auth.api<{ ok?: boolean; detail?: string }>(
+      `/companies/${encodeURIComponent(id)}/lifecycle`,
+      { lifecycle, reason: 'Updated from the company profile.' },
+      'POST',
+    );
+    if (context !== this.context())
+      throw new Error('The company context changed. Reload before saving again.');
+    if (!result?.ok)
+      throw new Error(result?.detail || 'The company status could not be changed.');
+  }
+
+  private readDetail(id: string, detail: CompanyDetail): void {
+    if (
+      !detail ||
+      detail.id !== id ||
+      typeof detail.name !== 'string' ||
+      typeof detail.code !== 'string' ||
+      !Number.isInteger(detail.version) ||
+      detail.version < 1 ||
+      typeof detail.etag !== 'string'
+    )
+      throw new Error('The company profile could not be read. Please retry.');
+  }
+
+  private rememberDetail(context: string, detail: CompanyDetail): void {
+    this.detailSnapshot.set({
+      context,
+      records: { ...this.details(), [detail.id]: detail },
+    });
+    const snapshot = this.snapshot();
+    if (snapshot?.context !== context) return;
+    this.snapshot.set({
+      ...snapshot,
+      companies: snapshot.companies.map((company) =>
+        company.id === detail.id
+          ? {
+              ...company,
+              name: detail.name,
+              code: detail.code,
+              lifecycle: detail.lifecycle,
+              service_type: detail.service_type,
+              updated_at: detail.updated_at,
+              profile_completion_percent: detail.profile_completion_percent,
+            }
+          : company,
+      ),
+    });
   }
 
   private readOverview(meta: Record<string, unknown>): CompanyOverviewStats | null {
