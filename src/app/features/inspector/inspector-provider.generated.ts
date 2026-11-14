@@ -913,6 +913,15 @@ export type InspectorMedicationSummary = {
   administrations: number;
 };
 
+export type InspectorNotesWrite = {
+  ratings?: Record<
+    string,
+    'Not assessed' | 'Outstanding' | 'Good' | 'Requires improvement' | 'Inadequate'
+  >;
+  notes?: Record<string, string>;
+  summary?: string;
+};
+
 export type InspectorPrimaryRead = {
   mainPhone: string | null;
   generalEmail: string | null;
