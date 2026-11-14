@@ -1,3 +1,4 @@
+import { CompanyDatePipe, companyDateKey } from '../../../shared/pipes/company-date.pipe';
 import { Component, computed, inject, signal, DestroyRef, effect, untracked } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -14,6 +15,7 @@ import { PortalEvidence } from './portal-evidence';
   selector: 'cv-portal-tasks',
   imports: [
     AccessRequired,
+    CompanyDatePipe,
     DatePipe,
     FormsModule,
     RouterLink,
@@ -100,7 +102,7 @@ export class PortalTasks {
   }
   protected readonly resolved = computed(() =>
     this.ownTasks().filter(
-      (t) => t.status === 'Resolved' && (t.resolvedAt ?? '').slice(0, 10) >= this.portal.weekStart,
+      (t) => t.status === 'Resolved' && companyDateKey(t.resolvedAt ?? '', this.portal.journal.timezone()) >= this.portal.weekStart,
     ),
   );
   protected readonly awaitingReplies = computed(() =>

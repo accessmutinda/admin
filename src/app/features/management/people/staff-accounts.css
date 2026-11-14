@@ -1,0 +1,49 @@
+:host {
+  display: block;
+}
+.hr-table {
+  min-width: 920px;
+}
+.hr-table small {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+}
+.security-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 300px;
+}
+.security-actions .hr-button {
+  padding: 6px 9px;
+  font-size: 12px;
+}
+.account-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  flex-wrap: wrap;
+}
+.account-pagination span {
+  margin-right: auto;
+}
+.account-empty {
+  padding: 28px;
+  color: #64748b;
+}
+.hr-filters select {
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: white;
+  font: inherit;
+}
+.hr-error {
+  padding: 14px;
+  color: #b42318;
+  background: #fef3f2;
+  border-radius: 8px;
+}

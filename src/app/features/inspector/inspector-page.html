@@ -12,12 +12,19 @@
           <span class="material-symbols-outlined" aria-hidden="true">save</span>Save draft
         </button>
       } @else {
-        <button class="secondary" (click)="openModal('setup', 'Inspection details')">
+        <button class="secondary" [disabled]="data.backend && (!data.backend.ready() || !data.backend.canEdit())" (click)="openModal('setup', 'Inspection details')">
           <span class="material-symbols-outlined" aria-hidden="true">event</span>Inspection details
         </button>
       }
     </div>
   </div>
+  @if (data.backend && !data.backend.ready()) {
+    <section class="panel" [attr.role]="data.backend.error() ? 'alert' : 'status'">
+      <h2>{{ data.backend.loading() ? 'Loading provider profile' : 'Provider profile unavailable' }}</h2>
+      <p>{{ data.backend.error() || 'Connecting to the provider records…' }}</p>
+      <button class="secondary" [disabled]="data.backend.loading()" (click)="data.backend.load()">Retry</button>
+    </section>
+  } @else {
   <section class="panel provider-banner" aria-label="Selected provider">
     <div class="provider-mark">
       @if (company()?.logo) {
@@ -59,7 +66,7 @@
     <div class="inspection-context">
       <span class="material-symbols-outlined" aria-hidden="true">description</span>
       <div>
-        <h2>{{ data.state().draft.type }}</h2>
+        <h2>{{ data.state().draft.type || 'Not recorded' }}</h2>
         <p>Inspection period</p>
         <strong>{{
           data.state().draft.start
@@ -94,7 +101,11 @@
             <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>CQC key
             questions — evidence overview
           </h2>
+          @if (data.backend) {
+          <a href="#provider-recommendations" (click)="reviewProviderRatings($event)">Review ratings →</a>
+        } @else {
           <a routerLink="/inspector/reports">Review ratings →</a>
+        }
         </div>
         <cv-inspection-questions [draft]="data.state().draft" [documents]="data.documents()" />
         <p class="footnote">
@@ -183,7 +194,11 @@
     <section class="panel">
       <div class="section-heading">
         <h2>Recorded inspection recommendations</h2>
-        <a routerLink="/inspector/reports">Review ratings →</a>
+        @if (data.backend) {
+          <a href="#provider-recommendations" (click)="reviewProviderRatings($event)">Review ratings →</a>
+        } @else {
+          <a routerLink="/inspector/reports">Review ratings →</a>
+        }
       </div>
       <cv-inspection-questions [draft]="data.state().draft" [documents]="data.documents()" />
     </section>
@@ -207,7 +222,7 @@
           </div>
           <div>
             <dt>Registered address</dt>
-            <dd>{{ company()?.headOfficeAddress || 'Not recorded' }}</dd>
+            <dd>{{ data.backend ? data.backend.registeredAddress() || 'Not recorded' : company()?.headOfficeAddress || 'Not recorded' }}</dd>
           </div>
           <div>
             <dt>Provider type</dt>
@@ -295,7 +310,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (location of data.store.data().locations ?? []; track location.id) {
+              @for (location of data.locations(); track location.id) {
                 <tr>
                   <td>{{ location.name }}</td>
                   <td>{{ location.type }}</td>
@@ -319,7 +334,7 @@
         <dl class="details">
           <div>
             <dt>Service type</dt>
-            <dd>{{ company()?.sector }}</dd>
+            <dd>{{ company()?.sector || 'Not recorded' }}</dd>
           </div>
           <div>
             <dt>Registered places</dt>
@@ -327,7 +342,7 @@
           </div>
           <div>
             <dt>Recorded service users</dt>
-            <dd>{{ data.clients().length }}</dd>
+            <dd>{{ data.serviceUserCount() }}</dd>
           </div>
           <div>
             <dt>Country / region</dt>
@@ -343,14 +358,14 @@
         <span class="material-symbols-outlined" aria-hidden="true">contact_page</span>Provider
         contacts &amp; addresses
       </h2>
-      <cv-inspection-fields [value]="company()?.contacts || {}" />
+      <cv-inspection-fields [value]="data.backend ? data.backend.contacts() : company()?.contacts || {}" />
     </div>
-    <section class="panel">
+    <section class="panel" id="provider-evidence">
       <div class="section-heading">
         <h2>Certificates &amp; Documents</h2>
-        <a routerLink="/inspector/documents">View all evidence →</a>
+        <a [routerLink]="data.backend ? '/inspector/provider' : '/inspector/documents'" [fragment]="data.backend ? 'provider-evidence' : undefined">View all evidence →</a>
       </div>
-      @for (document of data.documents(); track document.id) {
+      @for (document of documents(); track document.id) {
         @if (document.source === 'Provider compliance') {
           <div class="list-row">
             <div>
@@ -360,12 +375,12 @@
                 {{ date(document.updated) }}</small
               >
             </div>
-            <button class="secondary" (click)="downloadDocument(document)">Download</button>
+            <button class="secondary" [disabled]="data.backend && !data.backend.canDownload()" (click)="downloadDocument(document)">Download</button>
           </div>
         }
       }
-      @if (!company()?.compliance) {
-        <p class="empty">No provider compliance documents recorded.</p>
+      @if (data.backend ? !documents().length : !company()?.compliance) {
+        <p class="empty">{{ data.backend && search() ? 'No matching provider compliance documents.' : 'No provider compliance documents recorded.' }}</p>
       }
     </section>
   }
@@ -1023,7 +1038,7 @@
               >DRAFT</span
             >
             <h3>{{ company()?.name }}</h3>
-            <p>{{ data.state().draft.type }}</p>
+            <p>{{ data.state().draft.type || 'Not recorded' }}</p>
             @for (question of questions; track question.key) {
               <div class="list-row">
                 <span>{{ question.key }}</span
@@ -1364,6 +1379,7 @@
       }
     </section>
   }
+  }
 </div>
 <ng-template #directoryEmpty>
   <div class="directory-empty">
@@ -1433,7 +1449,7 @@
       }
       @switch (modalKind()) {
         @case ('setup') {
-          <form (submit)="$event.preventDefault(); save() && closeModal()">
+          <form (submit)="$event.preventDefault(); saveDetails()">
             <label
               >Inspection type<input
                 [ngModel]="draft().type"
@@ -1464,7 +1480,7 @@
             <p class="footnote">Saved inspection metadata belongs to the current workspace.</p>
             <div class="modal-actions">
               <button type="button" class="secondary" (click)="closeModal()">Close</button
-              ><button class="primary" type="submit">Save details</button>
+              ><button class="primary" type="submit" [disabled]="data.backend && (!data.backend.canEdit() || data.backend.busy())">Save details</button>
             </div>
           </form>
         }
@@ -1705,7 +1721,7 @@
               </div>
               <div>
                 <dt>Inspection type</dt>
-                <dd>{{ data.state().draft.type }}</dd>
+                <dd>{{ data.state().draft.type || 'Not recorded' }}</dd>
               </div>
               <div>
                 <dt>Inspection period</dt>

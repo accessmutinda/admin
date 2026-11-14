@@ -1,5 +1,5 @@
+import { CompanyDatePipe, companyDateKey } from '../../../shared/pipes/company-date.pipe';
 import { Component, computed, inject, signal, effect } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
@@ -9,7 +9,7 @@ import { PortalClientContext } from './portal-client-context';
 import { PortalEvent } from './portal.models';
 @Component({
   selector: 'cv-portal-client-audit',
-  imports: [DatePipe, FormsModule, RouterLink, MatSelectModule, CvSelect],
+  imports: [CompanyDatePipe, FormsModule, RouterLink, MatSelectModule, CvSelect],
   templateUrl: './portal-client-audit.html',
   styleUrls: ['./portal-ui.css', './portal-forms.css', './portal-audit.css'],
 })
@@ -58,10 +58,14 @@ export class PortalClientAudit {
           (this.direction() === 'All' || (e.direction ?? 'Internal') === this.direction()) &&
           (this.user() === 'All' || e.actor === this.user()) &&
           (this.status() === 'All' || e.status === this.status()) &&
-          (!this.from() || e.at.slice(0, 10) >= this.from()) &&
-          (!this.to() || e.at.slice(0, 10) <= this.to()),
+          this.inDateRange(e.at),
       ),
   );
+  private inDateRange(at: string): boolean {
+    if (!this.from() && !this.to()) return true;
+    const day = companyDateKey(at, this.context.staffApi?.context()?.timezone ?? 'UTC');
+    return !!day && (!this.from() || day >= this.from()) && (!this.to() || day <= this.to());
+  }
   protected readonly pages = computed(() =>
     Math.max(1, Math.ceil(this.records().length / this.pageSize())),
   );

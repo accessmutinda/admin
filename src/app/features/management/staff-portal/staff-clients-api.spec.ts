@@ -265,4 +265,47 @@ describe('Staff service-user account boundaries', () => {
       request.mock.calls[1][3]['Idempotency-Key'],
     );
   });
+  it('stops polling and clears records on exit, then reconnects when reopened', async () => {
+    vi.useFakeTimers();
+    try {
+      api.start();
+      await api.load();
+      expect(api.ready()).toBe(true);
+      api.stop();
+      const count = request.mock.calls.length;
+      expect(api.context()).toBeNull();
+      expect(api.clients()).toEqual([]);
+      await vi.advanceTimersByTimeAsync(45000);
+      accessContext.set({
+        company_active: true,
+        platform: false,
+        revision: 2,
+        permissions: ['staff_portal.clients.read'],
+        core_permissions: [],
+        enabled_modules: ['staff_portal'],
+        roles: [],
+      });
+      TestBed.tick();
+      expect(request).toHaveBeenCalledTimes(count);
+      api.start();
+      await api.load();
+      expect(api.ready()).toBe(true);
+      expect(request.mock.calls.length).toBeGreaterThan(count);
+      api.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('ignores an identity response that arrives after the view has closed', async () => {
+    let resolve!: (value: any) => void;
+    request.mockReturnValueOnce(new Promise((done) => (resolve = done)));
+    const pending = api.load();
+    api.stop();
+    resolve(context());
+    await pending;
+    expect(api.context()).toBeNull();
+    expect(api.clients()).toEqual([]);
+    expect(api.ready()).toBe(false);
+    expect(request).toHaveBeenCalledTimes(1);
+  });
 });

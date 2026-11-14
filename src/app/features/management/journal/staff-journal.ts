@@ -1,3 +1,4 @@
+import { CompanyDatePipe } from '../../../shared/pipes/company-date.pipe';
 import {
   Component,
   computed,
@@ -10,7 +11,6 @@ import {
   untracked,
 } from '@angular/core';
 import { ActivatedRoute, RouterLink, Router } from '@angular/router';
-import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
@@ -22,7 +22,7 @@ import { JournalEntry } from './journal.models';
 @Component({
   selector: 'cv-staff-journal',
   imports: [
-    DatePipe,
+    CompanyDatePipe,
     FormsModule,
     MatSelectModule,
     CvSelect,

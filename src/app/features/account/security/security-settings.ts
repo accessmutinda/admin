@@ -34,5 +34,8 @@ export class SecuritySettings {
     if (this.user?.mfaMethod === 'sms') return 'SMS verification';
     return 'Method unavailable';
   }
+  protected readonly waitingForStaffAccess =
+    this.auth.profile?.()?.home_path === '/account/security';
+  protected readonly mfaOff = this.auth.profile?.()?.authentication?.mfa_required === false;
   protected readonly details = signal<'mfa' | 'connections' | null>(null);
 }

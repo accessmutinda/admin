@@ -513,7 +513,7 @@
           <article class="portal-copy">
             <strong>{{ note.author }}</strong>
             <p>{{ note.text }}</p>
-            <small>{{ note.at | date: 'd MMM y, HH:mm' }}</small>
+            <small>{{ note.at | companyDate: portal.journal.timezone() : 'datetime' }}</small>
           </article>
         } @empty {
           <div class="portal-empty">

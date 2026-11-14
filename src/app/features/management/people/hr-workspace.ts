@@ -1,3 +1,5 @@
+import { MatDialog } from '@angular/material/dialog';
+import { StaffAddDialog, AddedStaff } from './staff-add-dialog';
 import { PeopleApiService, DirectoryStaff } from './people-api.service';
 import { Skeleton } from '../../../shared/ui/skeleton';
 import { CompanyUnavailable } from '../shared/company-unavailable';
@@ -32,6 +34,22 @@ import { HrService } from './hr.service';
 export class HrWorkspace {
   protected readonly hr = inject(HrService);
   protected readonly api = inject(PeopleApiService);
+  protected readonly canAddStaff = computed(
+    () => this.hr.can('create') && this.api.access.can('people', 'onboarding', 'create'),
+  );
+  private readonly dialog = inject(MatDialog);
+  protected readonly addedStaff = signal<AddedStaff | null>(null);
+  protected addStaff(): void {
+    if (!this.canAddStaff()) return;
+    this.dialog
+      .open(StaffAddDialog, { width: '780px', maxWidth: '96vw', autoFocus: 'first-heading' })
+      .afterClosed()
+      .subscribe((result?: AddedStaff) => {
+        if (!result || result.company_id !== this.api.companyId()) return;
+        this.addedStaff.set(result);
+        this.reload();
+      });
+  }
   protected readonly company = computed(() => {
     const value = this.api.summary()?.company;
     return value
@@ -216,6 +234,12 @@ export class HrWorkspace {
     void this.router.navigate([], { relativeTo: this.route, queryParams: {} });
   }
   private readonly allOverviewLinks = [
+    {
+      title: 'User Management',
+      description: 'Staff login accounts, password resets and MFA security.',
+      icon: 'manage_accounts',
+      path: '/manage/people/users',
+    },
     {
       title: 'Staff Directory',
       description: 'Find employees, manage records and view readiness.',

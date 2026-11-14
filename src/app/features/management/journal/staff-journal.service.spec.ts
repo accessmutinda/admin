@@ -8,6 +8,7 @@ import { JournalService, STAFF_JOURNAL } from './journal.service';
 import { StaffJournal } from './staff-journal';
 
 const identity = () => ({
+  timezone: 'Europe/London',
   company_id: 'north',
   actor_id: '12',
   person_id: 'staff',
@@ -266,4 +267,10 @@ describe('Staff portal journal connection', () => {
     expect(request.mock.calls.filter((call) => call[0].includes('/options?'))).toHaveLength(1);
     fixture.destroy();
   });
+  it('takes timestamp formatting from the verified company context',async()=>{
+    request.mockResolvedValueOnce({...identity(),timezone:'Pacific/Kiritimati'});
+    await service.connectStaff();
+    expect(service.timezone()).toBe('Pacific/Kiritimati');
+  });
+
 });

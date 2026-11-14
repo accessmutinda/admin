@@ -464,6 +464,9 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 4px;
 }
+.cv-management .users-access-page .ua-module-actions.ua-people-actions {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
 .cv-management .users-access-page .ua-module-actions label {
   display: flex;
   flex-direction: column;

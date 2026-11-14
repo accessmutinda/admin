@@ -1,0 +1,252 @@
+<h2 mat-dialog-title>Add Staff Member</h2>
+<form #wizard="ngForm" (ngSubmit)="step() < 3 ? next(wizard) : save()">
+  <mat-dialog-content>
+    <p>Add someone directly without going through recruitment. Required fields are marked *.</p>
+    <ol class="steps" aria-label="Staff creation steps">
+      @for (label of steps; track label; let index = $index) {
+        <li
+          [class.current]="step() === index"
+          [attr.aria-current]="step() === index ? 'step' : null"
+        >
+          <span>{{ index + 1 }}</span
+          >{{ label }}
+        </li>
+      }
+    </ol>
+    @if (error()) {
+      <p class="form-error" role="alert">{{ error() }}</p>
+    }
+    @if (!setup()) {
+      <p role="status">
+        {{ error() ? 'Staff setup could not be loaded.' : 'Loading company branches…' }}
+      </p>
+      @if (error()) {
+        <button class="hr-button" type="button" (click)="load()">Try again</button>
+      }
+    } @else {
+      @switch (step()) {
+        @case (0) {
+          <h3>1. Personal details</h3>
+          <div class="fields">
+            <label
+              >First name *<input
+                name="first_name"
+                required
+                maxlength="100"
+                [(ngModel)]="form.first_name"
+            /></label>
+            <label
+              >Last name *<input name="surname" required maxlength="100" [(ngModel)]="form.surname"
+            /></label>
+            <label
+              >Middle name<input name="middle_name" maxlength="100" [(ngModel)]="form.middle_name"
+            /></label>
+            <label
+              >Date of birth<input
+                type="date"
+                name="birth_date"
+                [max]="setup()!.local_date"
+                [(ngModel)]="form.birth_date"
+            /></label>
+            <label
+              >Personal email *<input
+                type="email"
+                email
+                name="email"
+                required
+                maxlength="254"
+                [(ngModel)]="form.email"
+            /></label>
+            <label
+              >Phone number<input type="tel" name="phone" maxlength="20" [(ngModel)]="form.phone"
+            /></label>
+          </div>
+        }
+        @case (1) {
+          <h3>2. Employment</h3>
+          @if (!setup()!.branches.length) {
+            <p role="alert">Add an active company branch before creating staff.</p>
+          }
+          <div class="fields">
+            <label
+              >Staff reference *<input
+                name="reference"
+                required
+                maxlength="50"
+                [(ngModel)]="form.reference"
+            /></label>
+            <label
+              >Job title *<input
+                name="job_title"
+                required
+                maxlength="150"
+                [(ngModel)]="form.job_title"
+            /></label>
+            <label
+              >Branch *<select name="branch_name" required [(ngModel)]="form.branch_name">
+                <option value="">Choose a branch</option>
+                @for (branch of setup()!.branches; track $index) {
+                  <option [value]="branch">{{ branch }}</option>
+                }
+              </select></label
+            >
+            <label
+              >Employment type *<select
+                name="employment_type"
+                required
+                [(ngModel)]="form.employment_type"
+              >
+                @for (type of setup()!.employment_types; track type) {
+                  <option [value]="type">{{ type }}</option>
+                }
+              </select></label
+            >
+            <label
+              >Start date *<input
+                type="date"
+                name="start_date"
+                required
+                [(ngModel)]="form.start_date"
+            /></label>
+            <label
+              >Contract end date<input
+                type="date"
+                name="contract_end"
+                [min]="form.start_date"
+                [(ngModel)]="form.contract_end"
+            /></label>
+            <label
+              >Weekly hours<input
+                type="number"
+                name="hours"
+                min="0"
+                max="168"
+                step="0.25"
+                [(ngModel)]="hours"
+            /></label>
+            <label class="checkbox"
+              ><input type="checkbox" name="driver" [(ngModel)]="form.is_driver" />Driver</label
+            >
+          </div>
+        }
+        @case (2) {
+          <h3>3. Contact & preferences</h3>
+          <p>These details are optional and can also be updated in the staff profile.</p>
+          <div class="fields">
+            <label
+              >Address<input name="address" maxlength="4000" [(ngModel)]="personal.address"
+            /></label>
+            <label
+              >Address line 2<input
+                name="addressLine2"
+                maxlength="4000"
+                [(ngModel)]="personal.addressLine2"
+            /></label>
+            <label
+              >Town / city<input name="town" maxlength="4000" [(ngModel)]="personal.town"
+            /></label>
+            <label
+              >Postcode<input name="postcode" maxlength="4000" [(ngModel)]="personal.postcode"
+            /></label>
+            <label
+              >Nationality<input
+                name="nationality"
+                maxlength="4000"
+                [(ngModel)]="personal.nationality"
+            /></label>
+            <label
+              >Languages<input name="languages" maxlength="4000" [(ngModel)]="personal.languages"
+            /></label>
+            <label
+              >Emergency contact name<input
+                name="emergencyName"
+                maxlength="4000"
+                [(ngModel)]="personal.emergencyName"
+            /></label>
+            <label
+              >Emergency contact relationship<input
+                name="emergencyRelationship"
+                maxlength="4000"
+                [(ngModel)]="personal.emergencyRelationship"
+            /></label>
+            <label
+              >Emergency contact phone<input
+                type="tel"
+                name="emergencyPhone"
+                maxlength="100"
+                [(ngModel)]="personal.emergencyPhone"
+            /></label>
+            <label
+              >Preferred work areas<input
+                name="areas"
+                maxlength="4000"
+                [(ngModel)]="preferences.areas"
+            /></label>
+            <label
+              >Preferred shifts<input
+                name="shifts"
+                maxlength="4000"
+                [(ngModel)]="preferences.shifts"
+            /></label>
+            <label
+              >Travel preferences<input
+                name="travel"
+                maxlength="4000"
+                [(ngModel)]="preferences.travel"
+            /></label>
+            <label class="wide"
+              >Work preference notes<textarea
+                name="notes"
+                maxlength="4000"
+                [(ngModel)]="preferences.notes"
+              ></textarea>
+            </label>
+          </div>
+        }
+        @case (3) {
+          <h3>4. Review staff details</h3>
+          <dl>
+            <dt>Name</dt>
+            <dd>{{ form.first_name }} {{ form.middle_name }} {{ form.surname }}</dd>
+            <dt>Personal email</dt>
+            <dd>{{ form.email }}</dd>
+            <dt>Phone</dt>
+            <dd>{{ form.phone || 'Not provided' }}</dd>
+            <dt>Staff reference</dt>
+            <dd>{{ form.reference }}</dd>
+            <dt>Job title / branch</dt>
+            <dd>{{ form.job_title }} / {{ form.branch_name }}</dd>
+            <dt>Employment</dt>
+            <dd>{{ form.employment_type }} · Starting {{ form.start_date }}</dd>
+            <dt>Weekly hours</dt>
+            <dd>{{ hours ?? 'Not provided' }}</dd>
+          </dl>
+          <p>
+            A company login account will be created using the first initial and last name at
+            careverity.com. If that address is already taken, a number is added.
+          </p>
+          <p>
+            The initial password uses their first and last names followed by &#64;123. They must
+            change it at first sign-in. MFA starts switched off.
+          </p>
+          <p>
+            The staff member starts in onboarding. Upload documents, record checks, training and
+            references in their profile before activating them. Payroll is managed separately.
+          </p>
+        }
+      }
+      @if (attempted() && wizard.invalid) {
+        <p class="form-error" role="alert">Complete the required fields with valid information.</p>
+      }
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button type="button" class="hr-button" [disabled]="busy()" (click)="cancel()">Cancel</button>
+    @if (step() > 0) {
+      <button type="button" class="hr-button" [disabled]="busy()" (click)="back()">Back</button>
+    }
+    <button type="submit" class="hr-button primary" [disabled]="busy() || !setup()">
+      {{ busy() ? 'Adding staff…' : step() === 3 ? 'Create staff member' : 'Continue' }}
+    </button>
+  </mat-dialog-actions>
+</form>

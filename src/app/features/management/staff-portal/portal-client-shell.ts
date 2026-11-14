@@ -1,4 +1,5 @@
-import { Component, inject } from '@angular/core';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { Component, computed, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { StaffClientState } from './staff-client-state';
@@ -86,10 +87,12 @@ import { age } from '../care/care.models';
             client.file?.details?.['living'] || 'Living arrangements not recorded'
           }}</span>
         </div>
-        <a class="button" [routerLink]="['/manage/clients', context.id()]">Edit care profile</a>
+        @if (canEditProfile()) {
+          <a class="button" [routerLink]="['/manage/clients', context.id()]">Edit care profile</a>
+        }
       </section>
       <nav class="client-nav" aria-label="Service user portal sections">
-        @for (tab of tabs; track tab.path) {
+        @for (tab of visibleTabs(); track tab.path) {
           <a
             [routerLink]="['/staff-portal/service-users', context.id(), tab.path]"
             routerLinkActive="active"
@@ -98,11 +101,18 @@ import { age } from '../care/care.models';
             >{{ tab.label }}</a
           >
         }
-        <a [routerLink]="['/manage/care-plans', context.id()]"
-          ><span class="material-symbols-outlined" aria-hidden="true">assignment</span>Care plan</a
-        ><a [routerLink]="['/manage/clients', context.id(), 'documents']"
-          ><span class="material-symbols-outlined" aria-hidden="true">description</span>Documents</a
-        >
+        @if (access.canPath('/manage/care-plans/' + context.id())) {
+          <a [routerLink]="['/manage/care-plans', context.id()]"
+            ><span class="material-symbols-outlined" aria-hidden="true">assignment</span>Care
+            plan</a
+          >
+        }
+        @if (access.canPath('/manage/clients/' + context.id() + '/documents')) {
+          <a [routerLink]="['/manage/clients', context.id(), 'documents']"
+            ><span class="material-symbols-outlined" aria-hidden="true">description</span
+            >Documents</a
+          >
+        }
       </nav>
       <router-outlet />
     } @else {
@@ -119,6 +129,22 @@ import { age } from '../care/care.models';
 export class PortalClientShell {
   protected readonly context = inject(PortalClientContext);
   private readonly router = inject(Router);
+  protected readonly access = inject(CompanyAccessService);
+  protected readonly canEditProfile = computed(
+    () =>
+      this.access.can('care', 'records', 'edit') &&
+      this.access.canPath('/manage/clients/' + this.context.id()),
+  );
+  protected readonly visibleTabs = computed(() =>
+    this.tabs.filter((tab) => {
+      const api = this.context.staffApi;
+      if (!api) return true;
+      if (tab.path === 'communications') return api.available('communications');
+      if (tab.path === 'journal') return api.available('journal');
+      if (tab.path === 'allocation') return api.available('rostering');
+      return true;
+    }),
+  );
   protected overview(): boolean {
     return this.router.url.split(/[?#]/)[0].endsWith('/overview');
   }

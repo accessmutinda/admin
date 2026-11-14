@@ -68,6 +68,7 @@ export class StaffClientsApi {
   private generation = 0;
   private destroyed = false;
   private active = false;
+  private stopped = false;
   private pending?: Promise<void>;
   private intents = new Map<string, string>();
   private photoUrls = new Map<string, { photo: string; url: string }>();
@@ -110,18 +111,29 @@ export class StaffClientsApi {
     return `/companies/${this.companyId()}/staff-portal/service-users`;
   }
   private current(scope: string, generation = this.generation) {
-    return !this.destroyed && scope === this.scope() && generation === this.generation;
+    return (
+      !this.destroyed && !this.stopped && scope === this.scope() && generation === this.generation
+    );
   }
   private validate(value: { company_id?: string }) {
     if (value.company_id !== this.companyId())
       throw Error('The service-user response does not match this workspace.');
   }
   start() {
+    this.stopped = false;
     this.active = true;
     void this.load();
     this.timer ??= setInterval(() => {
-      if (document.visibilityState !== 'hidden' && !this.busy()) void this.load();
+      if (this.active && document.visibilityState !== 'hidden' && !this.busy()) void this.load();
     }, 15000);
+  }
+  stop() {
+    this.active = false;
+    this.stopped = true;
+    if (this.timer) clearInterval(this.timer);
+    this.timer = undefined;
+    this.currentId.set('');
+    this.clear();
   }
   select(id: string) {
     if (id !== this.currentId()) {
@@ -134,6 +146,7 @@ export class StaffClientsApi {
     this.start();
   }
   async detail(id: string, force = false): Promise<void> {
+    if (this.stopped) return;
     if (force && id === this.currentId()) {
       this.generation++;
       this.pending = undefined;
@@ -163,7 +176,7 @@ export class StaffClientsApi {
     }
   }
   async load(): Promise<void> {
-    if (this.destroyed) return;
+    if (this.destroyed || this.stopped) return;
     if (this.pending) return this.pending;
     const scope = this.scope(),
       generation = ++this.generation,

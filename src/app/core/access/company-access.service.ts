@@ -1,3 +1,4 @@
+import { isConnectedStaffPortalRoute } from './staff-portal-routes';
 import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
@@ -65,9 +66,10 @@ export function routeAccess(url: string): [string, string][] {
   if (path.startsWith('/manage/rota')) return [['care', 'rostering']];
   if (
     /^\/manage\/people\/[^/]+$/.test(path) &&
-    !['staff', 'onboarding', 'compliance'].includes(path.split('/').at(-1)!)
+    !['staff', 'onboarding', 'compliance', 'users'].includes(path.split('/').at(-1)!)
   )
     return [['people', 'recruitment']];
+  if (path === '/manage/people/users') return [['people', 'users']];
   if (path.startsWith('/manage/recruitment')) return [['people', 'recruitment']];
   if (path.startsWith('/manage/leave')) return [['people', 'leave']];
   if (path.startsWith('/manage/reviews')) return [['people', 'performance']];
@@ -320,10 +322,7 @@ export class CompanyAccessService {
         if (generation !== this.generation) return this.refresh();
         this.context.set(value);
         this.error.set('');
-        if (
-          !this.canPath(this.router.url) &&
-          !/^\/staff-portal\/oversight(?:[?#]|$)/.test(this.router.url)
-        )
+        if (!this.canPath(this.router.url) && !isConnectedStaffPortalRoute(this.router.url))
           void this.router.navigateByUrl('/access-denied');
         return;
       })
@@ -331,10 +330,7 @@ export class CompanyAccessService {
         if (id === this.companyId() && generation !== this.generation) return this.refresh();
         if (id === this.companyId() && generation === this.generation) {
           this.context.set(null);
-          if (
-            routeAccess(this.router.url).length &&
-            !/^\/staff-portal\/oversight(?:[?#]|$)/.test(this.router.url)
-          )
+          if (routeAccess(this.router.url).length && !isConnectedStaffPortalRoute(this.router.url))
             void this.router.navigateByUrl('/access-denied');
           this.error.set(
             error instanceof Error ? error.message : 'Access information unavailable.',

@@ -1,5 +1,15 @@
 <cv-module-design />
 <cv-security-page-header active="overview" />
+@if (waitingForStaffAccess) {
+  <section class="panel" role="status" style="padding: 20px; margin-bottom: 16px">
+    <h2>Your sign-in account is ready</h2>
+    <p>
+      Staff workspace access requires an active staff record and enabled permissions. Contact your
+      manager to complete onboarding or review your access. You can manage your password here in the
+      meantime.
+    </p>
+  </section>
+}
 @if (user) {
   <section class="panel account-sec-identity" aria-label="Account details">
     <span class="account-sec-avatar">{{ user.initials }}</span>
@@ -18,11 +28,13 @@
           user.mfaEnabled ? 'verified_user' : 'shield'
         }}</span>
         {{
-          user.mfaEnabled == null
-            ? 'MFA verification unavailable'
-            : user.mfaEnabled
-              ? 'MFA verified'
-              : 'MFA not verified'
+          mfaOff
+            ? 'MFA off'
+            : user.mfaEnabled == null
+              ? 'MFA verification unavailable'
+              : user.mfaEnabled
+                ? 'MFA verified'
+                : 'MFA not verified'
         }}
       </span>
     </div>
@@ -58,11 +70,13 @@
           <h3>Multi-factor authentication</h3>
           <p>
             {{
-              user.mfaEnabled == null
-                ? 'Verification information is not available for this sign-in.'
-                : user.mfaEnabled
-                  ? 'Your sign-in uses an additional verification step.'
-                  : 'MFA was not verified for this sign-in.'
+              mfaOff
+                ? 'MFA is switched off for this account. Contact your administrator to change this policy.'
+                : user.mfaEnabled == null
+                  ? 'Verification information is not available for this sign-in.'
+                  : user.mfaEnabled
+                    ? 'Your sign-in uses an additional verification step.'
+                    : 'MFA was not verified for this sign-in.'
             }}
           </p>
         </div>

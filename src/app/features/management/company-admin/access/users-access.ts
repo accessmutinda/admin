@@ -250,6 +250,7 @@ export class UsersAccess {
     { code: 'edit', label: 'Edit' },
     { code: 'archive', label: 'Delete' },
     { code: 'export', label: 'Export' },
+    { code: 'manage_users', label: 'User Management' },
     { code: 'approve', label: 'Approve' },
     { code: 'finalise', label: 'Finalise' },
     { code: 'pay', label: 'Pay' },
@@ -569,8 +570,12 @@ export class UsersAccess {
     }
     this.permissionCodes.set([...codes]);
   }
+  protected moduleActions(module: ProductModule) {
+    return this.actions.slice(0, module.code === 'people' ? 6 : 5);
+  }
   protected enabledActions(module: ProductModule): number {
-    return this.actions.slice(0, 5).filter((action) => this.moduleHas(module, action.code)).length;
+    return this.moduleActions(module).filter((action) => this.moduleHas(module, action.code))
+      .length;
   }
   protected permissionCount(): number {
     return this.modules().reduce((count, module) => count + this.enabledActions(module), 0);

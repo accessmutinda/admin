@@ -1,3 +1,6 @@
+import { isConnectedStaffPortalRoute } from './core/access/staff-portal-routes';
+import { InspectorService } from './features/inspector/inspector.service';
+import { InspectorProviderService } from './features/inspector/inspector-provider.service';
 import { AuthService } from './core/auth/auth.service';
 import { Router, Routes } from '@angular/router';
 import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
@@ -47,7 +50,7 @@ const portalAccessGuard = async (
       const access = inject(m.CompanyAccessService);
       const router = inject(Router);
       await access.refreshForNavigation();
-      if (/^\/staff-portal(?:\/(dashboard|dashboard-2|oversight|service-users(?:\/[^/?#]+(?:\/[^/?#]+)?)?|journal|tasks|concerns(?:\/[^/?#]+)?|training(?:\/(?:dashboard|history|certificates(?:\/[^/?#]+)?|assessments|assessment\/[^/?#]+|results\/[^/?#]+|courses(?:\/[^?#]*)?))?))?(?:[?#]|$)/.test(state.url)) return true;
+      if (isConnectedStaffPortalRoute(state.url)) return true;
       return access.canPath(state.url) || router.createUrlTree(['/access-denied']);
     }),
   );
@@ -119,6 +122,10 @@ export const routes: Routes = [
       ].map((page) => ({
         path: page,
         data: { page },
+        providers:
+          page === 'provider'
+            ? [{ provide: InspectorService, useClass: InspectorProviderService }]
+            : [],
         title: `${page.replaceAll('-', ' ')} · Inspector Portal · CareVerity`,
         loadComponent: () =>
           import('./features/inspector/inspector-page').then((m) => m.InspectorPage),
@@ -548,6 +555,14 @@ export const routes: Routes = [
         title: 'Staff Directory · CareVerity',
         loadComponent: () =>
           import('./features/management/people/hr-workspace').then((m) => m.HrWorkspace),
+      },
+      {
+        path: 'people/users',
+        canActivate: [peopleGuard],
+        data: { module: 'People & HR' },
+        title: 'User Management · CareVerity',
+        loadComponent: () =>
+          import('./features/management/people/staff-accounts').then((m) => m.StaffAccounts),
       },
       {
         path: 'people/onboarding',

@@ -1,5 +1,6 @@
-import { Component, input } from '@angular/core';
+import { Component, input, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'cv-security-page-header',
@@ -11,10 +12,12 @@ import { RouterLink } from '@angular/router';
         <h1>Account security</h1>
         <p>Keep your sign-in details, authentication and devices in view.</p>
       </div>
-      <a class="button" routerLink="/manage/companies">
-        <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to
-        workspace
-      </a>
+      @if (home !== '/account/security') {
+        <a class="button" [routerLink]="home">
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to
+          workspace
+        </a>
+      }
     </div>
     <nav class="tabs" aria-label="Account security sections">
       <a
@@ -38,5 +41,6 @@ import { RouterLink } from '@angular/router';
   `,
 })
 export class SecurityPageHeader {
+  protected readonly home = inject(AuthService).profile?.()?.home_path ?? '/manage/companies';
   readonly active = input.required<'overview' | 'activity'>();
 }

@@ -157,10 +157,11 @@ export type JournalPage = {
     deletedBy: string[];
   }[];
   meta: {
+    timezone: string;
     company_id: string;
     local_date: string;
     request_id: string;
-    folders: {};
+    folders: Record<string, number>;
     unread: number;
     awaiting: number;
     mentions: number;
@@ -308,6 +309,7 @@ export type JournalTaskPage = {
 };
 
 export type JournalStaffContext = {
+  timezone: string;
   company_id: string;
   actor_id: string;
   person_id: string;
@@ -338,6 +340,7 @@ export type StaffTaskProfile = {
 };
 
 export type StaffTaskContext = {
+  timezone: string;
   company_id: string;
   actor_id: string;
   person_id: string;

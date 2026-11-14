@@ -1,3 +1,14 @@
+@if (addedStaff(); as staff) {
+  @if (staff.company_id === api.companyId()) {
+    <div class="hr-alert" role="status">
+      Staff member created. Login: <strong>{{ staff.login_email }}</strong
+      >.
+      <a [routerLink]="['/manage/people/staff', staff.staff_id]"
+        >Open staff profile to complete onboarding</a
+      >.
+    </div>
+  }
+}
 <nav class="hr-breadcrumb" aria-label="Breadcrumb">
   <a routerLink="/manage/people" [attr.aria-current]="mode === 'overview' ? 'page' : null"
     >People & HR</a
@@ -19,15 +30,19 @@
     </p>
   </div>
   <div class="hr-actions">
-    @if (hr.can('create')) {
-      <a
+    @if (api.access.canPath('/manage/people/users')) {
+      <a class="hr-button" routerLink="/manage/people/users">User Management</a>
+    }
+
+    @if (canAddStaff()) {
+      <button
         class="hr-button primary"
-        [routerLink]="null"
-        aria-disabled="true"
-        title="Staff creation is not available yet"
-        ><span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add Staff
-        Member</a
+        type="button"
+        (click)="addStaff()"
+        title="Add staff directly without recruitment"
       >
+        <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add Staff Member
+      </button>
     }
     @if (mode !== 'overview' && hr.can('export')) {
       <button class="hr-button" [disabled]="!count() || api.exportBusy()" (click)="exportAll()">
@@ -218,16 +233,17 @@
           }
         </div>
       </section>
-      <section cvQuickActions headingId="hr-quick-actions" [actionCount]="hr.can('create') ? 6 : 5">
-        @if (hr.can('create')) {
-          <a
+      <section cvQuickActions headingId="hr-quick-actions" [actionCount]="canAddStaff() ? 6 : 5">
+        @if (canAddStaff()) {
+          <button
             class="co-primary"
-            [routerLink]="null"
-            aria-disabled="true"
-            title="Staff creation is not available yet"
-            ><span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add Staff
-            Member</a
+            type="button"
+            (click)="addStaff()"
+            title="Add staff directly without recruitment"
           >
+            <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Add Staff
+            Member
+          </button>
         }
         <a
           [hidden]="!api.access.canPath('/manage/people/onboarding')"
@@ -673,7 +689,9 @@
                             ? ['/manage/people/staff', p.id, 'reviews']
                             : null
                         "
-                        [attr.aria-disabled]="!api.access.canPath('/manage/people/staff/' + p.id + '/reviews')"
+                        [attr.aria-disabled]="
+                          !api.access.canPath('/manage/people/staff/' + p.id + '/reviews')
+                        "
                         queryParamsHandling="preserve"
                         >Supervision & Appraisal</a
                       >

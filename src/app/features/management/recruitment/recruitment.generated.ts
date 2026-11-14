@@ -520,7 +520,7 @@ export type RecruitmentApplicationPage = {
 export type RecruitmentOnboardingItem = {
   id: string;
   kind: 'draft' | 'starter';
-  source_id: string;
+  source_id: string | null;
   name: string;
   email: string;
   reference: string;
@@ -544,7 +544,7 @@ export type RecruitmentOnboardingPage = {
   results: {
     id: string;
     kind: 'draft' | 'starter';
-    source_id: string;
+    source_id: string | null;
     name: string;
     email: string;
     reference: string;

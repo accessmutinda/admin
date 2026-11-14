@@ -263,7 +263,7 @@
                           ? 'You'
                           : entry.author
                       }}</strong
-                      ><time>{{ entry.createdAt | date: 'd MMM, HH:mm' }}</time></span
+                      ><time>{{ entry.createdAt | companyDate: service.timezone() : 'short' }}</time></span
                     ><strong class="message-subject">{{ entry.subject }}</strong
                     ><span class="message-preview">{{
                       entry.body || 'Draft — continue writing your message'
@@ -580,7 +580,7 @@
               <span class="journal-avatar">{{ initials(entry.author) }}</span
               ><span
                 ><strong>{{ entry.author }}</strong
-                ><small>{{ entry.createdAt | date: 'd MMM y, HH:mm' }}</small></span
+                ><small>{{ entry.createdAt | companyDate: service.timezone() : 'datetime' }}</small></span
               >
             </p>
             <dl>
@@ -701,7 +701,7 @@
               <p>{{ event.subject }}</p>
               <small>{{ event.actor }}</small>
             </div>
-            <time>{{ event.at | date: 'd MMM y, HH:mm' }}</time>
+            <time>{{ event.at | companyDate: service.timezone() : 'datetime' }}</time>
           </article>
         } @empty {
           <div class="journal-empty">

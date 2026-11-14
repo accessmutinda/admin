@@ -430,15 +430,19 @@
             >
             <div>
               <h3 [id]="'ua-module-' + moduleIndex">{{ displayModule(module) }}</h3>
-              <small>{{ enabledActions(module) }}/5 actions enabled</small>
+              <small
+                >{{ enabledActions(module) }}/{{ moduleActions(module).length }} actions
+                enabled</small
+              >
             </div>
           </div>
           <div
             class="ua-module-actions"
+            [class.ua-people-actions]="module.code === 'people'"
             role="group"
             [attr.aria-label]="displayModule(module) + ' permissions'"
           >
-            @for (action of actions.slice(0, 5); track action.code) {
+            @for (action of moduleActions(module); track action.code) {
               <label [class.ua-checked]="moduleHas(module, action.code)"
                 ><input
                   type="checkbox"

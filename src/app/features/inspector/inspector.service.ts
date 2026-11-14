@@ -1,6 +1,6 @@
 import { approvedInstructions } from '../management/care/care-plan.models';
 import { documentVisibility } from '../management/care/care-documents.models';
-import { Injectable, computed, inject } from '@angular/core';
+import { Injectable, Injector, computed, inject } from '@angular/core';
 import { ManagementStore, COURSES } from '../management/shared/management.store';
 import { AuthService } from '../../core/auth/auth.service';
 import {
@@ -20,7 +20,20 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class InspectorService {
-  readonly store = inject(ManagementStore);
+  private readonly injector = inject(Injector);
+  get store(): ManagementStore {
+    return this.injector.get(ManagementStore);
+  }
+  readonly backend?: import('./inspector-provider-api.service').InspectorProviderApi;
+  readonly company = computed(() => this.store.company());
+  readonly companyId = computed(() => this.store.companyId());
+  readonly locations = computed<
+    Pick<
+      import('../management/locations/locations.models').ServiceLocation,
+      'id' | 'name' | 'type' | 'registeredPlaces' | 'status'
+    >[]
+  >(() => this.store.data().locations ?? []);
+  readonly serviceUserCount = computed(() => this.clients().length);
   readonly auth = inject(AuthService);
   readonly today = londonDate();
   readonly state = computed(() => this.store.data().inspection ?? emptyInspection());
@@ -36,7 +49,7 @@ export class InspectorService {
       })),
     ),
   );
-  readonly staff = this.store.staff;
+  readonly staff = computed(() => this.store.staff());
   readonly quality = computed(() => this.store.data().quality ?? { assessments: [], actions: [] });
   readonly visits = computed(() =>
     (this.store.data().rota?.visits ?? []).filter((v) => v.state === 'Published'),

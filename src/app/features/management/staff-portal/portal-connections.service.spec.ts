@@ -1,121 +1,144 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { AuthService } from '../../../core/auth/auth.service';
-import { DEMO_USER } from '../../../demo/business-fixtures';
-import { WorkspaceService } from '../../../core/auth/workspace.service';
-import { ManagementStore } from '../shared/management.store';
+import { HrService } from '../people/hr.service';
+import { RotaClient } from '../rota/rota.models';
+import { JournalEntry, JournalTask } from '../journal/journal.models';
+import { PortalConcern, ProfessionalRecord } from './portal.models';
 import { PortalService } from './portal.service';
 import { PortalConnections } from './portal-connections.service';
-import { seedSystemDemo } from '../../../demo/system-demo';
 
-describe('Shared Staff and Admin portal records', () => {
-  let portal: PortalService, links: PortalConnections, store: ManagementStore;
-  const actor = signal({
-    ...DEMO_USER,
-    roleCode: 'CA' as const,
-    email: 'admin@example.test',
-    name: 'Alex Morgan',
-  });
-  let clientId: string, staffId: string, staffEmail: string;
+describe('Shared record navigation over authorised source projections', () => {
+  const clients = signal<RotaClient[]>([]),
+    tasks = signal<JournalTask[]>([]),
+    concerns = signal<PortalConcern[]>([]),
+    communications = signal<ProfessionalRecord[]>([]),
+    entries = signal<JournalEntry[]>([]),
+    staff = signal<{ id: string; name: string; email: string }[]>([]);
+  const email = 'worker@example.test';
+  let links: PortalConnections;
   beforeEach(() => {
-    localStorage.clear();
-    TestBed.configureTestingModule({});
-    const auth = TestBed.inject(AuthService);
-    auth.signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    actor.set({ ...DEMO_USER, roleCode: 'CA', email: 'admin@example.test', name: 'Alex Morgan' });
-    vi.spyOn(auth, 'currentUser').mockImplementation(() => actor());
-    store = TestBed.inject(ManagementStore);
-    store.saveWorkspace((d) => seedSystemDemo(d));
-    portal = TestBed.inject(PortalService);
-    links = TestBed.inject(PortalConnections);
-    clientId = portal.clients().find((c) => c.name === 'Margaret Williams')!.id;
-    const staff = store.staff().find((p) => p.name === 'Fatima Bullet')!;
-    staffId = staff.id;
-    staffEmail = staff.email;
-  });
-  it('shows the same task and resolution in the client and HR summaries without copying it', () => {
-    const initialClient = links.client(clientId)!.tasks,
-      initialStaff = links.staff(staffId)!.tasks;
-    const task = {
-      ...portal.newTask(clientId, staffEmail),
-      title: 'Confirm shared care follow-up',
-    };
-    expect(portal.saveTask(task)).toBeNull();
-    expect(links.client(clientId)!.tasks).toBe(initialClient + 1);
-    expect(links.staff(staffId)!.tasks).toBe(initialStaff + 1);
-    const row = links.staff(staffId)!.records.find((r) => r.query?.['task'] === task.id)!;
-    expect(row.path).toEqual(['/staff-portal/tasks']);
-    expect(
-      portal.saveTask({
-        ...task,
-        status: 'Resolved',
-        actions: 'Reviewed and confirmed with the care team.',
-      }),
-    ).toBeNull();
-    expect(links.client(clientId)!.tasks).toBe(initialClient);
-    expect(links.staff(staffId)!.tasks).toBe(initialStaff);
-    expect(links.client(clientId)!.records.find((r) => r.query?.['task'] === task.id)?.status).toBe(
-      'Resolved',
-    );
-    expect(store.data().journal!.tasks.filter((t) => t.id === task.id)).toHaveLength(1);
-  });
-  it('uses Admin profile/contact changes in Staff Portal and links communications back to the same contact', () => {
-    const client = portal.care.client(clientId)!;
-    expect(
-      portal.care.rota.saveClient({ ...client, name: 'Margaret Williams Updated' }),
-    ).toBeNull();
-    expect(links.client(clientId)?.name).toBe('Margaret Williams Updated');
-    const contact = portal.care.client(clientId)!.file!.contacts![0];
-    const version = portal.care.client(clientId)!.file!.updatedAt;
-    expect(
-      portal.care.saveContact(clientId, 'lqcs', { ...contact, phone: '07700 900888' }, version),
-    ).toBeNull();
-    expect(
-      portal
-        .clients()
-        .find((c) => c.id === clientId)!
-        .file!.contacts!.find((c) => c.id === contact.id)?.phone,
-    ).toBe('07700 900888');
-    const record = {
-      ...portal.newCommunication(clientId),
-      contactId: contact.id,
-      subject: 'Connected care update',
-      details: 'Confirmed through the shared contact record.',
-    };
-    expect(portal.saveCommunication(record)).toBeNull();
-    expect(links.client(clientId)!.records.some((r) => r.query?.['record'] === record.id)).toBe(
-      true,
-    );
-    expect(portal.clientTimeline(clientId).some((e) => e.entityId === record.id)).toBe(true);
-  });
-  it('keeps private tasks and drafts out of another account’s Admin summaries', () => {
-    const task = { ...portal.newTask(clientId), title: 'Private follow-up', shared: false };
-    expect(portal.journal.saveTask(task)).toBeNull();
-    const draft = portal.journal.newEntry();
-    draft.clientId = clientId;
-    draft.subject = 'Private unsent draft';
-    expect(portal.journal.save(draft, false)).toBeNull();
-    actor.set({ ...actor(), email: DEMO_USER.email });
-    expect(
-      links
-        .client(clientId)!
-        .records.some((r) => r.title === task.title || r.title === draft.subject),
-    ).toBe(false);
-  });
-  it('respects module permissions and company boundaries', () => {
-    store.update((d) => ({
-      ...d,
-      permissions: {
-        ...d.permissions,
-        'Company Admin:Care delivery': [false, false, false, false, false],
-        'Company Admin:People & HR': [false, false, false, false, false],
+    clients.set([
+      {
+        id: 'client',
+        name: 'Assigned person',
+        reference: 'SU-1',
+        address: '1 Example Road',
+        postcode: 'AB1',
+        funding: 'Private',
+        priority: 'Standard',
+        active: true,
       },
-    }));
-    expect(links.client(clientId)).toBeNull();
-    expect(links.staff(staffId)).toBeNull();
-    TestBed.inject(WorkspaceService).switchWorkspace('riverside');
-    expect(links.client(clientId)).toBeNull();
-    expect(links.staff(staffId)).toBeNull();
+    ]);
+    tasks.set([]);
+    concerns.set([]);
+    communications.set([]);
+    entries.set([]);
+    staff.set([{ id: 'worker', name: 'Recorded worker', email }]);
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: PortalService,
+          useValue: {
+            clients,
+            tasks,
+            concerns,
+            communications,
+            journal: { entries, email: () => email },
+            care: { rota: { can: () => true } },
+          },
+        },
+        { provide: HrService, useValue: { staff } },
+      ],
+    });
+    links = TestBed.inject(PortalConnections);
+  });
+  it('reflects the same task resolution in client and staff summaries and retains its direct link', () => {
+    const task: JournalTask = {
+      id: 'task',
+      owner: email,
+      title: 'Confirm care follow-up',
+      clientId: 'client',
+      due: '2026-11-13',
+      priority: 'Normal',
+      status: 'Open',
+    };
+    tasks.set([task]);
+    expect(links.client('client')?.tasks).toBe(1);
+    expect(links.staff('worker')?.tasks).toBe(1);
+    expect(links.staff('worker')?.records[0].path).toEqual(['/staff-portal/tasks']);
+    expect(links.staff('worker')?.records[0].query).toEqual({ task: 'task' });
+    tasks.set([{ ...task, status: 'Resolved' }]);
+    expect(links.client('client')?.tasks).toBe(0);
+    expect(links.staff('worker')?.tasks).toBe(0);
+    expect(links.client('client')?.records[0].status).toBe('Resolved');
+    expect(tasks()).toHaveLength(1);
+  });
+  it('reads changed identities and links professional records to the same assigned service user', () => {
+    clients.update((rows) => rows.map((row) => ({ ...row, name: 'Updated assigned person' })));
+    communications.set([
+      {
+        id: 'communication',
+        clientId: 'client',
+        contactId: 'contact',
+        type: 'GP note',
+        subject: 'Shared care update',
+        details: 'Reviewed source contact',
+        at: '2026-11-13T10:00:00Z',
+        loggedBy: 'Recorded worker',
+        loggedByEmail: email,
+        followUp: '',
+        status: 'Open',
+        attachments: [],
+      },
+    ]);
+    const source = structuredClone(communications());
+    expect(links.client('client')?.name).toBe('Updated assigned person');
+    const record = links.client('client')!.records[0];
+    expect(record.path).toEqual(['/staff-portal/service-users', 'client', 'communications']);
+    expect(record.query).toEqual({ record: 'communication' });
+    expect(communications()).toEqual(source);
+  });
+  it('omits drafts and deleted journal entries while preserving the published entry link', () => {
+    const entry: JournalEntry = {
+      id: 'published',
+      author: 'Recorded worker',
+      authorEmail: email,
+      to: [email],
+      cc: [],
+      subject: 'Published care update',
+      clientId: 'client',
+      category: 'Care',
+      priority: 'Normal',
+      body: 'Update',
+      attachments: [],
+      state: 'Sent',
+      createdAt: '2026-11-13T10:00:00Z',
+      readBy: [],
+      archivedBy: [],
+      starredBy: [],
+      followUpBy: [],
+    };
+    entries.set([
+      entry,
+      { ...entry, id: 'draft', state: 'Draft' },
+      { ...entry, id: 'deleted', deletedBy: [email] },
+    ]);
+    const connection = links.client('client')!;
+    expect(connection.journals).toBe(1);
+    expect(connection.records).toHaveLength(1);
+    expect(connection.records[0].path).toEqual([
+      '/staff-portal/service-users',
+      'client',
+      'journal',
+    ]);
+    expect(connection.records[0].query).toEqual({ entry: 'published' });
+  });
+  it('returns no connection for unavailable identities or a cleared account/workspace source', () => {
+    expect(links.client('foreign')).toBeNull();
+    expect(links.staff('foreign')).toBeNull();
+    clients.set([]);
+    staff.set([]);
+    expect(links.client('client')).toBeNull();
+    expect(links.staff('worker')).toBeNull();
   });
 });

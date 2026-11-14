@@ -250,7 +250,22 @@ export class AuthService {
     if (!this.isAuthenticated()) return '/auth/sign-in';
     if (redirectTo && /^\/auth\/invite\/[^/?#]+$/.test(redirectTo)) return redirectTo;
     if (this.isSuperAdmin()) return '/manage/companies';
-    if (this.profile()?.company_entry_state === 'ready') return '/manage/rota/overview';
+    if (this.profile()?.company_entry_state === 'ready') {
+      const home = this.profile()?.home_path;
+      const homes = [
+        '/manage/rota/overview',
+        '/manage/people',
+        '/manage/people/users',
+        '/staff-portal/dashboard',
+        '/staff-portal/clients',
+        '/manage/learning/courses',
+        '/manage/finance/payroll',
+        '/manage/supervisor',
+        '/access-denied',
+        '/account/security',
+      ];
+      return home && homes.includes(home) ? home : '/manage/rota/overview';
+    }
     return '/access-denied';
   }
 
@@ -317,9 +332,11 @@ export class AuthService {
     const provided = me.display_name?.trim() ?? '';
     const name = provided.includes('@') ? '' : provided;
     const mfaVerified =
-      me.authentication && Object.hasOwn(me.authentication, 'mfa_verified_at')
-        ? !!me.authentication.mfa_verified_at
-        : null;
+      me.authentication?.mfa_required === false
+        ? false
+        : me.authentication && Object.hasOwn(me.authentication, 'mfa_verified_at')
+          ? !!me.authentication.mfa_verified_at
+          : null;
     const user: AppUser = {
       id: me.id,
       name,
