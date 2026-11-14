@@ -99,6 +99,9 @@ h2 .material-symbols-outlined {
   gap: 8px;
   align-items: start;
 }
+.main-grid > div {
+  min-width: 0;
+}
 .three-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
