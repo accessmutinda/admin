@@ -118,8 +118,11 @@ export class InspectorReportsApi {
       }
     });
   }
-  private root() {
+  protected root() {
     return `/companies/${this.companyId()}/inspector/reports`;
+  }
+  protected draftRoot() {
+    return this.root();
   }
   private current(scope: string, generation: number) {
     return this.active && scope === this.scope() && generation === this.generation;
@@ -160,7 +163,7 @@ export class InspectorReportsApi {
     this.loading.set(true);
     const task = (async () => {
       try {
-        const first = await this.auth.api<InspectorReportRead>(this.root());
+        const first = await this.auth.api<InspectorReportRead>(this.draftRoot());
         if (!this.current(scope, generation)) return;
         this.validate(first);
         this.snapshot.set(first);
@@ -203,6 +206,20 @@ export class InspectorReportsApi {
     });
     return task;
   }
+  protected async refreshDraft(): Promise<InspectorReportRead | null> {
+    if (this.saving() || !this.active || !this.ready()) return null;
+    const scope = this.scope(),
+      lifecycle = this.lifecycle;
+    this.saving.set(true);
+    try {
+      await this.load();
+      return this.active && scope === this.scope() && lifecycle === this.lifecycle
+        ? this.value()
+        : null;
+    } finally {
+      if (scope === this.scope() && lifecycle === this.lifecycle) this.saving.set(false);
+    }
+  }
   private validate(value: InspectorReportRead) {
     if (value.company.id !== this.companyId() || value.meta.company_id !== this.companyId())
       throw Error('The report response does not match this workspace.');
@@ -239,7 +256,7 @@ export class InspectorReportsApi {
       finding.id ? '\"v' + finding.version + '\"' : undefined,
     );
   }
-  private async write<T>(
+  protected async write<T>(
     suffix: string,
     method: 'POST' | 'PATCH',
     body: unknown,
@@ -256,10 +273,15 @@ export class InspectorReportsApi {
     this.pending = undefined;
     this.loading.set(false);
     try {
-      const result = await this.auth.api<T>(this.root() + suffix, body, method, {
-        ...(etag ? { 'If-Match': etag } : {}),
-        'Idempotency-Key': this.writeKey.key,
-      });
+      const result = await this.auth.api<T>(
+        suffix ? this.root() + suffix : this.draftRoot(),
+        body,
+        method,
+        {
+          ...(etag ? { 'If-Match': etag } : {}),
+          'Idempotency-Key': this.writeKey.key,
+        },
+      );
       if (!this.active || scope !== this.scope() || lifecycle !== this.lifecycle) return null;
       this.writeKey = undefined;
       this.generation++;

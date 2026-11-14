@@ -5,7 +5,10 @@ import { InspectionDraft } from './inspector.models';
 
 @Injectable()
 export class InspectorReportsService extends InspectorService {
-  override readonly reportsBackend = inject(InspectorReportsApi);
+  protected createApi(): InspectorReportsApi {
+    return inject(InspectorReportsApi);
+  }
+  override readonly reportsBackend = this.createApi();
   override readonly company = this.reportsBackend.company;
   override readonly companyId = this.reportsBackend.companyId;
   override readonly state = this.reportsBackend.state;

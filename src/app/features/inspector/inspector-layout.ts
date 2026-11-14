@@ -1,3 +1,4 @@
+import { InspectorNotesApi } from './inspector-notes-api.service';
 import { InspectorReportsApi } from './inspector-reports-api.service';
 import { InspectorVisitsApi } from './inspector-visits-api.service';
 import { InspectorDocumentsApi } from './inspector-documents-api.service';
@@ -176,7 +177,12 @@ export class InspectorLayout {
   readonly incidents = inject(InspectorIncidentsApi);
   readonly quality = inject(InspectorQualityApi);
   readonly documents = inject(InspectorDocumentsApi);
-  readonly reports = inject(InspectorReportsApi);
+  private readonly reportsApi = inject(InspectorReportsApi);
+  private readonly notesApi = inject(InspectorNotesApi);
+  readonly notesMode = computed(() => /^\/inspector\/notes(?:[?#]|$)/.test(this.url()));
+  get reports() {
+    return this.notesMode() ? this.notesApi : this.reportsApi;
+  }
   readonly reportsMode = computed(() => /^\/inspector\/(reports|notes)(?:[?#]|$)/.test(this.url()));
   readonly visits = inject(InspectorVisitsApi);
   private readonly url = toSignal(

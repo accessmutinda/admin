@@ -1,3 +1,4 @@
+import { InspectorNotesService } from './features/inspector/inspector-notes.service';
 import { InspectorReportsService } from './features/inspector/inspector-reports.service';
 import { InspectorVisitsService } from './features/inspector/inspector-visits.service';
 import { InspectorDocumentsService } from './features/inspector/inspector-documents.service';
@@ -150,11 +151,13 @@ export const routes: Routes = [
                       ? [{ provide: InspectorService, useClass: InspectorQualityService }]
                       : page === 'documents'
                         ? [{ provide: InspectorService, useClass: InspectorDocumentsService }]
-                        : page === 'reports' || page === 'notes'
+                        : page === 'reports'
                           ? [{ provide: InspectorService, useClass: InspectorReportsService }]
-                          : page === 'visits'
-                            ? [{ provide: InspectorService, useClass: InspectorVisitsService }]
-                            : [],
+                          : page === 'notes'
+                            ? [{ provide: InspectorService, useClass: InspectorNotesService }]
+                            : page === 'visits'
+                              ? [{ provide: InspectorService, useClass: InspectorVisitsService }]
+                              : [],
         title: `${page.replaceAll('-', ' ')} · Inspector Portal · CareVerity`,
         loadComponent: () =>
           isConnectedInspectorPage(page)
