@@ -260,6 +260,7 @@ export class AuthService {
         '/inspector/incidents',
         '/inspector/quality',
         '/inspector/documents',
+        '/inspector/visits',
         '/manage/rota/overview',
         '/manage/people',
         '/manage/people/users',

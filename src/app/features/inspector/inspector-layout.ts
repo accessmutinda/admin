@@ -1,3 +1,4 @@
+import { InspectorVisitsApi } from './inspector-visits-api.service';
 import { InspectorDocumentsApi } from './inspector-documents-api.service';
 import { InspectorQualityApi } from './inspector-quality-api.service';
 import { InspectorIncidentsApi } from './inspector-incidents-api.service';
@@ -148,7 +149,11 @@ import { INSPECTOR_PAGES } from './inspector.models';
                         ? this.documents.ready()
                           ? 'Evidence records connected'
                           : 'Evidence records unavailable'
-                        : 'Live workflow unavailable'
+                        : this.visitsMode()
+                          ? this.visits.ready()
+                            ? 'Visit records connected'
+                            : 'Visit records unavailable'
+                          : 'Live workflow unavailable'
         }}</span>
       </footer>
     </div>
@@ -166,6 +171,7 @@ export class InspectorLayout {
   readonly incidents = inject(InspectorIncidentsApi);
   readonly quality = inject(InspectorQualityApi);
   readonly documents = inject(InspectorDocumentsApi);
+  readonly visits = inject(InspectorVisitsApi);
   private readonly url = toSignal(
     this.router.events.pipe(
       filter((event) => event instanceof NavigationEnd),
@@ -180,6 +186,7 @@ export class InspectorLayout {
   readonly incidentsMode = computed(() => /^\/inspector\/incidents(?:[?#]|$)/.test(this.url()));
   readonly qualityMode = computed(() => /^\/inspector\/quality(?:[?#]|$)/.test(this.url()));
   readonly documentsMode = computed(() => /^\/inspector\/documents(?:[?#]|$)/.test(this.url()));
+  readonly visitsMode = computed(() => /^\/inspector\/visits(?:[?#]|$)/.test(this.url()));
   readonly companyName = computed(() =>
     this.providerMode()
       ? this.provider.company()?.name
@@ -195,7 +202,9 @@ export class InspectorLayout {
                 ? this.quality.company()?.name
                 : this.documentsMode()
                   ? this.documents.company()?.name
-                  : null,
+                  : this.visitsMode()
+                    ? this.visits.company()?.name
+                    : null,
   );
   readonly pages = computed(() =>
     INSPECTOR_PAGES.filter(
@@ -237,7 +246,9 @@ export class InspectorLayout {
                     ? '/inspector/quality'
                     : this.documentsMode()
                       ? '/inspector/documents'
-                      : this.entryPath() || '/access-denied',
+                      : this.visitsMode()
+                        ? '/inspector/visits'
+                        : this.entryPath() || '/access-denied',
       ],
       {
         queryParams: { q: term },

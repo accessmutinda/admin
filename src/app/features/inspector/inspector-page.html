@@ -24,7 +24,7 @@
   </div>
   @if (connected && !connected.ready()) {
     <section class="panel" [attr.role]="connected.error() ? 'alert' : 'status'">
-      <h2>{{ connected.loading() ? (data.documentsBackend ? 'Loading documents and evidence' : data.qualityBackend ? 'Loading quality and compliance' : data.incidentsBackend ? 'Loading incidents and safeguarding' : data.medicationBackend ? 'Loading medication records' : data.staffBackend ? 'Loading staffing records' : 'Loading service users') : (data.documentsBackend ? 'Documents and evidence unavailable' : data.qualityBackend ? 'Quality and compliance unavailable' : data.incidentsBackend ? 'Incidents and safeguarding unavailable' : data.medicationBackend ? 'Medication records unavailable' : data.staffBackend ? 'Staffing records unavailable' : 'Service users unavailable') }}</h2>
+      <h2>{{ connected.loading() ? (data.visitsBackend ? 'Loading visit monitoring' : data.documentsBackend ? 'Loading documents and evidence' : data.qualityBackend ? 'Loading quality and compliance' : data.incidentsBackend ? 'Loading incidents and safeguarding' : data.medicationBackend ? 'Loading medication records' : data.staffBackend ? 'Loading staffing records' : 'Loading service users') : (data.visitsBackend ? 'Visit monitoring unavailable' : data.documentsBackend ? 'Documents and evidence unavailable' : data.qualityBackend ? 'Quality and compliance unavailable' : data.incidentsBackend ? 'Incidents and safeguarding unavailable' : data.medicationBackend ? 'Medication records unavailable' : data.staffBackend ? 'Staffing records unavailable' : 'Service users unavailable') }}</h2>
       <p>{{ connected.error() || 'Connecting to the provider records…' }}</p>
       <button class="secondary" [disabled]="connected.loading()" (click)="connected.load()">Retry</button>
     </section>
@@ -610,6 +610,7 @@
             ><input
               id="visit-month"
               type="month"
+              min="1900-01" max="2199-12"
               [ngModel]="month()"
               (ngModelChange)="$event && month.set($event); selectedDay.set(''); filterChanged()"
             /><button class="icon-button" aria-label="Next month" (click)="changeMonth(1)">
@@ -678,7 +679,7 @@
             </p>
           </div>
         </div>
-        <p class="footnote">Operational dates and times use Europe/London.</p>
+        <p class="footnote">Operational dates and times use {{ data.visitsBackend?.value()?.meta?.timezone || 'Europe/London' }}.</p>
       </section>
     </div>
   }
@@ -689,7 +690,7 @@
         <span class="material-symbols-outlined" aria-hidden="true">clinical_notes</span>Shared Visit
         Notes
       </h2>
-      @for (note of data.visitNotes(); track note.id) {
+      @for (note of sharedVisitNotes(); track note.id) {
         <article class="panel">
           <h3>{{ note.client }} · {{ note.visitType }}</h3>
           <p class="muted">

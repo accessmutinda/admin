@@ -65,7 +65,8 @@ export class InspectorPage {
     this.data.medicationBackend ??
     this.data.incidentsBackend ??
     this.data.qualityBackend ??
-    this.data.documentsBackend;
+    this.data.documentsBackend ??
+    this.data.visitsBackend;
   private readonly route = inject(ActivatedRoute);
   readonly routeData = toSignal(this.route.data, { initialValue: this.route.snapshot.data });
   readonly params = toSignal(this.route.queryParamMap, {
@@ -166,6 +167,14 @@ export class InspectorPage {
     this.documents().slice((this.currentPage() - 1) * 8, this.currentPage() * 8),
   );
   readonly findings = computed(() => this.data.state().draft.findings);
+  readonly sharedVisitNotes = computed(() =>
+    this.data
+      .visitNotes()
+      .filter(
+        (note) =>
+          !this.data.visitsBackend || !this.selectedDay() || note.date === this.selectedDay(),
+      ),
+  );
   readonly scopedVisits = computed(() =>
     this.data.visits().filter((v) => v.date.startsWith(this.month())),
   );
@@ -186,6 +195,9 @@ export class InspectorPage {
   readonly filteredRows = computed(() => {
     const directory = this.page().path === 'service-users';
     const term = (directory || this.connected ? this.search().trim() : this.search()).toLowerCase();
+    const visitOrder = new Map(
+      this.data.visitsBackend?.records().map((row, index) => [row.id, index]) ?? [],
+    );
     return this.register()
       .rows.filter(
         (r) =>
@@ -204,9 +216,14 @@ export class InspectorPage {
               : r.cells.includes(this.statusFilter()))),
       )
       .sort((a, b) => {
+        if (this.data.visitsBackend)
+          return ((visitOrder.get(a.id) ?? 0) - (visitOrder.get(b.id) ?? 0)) * this.sortDirection();
         const primary = a.cells[0].localeCompare(b.cells[0]);
         const tie =
-          this.data.medicationBackend || this.data.incidentsBackend || this.data.qualityBackend
+          this.data.medicationBackend ||
+          this.data.incidentsBackend ||
+          this.data.qualityBackend ||
+          this.data.visitsBackend
             ? a.id.localeCompare(b.id)
             : 0;
         return (primary || tie) * this.sortDirection();
@@ -223,6 +240,7 @@ export class InspectorPage {
   readonly endRow = computed(() => Math.min(this.currentPage() * 8, this.count()));
   readonly metrics = computed<InspectionMetric[]>(() => this.buildMetrics());
   readonly calendar = computed(() => {
+    if (this.data.visitsBackend) return this.data.visitsBackend.calendar();
     const [year, month] = this.month().split('-').map(Number);
     if (!year || !month) return [];
     const first = new Date(Date.UTC(year, month - 1, 1));
@@ -294,6 +312,15 @@ export class InspectorPage {
   );
   readonly readyCount = computed(() => this.readiness().filter((r) => r.complete).length);
   constructor() {
+    if (this.data.visitsBackend) {
+      this.data.visitsBackend.selectMonth(this.month());
+      effect(() => {
+        if (!this.data.visitsBackend!.selectMonth(this.month())) {
+          this.month.set(this.data.visitsBackend!.month());
+          this.error.set('Choose a month between January 1900 and December 2199.');
+        }
+      });
+    }
     if (this.data.documentsBackend) {
       effect(() => {
         const rows = this.data.documents();
@@ -455,6 +482,10 @@ export class InspectorPage {
     this.currentPage.set(1);
   }
   clearFilters(): void {
+    if (this.data.visitsBackend) {
+      this.selectedDay.set('');
+      this.error.set('');
+    }
     if (this.data.medicationBackend) {
       this.selectedClient.set('');
       this.rangeStart.set('');
@@ -792,6 +823,9 @@ export class InspectorPage {
         .export({
           q: this.search(),
           ordering: this.sortDirection() === 1 ? 'name' : '-name',
+          ...(this.data.visitsBackend
+            ? { month: this.month(), ...(this.selectedDay() ? { day: this.selectedDay() } : {}) }
+            : {}),
           ...(this.data.medicationBackend
             ? {
                 view: this.activeTab(),
@@ -1175,6 +1209,40 @@ export class InspectorPage {
           ),
         ];
       case 'visits':
+        if (this.data.visitsBackend) {
+          const summary = this.data.visitsBackend.summary();
+          return [
+            metric('Published visits', summary?.published ?? 0, this.month(), 'calendar_month'),
+            metric(
+              'Completed',
+              summary?.completed ?? 0,
+              'All allocated carers checked out',
+              'check_circle',
+              '#00a34e',
+            ),
+            metric(
+              'In progress',
+              summary?.in_progress ?? 0,
+              'Recorded check-in',
+              'schedule',
+              '#008d9f',
+            ),
+            metric(
+              'No attendance',
+              summary?.no_attendance ?? 0,
+              'Ended without recorded check-in',
+              'warning',
+              '#ff3047',
+            ),
+            metric(
+              'Unallocated',
+              summary?.unallocated ?? 0,
+              'Fewer carers than required',
+              'person_alert',
+              '#ff8a00',
+            ),
+          ];
+        }
         return [
           metric('Published visits', visits.length, this.month(), 'calendar_month'),
           metric(
@@ -1613,6 +1681,60 @@ export class InspectorPage {
           ),
         };
       case 'visits':
+        if (this.data.visitsBackend)
+          return {
+            title: 'Visit activity',
+            columns: ['Service user', 'Date', 'Time', 'Call', 'Allocated carers', 'Status'],
+            rows: this.data.visitsBackend
+              .records()
+              .filter((v) => !this.selectedDay() || v.date === this.selectedDay())
+              .map((v) =>
+                row(
+                  v.id,
+                  [
+                    v.client_name,
+                    this.date(v.date),
+                    v.start +
+                      ' – ' +
+                      v.end +
+                      (v.end_date !== v.date ? ' (' + v.end_date + ')' : ''),
+                    v.call_name,
+                    v.staff.map((p) => p.name).join(', ') || 'Unassigned',
+                    v.status,
+                  ],
+                  {
+                    'Service user': v.client_name,
+                    Date: this.date(v.date),
+                    'Planned start': this.providerDates.transform(
+                      v.starts_at,
+                      this.data.visitsBackend!.value()?.meta.timezone,
+                    ),
+                    'Planned end': this.providerDates.transform(
+                      v.ends_at,
+                      this.data.visitsBackend!.value()?.meta.timezone,
+                    ),
+                    Address: v.address,
+                    'Carers required': v.carers,
+                    'Allocated carers': v.staff.map((p) => p.name),
+                    Status: v.status,
+                    Tasks: v.tasks,
+                    Attendance: v.attendance.map((a) => ({
+                      Carer: a.carer,
+                      'Check-in': this.providerDates.transform(
+                        a.start,
+                        this.data.visitsBackend!.value()?.meta.timezone,
+                      ),
+                      'Check-out': this.providerDates.transform(
+                        a.end,
+                        this.data.visitsBackend!.value()?.meta.timezone,
+                      ),
+                      'Currently allocated': a.allocated,
+                    })),
+                    Allocation: v.allocation,
+                  },
+                ),
+              ),
+          };
         return {
           title: 'Visit activity',
           columns: ['Service user', 'Date', 'Time', 'Call', 'Allocated carers', 'Status'],
