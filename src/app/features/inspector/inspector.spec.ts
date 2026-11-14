@@ -1,3 +1,4 @@
+import { InspectorReportsApi } from './inspector-reports-api.service';
 import { InspectorVisitsApi } from './inspector-visits-api.service';
 import { InspectorDocumentsApi } from './inspector-documents-api.service';
 import { InspectorQualityApi } from './inspector-quality-api.service';
@@ -102,6 +103,7 @@ describe('Inspector portal routes and availability', () => {
           InspectorQualityApi,
           InspectorDocumentsApi,
           InspectorVisitsApi,
+          InspectorReportsApi,
         ].map((provide) => ({
           provide,
           useValue: { company, ready },
@@ -151,13 +153,17 @@ describe('Inspector portal routes and availability', () => {
     );
   });
   it('denies portal entry when no connected modules are available', () => {
-    allowed.set(new Set(['/inspector/reports']));
+    allowed.set(new Set());
     const result = TestBed.runInInjectionContext(() =>
       inspectorEntryGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
     );
     expect(TestBed.inject(Router).serializeUrl(result as import('@angular/router').UrlTree)).toBe(
       '/access-denied',
     );
+  });
+  it('enters reports for inspectors limited to report access', () => {
+    allowed.set(new Set(['/inspector/reports']));
+    expect(inspectorEntryPath(path => access.canPath(path))).toBe('/inspector/reports');
   });
   it('requires authentication before entering the portal', async () => {
     authenticated.set(false);
@@ -198,6 +204,8 @@ describe('Inspector portal routes and availability', () => {
       '/inspector/quality',
       '/inspector/documents',
       '/inspector/visits',
+      '/inspector/reports',
+      '/inspector/notes',
     ]);
     expect(fixture.nativeElement.textContent).not.toContain('Local workspace');
     expect(fixture.nativeElement.textContent).toContain('Inspection reviewer');
