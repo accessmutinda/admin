@@ -98,7 +98,7 @@ describe('Original five-step company creation with API submission', () => {
     await editor.create();
     expect(create).toHaveBeenCalledTimes(1);
     expect(create.mock.calls[0][0]).toMatchObject({
-      company: { name: 'New Care Company', code: 'new' },
+      company: { name: 'New Care Company', code: 'new', registration_number: '87654321' },
       initial_admin: { email: 'admin@example.com', mfa_override: 'inherit' },
     });
     expect(editor.created()).toBe(true);
@@ -114,6 +114,16 @@ describe('Original five-step company creation with API submission', () => {
     expect(editor.error()).toBe('Network unavailable.');
     await editor.create();
     expect(create.mock.calls[0][1]).toBe(create.mock.calls[1][1]);
+  });
+  it('submits a corrected registration number with a new idempotency key after a failed request', async () => {
+    create.mockRejectedValueOnce(new Error('Network unavailable.'));
+    const { editor } = open();
+    fill(editor);
+    await editor.create();
+    editor.draft.company.registration = 'SC123456';
+    await editor.create();
+    expect(create.mock.calls[1][0].company.registration_number).toBe('SC123456');
+    expect(create.mock.calls[0][1]).not.toBe(create.mock.calls[1][1]);
   });
   it('does not submit missing required frontend inputs', async () => {
     const { editor } = open();

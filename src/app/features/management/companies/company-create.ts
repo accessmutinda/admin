@@ -305,6 +305,7 @@ export class CompanyCreatePage {
         code: company.code,
         legal_name: company.name,
         trading_name: company.tradingName ?? '',
+        registration_number: company.registration,
         sector: company.sector.toLowerCase().replaceAll(' ', '-'),
         country: company.country,
         timezone: 'Europe/London',

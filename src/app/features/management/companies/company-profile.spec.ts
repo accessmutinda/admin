@@ -139,6 +139,7 @@ describe('Company profile from the API', () => {
     fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement;
     expect((root.querySelector('#input-name') as HTMLInputElement).value).toBe('Stored Care');
+    expect((root.querySelector('#input-registration') as HTMLInputElement).value).toBe('12345678');
     expect((root.querySelector('#input-description') as HTMLTextAreaElement).value).toBe(
       detail.description,
     );
@@ -187,6 +188,34 @@ describe('Company profile from the API', () => {
       detail.id,
       expect.objectContaining({ registered_places: 1, name: 'Stored Care', code: 'STORED' }),
     );
+  });
+  it('saves changes to the registration number and reloads the saved value into edit', async () => {
+    queryEdit = true;
+    const fixture = create();
+    await fixture.whenStable();
+    const api = TestBed.inject(CompaniesApiService);
+    vi.mocked(api.updateDetail).mockImplementationOnce(async (_id, changes) => {
+      const updated = { ...detail, registration_number: changes.registration_number };
+      details.set({ [detail.id]: updated });
+      return updated;
+    });
+    const page = fixture.componentInstance as unknown as {
+      setField: (key: string, value: string) => void;
+      save: () => Promise<void>;
+      edit: () => void;
+    };
+    page.setField('registration', ' SC123456 ');
+    await page.save();
+    expect(api.updateDetail).toHaveBeenCalledWith(
+      detail.id,
+      expect.objectContaining({ registration_number: 'SC123456' }),
+    );
+    page.edit();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(
+      (fixture.nativeElement.querySelector('#input-registration') as HTMLInputElement).value,
+    ).toBe('SC123456');
   });
   it('keeps genuinely absent values empty instead of substituting sample data', async () => {
     details.set({

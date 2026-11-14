@@ -77,6 +77,7 @@ export interface CreateCompanyRequest {
     code: string;
     legal_name?: string;
     trading_name?: string;
+    registration_number?: string;
     sector?: string;
     country?: string;
     timezone?: string;
