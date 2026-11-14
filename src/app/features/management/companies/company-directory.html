@@ -50,6 +50,9 @@
   @if (error() || api.error()) {
     <p class="cd-error" role="alert">{{ error() || api.error() }}</p>
   }
+  @if (nextIncompleteCompany(); as company) {
+    <cv-company-setup-banner [company]="company" />
+  }
   <div class="cd-overview-grid" role="region" aria-label="Company overview">
     @for (stat of stats(); track stat.label) {
       <section class="co-stat co-surface" [attr.data-card-tone]="stat.color | cardTone">
@@ -334,6 +337,20 @@
                       [attr.aria-label]="company.name + ' profile completion'"
                     ></progress>
                   </div>
+                  @if (
+                    canCompleteProfiles() &&
+                    completion(company) != null &&
+                    completion(company)! < 100
+                  ) {
+                    <a
+                      class="text-link"
+                      [routerLink]="['/manage/companies', company.id]"
+                      [queryParams]="{ edit: true }"
+                      fragment="general-information"
+                      [attr.aria-label]="'Complete profile for ' + company.name"
+                      >Complete profile</a
+                    >
+                  }
                 </td>
                 <td>{{ admin(company) || 'Not recorded' }}</td>
                 <td>{{ plan(company) || 'Not recorded' }}</td>

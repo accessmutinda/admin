@@ -1,4 +1,5 @@
 import { CompanyLoading } from './company-loading';
+import { CompanySetupBanner } from './company-setup-banner';
 import { Skeleton } from '../../../shared/ui/skeleton';
 import { CompaniesApiService } from './companies-api.service';
 import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
@@ -22,6 +23,7 @@ type FilterKey = 'status' | 'region' | 'service' | 'plan' | 'completion' | 'upda
   selector: 'cv-company-directory',
   host: { class: 'module-page companies-page company-directory-page' },
   imports: [
+    CompanySetupBanner,
     Skeleton,
     CompanyLoading,
     CardTonePipe,
@@ -58,6 +60,15 @@ export class CompanyDirectory {
   protected readonly error = signal('');
   protected readonly completion = companyCompletion;
   protected readonly modifiedAt = companyModifiedAt;
+  protected readonly canCompleteProfiles = computed(() => this.auth.isSuperAdmin());
+  protected readonly nextIncompleteCompany = computed(() =>
+    this.canCompleteProfiles()
+      ? this.rows().find((company) => {
+          const completion = this.completion(company);
+          return completion != null && completion < 100;
+        })
+      : undefined,
+  );
   protected readonly columns: { key: SortColumn; label: string }[] = [
     { key: 'name', label: 'Company Name' },
     { key: 'code', label: 'Company Code' },

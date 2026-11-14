@@ -50,7 +50,10 @@ describe('Original company directory with backend data', () => {
             companyWriteError: () => 'Backend support is pending.',
           },
         },
-        { provide: AuthService, useValue: { currentUser: () => ({ name: 'API User' }) } },
+        {
+          provide: AuthService,
+          useValue: { currentUser: () => ({ name: 'API User' }), isSuperAdmin: () => true },
+        },
         { provide: ToastService, useValue: { success: vi.fn(), error: vi.fn() } },
       ],
     });
@@ -60,6 +63,36 @@ describe('Original company directory with backend data', () => {
     fixture.detectChanges();
     return { fixture, editor: fixture.componentInstance as unknown as Directory };
   }
+  it('shows super admins a setup banner and edit links for incomplete companies', () => {
+    vi.spyOn(TestBed.inject(ManagementStore), 'companies').mockReturnValue([
+      { ...companies[0], profileCompletion: 100 },
+      { ...companies[1], profileCompletion: 43 },
+      { ...companies[2], profileCompletion: 71 },
+      companies[3],
+    ]);
+    const { fixture } = open();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector('cv-company-setup-banner')?.textContent).toContain(
+      'API Provider 1 is 43% complete',
+    );
+    const links = root.querySelectorAll('tbody a[aria-label^="Complete profile for"]');
+    expect(links).toHaveLength(2);
+    expect(links[0].getAttribute('href')).toBe(
+      '/manage/companies/api-1?edit=true#general-information',
+    );
+    expect(links[1].getAttribute('href')).toBe(
+      '/manage/companies/api-2?edit=true#general-information',
+    );
+  });
+  it('does not add the directory setup prompts for other roles', () => {
+    vi.spyOn(TestBed.inject(AuthService), 'isSuperAdmin').mockReturnValue(false);
+    vi.spyOn(TestBed.inject(ManagementStore), 'companies').mockReturnValue([
+      { ...companies[0], profileCompletion: 43 },
+    ]);
+    const { fixture } = open();
+    expect(fixture.nativeElement.querySelector('cv-company-setup-banner')).toBeNull();
+    expect(fixture.nativeElement.querySelector('a[aria-label^="Complete profile for"]')).toBeNull();
+  });
   it('keeps every original column, filter and action', () => {
     const { fixture } = open();
     const root: HTMLElement = fixture.nativeElement;

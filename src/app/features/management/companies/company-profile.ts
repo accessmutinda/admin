@@ -14,7 +14,7 @@ import {
   untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { LanguageField } from './language-field';
@@ -49,11 +49,15 @@ interface ProfileField {
 export class CompanyProfile {
   protected readonly store = inject(ManagementStore);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly api = inject(CompaniesApiService);
   private readonly routeParams = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
+  });
+  private readonly queryParams = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
   });
   private get id(): string {
     return this.routeParams().get('id') ?? '';
@@ -228,6 +232,12 @@ export class CompanyProfile {
     ];
   });
   constructor() {
+    effect(() => {
+      const requested = this.queryParams().get('edit') === 'true';
+      untracked(() => {
+        if (requested && this.company() && !this.profilePending() && !this.editing()) this.edit();
+      });
+    });
     let previousId = '';
     effect(() => {
       const company = this.company();
@@ -327,6 +337,13 @@ export class CompanyProfile {
     this.submitted.set(false);
     this.saveError.set('');
     this.draftSaved.set(false);
+    if (this.queryParams().get('edit') === 'true') {
+      void this.router.navigate(['/manage/companies', this.id], {
+        queryParams: { edit: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
   }
   protected hasChanges(): boolean {
     if (this.profilePending()) return false;

@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -45,6 +45,7 @@ describe('Company profile from the API', () => {
   const error = signal('');
   const pending = signal(false);
   const params = new BehaviorSubject(convertToParamMap({ id: detail.id }));
+  const queryParams = new BehaviorSubject(convertToParamMap({}));
   let queryEdit = false;
   let loadDetail: ReturnType<typeof vi.fn>;
   beforeEach(() => {
@@ -53,6 +54,7 @@ describe('Company profile from the API', () => {
     error.set('');
     pending.set(false);
     params.next(convertToParamMap({ id: detail.id }));
+    queryParams.next(convertToParamMap({}));
     queryEdit = false;
     loadDetail = vi.fn(async () => {
       details.set({ [detail.id]: detail });
@@ -66,6 +68,7 @@ describe('Company profile from the API', () => {
           provide: ActivatedRoute,
           useValue: {
             paramMap: params.asObservable(),
+            queryParamMap: queryParams.asObservable(),
             snapshot: {
               paramMap: convertToParamMap({ id: detail.id }),
               get queryParamMap() {
@@ -168,6 +171,30 @@ describe('Company profile from the API', () => {
     expect((fixture.nativeElement.querySelector('#input-name') as HTMLInputElement).value).toBe(
       'Stored Care',
     );
+  });
+  it('opens edit when the completion link changes query parameters on the current profile', async () => {
+    const fixture = create();
+    expect(fixture.nativeElement.querySelector('#input-name')).toBeNull();
+    queryParams.next(convertToParamMap({ edit: 'true' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect((fixture.nativeElement.querySelector('#input-name') as HTMLInputElement).value).toBe(
+      'Stored Care',
+    );
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    (fixture.componentInstance as unknown as { cancel(): void }).cancel();
+    expect(navigate).toHaveBeenCalledWith(['/manage/companies', detail.id], {
+      queryParams: { edit: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    queryParams.next(convertToParamMap({}));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#input-name')).toBeNull();
+    queryParams.next(convertToParamMap({ edit: 'true' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('#input-name')).not.toBeNull();
   });
 
   it('accepts one registered place when the field supplies it as text', async () => {

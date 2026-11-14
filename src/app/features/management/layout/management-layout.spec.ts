@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -9,7 +9,7 @@ import { AcademyDemoWorkflow } from '../learning/academy/academy-demo-workflow';
 import { AcademyGovernanceService } from '../learning/academy/academy-governance.service';
 import { AcademyService } from '../learning/academy/academy.service';
 import { WorkspaceTools } from '../care/workspace-tools';
-import { ManagementStore } from '../shared/management.store';
+import { Company, ManagementStore } from '../shared/management.store';
 import { ManagementLayout } from './management-layout';
 
 @Component({ selector: 'cv-workspace-tools', template: '' })
@@ -56,7 +56,7 @@ describe('Signed-in user profile menu', () => {
         },
         {
           provide: ManagementStore,
-          useValue: { company: () => null, storageAvailable: () => true },
+          useValue: { company: () => null, companies: () => [], storageAvailable: () => true },
         },
         { provide: AcademyService, useValue: { can: () => false, state: () => ({}) } },
         { provide: AcademyDemoWorkflow, useValue: {} },
@@ -75,6 +75,44 @@ describe('Signed-in user profile menu', () => {
     fixture.detectChanges();
     return fixture;
   }
+
+  const incompleteCompany = {
+    id: 'company-1',
+    name: 'Stored Care',
+    apiSummaryOnly: true,
+    profileCompletion: 43,
+  } as Company;
+
+  it('prompts company admins to complete their current company', () => {
+    vi.spyOn(TestBed.inject(AuthService), 'hasRole').mockImplementation((role) => role === 'CA');
+    vi.spyOn(TestBed.inject(ManagementStore), 'company').mockReturnValue(incompleteCompany);
+    const fixture = render();
+    expect(fixture.nativeElement.querySelector('cv-company-setup-banner')?.textContent).toContain(
+      'Stored Care is 43% complete',
+    );
+  });
+
+  it('keeps setup prompts out of staff views', () => {
+    vi.spyOn(TestBed.inject(ManagementStore), 'company').mockReturnValue(incompleteCompany);
+    expect(render().nativeElement.querySelector('cv-company-setup-banner')).toBeNull();
+  });
+
+  it('uses the company being viewed instead of the current workspace', () => {
+    vi.spyOn(TestBed.inject(AuthService), 'isSuperAdmin').mockReturnValue(true);
+    vi.spyOn(TestBed.inject(Router), 'url', 'get').mockReturnValue('/manage/companies/company-2');
+    const store = TestBed.inject(ManagementStore);
+    vi.spyOn(store, 'company').mockReturnValue(incompleteCompany);
+    vi.spyOn(store, 'companies').mockReturnValue([
+      incompleteCompany,
+      { ...incompleteCompany, id: 'company-2', name: 'Second Care', profileCompletion: 29 },
+    ]);
+    const fixture = render();
+    const banner: HTMLElement = fixture.nativeElement.querySelector('cv-company-setup-banner');
+    expect(banner.textContent).toContain('Second Care is 29% complete');
+    expect(banner.querySelector('a')?.getAttribute('href')).toBe(
+      '/manage/companies/company-2?edit=true#general-information',
+    );
+  });
 
   it('opens a profile card from the signed-in name instead of leaving the page', () => {
     const fixture = render();

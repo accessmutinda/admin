@@ -25,6 +25,7 @@ import { ManagementRole } from '../shared/role-pill';
 import { AuthService } from '../../../core/auth/auth.service';
 import { Logo } from '../../../shared/ui/logo';
 import { ManagementStore } from '../shared/management.store';
+import { CompanySetupBanner } from '../companies/company-setup-banner';
 import { WallboardLauncher } from '../ecm/wallboard-launcher';
 import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
 @Component({
@@ -38,6 +39,7 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
   ],
   providers: [{ provide: MAT_SELECT_CONFIG, useValue: { overlayPanelClass: 'cv-select-overlay' } }],
   imports: [
+    CompanySetupBanner,
     PageLoading,
     NgTemplateOutlet,
     ManagementRole,
@@ -397,6 +399,9 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           [hidden]="!!navigationState.localDestination('management')"
           [attr.inert]="navigationState.localDestination('management') ? '' : null"
         >
+          @if (setupCompany(); as company) {
+            <cv-company-setup-banner [company]="company" />
+          }
           <router-outlet />
         </div>
       </main>
@@ -432,6 +437,17 @@ export class ManagementLayout {
   protected readonly navigationState = inject(PageNavigation);
   protected routerUrl(): string {
     return this.navigationState.localDestination('management') || this.router.url;
+  }
+  protected setupCompany() {
+    if (!this.auth.isSuperAdmin() && !this.auth.hasRole('CA')) return undefined;
+    const url = this.routerUrl();
+    if (/^\/manage\/companies(?:[/?#]|$)/.test(url)) {
+      const id = /^\/manage\/companies\/([^/?#]+)/.exec(url)?.[1];
+      return id && id !== 'new'
+        ? this.store.companies().find((company) => company.id === decodeURIComponent(id))
+        : undefined;
+    }
+    return this.store.company();
   }
   protected readonly mobile = toSignal(inject(BreakpointObserver).observe('(max-width: 1023px)'));
   protected readonly menuOpen = signal(false);
