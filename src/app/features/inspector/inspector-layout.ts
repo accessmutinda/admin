@@ -1,3 +1,4 @@
+import { InspectorReportsApi } from './inspector-reports-api.service';
 import { InspectorVisitsApi } from './inspector-visits-api.service';
 import { InspectorDocumentsApi } from './inspector-documents-api.service';
 import { InspectorQualityApi } from './inspector-quality-api.service';
@@ -153,7 +154,11 @@ import { INSPECTOR_PAGES } from './inspector.models';
                           ? this.visits.ready()
                             ? 'Visit records connected'
                             : 'Visit records unavailable'
-                          : 'Live workflow unavailable'
+                          : this.reportsMode()
+                            ? this.reports.ready()
+                              ? 'Report records connected'
+                              : 'Report records unavailable'
+                            : 'Live workflow unavailable'
         }}</span>
       </footer>
     </div>
@@ -171,6 +176,8 @@ export class InspectorLayout {
   readonly incidents = inject(InspectorIncidentsApi);
   readonly quality = inject(InspectorQualityApi);
   readonly documents = inject(InspectorDocumentsApi);
+  readonly reports = inject(InspectorReportsApi);
+  readonly reportsMode = computed(() => /^\/inspector\/(reports|notes)(?:[?#]|$)/.test(this.url()));
   readonly visits = inject(InspectorVisitsApi);
   private readonly url = toSignal(
     this.router.events.pipe(
@@ -204,7 +211,9 @@ export class InspectorLayout {
                   ? this.documents.company()?.name
                   : this.visitsMode()
                     ? this.visits.company()?.name
-                    : null,
+                    : this.reportsMode()
+                      ? this.reports.company()?.name
+                      : null,
   );
   readonly pages = computed(() =>
     INSPECTOR_PAGES.filter(
@@ -248,7 +257,9 @@ export class InspectorLayout {
                       ? '/inspector/documents'
                       : this.visitsMode()
                         ? '/inspector/visits'
-                        : this.entryPath() || '/access-denied',
+                        : this.reportsMode()
+                          ? this.url().split(/[?#]/)[0]
+                          : this.entryPath() || '/access-denied',
       ],
       {
         queryParams: { q: term },

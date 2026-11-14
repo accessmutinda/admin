@@ -1,5 +1,14 @@
 import { CompanyDatePipe } from '../../shared/pipes/company-date.pipe';
-import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  ChangeDetectorRef,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -66,7 +75,8 @@ export class InspectorPage {
     this.data.incidentsBackend ??
     this.data.qualityBackend ??
     this.data.documentsBackend ??
-    this.data.visitsBackend;
+    this.data.visitsBackend ??
+    this.data.reportsBackend;
   private readonly route = inject(ActivatedRoute);
   readonly routeData = toSignal(this.route.data, { initialValue: this.route.snapshot.data });
   readonly params = toSignal(this.route.queryParamMap, {
@@ -109,6 +119,20 @@ export class InspectorPage {
   readonly selectedDay = signal('');
   readonly rangeStart = signal('');
   readonly rangeEnd = signal('');
+  private readonly changeDetector = inject(ChangeDetectorRef);
+  readonly reportView = signal<import('./inspector-provider.generated').InspectorReportRead | null>(
+    null,
+  );
+  readonly reportDraft = computed(() =>
+    this.reportView() && this.data.reportsBackend
+      ? this.data.reportsBackend.toState(this.reportView()).draft
+      : this.data.state().draft,
+  );
+  readonly reportDocuments = computed(() =>
+    this.reportView() && this.data.reportsBackend
+      ? this.data.reportsBackend.toDocuments(this.reportView())
+      : this.data.documents(),
+  );
   readonly draft = signal<InspectionDraft>(structuredClone(this.data.state().draft));
   readonly dirty = signal(false);
   readonly noteTab = signal('Overall Summary');
@@ -129,6 +153,8 @@ export class InspectorPage {
   readonly uploadExpiry = signal('');
   readonly finding = signal<InspectorFinding>(this.emptyFinding());
   readonly modalError = signal('');
+  private readonly resumeReportFinding = signal(false);
+  private readonly reportFindingDirty = signal(false);
   readonly owners = computed(() =>
     [...new Set(this.data.documents().map((d) => d.owner))].filter(Boolean).sort(),
   );
@@ -312,6 +338,34 @@ export class InspectorPage {
   );
   readonly readyCount = computed(() => this.readiness().filter((r) => r.complete).length);
   constructor() {
+    if (this.data.reportsBackend) {
+      effect(() => {
+        const state = this.data.state();
+        if (!this.data.reportsBackend!.ready()) {
+          if (!this.data.reportsBackend!.retainEdits()) {
+            this.draft.set(structuredClone(state.draft));
+            this.dirty.set(false);
+          }
+          this.reportView.set(null);
+          if (!this.data.reportsBackend!.retainEdits()) {
+            this.finding.set(this.emptyFinding());
+            this.resumeReportFinding.set(false);
+            this.reportFindingDirty.set(false);
+            this.modalError.set('');
+          }
+        } else if (!this.dirty()) this.draft.set(structuredClone(state.draft));
+        else untracked(() => this.draft.update((d) => ({ ...d, findings: state.draft.findings })));
+        if (this.data.reportsBackend!.ready() && this.resumeReportFinding()) {
+          this.resumeReportFinding.set(false);
+          this.modalOpen.set(true);
+          this.modalError.set(
+            'Connection restored. Review the finding and current evidence before saving.',
+          );
+        }
+        if (this.data.reportsBackend!.ready() && this.modalOpen() && this.modalKind() === 'report')
+          this.reportView.set(this.data.reportsBackend!.value());
+      });
+    }
     if (this.data.visitsBackend) {
       this.data.visitsBackend.selectMonth(this.month());
       effect(() => {
@@ -348,6 +402,12 @@ export class InspectorPage {
       effect(() => {
         const records = this.register().rows;
         if (!this.connected?.ready()) {
+          if (
+            this.data.reportsBackend?.retainEdits() &&
+            this.modalOpen() &&
+            this.modalKind() === 'finding'
+          )
+            this.resumeReportFinding.set(true);
           this.client.set(null);
           this.record.set(null);
           this.modalOpen.set(false);
@@ -368,6 +428,35 @@ export class InspectorPage {
             this.client.set(this.data.clients().find((r) => r.id === updated?.id) ?? null);
           if (updated) this.modalTitle.set(updated.cells[0]);
           else this.modalOpen.set(false);
+        }
+        if (
+          this.data.reportsBackend?.ready() &&
+          this.modalOpen() &&
+          this.modalKind() === 'finding' &&
+          !this.data.reportsBackend.saving()
+        ) {
+          const available = new Map(
+            this.data
+              .documents()
+              .filter((row) => ['clean', 'metadata_only'].includes(row.state || ''))
+              .map((row) => [row.id, row.source_version]),
+          );
+          const finding = this.finding();
+          const current = finding.evidenceIds.filter(
+            (id) => available.has(id) && finding.evidenceVersions?.[id] === available.get(id),
+          );
+          if (current.length !== finding.evidenceIds.length) {
+            this.finding.set({
+              ...finding,
+              evidenceIds: current,
+              evidenceVersions: Object.fromEntries(
+                current.map((id) => [id, finding.evidenceVersions![id]]),
+              ),
+            });
+            this.modalError.set(
+              'Some referenced evidence changed or is no longer available. Review and reselect current evidence before saving.',
+            );
+          }
         }
         if (
           this.data.incidentsBackend?.ready() &&
@@ -449,7 +538,14 @@ export class InspectorPage {
   }
   canLeave(): boolean {
     return (
-      !this.dirty() || window.confirm('Leave this page and discard unsaved inspection changes?')
+      (!this.dirty() &&
+        !(
+          this.data.reportsBackend &&
+          (this.modalOpen() || this.resumeReportFinding()) &&
+          this.modalKind() === 'finding' &&
+          this.reportFindingDirty()
+        )) ||
+      window.confirm('Leave this page and discard unsaved inspection changes?')
     );
   }
   private readonly providerDates = new CompanyDatePipe();
@@ -565,6 +661,26 @@ export class InspectorPage {
     this.modalOpen.set(false);
     this.message.set('Inspection details saved.');
   }
+  async saveReport(): Promise<void> {
+    const api = this.data.reportsBackend;
+    if (!api || api.saving()) return;
+    this.error.set('');
+    this.message.set('');
+    try {
+      const saved = await api.saveDraft(structuredClone(this.draft()), this.contextId());
+      if (saved) {
+        this.draft.set(
+          structuredClone(api.ready() ? this.data.state().draft : api.toState(saved).draft),
+        );
+        this.dirty.set(false);
+        this.message.set('Inspection draft saved.');
+      }
+    } catch (error) {
+      this.error.set(
+        error instanceof Error ? error.message : 'The report could not be saved. Please retry.',
+      );
+    }
+  }
   save(): boolean {
     this.error.set('');
     this.message.set('');
@@ -582,9 +698,10 @@ export class InspectorPage {
     this.message.set('Inspection draft saved on this device.');
     return true;
   }
-  reload(): void {
+  async reload(): Promise<void> {
     if (this.dirty() && !window.confirm('Discard your changes and reload the saved inspection?'))
       return;
+    if (this.data.reportsBackend) await this.data.reportsBackend.load();
     this.draft.set(structuredClone(this.data.state().draft));
     this.dirty.set(false);
     this.error.set('');
@@ -596,7 +713,14 @@ export class InspectorPage {
     this.modalOpen.set(true);
   }
   closeModal(): void {
-    if (this.uploading() || this.data.incidentsBackend?.saving()) return;
+    if (
+      this.uploading() ||
+      this.data.incidentsBackend?.saving() ||
+      this.data.reportsBackend?.saving()
+    )
+      return;
+    this.resumeReportFinding.set(false);
+    this.reportFindingDirty.set(false);
     this.modalOpen.set(false);
   }
   openRecord(row: RegisterRow): void {
@@ -738,7 +862,15 @@ export class InspectorPage {
       this.error.set('Recording inspection findings is not permitted.');
       return;
     }
+    if (
+      this.data.reportsBackend &&
+      !(value ? this.data.reportsBackend.canEdit() : this.data.reportsBackend.canCreate())
+    ) {
+      this.error.set('Recording inspection findings is not permitted.');
+      return;
+    }
     const next = value ? structuredClone(value) : this.emptyFinding();
+    if (this.data.reportsBackend) next.evidenceVersions = { ...value?.evidenceVersions };
     if (this.data.incidentsBackend)
       next.evidenceVersions = Object.fromEntries(
         this.data.incidentsBackend
@@ -747,13 +879,18 @@ export class InspectorPage {
           .map((row) => [row.id, row.version]),
       );
     this.finding.set(next);
+    this.reportFindingDirty.set(false);
     this.openModal('finding', value ? 'Edit finding' : 'Add inspection finding');
   }
   findingField(key: string, value: string): void {
+    this.reportFindingDirty.set(true);
     this.finding.update((f) => ({ ...f, [key]: value }));
   }
   findingEvidence(id: string, checked: boolean): void {
-    const version = this.data.incidentsBackend?.records().find((row) => row.id === id)?.version;
+    this.reportFindingDirty.set(true);
+    const version = this.data.reportsBackend
+      ? this.data.documents().find((row) => row.id === id)?.source_version
+      : this.data.incidentsBackend?.records().find((row) => row.id === id)?.version;
     this.finding.update((f) => {
       const versions = { ...f.evidenceVersions };
       if (checked && version !== undefined) versions[id] = version;
@@ -763,7 +900,9 @@ export class InspectorPage {
         evidenceIds: checked
           ? [...new Set([...f.evidenceIds, id])]
           : f.evidenceIds.filter((value) => value !== id),
-        ...(this.data.incidentsBackend ? { evidenceVersions: versions } : {}),
+        ...(this.data.incidentsBackend || this.data.reportsBackend
+          ? { evidenceVersions: versions }
+          : {}),
       };
     });
     this.modalError.set('');
@@ -778,10 +917,13 @@ export class InspectorPage {
       this.modalError.set('Required actions need an owner and due date.');
       return;
     }
-    if (this.data.incidentsBackend) {
+    const findingApi = this.data.incidentsBackend ?? this.data.reportsBackend;
+    if (findingApi) {
       this.modalError.set('');
       try {
-        if (await this.data.incidentsBackend.saveFinding(value)) {
+        if (await findingApi.saveFinding(value)) {
+          this.resumeReportFinding.set(false);
+          this.reportFindingDirty.set(false);
           this.modalOpen.set(false);
           this.message.set('Inspection finding saved.');
         }
@@ -928,13 +1070,49 @@ export class InspectorPage {
       );
     }
   }
-  showReport(): void {
+  async showReport(): Promise<void> {
+    if (this.data.reportsBackend) {
+      if (this.dirty()) {
+        this.error.set('Save the draft before reviewing the report.');
+        return;
+      }
+      await this.data.reportsBackend.load();
+      if (!this.data.reportsBackend.ready()) return;
+      this.reportView.set(this.data.reportsBackend.value());
+    }
     this.openModal('report', 'Draft inspection report');
   }
-  printReport(): void {
+  async printReport(): Promise<void> {
+    if (this.data.reportsBackend) {
+      try {
+        const value = await this.data.reportsBackend.prepareExport();
+        if (!value) return;
+        this.reportView.set(value);
+        this.changeDetector.detectChanges();
+      } catch (error) {
+        this.modalError.set(
+          error instanceof Error ? error.message : 'The report could not be prepared.',
+        );
+        return;
+      }
+    }
     window.print();
   }
-  downloadReport(): void {
+  async downloadReport(): Promise<void> {
+    if (this.data.reportsBackend) {
+      if (this.dirty()) {
+        this.error.set('Save the draft before exporting the report.');
+        return;
+      }
+      try {
+        await this.data.reportsBackend.export();
+      } catch (error) {
+        this.error.set(
+          error instanceof Error ? error.message : 'The report could not be exported.',
+        );
+      }
+      return;
+    }
     download(
       JSON.stringify(
         {

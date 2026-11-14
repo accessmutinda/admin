@@ -7,8 +7,8 @@
     <div class="actions">
       @if (page().path === 'reports' || page().path === 'notes') {
         <span class="muted">{{ dirty() ? 'Unsaved changes' : 'Saved draft' }}</span
-        ><button class="secondary" (click)="reload()">Reload saved</button
-        ><button class="primary" (click)="save()">
+        ><button class="secondary" [disabled]="data.reportsBackend?.saving()" (click)="reload()">Reload saved</button
+        ><button class="primary" [disabled]="!!data.reportsBackend && (!data.reportsBackend.ready() || !data.reportsBackend.canEdit() || data.reportsBackend.saving())" (click)="data.reportsBackend ? saveReport() : save()">
           <span class="material-symbols-outlined" aria-hidden="true">save</span>Save draft
         </button>
       } @else if (connected) {
@@ -24,7 +24,7 @@
   </div>
   @if (connected && !connected.ready()) {
     <section class="panel" [attr.role]="connected.error() ? 'alert' : 'status'">
-      <h2>{{ connected.loading() ? (data.visitsBackend ? 'Loading visit monitoring' : data.documentsBackend ? 'Loading documents and evidence' : data.qualityBackend ? 'Loading quality and compliance' : data.incidentsBackend ? 'Loading incidents and safeguarding' : data.medicationBackend ? 'Loading medication records' : data.staffBackend ? 'Loading staffing records' : 'Loading service users') : (data.visitsBackend ? 'Visit monitoring unavailable' : data.documentsBackend ? 'Documents and evidence unavailable' : data.qualityBackend ? 'Quality and compliance unavailable' : data.incidentsBackend ? 'Incidents and safeguarding unavailable' : data.medicationBackend ? 'Medication records unavailable' : data.staffBackend ? 'Staffing records unavailable' : 'Service users unavailable') }}</h2>
+      <h2>{{ connected.loading() ? (data.reportsBackend ? 'Loading inspection reports' : data.visitsBackend ? 'Loading visit monitoring' : data.documentsBackend ? 'Loading documents and evidence' : data.qualityBackend ? 'Loading quality and compliance' : data.incidentsBackend ? 'Loading incidents and safeguarding' : data.medicationBackend ? 'Loading medication records' : data.staffBackend ? 'Loading staffing records' : 'Loading service users') : (data.reportsBackend ? 'Inspection reports unavailable' : data.visitsBackend ? 'Visit monitoring unavailable' : data.documentsBackend ? 'Documents and evidence unavailable' : data.qualityBackend ? 'Quality and compliance unavailable' : data.incidentsBackend ? 'Incidents and safeguarding unavailable' : data.medicationBackend ? 'Medication records unavailable' : data.staffBackend ? 'Staffing records unavailable' : 'Service users unavailable') }}</h2>
       <p>{{ connected.error() || 'Connecting to the provider records…' }}</p>
       <button class="secondary" [disabled]="connected.loading()" (click)="connected.load()">Retry</button>
     </section>
@@ -975,7 +975,8 @@
                   >{{ question.key }}</span
                 ><mat-select
                   cvSelect
-                  [attr.aria-label]="question.key + ' rating'"
+                  [disabled]="!!data.reportsBackend && (!data.reportsBackend.canEdit() || data.reportsBackend.saving())"
+                  [aria-label]="question.key + ' rating'"
                   [ngModel]="draft().ratings[question.key] || 'Not assessed'"
                   (ngModelChange)="updateRating(question.key, $event)"
                 >
@@ -1006,6 +1007,7 @@
           <label class="note-label" for="inspection-note">{{ noteTab() }} observations</label
           ><textarea
             id="inspection-note"
+            [disabled]="!!data.reportsBackend && (!data.reportsBackend.canEdit() || data.reportsBackend.saving())"
             rows="8"
             maxlength="5000"
             [ngModel]="draft().notes[noteTab()] || ''"
@@ -1027,7 +1029,7 @@
               <span class="material-symbols-outlined" aria-hidden="true">assignment</span>Findings
               &amp; Required Actions
             </h2>
-            <button class="primary" (click)="openFinding()">Add finding</button>
+            <button class="primary" [disabled]="!!data.reportsBackend && (!data.reportsBackend.canCreate() || data.reportsBackend.saving())" (click)="openFinding()">Add finding</button>
           </div>
           @for (finding of draft().findings; track finding.id) {
             <div class="finding-row">
@@ -1042,7 +1044,7 @@
                   }}{{ finding.due ? ' · Due ' + date(finding.due) : '' }}</small
                 ><small>{{ finding.evidenceIds.length }} evidence references</small>
               </div>
-              <button class="secondary" (click)="openFinding(finding)">Edit</button>
+              <button class="secondary" [disabled]="!!data.reportsBackend && (!data.reportsBackend.canEdit() || data.reportsBackend.saving())" (click)="openFinding(finding)">Edit</button>
             </div>
           } @empty {
             <p class="empty">
@@ -1076,7 +1078,7 @@
           </div>
           <div class="actions">
             <button class="secondary" (click)="showReport()">View full report</button
-            ><button class="primary" (click)="downloadReport()">Export JSON</button>
+            ><button class="primary" [disabled]="!!data.reportsBackend && (!data.reportsBackend.canDownload() || data.reportsBackend.saving())" (click)="downloadReport()">Export JSON</button>
           </div>
           <p class="footnote">Open the full report to print or save as PDF using your browser.</p>
         </section>
@@ -1088,6 +1090,7 @@
           <label for="report-summary">Concise summary for the draft report</label
           ><textarea
             id="report-summary"
+            [disabled]="!!data.reportsBackend && (!data.reportsBackend.canEdit() || data.reportsBackend.saving())"
             rows="9"
             maxlength="5000"
             [ngModel]="draft().summary"
@@ -1463,7 +1466,7 @@
         <button
           class="icon-button"
           aria-label="Close dialog"
-          [disabled]="uploading() || !!data.incidentsBackend?.saving()"
+          [disabled]="uploading() || !!data.incidentsBackend?.saving() || !!data.reportsBackend?.saving()"
           (click)="closeModal()"
         >
           ×
@@ -1579,7 +1582,7 @@
           </form>
         }
         @case ('finding') {
-          <form (submit)="$event.preventDefault(); saveFinding()" [attr.inert]="data.incidentsBackend?.saving() ? '' : null">
+          <form (submit)="$event.preventDefault(); saveFinding()" [attr.inert]="(data.incidentsBackend?.saving() || data.reportsBackend?.saving()) ? '' : null">
             <div class="two-grid">
               <label
                 >Type<mat-select
@@ -1654,6 +1657,7 @@
                   ><input
                     type="checkbox"
                     [checked]="finding().evidenceIds.includes(document.id)"
+                  [disabled]="!!data.reportsBackend && !['clean', 'metadata_only'].includes(document.state || '')"
                     (change)="findingEvidence(document.id, $any($event.target).checked)"
                   />{{ document.name }}</label
                 >
@@ -1665,7 +1669,7 @@
             </fieldset>
             <div class="modal-actions">
               <button class="secondary" type="button" (click)="closeModal()">Cancel</button
-              ><button class="primary" type="submit" [disabled]="!!data.incidentsBackend?.saving()">{{ data.incidentsBackend ? (data.incidentsBackend.saving() ? 'Saving…' : 'Save finding') : 'Save finding & draft' }}</button>
+              ><button class="primary" type="submit" [disabled]="!!data.incidentsBackend?.saving() || !!data.reportsBackend?.saving()">{{ data.reportsBackend ? (data.reportsBackend.saving() ? 'Saving…' : 'Save finding') : data.incidentsBackend ? (data.incidentsBackend.saving() ? 'Saving…' : 'Save finding') : 'Save finding & draft' }}</button>
             </div>
           </form>
         }
@@ -1745,34 +1749,34 @@
               </div>
               <div>
                 <dt>Inspection type</dt>
-                <dd>{{ data.state().draft.type || 'Not recorded' }}</dd>
+                <dd>{{ reportDraft().type || 'Not recorded' }}</dd>
               </div>
               <div>
                 <dt>Inspection period</dt>
-                <dd>{{ date(data.state().draft.start) }} – {{ date(data.state().draft.end) }}</dd>
+                <dd>{{ date(reportDraft().start) }} – {{ date(reportDraft().end) }}</dd>
               </div>
               <div>
                 <dt>Saved by</dt>
-                <dd>{{ data.state().draft.by || 'Not recorded' }}</dd>
+                <dd>{{ reportDraft().by || 'Not recorded' }}</dd>
               </div>
             </dl>
             <h2>Provisional rating recommendations</h2>
             @for (question of questions; track question.key) {
               <div class="list-row">
                 <strong>{{ question.key }}</strong
-                ><span>{{ data.state().draft.ratings[question.key] || 'Not assessed' }}</span>
+                ><span>{{ reportDraft().ratings[question.key] || 'Not assessed' }}</span>
               </div>
             }
             <h2>Inspection summary</h2>
-            <p class="report-prose">{{ data.state().draft.summary || 'Not recorded' }}</p>
+            <p class="report-prose">{{ reportDraft().summary || 'Not recorded' }}</p>
             @for (tab of noteTabs; track tab) {
-              @if (data.state().draft.notes[tab]) {
+              @if (reportDraft().notes[tab]) {
                 <h2>{{ tab }}</h2>
-                <p class="report-prose">{{ data.state().draft.notes[tab] }}</p>
+                <p class="report-prose">{{ reportDraft().notes[tab] }}</p>
               }
             }
             <h2>Findings &amp; Actions</h2>
-            @for (finding of findings(); track finding.id) {
+            @for (finding of reportDraft().findings; track finding.id) {
               <section class="report-finding">
                 <h3>{{ finding.question }} · {{ finding.type }}</h3>
                 <p class="report-prose">{{ finding.text }}</p>
@@ -1791,7 +1795,7 @@
             }
             <h2>Evidence index</h2>
             <ol>
-              @for (document of data.documents(); track document.id) {
+              @for (document of reportDocuments(); track document.id) {
                 <li>{{ document.name }} · {{ document.source }} · {{ document.status }}</li>
               } @empty {
                 <li>No evidence files recorded.</li>
@@ -1804,7 +1808,7 @@
           </article>
           <div class="modal-actions print-controls">
             <button class="secondary" (click)="closeModal()">Close</button
-            ><button class="primary" (click)="printReport()">Print / Save as PDF</button>
+            ><button class="primary" [disabled]="!!data.reportsBackend && !data.reportsBackend.canDownload()" (click)="printReport()">Print / Save as PDF</button>
           </div>
         }
       }
