@@ -1,3 +1,4 @@
+import { InspectorDashboardService } from './features/inspector/inspector-dashboard.service';
 import { InspectorNotesService } from './features/inspector/inspector-notes.service';
 import { InspectorReportsService } from './features/inspector/inspector-reports.service';
 import { InspectorVisitsService } from './features/inspector/inspector-visits.service';
@@ -137,7 +138,9 @@ export const routes: Routes = [
         path: page,
         data: { page },
         providers:
-          page === 'provider'
+          page === 'dashboard'
+            ? [{ provide: InspectorService, useClass: InspectorDashboardService }]
+            : page === 'provider'
             ? [{ provide: InspectorService, useClass: InspectorProviderService }]
             : page === 'service-users'
               ? [{ provide: InspectorService, useClass: InspectorClientsService }]

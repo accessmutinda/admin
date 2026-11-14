@@ -16,7 +16,7 @@ export class InspectorReportsApi {
   private logoUrl = '';
   private active = false;
   private generation = 0;
-  private lifecycle = 0;
+  protected lifecycle = 0;
   private pending?: Promise<void>;
   private timer?: ReturnType<typeof setInterval>;
   readonly loading = signal(false);
@@ -220,7 +220,7 @@ export class InspectorReportsApi {
       if (scope === this.scope() && lifecycle === this.lifecycle) this.saving.set(false);
     }
   }
-  private validate(value: InspectorReportRead) {
+  protected validate(value: InspectorReportRead) {
     if (value.company.id !== this.companyId() || value.meta.company_id !== this.companyId())
       throw Error('The report response does not match this workspace.');
     if (!/^[a-f0-9]{64}$/.test(value.meta.revision))

@@ -24,7 +24,7 @@
   </div>
   @if (connected && !connected.ready()) {
     <section class="panel" [attr.role]="connected.error() ? 'alert' : 'status'">
-      <h2>{{ connected.loading() ? (data.reportsBackend ? (page().path === 'notes' ? 'Loading inspector notes' : 'Loading inspection reports') : data.visitsBackend ? 'Loading visit monitoring' : data.documentsBackend ? 'Loading documents and evidence' : data.qualityBackend ? 'Loading quality and compliance' : data.incidentsBackend ? 'Loading incidents and safeguarding' : data.medicationBackend ? 'Loading medication records' : data.staffBackend ? 'Loading staffing records' : 'Loading service users') : (data.reportsBackend ? (page().path === 'notes' ? 'Inspector notes unavailable' : 'Inspection reports unavailable') : data.visitsBackend ? 'Visit monitoring unavailable' : data.documentsBackend ? 'Documents and evidence unavailable' : data.qualityBackend ? 'Quality and compliance unavailable' : data.incidentsBackend ? 'Incidents and safeguarding unavailable' : data.medicationBackend ? 'Medication records unavailable' : data.staffBackend ? 'Staffing records unavailable' : 'Service users unavailable') }}</h2>
+      <h2>{{ connected.loading() ? (data.dashboardBackend ? 'Loading inspector dashboard' : data.reportsBackend ? (page().path === 'notes' ? 'Loading inspector notes' : 'Loading inspection reports') : data.visitsBackend ? 'Loading visit monitoring' : data.documentsBackend ? 'Loading documents and evidence' : data.qualityBackend ? 'Loading quality and compliance' : data.incidentsBackend ? 'Loading incidents and safeguarding' : data.medicationBackend ? 'Loading medication records' : data.staffBackend ? 'Loading staffing records' : 'Loading service users') : (data.dashboardBackend ? 'Inspector dashboard unavailable' : data.reportsBackend ? (page().path === 'notes' ? 'Inspector notes unavailable' : 'Inspection reports unavailable') : data.visitsBackend ? 'Visit monitoring unavailable' : data.documentsBackend ? 'Documents and evidence unavailable' : data.qualityBackend ? 'Quality and compliance unavailable' : data.incidentsBackend ? 'Incidents and safeguarding unavailable' : data.medicationBackend ? 'Medication records unavailable' : data.staffBackend ? 'Staffing records unavailable' : 'Service users unavailable') }}</h2>
       <p>{{ connected.error() || 'Connecting to the provider records…' }}</p>
       <button class="secondary" [disabled]="connected.loading()" (click)="connected.load()">Retry</button>
     </section>
@@ -114,13 +114,15 @@
           @if (data.backend || data.qualityBackend) {
           <a href="#provider-recommendations" (click)="reviewProviderRatings($event)">Review ratings →</a>
         } @else {
+          @if (!data.dashboardBackend || data.dashboardBackend.dashboard()?.capabilities?.['view_reports']) {
           <a routerLink="/inspector/reports">Review ratings →</a>
+          }
         }
         </div>
         <cv-inspection-questions [draft]="data.state().draft" [documents]="data.documents()" />
         <p class="footnote">
-          Ratings are inspector recommendations. Evidence counts indicate available files, rather
-          than a compliance decision. @if (data.qualityBackend) { Audit files are grouped under Well-led. Other key-question mappings, inspector recommendations and summaries are not recorded here. }
+          Ratings are inspector recommendations. Evidence counts cover authorised source records, rather
+          than a compliance decision. @if (data.dashboardBackend) { Preparation checks require current clean files. } Exports include only sources you may export. @if (data.qualityBackend) { Audit files are grouped under Well-led. Other key-question mappings, inspector recommendations and summaries are not recorded here. }
         </p>
       </section>
       <section class="panel">
@@ -173,29 +175,26 @@
             </div>
           }
         }
-        @if (!findings().length) {
-          <p class="empty">
-            No inspection findings recorded. Add observations and actions as you review the
-            evidence.
-          </p>
+        @if (!findings().some(isOpenFinding)) {
+          <p class="empty">{{ data.dashboardBackend?.dashboard()?.summary?.open_findings === null ? 'Report access is required to review inspection findings.' : 'No open inspection findings recorded.' }}</p>
         }
+        @if (data.dashboardBackend?.dashboard()?.capabilities?.['view_reports']) {
         <a routerLink="/inspector/notes" class="text-link">Open inspector notes →</a>
+        }
       </section>
       <section class="panel quick-actions">
         <h2><span class="material-symbols-outlined" aria-hidden="true">bolt</span>Quick Actions</h2>
-        <button class="primary" (click)="pack(true)" [disabled]="!data.documents().length">
-          <span class="material-symbols-outlined" aria-hidden="true">download</span>Download full
-          evidence pack</button
-        ><a class="secondary" routerLink="/inspector/documents">Review documents <span>›</span></a
-        ><a class="secondary" routerLink="/inspector/notes"
-          >Record inspection findings <span>›</span></a
-        ><a class="secondary" routerLink="/inspector/reports"
-          >Prepare draft report <span>›</span></a
-        >
-        <p class="footnote">
-          Packs include original files and an evidence index. Downloads contain the selected
-          workspace’s records.
-        </p>
+        <button class="primary" (click)="pack(true)" [disabled]="!data.dashboardBackend?.canPack()">
+          <span class="material-symbols-outlined" aria-hidden="true">download</span>Download full evidence pack
+        </button>
+        @if (data.dashboardBackend?.dashboard()?.capabilities?.['view_documents']) {
+          <a class="secondary" routerLink="/inspector/documents">Review documents <span>›</span></a>
+        }
+        @if (data.dashboardBackend?.dashboard()?.capabilities?.['view_reports']) {
+          <a class="secondary" routerLink="/inspector/notes">Record inspection findings <span>›</span></a>
+          <a class="secondary" routerLink="/inspector/reports">Prepare draft report <span>›</span></a>
+        }
+        <p class="footnote">Packs include downloadable original files and an evidence index. Metadata-only records and files without download permission are excluded. Select up to 50 files in Documents &amp; Evidence for larger collections.</p>
       </section>
     </div>
   }

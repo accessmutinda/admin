@@ -69,6 +69,7 @@ interface RegisterRow {
 export class InspectorPage {
   readonly data = inject(InspectorService);
   readonly connected =
+    this.data.dashboardBackend ??
     this.data.clientsBackend ??
     this.data.staffBackend ??
     this.data.medicationBackend ??
@@ -286,7 +287,24 @@ export class InspectorPage {
     });
   });
   readonly readiness = computed(() =>
-    this.data.qualityBackend
+    this.data.dashboardBackend
+      ? Object.entries({
+          registration_recorded: 'Provider registration recorded',
+          evidence_covered: 'Current clean file evidence for all five key questions',
+          findings_resolved: 'All inspection findings resolved',
+          questions_assessed: 'All key questions assessed',
+          summary_recorded: 'Inspection summary recorded',
+        }).map(([key, label]) => {
+          const value =
+            this.data.dashboardBackend!.dashboard()?.preparation[
+              key as keyof import('./inspector-provider.generated').InspectorDashboardPreparation
+            ];
+          return {
+            label: label + (value === null ? ' (report access required)' : ''),
+            complete: value === true,
+          };
+        })
+      : this.data.qualityBackend
       ? [
           {
             label: 'Provider registration recorded',
@@ -336,6 +354,7 @@ export class InspectorPage {
           },
         ],
   );
+  readonly isOpenFinding = (finding: InspectorFinding) => finding.status !== 'Completed';
   readonly readyCount = computed(() => this.readiness().filter((r) => r.complete).length);
   constructor() {
     if (this.data.reportsBackend) {
@@ -950,6 +969,11 @@ export class InspectorPage {
     else this.modalError.set(this.error());
   }
   exportRegister(): void {
+    if (this.data.dashboardBackend) {
+      this.error.set('');
+      void this.data.dashboardBackend.export({ q: this.search(), ordering: this.sortDirection() === 1 ? 'name' : '-name' }).catch(error => this.error.set(error.message));
+      return;
+    }
     if (this.connected) {
       if (
         this.data.medicationBackend &&
@@ -1029,6 +1053,10 @@ export class InspectorPage {
   }
   pack(all = false): void {
     this.error.set('');
+    if (this.data.dashboardBackend) {
+      void this.data.dashboardBackend.pack().catch((error) => this.error.set(error.message));
+      return;
+    }
     const documents = all ? this.data.documents() : this.selectedDocuments();
     if (this.data.documentsBackend) {
       void this.data.documentsBackend
@@ -1191,6 +1219,44 @@ export class InspectorPage {
       staff = this.data.staff(),
       visits = this.scopedVisits();
     switch (this.page().path) {
+      case 'dashboard': {
+        const s = this.data.dashboardBackend?.dashboard()?.summary;
+        return [
+          metric(
+            'Evidence documents',
+            s?.evidence_documents ?? '—',
+            'Across authorised source modules',
+            'description',
+          ),
+          metric(
+            'Service users',
+            s?.service_users ?? '—',
+            s?.service_users == null ? 'Service user access required' : 'Current workspace records',
+            'group',
+            '#008d9f',
+          ),
+          metric(
+            'Staff records',
+            s?.staff_records ?? '—',
+            s?.staff_records == null ? 'Staffing access required' : 'Hired workforce',
+            'groups',
+          ),
+          metric(
+            'Open findings',
+            s?.open_findings ?? '—',
+            s?.open_findings == null ? 'Report access required' : 'Saved inspection findings',
+            'assignment_late',
+            '#ff8a00',
+          ),
+          metric(
+            'Expired evidence',
+            s?.expired_evidence ?? '—',
+            'Requires review',
+            'event_busy',
+            '#ff3047',
+          ),
+        ];
+      }
       case 'service-users':
         return [
           metric(

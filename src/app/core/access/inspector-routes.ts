@@ -14,6 +14,7 @@ export const INSPECTOR_SUBMODULES: Readonly<Record<string, string>> = {
   notes: 'reports',
 };
 export const CONNECTED_INSPECTOR_PAGES = [
+  'dashboard',
   'provider',
   'service-users',
   'staffing',

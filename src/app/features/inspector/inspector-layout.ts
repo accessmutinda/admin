@@ -1,3 +1,4 @@
+import { InspectorDashboardApi } from './inspector-dashboard-api.service';
 import { InspectorNotesApi } from './inspector-notes-api.service';
 import { InspectorReportsApi } from './inspector-reports-api.service';
 import { InspectorVisitsApi } from './inspector-visits-api.service';
@@ -123,7 +124,7 @@ import { INSPECTOR_PAGES } from './inspector.models';
           }
         </span>
         <span>{{
-          providerMode()
+          dashboardMode() ? (dashboard.ready() ? 'Dashboard records connected' : 'Dashboard records unavailable') : providerMode()
             ? provider.ready()
               ? 'Provider records connected'
               : 'Provider records unavailable'
@@ -170,6 +171,8 @@ export class InspectorLayout {
   readonly auth = inject(AuthService);
   readonly router = inject(Router);
   readonly access = inject(CompanyAccessService);
+  readonly dashboard = inject(InspectorDashboardApi);
+  readonly dashboardMode = computed(() => /^\/inspector\/dashboard(?:[?#]|$)/.test(this.url()));
   readonly provider = inject(InspectorProviderApi);
   readonly clients = inject(InspectorClientsApi);
   readonly staff = inject(InspectorStaffApi);
@@ -201,7 +204,9 @@ export class InspectorLayout {
   readonly documentsMode = computed(() => /^\/inspector\/documents(?:[?#]|$)/.test(this.url()));
   readonly visitsMode = computed(() => /^\/inspector\/visits(?:[?#]|$)/.test(this.url()));
   readonly companyName = computed(() =>
-    this.providerMode()
+    this.dashboardMode()
+      ? this.dashboard.company()?.name
+      : this.providerMode()
       ? this.provider.company()?.name
       : this.clientsMode()
         ? this.clients.company()?.name

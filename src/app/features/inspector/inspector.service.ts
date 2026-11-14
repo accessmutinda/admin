@@ -37,6 +37,7 @@ export class InspectorService {
     return this.injector.get(ManagementStore);
   }
   readonly reportsBackend?: import('./inspector-reports-api.service').InspectorReportsApi;
+  readonly dashboardBackend?: import('./inspector-dashboard-api.service').InspectorDashboardApi;
   readonly visitsBackend?: import('./inspector-visits-api.service').InspectorVisitsApi;
   readonly documentsBackend?: import('./inspector-documents-api.service').InspectorDocumentsApi;
   readonly qualityBackend?: import('./inspector-quality-api.service').InspectorQualityApi;
