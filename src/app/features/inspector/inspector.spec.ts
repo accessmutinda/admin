@@ -1,3 +1,4 @@
+import { InspectorDashboardApi } from './inspector-dashboard-api.service';
 import { InspectorNotesApi } from './inspector-notes-api.service';
 import { InspectorReportsApi } from './inspector-reports-api.service';
 import { InspectorVisitsApi } from './inspector-visits-api.service';
@@ -106,6 +107,7 @@ describe('Inspector portal routes and availability', () => {
           InspectorVisitsApi,
           InspectorReportsApi,
           InspectorNotesApi,
+          InspectorDashboardApi,
         ].map((provide) => ({
           provide,
           useValue: { company, ready },
@@ -165,7 +167,7 @@ describe('Inspector portal routes and availability', () => {
   });
   it('enters reports for inspectors limited to report access', () => {
     allowed.set(new Set(['/inspector/reports']));
-    expect(inspectorEntryPath(path => access.canPath(path))).toBe('/inspector/reports');
+    expect(inspectorEntryPath((path) => access.canPath(path))).toBe('/inspector/reports');
   });
   it('requires authentication before entering the portal', async () => {
     authenticated.set(false);
@@ -198,6 +200,7 @@ describe('Inspector portal routes and availability', () => {
       'nav[aria-label="Inspector navigation"] a',
     );
     expect(Array.from(links, (link) => (link as HTMLAnchorElement).getAttribute('href'))).toEqual([
+      '/inspector/dashboard',
       '/inspector/provider',
       '/inspector/service-users',
       '/inspector/staffing',
@@ -239,20 +242,9 @@ describe('Inspector portal routes and availability', () => {
     fixture.componentInstance.search(new Event('submit'), 'Jane');
     expect(navigate).toHaveBeenCalledWith(['/inspector/staffing'], { queryParams: { q: 'Jane' } });
   });
-  it.each(INSPECTOR_PAGES.filter((page) => !isConnectedInspectorPage(page.path)))(
-    'renders $path as explicitly unavailable without local records or save controls',
-    (page) => {
-      route.snapshot.data.page = page.path;
-      const fixture = TestBed.createComponent(InspectorUnavailable);
-      fixture.detectChanges();
-      expect(fixture.nativeElement.textContent).toContain(page.label);
-      expect(fixture.nativeElement.textContent).toContain('Live workflow unavailable');
-      expect(fixture.nativeElement.textContent).toContain('not connected to the backend');
-      expect(fixture.nativeElement.querySelector('form')).toBeNull();
-      expect(fixture.nativeElement.textContent).not.toContain('Save draft');
-      expect(fixture.componentInstance.canLeave()).toBe(true);
-    },
-  );
+  it('connects every inspector page including the dashboard', () => {
+    expect(INSPECTOR_PAGES.every((page) => isConnectedInspectorPage(page.path))).toBe(true);
+  });
   it('requires Super Admin to select a company before opening inspector records', () => {
     admin.set(true);
     switching.set(true);
