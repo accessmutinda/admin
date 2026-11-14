@@ -66,7 +66,7 @@ export class LocationsPage {
     { key: 'type', label: 'Type' },
     { key: 'address', label: 'Address' },
     { key: 'region', label: 'Region' },
-    { key: 'registeredPlaces', label: 'Registered Places' },
+    { key: 'registeredPlaces', label: 'Registered Care Capacity' },
     { key: 'manager', label: 'Manager' },
     { key: 'status', label: 'Status' },
     { key: 'modifiedAt', label: 'Last Updated' },
@@ -167,7 +167,7 @@ export class LocationsPage {
         progress: true,
       },
       {
-        label: 'Registered Places',
+        label: 'Registered Care Capacity',
         value: all.reduce((sum, row) => sum + (row.registeredPlaces ?? 0), 0),
         hint: 'Recorded location capacity',
         icon: 'location_on',

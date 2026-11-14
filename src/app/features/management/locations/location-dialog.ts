@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { CvSelect } from '../../../shared/ui/select';
 import { companyModifiedAt } from '../companies/company-profile.models';
 import { LocationsService } from './locations.service';
@@ -19,7 +20,32 @@ export interface LocationDialogData {
 }
 @Component({
   selector: 'cv-location-dialog',
-  imports: [FormsModule, MatDialogModule, MatSelectModule, CvSelect],
+  imports: [FormsModule, MatDialogModule, MatSelectModule, MatTooltipModule, CvSelect],
+  styles: `
+    .loc-field-heading {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .loc-capacity-info {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: #657184;
+      cursor: help;
+    }
+    .loc-capacity-info .material-symbols-outlined {
+      font-size: 18px;
+    }
+    .loc-capacity-info:focus-visible {
+      outline: 2px solid #10355e;
+      outline-offset: 2px;
+    }
+  `,
   template: `<div class="loc-dialog">
     <div class="loc-dialog-heading">
       <span class="loc-icon material-symbols-outlined" aria-hidden="true">location_on</span>
@@ -44,12 +70,24 @@ export interface LocationDialogData {
         <div class="loc-dialog-fields">
           @for (field of fields; track field.key) {
             <div>
-              <label [for]="'loc-' + field.key"
-                >{{ field.label }}
-                @if (field.required) {
-                  <span aria-hidden="true"> *</span>
+              <div class="loc-field-heading">
+                <label [for]="'loc-' + field.key"
+                  >{{ field.label }}
+                  @if (field.required) {
+                    <span aria-hidden="true"> *</span>
+                  }
+                </label>
+                @if (field.key === 'registeredPlaces') {
+                  <button
+                    type="button"
+                    class="loc-capacity-info"
+                    aria-label="About registered care capacity"
+                    matTooltip="Maximum number of people this location is registered to accommodate. Enter 0 for offices or services without registered places."
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                  </button>
                 }
-              </label>
+              </div>
               @if (editing()) {
                 @switch (field.key) {
                   @case ('type') {
@@ -96,6 +134,7 @@ export interface LocationDialogData {
                       "
                       [attr.step]="field.key === 'registeredPlaces' ? '1' : 'any'"
                       [attr.min]="field.key === 'registeredPlaces' ? 0 : null"
+                      [attr.max]="field.key === 'registeredPlaces' ? 2147483647 : null"
                       [required]="!!field.required"
                     />
                   }
@@ -209,7 +248,7 @@ export class LocationDialog {
     { key: 'type', label: 'Type', required: true },
     { key: 'status', label: 'Status', required: true },
     { key: 'region', label: 'Region' },
-    { key: 'registeredPlaces', label: 'Registered Places', type: 'number', required: true },
+    { key: 'registeredPlaces', label: 'Registered Care Capacity', type: 'number', required: true },
     { key: 'manager', label: 'Manager' },
     { key: 'hours', label: 'Operating Hours' },
     { key: 'phone', label: 'Contact Phone', type: 'tel' },
@@ -235,7 +274,14 @@ export class LocationDialog {
     key: (typeof this.fields)[number]['key'],
     value: string | number | null,
   ): void {
-    Object.assign(this.draft, { [key]: value });
+    const numeric = this.fields.find((field) => field.key === key)?.type === 'number';
+    Object.assign(this.draft, {
+      [key]: numeric
+        ? value === null || String(value).trim() === ''
+          ? null
+          : Number(value)
+        : value,
+    });
   }
   protected save(): void {
     if (!this.editing()) return;

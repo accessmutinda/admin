@@ -1,9 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { AuthService } from '../../../core/auth/auth.service';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { CompaniesApiService } from '../companies/companies-api.service';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { ManagementStore } from '../shared/management.store';
@@ -86,6 +88,7 @@ describe('Branches and service locations', () => {
   const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn() };
   beforeEach(async () => {
     localStorage.clear();
+    const session = signal({ workspaceId: 'lqcs' });
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -93,10 +96,36 @@ describe('Branches and service locations', () => {
           { path: 'manage/companies', component: EmptyPage },
         ]),
         { provide: ToastService, useValue: toast },
+        {
+          provide: AuthService,
+          useValue: {
+            session,
+            isSuperAdmin: () => true,
+            canAccessCompany: () => true,
+            currentUser: () => ({ name: 'Jane Doe' }),
+            selectWorkspace: async (workspaceId: string) => {
+              session.set({ workspaceId });
+            },
+          },
+        },
+        { provide: CompanyAccessService, useValue: { context: () => null } },
+        {
+          provide: CompaniesApiService,
+          useValue: {
+            scope: () => 'platform',
+            ensureLoaded: async () => {},
+            loading: () => false,
+            loaded: () => true,
+            error: () => '',
+            details: () => ({}),
+            companies: () => [
+              { id: 'lqcs', code: 'LQCS', name: 'Test Care', lifecycle: 'active' },
+              { id: 'riverside', code: 'RIVER', name: 'Riverside', lifecycle: 'active' },
+            ],
+          },
+        },
       ],
     });
-    TestBed.inject(AuthService).signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     store = TestBed.inject(ManagementStore);
     service = TestBed.inject(LocationsService);
     harness = await RouterTestingHarness.create();
@@ -201,7 +230,8 @@ describe('Branches and service locations', () => {
     expect(store.data().members).toEqual(before.members);
     expect(store.company()!.registeredPlaces).toBeUndefined();
     expect(
-      JSON.parse(localStorage.getItem('cv_management_v1')!).lqcs.locations[0].registeredPlaces,
+      JSON.parse(localStorage.getItem('cv_api_company_data_v1')!).lqcs.locations[0]
+        .registeredPlaces,
     ).toBe(24);
   });
   it('rejects invalid fields, duplicate codes and edits to missing locations', () => {
@@ -213,7 +243,9 @@ describe('Branches and service locations', () => {
       latitude: 100,
       longitude: null,
     };
-    expect(locationErrors(invalid, []).join(' ')).toContain('nonnegative whole');
+    expect(locationErrors(invalid, []).join(' ')).toContain(
+      'Registered care capacity must be a whole number',
+    );
     expect(service.save([invalid], 'lqcs', true)).toContain('valid email');
     expect(store.data().locations).toBeUndefined();
     expect(service.save([location()], 'lqcs', true)).toBeNull();
@@ -252,6 +284,76 @@ describe('Branches and service locations', () => {
     expect(store.data().locations![0].services).toEqual(['Day care', 'Respite care']);
     expect(store.data().locations![0].registeredPlaces).toBe(0);
   });
+  it('labels care capacity clearly and preserves values entered through create and edit forms', async () => {
+    const page = await open();
+    const dialogs = TestBed.inject(MatDialog);
+    page.openLocation('new');
+    let ref = dialogs.openDialogs.at(-1)!;
+    let form = ref.componentInstance as unknown as LocationEditor;
+    Object.assign(form.draft, location());
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    expect(document.querySelector('label[for="loc-registeredPlaces"]')?.textContent).toContain(
+      'Registered Care Capacity',
+    );
+    const info = document.querySelector('.loc-capacity-info') as HTMLButtonElement;
+    expect(info.getAttribute('aria-label')).toBe('About registered care capacity');
+    expect(info.getAttribute('matTooltip')).toContain('Enter 0');
+    expect(document.querySelector('#loc-capacity-hint')).toBeNull();
+    const enterCapacity = async (value: string) => {
+      const input = ref.componentRef!.location.nativeElement.querySelector(
+        '#loc-registeredPlaces',
+      ) as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+    };
+    for (const invalid of ['', '-1', '1.5']) {
+      await enterCapacity(invalid);
+      form.save();
+      expect(form.error()).toContain('Registered care capacity must be a whole number');
+      expect(store.data().locations ?? []).toEqual([]);
+    }
+    await enterCapacity('20');
+    form.save();
+    expect(form.error()).toBe('');
+    expect(store.data().locations![0].registeredPlaces).toBe(20);
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    for (const capacity of [24, 0]) {
+      page.openLocation('edit', store.data().locations![0]);
+      ref = dialogs.openDialogs.at(-1)!;
+      form = ref.componentInstance as unknown as LocationEditor;
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      expect(
+        (
+          ref.componentRef!.location.nativeElement.querySelector(
+            '#loc-registeredPlaces',
+          ) as HTMLInputElement
+        ).value,
+      ).toBe(String(store.data().locations![0].registeredPlaces));
+      await enterCapacity(String(capacity));
+      form.save();
+      expect(form.error()).toBe('');
+      expect(
+        JSON.parse(localStorage.getItem('cv_api_company_data_v1')!).lqcs.locations[0]
+          .registeredPlaces,
+      ).toBe(capacity);
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+    }
+  });
+  it.each([null, -1, 1.5, 2147483648])(
+    'rejects invalid care capacity %s without saving a location',
+    (capacity) => {
+      expect(service.save([{ ...location(), registeredPlaces: capacity }], 'lqcs', true)).toContain(
+        'Registered care capacity must be a whole number',
+      );
+      expect(store.data().locations ?? []).toEqual([]);
+    },
+  );
   it('plots only supplied valid coordinates and permits explicit external map links', async () => {
     const rows = populate(2);
     rows[0] = { ...rows[0], latitude: 51.5, longitude: -0.12 };

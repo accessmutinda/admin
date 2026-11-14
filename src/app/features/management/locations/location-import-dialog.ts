@@ -33,8 +33,8 @@ import {
         [disabled]="loading()"
       />
       <p>
-        Required columns: name, code, type, addressLine1, city, postcode and registeredPlaces. Use
-        zero places for community services. Separate services with semicolons.
+        Required columns: name, code, type, addressLine1, city, postcode and registeredPlaces. Use 0
+        for registered care capacity when this does not apply. Separate services with semicolons.
       </p>
       <p>Supported types: {{ types.join(', ') }}.</p>
       @if (loading()) {

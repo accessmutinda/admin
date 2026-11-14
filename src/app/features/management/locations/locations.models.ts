@@ -109,9 +109,13 @@ export function locationErrors(location: ServiceLocation, others: ServiceLocatio
     errors.push(key === 'postcode' ? 'Postcode: ' + error : 'Address ' + key + ': ' + error);
   if (Object.values(location.address).some((value) => value.length > 150))
     errors.push('Keep each address field within 150 characters.');
-  if (!Number.isSafeInteger(location.registeredPlaces) || Number(location.registeredPlaces) < 0)
+  if (
+    !Number.isSafeInteger(location.registeredPlaces) ||
+    Number(location.registeredPlaces) < 0 ||
+    Number(location.registeredPlaces) > 2147483647
+  )
     errors.push(
-      'Registered places must be a nonnegative whole number; use zero for services without registered places.',
+      'Registered care capacity must be a whole number from 0 to 2,147,483,647. Enter 0 if this does not apply.',
     );
   for (const [label, value] of [
     ['Email', location.email],
