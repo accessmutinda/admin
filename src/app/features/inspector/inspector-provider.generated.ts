@@ -148,6 +148,7 @@ export type InspectorClientPage = {
     request_id: string;
     filters: Record<string, number>;
     disclosure: string;
+    revision: string;
   };
 };
 
@@ -641,6 +642,7 @@ export type InspectorIncidentPage = {
     request_id: string;
     filters: Record<string, number>;
     disclosure: string;
+    revision: string;
   };
 };
 
@@ -854,6 +856,7 @@ export type InspectorMedicationPage = {
     request_id: string;
     filters: Record<string, number>;
     disclosure: string;
+    revision: string;
   };
 };
 
@@ -1014,7 +1017,12 @@ export type InspectorProviderRead = {
     registered_places: number | null;
     status: string;
   }[];
-  service_user_count: number;
+  service_user_count: number | null;
+  recommendations: {
+    version: number;
+    ratings: Record<string, string>;
+    summary: string;
+  } | null;
   documents: {
     id: string;
     name: string;
@@ -1186,6 +1194,11 @@ export type InspectorQualityPage = {
     at: string;
     by: string;
   }[];
+  recommendations: {
+    version: number;
+    ratings: Record<string, string>;
+    summary: string;
+  } | null;
   company: {
     logo_available: boolean;
     head_office_address: string | null;
@@ -1535,6 +1548,7 @@ export type InspectorStaffPage = {
     request_id: string;
     filters: Record<string, number>;
     disclosure: string;
+    revision: string;
   };
 };
 
@@ -1942,6 +1956,22 @@ export type InspectorDashboardSummary = {
 };
 
 export type InspectorDashboardExportQuery = {
-  "q"?: string;
-  "ordering"?: "name" | "-name";
+  q?: string;
+  ordering?: 'name' | '-name';
+};
+
+export type InspectorRecommendationsRead = {
+  version: number;
+  ratings: Record<string, string>;
+  summary: string;
+};
+
+export type InspectorRegisterMeta = {
+  company_id: string;
+  as_of: string;
+  timezone: string;
+  request_id: string;
+  filters: Record<string, number>;
+  disclosure: string;
+  revision: string;
 };
