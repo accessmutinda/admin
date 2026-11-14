@@ -207,6 +207,7 @@
   cursor: pointer;
 }
 .toggle-track {
+  pointer-events: none;
   display: block;
   width: 32px;
   height: 18px;

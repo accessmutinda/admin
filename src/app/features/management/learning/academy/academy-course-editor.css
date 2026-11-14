@@ -222,6 +222,12 @@
   min-height: 38px;
   margin: 0;
 }
+.role-applicability .field,
+.compliance-tags .field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
 .role-applicability .role-select {
   min-height: 64px;
 }
@@ -265,13 +271,40 @@
 }
 .renewal-field-grid {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 0.75fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
   gap: 8px;
   align-items: end;
 }
 .renewal-field-grid .field {
   height: 100%;
   justify-content: space-between;
+}
+.renewal-field-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.renewal-field-label > .material-symbols-outlined {
+  position: static;
+  flex: 0 0 16px;
+  font-size: 16px;
+  color: #4d6d9e;
+}
+.renewal-control {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+.renewal-control > mat-select.cv-select,
+.renewal-control > input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: 44px;
+}
+.renewal-control > input[readonly] {
+  background: #fbfdff;
+  font-weight: 700;
 }
 .icon-input input[readonly] {
   background: #fbfdff;
@@ -613,6 +646,24 @@
 }
 .additional-body > h3 {
   margin-top: 12px;
+}
+.course-reference-layout .field input.course-field-invalid,
+.course-reference-layout .field textarea.course-field-invalid,
+.course-reference-layout .field mat-select.cv-select.course-field-invalid,
+.course-reference-layout .outcome-entry input.course-field-invalid,
+.additional-body .field input.course-field-invalid,
+.additional-body .field mat-select.cv-select.course-field-invalid {
+  border: 1px solid #be123c;
+  background: #fff1f2;
+}
+.course-reference-layout .course-field-error,
+.additional-body .course-field-error {
+  display: block;
+  margin: 4px 0 0;
+  color: #be123c;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
 }
 .additional-body > .panel {
   box-shadow: none;

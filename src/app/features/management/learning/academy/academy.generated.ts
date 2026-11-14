@@ -1237,6 +1237,7 @@ export type AcademyCourseWrite = {
   validityMonths: number | null;
   outcomes?: string;
   active?: boolean;
+  sample?: boolean;
   estimatedMinutes?: number;
   assessmentMinutes?: number;
   tags?: string[];

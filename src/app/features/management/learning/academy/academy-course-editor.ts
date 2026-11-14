@@ -1,11 +1,12 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
+import { ErrorStateMatcher } from '@angular/material/core';
 import { CvSelect } from '../../../../shared/ui/select';
 import { AcademyService } from './academy.service';
 import { AcademyCourseSteps } from './academy-course-steps';
-import { AcademyCourse, AcademyLesson } from './academy.models';
+import { AcademyCourse, AcademyLesson, authoringPolicy } from './academy.models';
 import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 @Component({
   host: {
@@ -37,7 +38,11 @@ export class AcademyCourseEditor {
   private readonly router = inject(Router);
   protected readonly showPublishing =
     this.route.snapshot.queryParamMap.get('section') === 'publishing';
-  protected readonly showModules = this.route.snapshot.queryParamMap.get('section') === 'modules';
+  protected readonly additionalOpen = signal(this.showPublishing);
+  protected readonly attemptedContinue = signal(false);
+  protected readonly fieldErrorMatcher: ErrorStateMatcher = {
+    isErrorState: (control) => this.attemptedContinue() && !!control?.invalid,
+  };
   protected hasSavedCourse() {
     return !!this.academy.course(this.draft.id);
   }
@@ -84,8 +89,37 @@ export class AcademyCourseEditor {
       updatedAt: '',
     },
   );
-  protected readonly audienceBranches = this.academy.api.audience().branches;
-  protected readonly audienceRoles = this.academy.api.audience().roles;
+  protected readonly audienceBranches = computed(() => this.academy.api.audience().branches);
+  protected readonly audienceRoles = computed(() => this.academy.api.audience().roles);
+  protected readonly prerequisiteCourses = computed(() => {
+    const today = this.academy.api.audience().local_date ?? new Date().toISOString().slice(0, 10);
+    return this.academy.api
+      .courses()
+      .flatMap((record) =>
+        record.published && record.course.status !== 'Archived' ? [record.published] : [],
+      )
+      .filter(
+        (course) =>
+          course.id !== this.draft.id &&
+          course.status === 'Published' &&
+          course.active !== false &&
+          (!course.effectiveDate || course.effectiveDate <= today),
+      )
+      .sort((a, b) => a.title.localeCompare(b.title));
+  });
+  protected unavailablePrerequisites(): string[] {
+    const live = new Set(this.prerequisiteCourses().map((course) => course.id));
+    return (this.draft.prerequisiteCourseIds ?? []).filter((id) => !live.has(id));
+  }
+  protected prerequisiteTitle(id: string): string {
+    const record = this.academy.api.courses().find((record) => record.course.id === id);
+    return record?.published?.title ?? record?.course.title ?? 'Unavailable course';
+  }
+  protected unavailableBranches(): string[] {
+    return (this.draft.targetBranches ?? []).filter(
+      (branch) => !this.audienceBranches().includes(branch),
+    );
+  }
   protected readonly postPassActions = [
     {
       title: 'Internal Certificate',
@@ -121,19 +155,14 @@ export class AcademyCourseEditor {
   ];
   constructor() {
     this.draft.targetRoles ??= [];
+    this.draft.targetBranches ??= [];
+    this.draft.prerequisiteCourseIds ??= [];
+    this.draft.evidenceType ??= 'Internal knowledge completion';
     this.draft.tags ??= [];
     this.draft.active ??= true;
     this.draft.estimatedMinutes ??= this.minutes() || 45;
     this.draft.practicalRequired ??= ['medication', 'handling'].includes(this.draft.id);
-    this.draft.policy ??= {
-      maxAttempts: this.academy.state().settings.maxAttempts,
-      retakeWaitHours: 24,
-      timeLimitMinutes: this.academy.state().settings.timeLimitMinutes,
-      showFeedback: this.academy.state().settings.showFeedback,
-      sequentialLessons: this.academy.state().settings.sequentialLessons,
-      shuffleQuestions: this.academy.state().settings.shuffleQuestions,
-      shuffleOptions: this.academy.state().settings.shuffleOptions,
-    };
+    this.draft.policy = authoringPolicy(this.draft.policy, this.academy.state().settings);
     this.original = JSON.stringify(this.draft);
   }
   protected minutes() {
@@ -151,15 +180,18 @@ export class AcademyCourseEditor {
   private original = JSON.stringify(this.draft);
   protected readonly error = signal('');
   protected readonly notice = signal('');
-  protected async save(publish: boolean): Promise<void> {
+  protected async save(): Promise<boolean> {
+    if (!this.canEdit() || this.academy.api.saving()) return false;
     this.notice.set('');
+    this.error.set('');
+    const validation = this.validationError();
+    if (validation) {
+      this.error.set(validation);
+      return false;
+    }
     const candidate = {
       ...this.draft,
-      status: publish
-        ? ('Published' as const)
-        : this.draft.status === 'Archived'
-          ? ('Archived' as const)
-          : ('Draft' as const),
+      status: 'Draft' as const,
     };
     const error = await this.academy.persistCourse(
       candidate,
@@ -170,36 +202,85 @@ export class AcademyCourseEditor {
     if (!error) {
       this.draft = structuredClone(this.academy.course(candidate.id)!);
       this.original = JSON.stringify(this.draft);
-      this.notice.set(
-        publish
-          ? 'Course version published. Existing assignments retain their original version.'
-          : 'Draft saved. Published learner content is unchanged.',
-      );
+      this.notice.set('Draft saved. Published learner content is unchanged.');
     }
+    return !error;
   }
-  protected async reviewPublish() {
-    await this.save(false);
-    if (!this.error()) void this.router.navigate(['/manage/learning/publish', this.draft.id]);
+  private validationError(): string {
+    return Object.values(this.validationErrors(false))[0] ?? '';
+  }
+  protected fieldError(key: string): string {
+    return this.attemptedContinue() ? (this.validationErrors(true)[key] ?? '') : '';
+  }
+  private validationErrors(continuing: boolean): Record<string, string> {
+    const errors: Record<string, string> = {};
+    for (const [key, label] of [
+      ['title', 'course title'],
+      ['code', 'course code'],
+      ['description', 'course description'],
+      ['category', 'category'],
+    ] as const) {
+      if (!this.draft[key]?.trim()) errors[key] = `Enter the ${label}.`;
+    }
+    if (continuing && !this.draft.targetRoles?.length)
+      errors['targetRoles'] = 'Select at least one applicable role group.';
+    if (continuing && !this.draft.outcomes?.trim())
+      errors['outcomes'] = 'Add at least one learning outcome.';
+    if (this.unavailableBranches().length)
+      errors['targetBranches'] =
+        'Remove unavailable branches and choose active branches from this company.';
+    if (this.unavailablePrerequisites().length)
+      errors['prerequisiteCourseIds'] =
+        'Remove unavailable prerequisites and choose other live courses from this company.';
+    const policy = this.draft.policy!;
+    for (const [key, label, value, min, max, whole] of [
+      ['passMark', 'Pass mark', this.draft.passMark, 1, 100, true],
+      ['validityMonths', 'Refresher interval', this.draft.validityMonths, 0, 120, true],
+      ['estimatedMinutes', 'Estimated duration', this.draft.estimatedMinutes, 1, 4800, true],
+      ['maxAttempts', 'Maximum attempts', policy.maxAttempts, 1, 10, true],
+      ['retakeWaitHours', 'Retake waiting period', policy.retakeWaitHours, 0, 720, false],
+      ['timeLimitMinutes', 'Assessment time limit', policy.timeLimitMinutes, 0, 240, true],
+      ['feedbackDelayHours', 'Feedback delay', policy.feedbackDelayHours, 0, 720, false],
+    ] as const) {
+      if (value == null && (label === 'Pass mark' || label === 'Refresher interval')) continue;
+      if (
+        typeof value !== 'number' ||
+        !Number.isFinite(value) ||
+        value < min ||
+        value > max ||
+        (whole && !Number.isInteger(value))
+      )
+        errors[key] =
+          `${label}: enter ${whole ? 'a whole number' : 'a number'} between ${min} and ${max}.`;
+    }
+    return errors;
   }
   protected isNew() {
     return !this.id;
   }
   protected async saveContinue(): Promise<void> {
+    this.attemptedContinue.set(true);
     this.notice.set('');
-    if (
-      !this.draft.title.trim() ||
-      !this.draft.code?.trim() ||
-      !this.draft.description.trim() ||
-      !this.draft.targetRoles?.length ||
-      !this.draft.outcomes?.trim()
-    ) {
+    const errors = this.validationErrors(true);
+    if (Object.keys(errors).length) {
+      if (
+        [
+          'category',
+          'targetBranches',
+          'prerequisiteCourseIds',
+          'maxAttempts',
+          'retakeWaitHours',
+          'timeLimitMinutes',
+          'feedbackDelayHours',
+        ].some((key) => errors[key])
+      )
+        this.additionalOpen.set(true);
       this.error.set(
-        'Enter the course title, code, description, role applicability and at least one learning outcome.',
+        `Complete the highlighted fields before continuing. ${Object.values(errors).join(' ')}`,
       );
       return;
     }
-    await this.save(false);
-    if (!this.error()) void this.router.navigate(['/manage/learning/content', this.draft.id]);
+    if (await this.save()) void this.router.navigate(['/manage/learning/content', this.draft.id]);
   }
   protected setMandatory(value: boolean) {
     this.draft.mandatory = value;
@@ -317,9 +398,6 @@ export class AcademyCourseEditor {
   }
   protected lessonSaved(id: string): boolean {
     return !!this.academy.course(this.draft.id)?.lessons.some((l) => l.id === id);
-  }
-  protected saved(): boolean {
-    return !!this.academy.course(this.draft.id);
   }
   protected canEdit() {
     return (

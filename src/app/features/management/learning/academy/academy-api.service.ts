@@ -10,6 +10,8 @@ import {
   AcademyQuestionGroup,
   AcademyAsset,
   AcademySettings,
+  authoringPolicy,
+  emptyAcademy,
 } from './academy.models';
 
 export interface CourseRecord {
@@ -17,6 +19,11 @@ export interface CourseRecord {
   published: AcademyCourse | null;
   questions: AcademyQuestion[];
   versions: AcademyCourse[];
+}
+interface AudienceOptions {
+  roles: string[];
+  branches: string[];
+  local_date?: string;
 }
 @Injectable({ providedIn: 'root' })
 export class AcademyApi {
@@ -56,7 +63,7 @@ export class AcademyApi {
   private readonly records = signal<CourseRecord[]>([]);
   private readonly media = signal<AcademyAsset[]>([]);
   private readonly configuration = signal<Partial<AcademySettings>>({});
-  private readonly audienceOptions = signal<{ roles: string[]; branches: string[] }>({
+  private readonly audienceOptions = signal<AudienceOptions>({
     roles: [],
     branches: [],
   });
@@ -64,7 +71,9 @@ export class AcademyApi {
     this.loadedScope() === this.scope() ? this.configuration() : {},
   );
   readonly audience = computed(() =>
-    this.loadedScope() === this.scope() ? this.audienceOptions() : { roles: [], branches: [] },
+    this.loadedScope() === this.scope()
+      ? this.audienceOptions()
+      : ({ roles: [], branches: [] } as AudienceOptions),
   );
   private readonly writing = signal(false);
   readonly saving = this.writing.asReadonly();
@@ -137,7 +146,7 @@ export class AcademyApi {
             meta: {
               company_id: string;
               settings?: Partial<AcademySettings>;
-              audience?: { roles: string[]; branches: string[] };
+              audience?: AudienceOptions;
             };
           } = await this.auth.api(`${this.root()}/courses?page=${page}&page_size=100`);
           this.check(scope);
@@ -191,7 +200,6 @@ export class AcademyApi {
       version,
       updatedAt,
       status,
-      sample,
       assessmentQuestions,
       publishedAt,
       publishedBy,
@@ -200,6 +208,11 @@ export class AcademyApi {
     delete (body as Record<string, unknown>)['company_id'];
     delete (body as Record<string, unknown>)['etag'];
     if (!body.effectiveDate) delete body.effectiveDate;
+    if (body.policy)
+      body.policy = authoringPolicy(body.policy, {
+        ...emptyAcademy().settings,
+        ...this.settings(),
+      });
     const source: AcademyCourseWrite = { ...body, code: course.code ?? '' };
     return structuredClone(source);
   }

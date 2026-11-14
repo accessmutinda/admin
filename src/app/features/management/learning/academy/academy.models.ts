@@ -22,6 +22,23 @@ export interface AcademyPolicy {
   timeLimitMinutes: number;
   showFeedback: boolean;
 }
+export function authoringPolicy(
+  policy: Partial<AcademyPolicy> | undefined,
+  settings: AcademySettings,
+): AcademyPolicy {
+  return {
+    maxAttempts: settings.maxAttempts,
+    retakeWaitHours: 24,
+    timeLimitMinutes: settings.timeLimitMinutes,
+    showFeedback: settings.showFeedback,
+    sequentialLessons: settings.sequentialLessons,
+    shuffleQuestions: settings.shuffleQuestions,
+    shuffleOptions: settings.shuffleOptions,
+    feedbackMode: 'Immediate',
+    feedbackDelayHours: 0,
+    ...policy,
+  };
+}
 export interface AcademyCompletion {
   certificateId?: string;
   nextRetryAt?: string;

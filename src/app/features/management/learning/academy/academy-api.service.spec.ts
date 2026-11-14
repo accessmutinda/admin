@@ -76,6 +76,65 @@ describe('Academy API authoring persistence', () => {
     expect(body).not.toHaveProperty('id');
     expect(api.courses()[0].course.title).toBe('Safeguarding');
   });
+  it('sends the additional publishing settings including the sample-content flag', () => {
+    const draft = {
+      ...course(),
+      targetBranches: ['North branch'],
+      prerequisiteCourseIds: ['live-course'],
+      sample: true,
+      owner: 'Training lead',
+      issuer: 'North Care',
+      approver: 'Manager',
+      rights: 'Owned content',
+      effectiveDate: '2026-11-14',
+      renewalPolicyRef: 'POL-1',
+      cpdJustification: 'Approved hours',
+      evidenceType: 'Practical observation record' as const,
+    };
+    expect(api.body(draft)).toMatchObject({
+      targetBranches: ['North branch'],
+      prerequisiteCourseIds: ['live-course'],
+      sample: true,
+      owner: 'Training lead',
+      issuer: 'North Care',
+      approver: 'Manager',
+      rights: 'Owned content',
+      effectiveDate: '2026-11-14',
+      renewalPolicyRef: 'POL-1',
+      cpdJustification: 'Approved hours',
+      evidenceType: 'Practical observation record',
+    });
+    expect(api.body(draft)).not.toHaveProperty('status');
+  });
+  it('completes an inherited draft policy on saves from later course steps without replacing saved values', async () => {
+    request.mockResolvedValueOnce({
+      results: [record()],
+      next: null,
+      meta: {
+        company_id: 'company-one',
+        settings: { maxAttempts: 5, timeLimitMinutes: 45, showFeedback: true },
+      },
+    });
+    await api.load();
+    const draft = {
+      ...course(),
+      policy: { retakeWaitHours: 0, showFeedback: false } as AcademyCourse['policy'],
+    };
+    const before = structuredClone(draft);
+    const response = record();
+    response.course = { ...draft, policy: api.body(draft).policy };
+    request.mockResolvedValueOnce(response);
+    await api.save(draft, draft.updatedAt);
+    expect(request.mock.calls.at(-1)![1].policy).toMatchObject({
+      maxAttempts: 5,
+      timeLimitMinutes: 45,
+      retakeWaitHours: 0,
+      showFeedback: false,
+      feedbackMode: 'Immediate',
+      feedbackDelayHours: 0,
+    });
+    expect(draft).toEqual(before);
+  });
   it('awaits saves, sends If-Match and uses the publish command', async () => {
     request.mockResolvedValueOnce({
       results: [record()],
