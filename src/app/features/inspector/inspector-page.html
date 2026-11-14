@@ -119,10 +119,10 @@
           }
         }
         </div>
-        <cv-inspection-questions [draft]="data.state().draft" [documents]="data.documents()" />
+        <cv-inspection-questions [draft]="data.state().draft" [documents]="data.documents()" [recommendationsAvailable]="recommendationsAvailable()" />
         <p class="footnote">
           Ratings are inspector recommendations. Evidence counts cover authorised source records, rather
-          than a compliance decision. @if (data.dashboardBackend) { Preparation checks require current clean files. } Exports include only sources you may export. @if (data.qualityBackend) { Audit files are grouped under Well-led. Other key-question mappings, inspector recommendations and summaries are not recorded here. }
+          than a compliance decision. @if (data.dashboardBackend) { Preparation checks require current clean files. } Exports include only sources you may export. @if (data.qualityBackend) { Audit files are grouped under Well-led. Other key-question mappings are not recorded here. Recommendations reuse the saved Reports draft when access is permitted. }
         </p>
       </section>
       <section class="panel">
@@ -209,7 +209,7 @@
           <a routerLink="/inspector/reports">Review ratings →</a>
         }
       </div>
-      <cv-inspection-questions [draft]="data.state().draft" [documents]="data.documents()" />
+      <cv-inspection-questions [draft]="data.state().draft" [documents]="data.documents()" [recommendationsAvailable]="recommendationsAvailable()" />
     </section>
     <div class="three-grid">
       <section class="panel">
@@ -351,7 +351,7 @@
           </div>
           <div>
             <dt>Recorded service users</dt>
-            <dd>{{ data.serviceUserCount() }}</dd>
+            <dd>{{ data.serviceUserCount() ?? 'Service user access required' }}</dd>
           </div>
           <div>
             <dt>Country / region</dt>

@@ -89,6 +89,17 @@ export class InspectorPage {
   readonly company = this.data.company;
   readonly questions = QUESTIONS;
   readonly categories = CATEGORIES;
+  readonly recommendationsAvailable = computed(() =>
+    this.data.backend ? !!this.data.backend.value()?.recommendations :
+    this.data.qualityBackend ? !!this.data.qualityBackend.value()?.recommendations :
+    this.data.dashboardBackend ? !!this.data.dashboardBackend.dashboard()?.capabilities['view_reports'] : true);
+  recommendation(question: string): string {
+    return this.recommendationsAvailable() ? this.data.state().draft.ratings[question] || 'Not assessed' : 'Report access required';
+  }
+  readonly recommendationRecord = computed<RegisterRow>(() => ({
+    id: 'provider-recommendations', cells: ['Recorded inspection recommendations'],
+    detail: Object.fromEntries(QUESTIONS.map(q => [q.key, this.recommendation(q.key)])),
+  }));
   readonly ratings = RATINGS;
   readonly search = signal('');
   readonly category = signal('');
@@ -317,12 +328,12 @@ export class InspectorPage {
           {
             label:
               this.data.qualityBackend.value()?.preparation.findings_resolved === null
-                ? 'All inspection findings resolved (incident access required)'
+                ? 'All inspection findings resolved (report or incident access required)'
                 : 'All inspection findings resolved',
             complete: this.data.qualityBackend.value()?.preparation.findings_resolved === true,
           },
-          { label: 'All key questions assessed (recommendations not recorded)', complete: false },
-          { label: 'Inspection summary recorded (not recorded)', complete: false },
+          { label: 'All key questions assessed' + (this.recommendationsAvailable() ? '' : ' (report access required)'), complete: this.recommendationsAvailable() && QUESTIONS.every(q => !['', 'Not assessed'].includes(this.data.state().draft.ratings[q.key] || '')) },
+          { label: 'Inspection summary recorded' + (this.recommendationsAvailable() ? '' : ' (report access required)'), complete: this.recommendationsAvailable() && !!this.data.state().draft.summary.trim() },
         ]
       : [
           {
@@ -440,7 +451,7 @@ export class InspectorPage {
         } else if (this.record() && this.modalKind() === 'detail') {
           const updated =
             this.data.qualityBackend && this.record()?.id === 'provider-recommendations'
-              ? this.record()!
+              ? this.recommendationRecord()
               : records.find((r) => r.id === this.record()?.id);
           this.record.set(updated ?? null);
           if (this.data.clientsBackend)
@@ -519,7 +530,11 @@ export class InspectorPage {
           this.dirty.set(false);
           this.modalOpen.set(false);
           this.draft.set(structuredClone(state.draft));
-        } else if (!this.dirty()) this.draft.set(structuredClone(state.draft));
+        } else {
+          if (!this.dirty()) this.draft.set(structuredClone(state.draft));
+          if (this.modalOpen() && this.modalKind() === 'detail' && this.record()?.id === 'provider-recommendations')
+            this.record.set(this.recommendationRecord());
+        }
       });
     }
     effect(() => {
@@ -652,17 +667,9 @@ export class InspectorPage {
   reviewProviderRatings(event: Event): void {
     if (!this.data.backend && !this.data.qualityBackend) return;
     event.preventDefault();
-    this.openRecord({
-      id: 'provider-recommendations',
-      cells: ['Recorded inspection recommendations'],
-      detail: Object.fromEntries(
-        QUESTIONS.map((question) => [
-          question.key,
-          this.data.state().draft.ratings[question.key] || 'Not assessed',
-        ]),
-      ),
-    });
+    this.openRecord(this.recommendationRecord());
   }
+
   async saveDetails(): Promise<void> {
     if (!this.data.backend) {
       if (this.save()) this.closeModal();
@@ -1225,7 +1232,7 @@ export class InspectorPage {
           metric(
             'Evidence documents',
             s?.evidence_documents ?? '—',
-            'Across authorised source modules',
+            'Documents & Evidence register',
             'description',
           ),
           metric(
@@ -2048,12 +2055,12 @@ export class InspectorPage {
               [
                 q.key,
                 this.evidenceCount(q.key),
-                this.data.state().draft.ratings[q.key] || 'Not assessed',
+                this.recommendation(q.key),
                 this.evidenceCount(q.key) ? 'Evidence available' : 'No linked evidence',
               ],
               {
                 'Key question': q.key,
-                Recommendation: this.data.state().draft.ratings[q.key] || 'Not assessed',
+                Recommendation: this.recommendation(q.key),
                 Documents: this.data
                   .documents()
                   .filter((d) => d.questions.includes(q.key))

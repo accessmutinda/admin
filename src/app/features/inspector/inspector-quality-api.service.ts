@@ -54,6 +54,8 @@ export class InspectorQualityApi {
     state.draft.end = details?.end ?? '';
     state.draft.revision = details?.version ?? 0;
     state.draft.findings = this.value()?.findings ?? [];
+    state.draft.ratings = this.value()?.recommendations?.ratings ?? {};
+    state.draft.summary = this.value()?.recommendations?.summary ?? '';
     return state;
   });
   readonly company = computed<Company | undefined>(() => {

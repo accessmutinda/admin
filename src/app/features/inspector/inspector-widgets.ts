@@ -137,7 +137,7 @@ export class InspectionMetrics {
           [class.concern]="
             ['Requires improvement', 'Inadequate'].includes(draft().ratings[question.key])
           "
-          >{{ draft().ratings[question.key] || 'Not assessed' }}</strong
+          >{{ recommendationsAvailable() ? draft().ratings[question.key] || 'Not assessed' : 'Report access required' }}</strong
         >
         <p>
           {{ count(question.key) }} linked evidence
@@ -219,6 +219,7 @@ export class InspectionMetrics {
   ],
 })
 export class InspectionQuestions {
+  readonly recommendationsAvailable = input(true);
   readonly questions = QUESTIONS;
   readonly draft = input.required<InspectionDraft>();
   readonly documents = input<InspectorDocument[]>([]);

@@ -54,7 +54,7 @@ export class InspectorService {
       'id' | 'name' | 'type' | 'registeredPlaces' | 'status'
     >[]
   >(() => this.store.data().locations ?? []);
-  readonly serviceUserCount = computed(() => this.clients().length);
+  readonly serviceUserCount = computed<number | null>(() => this.clients().length);
   readonly auth = inject(AuthService);
   get today() {
     return londonDate();

@@ -53,7 +53,7 @@ export class InspectorProviderApi {
   readonly canEdit = computed(() => !!this.value()?.capabilities['edit_details']);
   readonly canDownload = computed(() => !!this.value()?.capabilities['download_evidence']);
   readonly locations = computed(() => this.value()?.locations ?? []);
-  readonly serviceUserCount = computed(() => this.value()?.service_user_count ?? 0);
+  readonly serviceUserCount = computed(() => this.value()?.service_user_count ?? null);
   readonly registeredAddress = computed(() =>
     this.address(this.value()?.company.registered_address),
   );
@@ -66,6 +66,8 @@ export class InspectorProviderApi {
     result.draft.revision = details?.version ?? 0;
     result.draft.updated = details?.updated ?? '';
     result.draft.by = details?.by ?? '';
+    result.draft.ratings = this.value()?.recommendations?.ratings ?? {};
+    result.draft.summary = this.value()?.recommendations?.summary ?? '';
     return result;
   });
   readonly documents = computed<InspectorDocument[]>(() =>
@@ -272,6 +274,7 @@ export class InspectorProviderApi {
     this.pending = undefined;
     const scope = this.scope(),
       generation = this.generation,
+      lifecycle = this.lifecycle,
       value = this.value()!;
     this.busy.set(true);
     this.error.set('');
@@ -299,7 +302,7 @@ export class InspectorProviderApi {
       }
       return false;
     } finally {
-      if (scope === this.scope()) this.busy.set(false);
+      if (scope === this.scope() && lifecycle === this.lifecycle) this.busy.set(false);
     }
   }
   async download(id: string): Promise<void> {
