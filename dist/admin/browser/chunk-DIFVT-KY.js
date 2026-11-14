@@ -1,1 +1,0 @@
-import"./chunk-CUCVH8se.js";import"./chunk-5w51_-hs.js";import{n as f,t as I}from"./chunk-DNt2FPe_.js";export{f as ACADEMY_ADMIN_ROUTES};
