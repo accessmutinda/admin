@@ -1242,6 +1242,143 @@ export type InspectorQualitySummary = {
   covered_questions: number;
 };
 
+export type InspectorReportDraftRead = {
+  id: string | null;
+  version: number;
+  etag: string;
+  ratings: Record<string, string>;
+  notes: Record<string, string>;
+  summary: string;
+  updated: string | null;
+  by: string;
+  findings: {
+    id: string;
+    version: number;
+    question: 'Safe' | 'Effective' | 'Caring' | 'Responsive' | 'Well-led';
+    type: 'Strength' | 'Concern' | 'Required action';
+    text: string;
+    owner: string;
+    due: string;
+    status: 'Open' | 'In progress' | 'Completed';
+    evidenceIds: string[];
+    at: string;
+    by: string;
+    evidenceVersions: Record<string, number>;
+  }[];
+};
+
+export type InspectorReportFindingRead = {
+  id: string;
+  version: number;
+  question: 'Safe' | 'Effective' | 'Caring' | 'Responsive' | 'Well-led';
+  type: 'Strength' | 'Concern' | 'Required action';
+  text: string;
+  owner: string;
+  due: string;
+  status: 'Open' | 'In progress' | 'Completed';
+  evidenceIds: string[];
+  at: string;
+  by: string;
+  evidenceVersions: Record<string, number>;
+};
+
+export type InspectorReportFindingWrite = {
+  question: 'Safe' | 'Effective' | 'Caring' | 'Responsive' | 'Well-led';
+  type: 'Strength' | 'Concern' | 'Required action';
+  text: string;
+  owner: string;
+  due: string | null;
+  status: 'Open' | 'In progress' | 'Completed';
+  evidenceIds: string[];
+  evidenceVersions: Record<string, number>;
+};
+
+export type InspectorReportRead = {
+  company: {
+    logo_available: boolean;
+    head_office_address: string | null;
+    postcode: string | null;
+    id: string;
+    name: string;
+    code: string;
+    active: boolean;
+    sector: string | null;
+    registered_places: number | null;
+    updated_at: string;
+  };
+  inspection: {
+    id: string | null;
+    version: number;
+    etag: string;
+    type: string | null;
+    start: string | null;
+    end: string | null;
+    updated: string | null;
+    by: string | null;
+  };
+  draft: {
+    id: string | null;
+    version: number;
+    etag: string;
+    ratings: Record<string, string>;
+    notes: Record<string, string>;
+    summary: string;
+    updated: string | null;
+    by: string;
+    findings: {
+      id: string;
+      version: number;
+      question: 'Safe' | 'Effective' | 'Caring' | 'Responsive' | 'Well-led';
+      type: 'Strength' | 'Concern' | 'Required action';
+      text: string;
+      owner: string;
+      due: string;
+      status: 'Open' | 'In progress' | 'Completed';
+      evidenceIds: string[];
+      at: string;
+      by: string;
+      evidenceVersions: Record<string, number>;
+    }[];
+  };
+  evidence: {
+    id: string;
+    version: string;
+    source_version: number;
+    name: string;
+    filename: string;
+    category: string;
+    questions: ('Safe' | 'Effective' | 'Caring' | 'Responsive' | 'Well-led')[];
+    owner: string;
+    updated: string;
+    expiry: string | null;
+    status: string;
+    source: string;
+    state: string;
+    content_type: string;
+    size: number | null;
+    downloadable: boolean;
+  }[];
+  capabilities: Record<string, boolean>;
+  meta: {
+    company_id: string;
+    as_of: string;
+    timezone: string;
+    request_id: string;
+    filters: Record<string, number>;
+    disclosure: string;
+    revision: string;
+  };
+};
+
+export type InspectorReportWrite = {
+  ratings: Record<
+    string,
+    'Not assessed' | 'Outstanding' | 'Good' | 'Requires improvement' | 'Inadequate'
+  >;
+  notes: Record<string, string>;
+  summary: string;
+};
+
 export type InspectorRevokeWrite = {
   reason: string;
 };
