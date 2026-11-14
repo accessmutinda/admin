@@ -14,13 +14,22 @@
       >{{ course?.status === 'Published' ? 'Save as New Draft' : 'Save Draft' }}</button
     ><button
       class="academy-button primary"
-      [disabled]="!course || !!validation() || !attested() || unchangedPublication()"
+      [disabled]="!!publishBlockers().length"
+      [attr.aria-describedby]="publishBlockers().length ? 'publication-header-blockers' : null"
       (click)="publish()"
     >
       <span class="material-symbols-outlined" aria-hidden="true">publish</span>Publish Course
     </button>
   </div>
 </div>
+@if (publishBlockers().length) {
+  <div class="publish-blocker" id="publication-header-blockers" role="status">
+    <strong>Before you can publish:</strong>
+    <ul>
+      @for (reason of publishBlockers(); track reason) { <li>{{ reason }}</li> }
+    </ul>
+  </div>
+}
 <cv-academy-message [error]="error() || academy.api.error()" [notice]="notice()" />
 @if (course) {
   <cv-academy-course-steps [courseId]="course.id" [current]="6" />
@@ -433,12 +442,18 @@
         <p class="confirmation-note">
           Changes to the reviewed course or its publication inputs reset this confirmation.
         </p>
-        @if (validation()) {
-          <p class="publish-blocker" role="status">{{ validation() }}</p>
+        @if (publishBlockers().length) {
+          <div class="publish-blocker" id="publication-action-blockers" role="status">
+            <strong>Before you can publish:</strong>
+            <ul>
+              @for (reason of publishBlockers(); track reason) { <li>{{ reason }}</li> }
+            </ul>
+          </div>
         }
         <button
           class="academy-button primary publish-action"
-          [disabled]="!!validation() || !attested() || unchangedPublication()"
+          [disabled]="!!publishBlockers().length"
+          [attr.aria-describedby]="publishBlockers().length ? 'publication-action-blockers' : null"
           (click)="publish()"
         >
           <span class="material-symbols-outlined" aria-hidden="true">publish</span

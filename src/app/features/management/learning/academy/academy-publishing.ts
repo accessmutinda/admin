@@ -164,12 +164,11 @@ export class AcademyPublishing {
         detail: 'Title, description, learning outcomes and audience',
         path: ['/manage/learning/courses', c.id],
         issues: [
-          !c.title.trim() || !c.description.trim()
-            ? 'Complete the course title and description.'
-            : '',
-          !c.sample && (!c.code?.trim() || !c.outcomes?.trim() || !c.targetRoles?.length)
-            ? 'Add a unique course code, measurable outcomes and applicable roles.'
-            : '',
+          !c.title.trim() ? 'Enter a course title.' : '',
+          !c.description.trim() ? 'Add a course description.' : '',
+          !c.sample && !c.code?.trim() ? 'Add a unique course code.' : '',
+          !c.sample && !c.outcomes?.trim() ? 'Add measurable learning outcomes.' : '',
+          !c.sample && !c.targetRoles?.length ? 'Select applicable role groups.' : '',
         ].filter(Boolean),
       },
       {
@@ -269,14 +268,11 @@ export class AcademyPublishing {
         path: ['/manage/learning/courses', c.id],
         query: { section: 'publishing' },
         issues: [
-          !c.sample &&
-          (!c.owner?.trim() ||
-            !c.issuer?.trim() ||
-            !c.approver?.trim() ||
-            !c.rights?.trim() ||
-            !c.effectiveDate)
-            ? 'Complete the approval fields below.'
-            : '',
+          !c.sample && !c.owner?.trim() ? 'Add the course owner.' : '',
+          !c.sample && !c.issuer?.trim() ? 'Add the approved certificate issuer.' : '',
+          !c.sample && !c.approver?.trim() ? 'Add the publish approver.' : '',
+          !c.sample && !c.rights?.trim() ? 'Add the content rights or licence.' : '',
+          !c.sample && !c.effectiveDate ? 'Add the effective date.' : '',
         ].filter(Boolean),
       },
     ];
@@ -294,6 +290,20 @@ export class AcademyPublishing {
   }
   protected completedChecks() {
     return this.checks().filter((c) => !c.issues.length).length;
+  }
+  protected publishBlockers(): string[] {
+    if (!this.course) return ['Choose a saved course to publish.'];
+    const blockers: string[] = [];
+    if (this.academy.api.saving()) blockers.push('Wait for the current save to finish.');
+    if (!this.academy.can('publish')) blockers.push('You need permission to publish courses.');
+    if (this.validation()) blockers.push(...this.checks().flatMap((check) => check.issues));
+    if (!this.attested())
+      blockers.push('Tick the publication approval checkbox after reviewing this course.');
+    if (this.unchangedPublication())
+      blockers.push(
+        'This version is already published. Save a new draft or edit the course before publishing again.',
+      );
+    return [...new Set(blockers)];
   }
   private fingerprint() {
     return JSON.stringify({
@@ -379,16 +389,9 @@ export class AcademyPublishing {
   protected async publish() {
     if (!this.course) return;
     this.notice.set('');
-    if (!this.attested()) {
-      this.error.set(
-        'Confirm that the current course content and publication details have been reviewed.',
-      );
-      return;
-    }
-    if (this.unchangedPublication()) {
-      this.error.set(
-        'This version is already published. Save or edit a draft to publish a new version.',
-      );
+    const blockers = this.publishBlockers();
+    if (blockers.length) {
+      this.error.set(blockers.join(' '));
       return;
     }
     const error = await this.academy.persistCourse(

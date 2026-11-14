@@ -406,6 +406,13 @@
   line-height: 1.5;
   margin: 8px 0;
 }
+.publish-blocker ul {
+  margin: 5px 0 0;
+  padding-left: 18px;
+}
+.publish-blocker li + li {
+  margin-top: 4px;
+}
 .publish-action,
 .secondary-action {
   width: 100%;
