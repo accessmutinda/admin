@@ -1,3 +1,4 @@
+import { InspectorNotesApi } from './inspector-notes-api.service';
 import { InspectorReportsApi } from './inspector-reports-api.service';
 import { InspectorVisitsApi } from './inspector-visits-api.service';
 import { InspectorDocumentsApi } from './inspector-documents-api.service';
@@ -104,6 +105,7 @@ describe('Inspector portal routes and availability', () => {
           InspectorDocumentsApi,
           InspectorVisitsApi,
           InspectorReportsApi,
+          InspectorNotesApi,
         ].map((provide) => ({
           provide,
           useValue: { company, ready },
