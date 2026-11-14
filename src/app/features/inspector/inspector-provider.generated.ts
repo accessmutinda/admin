@@ -1246,6 +1246,22 @@ export type InspectorRevokeWrite = {
   reason: string;
 };
 
+export type InspectorSharedVisitNote = {
+  id: string;
+  version: number;
+  visit_id: string | null;
+  client_id: string;
+  client: string;
+  date: string;
+  end_date: string;
+  start: string;
+  end: string;
+  visit_type: string;
+  carer: string;
+  body: string;
+  status: 'Completed' | 'Flagged';
+};
+
 export type InspectorStaffCheck = {
   code: string;
   id: string;
@@ -1474,4 +1490,200 @@ export type InspectorStaffTrainingSummary = {
   expired: number;
   missing: number;
   competent: number;
+};
+
+export type InspectorVisitAttendance = {
+  id: string;
+  carer: string;
+  start: string;
+  end: string | null;
+  allocated: boolean;
+};
+
+export type InspectorVisitDay = {
+  date: string;
+  day: number;
+  in_month: boolean;
+  count: number;
+  completed: number;
+  issues: number;
+};
+
+export type InspectorVisitExportQuery = {
+  q?: string;
+  ordering?: 'name' | '-name';
+  month?: string;
+  day?: string;
+};
+
+export type InspectorVisitFilters = {
+  page: number;
+  page_size: number;
+  month: string;
+};
+
+export type InspectorVisitMeta = {
+  company_id: string;
+  as_of: string;
+  timezone: string;
+  request_id: string;
+  filters: {
+    page: number;
+    page_size: number;
+    month: string;
+  };
+  disclosure: string;
+  revision: string;
+  month: string;
+};
+
+export type InspectorVisitPage = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: {
+    id: string;
+    version: number;
+    client_id: string;
+    client_name: string;
+    address: string;
+    call_name: string;
+    date: string;
+    end_date: string;
+    start: string;
+    end: string;
+    starts_at: string;
+    ends_at: string;
+    carers: number;
+    tasks: string;
+    allocation: string;
+    staff: {
+      id: string;
+      name: string;
+    }[];
+    attendance: {
+      id: string;
+      carer: string;
+      start: string;
+      end: string | null;
+      allocated: boolean;
+    }[];
+    status: 'Scheduled' | 'Completed' | 'In progress' | 'No attendance' | 'Unallocated';
+  }[];
+  notes: {
+    id: string;
+    version: number;
+    visit_id: string | null;
+    client_id: string;
+    client: string;
+    date: string;
+    end_date: string;
+    start: string;
+    end: string;
+    visit_type: string;
+    carer: string;
+    body: string;
+    status: 'Completed' | 'Flagged';
+  }[];
+  summary: {
+    published: number;
+    completed: number;
+    in_progress: number;
+    no_attendance: number;
+    unallocated: number;
+  };
+  calendar: {
+    date: string;
+    day: number;
+    in_month: boolean;
+    count: number;
+    completed: number;
+    issues: number;
+  }[];
+  company: {
+    logo_available: boolean;
+    head_office_address: string | null;
+    postcode: string | null;
+    id: string;
+    name: string;
+    code: string;
+    active: boolean;
+    sector: string | null;
+    registered_places: number | null;
+    updated_at: string;
+  };
+  inspection: {
+    id: string | null;
+    version: number;
+    etag: string;
+    type: string | null;
+    start: string | null;
+    end: string | null;
+    updated: string | null;
+    by: string | null;
+  };
+  capabilities: Record<string, boolean>;
+  meta: {
+    company_id: string;
+    as_of: string;
+    timezone: string;
+    request_id: string;
+    filters: {
+      page: number;
+      page_size: number;
+      month: string;
+    };
+    disclosure: string;
+    revision: string;
+    month: string;
+  };
+};
+
+export type InspectorVisitPerson = {
+  id: string;
+  name: string;
+};
+
+export type InspectorVisitQuery = {
+  page?: number;
+  page_size?: number;
+  month?: string;
+};
+
+export type InspectorVisitRead = {
+  id: string;
+  version: number;
+  client_id: string;
+  client_name: string;
+  address: string;
+  call_name: string;
+  date: string;
+  end_date: string;
+  start: string;
+  end: string;
+  starts_at: string;
+  ends_at: string;
+  carers: number;
+  tasks: string;
+  allocation: string;
+  staff: {
+    id: string;
+    name: string;
+  }[];
+  attendance: {
+    id: string;
+    carer: string;
+    start: string;
+    end: string | null;
+    allocated: boolean;
+  }[];
+  status: 'Scheduled' | 'Completed' | 'In progress' | 'No attendance' | 'Unallocated';
+};
+
+export type InspectorVisitSummary = {
+  published: number;
+  completed: number;
+  in_progress: number;
+  no_attendance: number;
+  unallocated: number;
 };
