@@ -1,12 +1,7 @@
 {
   "/api/**": {
-    "target": "https://care.neuraledge.co.ke",
-    "secure": true,
-    "changeOrigin": true,
-    "cookieDomainRewrite": "",
-    "headers": {
-      "Origin": "https://care.neuraledge.co.ke",
-      "Referer": "https://care.neuraledge.co.ke/"
-    }
+    "target": "http://localhost:6536",
+    "secure": false,
+    "changeOrigin": true
   }
 }

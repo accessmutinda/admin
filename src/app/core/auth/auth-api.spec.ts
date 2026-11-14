@@ -100,7 +100,7 @@ describe('CareVerity API authentication', () => {
 
   it('sends CSRF and credentials, loads /me and enters the assigned company without persisting a token', async () => {
     await firstValueFrom(auth.signIn(' person@example.com ', 'password'));
-    expect(fetchMock.mock.calls[0][0]).toBe('https://care.neuraledge.co.ke/api/v1/auth/csrf');
+    expect(fetchMock.mock.calls[0][0]).toBe(`${API_BASE}/auth/csrf`);
     const options = fetchMock.mock.calls.find(
       (call) => call[0] === `${API_BASE}/auth/login`,
     )![1] as RequestInit;
@@ -624,6 +624,14 @@ describe('CareVerity API authentication', () => {
       { id: 'company-1', name: 'Example Care', entryState: 'ready' },
     ]);
     expect(auth.session()?.signedInAt).toBeNull();
+  });
+
+  it('does not use an email address as the signed-in name', async () => {
+    profile = { ...companyUser, display_name: 'person@example.com' };
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    expect(auth.currentUser()?.name).toBe('');
+    expect(auth.currentUser()?.email).toBe('person@example.com');
+    expect(auth.currentUser()?.initials).toBe('');
   });
 
   it('keeps an empty API workspace list empty despite legacy cached workspaces', async () => {

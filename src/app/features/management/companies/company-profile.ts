@@ -17,20 +17,23 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
+import { LanguageField } from './language-field';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { Company, ManagementStore } from '../shared/management.store';
 import {
   companyCompletion,
   companyModifiedAt,
+  companyProfileUpdate,
   generalInformationComplete,
+  wholePlaces,
 } from './company-profile.models';
 
 interface ProfileField {
   key: keyof Company;
   label: string;
   hint: string;
-  type?: 'textarea' | 'date' | 'number' | 'select' | 'toggle';
+  type?: 'textarea' | 'date' | 'number' | 'select' | 'toggle' | 'language';
   required?: boolean;
   max?: number;
   options?: string[];
@@ -40,7 +43,7 @@ interface ProfileField {
 @Component({
   selector: 'cv-company-profile',
   host: { class: 'module-page companies-page company-profile-page' },
-  imports: [CompanyLoading, FormsModule, RouterLink, MatSelectModule, CvSelect],
+  imports: [CompanyLoading, FormsModule, RouterLink, MatSelectModule, CvSelect, LanguageField],
   templateUrl: './company-profile.html',
 })
 export class CompanyProfile {
@@ -152,10 +155,10 @@ export class CompanyProfile {
     {
       key: 'primaryLanguage',
       label: 'Primary Language',
-      hint: 'Primary language used for care delivery and communication.',
-      type: 'select',
+      hint: 'Search the world’s living languages, or add a name that is not listed.',
+      type: 'language',
       required: true,
-      options: ['English', 'Welsh', 'Scottish Gaelic', 'Irish', 'British Sign Language', 'Other'],
+      max: 80,
     },
     {
       key: 'active',
@@ -255,7 +258,10 @@ export class CompanyProfile {
     );
   }
   protected setField(key: keyof Company, value: string | number | boolean | null): void {
-    this.draft = { ...this.draft, [key]: value };
+    this.draft = {
+      ...this.draft,
+      [key]: key === 'registeredPlaces' ? this.placesValue(value) : value,
+    };
     this.draftSaved.set(false);
     this.saveError.set('');
   }
@@ -292,7 +298,12 @@ export class CompanyProfile {
         )
     )
       return 'This company code is already in use.';
-    if (field.type === 'number' && value != null && (!Number.isInteger(value) || Number(value) < 0))
+    if (
+      field.type === 'number' &&
+      value != null &&
+      String(value).trim() !== '' &&
+      wholePlaces(value) == null
+    )
       return 'Enter a whole number of 0 or more.';
     if (
       field.type === 'date' &&
@@ -332,7 +343,7 @@ export class CompanyProfile {
   protected beforeUnload(event: BeforeUnloadEvent): void {
     if (this.hasChanges() && !this.draftSaved()) event.preventDefault();
   }
-  protected save(): void {
+  protected async save(): Promise<void> {
     this.submitted.set(true);
     this.saveError.set('');
     if (this.fields.some((f) => this.error(f))) return;
@@ -343,15 +354,28 @@ export class CompanyProfile {
       if (this.managedByContacts(field)) continue;
       Object.assign(next, {
         [field.key]:
-          typeof this.draft[field.key] === 'string'
-            ? String(this.draft[field.key]).trim()
-            : this.draft[field.key],
+          field.type === 'number'
+            ? wholePlaces(this.draft[field.key])
+            : typeof this.draft[field.key] === 'string'
+              ? String(this.draft[field.key]).trim()
+              : this.draft[field.key],
       });
     }
     next.modifiedAt = new Date().toISOString();
     next.modifiedBy = this.auth.currentUser()?.name ?? 'Company administrator';
-    if (!this.store.saveCompany(next)) {
-      this.saveError.set(this.store.companyWriteError());
+    const currentActive = current.lifecycle === 'active';
+    try {
+      await this.api.updateDetail(this.id, companyProfileUpdate(next));
+      if ((next.active ?? false) !== currentActive) {
+        await this.api.changeLifecycle(this.id, next.active ? 'active' : 'suspended');
+        await this.api.loadDetail(this.id, true);
+      }
+    } catch (error) {
+      this.saveError.set(
+        error instanceof Error
+          ? error.message
+          : 'The company profile could not be saved. Please retry.',
+      );
       return;
     }
     try {
@@ -391,6 +415,10 @@ export class CompanyProfile {
     this.editing.set(true);
     this.submitted.set(false);
     this.draftSaved.set(true);
+  }
+  private placesValue(value: string | number | boolean | null): number | string | null {
+    if (value == null || String(value).trim() === '') return null;
+    return wholePlaces(value) ?? String(value);
   }
   protected modifiedAt(): string {
     return companyModifiedAt(this.company()?.modifiedAt);

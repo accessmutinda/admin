@@ -106,6 +106,42 @@ describe('Companies API service', () => {
     expect(service.detailError(company.id)).toBe('');
     expect(service.details()[company.id].version).toBe(2);
   });
+  it('saves general information with the current profile version', async () => {
+    await service.load();
+    const detail = { ...company, version: 3, etag: '"v3"', description: 'Stored' };
+    request.mockResolvedValueOnce(detail);
+    await service.loadDetail(company.id);
+    const saved = {
+      ...detail,
+      version: 4,
+      etag: '"v4"',
+      name: 'Updated Care',
+      description: 'Updated description',
+    };
+    request.mockResolvedValueOnce(saved);
+    const result = await service.updateDetail(company.id, {
+      name: 'Updated Care',
+      trading_name: 'Updated Trading',
+      code: 'UPD',
+      service_type: 'Domiciliary care',
+      description: 'Updated description',
+      staff_size_band: '11–50 staff',
+      registration_number: 'SQE3333',
+      head_office_name: 'Test Office',
+      registered_places: 1,
+      primary_language: 'English',
+      date_established: '2026-11-14',
+    });
+    expect(request).toHaveBeenLastCalledWith(
+      '/companies/company-1',
+      expect.objectContaining({ name: 'Updated Care', registered_places: 1 }),
+      'PATCH',
+      { 'If-Match': '"v3"' },
+    );
+    expect(result.etag).toBe('"v4"');
+    expect(service.details()[company.id].name).toBe('Updated Care');
+    expect(service.companies()[0].name).toBe('Updated Care');
+  });
   it('does not request another company profile for a company account', async () => {
     role.set('CA');
     await service.loadDetail('other-company');

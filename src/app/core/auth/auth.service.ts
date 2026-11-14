@@ -314,7 +314,8 @@ export class AuthService {
   private async loadProfile(): Promise<void> {
     const me = await this.api<MeProfile>('/me');
     this.profile.set(me);
-    const name = me.display_name || me.email;
+    const provided = me.display_name?.trim() ?? '';
+    const name = provided.includes('@') ? '' : provided;
     const mfaVerified =
       me.authentication && Object.hasOwn(me.authentication, 'mfa_verified_at')
         ? !!me.authentication.mfa_verified_at

@@ -77,7 +77,9 @@ describe('Company profile from the API', () => {
         {
           provide: AuthService,
           useValue: {
+            isAuthenticated: () => false,
             isSuperAdmin: () => true,
+            currentUser: () => ({ name: 'Actual Administrator' }),
             canAccessCompany: () => true,
             profile: () => ({ id: 'admin', company_entry_state: 'platform' }),
             session: () => ({ workspaceId: detail.id }),
@@ -98,6 +100,8 @@ describe('Company profile from the API', () => {
             detailLoading: pending,
             detailError: () => error(),
             loadDetail,
+            updateDetail: vi.fn().mockResolvedValue(detail),
+            changeLifecycle: vi.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -165,6 +169,25 @@ describe('Company profile from the API', () => {
     );
   });
 
+  it('accepts one registered place when the field supplies it as text', async () => {
+    details.set({ [detail.id]: { ...detail, registered_places: 1 } });
+    queryEdit = true;
+    const fixture = create();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const page = fixture.componentInstance as unknown as {
+      setField: (key: string, value: string) => void;
+      save: () => Promise<void>;
+    };
+    page.setField('registeredPlaces', '1');
+    await page.save();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Enter a whole number of 0 or more.');
+    expect(TestBed.inject(CompaniesApiService).updateDetail).toHaveBeenCalledWith(
+      detail.id,
+      expect.objectContaining({ registered_places: 1, name: 'Stored Care', code: 'STORED' }),
+    );
+  });
   it('keeps genuinely absent values empty instead of substituting sample data', async () => {
     details.set({
       [detail.id]: {

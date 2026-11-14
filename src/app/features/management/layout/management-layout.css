@@ -35,8 +35,167 @@
 }
 
 .cv-management .app-header .avatar {
-  background: #004579;
+  background: #1e3a8a;
   color: #fff;
+}
+.cv-management .user-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+.cv-management .user-menu .user-control {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+}
+.cv-management .user-control-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.cv-management .user-control-name {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #1e293b;
+  white-space: nowrap;
+}
+.cv-management .user-menu .user-control .role-pill {
+  font-size: 11px;
+  padding: 2px 8px 2px 3px;
+}
+.cv-management .user-menu .user-control .role-code {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.cv-management .user-menu .user-control .material-symbols-outlined {
+  color: #64748b;
+  font-size: 20px;
+}
+.cv-management .user-profile-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 40;
+  width: 340px;
+  max-width: calc(100vw - 24px);
+  padding: 18px 18px 16px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow:
+    0 16px 40px rgba(15, 23, 42, 0.12),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+.cv-management .user-profile-menu h2 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.3;
+  letter-spacing: 0;
+  font-weight: 700;
+  color: #1a2332;
+}
+.cv-management .user-profile-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 16px;
+}
+.cv-management .user-profile-identity .avatar {
+  width: 48px;
+  height: 48px;
+  font-size: 14px;
+}
+.cv-management .user-profile-identity strong {
+  display: block;
+  font-size: 15px;
+  line-height: 1.3;
+  color: #1e293b;
+}
+.cv-management .user-profile-identity > div > span {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 13px;
+}
+.cv-management .user-profile-menu p.user-profile-email {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.cv-management .user-profile-email .material-symbols-outlined {
+  font-size: 16px;
+  color: #64748b;
+}
+.cv-management .user-profile-menu hr {
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px solid #e6ebf1;
+}
+.cv-management .user-profile-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 -6px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  color: inherit;
+}
+.cv-management .user-profile-account:hover {
+  background: #f8fafc;
+}
+.cv-management .user-profile-account-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 10px;
+  background: #eef0fb;
+  color: #5c6bc0;
+}
+.cv-management .user-profile-account-icon .material-symbols-outlined {
+  font-size: 22px;
+}
+.cv-management .user-profile-account strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+.cv-management .user-profile-account small {
+  display: block;
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.cv-management .user-profile-logout {
+  width: 100%;
+  height: 44px;
+  margin-top: 16px;
+  border: 1.5px solid #3d4db7;
+  border-radius: 8px;
+  background: #fff;
+  color: #3d4db7;
+  font-size: 15px;
+  font-weight: 500;
+}
+.cv-management .user-profile-logout:hover {
+  background: #f5f7ff;
+}
+.cv-management
+  .user-menu
+  :is(.user-control, .user-profile-account, .user-profile-logout):focus-visible {
+  outline: 2px solid #3d4db7;
+  outline-offset: 2px;
 }
 
 .cv-management .app-sidebar > a.active:not(.sidebar-logo),

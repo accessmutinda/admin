@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { NgForm } from '@angular/forms';
+import { API_BASE } from '../../../core/auth/auth-api';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { ManagementStore } from '../shared/management.store';
@@ -82,7 +83,7 @@ describe('Recruitment API ownership and commands', () => {
                 }
               : {
                   count: 2,
-                  next: 'https://care.neuraledge.co.ke/api/v1/companies/north/applications?page=2',
+                  next: `${API_BASE}/companies/north/applications?page=2`,
                   results: [application('north')],
                   meta: { company_id: 'north' },
                 },
