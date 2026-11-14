@@ -9,14 +9,12 @@ import { StaffAddDialog } from './staff-add-dialog';
 async function dialog() {
   const company = signal('north');
   const close = vi.fn();
-  const api = vi
-    .fn()
-    .mockResolvedValue({
-      company_id: 'north',
-      local_date: '2026-11-13',
-      branches: ['London'],
-      employment_types: ['Full time'],
-    });
+  const api = vi.fn().mockResolvedValue({
+    company_id: 'north',
+    local_date: '2026-11-13',
+    branches: ['London'],
+    employment_types: ['Full time'],
+  });
   TestBed.configureTestingModule({
     providers: [
       { provide: AuthService, useValue: { profile: signal({ id: 1 }), api } },
@@ -50,6 +48,15 @@ describe('Direct staff wizard', () => {
     };
     submit();
     expect(component['step']()).toBe(0);
+    for (const name of ['first_name', 'surname', 'email']) {
+      expect(
+        fixture.nativeElement.querySelector(`[name="${name}"]`).getAttribute('aria-invalid'),
+      ).toBe('true');
+      expect(fixture.nativeElement.querySelector(`#staff-error-${name}`)).not.toBeNull();
+    }
+    expect(fixture.nativeElement.textContent).toContain('Enter first name.');
+    expect(fixture.nativeElement.textContent).toContain('Enter last name.');
+    expect(fixture.nativeElement.textContent).toContain('Enter personal email.');
     for (const [name, value] of Object.entries(fields).filter(([name]) =>
       ['first_name', 'surname', 'email'].includes(name),
     )) {
@@ -67,6 +74,77 @@ describe('Direct staff wizard', () => {
     fixture.detectChanges();
     expect(component['form'].first_name).toBe('Jane');
     expect(fixture.nativeElement.querySelector('input[name="first_name"]').value).toBe('Jane');
+  });
+
+  it('flags employment fields on Continue and clears each error after correction', async () => {
+    const { fixture, component } = await dialog();
+    component['step'].set(1);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const submit = () => {
+      fixture.nativeElement
+        .querySelector('form')
+        .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      fixture.detectChanges();
+    };
+    submit();
+    expect(component['step']()).toBe(1);
+    for (const name of ['reference', 'job_title', 'branch_name']) {
+      expect(
+        fixture.nativeElement.querySelector(`[name="${name}"]`).getAttribute('aria-invalid'),
+      ).toBe('true');
+      expect(fixture.nativeElement.querySelector(`#staff-error-${name}`)).not.toBeNull();
+    }
+    const input = fixture.nativeElement.querySelector('[name="reference"]');
+    input.value = 'DIR-1';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#staff-error-reference')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#staff-error-job_title')).not.toBeNull();
+  });
+
+  it('flags invalid email and date of birth on the personal details step', async () => {
+    const { fixture, component } = await dialog();
+    Object.assign(component['form'], {
+      first_name: 'Jane',
+      surname: 'Direct',
+      email: 'invalid',
+      birth_date: '2026-11-13',
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.nativeElement
+      .querySelector('form')
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+    expect(component['step']()).toBe(0);
+    expect(fixture.nativeElement.querySelector('#staff-error-email')?.textContent).toContain(
+      'Enter a valid email address.',
+    );
+    expect(fixture.nativeElement.querySelector('#staff-error-birth_date')?.textContent).toContain(
+      'Date of birth must be in the past.',
+    );
+  });
+
+  it('rejects whitespace-only required values on Continue', async () => {
+    const { fixture, component } = await dialog();
+    Object.assign(component['form'], {
+      first_name: '   ',
+      surname: 'Direct',
+      email: 'jane@example.com',
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.nativeElement
+      .querySelector('form')
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+    expect(component['step']()).toBe(0);
+    expect(fixture.nativeElement.querySelector('#staff-error-first_name')?.textContent).toContain(
+      'Enter first name.',
+    );
   });
 
   it('retries an uncertain save with the same key and creates a new key after editing', async () => {

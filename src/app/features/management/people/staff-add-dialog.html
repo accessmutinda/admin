@@ -34,10 +34,32 @@
                 required
                 maxlength="100"
                 [(ngModel)]="form.first_name"
-            /></label>
+                [attr.aria-invalid]="!!fieldError('first_name', wizard)"
+                [attr.aria-describedby]="
+                  fieldError('first_name', wizard) ? 'staff-error-first_name' : null
+                "
+                pattern=".*\S.*"
+              />
+              @if (fieldError('first_name', wizard); as message) {
+                <small class="field-error" id="staff-error-first_name">{{ message }}</small>
+              }
+            </label>
             <label
-              >Last name *<input name="surname" required maxlength="100" [(ngModel)]="form.surname"
-            /></label>
+              >Last name *<input
+                name="surname"
+                required
+                maxlength="100"
+                [(ngModel)]="form.surname"
+                [attr.aria-invalid]="!!fieldError('surname', wizard)"
+                [attr.aria-describedby]="
+                  fieldError('surname', wizard) ? 'staff-error-surname' : null
+                "
+                pattern=".*\S.*"
+              />
+              @if (fieldError('surname', wizard); as message) {
+                <small class="field-error" id="staff-error-surname">{{ message }}</small>
+              }
+            </label>
             <label
               >Middle name<input name="middle_name" maxlength="100" [(ngModel)]="form.middle_name"
             /></label>
@@ -47,7 +69,15 @@
                 name="birth_date"
                 [max]="setup()!.local_date"
                 [(ngModel)]="form.birth_date"
-            /></label>
+                [attr.aria-invalid]="!!fieldError('birth_date', wizard)"
+                [attr.aria-describedby]="
+                  fieldError('birth_date', wizard) ? 'staff-error-birth_date' : null
+                "
+              />
+              @if (fieldError('birth_date', wizard); as message) {
+                <small class="field-error" id="staff-error-birth_date">{{ message }}</small>
+              }
+            </label>
             <label
               >Personal email *<input
                 type="email"
@@ -56,7 +86,13 @@
                 required
                 maxlength="254"
                 [(ngModel)]="form.email"
-            /></label>
+                [attr.aria-invalid]="!!fieldError('email', wizard)"
+                [attr.aria-describedby]="fieldError('email', wizard) ? 'staff-error-email' : null"
+              />
+              @if (fieldError('email', wizard); as message) {
+                <small class="field-error" id="staff-error-email">{{ message }}</small>
+              }
+            </label>
             <label
               >Phone number<input type="tel" name="phone" maxlength="20" [(ngModel)]="form.phone"
             /></label>
@@ -74,47 +110,99 @@
                 required
                 maxlength="50"
                 [(ngModel)]="form.reference"
-            /></label>
+                [attr.aria-invalid]="!!fieldError('reference', wizard)"
+                [attr.aria-describedby]="
+                  fieldError('reference', wizard) ? 'staff-error-reference' : null
+                "
+                pattern=".*\S.*"
+              />
+              @if (fieldError('reference', wizard); as message) {
+                <small class="field-error" id="staff-error-reference">{{ message }}</small>
+              }
+            </label>
             <label
               >Job title *<input
                 name="job_title"
                 required
                 maxlength="150"
                 [(ngModel)]="form.job_title"
-            /></label>
+                [attr.aria-invalid]="!!fieldError('job_title', wizard)"
+                [attr.aria-describedby]="
+                  fieldError('job_title', wizard) ? 'staff-error-job_title' : null
+                "
+                pattern=".*\S.*"
+              />
+              @if (fieldError('job_title', wizard); as message) {
+                <small class="field-error" id="staff-error-job_title">{{ message }}</small>
+              }
+            </label>
             <label
-              >Branch *<select name="branch_name" required [(ngModel)]="form.branch_name">
+              >Branch *<select
+                name="branch_name"
+                required
+                [(ngModel)]="form.branch_name"
+                [attr.aria-invalid]="!!fieldError('branch_name', wizard)"
+                [attr.aria-describedby]="
+                  fieldError('branch_name', wizard) ? 'staff-error-branch_name' : null
+                "
+              >
                 <option value="">Choose a branch</option>
                 @for (branch of setup()!.branches; track $index) {
                   <option [value]="branch">{{ branch }}</option>
                 }
-              </select></label
-            >
+              </select>
+              @if (fieldError('branch_name', wizard); as message) {
+                <small class="field-error" id="staff-error-branch_name">{{ message }}</small>
+              }
+            </label>
             <label
               >Employment type *<select
                 name="employment_type"
                 required
                 [(ngModel)]="form.employment_type"
+                [attr.aria-invalid]="!!fieldError('employment_type', wizard)"
+                [attr.aria-describedby]="
+                  fieldError('employment_type', wizard) ? 'staff-error-employment_type' : null
+                "
               >
                 @for (type of setup()!.employment_types; track type) {
                   <option [value]="type">{{ type }}</option>
                 }
-              </select></label
-            >
+              </select>
+              @if (fieldError('employment_type', wizard); as message) {
+                <small class="field-error" id="staff-error-employment_type">{{ message }}</small>
+              }
+            </label>
             <label
               >Start date *<input
                 type="date"
                 name="start_date"
                 required
                 [(ngModel)]="form.start_date"
-            /></label>
+                [attr.aria-invalid]="!!fieldError('start_date', wizard)"
+                [attr.aria-describedby]="
+                  fieldError('start_date', wizard) ? 'staff-error-start_date' : null
+                "
+              />
+              @if (fieldError('start_date', wizard); as message) {
+                <small class="field-error" id="staff-error-start_date">{{ message }}</small>
+              }
+            </label>
             <label
               >Contract end date<input
                 type="date"
                 name="contract_end"
                 [min]="form.start_date"
                 [(ngModel)]="form.contract_end"
-            /></label>
+                [attr.aria-invalid]="!!fieldError('contract_end', wizard)"
+                [attr.aria-describedby]="
+                  fieldError('contract_end', wizard) ? 'staff-error-contract_end' : null
+                "
+              />
+              @if (fieldError('contract_end', wizard); as message) {
+                <small class="field-error" id="staff-error-contract_end">{{ message }}</small>
+              }
+            </label>
             <label
               >Weekly hours<input
                 type="number"
@@ -123,7 +211,13 @@
                 max="168"
                 step="0.25"
                 [(ngModel)]="hours"
-            /></label>
+                [attr.aria-invalid]="!!fieldError('hours', wizard)"
+                [attr.aria-describedby]="fieldError('hours', wizard) ? 'staff-error-hours' : null"
+              />
+              @if (fieldError('hours', wizard); as message) {
+                <small class="field-error" id="staff-error-hours">{{ message }}</small>
+              }
+            </label>
             <label class="checkbox"
               ><input type="checkbox" name="driver" [(ngModel)]="form.is_driver" />Driver</label
             >

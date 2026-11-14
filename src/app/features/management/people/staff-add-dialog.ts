@@ -100,29 +100,42 @@ export class StaffAddDialog {
   }
   protected next(form: NgForm): void {
     this.attempted.set(true);
-    if (form.invalid) {
-      form.control.markAllAsTouched();
-      return;
-    }
     this.error.set('');
-    if (
-      this.step() === 0 &&
-      this.form.birth_date &&
-      this.form.birth_date >= this.setup()!.local_date
-    ) {
-      this.error.set('Date of birth must be in the past.');
-      return;
-    }
-    if (
-      this.step() === 1 &&
-      this.form.contract_end &&
-      this.form.contract_end < this.form.start_date
-    ) {
-      this.error.set('Contract end cannot precede the start date.');
+    if (form.invalid || Object.keys(form.controls).some((name) => this.fieldError(name, form))) {
+      form.control.markAllAsTouched();
       return;
     }
     this.step.update((value) => value + 1);
     this.attempted.set(false);
+  }
+  protected fieldError(name: string, form: NgForm): string {
+    if (!this.attempted()) return '';
+    const control = form.controls[name];
+    if (!control) return '';
+    const labels: Record<string, string> = {
+      first_name: 'first name',
+      surname: 'last name',
+      email: 'personal email',
+      reference: 'staff reference',
+      job_title: 'job title',
+      branch_name: 'branch',
+      employment_type: 'employment type',
+      start_date: 'start date',
+    };
+    if (control.hasError('required') || control.hasError('pattern'))
+      return `Enter ${labels[name] ?? name.replaceAll('_', ' ')}.`;
+    if (control.hasError('email')) return 'Enter a valid email address.';
+    if (control.hasError('min') || control.hasError('max'))
+      return name === 'hours' ? 'Enter weekly hours between 0 and 168.' : 'Enter a valid value.';
+    if (name === 'birth_date' && this.form.birth_date >= (this.setup()?.local_date ?? ''))
+      return this.form.birth_date ? 'Date of birth must be in the past.' : '';
+    if (
+      name === 'contract_end' &&
+      this.form.contract_end &&
+      this.form.contract_end < this.form.start_date
+    )
+      return 'Contract end cannot precede the start date.';
+    return '';
   }
   protected back(): void {
     this.attempted.set(false);

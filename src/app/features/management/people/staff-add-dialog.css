@@ -69,6 +69,15 @@ textarea {
 .form-error {
   color: #b42318;
 }
+.field-error {
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 400;
+}
+[aria-invalid='true'] {
+  border-color: #b42318;
+  background: #fff7f6;
+}
 dt {
   color: #677488;
   font-size: 12px;
