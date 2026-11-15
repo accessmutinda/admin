@@ -225,6 +225,23 @@ export class StaffJournal {
     'Meetings',
   ];
   protected draft = this.service.newEntry();
+  protected recipientChoices() {
+    const choices = this.service.recipients(this.draft.clientId);
+    const original = this.draft.replyToId ? this.service.cached(this.draft.replyToId) : undefined;
+    if (
+      original &&
+      !choices.some((person) => person.email.toLowerCase() === original.authorEmail.toLowerCase())
+    )
+      return [
+        ...choices,
+        {
+          email: original.authorEmail.toLowerCase(),
+          name: original.author,
+          role: 'Original sender',
+        },
+      ];
+    return choices;
+  }
   protected editorHtml = this.draft.bodyHtml || this.draft.body;
   private cleanDraft = JSON.stringify(this.draft);
   protected readonly unread = computed(() => this.service.summary().unread);

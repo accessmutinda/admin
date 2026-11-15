@@ -263,7 +263,9 @@
                           ? 'You'
                           : entry.author
                       }}</strong
-                      ><time>{{ entry.createdAt | companyDate: service.timezone() : 'short' }}</time></span
+                      ><time>{{
+                        entry.createdAt | companyDate: service.timezone() : 'short'
+                      }}</time></span
                     ><strong class="message-subject">{{ entry.subject }}</strong
                     ><span class="message-preview">{{
                       entry.body || 'Draft — continue writing your message'
@@ -367,7 +369,7 @@
                 [(ngModel)]="draft.to"
                 placeholder="Choose staff members"
               >
-                @for (person of service.recipients(draft.clientId); track person.email) {
+                @for (person of recipientChoices(); track person.email) {
                   <mat-option [value]="person.email.toLowerCase()"
                     >{{ person.name }} · {{ person.role }}</mat-option
                   >
@@ -384,7 +386,7 @@
                 [(ngModel)]="draft.cc"
                 placeholder="Copy team members"
               >
-                @for (person of service.recipients(draft.clientId); track person.email) {
+                @for (person of recipientChoices(); track person.email) {
                   <mat-option [value]="person.email.toLowerCase()">{{ person.name }}</mat-option>
                 }
               </mat-select></label
@@ -580,7 +582,9 @@
               <span class="journal-avatar">{{ initials(entry.author) }}</span
               ><span
                 ><strong>{{ entry.author }}</strong
-                ><small>{{ entry.createdAt | companyDate: service.timezone() : 'datetime' }}</small></span
+                ><small>{{
+                  entry.createdAt | companyDate: service.timezone() : 'datetime'
+                }}</small></span
               >
             </p>
             <dl>

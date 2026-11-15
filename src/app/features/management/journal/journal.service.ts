@@ -1,5 +1,6 @@
 import { StaffDashboardApi } from '../staff-portal/staff-dashboard-api.service';
 import type {
+  JournalSocketTicketRead,
   JournalOptions,
   JournalPage,
   JournalEntryRead,
@@ -17,7 +18,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { ApiError } from '../../../core/auth/auth-api';
+import { API_BASE, ApiError } from '../../../core/auth/auth-api';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CompanyAccessService } from '../../../core/access/company-access.service';
 import {
@@ -119,8 +120,11 @@ export class JournalService {
     local_date: string;
     timezone?: string;
   }>({ folders: {}, unread: 0, awaiting: 0, mentions: 0, local_date: '' });
-  readonly timezone = computed(() =>
-    this.summary().timezone || (this.staffPortal && this.staffReady() ? this.staffRaw()?.data.timezone : null) || 'UTC'
+  readonly timezone = computed(
+    () =>
+      this.summary().timezone ||
+      (this.staffPortal && this.staffReady() ? this.staffRaw()?.data.timezone : null) ||
+      'UTC',
   );
   readonly loading = signal(false);
   readonly ready = signal(false);
@@ -154,6 +158,11 @@ export class JournalService {
   private cache = new Map<string, JournalEntry>();
   private requests = new Map<string, string>();
   private timer: ReturnType<typeof setInterval>;
+  private socket?: WebSocket;
+  private socketConnecting = false;
+  private socketRetry?: ReturnType<typeof setTimeout>;
+  private socketRefresh?: ReturnType<typeof setTimeout>;
+  private lastReadAt = 0;
   constructor() {
     let previous = this.scope();
     effect(() => {
@@ -163,12 +172,18 @@ export class JournalService {
         previous = scope;
         this.clear();
         if (this.staffPortal && this.active) void this.connectStaff();
+        if (this.active) void this.connectSocket();
       });
     });
     const refresh = () => {
       if (this.active && document.visibilityState !== 'hidden' && !this.busy()) {
+        void this.connectSocket();
         if (this.staffPortal && !this.staffReady()) void this.connectStaff();
-        else if (this.allowed()) void this.refresh();
+        else if (
+          this.allowed() &&
+          (this.socket?.readyState !== WebSocket.OPEN || Date.now() - this.lastReadAt >= 60000)
+        )
+          void this.refresh();
       }
     };
     this.timer = setInterval(refresh, 15000);
@@ -183,9 +198,77 @@ export class JournalService {
   activate(): () => void {
     this.active++;
     if (this.staffPortal && !this.staffReady()) void this.connectStaff();
+    void this.connectSocket();
     return () => {
       this.active = Math.max(0, this.active - 1);
+      if (!this.active) this.disconnectSocket();
     };
+  }
+  private disconnectSocket(): void {
+    clearTimeout(this.socketRetry);
+    clearTimeout(this.socketRefresh);
+    const socket = this.socket;
+    this.socket = undefined;
+    this.socketConnecting = false;
+    socket?.close();
+  }
+  private async connectSocket(): Promise<void> {
+    if (
+      this.destroyed ||
+      !this.active ||
+      !this.allowed() ||
+      this.staffTasks ||
+      this.socket ||
+      this.socketConnecting ||
+      typeof WebSocket === 'undefined'
+    )
+      return;
+    const scope = this.scope();
+    this.socketConnecting = true;
+    try {
+      const result = await this.api<JournalSocketTicketRead>(
+        `${this.root()}/socket-ticket`,
+        {},
+        'POST',
+      );
+      if (!this.current(scope) || !this.active) return;
+      const url = new URL(API_BASE, window.location.origin);
+      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+      url.pathname = result.path;
+      url.search = new URLSearchParams({ ticket: result.ticket }).toString();
+      const socket = new WebSocket(url);
+      this.socket = socket;
+      socket.onmessage = (message) => {
+        if (this.socket !== socket || !this.current(scope) || !this.active) return;
+        let type: string;
+        try {
+          type = JSON.parse(message.data).type;
+        } catch {
+          return;
+        }
+        if (!['journal.ready', 'journal.changed'].includes(type)) return;
+        const refresh = () => {
+          if (this.socket !== socket || !this.current(scope) || !this.active) return;
+          if (this.busy()) {
+            this.socketRefresh = setTimeout(refresh, 200);
+            return;
+          }
+          void this.refresh();
+        };
+        clearTimeout(this.socketRefresh);
+        this.socketRefresh = setTimeout(refresh, 100);
+      };
+      socket.onclose = () => {
+        if (this.socket !== socket) return;
+        this.socket = undefined;
+        this.socketRetry = setTimeout(() => void this.connectSocket(), 2000);
+      };
+      socket.onerror = () => socket.close();
+    } catch {
+      // Periodic refresh remains available when the connection cannot be established.
+    } finally {
+      if (scope === this.scope()) this.socketConnecting = false;
+    }
   }
   async connectStaff(refresh = false): Promise<void> {
     if (!this.staffPortal || (this.staffReady() && !refresh)) return;
@@ -264,6 +347,7 @@ export class JournalService {
     }
   }
   private clear() {
+    this.disconnectSocket();
     this.staffGeneration++;
     this.staffRaw.set(null);
     this.staffPending = undefined;
@@ -419,6 +503,7 @@ export class JournalService {
       if (query.client_id && page.results.some((row) => row.clientId !== query.client_id))
         throw Error('The journal response does not match this service user.');
       this.entries.set(page.results.map((entry) => this.normalize(entry)));
+      this.lastReadAt = Date.now();
       this.count.set(page.count);
       this.ready.set(true);
       this.summary.set(page.meta);

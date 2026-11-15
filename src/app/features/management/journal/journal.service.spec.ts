@@ -494,4 +494,88 @@ describe('Connected client journal', () => {
     expect(component.draft.subject).toBe('');
     expect(component.selected()).toBeNull();
   });
+  it('refreshes a connected mailbox on a socket signal without waiting for polling', async () => {
+    vi.useFakeTimers();
+    const sockets: any[] = [];
+    class Socket {
+      static OPEN = 1;
+      readyState = 1;
+      onmessage: any;
+      onclose: any;
+      onerror: any;
+      close = vi.fn();
+      constructor(readonly url: string) {
+        sockets.push(this);
+      }
+    }
+    vi.stubGlobal('WebSocket', Socket);
+    try {
+      request.mockResolvedValueOnce({ ticket: 'single-use', path: '/ws/companies/north/journal' });
+      const refresh = vi.spyOn(service, 'refresh').mockResolvedValue(undefined);
+      const release = service.activate();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(sockets).toHaveLength(1);
+      expect(String(sockets[0].url)).toContain('ticket=single-use');
+      sockets[0].onmessage({ data: JSON.stringify({ type: 'journal.changed' }) });
+      await vi.advanceTimersByTimeAsync(150);
+      expect(refresh).toHaveBeenCalledTimes(1);
+      release();
+      expect(sockets[0].close).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+  it('closes the previous socket and ignores its events after access is revoked', async () => {
+    vi.useFakeTimers();
+    const sockets: any[] = [];
+    class Socket {
+      static OPEN = 1;
+      readyState = 1;
+      onmessage: any;
+      onclose: any;
+      onerror: any;
+      close = vi.fn();
+      constructor() {
+        sockets.push(this);
+      }
+    }
+    vi.stubGlobal('WebSocket', Socket);
+    try {
+      request.mockResolvedValueOnce({ ticket: 'single-use', path: '/ws/companies/north/journal' });
+      const refresh = vi.spyOn(service, 'refresh').mockResolvedValue(undefined);
+      const release = service.activate();
+      await Promise.resolve();
+      await Promise.resolve();
+      permissions.set(false);
+      TestBed.tick();
+      expect(sockets[0].close).toHaveBeenCalled();
+      sockets[0].onmessage({ data: JSON.stringify({ type: 'journal.changed' }) });
+      await vi.advanceTimersByTimeAsync(200);
+      expect(refresh).not.toHaveBeenCalled();
+      release();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+  it('keeps the original sender visible as the selected recipient of a reply', async () => {
+    const fixture = TestBed.createComponent(StaffJournal);
+    await settle(fixture);
+    const original = {
+      ...entry(),
+      author: 'Platform sender',
+      authorEmail: 'platform@example.test',
+    };
+    (service as any).cache.set(original.id, original);
+    const component = fixture.componentInstance as any;
+    component.draft = { ...service.newEntry(), to: [original.authorEmail], replyToId: original.id };
+    component.composing.set(true);
+    await settle(fixture);
+    expect(fixture.nativeElement.querySelector('mat-select[name=to]').textContent).toContain(
+      'Platform sender',
+    );
+    expect(service.contacts().some((c) => c.email === original.authorEmail)).toBe(false);
+  });
 });

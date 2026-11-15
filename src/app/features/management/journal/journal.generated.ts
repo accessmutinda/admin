@@ -366,3 +366,9 @@ export type StaffTaskContext = {
   local_date: string;
   awaiting_replies: number | null;
 };
+
+export type JournalSocketTicketRead = {
+  ticket: string;
+  path: string;
+  expires_in: number;
+};
