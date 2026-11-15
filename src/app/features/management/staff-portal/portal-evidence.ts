@@ -20,11 +20,18 @@ import { JournalAttachment } from '../journal/journal.models';
     }
     @for (file of files(); track file.id) {
       <div class="evidence-file">
-        <button type="button" [disabled]="!downloadEnabled()" (click)="download(file)">
+        <button type="button" [disabled]="!canDownload(file)" (click)="download(file)">
           <span class="material-symbols-outlined" aria-hidden="true">description</span
           ><span
-            >{{ file.name }}<small>{{ (file.size / 1024).toFixed(1) }} KB</small></span
-          >
+            >{{ file.name }}<small>{{ (file.size / 1024).toFixed(1) }} KB</small>
+            @if (file.state && file.state !== 'clean') {
+              <small role="status">{{
+                file.state === 'quarantined'
+                  ? 'Scanning — save after the scan completes'
+                  : 'File blocked — remove this attachment'
+              }}</small>
+            }
+          </span>
         </button>
         @if (!readonly()) {
           <button type="button" [attr.aria-label]="'Remove ' + file.name" (click)="remove(file.id)">
@@ -183,7 +190,11 @@ export class PortalEvidence {
   protected remove(id: string): void {
     this.filesChange.emit(this.files().filter((f) => f.id !== id));
   }
+  protected canDownload(file: JournalAttachment): boolean {
+    return this.downloadEnabled() && (!file.state || file.state === 'clean');
+  }
   protected async download(file: JournalAttachment): Promise<void> {
+    if (!this.canDownload(file)) return;
     try {
       const download = this.downloadHandler();
       if (download) {
