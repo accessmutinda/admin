@@ -27,7 +27,11 @@ export class InviteAccept {
     this.auth.acceptInvite(this.token).subscribe({
       next: () => {
         this.loading.set(false);
-        void this.router.navigateByUrl(this.auth.nextRoute());
+        void this.router.navigateByUrl(
+          this.auth.isAuthenticated()
+            ? this.auth.nextRoute()
+            : '/auth/sign-in?invitationAccepted=true',
+        );
       },
       error: (error: Error) => {
         this.loading.set(false);

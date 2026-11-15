@@ -253,6 +253,8 @@ export class AuthService {
     if (this.profile()?.company_entry_state === 'ready') {
       const home = this.profile()?.home_path;
       const homes = [
+        '/family-portal',
+        '/inspector/dashboard',
         '/inspector/provider',
         '/inspector/service-users',
         '/inspector/staffing',
@@ -446,7 +448,7 @@ export class AuthService {
   async api<T>(
     path: string,
     body?: unknown,
-    method?: 'POST' | 'PATCH' | 'DELETE',
+    method?: 'POST' | 'PATCH' | 'DELETE' | 'PUT',
     extraHeaders?: Record<string, string>,
     responseType: 'json' | 'blob' = 'json',
   ): Promise<T> {
@@ -509,17 +511,18 @@ export class AuthService {
   private async request<T>(
     path: string,
     body?: unknown,
-    method?: 'POST' | 'PATCH' | 'DELETE',
+    method?: 'POST' | 'PATCH' | 'DELETE' | 'PUT',
     extraHeaders?: Record<string, string>,
     responseType: 'json' | 'blob' = 'json',
   ): Promise<T> {
     const headers: Record<string, string> = {
-      ...extraHeaders,
       Accept: 'application/json',
+      ...extraHeaders,
     };
     if (this.access) headers['Authorization'] = `Bearer ${this.access}`;
     const requestMethod = method ?? (body === undefined ? 'GET' : 'POST');
     const multipart = body instanceof FormData;
+    const binary = body instanceof Blob;
     if (requestMethod !== 'GET') {
       const csrf = await this.request<{ csrf_token?: string }>('/auth/csrf');
       const cookie = document.cookie.split('; ').find((value) => value.startsWith('csrftoken='));
@@ -532,7 +535,8 @@ export class AuthService {
       if (!token)
         throw new Error('The API must return csrf_token from /auth/csrf for cross-origin sign-in.');
       headers['X-CSRFToken'] = token;
-      if (body !== undefined && !multipart) headers['Content-Type'] = 'application/json';
+      if (binary) headers['Content-Type'] = body.type || 'application/octet-stream';
+      else if (body !== undefined && !multipart) headers['Content-Type'] = 'application/json';
     }
     let response: Response;
     try {
@@ -540,11 +544,11 @@ export class AuthService {
         method: requestMethod,
         credentials: 'include',
         signal: AbortSignal.timeout(
-          multipart ? 15 * 60_000 : responseType === 'blob' ? 5 * 60_000 : 15_000,
+          multipart || binary ? 15 * 60_000 : responseType === 'blob' ? 5 * 60_000 : 15_000,
         ),
         headers,
         cache: 'no-store',
-        body: multipart ? body : body === undefined ? undefined : JSON.stringify(body),
+        body: multipart || binary ? body : body === undefined ? undefined : JSON.stringify(body),
       });
     } catch {
       throw new Error('Unable to reach CareVerity. Check your connection and try again.');
@@ -593,7 +597,14 @@ export class AuthService {
     return defer(() =>
       from(
         (async () => {
-          await this.api(`/auth/invitations/${encodeURIComponent(token)}/accept`, {});
+          const result = await this.api<{ reauthentication_required?: boolean }>(
+            `/auth/invitations/${encodeURIComponent(token)}/accept`,
+            {},
+          );
+          if (result.reauthentication_required) {
+            this.clear();
+            return;
+          }
           await this.loadProfile();
         })(),
       ),

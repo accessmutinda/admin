@@ -99,6 +99,8 @@ describe('CareVerity API authentication', () => {
   });
 
   it.each([
+    '/family-portal',
+    '/inspector/dashboard',
     '/inspector/provider',
     '/inspector/service-users',
     '/inspector/staffing',
@@ -109,7 +111,7 @@ describe('CareVerity API authentication', () => {
     '/inspector/visits',
     '/inspector/reports',
     '/inspector/notes',
-  ])('uses the server-selected inspector home %s', async (home) => {
+  ])('uses the server-selected portal home %s', async (home) => {
     profile = { ...companyUser, home_path: home };
     await firstValueFrom(auth.signIn('person@example.com', 'password'));
     expect(auth.nextRoute()).toBe(home);
@@ -591,6 +593,22 @@ describe('CareVerity API authentication', () => {
     expect(fetchMock.mock.calls.filter((call) => call[0] === `${API_BASE}/me`)).toHaveLength(2);
   });
 
+  it('clears the old session when invitation acceptance requires fresh authentication', async () => {
+    const regular = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url, options) =>
+      url.endsWith('/auth/invitations/server-token/accept')
+        ? Promise.resolve(
+            new Response(JSON.stringify({ reauthentication_required: true }), { status: 200 }),
+          )
+        : regular(url, options),
+    );
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    await firstValueFrom(auth.acceptInvite('server-token'));
+    expect(auth.isAuthenticated()).toBe(false);
+    expect(auth.state()).toBe('signed_out');
+    expect(fetchMock.mock.calls.filter((call) => call[0] === `${API_BASE}/me`)).toHaveLength(1);
+  });
+
   it('never authenticates from local accounts, trusted-device flags or MFA overrides when the API rejects credentials', async () => {
     localStorage.setItem(
       'cv_trusted_device:person@example.com',
@@ -811,5 +829,38 @@ describe('CareVerity API authentication', () => {
         'initial_admin.email': ['Enter a valid email.'],
       },
     });
+  });
+  it('sends uploaded binary chunks intact with CSRF protection and the requested method', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    fetchMock
+      .mockImplementationOnce(async (_url, options) => Response.json({ csrf_token: 'upload-csrf' }))
+      .mockImplementationOnce(async (_url, options) => {
+        expect(options?.method).toBe('PUT');
+        expect(options?.body).toBe(chunk);
+        expect(options?.headers).toMatchObject({
+          'Content-Type': 'application/octet-stream',
+          'X-CSRFToken': 'upload-csrf',
+        });
+        return Response.json({ ok: true });
+      });
+    const chunk = new Blob(['binary chunk'], { type: 'application/octet-stream' });
+    await auth.api('/upload/chunks/0', chunk, 'PUT');
+  });
+  it('honours explicit Accept headers when downloading CSV', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    fetchMock.mockImplementationOnce(async (_url, options) => {
+      expect(options?.headers).toMatchObject({ Accept: 'text/csv' });
+      return new Response('code,name\nONE,Company One', {
+        headers: { 'Content-Type': 'text/csv' },
+      });
+    });
+    const blob = await auth.api<Blob>(
+      '/companies/export?format=csv',
+      undefined,
+      undefined,
+      { Accept: 'text/csv' },
+      'blob',
+    );
+    expect(blob.size).toBeGreaterThan(0);
   });
 });

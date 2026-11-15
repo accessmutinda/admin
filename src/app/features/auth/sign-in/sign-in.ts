@@ -28,6 +28,8 @@ export class SignIn {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly returnTo = this.route.snapshot.queryParamMap.get('redirectTo');
+  protected readonly invitationAccepted =
+    this.route.snapshot.queryParamMap.get('invitationAccepted') === 'true';
 
   protected readonly sessionError = this.auth.sessionError;
   protected retrySignOut(): void {
