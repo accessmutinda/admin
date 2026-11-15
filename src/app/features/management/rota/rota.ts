@@ -8,7 +8,6 @@ import { A11yModule } from '@angular/cdk/a11y';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CvSelect } from '../../../shared/ui/select';
 import { ToastService } from '../../../shared/ui/toast.service';
-import { COURSES } from '../shared/management.store';
 import { RosterApi } from './roster-api.service';
 import { AccessRequired } from '../shared/access-required';
 import { validVacancyDate } from '../recruitment/vacancy-deadline';
@@ -39,7 +38,10 @@ import {
     AccessRequired,
   ],
   host: { class: 'module-page operations-page rota-page' },
-  styles: ['.page-heading, .page-heading > .row { flex-wrap: wrap; }'],
+  styles: [
+    '.page-heading, .page-heading > .row { flex-wrap: wrap; }',
+    'form.ng-submitted input.ng-invalid { border-color: #b42318; outline: 1px solid #b42318; }',
+  ],
   templateUrl: './rota.html',
 })
 export class Rota {
@@ -146,7 +148,8 @@ export class Rota {
         id: c.id,
         title: c.name,
       }));
-    if (!['call-packages', 'history'].includes(this.section || '')) return COURSES;
+    if (!['call-packages', 'history'].includes(this.section || ''))
+      return (this.service.raw()?.training_options ?? []).map((c) => ({ id: c.id, title: c.name }));
     const options = new Map(
       (
         (this.section === 'history' ? this.service.historyMeta() : this.service.packageMeta())
@@ -515,8 +518,6 @@ export class Rota {
       phone: '',
       email: '',
       representative: { name: '', relationship: '', phone: '', email: '' },
-      billingRate: 0,
-      billingBasis: 'Visit hour',
     };
   }
   private blankCall(): RotaCall {

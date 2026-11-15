@@ -44,6 +44,8 @@ export class RosterApi {
   readonly denied = signal(false);
   readonly readable = computed(() => this.can('view'));
   readonly candidateRows = signal<RosterCandidates['candidates']>([]);
+  readonly candidateLoading = signal(false);
+  private candidateVisit = '';
   private period: {
     start: string;
     end: string;
@@ -134,6 +136,8 @@ export class RosterApi {
         this.packageMeta.set(null);
         this.historyMeta.set(null);
         this.candidateRows.set([]);
+        this.candidateLoading.set(false);
+        this.candidateVisit = '';
         this.error.set('');
         this.intents.clear();
         this.denied.set(false);
@@ -479,6 +483,29 @@ export class RosterApi {
     return this.callProjection(value);
   }
   private message(e: unknown): string {
+    if (e instanceof ApiError && Object.keys(e.fieldErrors).length) {
+      const names: Record<string, string> = {
+        name: 'Name',
+        reference: 'Client reference',
+        address: 'Address',
+        postcode: 'Postcode',
+        start: 'Start time',
+        end: 'End time',
+        weekdays: 'Days of the week',
+        clientId: 'Service user',
+        callIds: 'Call packages',
+        reason: 'Reason',
+        carers: 'Carers required',
+        toleranceMinutes: 'Tolerance',
+        mileage: 'Mileage',
+      };
+      return Object.entries(e.fieldErrors)
+        .map(
+          ([key, messages]) =>
+            `${names[key] ?? key.replace(/([a-z])([A-Z])/g, '$1 $2').replaceAll('_', ' ')}: ${messages.join(' ')}`,
+        )
+        .join(' ');
+    }
     if (e instanceof ApiError && e.status === 404 && e.code === 'request_failed')
       return 'Visits & Allocation could not be opened. Try again, or contact your administrator if the problem continues.';
     return e instanceof Error ? e.message : 'The request could not be completed. Please retry.';
@@ -730,8 +757,14 @@ export class RosterApi {
   async loadCandidates(v: RotaVisit): Promise<void> {
     const scope = this.scope(),
       generation = ++this.candidateGeneration;
-    this.candidateRows.set([]);
-    if (!v.requirementsRecorded) return;
+    if (this.candidateVisit !== v.id) this.candidateRows.set([]);
+    this.candidateVisit = v.id;
+    if (!v.requirementsRecorded) {
+      this.candidateRows.set([]);
+      this.candidateLoading.set(false);
+      return;
+    }
+    this.candidateLoading.set(true);
     await new Promise((resolve) => setTimeout(resolve, 250));
     if (generation !== this.candidateGeneration || !this.current(scope)) return;
     try {
@@ -745,8 +778,13 @@ export class RosterApi {
       );
       if (generation === this.candidateGeneration) this.candidateRows.set(result.candidates);
     } catch (e) {
-      if (this.current(scope) && generation === this.candidateGeneration)
+      if (this.current(scope) && generation === this.candidateGeneration) {
+        this.candidateRows.set([]);
         this.error.set(this.message(e));
+      }
+    } finally {
+      if (this.current(scope) && generation === this.candidateGeneration)
+        this.candidateLoading.set(false);
     }
   }
   async suggest(ids: string[], staffIds: string[]) {

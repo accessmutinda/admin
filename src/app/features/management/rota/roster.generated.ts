@@ -197,6 +197,10 @@ export type RosterHistoryAuditPage = {
     request_id: string;
   }[];
   context: {
+    training_options?: {
+      id: string;
+      name: string;
+    }[];
     ecm?: {
       lateMinutes: number;
       riskMinutes: number;
@@ -425,6 +429,10 @@ export type RosterHistoryPage = {
     travelMinutes: number | null;
   }[];
   context: {
+    training_options?: {
+      id: string;
+      name: string;
+    }[];
     ecm?: {
       lateMinutes: number;
       riskMinutes: number;
@@ -647,6 +655,10 @@ export type RosterOverviewQuery = {
 };
 
 export type RosterOverviewRead = {
+  training_options: {
+    id: string;
+    name: string;
+  }[];
   ecm?: {
     lateMinutes: number;
     riskMinutes: number;
@@ -781,10 +793,6 @@ export type RosterOverviewRead = {
   unavailable_sources: string[];
   visit_statuses: Record<string, string>;
   matching_visit_ids: string[];
-  training_options: {
-    id: string;
-    name: string;
-  }[];
   metrics: {
     key: string;
     value: number | null;
@@ -855,6 +863,10 @@ export type RosterPackagePage = {
     regularStaffIds: string[];
   }[];
   context: {
+    training_options?: {
+      id: string;
+      name: string;
+    }[];
     ecm?: {
       lateMinutes: number;
       riskMinutes: number;
@@ -1023,6 +1035,10 @@ export type RosterPublishingQuery = {
 };
 
 export type RosterPublishingRead = {
+  training_options: {
+    id: string;
+    name: string;
+  }[];
   ecm?: {
     lateMinutes: number;
     riskMinutes: number;
@@ -1155,10 +1171,6 @@ export type RosterPublishingRead = {
   travelMinutes: number | null;
   settings_etag: string;
   unavailable_sources: string[];
-  training_options: {
-    id: string;
-    name: string;
-  }[];
   metrics: {
     drafts: number;
     unallocated: number;
@@ -1329,6 +1341,10 @@ export type RosterVisitWrite = {
 };
 
 export type RosterWorkspace = {
+  training_options?: {
+    id: string;
+    name: string;
+  }[];
   ecm?: {
     lateMinutes: number;
     riskMinutes: number;

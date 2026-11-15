@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -6,7 +6,13 @@ import { routes } from '../../../app.routes';
 import { AuthService } from '../../../core/auth/auth.service';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
 import { ManagementLayout } from '../layout/management-layout';
-import { RotaService } from './rota.service';
+import { By } from '@angular/platform-browser';
+import { ServiceUsersApi } from '../clients/service-users-api.service';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { CompaniesApiService } from '../companies/companies-api.service';
+import { RosterApi } from './roster-api.service';
+import { Rota } from './rota';
+import { rosterWorkspace } from './roster.spec-fixtures';
 
 @Component({ template: '' })
 class Destination {}
@@ -14,10 +20,110 @@ class Destination {}
 const children = routes.find((route) => route.path === 'manage')!.children!;
 
 describe('Visits & Rota navigation', () => {
+  let workspace: any;
+  async function settle(harness: RouterTestingHarness) {
+    for (let i = 0; i < 4; i++) {
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+    }
+    harness.detectChanges();
+  }
   beforeEach(() => {
     localStorage.clear();
+    workspace = rosterWorkspace();
+    const selected = signal(null);
+    const api = vi.fn(async (path: string) => {
+      const base = structuredClone(workspace);
+      if (path.includes('/call-packages/workspace?'))
+        return {
+          company_id: 'north',
+          count: base.calls.length,
+          next: null,
+          previous: null,
+          results: base.calls,
+          context: base,
+          meta: {
+            revision: 'v1',
+            metrics: {
+              active_clients: 1,
+              active_packages: base.calls.length,
+              regular_carers: 0,
+              priority_packages: 0,
+            },
+            training_options: [],
+          },
+        };
+      if (path.includes('/history'))
+        return {
+          company_id: 'north',
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+          context: base,
+          meta: {
+            revision: 'v1',
+            as_of: '2026-11-15T10:00:00Z',
+            metrics: { visits: 0, completed: 0, cancelled: 0, audit: 0 },
+            training_options: [],
+          },
+        };
+      if (path.includes('/publishing?'))
+        return {
+          ...base,
+          metrics: { drafts: 0, unallocated: 0, conflicts: 0, published: 0 },
+          reviews: {},
+          training_options: [],
+        };
+      if (path.includes('/overview?'))
+        return {
+          ...base,
+          matching_visit_ids: [],
+          visit_statuses: {},
+          metrics: ['total', 'allocated', 'unallocated', 'double_up', 'staff', 'late'].map(
+            (key) => ({ key, value: 0, percentage: 0, previous: 0 }),
+          ),
+          alerts: [],
+          training_options: [],
+        };
+      if (path.includes('package-handoffs'))
+        return { company_id: 'north', count: 0, results: [], next: null };
+      return base;
+    });
+    const access = { can: () => true, canPath: () => true, context: signal(null) };
+    const auth = {
+      api,
+      isAuthenticated: () => true,
+      isSuperAdmin: () => false,
+      hasRole: () => true,
+      canSwitchWorkspace: () => false,
+      canAccessCompany: () => true,
+      profile: signal({ id: 'actor', company_id: 'north', company_entry_state: 'ready' }),
+      currentUser: () => ({ id: 'actor', roleCode: 'CA', name: 'Rota Reviewer', initials: 'RR' }),
+      workspaces: signal([]),
+      session: signal({ workspaceId: 'north' }),
+    };
     TestBed.configureTestingModule({
       providers: [
+        { provide: AuthService, useValue: auth },
+        { provide: CompanyAccessService, useValue: access },
+        {
+          provide: ServiceUsersApi,
+          useValue: {
+            scope: signal('north:actor'),
+            companyId: signal('north'),
+            allowed: () => true,
+            access,
+            selected,
+            error: signal(''),
+            detail: vi.fn(async () => {}),
+            detailPending: () => false,
+          },
+        },
+        {
+          provide: CompaniesApiService,
+          useValue: { scope: () => null, companies: () => [], details: () => ({}) },
+        },
         provideRouter([
           {
             path: 'manage',
@@ -30,14 +136,13 @@ describe('Visits & Rota navigation', () => {
         ]),
       ],
     });
-    TestBed.inject(AuthService).signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
   });
 
   it('opens the weekly allocation workspace with its supporting panels', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/manage/rota');
     expect(TestBed.inject(Router).url).toBe('/manage/rota/overview');
+    await settle(harness);
     const element = harness.routeNativeElement!;
     expect(element.querySelector('.planner-grid')).not.toBeNull();
     expect(element.querySelector('.planner-filter-panel')).not.toBeNull();
@@ -71,6 +176,7 @@ describe('Visits & Rota navigation', () => {
     const harness = await RouterTestingHarness.create();
     for (const view of ['overview', 'planner', 'call-packages', 'publishing', 'history']) {
       await harness.navigateByUrl('/manage/rota/' + view);
+      await settle(harness);
       const element = harness.routeNativeElement!;
       expect(element.querySelectorAll('h1')).toHaveLength(1);
       expect(element.querySelector('.visits-section-links')).toBeNull();
@@ -83,6 +189,7 @@ describe('Visits & Rota navigation', () => {
   });
 
   it('expands the sidebar menu in the requested order and closes it with Escape', () => {
+    TestBed.inject(Router).navigateByUrl('/');
     const fixture = TestBed.createComponent(ManagementLayout);
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
@@ -107,34 +214,14 @@ describe('Visits & Rota navigation', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
   });
 
-  it('updates call-package statistics from saved packages', async () => {
+  it('updates call-package statistics from the refreshed server register', async () => {
     const harness = await RouterTestingHarness.create('/manage/rota/call-packages');
-    const service = TestBed.inject(RotaService);
-    const count = service.data().calls.filter((call) => call.active).length;
-    service.saveClient({
-      id: 'stat-client',
-      name: 'Statistics client',
-      reference: 'ST1',
-      address: '1 Road',
-      postcode: 'HA1 1AA',
-      funding: 'Private',
-      priority: 'Standard',
-      active: true,
-    });
-    service.saveCall({
-      id: 'stat-call',
-      clientId: 'stat-client',
-      name: 'Lunch call',
-      start: '12:00',
-      end: '12:30',
-      weekdays: [1],
-      carers: 1,
-      skills: [],
-      regularStaffIds: [],
-      tasks: 'Prepare lunch',
-      active: true,
-    });
-    harness.detectChanges();
+    await settle(harness);
+    const service = harness.routeDebugElement!.query(By.directive(Rota)).injector.get(RosterApi);
+    const count = workspace.calls.length;
+    workspace.calls.push({ ...workspace.calls[0], id: 'second-call', name: 'Lunch care' });
+    await service.refresh();
+    await settle(harness);
     const metric = Array.from(harness.routeNativeElement!.querySelectorAll('.metric')).find(
       (item) => item.querySelector('h2')?.textContent === 'Active call packages',
     )!;

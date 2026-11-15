@@ -394,4 +394,21 @@ describe('Roster API company boundaries', () => {
     );
     expect((writes[2] as any)[3]['If-Match']).toBe('"v2"');
   });
+  it('keeps selected carer options mounted while refreshing eligibility for the same visit', async () => {
+    const visit = rosterVisit();
+    request.mockImplementation(async () => ({
+      company_id: 'north',
+      visit_id: visit.id,
+      candidates: [{ id: 'carer', name: 'Recorded carer', hours: 0, preferred: false, issues: [] }],
+    }));
+    await service.loadCandidates(visit);
+    const pending = service.loadCandidates({ ...visit, staffIds: ['carer'] });
+    expect(service.candidateLoading()).toBe(true);
+    expect(service.candidateRows().map((row) => row.id)).toEqual(['carer']);
+    await pending;
+    expect(service.candidateLoading()).toBe(false);
+    const other = service.loadCandidates({ ...visit, id: 'other-visit' });
+    expect(service.candidateRows()).toEqual([]);
+    await other;
+  });
 });

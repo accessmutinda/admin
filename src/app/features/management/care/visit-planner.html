@@ -701,7 +701,11 @@
                   <span class="material-symbols-outlined" aria-hidden="true">group_add</span
                   ><span><strong>Auto Allocate</strong><small>Suggest best matches</small></span>
                 </button>
-                <button class="planner-quick" data-tone="purple" (click)="view.set('List')">
+                <button
+                  class="planner-quick"
+                  data-tone="purple"
+                  (click)="selected().length ? prepareBulk() : view.set('List')"
+                >
                   <span class="material-symbols-outlined" aria-hidden="true">date_range</span
                   ><span
                     ><strong>Bulk Allocate</strong><small>Allocate multiple visits</small></span
@@ -892,6 +896,9 @@
                 </label>
                 <div class="care-wide">
                   <h3>Available staff & requirements</h3>
+                  @if (service.candidateLoading()) {
+                    <p role="status">Checking staff availability and requirements…</p>
+                  }
                   @for (candidate of candidateList(); track candidate.id) {
                     <p [class.planner-alert]="candidate.issues.length">
                       {{ candidate.name }}:
@@ -1021,6 +1028,7 @@
                   type="submit"
                   [disabled]="
                     service.saving() ||
+                    service.candidateLoading() ||
                     preparing() ||
                     ((modal() === 'auto' || modal() === 'bulk') && !plans.length)
                   "

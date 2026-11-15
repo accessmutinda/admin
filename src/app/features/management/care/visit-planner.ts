@@ -20,7 +20,6 @@ import { A11yModule } from '@angular/cdk/a11y';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { ModuleDesign } from '../shared/module-design';
-import { COURSES } from '../shared/management.store';
 import { RosterApi } from '../rota/roster-api.service';
 import {
   RotaVisit,
@@ -355,7 +354,10 @@ export class VisitPlanner {
           id: course.id,
           title: course.name,
         }))
-      : COURSES;
+      : (this.service.raw()?.training_options ?? []).map((course) => ({
+          id: course.id,
+          title: course.name,
+        }));
   }
   protected readonly start = computed(() => {
     const date = this.anchor();
@@ -997,7 +999,7 @@ export class VisitPlanner {
     return v ? `${v.date} ${v.start} · ${v.clientName} · ${v.callName}` : id;
   }
   protected async save(): Promise<void> {
-    if (this.service.saving() || this.preparing()) return;
+    if (this.service.saving() || this.preparing() || this.service.candidateLoading()) return;
     if (
       !this.service.can(this.modal() === 'plan' ? 'create' : 'edit') ||
       !['plan', 'visit', 'bulk', 'auto'].includes(this.modal())
@@ -1020,6 +1022,19 @@ export class VisitPlanner {
     else if (this.modal() === 'plan') {
       if (this.workspace !== this.store.companyId()) {
         this.error.set('Workspace changed. Reopen the planner.');
+        return;
+      }
+      if (!this.plan.clientId || !this.plan.callIds.length) {
+        this.error.set('Choose a service user and at least one call package.');
+        return;
+      }
+      if (
+        !validDate(this.plan.from) ||
+        !validDate(this.plan.to) ||
+        this.plan.to < this.plan.from ||
+        Date.parse(this.plan.to) - Date.parse(this.plan.from) > 30 * 86400000
+      ) {
+        this.error.set('Choose a date range of up to 31 days.');
         return;
       }
       error = await this.service.generate(

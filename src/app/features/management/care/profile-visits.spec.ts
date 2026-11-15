@@ -179,6 +179,7 @@ describe('Service user visits and allocation', () => {
     await settle(fixture);
     const editor = fixture.componentInstance as any;
     await editor.edit(rosterVisit());
+    await editor.service.loadCandidates(editor.draft);
     editor.draft.start = '09:00';
     editor.reason = 'Reschedule care';
     request.mockImplementation(async (_p: string, _b: any, method?: string) => {

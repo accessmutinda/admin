@@ -32,7 +32,7 @@
       <p>
         {{
           clientFiles
-            ? 'Maintain care risks, family contacts, billing and call packages.'
+            ? 'Maintain care risks, family contacts and call packages.'
             : section === 'call-packages'
               ? 'Configure recurring calls, care requirements and preferred carers.'
               : section === 'history'
@@ -377,10 +377,6 @@
                 {{ c.representative?.email }}
               </p>
             }
-            <small
-              >Client billing: £{{ c.billingRate === undefined ? 'Not recorded' : c.billingRate }} /
-              {{ c.billingBasis || 'Visit hour' }}</small
-            >
           </div>
         }
         <div class="rota-call-list">
@@ -803,16 +799,10 @@
         <div>
           <h3>Completed attendance → Payroll</h3>
           <p>
-            Transfer actual hours for the From date ({{ from() || 'choose a date' }}). Payroll
-            access and effective pay profiles are required; timesheets still need approval.
+            Completed attendance is retained for payroll review. Payroll transfer is not available.
           </p>
         </div>
-        <label
-          >Attendance date<input type="date" [ngModel]="from()" (ngModelChange)="from.set($event)"
-        /></label>
-        <button class="button" [disabled]="!from()" (click)="transfer()">
-          Send completed visits to payroll
-        </button>
+        <button class="button" disabled>Send completed visits to payroll</button>
       </div>
     }
   }
@@ -1008,24 +998,6 @@
                   [(ngModel)]="contact.email"
               /></label>
             }
-            <h3 class="full-width">Client billing</h3>
-            <label
-              >Billing rate (£ per hour)<input
-                type="number"
-                min="0"
-                max="1000"
-                name="billingRate"
-                [(ngModel)]="client.billingRate" /></label
-            ><label
-              >Billing basis<mat-select
-                cvSelect
-                name="billingBasis"
-                aria-label="Client billing basis"
-                [(ngModel)]="client.billingBasis"
-                ><mat-option value="Visit hour">Visit hour</mat-option
-                ><mat-option value="Carer hour">Carer hour</mat-option></mat-select
-              ></label
-            >
           } @else if (modal() === 'call') {
             <label class="full-width"
               >Call name<input name="name" [(ngModel)]="call.name" required /></label
@@ -1051,8 +1023,13 @@
                 ><mat-option value="High">High</mat-option></mat-select
               ></label
             ><label
-              >Start time (UK)<input type="time" name="start" [(ngModel)]="call.start" /></label
-            ><label>End time (UK)<input type="time" name="end" [(ngModel)]="call.end" /></label
+              >Start time (UK)<input
+                type="time"
+                name="start"
+                [(ngModel)]="call.start"
+                required /></label
+            ><label
+              >End time (UK)<input type="time" name="end" [(ngModel)]="call.end" required /></label
             ><small class="full-width"
               >An end time before the start means the call ends the next day.</small
             >
@@ -1394,8 +1371,8 @@
                 rows="2"
               ></textarea></label
             ><small class="full-width"
-              >Administrator-recorded actual work. Completed attendance is locked and can be
-              transferred to payroll for separate approval.</small
+              >Administrator-recorded actual work. Completed attendance is locked after
+              review.</small
             >
           } @else {
             <label class="full-width"

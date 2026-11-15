@@ -1,11 +1,13 @@
-import { staffRecord } from '../people/hr.models';
+import { newStaff, staffRecord } from '../people/hr.models';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { DEMO_USER } from '../../../demo/business-fixtures';
 import { AppUser } from '../../../core/auth/models/user';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
-import { ManagementStore } from '../shared/management.store';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { CompaniesApiService } from '../companies/companies-api.service';
+import { COURSES, ManagementStore } from '../shared/management.store';
 import { PayrollService } from '../payroll/payroll.service';
 import { RotaService } from './rota.service';
 import { RotaCall, RotaClient, londonInstant, completedVisit } from './rota.models';
@@ -44,17 +46,92 @@ describe('Rota allocation and publishing', () => {
     roleCode: 'CA',
     name: 'Rota administrator',
   });
+  let grants: Set<string>;
+  const company = signal('lqcs');
   beforeEach(() => {
     localStorage.clear();
-    TestBed.configureTestingModule({});
+    company.set('lqcs');
+    grants = new Set(['view', 'manage', 'edit', 'publish', 'export', 'approve', 'finalise', 'pay']);
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: AuthService,
+          useValue: {
+            currentUser: () => actor(),
+            isAuthenticated: () => true,
+            isSuperAdmin: () => false,
+            profile: () => ({
+              id: actor().id,
+              company_id: company(),
+              company_entry_state: 'ready',
+            }),
+            canAccessCompany: () => true,
+          },
+        },
+        {
+          provide: WorkspaceService,
+          useValue: { switchWorkspace: (id: string) => company.set(id) },
+        },
+        {
+          provide: CompanyAccessService,
+          useValue: {
+            canPath: (_path: string, action: string) => grants.has(action),
+            can: (_module: string, _area: string, action: string) => grants.has(action),
+            context: () => null,
+          },
+        },
+        {
+          provide: CompaniesApiService,
+          useValue: { scope: () => null, companies: () => [], details: () => ({}) },
+        },
+      ],
+    });
     const auth = TestBed.inject(AuthService);
-    auth.signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     actor.set({ ...DEMO_USER, id: 'rota-admin', roleCode: 'CA', name: 'Rota administrator' });
     vi.spyOn(auth, 'currentUser').mockImplementation(() => actor());
     store = TestBed.inject(ManagementStore);
     service = TestBed.inject(RotaService);
     payroll = TestBed.inject(PayrollService);
+    store.update((d) => ({
+      ...d,
+      people: ['james', 'maria'].map((id, index) => {
+        const person = newStaff();
+        Object.assign(person, {
+          id,
+          name: index ? 'Maria Evans' : 'James Carter',
+          email: id + '@example.test',
+          role: 'Care Worker',
+          location: 'London',
+          start: '2026-01-01',
+          checks: Array(7).fill(true),
+          onboarding: Array(5).fill(true),
+          learning: COURSES.map((c) => c.id),
+        });
+        const record = person.hr!;
+        record.status = 'Active';
+        record.checks = record.checks.map((c) => ({ ...c, status: 'Verified' }));
+        record.induction = record.induction.map((c) => ({ ...c, complete: true }));
+        record.employment.type = 'Permanent';
+        record.employment.hours = 37.5;
+        record.personal.gender = index ? 'Female' : 'Male';
+        record.personal.driver = true;
+        record.availability = record.availability.map((day) => ({
+          ...day,
+          start: '00:00',
+          end: '00:00',
+          preference: 'Available',
+        }));
+        record.training = COURSES.map((c) => ({
+          courseId: c.id,
+          completed: '2026-01-01',
+          expiry: '2027-12-31',
+          assessor: 'Reviewer',
+          competency: 'Competent',
+          certificateId: 'record-' + c.id,
+        }));
+        return person;
+      }),
+    }));
     store.update((d) => ({
       ...d,
       people: d.people.map((p) => ({
@@ -279,7 +356,10 @@ describe('Rota allocation and publishing', () => {
     expect(service.generate('client', ['call'], '2026-10-06', '2026-10-06', ['james'])).toBeNull();
     store.update((d) => ({
       ...d,
-      people: d.people.map((p) => (p.id === 'james' ? { ...p, hr: staffRecord(p) } : p)),
+      people: d.people.map((p) => {
+        const { hr, ...legacy } = p;
+        return p.id === 'james' ? { ...p, hr: staffRecord(legacy) } : p;
+      }),
     }));
     const conflicts = service.conflicts(service.data().visits[0]);
     expect(conflicts.some((c) => c.includes('not ready for deployment'))).toBe(true);
@@ -296,6 +376,8 @@ describe('Rota allocation and publishing', () => {
     expect(service.can('view')).toBe(true);
     expect(service.can('manage')).toBe(true);
     store.update((d) => ({ ...d, rotaPermissions: { 'Care Worker': ['view'] } }));
+    grants.clear();
+    grants.add('view');
     expect(service.generate('client', ['call'], '2026-10-07', '2026-10-07')).toContain(
       'permission',
     );
@@ -310,6 +392,9 @@ describe('Rota allocation and publishing', () => {
   });
   it('honours configured rota actions for any role alongside Care delivery permissions', () => {
     actor.set({ ...actor(), roleCode: 'CW' });
+    grants.clear();
+    grants.add('view');
+    grants.add('edit');
     store.update((d) => ({
       ...d,
       rotaPermissions: { 'Care Worker': ['view', 'attendance'] },
@@ -324,6 +409,7 @@ describe('Rota allocation and publishing', () => {
       'permission',
     );
     store.update((d) => ({ ...d, rotaPermissions: { 'Care Worker': ['attendance'] } }));
+    grants.clear();
     expect(service.can('attendance')).toBe(false);
     store.update((d) => ({
       ...d,
@@ -338,6 +424,9 @@ describe('Rota allocation and publishing', () => {
     const id = service.data().visits[0].id;
     expect(service.publish([id])).toBeNull();
     actor.set({ ...actor(), roleCode: 'CW' });
+    grants.clear();
+    grants.add('view');
+    grants.add('edit');
     store.update((d) => ({ ...d, rotaPermissions: { 'Care Worker': ['view', 'attendance'] } }));
     expect(service.allocate(id, ['maria'], 'Temporary', 'Change')).toContain('permission');
     expect(service.publish([id])).toContain('permission');
@@ -409,6 +498,17 @@ describe('Rota allocation and publishing', () => {
     );
   });
   it('requires employment eligibility and completed required training', () => {
+    store.update((d) => ({
+      ...d,
+      people: d.people.map((p) =>
+        p.id === 'james'
+          ? {
+              ...p,
+              hr: { ...p.hr!, training: p.hr!.training.filter((t) => t.courseId !== 'handling') },
+            }
+          : p,
+      ),
+    }));
     expect(service.saveCall({ ...call(), skills: ['handling'] })).toBeNull();
     expect(service.generate('client', ['call'], '2026-10-06', '2026-10-06', ['james'])).toContain(
       'training',
