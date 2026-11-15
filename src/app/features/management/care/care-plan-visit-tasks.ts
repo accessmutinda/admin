@@ -12,6 +12,19 @@ export interface CarePlanTaskResult extends CarePlanVisitTask {
   outcome: 'Completed' | 'Not completed' | 'Concern';
   note: string;
 }
+export function careAreaMatchesVisit(name: string, wording: string): boolean {
+  const task = wording.toLowerCase();
+  return (
+    task.includes(name.toLowerCase()) ||
+    (/personal|wash|dress|skin|toilet/.test(task) &&
+      ['Personal Care', 'Continence', 'Dressing & Grooming'].includes(name)) ||
+    (/transfer|mobil|moving|hoist|walk/.test(task) && name === 'Mobility') ||
+    (/meal|food|drink|nutrition|fluid/.test(task) &&
+      ['Nutrition & Hydration', 'Cultural / Religious Needs'].includes(name)) ||
+    (/medic|mar/.test(task) && name === 'Medication Support')
+  );
+}
+
 /** Derive tasks only from the current approved, staff-visible snapshot. */
 export function carePlanVisitTasks(client: RotaClient, visit: RotaVisit): CarePlanVisitTask[] {
   if (visit.clientId !== client.id || visit.state !== 'Published') return [];
@@ -21,16 +34,7 @@ export function carePlanVisitTasks(client: RotaClient, visit: RotaVisit): CarePl
     (s) => inReviewScope(plan, s) && s.required && s.visibility.staff,
   );
   const wording = (visit.callName + ' ' + visit.tasks).toLowerCase();
-  const matching = sections.filter(
-    (s) =>
-      wording.includes(s.name.toLowerCase()) ||
-      (/wash|personal|dress|toilet/.test(wording) &&
-        ['Personal Care', 'Continence', 'Dressing & Grooming'].includes(s.name)) ||
-      (/mobility|walk|transfer/.test(wording) && s.name === 'Mobility') ||
-      (/meal|food|drink|nutrition|fluid/.test(wording) &&
-        ['Nutrition & Hydration', 'Cultural / Religious Needs'].includes(s.name)) ||
-      (/medic|mar/.test(wording) && s.name === 'Medication Support'),
-  );
+  const matching = sections.filter((section) => careAreaMatchesVisit(section.name, wording));
   // Generic care-plan visits expose the available approved sections for the carer to confirm.
   const chosen = matching.length
     ? matching

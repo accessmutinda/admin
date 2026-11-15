@@ -9,6 +9,14 @@ import { CvSelect } from '../../../shared/ui/select';
 import { EcmService } from './ecm.service';
 import { EcmEvidence } from './ecm.models';
 
+export function voiceNoteFilename(type: string): string {
+  const extension = (
+    { 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/wav': 'wav' } as Record<string, string>
+  )[type.split(';')[0]];
+  if (!extension) throw Error('This recording format is unsupported. Use a typed care note.');
+  return 'voice-note.' + extension;
+}
+
 interface Recognition {
   lang: string;
   continuous: boolean;
@@ -194,7 +202,7 @@ interface Recognition {
         @if (type !== 'Care note') {
           <p class="full-width">
             This concern creates a manager review case. Sensitive photos stay hidden from
-            non-manager roles in this demo.
+            non-manager roles.
           </p>
         }
       </div>
@@ -466,11 +474,13 @@ export class VisitEvidence {
         try {
           const data = await this.read(blob);
           if (this.alive && session === this.session) {
+            this.audioName = voiceNoteFilename(blob.type);
             this.audio.set(data);
-            this.audioName = 'demo-voice-note';
           }
-        } catch {
-          this.error.set('Could not read the recording. Try again.');
+        } catch (error) {
+          this.error.set(
+            error instanceof Error ? error.message : 'Could not read the recording. Try again.',
+          );
         } finally {
           this.busy.set(false);
         }

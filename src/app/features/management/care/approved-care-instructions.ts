@@ -1,3 +1,4 @@
+import { careAreaMatchesVisit } from './care-plan-visit-tasks';
 import { Component, computed, inject, input } from '@angular/core';
 import { CareService } from './care.service';
 import { approvedInstructions } from './care-plan.models';
@@ -101,18 +102,8 @@ export class ApprovedCareInstructions {
     const relevant = all.filter((s) => {
       const name = s.name.toLowerCase();
       if (['communication', 'home access & security'].includes(name)) return true;
-      if (
-        /meal|food|drink|nutrition|fluid/.test(task) &&
-        ['nutrition & hydration', 'cultural / religious needs'].includes(name)
-      )
-        return true;
-      if (
-        /personal|wash|dress|toilet/.test(task) &&
-        ['personal care', 'dressing & grooming', 'continence', 'mobility'].includes(name)
-      )
-        return true;
-      if (/medic|mar/.test(task) && name === 'medication support') return true;
-      return task.includes(name);
+      if (/personal|wash|dress|skin|toilet/.test(task) && name === 'mobility') return true;
+      return careAreaMatchesVisit(s.name, task);
     });
     return relevant.length ? relevant : all;
   });
