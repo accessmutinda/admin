@@ -28,7 +28,11 @@
             <span class="material-symbols-outlined" aria-hidden="true">connected_tv</span>Wallboard
           </button>
           @if (service.rota.can('manage')) {
-            <button class="button" (click)="open('Board settings')">
+            <button
+              class="button"
+              [disabled]="!!api && (api.loading() || !api.loadedAt())"
+              (click)="open('Board settings')"
+            >
               <span class="material-symbols-outlined" aria-hidden="true">tune</span>Settings
             </button>
           }
@@ -537,7 +541,7 @@
                   <button class="button primary" (click)="open('Record follow-up')">
                     Record follow-up
                   </button>
-                  @if (!v.attendance.length) {
+                  @if (!v.attendance.length && (!api || api.can('reschedule'))) {
                     <button class="button" (click)="open('Reschedule visit')">
                       Reschedule visit
                     </button>
@@ -550,7 +554,13 @@
                       Reallocate visit
                     </button>
                   }
-                  <button class="button" (click)="open('Add evidence')">Add care evidence</button>
+                  <button
+                    class="button"
+                    [disabled]="!!api && !api.canCaptureEvidence(v.id)"
+                    (click)="open('Add evidence')"
+                  >
+                    Add care evidence
+                  </button>
                 }
                 @if (service.rota.can('attendance') && live(v).status !== 'Completed') {
                   <button class="button" (click)="open('Record attendance')">
@@ -674,7 +684,7 @@
                   <label
                     >Channel<mat-select
                       cvSelect
-                      aria-label="Demo notification channel"
+                      [aria-label]="api ? 'Notification channel' : 'Demo notification channel'"
                       name="channel"
                       [(ngModel)]="action.channel"
                       (ngModelChange)="recipient()"

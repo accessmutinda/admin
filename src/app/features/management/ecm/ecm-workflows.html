@@ -146,6 +146,7 @@
               >Care worker<mat-select
                 cvSelect
                 aria-label="Preview care worker"
+                [disabled]="!!api?.loading()"
                 [ngModel]="person()"
                 (ngModelChange)="person.set($event)"
               >
@@ -172,19 +173,26 @@
                 <div class="workflow-actions">
                   <button
                     class="button primary"
-                    [disabled]="checked(v.id) || !service.rota.can('attendance')"
+                    [disabled]="checked(v.id) || !service.rota.can('attendance') || !!api?.saving()"
                     (click)="attendance(v.id, 'Check in')"
                   >
                     Check in now</button
                   ><button
                     class="button"
-                    [disabled]="!checked(v.id) || finished(v.id) || !service.rota.can('attendance')"
+                    [disabled]="
+                      !checked(v.id) ||
+                      finished(v.id) ||
+                      !service.rota.can('attendance') ||
+                      !!api?.saving()
+                    "
                     (click)="attendance(v.id, 'Check out')"
                   >
                     Check out now</button
                   ><button
                     class="button"
-                    [disabled]="!service.rota.can('manage')"
+                    [disabled]="
+                      !service.rota.can('manage') || (!!api && !api.canCaptureEvidence(v.id))
+                    "
                     (click)="evidence.set(v.id)"
                   >
                     Care note & evidence
@@ -206,9 +214,42 @@
       </section>
     </div>
   }
+  @if (api && tab() === 'Inbox') {
+    <section class="panel">
+      <div class="panel-toolbar">
+        <h2>Your notifications</h2>
+        <button class="button" [disabled]="api.inboxLoading()" (click)="api.loadInbox()">
+          Refresh inbox
+        </button>
+      </div>
+      <div class="panel-body workflow-stack">
+        <p>Delivered in-app messages addressed to your account.</p>
+        @if (api.inboxLoading()) {
+          <p role="status">Loading your notifications…</p>
+        }
+        @if (api.inboxError()) {
+          <p class="workflow-error" role="alert">{{ api.inboxError() }}</p>
+        }
+        @for (notice of api.inbox(); track notice.id) {
+          <article class="workflow-record">
+            <h3>{{ notice.subject }}</h3>
+            <p>{{ title(notice.visitId) }}</p>
+            <p>{{ notice.body }}</p>
+            <small>{{ notice.user }} · {{ stamp(notice.at) }}</small>
+          </article>
+        } @empty {
+          @if (!api.inboxLoading() && !api.inboxError()) {
+            <p>No delivered notifications for your account.</p>
+          }
+        }
+      </div>
+    </section>
+  }
   @if (tab() === 'Notifications') {
     <section class="panel">
-      <div class="panel-toolbar"><h2>Demo notification outbox</h2></div>
+      <div class="panel-toolbar">
+        <h2>{{ api ? 'Notification outbox' : 'Demo notification outbox' }}</h2>
+      </div>
       <div class="panel-body workflow-grid">
         @for (n of ops.data().notifications; track n.id) {
           <article class="workflow-record">
@@ -223,7 +264,7 @@
             }
             @if (service.rota.can('manage')) {
               <div class="workflow-actions">
-                @if (n.state === 'Queued') {
+                @if (n.state === 'Queued' && !api) {
                   <button
                     class="button primary"
                     [disabled]="!!api"
@@ -260,7 +301,7 @@
               <label
                 >Assigned owner<mat-select
                   cvSelect
-                  [attr.aria-label]="'Owner for ' + title(c.visitId)"
+                  [aria-label]="'Owner for ' + title(c.visitId)"
                   [disabled]="c.state === 'Resolved' || !!api?.saving()"
                   [(ngModel)]="caseForm(c).owner"
                 >
@@ -421,8 +462,12 @@
         <div class="panel-toolbar"><h2>CQC delivery evidence</h2></div>
         <div class="panel-body workflow-stack">
           <p>
-            Save a dated snapshot of attendance, KPI totals, follow-up, delivery states, escalations
-            and evidence metadata. Photo and voice bytes are excluded from exports.
+            {{
+              api
+                ? 'Save a dated report definition. Downloads include current attendance, KPI totals, follow-up, delivery states, escalations and evidence metadata.'
+                : 'Save a dated snapshot of attendance, KPI totals, follow-up, delivery states, escalations and evidence metadata.'
+            }}
+            Photo and voice bytes are excluded from exports.
           </p>
           <button
             class="button primary"

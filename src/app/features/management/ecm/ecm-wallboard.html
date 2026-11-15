@@ -143,8 +143,16 @@
           } @empty {
             <div class="tv-empty">
               <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
-              <h3>Nothing needs attention</h3>
-              <p>No alerts in the selected visits.</p>
+              <h3>
+                {{ api && !api.loadedAt() ? 'Loading visit alerts…' : 'Nothing needs attention' }}
+              </h3>
+              <p>
+                {{
+                  api && !api.loadedAt()
+                    ? 'Waiting for current company records.'
+                    : 'No alerts in the selected visits.'
+                }}
+              </p>
             </div>
           }
         </div>
@@ -200,12 +208,22 @@
           } @empty {
             <div class="tv-empty">
               <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
-              <h3>{{ all().length ? 'No matching visits' : 'No published visits today' }}</h3>
+              <h3>
+                {{
+                  api && !api.loadedAt()
+                    ? 'Loading published visits…'
+                    : all().length
+                      ? 'No matching visits'
+                      : 'No published visits today'
+                }}
+              </h3>
               <p>
                 {{
-                  all().length
-                    ? 'Adjust your filters to see more visits.'
-                    : 'Published rota visits will appear here automatically.'
+                  api && !api.loadedAt()
+                    ? 'Waiting for current company records.'
+                    : all().length
+                      ? 'Adjust your filters to see more visits.'
+                      : 'Published rota visits will appear here automatically.'
                 }}
               </p>
               @if (all().length) {
@@ -218,8 +236,14 @@
     </div>
     <footer class="tv-footer">
       <span
-        ><i></i>Updated {{ time(refreshed(), true) }} · Refresh every 3 min
-        <button (click)="refreshed.set(now())" aria-label="Refresh wallboard">
+        ><i></i
+        >{{
+          api && !api.loadedAt()
+            ? 'Waiting for visit records'
+            : 'Updated ' + time(refreshed(), true)
+        }}
+        · Refresh every {{ api ? '15 sec' : '3 min' }}
+        <button (click)="refresh()" [disabled]="!!api?.loading()" aria-label="Refresh wallboard">
           <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
         </button></span
       >

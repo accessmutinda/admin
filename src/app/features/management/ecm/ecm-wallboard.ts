@@ -177,6 +177,11 @@ export class EcmWallboard {
         .length,
   );
 
+  protected refresh(): void {
+    if (this.api) void this.api.load();
+    else this.refreshed.set(this.now());
+  }
+
   constructor() {
     this.api?.connect();
     afterNextRender(() => document.getElementById('tv-wallboard-title')?.focus());

@@ -134,8 +134,9 @@ export class EcmWorkflows {
   protected readonly demo = inject(EcmDemo);
   private readonly toast = inject(ToastService);
   protected readonly tabs = [
-    'Demo setup',
+    ...(this.api ? [] : ['Demo setup']),
     'Staff visit preview',
+    ...(this.api ? ['Inbox'] : []),
     'Notifications',
     'Escalations',
     'Billing & outcomes',
@@ -174,6 +175,10 @@ export class EcmWorkflows {
     });
     effect(() => {
       if (this.api) this.api.selectDate(this.date());
+    });
+    effect(() => {
+      const enabled = this.tab() === 'Inbox';
+      untracked(() => this.api?.watchInbox(enabled));
     });
     inject(DestroyRef).onDestroy(() => this.stop());
   }

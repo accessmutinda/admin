@@ -4,7 +4,12 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
 import { RotaData, RotaVisit, londonDate, londonInstant } from '../rota/rota.models';
 import { EcmData, EcmEvidence, EcmRecord, EcmEscalation } from './ecm.models';
-import type { EcmWorkspaceRead, EcmMutationRead, EcmMediaRead } from './ecm.generated';
+import type {
+  EcmWorkspaceRead,
+  EcmMutationRead,
+  EcmMediaRead,
+  EcmInboxRead,
+} from './ecm.generated';
 
 const unavailableData = (): EcmData => ({
   lateMinutes: 0,
@@ -36,6 +41,11 @@ export class EcmApi {
   readonly error = signal('');
   readonly unavailable = signal<string[]>([]);
   readonly loadedAt = signal('');
+  readonly inbox = signal<EcmData['notifications']>([]);
+  readonly inboxLoading = signal(false);
+  readonly inboxError = signal('');
+  private inboxActive = false;
+  private inboxGeneration = 0;
   readonly denied = signal(false);
   private readonly target = signal<string | null>(null);
   private readonly raw = signal<any>(null);
@@ -127,7 +137,7 @@ export class EcmApi {
       'Payroll integration is not configured. Attendance is retained in Visits & Rostering.',
   };
   readonly payroll = { can: (_action: string) => false };
-  readonly manager = computed(() => this.can('manage'));
+  readonly manager = computed(() => this.can('override'));
   readonly preview = {
     visits: this.visits,
     waiting: () => [],
@@ -164,6 +174,7 @@ export class EcmApi {
     this.timer = setInterval(() => {
       if (this.target() !== null && this.can('view') && !this.saving() && !this.loading())
         void this.load(this.target()!);
+      if (this.inboxActive && this.can('view') && !this.inboxLoading()) void this.loadInbox();
     }, 15000);
     inject(DestroyRef).onDestroy(() => {
       this.destroyed = true;
@@ -173,6 +184,10 @@ export class EcmApi {
     });
   }
   private clear() {
+    this.inboxGeneration++;
+    this.inbox.set([]);
+    this.inboxLoading.set(false);
+    this.inboxError.set('');
     this.raw.set(null);
     this.unavailable.set([]);
     this.loadedAt.set('');
@@ -180,7 +195,7 @@ export class EcmApi {
     for (const url of this.urls) URL.revokeObjectURL(url);
     this.urls.clear();
   }
-  can(action: string) {
+  can(action: string): boolean {
     if (
       this.denied() ||
       (this.staff !== null && !this.staff.ready()) ||
@@ -196,6 +211,14 @@ export class EcmApi {
     )
       return false;
     if (action === 'view') return true;
+    if (action === 'allocate' || action === 'reschedule' || action === 'override')
+      return (
+        this.can('manage') &&
+        this.records.access.can('care', 'rostering', 'edit') &&
+        (action !== 'override' ||
+          (this.records.access.can('care', 'ecm', 'approve') &&
+            this.records.access.can('people', 'records', 'read')))
+      );
     if (action === 'manage') return this.records.access.can('care', 'ecm', 'edit');
     if (action === 'attendance') return this.records.access.can('care', 'ecm', 'create');
     if (action === 'export')
@@ -325,6 +348,68 @@ export class EcmApi {
       return false;
     } finally {
       if (generation === this.generation) this.loading.set(false);
+    }
+  }
+  watchInbox(enabled: boolean) {
+    const changed = enabled !== this.inboxActive;
+    this.inboxActive = enabled;
+    if (enabled && changed) void this.loadInbox();
+    if (!enabled) {
+      this.inboxGeneration++;
+      this.inboxLoading.set(false);
+    }
+  }
+  async loadInbox(): Promise<boolean> {
+    const scope = this.scope(),
+      generation = ++this.inboxGeneration;
+    if (this.staffMode || !this.can('view')) {
+      this.inbox.set([]);
+      return false;
+    }
+    this.inboxLoading.set(true);
+    this.inboxError.set('');
+    const root = this.root() + '/notifications/inbox';
+    try {
+      let path: string | null = root + '?page_size=100';
+      const rows: EcmData['notifications'] = [],
+        visited = new Set<string>();
+      let expected = -1;
+      while (path) {
+        if (!path.startsWith(root + '?') || visited.has(path) || rows.length >= 2000)
+          throw Error('The notification inbox changed. Refresh to load it again.');
+        visited.add(path);
+        const page: EcmInboxRead = this.check(await this.request<EcmInboxRead>(path), scope);
+        if (generation !== this.inboxGeneration || !this.current(scope)) return false;
+        if (expected === -1) expected = page.count;
+        if (
+          !Number.isInteger(page.count) ||
+          page.count < 0 ||
+          page.count > 2000 ||
+          page.count !== expected ||
+          !Array.isArray(page.results) ||
+          (!page.results.length && page.next) ||
+          page.results.some(
+            (row) => !row['id'] || row['state'] !== 'Delivered' || row['channel'] !== 'In-app',
+          )
+        )
+          throw Error('The notification inbox response is incomplete. Refresh to load it again.');
+        rows.push(...(page.results as unknown as EcmData['notifications']));
+        path = page.next;
+      }
+      if (rows.length !== expected || new Set(rows.map((row) => row.id)).size !== rows.length)
+        throw Error('The notification inbox changed. Refresh to load it again.');
+      this.inbox.set(rows);
+      return true;
+    } catch (error) {
+      if (generation === this.inboxGeneration && this.current(scope)) {
+        this.inbox.set([]);
+        this.inboxError.set(
+          error instanceof Error ? error.message : 'Notifications could not be loaded.',
+        );
+      }
+      return false;
+    } finally {
+      if (generation === this.inboxGeneration) this.inboxLoading.set(false);
     }
   }
   private visit(id: string) {

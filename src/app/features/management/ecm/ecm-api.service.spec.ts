@@ -2,6 +2,7 @@ import { STAFF_CLIENTS, StaffClientsApi } from '../staff-portal/staff-clients-ap
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Ecm } from './ecm';
+import { EcmWallboard } from './ecm-wallboard';
 import { EcmWorkflows } from './ecm-workflows';
 import { signal } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -68,7 +69,7 @@ describe('Connected live visits', () => {
     allowed = signal(true);
     request = vi.fn(async () => board());
     TestBed.configureTestingModule({
-      imports: [Ecm, EcmWorkflows],
+      imports: [Ecm, EcmWorkflows, EcmWallboard],
       providers: [
         provideRouter([]),
         ...ECM_PROVIDERS,
@@ -86,6 +87,53 @@ describe('Connected live visits', () => {
     TestBed.tick();
   });
   afterEach(() => TestBed.resetTestingModule());
+  it('requires loaded settings before opening the connected settings form', async () => {
+    api.loading.set(true);
+    const fixture = TestBed.createComponent(Ecm);
+    fixture.detectChanges();
+    const settings = () =>
+      [...fixture.nativeElement.querySelectorAll('button')].find((button: any) =>
+        button.textContent.includes('Settings'),
+      ) as HTMLButtonElement;
+    expect(settings().disabled).toBe(true);
+    await api.load('2026-11-13');
+    fixture.detectChanges();
+    expect(settings().disabled).toBe(false);
+    settings().click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeTruthy();
+  });
+  it('requires roster edit and approval permissions for allocation overrides', () => {
+    const can = vi.fn(
+      (module: string, submodule: string, action: string) =>
+        !(submodule === 'rostering' && action === 'edit'),
+    );
+    TestBed.inject(ServiceUsersApi).access.can = can;
+    expect(api.can('manage')).toBe(true);
+    expect(api.can('reschedule')).toBe(false);
+    expect(api.manager()).toBe(false);
+    can.mockImplementation(
+      (module, submodule, action) => !(submodule === 'ecm' && action === 'approve'),
+    );
+    expect(api.can('allocate')).toBe(true);
+    expect(api.can('override')).toBe(false);
+    can.mockReturnValue(true);
+    expect(api.can('override')).toBe(true);
+  });
+  it('refreshes the connected wallboard from the service and shows its real polling interval', async () => {
+    await api.load('2026-11-13');
+    const fixture = TestBed.createComponent(EcmWallboard);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await api.load();
+    fixture.detectChanges();
+    expect(api.loading()).toBe(false);
+    expect(fixture.nativeElement.querySelector('[aria-label="Refresh wallboard"]').disabled).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('Refresh every 15 sec');
+    const load = vi.spyOn(api, 'load').mockResolvedValue(true);
+    fixture.nativeElement.querySelector('[aria-label="Refresh wallboard"]').click();
+    expect(load).toHaveBeenCalled();
+  });
   it('uses the connected graph and starts without browser demonstration data', () => {
     expect(TestBed.inject(EcmService)).toBe(api);
     expect(TestBed.inject(EcmOperations)).toBe(api);
@@ -268,6 +316,98 @@ describe('Connected live visits', () => {
     await fixture.whenStable();
     expect(save).toHaveBeenCalledWith('case', 'member', 'Open', 'Verified welfare', '"v1"');
     expect(page.cases.case).toBeUndefined();
+    fixture.destroy();
+  });
+  it('shows recorded workflow controls without setup or simulated notification actions', async () => {
+    const fixture = TestBed.createComponent(EcmWorkflows);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const component = fixture.componentInstance as any;
+    expect(component.tabs).not.toContain('Demo setup');
+    component.tab.set('Notifications');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Notification outbox');
+    expect(fixture.nativeElement.textContent).not.toContain('Demo notification outbox');
+    component.tab.set('Billing & outcomes');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Downloads include current attendance');
+    fixture.destroy();
+  });
+  it('loads every recipient inbox page and clears messages on a company change', async () => {
+    const message = (id: string) => ({
+      id,
+      channel: 'In-app',
+      state: 'Delivered',
+      subject: 'Welfare update',
+      body: 'Verified care',
+      visitId: 'visit',
+    });
+    request.mockResolvedValueOnce({
+      company_id: 'north',
+      count: 2,
+      next: '/companies/north/ecm/notifications/inbox?page=2&page_size=100',
+      results: [message('first')],
+    });
+    request.mockResolvedValueOnce({
+      company_id: 'north',
+      count: 2,
+      next: null,
+      results: [message('second')],
+    });
+    expect(await api.loadInbox()).toBe(true);
+    expect(api.inbox().map((row) => row.id)).toEqual(['first', 'second']);
+    expect(request.mock.calls[0][0]).toBe('/companies/north/ecm/notifications/inbox?page_size=100');
+    company.set('south');
+    scope.set('south:actor');
+    TestBed.tick();
+    expect(api.inbox()).toEqual([]);
+  });
+  it('rejects a cross-company or incomplete notification inbox', async () => {
+    request.mockResolvedValueOnce({ company_id: 'south', count: 0, next: null, results: [] });
+    expect(await api.loadInbox()).toBe(false);
+    expect(api.inbox()).toEqual([]);
+    request.mockResolvedValueOnce({
+      company_id: 'north',
+      count: 2,
+      next: null,
+      results: [{ id: 'one', channel: 'In-app', state: 'Delivered' }],
+    });
+    expect(await api.loadInbox()).toBe(false);
+    expect(api.inbox()).toEqual([]);
+    expect(api.inboxError()).toContain('changed');
+  });
+  it('renders delivered recipient messages in the connected inbox', async () => {
+    request.mockImplementation(async (path: string) =>
+      path.includes('/notifications/inbox')
+        ? {
+            company_id: 'north',
+            count: 1,
+            next: null,
+            results: [
+              {
+                id: 'notice',
+                channel: 'In-app',
+                state: 'Delivered',
+                subject: 'Welfare update',
+                body: 'Care confirmed by the duty team.',
+                user: 'Recorded sender',
+                visitId: 'visit',
+                at: '2026-11-13T10:00:00Z',
+              },
+            ],
+          }
+        : board(),
+    );
+    const fixture = TestBed.createComponent(EcmWorkflows);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    (fixture.componentInstance as any).tab.set('Inbox');
+    fixture.detectChanges();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('Care confirmed by the duty team.');
+    });
+    expect(fixture.nativeElement.textContent).toContain('Your notifications');
     fixture.destroy();
   });
   it('never fabricates delivery receipts, invoices or payroll transfers', async () => {
