@@ -75,10 +75,10 @@ describe('Reference Mobility care area', () => {
     fixture.detectChanges();
     return { fixture, component: fixture.componentInstance, plan, client, approved };
   }
-  it('renders the nine reference blocks, seven formatted editors, supporting and linked rows', async () => {
+  it('renders the nine reference blocks, eight formatted editors, supporting and linked rows', async () => {
     const { fixture } = await setup();
     const page = fixture.nativeElement as HTMLElement;
-    expect(page.querySelectorAll('cv-care-plan-rich-text')).toHaveLength(7);
+    expect(page.querySelectorAll('cv-care-plan-rich-text')).toHaveLength(8);
     expect(page.querySelectorAll('.supporting-documents .linked-row')).toHaveLength(2);
     expect(page.querySelectorAll('.linked-records .linked-row')).toHaveLength(3);
     for (const label of [

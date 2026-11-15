@@ -60,9 +60,14 @@ export class CarePlanPersonalCare implements OnDestroy {
         this.stopRecording();
         this.stopPlayback();
         this.elapsed.set(0);
-        this.transcript.set(this.section.fields['personalVoiceTranscript'] || this.seedTranscript);
+        this.transcript.set(
+          this.section.fields['personalVoiceTranscript'] ||
+            (this.connected() ? '' : this.seedTranscript),
+        );
         this.proposal.set(
-          this.section.fields['personalAiDraft'] || this.section.fields['situation'] || '',
+          this.section.fields['personalAiDraft'] ||
+            (this.connected() ? '' : this.section.fields['situation']) ||
+            '',
         );
         this.decision.set(this.section.fields['personalAiDecision'] || 'Pending');
         this.proposalBase =

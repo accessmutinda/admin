@@ -265,52 +265,55 @@
       </section>
     </div>
     <aside class="care-sidebar" aria-label="Personal Care review tools">
-      <section class="ai-panel">
-        <header>
-          <h3>
-            <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>AI
-            Suggested Update <small>(from voice)</small>
-          </h3>
-        </header>
-        <div class="ai-content">
-          <p class="ai-target">Suggested field: Current situation · Seeded demo</p>
-          @if (proposalEditing()) {
-            <textarea
-              aria-label="Edit Personal Care AI suggestion"
-              rows="7"
-              [ngModel]="proposal()"
-              (ngModelChange)="updateProposal($event)"
-            ></textarea>
-          } @else {
-            <p class="suggested-wording">
-              {{ proposal() || 'Record or edit a transcript, then choose AI Suggest Update.' }}
-            </p>
-          }
-          @if (decision() !== 'Pending') {
-            <span class="decision" [attr.data-decision]="decision()" role="status">{{
-              decision()
-            }}</span>
-          }
-          <div class="proposal-actions">
-            <button
-              class="accept"
-              [disabled]="!editable() || decision() !== 'Pending' || !proposal().trim()"
-              (click)="accept()"
-            >
-              <span class="material-symbols-outlined" aria-hidden="true">check</span>Accept</button
-            ><button [disabled]="!editable()" (click)="editProposal()">
-              <span class="material-symbols-outlined" aria-hidden="true">edit</span
-              >{{ proposalEditing() ? 'Done' : 'Edit' }}</button
-            ><button
-              class="reject"
-              [disabled]="!editable() || !['Pending', 'Needs regeneration'].includes(decision())"
-              (click)="reject()"
-            >
-              <span class="material-symbols-outlined" aria-hidden="true">delete</span>Reject
-            </button>
+      @if (!connected()) {
+        <section class="ai-panel">
+          <header>
+            <h3>
+              <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>AI
+              Suggested Update <small>(from voice)</small>
+            </h3>
+          </header>
+          <div class="ai-content">
+            <p class="ai-target">Suggested field: Current situation · Seeded demo</p>
+            @if (proposalEditing()) {
+              <textarea
+                aria-label="Edit Personal Care AI suggestion"
+                rows="7"
+                [ngModel]="proposal()"
+                (ngModelChange)="updateProposal($event)"
+              ></textarea>
+            } @else {
+              <p class="suggested-wording">
+                {{ proposal() || 'Record or edit a transcript, then choose AI Suggest Update.' }}
+              </p>
+            }
+            @if (decision() !== 'Pending') {
+              <span class="decision" [attr.data-decision]="decision()" role="status">{{
+                decision()
+              }}</span>
+            }
+            <div class="proposal-actions">
+              <button
+                class="accept"
+                [disabled]="!editable() || decision() !== 'Pending' || !proposal().trim()"
+                (click)="accept()"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">check</span
+                >Accept</button
+              ><button [disabled]="!editable()" (click)="editProposal()">
+                <span class="material-symbols-outlined" aria-hidden="true">edit</span
+                >{{ proposalEditing() ? 'Done' : 'Edit' }}</button
+              ><button
+                class="reject"
+                [disabled]="!editable() || !['Pending', 'Needs regeneration'].includes(decision())"
+                (click)="reject()"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">delete</span>Reject
+              </button>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      }
       <section class="transcript-panel">
         <header>
           <h3>Voice Transcript</h3>

@@ -368,6 +368,7 @@
                       </p>
                       <cv-care-plan-package-handoffs
                         [clientId]="id"
+                        [revision]="record?.revision"
                         [connected]="service.connected"
                         (changed)="refreshHandoffRevision()"
                       />
@@ -415,38 +416,115 @@
                         (documentView)="viewMobilityDocument($event)"
                       />
                     } @else {
-                      <section
-                        class="plan-card section-coming-soon"
-                        aria-labelledby="coming-soon-title"
-                      >
-                        <div class="coming-soon-context">
-                          <p class="eyebrow">CARE AREA {{ index + 1 }} OF 17</p>
-                          <span class="coming-soon-badge">In development</span>
-                        </div>
-                        <div class="coming-soon-body">
-                          <span
-                            class="coming-soon-icon material-symbols-outlined"
-                            aria-hidden="true"
-                            >{{ careAreas[index].icon }}</span
-                          >
-                          <p class="coming-soon-label">Coming soon</p>
-                          <h2 id="coming-soon-title">{{ section.name }}</h2>
-                          <p>
-                            We’re preparing a dedicated space for {{ section.name.toLowerCase() }}.
-                            This section will be available in a future update.
-                          </p>
-                          <div class="coming-soon-note">
-                            <span class="material-symbols-outlined" aria-hidden="true"
-                              >verified_user</span
-                            >
-                            <span>Your existing care plan information is safely retained.</span>
+                      <section class="plan-card care-area-editor" aria-labelledby="care-area-title">
+                        <div class="card-heading">
+                          <div>
+                            <p class="eyebrow">CARE AREA {{ index + 1 }} OF 17</p>
+                            <h2 id="care-area-title">{{ section.name }}</h2>
+                            <p>
+                              Record agreed needs, support and outcomes, then mark this area
+                              reviewed.
+                            </p>
                           </div>
+                          <span>{{ section.complete ? 'Reviewed' : 'Needs review' }}</span>
+                        </div>
+                        <label class="check">
+                          <input
+                            type="checkbox"
+                            [disabled]="!editable()"
+                            [ngModel]="section.required"
+                            (ngModelChange)="section.required = $event; section.complete = false"
+                          />
+                          This care area is required
+                        </label>
+                        @if (!section.required) {
+                          <p>Record why this area is not required in Changes since last review.</p>
+                        }
+                        <div class="care-area-fields">
+                          @for (field of fields; track field[0]) {
+                            <label [class.invalid]="sectionAttempted && fieldMissing(field[0])">
+                              {{ field[1] }}{{ optionalField(field[0]) ? ' (optional)' : ' *' }}
+                              <textarea
+                                [attr.aria-label]="field[1]"
+                                [attr.aria-required]="!optionalField(field[0])"
+                                [attr.aria-invalid]="sectionAttempted && fieldMissing(field[0])"
+                                [disabled]="!editable()"
+                                [ngModel]="section.fields[field[0]]"
+                                (ngModelChange)="updateSectionField(field[0], $event)"
+                                rows="3"
+                              ></textarea>
+                              @if (sectionAttempted && fieldMissing(field[0])) {
+                                <span class="field-error"
+                                  >Complete this field before marking the area reviewed.</span
+                                >
+                              }
+                            </label>
+                          }
+                          <label
+                            [class.invalid]="
+                              sectionAttempted && section.required && !planDate(section.review)
+                            "
+                          >
+                            Section review date{{ section.required ? ' *' : ' (optional)' }}
+                            <input
+                              type="date"
+                              aria-label="Section review date"
+                              [attr.aria-required]="section.required"
+                              [attr.aria-invalid]="
+                                sectionAttempted && section.required && !planDate(section.review)
+                              "
+                              [disabled]="!editable()"
+                              [ngModel]="section.review"
+                              (ngModelChange)="section.review = $event; section.complete = false"
+                            />
+                          </label>
+                        </div>
+                        <fieldset
+                          class="care-area-sharing"
+                          [disabled]="!editable() || !service.canApprove()"
+                        >
+                          <legend>Visibility settings (manager only)</legend>
+                          @for (audience of audiences; track audience.key) {
+                            <label class="check">
+                              <input
+                                type="checkbox"
+                                [(ngModel)]="section.visibility[audience.key]"
+                              />
+                              Show to {{ audience.label }}
+                            </label>
+                          }
+                        </fieldset>
+                        <div class="actions">
+                          <button
+                            type="button"
+                            class="button"
+                            [disabled]="!editable()"
+                            (click)="save()"
+                          >
+                            Save draft
+                          </button>
+                          <button
+                            type="button"
+                            class="button primary"
+                            [disabled]="!editable()"
+                            (click)="markComplete()"
+                          >
+                            Mark section reviewed
+                          </button>
+                          @if (previousSection) {
+                            <button
+                              type="button"
+                              class="button"
+                              [disabled]="!editable()"
+                              (click)="copyPreviousSection()"
+                            >
+                              Copy previous wording
+                            </button>
+                          }
                         </div>
                         <footer class="coming-soon-navigation">
                           <button type="button" class="button" (click)="goSection(index - 1)">
-                            <span class="material-symbols-outlined" aria-hidden="true"
-                              >arrow_back</span
-                            >Previous section
+                            Previous section
                           </button>
                           <span>{{ index + 1 }} of 17 sections</span>
                           <button
@@ -455,9 +533,7 @@
                             [disabled]="index === 16"
                             (click)="goSection(index + 1)"
                           >
-                            Next section<span class="material-symbols-outlined" aria-hidden="true"
-                              >arrow_forward</span
-                            >
+                            Next section
                           </button>
                         </footer>
                       </section>
@@ -1214,42 +1290,49 @@
                   @case ('Versions & approval') {
                     <section class="plan-card">
                       <h2>Versions and approval</h2>
-                      <div class="demo-approval-scope">
-                        <p class="eyebrow">
-                          {{
-                            service.connected
-                              ? 'CARE PLAN REVIEW'
-                              : 'FRONTEND WORKFLOW DEMONSTRATION'
-                          }}
+                      @if (service.connected) {
+                        <p class="message">
+                          All required care areas must be reviewed before submission. Management
+                          approval requires a separate approver and a confirmed signature.
                         </p>
-                        <h3>Review the three available care areas</h3>
-                        <p>
-                          About Me, Personal Care and Mobility have editors available. The other 14
-                          screens remain deferred. Full approval requires all required care areas to
-                          be reviewed.
-                        </p>
-                        @if (editable()) {
-                          <label class="check"
-                            ><input
-                              type="checkbox"
-                              [ngModel]="p.demoScope === 'available-sections'"
-                              [disabled]="service.connected"
-                              (ngModelChange)="setDemoScope($event)"
-                            />Use the three-section demo approval workflow</label
-                          >
-                        }
-                        @if (p.demoScope) {
-                          <p class="message">
-                            <strong>{{ demoApprovalLabel }}</strong
-                            ><br />{{ demoCompleted() }} of 3 available areas reviewed. This is a
-                            partial demonstration, not a complete approved care plan.
+                      } @else {
+                        <div class="demo-approval-scope">
+                          <p class="eyebrow">
+                            {{
+                              service.connected
+                                ? 'CARE PLAN REVIEW'
+                                : 'FRONTEND WORKFLOW DEMONSTRATION'
+                            }}
                           </p>
-                        }
-                        <details>
-                          <summary>14 deferred care areas</summary>
-                          <p>{{ deferredCareAreas.join(' · ') }}</p>
-                        </details>
-                      </div>
+                          <h3>Review the three available care areas</h3>
+                          <p>
+                            About Me, Personal Care and Mobility have editors available. The other
+                            14 screens remain deferred. Full approval requires all required care
+                            areas to be reviewed.
+                          </p>
+                          @if (editable()) {
+                            <label class="check"
+                              ><input
+                                type="checkbox"
+                                [ngModel]="p.demoScope === 'available-sections'"
+                                [disabled]="service.connected"
+                                (ngModelChange)="setDemoScope($event)"
+                              />Use the three-section demo approval workflow</label
+                            >
+                          }
+                          @if (p.demoScope) {
+                            <p class="message">
+                              <strong>{{ demoApprovalLabel }}</strong
+                              ><br />{{ demoCompleted() }} of 3 available areas reviewed. This is a
+                              partial demonstration, not a complete approved care plan.
+                            </p>
+                          }
+                          <details>
+                            <summary>14 deferred care areas</summary>
+                            <p>{{ deferredCareAreas.join(' · ') }}</p>
+                          </details>
+                        </div>
+                      }
                       <label
                         >Next care-plan review date<input
                           type="date"

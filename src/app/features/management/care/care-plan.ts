@@ -448,7 +448,11 @@ export class CarePlan implements OnDestroy {
   }
   protected editable() {
     return (
-      this.plan?.status === 'Draft' && (this.api ? this.api.can('edit') : this.service.canEdit())
+      this.plan?.status === 'Draft' &&
+      !this.api?.saving() &&
+      !this.api?.uploading() &&
+      !this.api?.loading() &&
+      (this.api ? this.api.can('edit') : this.service.canEdit())
     );
   }
   protected dirty() {
@@ -774,13 +778,41 @@ export class CarePlan implements OnDestroy {
       if (action === 'review') this.openWorkflowTab('Client details');
     });
   }
+  protected readonly audiences = [
+    { key: 'staff' as const, label: 'Staff / Carers' },
+    { key: 'family' as const, label: 'Family Portal' },
+    { key: 'inspector' as const, label: 'Inspector Portal' },
+  ];
+  protected readonly planDate = planDate;
+  protected sectionAttempted = false;
+  protected optionalField(key: string) {
+    return this.section.required ? key === 'equipment' || key === 'changes' : key !== 'changes';
+  }
+  protected fieldMissing(key: string) {
+    return !this.optionalField(key) && !this.section.fields[key]?.trim();
+  }
+  protected updateSectionField(key: string, value: string) {
+    this.section.fields[key] = value;
+    delete this.section.fields['_richHtml_' + key];
+    delete this.section.fields['_richText_' + key];
+    this.section.complete = false;
+  }
   protected markComplete() {
+    this.sectionAttempted = true;
     const error = sectionError(this.section);
     this.error.set(error);
     if (!error) {
-      this.section.complete = true;
-      this.save();
+      const section = this.section,
+        previous = section.complete;
+      section.complete = true;
+      const result = this.save();
+      const restore = () => {
+        if (this.error()) section.complete = previous;
+      };
+      if (result instanceof Promise) return result.then(restore);
+      restore();
     }
+    return;
   }
   protected goSection(i: number) {
     if (!this.leaveAboutEdit()) return;
@@ -793,6 +825,7 @@ export class CarePlan implements OnDestroy {
     }
     this.listening = false;
     this.index = i;
+    this.sectionAttempted = false;
     this.tab = 'Care sections';
     this.transcript = '';
     this.suggestion = '';
@@ -1114,6 +1147,7 @@ export class CarePlan implements OnDestroy {
       this.error.set('Choose a PNG or JPEG photograph under 350 KB.');
       return;
     }
+    this.error.set('');
     if (this.api) {
       try {
         Object.assign(this.observation, await this.api.uploadPhoto(this.id, file));

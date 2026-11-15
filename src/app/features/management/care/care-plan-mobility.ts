@@ -42,6 +42,7 @@ export class CarePlanMobility {
     { key: 'preferences', label: '6. My preferences, wishes and choices', compact: false },
     { key: 'goal', label: '7. Desired outcome / goal', compact: true },
     { key: 'risks', label: '8. Risks and escalation', compact: true },
+    { key: 'actions', label: 'How the outcome will be achieved', compact: false },
   ];
   readonly audiences = [
     { key: 'staff' as const, label: 'Staff / Carers' },

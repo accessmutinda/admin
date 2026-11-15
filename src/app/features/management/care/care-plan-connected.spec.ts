@@ -198,4 +198,122 @@ describe('Care-plan screen with connected services', () => {
     expect(text).toContain('Task-linked visit evidence is unavailable');
     expect(text).not.toContain('Browse the fictional evidence records');
   });
+  it('renders every remaining care area and highlights missing required inputs without saving', async () => {
+    const fixture = await screen(),
+      component = fixture.componentInstance as any;
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    for (let index = 3; index < 17; index++) {
+      component.goSection(index);
+      component.section.fields = {};
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('.care-area-editor textarea')).toHaveLength(9);
+      request.mockClear();
+      component.markComplete();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('textarea[aria-invalid="true"]')).toHaveLength(
+        7,
+      );
+      expect(component.error()).toContain('Current situation');
+      expect(request).not.toHaveBeenCalled();
+    }
+  });
+  it('invalidates review completion when editing a care area and removes stale formatting', async () => {
+    const fixture = await screen(),
+      component = fixture.componentInstance as any;
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    component.goSection(3);
+    component.section.complete = true;
+    component.section.fields['_richHtml_situation'] = '<b>Old wording</b>';
+    component.section.fields['_richText_situation'] = 'Old wording';
+    component.updateSectionField('situation', 'New reviewed wording');
+    expect(component.section.complete).toBe(false);
+    expect(component.section.fields['situation']).toBe('New reviewed wording');
+    expect(component.section.fields['_richHtml_situation']).toBeUndefined();
+  });
+  it('keeps approved care areas read only and presents the full review requirements', async () => {
+    const value = workspace();
+    value.record.versions[0].status = 'Approved';
+    request.mockResolvedValue(value);
+    const fixture = await screen(),
+      component = fixture.componentInstance as any;
+    expect(fixture.nativeElement.textContent).toContain('All required care areas');
+    expect(fixture.nativeElement.textContent).not.toContain('14 deferred care areas');
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    component.goSection(16);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(
+      [...fixture.nativeElement.querySelectorAll('.care-area-editor textarea')].every(
+        (field: any) => field.disabled,
+      ),
+    ).toBe(true);
+    expect(fixture.nativeElement.querySelector('.care-area-editor button.primary').disabled).toBe(
+      true,
+    );
+  });
+
+  it('clears an earlier upload error after a valid consented photograph and blocks edits while uploading', async () => {
+    const fixture = await screen(),
+      component = fixture.componentInstance as any;
+    const api = TestBed.inject(CarePlanApi);
+    component.photoConsent = true;
+    component.error.set('Choose another file');
+    vi.spyOn(api, 'uploadPhoto').mockResolvedValue({ photo: 'blob:valid-photo', photoId: 'photo' });
+    await component.attachPhoto({
+      target: { files: [new File(['image'], 'photo.png', { type: 'image/png' })] },
+    });
+    expect(component.error()).toBe('');
+    expect(component.observation.photoId).toBe('photo');
+    api.uploading.set(true);
+    expect(component.editable()).toBe(false);
+    api.uploading.set(false);
+    expect(component.editable()).toBe(true);
+  });
+
+  it('requires an explanation before marking a care area as not required', async () => {
+    const fixture = await screen(),
+      component = fixture.componentInstance as any;
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    component.goSection(14);
+    component.section.required = false;
+    component.section.review = '';
+    component.section.fields['changes'] = '';
+    request.mockClear();
+    component.markComplete();
+    expect(component.error()).toContain('why this care area is not required');
+    expect(request).not.toHaveBeenCalled();
+    component.section.fields['changes'] =
+      'Discussed with the service user; this area is outside current support needs.';
+    request.mockResolvedValue(workspace(2));
+    await component.markComplete();
+    expect(request.mock.calls.some((call: any[]) => call[2] === 'PATCH')).toBe(true);
+  });
+  it('retains an unreviewed area when its review save is rejected', async () => {
+    const fixture = await screen(),
+      component = fixture.componentInstance as any;
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    component.goSection(3);
+    for (const [key] of component.fields) component.section.fields[key] = 'Agreed support';
+    component.section.review = '2027-02-15';
+    request.mockRejectedValue(new Error('The record changed. Reload before saving.'));
+    await component.markComplete();
+    expect(component.section.complete).toBe(false);
+    expect(component.error()).toContain('The record changed');
+  });
+  it('allows disclosure controls only for an approver with an editable draft', async () => {
+    const fixture = await screen(),
+      component = fixture.componentInstance as any;
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const approval = signal(false);
+    vi.spyOn(TestBed.inject(CarePlanApi), 'canApprove').mockImplementation(() => approval());
+    component.goSection(3);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.care-area-sharing').disabled).toBe(true);
+    approval.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.care-area-sharing').disabled).toBe(false);
+  });
 });

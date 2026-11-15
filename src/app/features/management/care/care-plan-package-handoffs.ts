@@ -122,6 +122,7 @@ import { PackageHandoff } from './care-plan.models';
 })
 export class CarePlanPackageHandoffs {
   readonly clientId = input('');
+  readonly revision = input<number>();
   readonly connected = input(false);
   readonly rotaMode = input(false);
   readonly changed = output<void>();
@@ -129,6 +130,7 @@ export class CarePlanPackageHandoffs {
   protected readonly api = inject(CarePlanApi);
   constructor() {
     effect(() => {
+      this.revision();
       if (this.connected()) this.api.connect(this.clientId());
     });
   }

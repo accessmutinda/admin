@@ -1,5 +1,13 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { of } from 'rxjs';
-import { seedCareDemo } from '../../../demo/care-demo';
+import { seedCareDemo as originalCareFixture } from '../../../demo/care-demo';
+const seedCareDemo = (data: Parameters<typeof originalCareFixture>[0]) =>
+  JSON.parse(
+    JSON.stringify(originalCareFixture(data)).replaceAll(
+      'care-demo-staff-',
+      'care-plan-test-staff-',
+    ),
+  );
 import { ASSESSMENT_FIELDS } from './care-plan-assessment.models';
 import {
   REVIEW_SOURCE_CATEGORIES,
@@ -52,7 +60,19 @@ describe('Electronic care-plan lifecycle', () => {
     });
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const auth = TestBed.inject(AuthService);
-    auth.signInDemoSession();
+    (auth as any).accessExpiresAt = Date.now() + 3_600_000;
+    vi.spyOn(auth, 'isAuthenticated').mockReturnValue(true);
+    vi.spyOn(auth, 'api').mockResolvedValue({} as never);
+    vi.spyOn(auth, 'profile').mockReturnValue({
+      company_id: 'lqcs',
+      company_entry_state: 'ready',
+    } as any);
+    vi.spyOn(auth, 'canAccessCompany').mockReturnValue(true);
+    vi.spyOn(auth, 'selectWorkspace').mockResolvedValue();
+    const access = TestBed.inject(CompanyAccessService);
+    vi.spyOn(access, 'refresh').mockResolvedValue();
+    vi.spyOn(access, 'can').mockReturnValue(true);
+    vi.spyOn(access, 'canPath').mockReturnValue(true);
     TestBed.inject(WorkspaceService).switchWorkspace(workspace);
     actor.set({ ...DEMO_USER, roleCode: 'CA' });
     vi.spyOn(auth, 'currentUser').mockImplementation(() => actor());
@@ -60,6 +80,26 @@ describe('Electronic care-plan lifecycle', () => {
     rota = TestBed.inject(RotaService);
     care = TestBed.inject(CareService);
     service = TestBed.inject(CarePlanService);
+    store.saveWorkspace((data) => ({
+      ...data,
+      people: [
+        {
+          id: 'care-plan-test-staff',
+          name: 'Assigned carer',
+          email: 'assigned@example.test',
+          role: 'Care Worker',
+          location: '',
+          stage: 'Hired',
+          vacancy: '',
+          start: '2026-01-01',
+          notes: [],
+          checks: [],
+          onboarding: [],
+          learning: [],
+          progress: {},
+        },
+      ],
+    }));
     expect(
       rota.saveClient({
         id,
@@ -490,7 +530,9 @@ describe('Electronic care-plan lifecycle', () => {
     route.queryParamMap = of(route.snapshot.queryParamMap);
     const fixture = TestBed.createComponent(CarePlan);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('AI care-plan review and quality checking');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Review rationale / resolution of findings',
+    );
     const editor = fixture.componentInstance as any;
     for (const name of Object.keys(ASSESSMENT_FIELDS)) {
       editor.assessment.name = name;
@@ -545,9 +587,7 @@ describe('Electronic care-plan lifecycle', () => {
   it('allows the seeded Sarah Clarke account to view instructions for an actually assigned demo visit', () => {
     expect(store.saveWorkspace((data) => seedCareDemo(data))).toBe(true);
     const auth = TestBed.inject(AuthService);
-    vi.mocked(auth.currentUser).mockRestore();
-    auth.signIn('sarah.clarke@example.test', 'CareVerity123!');
-    auth.verifyMfa('123456', false);
+    actor.set({ ...DEMO_USER, roleCode: 'CW', email: 'sarah.clarke@example.test' });
     TestBed.inject(WorkspaceService).switchWorkspace(workspace);
     expect(auth.currentUser()!.roleCode).toBe('CW');
     const staff = store.staff().find((p) => p.email === 'sarah.clarke@example.test')!;

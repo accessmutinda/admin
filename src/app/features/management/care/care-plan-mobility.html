@@ -127,7 +127,7 @@
     }
   </div>
   <div class="mobility-review-row">
-    @for (field of fields.slice(5, 7); track field.key) {
+    @for (field of fields.slice(5); track field.key) {
       <section [class]="'field-panel field-' + field.key">
         <h3>{{ field.label }}</h3>
         <cv-care-plan-rich-text

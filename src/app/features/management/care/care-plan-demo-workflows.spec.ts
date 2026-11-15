@@ -1,3 +1,4 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -29,13 +30,45 @@ describe('Care-plan frontend demo workflows', () => {
     localStorage.clear();
     TestBed.configureTestingModule({});
     const auth = TestBed.inject(AuthService);
-    auth.signInDemoSession();
+    (auth as any).accessExpiresAt = Date.now() + 3_600_000;
+    vi.spyOn(auth, 'isAuthenticated').mockReturnValue(true);
+    vi.spyOn(auth, 'api').mockResolvedValue({} as never);
+    vi.spyOn(auth, 'profile').mockReturnValue({
+      company_id: 'lqcs',
+      company_entry_state: 'ready',
+    } as any);
+    vi.spyOn(auth, 'canAccessCompany').mockReturnValue(true);
+    vi.spyOn(auth, 'selectWorkspace').mockResolvedValue();
+    const access = TestBed.inject(CompanyAccessService);
+    vi.spyOn(access, 'refresh').mockResolvedValue();
+    vi.spyOn(access, 'can').mockReturnValue(true);
+    vi.spyOn(access, 'canPath').mockReturnValue(true);
     TestBed.inject(WorkspaceService).switchWorkspace(workspace);
     actor.set({ ...DEMO_USER, roleCode: 'CA' });
     vi.spyOn(auth, 'currentUser').mockImplementation(() => actor());
     plans = TestBed.inject(CarePlanService);
     store = TestBed.inject(ManagementStore);
     rota = TestBed.inject(RotaService);
+    store.saveWorkspace((data) => ({
+      ...data,
+      people: [
+        {
+          id: 'care-plan-test-staff',
+          name: 'Assigned carer',
+          email: 'assigned@example.test',
+          role: 'Care Worker',
+          location: '',
+          stage: 'Hired',
+          vacancy: '',
+          start: '2026-01-01',
+          notes: [],
+          checks: [],
+          onboarding: [],
+          learning: [],
+          progress: {},
+        },
+      ],
+    }));
     expect(
       rota.saveClient({
         id: clientId,

@@ -742,3 +742,41 @@ select:focus-visible {
     justify-content: flex-start;
   }
 }
+
+.care-area-fields {
+  display: grid;
+  gap: 16px;
+  margin: 20px 0;
+}
+.care-area-fields label {
+  display: grid;
+  gap: 7px;
+  font-weight: 600;
+}
+.care-area-fields textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+}
+.care-area-fields .invalid textarea,
+.care-area-fields .invalid input {
+  border-color: #b91c1c;
+  background: #fff5f5;
+}
+.care-area-fields .field-error {
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.care-area-sharing {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid #dce6ee;
+  border-radius: 6px;
+}
+.care-area-sharing label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 16px;
+}

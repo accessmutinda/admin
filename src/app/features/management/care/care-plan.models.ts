@@ -261,7 +261,10 @@ export const planDate = (value: string) =>
   Number.isFinite(Date.parse(value + 'T12:00:00Z')) &&
   new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) === value;
 export function sectionError(s: PlanSection): string {
-  if (!s.required) return '';
+  if (!s.required)
+    return s.fields['changes']?.trim()
+      ? ''
+      : `${s.name}: record why this care area is not required in Changes since last review.`;
   for (const key of [
     'situation',
     'assistance',

@@ -7,7 +7,7 @@ import { emptyClientFile } from '../clients/client-file.models';
 import { seededAssessment } from './care-plan-assessment.models';
 
 describe('Personal Care first-design workflow', () => {
-  async function setup(editable = true) {
+  async function setup(editable = true, connected = false) {
     const client: RotaClient = {
       id: 'personal-test',
       name: 'Mary Wilson',
@@ -56,6 +56,7 @@ describe('Personal Care first-design workflow', () => {
       approved,
       previous: approved.sections[1],
       editable,
+      connected,
       manager: editable,
       completed: 7,
       actor: 'Review manager',
@@ -305,5 +306,11 @@ describe('Personal Care first-design workflow', () => {
     component.updateProposal('Human-reviewed final wording.');
     component.accept();
     expect(component.section.fields['situation']).toBe('Human-reviewed final wording.');
+  });
+  it('does not present existing care wording as a recorded transcript in a connected workspace', async () => {
+    const { fixture, component } = await setup(true, true);
+    expect(component.transcript()).toBe('');
+    expect(component.proposal()).toBe('');
+    expect(fixture.nativeElement.querySelector('.ai-panel')).toBeNull();
   });
 });
