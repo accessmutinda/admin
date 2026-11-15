@@ -5,6 +5,7 @@ import { BehaviorSubject } from 'rxjs';
 import { FamilySharing } from './family-sharing';
 import { CareHeader } from './care-header';
 import { AuthService } from '../../../core/auth/auth.service';
+import { ApiError } from '../../../core/auth/auth-api';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
 
 @Component({ selector: 'cv-care-header', template: '' })
@@ -199,10 +200,7 @@ describe('Connected family sharing administration', () => {
   it('preserves the popup and field errors after a failed save', async () => {
     await editor.open(rows[0]);
     request.mockRejectedValueOnce(
-      Object.assign(Error('Duplicate email'), {
-        status: 400,
-        field_errors: { email: ['Already exists'] },
-      }),
+      new ApiError('Duplicate email', 400, 'validation_error', { email: ['Already exists'] }),
     );
     await editor.save();
     await settle(fixture);

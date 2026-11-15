@@ -1,4 +1,5 @@
 import { ServiceUserState } from '../shared/service-user-state';
+import { ApiError } from '../../../core/auth/auth-api';
 import {
   Component,
   ChangeDetectorRef,
@@ -240,7 +241,7 @@ export class FamilySharing {
   }
   private fail(e: unknown) {
     this.error.set(e instanceof Error ? e.message : 'Family sharing could not be saved.');
-    this.fieldErrors.set((e as { field_errors?: Record<string, string[]> }).field_errors ?? {});
+    this.fieldErrors.set(e instanceof ApiError ? e.fieldErrors : {});
   }
   protected async save() {
     const owner = this.owner;
