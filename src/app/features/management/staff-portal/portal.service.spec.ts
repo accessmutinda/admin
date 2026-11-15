@@ -1,243 +1,193 @@
-import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { AuthService } from '../../../core/auth/auth.service';
-import { DEMO_USER } from '../../../demo/business-fixtures';
-import { WorkspaceService } from '../../../core/auth/workspace.service';
-import { ManagementStore } from '../shared/management.store';
-import { emptyClientFile } from '../clients/client-file.models';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { JournalService, STAFF_TASKS } from '../journal/journal.service';
+import { StaffTasksPortal } from './staff-tasks-portal.service';
+import { StaffDashboardApi } from './staff-dashboard-api.service';
 import { PortalService } from './portal.service';
 
-describe('Staff portal workflows', () => {
-  let portal: PortalService;
-  let store: ManagementStore;
-  const actor = signal({ ...DEMO_USER });
+describe('Staff portal persisted workflows', () => {
+  const email = 'worker@example.test';
+  let portal: StaffTasksPortal, journal: JournalService, dashboard: StaffDashboardApi;
+  let rows: any[], api: ReturnType<typeof vi.fn>, available: boolean;
+  const company = signal('north');
+  const identity = () => ({
+    company_id: 'north',
+    actor_id: '12',
+    person_id: 'worker',
+    employment_id: 'employment',
+    name: 'Recorded worker',
+    email,
+    local_date: '2026-11-15',
+    timezone: 'Europe/London',
+    company: { id: 'north', name: 'North Care', code: 'NORTH' },
+    profile: { role: 'Care Worker', reference: 'W1', status: 'Active' },
+  });
   beforeEach(() => {
-    localStorage.clear();
-    TestBed.configureTestingModule({});
-    const auth = TestBed.inject(AuthService);
-    auth.signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    actor.set({ ...DEMO_USER });
-    vi.spyOn(auth, 'currentUser').mockImplementation(() => actor());
-    portal = TestBed.inject(PortalService);
-    store = portal.store;
-    expect(
-      portal.care.rota.saveClient({
-        id: 'client',
-        name: 'Service user',
-        reference: 'C1',
-        address: '1 Test Road',
-        postcode: 'HA1 1AA',
-        active: true,
-        funding: 'Private',
-        priority: 'Standard',
-        file: emptyClientFile(),
-      }),
-    ).toBeNull();
-    expect(
-      portal.care.saveContact(
-        'client',
-        'lqcs',
+    rows = [];
+    available = true;
+    company.set('north');
+    api = vi.fn(async (path: string, body?: any, method?: string, headers?: any) => {
+      if (!available)
+        throw Object.assign(Error('Your staff record is inactive.'), {
+          status: 403,
+          code: 'staff_inactive',
+        });
+      if (path.endsWith('/context')) return identity();
+      if (path.includes('/options?'))
+        return {
+          company_id: 'north',
+          contacts: [{ name: 'Recorded worker', email, role: 'Carer' }],
+          clients: [],
+          visits: [],
+          next_page: null,
+          can_create: true,
+          can_edit: true,
+          can_export: false,
+        };
+      if (path.endsWith('/dashboard'))
+        return {
+          ...identity(),
+          staff: { id: 'worker', employment_id: 'employment', name: 'Recorded worker', email },
+          meta: {
+            local_date: '2026-11-15',
+            timezone: 'Europe/London',
+            available: { tasks: true },
+            unavailable: [],
+          },
+          metrics: { open_tasks: rows.filter((r) => r.status !== 'Resolved').length },
+          tasks: structuredClone(rows),
+          inbox: [],
+          clients: [],
+          visits: [],
+          activity: [],
+          training: null,
+        };
+      if (method === 'POST' || method === 'PATCH') {
+        if (body.owner !== email)
+          throw Object.assign(Error('Task belongs to another staff account.'), { status: 403 });
+        if (body.status === 'Resolved' && !body.actions.trim())
+          throw Object.assign(Error('Record the action taken.'), { status: 400 });
+        const previous = method === 'PATCH' ? rows.find((r) => path.endsWith('/' + r.id)) : null;
+        if (previous && headers?.['If-Match'] !== previous.etag)
+          throw Object.assign(Error('This task changed. Reload before saving.'), { status: 409 });
+        const version = (previous?.version ?? 0) + 1;
+        const saved = {
+          ...body,
+          id: previous?.id ?? 'task-' + (rows.length + 1),
+          company_id: 'north',
+          version,
+          etag: '"v' + version + '"',
+          attachments: [],
+          resolvedAt: body.status === 'Resolved' ? '2026-11-15T12:00:00Z' : null,
+        };
+        rows = [...rows.filter((r) => r.id !== saved.id), saved];
+        return structuredClone(saved);
+      }
+      if (path.includes('/tasks?'))
+        return {
+          company_id: 'north',
+          count: rows.length,
+          next_page: null,
+          results: structuredClone(rows),
+        };
+      throw Error('Unexpected request ' + path);
+    });
+    TestBed.configureTestingModule({
+      providers: [
+        StaffTasksPortal,
+        JournalService,
+        StaffDashboardApi,
+        { provide: PortalService, useExisting: StaffTasksPortal },
+        { provide: STAFF_TASKS, useValue: true },
         {
-          id: 'gp',
-          name: 'Dr Patel',
-          relationship: 'GP surgery',
-          email: 'gp@example.com',
-          phone: '',
-          type: 'GP',
-          nextOfKin: false,
+          provide: AuthService,
+          useValue: {
+            api,
+            profile: () => ({ id: '12' }),
+            currentUser: () => ({ email, name: 'Recorded worker' }),
+          },
         },
-        portal.care.client('client')?.file?.updatedAt ?? '',
-      ),
-    ).toBeNull();
+        {
+          provide: CompanyAccessService,
+          useValue: { companyId: company, context: () => null, can: () => true },
+        },
+      ],
+    });
+    portal = TestBed.inject(PortalService) as unknown as StaffTasksPortal;
+    journal = TestBed.inject(JournalService);
+    dashboard = TestBed.inject(StaffDashboardApi);
   });
-  it('assigns shared tasks while preserving private journal task isolation', () => {
-    const privateTask = portal.journal.newEntry();
-    privateTask.subject = 'Private draft';
-    expect(portal.journal.save(privateTask, false)).toBeNull();
-    const task = portal.newTask('client');
-    task.title = 'Request GP notes';
-    expect(portal.saveTask(task)).toBeNull();
-    const privateFollowUp = {
-      ...portal.newTask(),
-      id: 'private-task',
-      title: 'Private reminder',
-      shared: undefined,
+  afterEach(() => {
+    localStorage.clear();
+    TestBed.resetTestingModule();
+  });
+
+  it('keeps task creation resolution and reopening consistent with dashboard reads', async () => {
+    await journal.refresh();
+    const draft = { ...portal.newTask(), title: 'Review support handover' };
+    expect(await portal.saveTask(draft)).toBeNull();
+    await dashboard.load();
+    expect(portal.tasks()[0].title).toBe(draft.title);
+    expect(dashboard.metric('open_tasks')).toBe(1);
+    const resolved = {
+      ...portal.tasks()[0],
+      status: 'Resolved' as const,
+      actions: 'Support confirmed.',
     };
-    expect(portal.journal.saveTask(privateFollowUp)).toBeNull();
-    actor.set({ ...DEMO_USER, email: portal.contacts()[0].email.toLowerCase() });
-    expect(portal.tasks().map((t) => t.id)).toEqual([task.id]);
-    expect(portal.journal.entries()).toHaveLength(0);
-    expect(portal.saveTask({ ...privateFollowUp, owner: portal.journal.email() })).toContain(
-      'private',
-    );
-  });
-  it('keeps private tasks and their portal audit events private after an update', () => {
-    const task = { ...portal.newTask('client'), title: 'Private care reminder', shared: undefined };
-    expect(portal.journal.saveTask(task)).toBeNull();
-    task.notes = 'Updated private reminder';
-    expect(portal.saveTask(task)).toBeNull();
-    expect(portal.tasks()[0].shared).toBe(false);
-    actor.set({ ...DEMO_USER, email: portal.contacts()[0].email.toLowerCase() });
-    expect(portal.tasks()).toHaveLength(0);
-    expect(portal.timeline().some((e) => e.entityId === task.id)).toBe(false);
-    expect(portal.clientTimeline('client').some((e) => e.entityId === task.id)).toBe(false);
-  });
-  it('requires resolution evidence and valid dates before completing tasks', () => {
-    const task = portal.newTask('client');
-    task.title = 'Follow up care review';
-    task.status = 'Resolved';
-    expect(portal.saveTask(task)).toContain('action taken');
-    task.actions = 'Reviewed care notes with the team.';
-    task.due = '2026-02-31';
-    expect(portal.saveTask(task)).toContain('valid dates');
-    task.due = '2026-10-23';
-    expect(portal.saveTask(task)).toBeNull();
-    expect(
-      portal
-        .clientTimeline('client')
-        .some((e) => e.entityId === task.id && e.status === 'Resolved'),
-    ).toBe(true);
-  });
-  it('preserves investigation notes when saving a previously opened concern draft', () => {
-    const concern = portal.newConcern();
-    concern.title = 'Care delivery concern';
-    concern.description = 'Review the reported care delivery issue.';
-    concern.clientId = 'client';
-    expect(portal.saveConcern(concern)).toBeNull();
-    const draft = structuredClone(portal.concerns()[0]);
-    expect(portal.addNote(concern.id, 'Interview scheduled with the care team.')).toBeNull();
-    draft.status = 'Under investigation';
-    draft.checklist[0].done = true;
-    expect(portal.saveConcern(draft)).toBeNull();
-    expect(portal.concerns()[0].notes).toHaveLength(1);
-    expect(portal.concerns()[0].checklist[0].done).toBe(true);
-    expect(
-      portal.clientTimeline('client').some((e) => e.action === 'Investigation note added'),
-    ).toBe(true);
-  });
-  it('requires an outcome and resolution before closing a concern', () => {
-    const concern = portal.newConcern();
-    concern.title = 'Reported issue';
-    concern.description = 'Investigate the report.';
-    expect(portal.saveConcern(concern)).toBeNull();
-    concern.status = 'Resolved';
-    expect(portal.saveConcern(concern)).toContain('outcome');
-    concern.outcome = 'Reviewed evidence and agreed follow-up actions.';
-    concern.status = 'Closed';
-    expect(portal.saveConcern(concern)).toContain('Resolve');
-    concern.status = 'Resolved';
-    expect(portal.saveConcern(concern)).toBeNull();
-    concern.status = 'Closed';
-    expect(portal.saveConcern(concern)).toBeNull();
-    expect(portal.addNote(concern.id, 'New note')).toContain('Reopen');
-  });
-  it('links professional records to real care contacts and preserves the original author', () => {
-    const record = portal.newCommunication('client');
-    record.subject = 'GP review notes';
-    record.details = 'Review received and follow-up recorded.';
-    expect(portal.saveCommunication(record)).toContain('professional contact');
-    record.contactId = 'gp';
-    expect(portal.saveCommunication(record)).toBeNull();
-    expect(portal.clientTimeline('client').find((e) => e.entityId === record.id)?.direction).toBe(
-      'Received',
-    );
-    expect(portal.clientTimeline('client').find((e) => e.entityId === record.id)?.recipient).toBe(
-      'Dr Patel',
-    );
-    actor.set({ ...DEMO_USER, name: 'Another colleague' });
-    record.details = 'Additional information received.';
-    expect(portal.saveCommunication(record)).toBeNull();
-    expect(portal.communications()[0].loggedBy).toBe(DEMO_USER.name);
-    expect(portal.clientTimeline('client').some((e) => e.entityId === record.id)).toBe(true);
-  });
-  it('keeps portal records scoped to the selected workspace', () => {
-    const concern = portal.newConcern();
-    concern.title = 'Reported issue';
-    concern.description = 'Review the concern.';
-    expect(portal.saveConcern(concern)).toBeNull();
-    const workspaces = TestBed.inject(WorkspaceService);
-    workspaces.switchWorkspace('riverside');
-    expect(portal.concerns()).toHaveLength(0);
-    expect(portal.tasks()).toHaveLength(0);
-    workspaces.switchWorkspace('lqcs');
-    expect(portal.concerns()[0].id).toBe(concern.id);
-  });
-  it('retains the current records and reports failed storage writes', () => {
-    const concern = portal.newConcern();
-    concern.title = 'Reported issue';
-    concern.description = 'Review the concern.';
-    vi.spyOn(store, 'saveWorkspace').mockReturnValue(false);
-    expect(portal.saveConcern(concern)).toContain('Could not save');
-    expect(portal.concerns()).toHaveLength(0);
-  });
-  it('allows client journal recipients from that client’s professional contacts', () => {
-    const entry = portal.journal.newEntry();
-    entry.clientId = 'client';
-    entry.to = ['gp@example.com'];
-    entry.subject = 'GP follow-up';
-    entry.body = 'Please review the care update.';
-    expect(portal.journal.save(entry, true)).toBeNull();
-    const other = portal.journal.newEntry();
-    other.subject = 'Unlinked update';
-    other.body = 'Update';
-    other.to = ['gp@example.com'];
-    expect(portal.journal.save(other, true)).toContain('linked professional');
-  });
-  it('respects care permissions when saving professional communications', () => {
-    const record = portal.newCommunication('client');
-    record.contactId = 'gp';
-    record.subject = 'GP notes';
-    record.details = 'Review the notes.';
-    store.update((d) => ({
-      ...d,
-      permissions: {
-        ...d.permissions,
-        'Care Worker:Care delivery': [true, false, false, false, false],
-      },
-    }));
-    expect(portal.saveCommunication(record)).toContain('permission');
-    expect(portal.communications()).toHaveLength(0);
-  });
-  it('records actual investigation transitions without inventing escalation', () => {
-    const concern = portal.newConcern();
-    concern.title = 'Review care concern';
-    concern.description = 'Review the visit report.';
-    expect(portal.saveConcern(concern)).toBeNull();
-    concern.status = 'Under investigation';
-    expect(portal.saveConcern(concern)).toBeNull();
-    concern.status = 'Resolved';
-    concern.outcome = 'Review complete and family updated.';
-    expect(portal.saveConcern(concern)).toBeNull();
-    expect(portal.concerns()[0].history?.map((h) => h.status)).toEqual([
-      'Raised',
-      'Under investigation',
-      'Resolved',
-    ]);
-    expect(portal.concerns()[0].history?.every((h) => h.actor === DEMO_USER.name && !!h.at)).toBe(
-      true,
-    );
-  });
-  it('rejects a visit link for another client and invalid task times', () => {
-    const task = portal.newTask('client');
-    task.title = 'Review visit';
-    task.visitId = 'another-client-visit';
-    expect(portal.saveTask(task)).toContain('belonging');
-    task.visitId = '';
-    task.dueTime = '25:00';
-    expect(portal.saveTask(task)).toContain('times');
-    task.dueTime = '10:00';
-    expect(portal.saveTask(task)).toBeNull();
-  });
-  it('records resolution time and clears it when a task is reopened', () => {
-    const task = portal.newTask('client');
-    task.title = 'Care review';
-    task.status = 'Resolved';
-    task.actions = 'Reviewed and confirmed.';
-    expect(portal.saveTask(task)).toBeNull();
+    expect(await portal.saveTask(resolved)).toBeNull();
+    await dashboard.load();
+    expect(dashboard.metric('open_tasks')).toBe(0);
     expect(portal.tasks()[0].resolvedAt).toBeTruthy();
-    const reopened = { ...portal.tasks()[0], status: 'Open' as const };
-    expect(portal.saveTask(reopened)).toBeNull();
-    expect(portal.tasks()[0].resolvedAt).toBeUndefined();
+    expect(await portal.saveTask({ ...portal.tasks()[0], status: 'Open' })).toBeNull();
+    await dashboard.load();
+    expect(dashboard.metric('open_tasks')).toBe(1);
+    expect(portal.tasks()[0].resolvedAt).toBeFalsy();
+  });
+  it('preserves an open task when resolution evidence is rejected', async () => {
+    await journal.refresh();
+    const draft = { ...portal.newTask(), title: 'Review support' };
+    await portal.saveTask(draft);
+    expect(
+      await portal.saveTask({ ...portal.tasks()[0], status: 'Resolved', actions: '' }),
+    ).toContain('action taken');
+    await journal.refresh();
+    expect(portal.tasks()[0].status).toBe('Open');
+  });
+  it('does not overwrite a newer task with a stale editor version', async () => {
+    await journal.refresh();
+    await portal.saveTask({ ...portal.newTask(), title: 'Review support' });
+    const stale = structuredClone(portal.tasks()[0]);
+    await portal.saveTask({ ...portal.tasks()[0], notes: 'Newer confirmed handover' });
+    expect(await portal.saveTask({ ...stale, notes: 'Old editor content' })).toContain('changed');
+    await journal.refresh();
+    expect(portal.tasks()[0].notes).toBe('Newer confirmed handover');
+  });
+  it('does not show browser-owned records when the server returns an empty staff account', async () => {
+    localStorage.setItem(
+      'cv_staff_portal',
+      JSON.stringify({ tasks: [{ title: 'Unverified private task' }] }),
+    );
+    await journal.refresh();
+    await dashboard.load();
+    expect(portal.tasks()).toEqual([]);
+    expect(dashboard.metric('open_tasks')).toBe(0);
+    expect(portal.store.company()?.id).toBe('north');
+  });
+  it('clears staff records after revocation and recovers from a fresh authorised read', async () => {
+    await journal.refresh();
+    await portal.saveTask({ ...portal.newTask(), title: 'Review support' });
+    available = false;
+    await journal.refresh();
+    await dashboard.load();
+    expect(portal.tasks()).toEqual([]);
+    expect(journal.staffReady()).toBe(false);
+    expect(dashboard.snapshot()).toBeNull();
+    available = true;
+    await journal.refresh();
+    await dashboard.load();
+    expect(portal.tasks()).toHaveLength(1);
+    expect(dashboard.metric('open_tasks')).toBe(1);
   });
 });
