@@ -1,3 +1,6 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { signal } from '@angular/core';
+import { DEMO_USER } from '../../../demo/business-fixtures';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -5,6 +8,7 @@ import { routes } from '../../../app.routes';
 import { AuthService } from '../../../core/auth/auth.service';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
 import { ManagementLayout } from '../layout/management-layout';
+import { ManagementStore } from '../shared/management.store';
 import { QualityService } from './quality.service';
 import { QUALITY_DASHBOARDS } from './quality-dashboard.models';
 
@@ -16,8 +20,28 @@ describe('Quality & Compliance dashboards', () => {
   beforeEach(() => {
     localStorage.clear();
     TestBed.configureTestingModule({ providers: [provideRouter([{ path: 'manage', children }])] });
-    TestBed.inject(AuthService).signInDemoSession();
+    const auth = TestBed.inject(AuthService),
+      company = signal('lqcs');
+    vi.spyOn(auth, 'isAuthenticated').mockReturnValue(true);
+    vi.spyOn(auth, 'profile').mockImplementation(
+      () => ({ company_id: company(), company_entry_state: 'ready' }) as any,
+    );
+    vi.spyOn(auth, 'canAccessCompany').mockReturnValue(true);
+    vi.spyOn(auth, 'api').mockResolvedValue({} as never);
+    vi.spyOn(auth, 'currentUser').mockReturnValue({ ...DEMO_USER, roleCode: 'CA' });
+    vi.spyOn(auth, 'selectWorkspace').mockImplementation(async (id) => {
+      company.set(id);
+    });
+    const access = TestBed.inject(CompanyAccessService);
+    vi.spyOn(access, 'refresh').mockResolvedValue();
+    vi.spyOn(access, 'canPath').mockReturnValue(true);
+    vi.spyOn(access, 'can').mockReturnValue(true);
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
+    vi.spyOn(TestBed.inject(ManagementStore), 'company').mockReturnValue({
+      id: 'lqcs',
+      name: 'Quality test company',
+      apiSummaryOnly: true,
+    } as any);
   });
   async function open(path = '') {
     const harness = await RouterTestingHarness.create();

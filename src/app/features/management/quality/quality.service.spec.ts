@@ -1,3 +1,5 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { ROLES } from '../../../core/auth/models/role';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -22,12 +24,48 @@ describe('Supervisor and quality workflows', () => {
     localStorage.clear();
     TestBed.configureTestingModule({});
     const auth = TestBed.inject(AuthService);
-    auth.signInDemoSession();
+    const company = signal('lqcs');
+    vi.spyOn(auth, 'isAuthenticated').mockReturnValue(true);
+    vi.spyOn(auth, 'profile').mockImplementation(
+      () => ({ company_id: company(), company_entry_state: 'ready' }) as any,
+    );
+    vi.spyOn(auth, 'canAccessCompany').mockReturnValue(true);
+    vi.spyOn(auth, 'api').mockResolvedValue({} as never);
+    vi.spyOn(auth, 'selectWorkspace').mockImplementation(async (id) => {
+      company.set(id);
+    });
+    vi.spyOn(TestBed.inject(CompanyAccessService), 'refresh').mockResolvedValue();
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     actor.set({ ...DEMO_USER, roleCode: 'CA' });
     vi.spyOn(auth, 'currentUser').mockImplementation(() => actor());
     store = TestBed.inject(ManagementStore);
+    const companyDetails = signal({
+      id: 'lqcs',
+      name: 'Quality test company',
+      modules: ['Quality & compliance'],
+    } as any);
+    vi.spyOn(store, 'company').mockImplementation(() => companyDetails());
+    vi.spyOn(store, 'saveCompany').mockImplementation((value) => {
+      companyDetails.set(value);
+      return true;
+    });
+    store.update((data) => ({
+      ...data,
+      people: [{ id: 'quality-worker', name: 'Quality worker', stage: 'Hired' } as any],
+      members: [{ id: 'quality-owner', name: 'Quality owner', status: 'Active' } as any],
+    }));
     service = TestBed.inject(QualityService);
+    const access = TestBed.inject(CompanyAccessService);
+    vi.spyOn(access, 'canPath').mockReturnValue(true);
+    vi.spyOn(access, 'can').mockImplementation((_module, _source, action = 'read') => {
+      if (!store.company()?.modules.includes('Quality & compliance')) return false;
+      const permissions =
+        store.data().permissions[ROLES[actor().roleCode].label + ':Quality & compliance'];
+      const index = ({ read: 0, view: 0, create: 1, edit: 2, export: 4 } as Record<string, number>)[
+        action
+      ];
+      return index !== undefined && (permissions?.[index] ?? true);
+    });
   });
   function filled(type = 'spot'): Assessment {
     const a = service.newAssessment(type);
@@ -98,10 +136,10 @@ describe('Supervisor and quality workflows', () => {
     const a = filled();
     expect(service.saveAssessment(a, 'draft')).toBeNull();
     const stale = structuredClone(service.data().assessments[0]);
-    const stored = JSON.parse(localStorage.getItem('cv_management_v1')!);
+    const stored = JSON.parse(localStorage.getItem('cv_api_company_data_v1')!);
     stored.lqcs.quality.assessments[0].revision = 2;
     stored.lqcs.quality.assessments[0].outcome = 'Other reviewer update';
-    localStorage.setItem('cv_management_v1', JSON.stringify(stored));
+    localStorage.setItem('cv_api_company_data_v1', JSON.stringify(stored));
     expect(service.saveAssessment(stale, 'draft')).toContain('another tab');
     expect(service.data().assessments[0].outcome).toBe('Other reviewer update');
   });
