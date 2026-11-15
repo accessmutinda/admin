@@ -743,6 +743,7 @@ export type InspectorMedicationClient = {
     stockLocation: string;
     prnIndication: string;
     prnMax: string | null;
+    prnInterval: string | null;
     notes: string;
   }[];
   administrations: {
@@ -801,6 +802,7 @@ export type InspectorMedicationPage = {
       stockLocation: string;
       prnIndication: string;
       prnMax: string | null;
+      prnInterval: string | null;
       notes: string;
     }[];
     administrations: {
@@ -881,6 +883,7 @@ export type InspectorMedicationPrescription = {
   stockLocation: string;
   prnIndication: string;
   prnMax: string | null;
+  prnInterval: string | null;
   notes: string;
 };
 
@@ -905,6 +908,7 @@ export type InspectorMedicationPrescriptionDetail = {
   stockLocation: string;
   prnIndication: string;
   prnMax: string | null;
+  prnInterval: string | null;
   notes: string;
   client: string;
   clientId: string;

@@ -42,6 +42,7 @@ function response(): InspectorMedicationPage {
             stockLocation: 'Locked cabinet',
             prnIndication: 'Pain',
             prnMax: '4.000',
+            prnInterval: '6.000',
             notes: 'Recorded medication note',
           },
         ],
@@ -188,6 +189,7 @@ describe('Inspector medication integration', () => {
     p.openRecord(p.register().rows[0]);
     f.detectChanges();
     expect(f.nativeElement.textContent).toContain('Locked cabinet');
+    expect(p.record()?.detail['PRN minimum interval (hours)']).toBe('6.000');
     const changed = response();
     changed.results[0].prescriptions[0].name = 'Updated medicine';
     changed.results[0].prescriptions[0].stock = '21.000';

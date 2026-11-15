@@ -1794,6 +1794,7 @@ export class InspectorPage {
                   'Stock location': p.stockLocation,
                   'PRN indication': p.prnIndication,
                   'PRN maximum': p.prnMax ?? 'Not recorded',
+                  'PRN minimum interval (hours)': p.prnInterval ?? 'Not recorded',
                   Notes: p.notes,
                 },
               ),
