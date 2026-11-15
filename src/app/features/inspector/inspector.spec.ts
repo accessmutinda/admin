@@ -36,6 +36,26 @@ import { inspectorEntryGuard, inspectorWorkspaceGuard } from './inspector-entry.
 import { INSPECTOR_PAGES, csv, documentStatus } from './inspector.models';
 import { decodeDocument, zip } from './inspector-download';
 import { routes } from '../../app.routes';
+import { InspectionFields } from './inspector-widgets';
+
+describe('Inspector record labels', () => {
+  it('keeps clinical acronyms readable while separating camel-case field names', () => {
+    TestBed.configureTestingModule({ imports: [InspectionFields] });
+    const fixture = TestBed.createComponent(InspectionFields);
+    fixture.componentRef.setInput('value', {
+      'PRN minimum interval (hours)': '4.000',
+      NHSNumber: 'Recorded',
+      stockLocation: 'Cabinet',
+    });
+    fixture.detectChanges();
+    expect(
+      [...fixture.nativeElement.querySelectorAll('dt')].map((label: any) =>
+        label.textContent.trim(),
+      ),
+    ).toEqual(['PRN minimum interval (hours)', 'NHS Number', 'Stock Location']);
+    fixture.destroy();
+  });
+});
 
 describe('Inspector portal routes and availability', () => {
   const allowed = signal(new Set<string>()),

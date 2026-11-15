@@ -314,7 +314,10 @@ export class InspectionFields {
     );
   }
   label(key: string): string {
-    return key.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
+    return key
+      .replace(/([a-z\d])([A-Z])/g, '$1 $2')
+      .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2')
+      .replace(/^./, (c) => c.toUpperCase());
   }
   display(value: unknown): string {
     return value === null || value === undefined || value === ''
