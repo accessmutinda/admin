@@ -57,6 +57,10 @@ describe('Geographic location map', () => {
     expect(
       element.querySelector('[aria-label="Select South Home"]')?.getAttribute('aria-pressed'),
     ).toBe('true');
+    const refreshed = element.querySelector('[aria-label="Select South Home"]') as HTMLElement;
+    refreshed.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    refreshed.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    expect(selected).toEqual(['south', 'south', 'south', 'south']);
   });
 
   it('removes stale pins and restores the empty state without loading a basemap', async () => {

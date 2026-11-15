@@ -65,161 +65,165 @@ export interface LocationDialogData {
       }
     </div>
     <form (ngSubmit)="save()" novalidate>
-      <mat-dialog-content
-        ><p>{{ data.companyName }}</p>
-        <div class="loc-dialog-fields">
-          @for (field of fields; track field.key) {
-            <div>
-              <div class="loc-field-heading">
-                <label [for]="'loc-' + field.key"
+      <fieldset [disabled]="saving()" style="display: contents">
+        <mat-dialog-content
+          ><p>{{ data.companyName }}</p>
+          <div class="loc-dialog-fields">
+            @for (field of fields; track field.key) {
+              <div>
+                <div class="loc-field-heading">
+                  <label [for]="'loc-' + field.key"
+                    >{{ field.label }}
+                    @if (field.required) {
+                      <span aria-hidden="true"> *</span>
+                    }
+                  </label>
+                  @if (field.key === 'registeredPlaces') {
+                    <button
+                      type="button"
+                      class="loc-capacity-info"
+                      aria-label="About registered care capacity"
+                      matTooltip="Maximum number of people this location is registered to accommodate. Enter 0 for offices or services without registered places."
+                    >
+                      <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                    </button>
+                  }
+                </div>
+                @if (editing()) {
+                  @switch (field.key) {
+                    @case ('type') {
+                      <mat-select
+                        cvSelect
+                        [disabled]="saving()"
+                        [id]="'loc-' + field.key"
+                        [name]="field.key"
+                        aria-label="Location type"
+                        [(ngModel)]="draft.type"
+                      >
+                        @for (type of types; track type) {
+                          <mat-option [value]="type">{{ type }}</mat-option>
+                        }
+                      </mat-select>
+                    }
+                    @case ('status') {
+                      <mat-select
+                        cvSelect
+                        [disabled]="saving()"
+                        [id]="'loc-' + field.key"
+                        [name]="field.key"
+                        aria-label="Location status"
+                        [(ngModel)]="draft.status"
+                      >
+                        @for (status of statuses; track status) {
+                          <mat-option [value]="status">{{ status }}</mat-option>
+                        }
+                      </mat-select>
+                    }
+                    @default {
+                      <input
+                        [id]="'loc-' + field.key"
+                        [name]="field.key"
+                        [type]="field.type ?? 'text'"
+                        [ngModel]="draft[field.key]"
+                        (ngModelChange)="setField(field.key, $event)"
+                        [attr.maxlength]="
+                          field.type === 'number'
+                            ? null
+                            : field.key === 'code'
+                              ? 40
+                              : field.type === 'email'
+                                ? 254
+                                : 150
+                        "
+                        [attr.step]="field.key === 'registeredPlaces' ? '1' : 'any'"
+                        [attr.min]="field.key === 'registeredPlaces' ? 0 : null"
+                        [attr.max]="field.key === 'registeredPlaces' ? 2147483647 : null"
+                        [required]="!!field.required"
+                      />
+                    }
+                  }
+                } @else {
+                  <div class="loc-read-value">
+                    {{
+                      draft[field.key] === null || draft[field.key] === ''
+                        ? 'Not recorded'
+                        : draft[field.key]
+                    }}
+                  </div>
+                }
+              </div>
+            }
+            <div class="loc-dialog-wide loc-dialog-subheading">
+              <span class="material-symbols-outlined" aria-hidden="true">home</span>
+              <h3>Location Address</h3>
+            </div>
+            @for (field of addressFields; track field.key) {
+              <div>
+                <label [for]="'loc-address-' + field.key"
                   >{{ field.label }}
                   @if (field.required) {
                     <span aria-hidden="true"> *</span>
                   }
                 </label>
-                @if (field.key === 'registeredPlaces') {
-                  <button
-                    type="button"
-                    class="loc-capacity-info"
-                    aria-label="About registered care capacity"
-                    matTooltip="Maximum number of people this location is registered to accommodate. Enter 0 for offices or services without registered places."
-                  >
-                    <span class="material-symbols-outlined" aria-hidden="true">info</span>
-                  </button>
-                }
-              </div>
-              @if (editing()) {
-                @switch (field.key) {
-                  @case ('type') {
-                    <mat-select
-                      cvSelect
-                      [id]="'loc-' + field.key"
-                      [name]="field.key"
-                      aria-label="Location type"
-                      [(ngModel)]="draft.type"
-                    >
-                      @for (type of types; track type) {
-                        <mat-option [value]="type">{{ type }}</mat-option>
-                      }
-                    </mat-select>
-                  }
-                  @case ('status') {
-                    <mat-select
-                      cvSelect
-                      [id]="'loc-' + field.key"
-                      [name]="field.key"
-                      aria-label="Location status"
-                      [(ngModel)]="draft.status"
-                    >
-                      @for (status of statuses; track status) {
-                        <mat-option [value]="status">{{ status }}</mat-option>
-                      }
-                    </mat-select>
-                  }
-                  @default {
-                    <input
-                      [id]="'loc-' + field.key"
-                      [name]="field.key"
-                      [type]="field.type ?? 'text'"
-                      [ngModel]="draft[field.key]"
-                      (ngModelChange)="setField(field.key, $event)"
-                      [attr.maxlength]="
-                        field.type === 'number'
-                          ? null
-                          : field.key === 'code'
-                            ? 40
-                            : field.type === 'email'
-                              ? 254
-                              : 150
-                      "
-                      [attr.step]="field.key === 'registeredPlaces' ? '1' : 'any'"
-                      [attr.min]="field.key === 'registeredPlaces' ? 0 : null"
-                      [attr.max]="field.key === 'registeredPlaces' ? 2147483647 : null"
-                      [required]="!!field.required"
-                    />
-                  }
-                }
-              } @else {
-                <div class="loc-read-value">
-                  {{
-                    draft[field.key] === null || draft[field.key] === ''
-                      ? 'Not recorded'
-                      : draft[field.key]
-                  }}
-                </div>
-              }
-            </div>
-          }
-          <div class="loc-dialog-wide loc-dialog-subheading">
-            <span class="material-symbols-outlined" aria-hidden="true">home</span>
-            <h3>Location Address</h3>
-          </div>
-          @for (field of addressFields; track field.key) {
-            <div>
-              <label [for]="'loc-address-' + field.key"
-                >{{ field.label }}
-                @if (field.required) {
-                  <span aria-hidden="true"> *</span>
-                }
-              </label>
-              @if (editing()) {
-                <input
-                  [id]="'loc-address-' + field.key"
-                  [name]="'address-' + field.key"
-                  [(ngModel)]="draft.address[field.key]"
-                  maxlength="150"
-                  [required]="!!field.required"
-                />
-              } @else {
-                <div class="loc-read-value">{{ draft.address[field.key] || 'Not recorded' }}</div>
-              }
-            </div>
-          }
-          <div class="loc-dialog-wide">
-            <label for="loc-services">Services Offered</label>
-            @if (editing()) {
-              <input
-                id="loc-services"
-                name="services"
-                [(ngModel)]="servicesText"
-                maxlength="1600"
-                placeholder="Separate service names with commas"
-              /><small>Up to 20 services, 80 characters each.</small>
-            } @else {
-              <div class="loc-service-tags">
-                @for (service of draft.services; track service) {
-                  <span>{{ service }}</span>
-                } @empty {
-                  <span>Not recorded</span>
+                @if (editing()) {
+                  <input
+                    [id]="'loc-address-' + field.key"
+                    [name]="'address-' + field.key"
+                    [(ngModel)]="draft.address[field.key]"
+                    maxlength="150"
+                    [required]="!!field.required"
+                  />
+                } @else {
+                  <div class="loc-read-value">{{ draft.address[field.key] || 'Not recorded' }}</div>
                 }
               </div>
             }
+            <div class="loc-dialog-wide">
+              <label for="loc-services">Services Offered</label>
+              @if (editing()) {
+                <input
+                  id="loc-services"
+                  name="services"
+                  [(ngModel)]="servicesText"
+                  maxlength="1600"
+                  placeholder="Separate service names with commas"
+                /><small>Up to 20 services, 80 characters each.</small>
+              } @else {
+                <div class="loc-service-tags">
+                  @for (service of draft.services; track service) {
+                    <span>{{ service }}</span>
+                  } @empty {
+                    <span>Not recorded</span>
+                  }
+                </div>
+              }
+            </div>
           </div>
-        </div>
-        @if (error()) {
-          <p class="loc-error" role="alert">{{ error() }}</p>
-        }
-        @if (editing()) {
-          <p>
-            Save Changes updates this workspace's location register. Manager details do not create
-            user accounts.
-          </p>
-        } @else {
-          <p>
-            Last updated: {{ modifiedAt(draft.modifiedAt) }} ·
-            {{ draft.modifiedBy || 'Not recorded' }}
-          </p>
-        }</mat-dialog-content
-      ><mat-dialog-actions align="end"
-        ><button type="button" class="loc-button" (click)="dialog.close()">
-          {{ editing() ? 'Cancel' : 'Close' }}
-        </button>
-        @if (editing()) {
-          <button type="submit" class="loc-button loc-primary">
-            <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Changes
+          @if (error()) {
+            <p class="loc-error" role="alert">{{ error() }}</p>
+          }
+          @if (editing()) {
+            <p>
+              Save Changes updates this workspace's location register. Manager details do not create
+              user accounts.
+            </p>
+          } @else {
+            <p>
+              Last updated: {{ modifiedAt(draft.modifiedAt) }} ·
+              {{ draft.modifiedBy || 'Not recorded' }}
+            </p>
+          }</mat-dialog-content
+        ><mat-dialog-actions align="end"
+          ><button type="button" class="loc-button" (click)="dialog.close()">
+            {{ editing() ? 'Cancel' : 'Close' }}
           </button>
-        }
-      </mat-dialog-actions>
+          @if (editing()) {
+            <button type="submit" class="loc-button loc-primary">
+              <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Changes
+            </button>
+          }
+        </mat-dialog-actions>
+      </fieldset>
     </form>
   </div>`,
 })
@@ -283,11 +287,17 @@ export class LocationDialog {
         : value,
     });
   }
-  protected save(): void {
+  protected readonly saving = signal(false);
+  protected async save(): Promise<void> {
+    if (this.saving()) return;
     if (!this.editing()) return;
     const draft = { ...this.draft, services: this.servicesText.split(',') };
-    const error = this.locations.save([draft], this.data.companyId, this.data.mode === 'new');
+    this.saving.set(true);
+    this.dialog.disableClose = true;
+    const error = await this.locations.save([draft], this.data.companyId, this.data.mode === 'new');
+    this.saving.set(false);
+    this.dialog.disableClose = false;
     this.error.set(error ?? '');
-    if (!error) this.dialog.close(this.draft.id);
+    if (!error) this.dialog.close(this.locations.lastSavedId());
   }
 }

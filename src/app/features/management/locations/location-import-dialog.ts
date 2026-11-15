@@ -69,7 +69,7 @@ import {
         </div>
         <p>
           Showing the first {{ rows().slice(0, 5).length }} rows. All {{ rows().length }} rows will
-          be validated and saved together.
+          be validated. Successful rows are saved; failed rows remain available to retry.
         </p>
       }</mat-dialog-content
     ><mat-dialog-actions align="end"
@@ -113,7 +113,7 @@ export class LocationImportDialog {
     this.loading.set(true);
     try {
       const rows = parseLocations(await file.text());
-      const existing = [...(this.store.data().locations ?? [])];
+      const existing = [...this.service.locations()];
       for (const [index, row] of rows.entries()) {
         const errors = locationErrors(row, existing);
         if (errors.length) throw new Error('Row ' + (index + 2) + ': ' + errors.join(' '));
@@ -126,10 +126,22 @@ export class LocationImportDialog {
       this.loading.set(false);
     }
   }
-  protected save(): void {
+  private imported = 0;
+  protected async save(): Promise<void> {
     if (this.loading() || !this.rows().length) return;
-    const error = this.service.save(this.rows(), this.data.companyId, true);
-    this.error.set(error ?? '');
-    if (!error) this.dialog.close(this.rows().length);
+    this.loading.set(true);
+    this.dialog.disableClose = true;
+    try {
+      const result = await this.service.importRows(this.rows(), this.data.companyId);
+      this.imported += result.saved;
+      this.rows.set(result.failed);
+      this.error.set(result.error);
+      if (!result.failed.length && !result.error) this.dialog.close(this.imported);
+    } catch (error) {
+      this.error.set((error as Error).message);
+    } finally {
+      this.loading.set(false);
+      this.dialog.disableClose = false;
+    }
   }
 }

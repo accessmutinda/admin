@@ -117,17 +117,19 @@ export class LocationMap {
           .on('click', () => this.select.emit(location.id))
           .addTo(map);
         this.markers.set(location.id, marker);
-        marker.getElement()?.addEventListener('keydown', (event) => {
-          if (event.key === ' ') {
-            event.preventDefault();
-            this.select.emit(location.id);
-          }
-        });
       }
       marker.setLatLng([location.latitude!, location.longitude!]);
       marker.setIcon(icon);
       marker.setZIndexOffset(selected ? 1000 : 0);
       const element = marker.getElement();
+      if (element)
+        element.onkeydown = (event) => {
+          if (event.key === ' ' || event.key === 'Enter') {
+            event.preventDefault();
+            event.stopPropagation();
+            this.select.emit(location.id);
+          }
+        };
       element?.setAttribute('aria-label', 'Select ' + location.name);
       element?.setAttribute('aria-pressed', String(selected));
       element?.setAttribute('title', location.name);

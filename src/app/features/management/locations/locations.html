@@ -7,7 +7,7 @@
   <h1>Branches &amp; Service Locations</h1>
   <p>Manage your company's branches, care homes, service locations and outreach services.</p>
 </div>
-@if (dataApi.loading() && !dataApi.loaded()) {
+@if ((dataApi.loading() && !dataApi.loaded()) || service.loading()) {
   <cv-company-loading [company]="company()" view="locations" heading="" />
 } @else if (dataApi.error()) {
   <section class="co-surface cp-not-found" role="alert">

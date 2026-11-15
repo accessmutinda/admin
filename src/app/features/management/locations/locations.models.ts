@@ -15,6 +15,8 @@ export const LOCATION_TYPES = [
 ];
 export const LOCATION_STATUSES = ['Active', 'In Progress', 'Pending Review', 'Inactive'];
 export interface ServiceLocation {
+  version?: number;
+  etag?: string;
   id: string;
   name: string;
   code: string;

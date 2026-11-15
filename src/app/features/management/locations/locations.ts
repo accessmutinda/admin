@@ -43,10 +43,10 @@ export class LocationsPage {
   protected readonly store = inject(ManagementStore);
   protected readonly dataApi = inject(CompaniesApiService);
   private readonly dialog = inject(MatDialog);
-  private readonly service = inject(LocationsService);
+  protected readonly service = inject(LocationsService);
   private readonly toast = inject(ToastService);
   protected readonly company = this.store.company;
-  protected readonly locations = computed(() => this.store.data().locations ?? []);
+  protected readonly locations = this.service.locations;
   protected readonly search = signal('');
   protected readonly type = signal('all');
   protected readonly region = signal('all');
@@ -185,12 +185,15 @@ export class LocationsPage {
     ];
   });
   constructor() {
-    let current = this.store.companyId();
+    let current = '';
     effect(() => {
       const id = this.store.companyId();
       if (id === current) return;
       current = id;
       untracked(() => {
+        void this.service.load(id).then((error) => {
+          if (id === this.store.companyId()) this.error.set(error ?? '');
+        });
         this.clearFilters();
         this.closeDialog?.();
         this.closeDialog = undefined;
@@ -285,10 +288,11 @@ export class LocationsPage {
       'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(this.address(row))
     );
   }
-  protected toggleActive(row: ServiceLocation): void {
+  protected async toggleActive(row: ServiceLocation): Promise<void> {
+    if (this.service.saving()) return;
     const status = row.status === 'Active' ? 'Inactive' : 'Active';
     if (!window.confirm('Mark ' + row.name + ' as ' + status.toLowerCase() + '?')) return;
-    const error = this.service.save([{ ...row, status }], this.store.companyId(), false);
+    const error = await this.service.save([{ ...row, status }], this.store.companyId(), false);
     this.error.set(error ?? '');
     if (!error) this.toast.success('Location status updated.');
   }
