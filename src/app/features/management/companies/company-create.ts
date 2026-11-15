@@ -1,6 +1,8 @@
 import { Skeleton } from '../../../shared/ui/skeleton';
 import { CompanyLoading } from './company-loading';
+import { CompanyBrandingApi } from './company-branding-api.service';
 import { CompaniesApiService } from './companies-api.service';
+import { MODULE_CODES } from '../../../core/access/company-access.service';
 import { Component, effect, untracked, inject, signal, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -27,6 +29,7 @@ interface SavedCompanyDraft {
   savedAt: string;
   step: number;
   draft: CompanyCreateDraft;
+  initialAdminEmail?: string;
 }
 @Component({
   selector: 'cv-company-create',
@@ -38,6 +41,9 @@ export class CompanyCreatePage {
   protected readonly store = inject(ManagementStore);
   private readonly companiesApi = inject(CompaniesApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly brandingApi = inject(CompanyBrandingApi);
+  private readonly duplicateLoading = signal(false);
+  private readonly duplicateError = signal(false);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
@@ -47,10 +53,11 @@ export class CompanyCreatePage {
   }
   protected readonly duplicating = !!this.duplicateId;
   protected get invalidSource() {
-    return this.duplicating && !this.source;
+    return this.duplicating && (!this.source || this.duplicateError());
   }
   protected readonly sourceLoading = () =>
-    this.duplicating && this.companiesApi.loading() && !this.companiesApi.loaded();
+    this.duplicateLoading() ||
+    (this.duplicating && this.companiesApi.loading() && !this.companiesApi.loaded());
   protected draft = newCompanySetup(
     this.source,
     this.source
@@ -76,7 +83,7 @@ export class CompanyCreatePage {
   protected readonly reviewed = signal(false);
   protected readonly savedDraft = signal<SavedCompanyDraft | null>(null);
   protected readonly draftSavedAt = signal('');
-  private baseline = JSON.stringify(this.draft);
+  private baseline = this.snapshot();
   private savedSnapshot: string | null = null;
   private readonly key = `cv_company_create_draft:${this.auth.currentUser()?.id ?? 'signed-out'}:${this.duplicateId ?? 'new'}`;
   protected readonly addressFields = [
@@ -88,19 +95,38 @@ export class CompanyCreatePage {
     { key: 'country', label: 'Country' },
   ] as const;
   constructor() {
-    let hydrated = !!this.source;
+    let hydrated = false;
     effect(() => {
       const source = this.source;
       if (!this.duplicating || !source || hydrated) return;
       hydrated = true;
       untracked(() => {
-        this.draft = newCompanySetup(source, this.store.records()[source.id]);
-        this.baseline = JSON.stringify(this.draft);
-        this.restoreDraft();
+        void this.hydrateDuplicate(source.id);
       });
     });
     if (this.invalidSource) return;
     this.restoreDraft();
+  }
+  private async hydrateDuplicate(id: string): Promise<void> {
+    this.duplicateLoading.set(true);
+    try {
+      await this.companiesApi.loadDetail(id);
+      if (this.companiesApi.detailError(id)) throw Error(this.companiesApi.detailError(id));
+      const source = this.source;
+      if (!source) throw Error('The source company is no longer available.');
+      const branding = await this.brandingApi.load(id);
+      this.draft = newCompanySetup({
+        ...source,
+        branding: this.brandingApi.theme(branding, source),
+      });
+      this.baseline = this.snapshot();
+      this.restoreDraft();
+    } catch (error) {
+      this.duplicateError.set(true);
+      this.error.set((error as Error).message);
+    } finally {
+      this.duplicateLoading.set(false);
+    }
   }
   private draftRestored = false;
   private restoreDraft(): void {
@@ -163,11 +189,14 @@ export class CompanyCreatePage {
     this.error.set('');
     this.draftSavedAt.set('');
   }
+  private snapshot(): string {
+    return JSON.stringify({ draft: this.draft, initialAdminEmail: this.initialAdminEmail });
+  }
   protected hasChanges(): boolean {
-    return JSON.stringify(this.draft) !== this.baseline;
+    return this.snapshot() !== this.baseline;
   }
   private safelySaved(): boolean {
-    return this.savedSnapshot === JSON.stringify(this.draft);
+    return this.savedSnapshot === this.snapshot();
   }
   canLeave(): boolean {
     return (
@@ -220,9 +249,10 @@ export class CompanyCreatePage {
         savedAt: new Date().toISOString(),
         step: this.step(),
         draft: structuredClone(this.draft),
+        initialAdminEmail: this.initialAdminEmail,
       };
       localStorage.setItem(this.key, JSON.stringify(saved));
-      this.savedSnapshot = JSON.stringify(this.draft);
+      this.savedSnapshot = this.snapshot();
       this.draftSavedAt.set(
         new Intl.DateTimeFormat('en-GB', {
           hour: '2-digit',
@@ -243,7 +273,8 @@ export class CompanyCreatePage {
     const saved = this.savedDraft();
     if (!saved) return;
     this.draft = structuredClone(saved.draft);
-    this.savedSnapshot = JSON.stringify(this.draft);
+    this.initialAdminEmail = saved.initialAdminEmail ?? '';
+    this.savedSnapshot = this.snapshot();
     this.step.set(Math.min(4, Math.max(0, saved.step)));
     this.savedDraft.set(null);
     this.reviewed.set(false);
@@ -269,10 +300,6 @@ export class CompanyCreatePage {
       return;
     }
     if (this.invalidSource || this.created() || this.saving()) return;
-    if (this.duplicating) {
-      this.error.set('Company setup duplication is not supported by the backend yet.');
-      return;
-    }
     this.submitted.set(true);
     this.error.set('');
     const first = STEP_FIELDS.findIndex((_, index) => this.stageErrors(index).length);
@@ -306,7 +333,14 @@ export class CompanyCreatePage {
         legal_name: company.name,
         trading_name: company.tradingName ?? '',
         registration_number: company.registration,
-        sector: company.sector.toLowerCase().replaceAll(' ', '-'),
+        service_type: company.sector,
+        staff_size_band: company.size,
+        region: company.region ?? '',
+        tax_number: company.compliance?.taxNumber ?? '',
+        email: company.contacts?.primary.generalEmail ?? '',
+        phone: company.contacts?.primary.mainPhone ?? '',
+        website: company.contacts?.primary.website ?? '',
+        lifecycle: company.active ? ('active' as const) : ('pending_setup' as const),
         country: company.country,
         timezone: 'Europe/London',
       },
@@ -314,11 +348,18 @@ export class CompanyCreatePage {
         ? [
             {
               line1: address.line1,
-              town: address.city,
+              kind: 'head_office',
+              line2: address.line2,
+              city: address.city,
+              county: address.county,
+              country: address.country,
               postcode: address.postcode,
             },
           ]
         : [],
+      product_modules: company.modules.map((name) => MODULE_CODES[name]).filter(Boolean),
+      plan: company.subscription!.plan.toLowerCase(),
+      branding: { primary_colour: company.color, accent_colour: company.accent },
       initial_admin: { email: this.initialAdminEmail.trim(), mfa_override: 'inherit' },
     };
     const serialized = JSON.stringify(payload);
@@ -331,20 +372,17 @@ export class CompanyCreatePage {
       const result = await this.companiesApi.create(
         { ...payload, initial_admin: { ...payload.initial_admin, mfa_override: 'inherit' } },
         this.creationKey,
+        this.duplicateId ?? undefined,
       );
       company.id = result.id;
       company.code = result.code;
       this.notice.set(
-        'Company created. Additional setup fields are awaiting backend support and have not been saved.',
+        'Company created with the selected settings. The administrator invitation is queued.',
       );
       void this.companiesApi.load();
       void this.auth
         .loadWorkspaces()
-        .catch(() =>
-          this.notice.set(
-            'Company created. Refresh the workspace list to see it. Additional setup fields are awaiting backend support.',
-          ),
-        );
+        .catch(() => this.notice.set('Company created. Refresh the workspace list to see it.'));
     } catch (error) {
       this.error.set(
         error instanceof Error ? error.message : 'Company could not be created. Please try again.',
@@ -355,7 +393,7 @@ export class CompanyCreatePage {
     }
     this.draft.company = company;
     this.created.set(true);
-    this.baseline = JSON.stringify(this.draft);
+    this.baseline = this.snapshot();
     try {
       localStorage.removeItem(this.key);
       this.savedDraft.set(null);

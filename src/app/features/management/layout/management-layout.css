@@ -1,4 +1,4 @@
-.cv-management .app-sidebar button.workspace-control {
+.cv-management .app-sidebar .workspace-control {
   display: flex;
   align-items: center;
   gap: 8px;

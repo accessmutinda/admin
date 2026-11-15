@@ -1,3 +1,4 @@
+import { initialSubscription } from '../companies/company-modules.models';
 import { removeWorkforceSamples } from '../people/workforce-cache-cleanup';
 import { CompanyAccessService, MODULE_CODES } from '../../../core/access/company-access.service';
 import { companyProfileFields } from '../companies/company-profile.models';
@@ -321,8 +322,15 @@ export class ManagementStore {
         setupProgress: company.setup_progress,
         modifiedAt: company.updated_at ?? undefined,
         sector: company.service_type ?? '',
+        region: company.region ?? '',
+        subscription: {
+          ...initialSubscription(),
+          plan: company.plan
+            ? company.plan.charAt(0).toUpperCase() + company.plan.slice(1)
+            : 'Not recorded',
+        },
         size: '',
-        registration: '',
+        registration: company.registration_number ?? '',
         postcode: company.postcode ?? '',
         color: '#087f76',
         accent: '#3b82f6',
@@ -330,8 +338,9 @@ export class ManagementStore {
         logo: '',
         modules: Object.keys(MODULE_CODES).filter(
           (name) =>
-            this.productAccess.context()?.company_id === company.id &&
-            this.productAccess.context()?.enabled_modules.includes(MODULE_CODES[name]),
+            company.enabled_product_modules?.includes(MODULE_CODES[name]) ??
+            (this.productAccess.context()?.company_id === company.id &&
+              !!this.productAccess.context()?.enabled_modules.includes(MODULE_CODES[name])),
         ),
         ...(this.companyApi.details()[company.id]
           ? companyProfileFields(this.companyApi.details()[company.id])

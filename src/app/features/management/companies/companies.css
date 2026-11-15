@@ -63,6 +63,10 @@
   margin-bottom: 12px;
 }
 
+.cv-management .companies-page .co-metrics.co-company-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .cv-management .companies-page .blue {
   background: #008afa;
 }
@@ -457,6 +461,12 @@
   }
   .cv-management .companies-page .co-metrics > :last-child {
     grid-column: 1 / -1;
+  }
+  .cv-management .companies-page .co-metrics.co-company-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cv-management .companies-page .co-metrics.co-company-metrics > :last-child {
+    grid-column: auto;
   }
   .cv-management .companies-page .co-main-grid {
     grid-template-columns: minmax(0, 1fr);

@@ -7,6 +7,7 @@ import {
   ModuleConfiguration,
 } from '../../../core/access/company-access.service';
 import { ManagementStore } from '../shared/management.store';
+import { CompaniesApiService } from './companies-api.service';
 import { CompanyModulesPage } from './company-modules';
 
 const initial: ModuleConfiguration = {
@@ -40,6 +41,10 @@ describe('Company module configuration', () => {
     change.mockReset();
     TestBed.configureTestingModule({
       providers: [
+        {
+          provide: CompaniesApiService,
+          useValue: { refreshCompany: vi.fn().mockResolvedValue(undefined) },
+        },
         provideRouter([
           { path: 'manage/companies/:id/modules/:section', component: CompanyModulesPage },
         ]),

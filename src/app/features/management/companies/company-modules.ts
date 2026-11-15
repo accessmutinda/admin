@@ -1,3 +1,4 @@
+import { CompaniesApiService } from './companies-api.service';
 import { Skeleton } from '../../../shared/ui/skeleton';
 import { CompanyModulesLoading } from './company-modules-loading';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
@@ -20,6 +21,7 @@ import { companyModifiedAt } from './company-profile.models';
 })
 export class CompanyModulesPage {
   protected readonly access = inject(CompanyAccessService);
+  private readonly companiesApi = inject(CompaniesApiService);
   protected readonly store = inject(ManagementStore);
   private readonly route = inject(ActivatedRoute);
   private readonly params = toSignal(this.route.paramMap, {
@@ -221,6 +223,7 @@ export class CompanyModulesPage {
         this.state.set(next);
         this.saved.set(true);
         await this.access.refresh();
+        await this.companiesApi.refreshCompany(id);
       }
     } catch (error) {
       if (id === this.id())

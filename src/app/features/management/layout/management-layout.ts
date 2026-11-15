@@ -4,7 +4,6 @@ import { CompanyAccessService } from '../../../core/access/company-access.servic
 import { NgTemplateOutlet } from '@angular/common';
 import { AcademyGovernanceService } from '../learning/academy/academy-governance.service';
 import { AcademyService } from '../learning/academy/academy.service';
-import { AcademyDemoWorkflow } from '../learning/academy/academy-demo-workflow';
 import { WorkspaceTools } from '../care/workspace-tools';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MAT_SELECT_CONFIG } from '@angular/material/select';
@@ -73,7 +72,7 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
         aria-label="CareVerity home"
         ><cv-logo tone="light"
       /></a>
-      @if (auth.hasRole('PO')) {
+      @if (auth.isSuperAdmin()) {
         <button
           type="button"
           class="workspace-control"
@@ -89,6 +88,14 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
             ><small>Switch workspace</small></span
           ><span class="material-symbols-outlined" aria-hidden="true">unfold_more</span>
         </button>
+      } @else if (store.company(); as company) {
+        <div class="workspace-control" aria-label="Current company">
+          <span class="workspace-mark">{{ company.code }}</span
+          ><span class="workspace-text"
+            ><strong>{{ company.name }}</strong
+            ><small>Company workspace</small></span
+          >
+        </div>
       }
       <ng-template #careDelivery>
         @if (access.can('Care delivery')) {
@@ -333,9 +340,7 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           <button
             type="button"
             class="user-control"
-            [attr.aria-label]="
-              'Open profile for ' + (auth.currentUser()?.name || 'signed-in user')
-            "
+            [attr.aria-label]="'Open profile for ' + (auth.currentUser()?.name || 'signed-in user')"
             aria-haspopup="dialog"
             aria-controls="user-profile-menu"
             [attr.aria-expanded]="profileOpen()"
@@ -508,7 +513,6 @@ export class ManagementLayout {
   }
   protected readonly academyExpanded = signal(this.router.url.startsWith('/manage/learning'));
   private readonly navigation = toSignal(this.router.events);
-  private readonly academyWorkflow = inject(AcademyDemoWorkflow);
   private readonly academyGovernance = inject(AcademyGovernanceService);
   constructor() {
     effect(() => {
@@ -563,7 +567,7 @@ export class ManagementLayout {
       : this.auth.profile()?.company_id
         ? [
             {
-              path: '/manage/companies/' + this.auth.profile()!.company_id,
+              path: '/manage/companies',
               label: 'Company',
               icon: 'domain',
             },

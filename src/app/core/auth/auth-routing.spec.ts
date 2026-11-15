@@ -100,7 +100,8 @@ describe('API session routing', () => {
     expect(companyRoute('/manage/companies/directory')).toBe('/access-denied');
     expect(companyRoute('/manage/companies/company-2', 'company-2')).toBe('/access-denied');
     expect(companyRoute('/manage/companies/company-1', 'company-1')).toBe(true);
-    expect(companyRoute('/manage/companies')).toBe('/manage/companies/company-1');
+    expect(companyRoute('/manage/companies')).toBe(true);
+    expect(auth.selectWorkspace).not.toHaveBeenCalled();
   });
   it('allows Super Admin creation and any company, and requires a workspace before business screens', async () => {
     auth.isSuperAdmin.mockReturnValue(true);

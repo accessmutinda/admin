@@ -1,3 +1,5 @@
+import { AuthService } from '../../../core/auth/auth.service';
+import { COMPANY_LIFECYCLE_LABELS } from './companies-api.models';
 import { Skeleton } from '../../../shared/ui/skeleton';
 import { CompanyLoading } from './company-loading';
 import { SetupAreaKey } from './companies-api.models';
@@ -25,20 +27,46 @@ import {
 export class Companies {
   protected readonly api = inject(CompaniesApiService);
   protected readonly store = inject(ManagementStore);
-  protected readonly search = signal('');
-  protected readonly company = computed(() => this.store.company() ?? this.store.companies()[0]);
-  protected readonly profileLink = computed(() => [
-    '/manage/companies',
-    this.company()?.id ?? 'new',
-  ]);
-  protected readonly filtered = computed(() =>
+  private readonly auth = inject(AuthService);
+  protected readonly superAdmin = computed(() => this.auth.isSuperAdmin());
+  protected readonly visibleCompanies = computed(() =>
     this.store
       .companies()
-      .filter((c) =>
-        `${c.name} ${c.code} ${c.sector}`
-          .toLowerCase()
-          .includes(this.search().trim().toLowerCase()),
-      ),
+      .filter((company) => this.superAdmin() || company.id === this.auth.profile()?.company_id),
+  );
+  protected readonly companyStatus = computed(() => {
+    const lifecycle = this.company()?.lifecycle;
+    return lifecycle ? COMPANY_LIFECYCLE_LABELS[lifecycle] : 'Not available';
+  });
+  protected readonly companyTasks = computed(() => {
+    const progress = this.company()?.setupProgress;
+    if (!progress) return null;
+    return Object.entries(progress).filter(
+      ([key, value]) =>
+        key !== 'complete' &&
+        typeof value === 'object' &&
+        value.available !== false &&
+        value.complete === false,
+    ).length;
+  });
+  protected readonly search = signal('');
+  protected readonly company = computed(() =>
+    this.superAdmin()
+      ? (this.store.company() ?? this.visibleCompanies()[0])
+      : this.visibleCompanies().find((company) => company.id === this.auth.profile()?.company_id),
+  );
+  protected readonly profileLink = computed(() => {
+    const id = this.company()?.id;
+    return id
+      ? ['/manage/companies', id]
+      : this.superAdmin()
+        ? ['/manage/companies/new']
+        : ['/manage/companies'];
+  });
+  protected readonly filtered = computed(() =>
+    this.visibleCompanies().filter((c) =>
+      `${c.name} ${c.code} ${c.sector}`.toLowerCase().includes(this.search().trim().toLowerCase()),
+    ),
   );
   protected readonly preview = computed(() => this.filtered().slice(0, 5));
   protected readonly completion = companyCompletion;
@@ -73,6 +101,7 @@ export class Companies {
   });
   protected readonly checklist = computed(() => {
     const c = this.company();
+    if (!c) return [];
     return [
       {
         key: 'general',
@@ -180,25 +209,36 @@ export class Companies {
   protected readonly tasks = computed(() =>
     this.statsReady() ? (this.api.overview()?.open_admin_tasks ?? null) : null,
   );
-  protected readonly actions = computed(() => [
-    { title: 'Create New Company', icon: 'add', link: ['/manage/companies/new'] },
-    {
-      title: 'Duplicate Existing Setup',
-      icon: 'content_copy',
-      link: ['/manage/companies/new'],
-      duplicate: this.company()?.id,
-    },
-    { title: 'Edit Company Profile', icon: 'edit_square', link: this.profileLink(), edit: true },
-    {
-      title: 'Manage Modules',
-      icon: 'deployed_code',
-      link: [...this.profileLink(), 'modules'],
-    },
-    {
-      title: 'Invite Admin User',
-      icon: 'person_add',
-      link: ['/manage/companies/access'],
-      invite: true,
-    },
-  ]);
+  protected readonly actions = computed(() =>
+    [
+      {
+        title: 'Create New Company',
+        icon: 'add',
+        link: ['/manage/companies/new'],
+        platformOnly: true,
+      },
+      {
+        title: 'Duplicate Existing Setup',
+        platformOnly: true,
+        icon: 'content_copy',
+        link: ['/manage/companies/new'],
+        duplicate: this.company()?.id,
+      },
+      { title: 'Edit Company Profile', icon: 'edit_square', link: this.profileLink(), edit: true },
+      {
+        title: 'Manage Modules',
+        icon: 'deployed_code',
+        link: [...this.profileLink(), 'modules'],
+      },
+      {
+        title: this.superAdmin() ? 'Invite Admin User' : 'Invite User',
+        icon: 'person_add',
+        link: ['/manage/companies/access'],
+        invite: true,
+      },
+    ].filter(
+      (action) =>
+        (!action.platformOnly || this.superAdmin()) && (action.platformOnly || !!this.company()),
+    ),
+  );
 }

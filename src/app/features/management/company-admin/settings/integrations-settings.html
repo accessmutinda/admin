@@ -79,15 +79,13 @@
         >
         <div>
           <h2 id="ig-api-title">API Access</h2>
-          <p>Manage sample integration key records for this workspace.</p>
+          <p>API credentials require a configured integration service.</p>
         </div>
-        <span class="ig-badge">Local setup</span>
+        <span class="ig-badge">Unavailable</span>
       </div>
       <div class="ig-info">
         <span class="material-symbols-outlined" aria-hidden="true">info</span>
-        <p>
-          Sample keys do not grant API access. A connected service is needed for live integrations.
-        </p>
+        <p>API credential creation is unavailable until an integration service is configured.</p>
       </div>
       <form class="ig-form" (ngSubmit)="createKey()" novalidate>
         <div>
@@ -95,16 +93,17 @@
           ><input
             id="ig-key-name"
             name="keyName"
+            [disabled]="true"
             [(ngModel)]="keyName"
             required
             maxlength="80"
             placeholder="e.g. Reporting integration"
             [attr.aria-invalid]="submitted() && !!keyError()"
             aria-describedby="ig-key-help"
-          /><small id="ig-key-help">Use a unique name for each sample key.</small>
+          /><small id="ig-key-help">Integration credentials are unavailable.</small>
         </div>
-        <button type="submit" class="ig-button ig-primary">
-          <span class="material-symbols-outlined" aria-hidden="true">add</span>Create Sample Key
+        <button type="submit" class="ig-button ig-primary" disabled>
+          <span class="material-symbols-outlined" aria-hidden="true">add</span>Create API Key
         </button>
       </form>
       @if (keyError()) {
@@ -179,7 +178,7 @@
                   {{
                     keys().length
                       ? 'No integration keys match your search.'
-                      : 'No integration keys yet. Create a sample key to start your setup.'
+                      : 'API credentials are unavailable.'
                   }}
                 </td>
               </tr>
@@ -227,12 +226,13 @@
           ><input
             type="checkbox"
             role="switch"
+            [disabled]="preferencesLoading() || preferencesSaving()"
             [(ngModel)]="backup"
             aria-label="Automatic backup preference"
         /></label>
         <p class="ig-note">
-          Scheduled backups require a connected backend. You can download a workspace snapshot
-          below.
+          Scheduled backups require a configured backup service. You can download a workspace
+          snapshot below.
         </p>
         @if (backupError()) {
           <p class="ig-error" role="alert">{{ backupError() }}</p>
@@ -244,14 +244,14 @@
           ><button
             type="button"
             class="ig-button ig-outline"
-            [disabled]="!backupChanged()"
+            [disabled]="preferencesLoading() || preferencesSaving() || !backupChanged()"
             (click)="discardBackup()"
           >
             Discard</button
           ><button
             type="button"
             class="ig-button ig-primary"
-            [disabled]="!backupChanged()"
+            [disabled]="preferencesLoading() || preferencesSaving() || !backupChanged()"
             (click)="saveBackup()"
           >
             <span class="material-symbols-outlined" aria-hidden="true">save</span>Save

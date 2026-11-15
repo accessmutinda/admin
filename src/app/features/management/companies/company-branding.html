@@ -7,7 +7,7 @@
   }
   <span aria-current="page">Branding</span>
 </nav>
-@if (dataApi.loading() && !dataApi.loaded()) {
+@if (loading() || (dataApi.loading() && !dataApi.loaded())) {
   <cv-company-loading
     [company]="company()"
     view="branding"
@@ -93,6 +93,28 @@
   @if (error()) {
     <p class="cb-error-summary" role="alert">{{ error() }}</p>
   }
+  @if (!record() && !loading()) {
+    <button type="button" class="cp-button" (click)="loadBranding()">Retry branding</button>
+  }
+  @if (pendingAssets().length) {
+    <p role="status">
+      @if (scannerUnavailable()) {
+        Image checks require a configured scanning service. Contact your platform administrator.
+        Save and publish remain unavailable until the image passes its check.
+      } @else {
+        Uploaded images are awaiting security checks. Save and publish become available after
+        approval.
+      }
+    </p>
+    <button
+      type="button"
+      class="cp-button"
+      [disabled]="uploading() || saving()"
+      (click)="refreshAssets()"
+    >
+      Refresh image checks
+    </button>
+  }
   @if (submitted() && invalidFields().length) {
     <div class="cb-error-summary" role="alert">
       <strong>Check your branding settings:</strong>
@@ -139,7 +161,7 @@
                             type="file"
                             [accept]="asset.accept"
                             [attr.aria-label]="'Upload ' + asset.label"
-                            [disabled]="uploading()"
+                            [disabled]="uploading() || saving()"
                             (change)="upload($event, asset.key)"
                         /></label>
                         @if (draft[asset.key]) {
@@ -147,8 +169,8 @@
                             type="button"
                             class="cb-remove-asset"
                             [attr.aria-label]="'Remove ' + asset.label"
-                            [disabled]="uploading()"
-                            (click)="draft[asset.key] = ''"
+                            [disabled]="uploading() || saving()"
+                            (click)="removeAsset(asset.key)"
                           >
                             <span class="material-symbols-outlined" aria-hidden="true">delete</span>
                           </button>
@@ -693,34 +715,49 @@
       <span class="cb-save-state" role="status">{{
         hasChanges() ? 'You have unsaved branding changes' : 'Theme matches saved company settings'
       }}</span>
-      @if (current.publishedBranding) {
+      @if (record()?.published_at) {
         <small
-          >Approved locally {{ modifiedAt(current.publishedBranding.publishedAt) }} by
-          {{ current.publishedBranding.publishedBy }}</small
+          >Published {{ modifiedAt(record()!.published_at!) }} by
+          {{ record()?.published_by?.name }}</small
         >
       }
       <p>
-        Publishing saves an approved version on this device. Live domains, portal deployment and
+        Publishing retains an approved version on the server. Live domains, portal deployment and
         email delivery require connected services.
       </p>
     </div>
     <div class="cb-save-actions">
-      <button type="button" class="cp-button" (click)="reset()" [disabled]="uploading()">
+      <button
+        type="button"
+        class="cp-button"
+        (click)="reset()"
+        [disabled]="uploading() || saving()"
+      >
         <span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>Reset to
         Default
       </button>
       @if (hasChanges()) {
-        <button type="button" class="cb-discard" (click)="discard()" [disabled]="uploading()">
+        <button
+          type="button"
+          class="cb-discard"
+          (click)="discard()"
+          [disabled]="uploading() || saving()"
+        >
           Discard changes
         </button>
       }
-      <button type="button" class="cp-button cp-outline" (click)="save()" [disabled]="uploading()">
+      <button
+        type="button"
+        class="cp-button cp-outline"
+        (click)="save()"
+        [disabled]="uploading() || saving() || loading() || !record() || !!pendingAssets().length"
+      >
         <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Theme</button
       ><button
         type="button"
         class="cp-button cp-primary"
         (click)="save(true)"
-        [disabled]="uploading()"
+        [disabled]="uploading() || saving() || loading() || !record() || !!pendingAssets().length"
       >
         <span class="material-symbols-outlined" aria-hidden="true">send</span>Publish Branding
       </button>

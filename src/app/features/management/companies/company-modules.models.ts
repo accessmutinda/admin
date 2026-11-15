@@ -70,14 +70,7 @@ export const ADDON_CATALOG = [
     description: 'Connections to third-party systems.',
   },
 ] as const;
-export const SUBSCRIPTION_PLANS = [
-  'Not recorded',
-  'Starter',
-  'Standard',
-  'Professional',
-  'Enterprise',
-  'Custom',
-];
+export const SUBSCRIPTION_PLANS = ['Not recorded', 'Free', 'Starter', 'Growth', 'Enterprise'];
 export type ModuleSection =
   'overview' | 'subscription' | 'limits' | 'addons' | 'billing' | 'configure';
 export interface SubscriptionInvoice {

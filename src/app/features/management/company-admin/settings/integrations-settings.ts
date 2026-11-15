@@ -1,3 +1,4 @@
+import { AuthService } from '../../../../core/auth/auth.service';
 import { CompanyLoading } from '../../companies/company-loading';
 import { CompaniesApiService } from '../../companies/companies-api.service';
 import {
@@ -26,6 +27,12 @@ export class IntegrationsSettings {
   protected readonly store = inject(ManagementStore);
   protected readonly dataApi = inject(CompaniesApiService);
   private readonly toast = inject(ToastService);
+  private readonly auth = inject(AuthService);
+  protected readonly preferencesLoading = signal(true);
+  protected readonly preferencesSaving = signal(false);
+  private readonly savedBackup = signal(false);
+  private preferencesEtag = '';
+  private generation = 0;
   protected readonly company = this.store.company;
   protected readonly modifiedAt = companyModifiedAt;
   protected readonly keys = computed(() => this.store.data().apiKeys ?? []);
@@ -58,12 +65,11 @@ export class IntegrationsSettings {
   constructor() {
     effect(() => {
       const id = this.store.companyId();
-      if (id === this.workspaceId) return;
       untracked(() => {
         this.workspaceId = id;
         this.keyName = '';
         this.dismissKey();
-        this.backup = this.store.data().backup;
+        void this.loadPreferences(id);
         this.keyError.set('');
         this.backupError.set('');
         this.submitted.set(false);
@@ -80,9 +86,10 @@ export class IntegrationsSettings {
     this.page.set(1);
   }
   protected backupChanged(): boolean {
-    return this.backup !== this.store.data().backup;
+    return this.backup !== this.savedBackup();
   }
   canLeave(): boolean {
+    if (this.preferencesSaving()) return false;
     return (
       (!this.backupChanged() && !this.keyName.trim()) ||
       window.confirm('Leave without saving the integration name or backup preference?')
@@ -101,43 +108,7 @@ export class IntegrationsSettings {
     this.revealedId = '';
   }
   protected createKey(): void {
-    this.submitted.set(true);
-    this.keyError.set('');
-    if (!this.currentWorkspace()) {
-      this.keyError.set('The workspace changed. Reopen this company’s integrations before saving.');
-      return;
-    }
-    const name = this.keyName.trim();
-    if (!name || name.length > 80) {
-      this.keyError.set('Enter an integration name, up to 80 characters.');
-      return;
-    }
-    const key = { id: crypto.randomUUID(), name, created: new Date().toISOString() };
-    const saved = this.store.saveWorkspace((data) => {
-      if (
-        (data.apiKeys ?? []).some(
-          (existing) => existing.name.trim().toLowerCase() === name.toLowerCase(),
-        )
-      ) {
-        this.keyError.set('A sample key with this name already exists in this company.');
-        return data;
-      }
-      return { ...data, apiKeys: [...(data.apiKeys ?? []), key] };
-    });
-    if (this.keyError()) return;
-    if (!saved) {
-      this.keyError.set(
-        'The sample key could not be saved. Your name is still here; free browser storage and try again.',
-      );
-      return;
-    }
-    this.revealedKey = 'demo_' + crypto.randomUUID();
-    this.revealedId = key.id;
-    this.keyName = '';
-    this.submitted.set(false);
-    this.search.set('');
-    this.page.set(this.pageCount());
-    this.toast.info('Sample key recorded. It does not grant API access.');
+    this.keyError.set('API credentials require a configured integration service.');
   }
   protected revokeKey(id: string): void {
     this.keyError.set('');
@@ -163,25 +134,64 @@ export class IntegrationsSettings {
     if (this.revealedId === id) this.dismissKey();
     this.toast.success('Sample key removed.');
   }
-  protected saveBackup(): void {
+  private async loadPreferences(id: string): Promise<void> {
+    const generation = ++this.generation;
+    this.preferencesLoading.set(true);
+    this.preferencesEtag = '';
+    this.savedBackup.set(false);
+    this.backup = false;
+    if (!id) {
+      this.preferencesLoading.set(false);
+      return;
+    }
+    try {
+      const value = await this.auth.api<{ backup_preference: string | null; etag: string }>(
+        `/companies/${id}/preferences`,
+      );
+      if (generation !== this.generation || id !== this.store.companyId()) return;
+      this.preferencesEtag = value.etag;
+      this.backup = value.backup_preference === 'enabled';
+      this.savedBackup.set(this.backup);
+    } catch (error) {
+      if (generation === this.generation) this.backupError.set((error as Error).message);
+    } finally {
+      if (generation === this.generation) this.preferencesLoading.set(false);
+    }
+  }
+  protected async saveBackup(): Promise<void> {
+    if (
+      this.preferencesLoading() ||
+      this.preferencesSaving() ||
+      !this.preferencesEtag ||
+      !this.backupChanged()
+    )
+      return;
+    const id = this.store.companyId();
+    if (!this.currentWorkspace()) return;
     this.backupError.set('');
-    if (!this.currentWorkspace()) {
-      this.backupError.set(
-        'The workspace changed. Reopen this company’s backup preferences before saving.',
+    this.preferencesSaving.set(true);
+    try {
+      const result = await this.auth.api<{ backup_preference: string; etag: string }>(
+        `/companies/${id}/preferences`,
+        { backup_preference: this.backup ? 'enabled' : 'disabled' },
+        'PATCH',
+        { 'If-Match': this.preferencesEtag },
       );
-      return;
-    }
-    if (!this.backupChanged()) return;
-    if (!this.store.saveWorkspace((data) => ({ ...data, backup: this.backup }))) {
-      this.backupError.set(
-        'The preference could not be saved. Your selection is still here; free browser storage and try again.',
+      if (id !== this.store.companyId()) return;
+      this.preferencesEtag = result.etag;
+      this.backup = result.backup_preference === 'enabled';
+      this.savedBackup.set(this.backup);
+      this.toast.success(
+        'Backup preference saved. Scheduled backups require a configured backup service.',
       );
-      return;
+    } catch (error) {
+      if (id === this.store.companyId()) this.backupError.set((error as Error).message);
+    } finally {
+      this.preferencesSaving.set(false);
     }
-    this.toast.success('Backup preference saved. Scheduled backups are not connected.');
   }
   protected discardBackup(): void {
-    this.backup = this.store.data().backup;
+    this.backup = this.savedBackup();
     this.backupError.set('');
   }
   protected downloadBackup(): void {

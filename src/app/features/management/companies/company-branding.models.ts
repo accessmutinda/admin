@@ -2,6 +2,8 @@ export type BrandingTab = 'theme' | 'emails' | 'documents' | 'portal';
 export type BrandingPreview = 'login' | 'header' | 'email' | 'document';
 export type EmailTemplateKey = 'welcome' | 'invitation' | 'notification';
 export interface CompanyBranding {
+  logoAssetId?: string | null;
+  faviconAssetId?: string | null;
   logo: string;
   favicon: string;
   primaryColor: string;

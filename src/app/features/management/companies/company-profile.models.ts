@@ -1,3 +1,4 @@
+import { MODULE_CODES } from '../../../core/access/company-access.service';
 import type { CompanyDetail } from './companies-api.models';
 import type { Company } from '../shared/management.store';
 
@@ -60,7 +61,11 @@ export function companyProfileFields(detail: CompanyDetail): Partial<Company> {
     tagline: detail.tagline ?? '',
     lifecycle: detail.lifecycle,
     active: detail.lifecycle === 'active',
-    modules: detail.enabled_modules ?? [],
+    modules: detail.enabled_product_modules
+      ? Object.keys(MODULE_CODES).filter((name) =>
+          detail.enabled_product_modules!.includes(MODULE_CODES[name]),
+        )
+      : (detail.enabled_modules ?? []),
     modifiedAt: detail.updated_at ?? undefined,
     modifiedBy: detail.updated_by?.name ?? undefined,
     profileCompletion: detail.profile_completion_percent ?? null,

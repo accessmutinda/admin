@@ -1,3 +1,4 @@
+import { AuthService } from '../../../core/auth/auth.service';
 import { EnvironmentInjector, runInInjectionContext, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
@@ -58,6 +59,10 @@ describe('Company data skeletons', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: { isSuperAdmin: () => false, profile: () => ({ company_id: 'company-1' }) },
+        },
         {
           provide: CompaniesApiService,
           useValue: { loading, loaded, error: () => '', overview: () => null },

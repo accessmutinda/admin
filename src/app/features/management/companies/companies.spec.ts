@@ -1,3 +1,4 @@
+import { AuthService } from '../../../core/auth/auth.service';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { CompaniesApiService } from './companies-api.service';
@@ -21,6 +22,11 @@ const company: Company = {
   modules: [],
 };
 describe('Original Companies overview with API data', () => {
+  beforeEach(() =>
+    TestBed.configureTestingModule({
+      providers: [{ provide: AuthService, useValue: { isSuperAdmin: () => true } }],
+    }),
+  );
   it('preserves the original cards, checklist and quick actions while binding returned values', () => {
     TestBed.configureTestingModule({
       providers: [
@@ -159,5 +165,98 @@ describe('Original Companies overview with API data', () => {
         el.textContent?.trim(),
       ),
     ).toEqual(['—', '—', '—', '—', '—']);
+  });
+});
+
+describe('Company administrator overview isolation', () => {
+  const own: Company = {
+    ...company,
+    id: 'own',
+    name: 'Own Provider',
+    lifecycle: 'active',
+    profileCompletion: 57,
+    modules: ['Care delivery', 'People & HR'],
+    setupProgress: {
+      general: { complete: true },
+      contacts: { complete: false },
+      branding: { complete: false },
+      integrations: { complete: null, available: false },
+    },
+  };
+  const foreign: Company = {
+    ...company,
+    id: 'foreign',
+    name: 'Foreign Provider',
+    profileCompletion: 100,
+  };
+  function open(assigned = 'own') {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: { isSuperAdmin: () => false, profile: () => ({ company_id: assigned }) },
+        },
+        {
+          provide: CompaniesApiService,
+          useValue: {
+            loading: () => false,
+            loaded: () => true,
+            error: () => '',
+            overview: () => ({
+              authorised_total: 500,
+              active_total: 499,
+              pending_setup_total: 1,
+              profile_completion_percent: 99,
+              open_admin_tasks: 345,
+            }),
+          },
+        },
+        {
+          provide: ManagementStore,
+          useValue: {
+            company: () => foreign,
+            companies: () => [foreign, own],
+            data: () => ({ members: [], locations: [] }),
+          },
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(Companies);
+    fixture.detectChanges();
+    return fixture;
+  }
+  it('shows only assigned-company cards, identity and management links', () => {
+    const fixture = open();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(
+      Array.from(root.querySelectorAll('.co-stat h2')).map((el) => el.textContent?.trim()),
+    ).toEqual(['Company Status', 'Profile Completion', 'Enabled Modules', 'Setup Tasks']);
+    expect(
+      Array.from(root.querySelectorAll('.co-stat strong')).map((el) => el.textContent?.trim()),
+    ).toEqual(['Active', '57%', '2', '2']);
+    expect(root.textContent).toContain('Own Provider');
+    for (const hidden of [
+      'Foreign Provider',
+      'Create New Company',
+      'Duplicate Existing Setup',
+      'Total Companies',
+      'Active Companies',
+      'View all companies',
+      'Recent Company Updates',
+      '500',
+      '345',
+    ])
+      expect(root.textContent).not.toContain(hidden);
+    expect(root.textContent).toContain('Edit Company Profile');
+    expect(root.textContent).toContain('Invite User');
+    expect(root.querySelector('a[href="/manage/companies/new"]')).toBeNull();
+    expect(root.querySelector('a[href*="foreign"]')).toBeNull();
+  });
+  it('does not fall back to another company when the assigned profile is missing', () => {
+    const root = open('missing').nativeElement as HTMLElement;
+    expect(root.textContent).not.toContain('Foreign Provider');
+    expect(root.textContent).not.toContain('Own Provider');
+    expect(root.querySelector('a[href="/manage/companies/new"]')).toBeNull();
   });
 });

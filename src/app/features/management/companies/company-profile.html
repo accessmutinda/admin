@@ -183,6 +183,7 @@
                           type="checkbox"
                           [id]="'input-' + field.key"
                           [name]="field.key"
+                          [disabled]="!canManageStatus()"
                           [ngModel]="draft.active"
                           (ngModelChange)="setField('active', $event)"
                           [attr.aria-describedby]="'hint-' + field.key"

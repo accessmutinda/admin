@@ -299,4 +299,44 @@ describe('Companies API service', () => {
       'creation response could not be read',
     );
   });
+  it('exports selected company IDs with CSV negotiation', async () => {
+    const blob = new Blob(['code,name']);
+    request.mockResolvedValueOnce(blob);
+    expect(await service.exportDirectory(['company-1'])).toBe(blob);
+    expect(request).toHaveBeenCalledWith(
+      '/companies/export?format=csv&ids=company-1',
+      undefined,
+      undefined,
+      { Accept: 'text/csv' },
+      'blob',
+    );
+  });
+  it('duplicates through the existing company endpoint and accepts its initial status', async () => {
+    request.mockResolvedValue({ ...created, lifecycle: 'active' });
+    expect((await service.create(payload, 'copy-key', 'company-1')).lifecycle).toBe('active');
+    expect(request).toHaveBeenCalledWith('/companies/company-1/duplicate', payload, undefined, {
+      'Idempotency-Key': 'copy-key',
+    });
+  });
+  it('keeps per-company bulk failures and reloads authoritative directory records', async () => {
+    request.mockResolvedValueOnce({
+      results: [{ id: 'company-1', ok: false, detail: 'Archived company.' }],
+    });
+    const result = await service.bulkLifecycle(['company-1'], 'active');
+    expect(result[0].ok).toBe(false);
+    expect(request).toHaveBeenCalledWith(
+      '/platform/companies/lifecycle',
+      expect.objectContaining({ company_ids: ['company-1'], lifecycle: 'active' }),
+      'POST',
+      expect.objectContaining({ 'Idempotency-Key': expect.any(String) }),
+    );
+  });
+  it('invalidates cached profile facts after a successful bulk status change', async () => {
+    request.mockResolvedValueOnce({ ...company, version: 1, etag: '"v1"' });
+    await service.loadDetail(company.id);
+    expect(service.details()[company.id].lifecycle).toBe('active');
+    request.mockResolvedValueOnce({ results: [{ id: company.id, ok: true }] });
+    await service.bulkLifecycle([company.id], 'suspended');
+    expect(service.details()[company.id]).toBeUndefined();
+  });
 });

@@ -69,6 +69,7 @@ export class CompanyProfile {
     () => (this.api.loading() && !this.api.loaded()) || this.api.detailLoading(this.id),
   );
   protected readonly company = computed(() => this.store.companies().find((c) => c.id === this.id));
+  protected readonly canManageStatus = computed(() => this.auth.isSuperAdmin());
   protected readonly editing = signal(this.route.snapshot.queryParamMap.get('edit') === 'true');
   protected readonly submitted = signal(false);
   protected readonly saveError = signal('');
@@ -268,6 +269,7 @@ export class CompanyProfile {
     );
   }
   protected setField(key: keyof Company, value: string | number | boolean | null): void {
+    if (key === 'active' && !this.canManageStatus()) return;
     this.draft = {
       ...this.draft,
       [key]: key === 'registeredPlaces' ? this.placesValue(value) : value,
@@ -368,7 +370,8 @@ export class CompanyProfile {
     if (!current) return;
     const next = { ...current };
     for (const field of this.fields) {
-      if (this.managedByContacts(field)) continue;
+      if (this.managedByContacts(field) || (field.key === 'active' && !this.canManageStatus()))
+        continue;
       Object.assign(next, {
         [field.key]:
           field.type === 'number'

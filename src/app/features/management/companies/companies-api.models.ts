@@ -29,11 +29,20 @@ export interface CompanySummary {
   code: string;
   name: string;
   lifecycle: CompanyLifecycle;
+  registration_number?: string | null;
   profile_completion_percent?: number;
   setup_progress?: SetupProgress;
   service_type?: string | null;
+  region?: string | null;
+  plan?: string | null;
+  primary_administrator?: {
+    name?: string | null;
+    email?: string | null;
+    state?: string | null;
+  } | null;
   postcode?: string | null;
   enabled_modules?: string[];
+  enabled_product_modules?: string[];
   updated_at?: string | null;
 }
 
@@ -78,18 +87,38 @@ export interface CreateCompanyRequest {
     legal_name?: string;
     trading_name?: string;
     registration_number?: string;
+    tax_number?: string;
+    service_type?: string;
+    staff_size_band?: string;
+    region?: string;
+    email?: string;
+    phone?: string;
+    website?: string;
+    lifecycle?: 'pending_setup' | 'active';
     sector?: string;
     country?: string;
     timezone?: string;
   };
-  addresses: { line1: string; town: string; postcode: string }[];
+  addresses: {
+    line1: string;
+    town?: string;
+    city?: string;
+    line2?: string;
+    county?: string;
+    country?: string;
+    kind?: string;
+    postcode: string;
+  }[];
+  product_modules?: string[];
+  branding?: { primary_colour: string; accent_colour: string };
+  plan?: string;
   initial_admin: { email: string; mfa_override: 'inherit' };
 }
 
 export interface CreatedCompany {
   id: string;
   code: string;
-  lifecycle: 'pending_setup';
+  lifecycle: 'pending_setup' | 'active';
   initial_admin_invitation: { id: string; state: string; delivery_state: string };
   request_id: string;
 }

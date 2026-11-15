@@ -12,13 +12,15 @@
       <p>Search, filter and manage all provider companies.</p>
     </div>
     <div class="cd-actions">
-      <a class="cd-button cd-primary" routerLink="/manage/companies/new"
-        ><span class="material-symbols-outlined" aria-hidden="true">add</span>Create Company</a
-      >
+      @if (canManage()) {
+        <a class="cd-button cd-primary" routerLink="/manage/companies/new"
+          ><span class="material-symbols-outlined" aria-hidden="true">add</span>Create Company</a
+        >
+      }
       <button
         type="button"
         class="cd-button cd-outline"
-        [disabled]="!filtered().length"
+        [disabled]="busy() || !filtered().length"
         (click)="exportList()"
       >
         <span class="material-symbols-outlined" aria-hidden="true">file_download</span>Export List
@@ -26,7 +28,7 @@
       <button
         type="button"
         class="cd-button"
-        [disabled]="!selectedIds().length"
+        [disabled]="busy() || !selectedIds().length"
         [matMenuTriggerFor]="bulkActions"
       >
         Bulk Actions
@@ -38,9 +40,9 @@
       <mat-menu #bulkActions="matMenu"
         ><button mat-menu-item (click)="exportList(true)">
           <span class="material-symbols-outlined" aria-hidden="true">download</span>Export Selected</button
-        ><button mat-menu-item (click)="changeStatus(true)">
+        ><button mat-menu-item [disabled]="!canManage() || busy()" (click)="changeStatus(true)">
           <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>Mark Active</button
-        ><button mat-menu-item (click)="changeStatus(false)">
+        ><button mat-menu-item [disabled]="!canManage() || busy()" (click)="changeStatus(false)">
           <span class="material-symbols-outlined" aria-hidden="true">pause_circle</span>Mark
           Inactive
         </button></mat-menu
@@ -381,10 +383,15 @@
                       >Modules &amp; Feature Access</a
                     ><a
                       mat-menu-item
+                      [disabled]="!canManage()"
                       routerLink="/manage/companies/new"
                       [queryParams]="{ duplicate: company.id }"
                       >Duplicate Company</a
-                    ><button mat-menu-item (click)="changeStatus(!isActive(company), [company.id])">
+                    ><button
+                      mat-menu-item
+                      [disabled]="!canManage() || busy()"
+                      (click)="changeStatus(!isActive(company), [company.id])"
+                    >
                       {{ isActive(company) ? 'Mark Inactive' : 'Mark Active' }}
                     </button></mat-menu
                   >

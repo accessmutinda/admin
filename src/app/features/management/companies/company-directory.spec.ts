@@ -31,7 +31,7 @@ interface Directory {
   pageCount(): number;
   setSearch(value: string): void;
   setFilter(key: string, value: string): void;
-  exportList(): void;
+  exportList(): Promise<void>;
   error(): string;
 }
 describe('Original company directory with backend data', () => {
@@ -39,7 +39,14 @@ describe('Original company directory with backend data', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: CompaniesApiService, useValue: { loading: () => false, error: () => '' } },
+        {
+          provide: CompaniesApiService,
+          useValue: {
+            loading: () => false,
+            error: () => '',
+            exportDirectory: vi.fn().mockRejectedValue(new Error('Export unavailable.')),
+          },
+        },
         {
           provide: ManagementStore,
           useValue: {
@@ -123,13 +130,14 @@ describe('Original company directory with backend data', () => {
     editor.setFilter('status', 'active');
     expect(editor.rows()).toHaveLength(6);
   });
-  it('keeps unsupported controls in place without fabricating an export or missing data', () => {
+  it('displays export failures without claiming a download and applies completion filters', async () => {
     const { fixture, editor } = open();
-    editor.exportList();
+    await editor.exportList();
     fixture.detectChanges();
-    expect(editor.error()).toContain('not supported by the backend');
+    expect(editor.error()).toBe('Export unavailable.');
     editor.setFilter('completion', 'pending');
-    expect(editor.error()).toContain('backend does not return');
+    expect(editor.rows()).toEqual([]);
+    expect(editor.error()).toBe('');
     expect(fixture.nativeElement.querySelector('button')).not.toBeNull();
   });
 });

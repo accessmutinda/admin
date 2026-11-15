@@ -60,7 +60,7 @@ export const managementAccessGuard: CanActivateFn = (route, state) => {
   const companyId = auth.profile()?.company_id;
   if (!companyId || auth.profile()?.company_entry_state !== 'ready')
     return router.parseUrl('/access-denied');
-  if (path === '/manage/companies') return router.createUrlTree(['/manage/companies', companyId]);
+
   if (path === '/manage/companies/new' || path === '/manage/companies/directory')
     return router.parseUrl('/access-denied');
   if (

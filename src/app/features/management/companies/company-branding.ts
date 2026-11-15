@@ -1,3 +1,8 @@
+import {
+  CompanyBrandingApi,
+  CompanyBrandingRecord,
+  CompanyBrandAsset,
+} from './company-branding-api.service';
 import { CompanyUnavailable } from '../shared/company-unavailable';
 import { Skeleton } from '../../../shared/ui/skeleton';
 import { CompanyLoading } from './company-loading';
@@ -5,6 +10,7 @@ import { CompaniesApiService } from './companies-api.service';
 import {
   Component,
   HostListener,
+  DestroyRef,
   computed,
   effect,
   untracked,
@@ -34,7 +40,10 @@ import {
 
 @Component({
   selector: 'cv-company-branding',
-  host: { class: 'module-page companies-page company-profile-page company-branding-page' },
+  host: {
+    class: 'module-page companies-page company-profile-page company-branding-page',
+    '[attr.inert]': 'saving() || uploading() ? "" : null',
+  },
   imports: [
     CompanyUnavailable,
     Skeleton,
@@ -51,6 +60,16 @@ export class CompanyBrandingPage {
   protected readonly dataApi = inject(CompaniesApiService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly brandingApi = inject(CompanyBrandingApi);
+  protected readonly record = signal<CompanyBrandingRecord | null>(null);
+  protected readonly loading = signal(true);
+  protected readonly saving = signal(false);
+  protected readonly pendingAssets = signal<CompanyBrandAsset[]>([]);
+  protected readonly scannerUnavailable = computed(() =>
+    this.pendingAssets().some((asset) => !asset.scanner_configured),
+  );
+  private readonly urls = new Set<string>();
+  private alive = true;
   private readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
   protected readonly company = computed(() => this.store.companies().find((c) => c.id === this.id));
   protected draft = this.company()
@@ -116,16 +135,80 @@ export class CompanyBrandingPage {
     },
   ];
   constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      this.alive = false;
+      for (const url of this.urls) URL.revokeObjectURL(url);
+    });
     let hydrated = '';
     effect(() => {
       const company = this.company();
       if (!company || hydrated === company.id) return;
       hydrated = company.id;
       untracked(() => {
-        this.draft = initialCompanyBranding(company);
-        this.baseline = JSON.stringify(this.draft);
+        void this.loadBranding();
       });
     });
+  }
+  protected async loadBranding() {
+    if (!this.company()) return;
+    this.loading.set(true);
+    this.error.set('');
+    try {
+      await this.accept(await this.brandingApi.load(this.id));
+    } catch (error) {
+      this.error.set((error as Error).message);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+  private async accept(record: CompanyBrandingRecord) {
+    if (!this.alive || !this.company()) return;
+    const draft = this.brandingApi.theme(record, this.company()!);
+    for (const kind of ['logo', 'favicon'] as const) {
+      const asset = draft[kind === 'logo' ? 'logoAssetId' : 'faviconAssetId'];
+      if (asset) {
+        const blob = await this.brandingApi.content(this.id, asset);
+        if (!this.alive) return;
+        const url = URL.createObjectURL(blob);
+        this.urls.add(url);
+        draft[kind] = url;
+      }
+    }
+    this.record.set(record);
+    this.draft = draft;
+    this.baseline = JSON.stringify(draft);
+    this.pendingAssets.set([]);
+  }
+  protected removeAsset(kind: 'logo' | 'favicon') {
+    this.draft[kind] = '';
+    this.draft[kind === 'logo' ? 'logoAssetId' : 'faviconAssetId'] = null;
+    this.pendingAssets.update((rows) => rows.filter((asset) => asset.kind !== kind));
+  }
+  protected async refreshAssets() {
+    this.uploading.set(true);
+    this.assetError.set('');
+    try {
+      for (const pending of this.pendingAssets()) {
+        const asset = await this.brandingApi.asset(this.id, pending.id);
+        if (asset.state === 'clean') {
+          this.draft[asset.kind === 'logo' ? 'logoAssetId' : 'faviconAssetId'] = asset.id;
+          this.pendingAssets.update((rows) => rows.filter((row) => row.id !== asset.id));
+        } else if (asset.state === 'infected' || asset.state === 'rejected') {
+          const saved = JSON.parse(this.baseline) as CompanyBranding;
+          this.draft[asset.kind] = saved[asset.kind];
+          const key = asset.kind === 'logo' ? 'logoAssetId' : 'faviconAssetId';
+          this.draft[key] = saved[key];
+          this.pendingAssets.update((rows) => rows.filter((row) => row.id !== asset.id));
+          this.assetError.set(
+            'This file did not pass its security check. Choose a different image.',
+          );
+        }
+      }
+    } catch (error) {
+      this.assetError.set((error as Error).message);
+    } finally {
+      this.uploading.set(false);
+    }
   }
   protected setTab(key: BrandingTab): void {
     this.tab.set(key);
@@ -135,8 +218,9 @@ export class CompanyBrandingPage {
     return this.baseline !== JSON.stringify(this.draft);
   }
   canLeave(): boolean {
+    if (this.saving() || this.uploading()) return false;
     return (
-      (!this.hasChanges() && !this.uploading()) ||
+      !this.hasChanges() ||
       window.confirm('You have unsaved branding changes. Leave without saving?')
     );
   }
@@ -234,21 +318,15 @@ export class CompanyBrandingPage {
     }
     this.uploading.set(true);
     try {
-      const data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      await new Promise<void>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve();
-        img.onerror = reject;
-        img.src = data;
-      });
-      this.draft[kind] = data;
-    } catch {
-      this.assetError.set('This image could not be read. Choose a valid image file.');
+      const asset = await this.brandingApi.upload(this.id, file, kind);
+      const url = URL.createObjectURL(file);
+      this.urls.add(url);
+      this.draft[kind] = url;
+      if (asset.state === 'clean')
+        this.draft[kind === 'logo' ? 'logoAssetId' : 'faviconAssetId'] = asset.id;
+      else this.pendingAssets.update((rows) => [...rows.filter((row) => row.kind !== kind), asset]);
+    } catch (error) {
+      this.assetError.set((error as Error).message);
     } finally {
       this.uploading.set(false);
       input.value = '';
@@ -256,61 +334,49 @@ export class CompanyBrandingPage {
   }
   protected reset(): void {
     this.draft = defaultCompanyBranding(this.company()?.name ?? '', this.company()?.code ?? '');
+    this.pendingAssets.set([]);
     this.error.set('');
     this.assetError.set('');
     this.submitted.set(false);
   }
   protected discard(): void {
-    if (this.company()) this.draft = initialCompanyBranding(this.company()!);
+    this.draft = JSON.parse(this.baseline) as CompanyBranding;
+    this.pendingAssets.set([]);
     this.baseline = JSON.stringify(this.draft);
     this.error.set('');
     this.assetError.set('');
     this.submitted.set(false);
   }
-  protected save(publish = false): void {
-    if (this.uploading()) return;
+  protected async save(publish = false): Promise<void> {
+    if (this.uploading() || this.saving() || this.pendingAssets().length || !this.record()) return;
     this.submitted.set(true);
     this.error.set('');
-    if (this.invalidFields().length) return;
-    const company = this.company();
-    if (!company) return;
-    const theme = structuredClone(this.draft);
-    theme.subdomain = theme.subdomain.trim();
-    theme.senderName = theme.senderName.trim();
-    theme.senderEmail = theme.senderEmail.trim();
-    const now = new Date().toISOString();
-    const actor = this.auth.currentUser()?.name ?? 'Company administrator';
-    if (
-      !this.store.saveCompany({
-        ...company,
-        logo: theme.logo,
-        color: theme.primaryColor,
-        accent: theme.accentColor,
-        branding: theme,
-        modifiedAt: now,
-        modifiedBy: actor,
-        ...(publish
-          ? {
-              publishedBranding: {
-                theme: structuredClone(theme),
-                publishedAt: now,
-                publishedBy: actor,
-              },
-            }
-          : {}),
-      })
-    ) {
-      this.error.set(this.store.companyWriteError());
-      return;
+    if (this.invalidFields().length || !this.company()) return;
+    this.saving.set(true);
+    try {
+      let record = await this.brandingApi.save(this.id, this.draft, this.record()!.etag);
+      this.record.set(record);
+      if (publish) record = await this.brandingApi.publish(this.id, record.etag);
+      await this.accept(record);
+      await this.dataApi.refreshCompany(this.id);
+      this.submitted.set(false);
+      this.toast.success(
+        publish
+          ? 'Branding version published. Live domain and email delivery require configured services.'
+          : 'Theme saved. Published branding is unchanged.',
+      );
+    } catch (error) {
+      const fields = (error as { fieldErrors?: Record<string, string[]> }).fieldErrors;
+      this.error.set(
+        fields && Object.keys(fields).length
+          ? Object.entries(fields)
+              .map(([field, messages]) => `${field}: ${messages.join(' ')}`)
+              .join(' ')
+          : (error as Error).message,
+      );
+    } finally {
+      this.saving.set(false);
     }
-    this.draft = theme;
-    this.baseline = JSON.stringify(theme);
-    this.submitted.set(false);
-    this.toast.success(
-      publish
-        ? 'Approved branding saved on this device. Live portal publishing is not connected.'
-        : 'Theme saved. The published branding has not changed.',
-    );
   }
   protected templateText(value: string): string {
     return value

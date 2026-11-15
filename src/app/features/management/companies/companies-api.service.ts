@@ -180,19 +180,30 @@ export class CompaniesApiService {
     }
   }
 
-  async create(payload: CreateCompanyRequest, idempotencyKey: string): Promise<CreatedCompany> {
+  async create(
+    payload: CreateCompanyRequest,
+    idempotencyKey: string,
+    duplicateId?: string,
+  ): Promise<CreatedCompany> {
     if (!this.auth.isSuperAdmin()) throw new Error('Only Super Admin can create companies.');
     if (!idempotencyKey) throw new Error('A company creation request key is required.');
-    const result = await this.auth.api<CreatedCompany>('/platform/companies', payload, undefined, {
-      'Idempotency-Key': idempotencyKey,
-    });
+    const result = await this.auth.api<CreatedCompany>(
+      duplicateId
+        ? `/companies/${encodeURIComponent(duplicateId)}/duplicate`
+        : '/platform/companies',
+      payload,
+      undefined,
+      {
+        'Idempotency-Key': idempotencyKey,
+      },
+    );
     if (
       !result ||
       typeof result.id !== 'string' ||
       !result.id ||
       typeof result.code !== 'string' ||
       !result.code ||
-      result.lifecycle !== 'pending_setup' ||
+      !['pending_setup', 'active'].includes(result.lifecycle) ||
       !result.initial_admin_invitation?.id ||
       typeof result.initial_admin_invitation.state !== 'string' ||
       typeof result.initial_admin_invitation.delivery_state !== 'string'
@@ -201,6 +212,58 @@ export class CompaniesApiService {
         'The creation response could not be read. Retry this request to check its result.',
       );
     return result;
+  }
+
+  async exportDirectory(ids: string[]): Promise<Blob> {
+    const context = this.context();
+    if (!context || !ids.length) throw Error('Choose companies to export.');
+    const query = new URLSearchParams({ format: 'csv', ids: ids.join(',') });
+    const blob = await this.auth.api<Blob>(
+      '/companies/export?' + query,
+      undefined,
+      undefined,
+      { Accept: 'text/csv' },
+      'blob',
+    );
+    if (context !== this.context())
+      throw Error('The company context changed. Reopen the directory.');
+    return blob;
+  }
+  async refreshCompany(id: string): Promise<void> {
+    const context = this.context();
+    if (!context || !this.auth.canAccessCompany(id)) return;
+    const records = { ...this.details() };
+    delete records[id];
+    this.detailSnapshot.set({ context, records });
+    await this.load(true);
+  }
+
+  async bulkLifecycle(
+    ids: string[],
+    lifecycle: CompanyLifecycle,
+  ): Promise<{ id: string; ok: boolean; detail?: string }[]> {
+    const context = this.context();
+    if (!context || !this.auth.isSuperAdmin())
+      throw Error('Only Super Admin can change company status.');
+    const result = await this.auth.api<{ results: { id: string; ok: boolean; detail?: string }[] }>(
+      '/platform/companies/lifecycle',
+      { company_ids: ids, lifecycle, reason: 'Updated from the company directory.' },
+      'POST',
+      { 'Idempotency-Key': crypto.randomUUID() },
+    );
+    if (context !== this.context())
+      throw Error('The company context changed. Reopen the directory.');
+    if (
+      !Array.isArray(result.results) ||
+      result.results.length !== ids.length ||
+      result.results.some((r) => !ids.includes(r.id) || typeof r.ok !== 'boolean')
+    )
+      throw Error('The company status response could not be read. Reload the directory.');
+    const records = { ...this.details() };
+    for (const row of result.results) if (row.ok) delete records[row.id];
+    this.detailSnapshot.set({ context, records });
+    await this.load(true);
+    return result.results;
   }
 
   async updateDetail(id: string, changes: CompanyProfileUpdate): Promise<CompanyDetail> {
@@ -233,8 +296,7 @@ export class CompaniesApiService {
     );
     if (context !== this.context())
       throw new Error('The company context changed. Reload before saving again.');
-    if (!result?.ok)
-      throw new Error(result?.detail || 'The company status could not be changed.');
+    if (!result?.ok) throw new Error(result?.detail || 'The company status could not be changed.');
   }
 
   private readDetail(id: string, detail: CompanyDetail): void {

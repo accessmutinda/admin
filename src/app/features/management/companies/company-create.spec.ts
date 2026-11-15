@@ -71,7 +71,7 @@ describe('Original five-step company creation with API submission', () => {
       registration: '87654321',
       region: 'England',
     });
-    editor.draft.company.subscription!.plan = 'Professional';
+    editor.draft.company.subscription!.plan = 'Growth';
     Object.assign(editor.draft.company.contacts!.primary, {
       generalEmail: 'office@example.com',
       mainPhone: '+44 20 7946 0123',
@@ -103,7 +103,7 @@ describe('Original five-step company creation with API submission', () => {
     });
     expect(editor.created()).toBe(true);
     expect(editor.draft.company.id).toBe('server-company');
-    expect(editor.notice()).toContain('awaiting backend support');
+    expect(editor.notice()).toContain('invitation');
     expect(localStorage.getItem('cv_api_company_details_v1')).toBeNull();
   });
   it('preserves the idempotency key on an unchanged retry', async () => {

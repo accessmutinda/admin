@@ -141,26 +141,26 @@ export const routes: Routes = [
           page === 'dashboard'
             ? [{ provide: InspectorService, useClass: InspectorDashboardService }]
             : page === 'provider'
-            ? [{ provide: InspectorService, useClass: InspectorProviderService }]
-            : page === 'service-users'
-              ? [{ provide: InspectorService, useClass: InspectorClientsService }]
-              : page === 'staffing'
-                ? [{ provide: InspectorService, useClass: InspectorStaffService }]
-                : page === 'medication'
-                  ? [{ provide: InspectorService, useClass: InspectorMedicationService }]
-                  : page === 'incidents'
-                    ? [{ provide: InspectorService, useClass: InspectorIncidentsService }]
-                    : page === 'quality'
-                      ? [{ provide: InspectorService, useClass: InspectorQualityService }]
-                      : page === 'documents'
-                        ? [{ provide: InspectorService, useClass: InspectorDocumentsService }]
-                        : page === 'reports'
-                          ? [{ provide: InspectorService, useClass: InspectorReportsService }]
-                          : page === 'notes'
-                            ? [{ provide: InspectorService, useClass: InspectorNotesService }]
-                            : page === 'visits'
-                              ? [{ provide: InspectorService, useClass: InspectorVisitsService }]
-                              : [],
+              ? [{ provide: InspectorService, useClass: InspectorProviderService }]
+              : page === 'service-users'
+                ? [{ provide: InspectorService, useClass: InspectorClientsService }]
+                : page === 'staffing'
+                  ? [{ provide: InspectorService, useClass: InspectorStaffService }]
+                  : page === 'medication'
+                    ? [{ provide: InspectorService, useClass: InspectorMedicationService }]
+                    : page === 'incidents'
+                      ? [{ provide: InspectorService, useClass: InspectorIncidentsService }]
+                      : page === 'quality'
+                        ? [{ provide: InspectorService, useClass: InspectorQualityService }]
+                        : page === 'documents'
+                          ? [{ provide: InspectorService, useClass: InspectorDocumentsService }]
+                          : page === 'reports'
+                            ? [{ provide: InspectorService, useClass: InspectorReportsService }]
+                            : page === 'notes'
+                              ? [{ provide: InspectorService, useClass: InspectorNotesService }]
+                              : page === 'visits'
+                                ? [{ provide: InspectorService, useClass: InspectorVisitsService }]
+                                : [],
         title: `${page.replaceAll('-', ' ')} · Inspector Portal · CareVerity`,
         loadComponent: () =>
           isConnectedInspectorPage(page)
@@ -391,9 +391,11 @@ export const routes: Routes = [
       },
       {
         path: 'companies/:id/settings',
-        title: 'Company settings · CareVerity',
-        loadComponent: () =>
-          import('./features/management/companies/company-editor').then((m) => m.CompanyEditor),
+        pathMatch: 'full',
+        redirectTo: ({ params }) =>
+          inject(Router).createUrlTree(['/manage/companies', params['id']], {
+            queryParams: { edit: true },
+          }),
       },
       {
         path: 'companies/:id',

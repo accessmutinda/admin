@@ -37,6 +37,7 @@ type FilterKey = 'status' | 'region' | 'service' | 'plan' | 'completion' | 'upda
   templateUrl: './company-directory.html',
 })
 export class CompanyDirectory {
+  protected readonly canManage = computed(() => this.auth.isSuperAdmin());
   protected readonly api = inject(CompaniesApiService);
   protected readonly store = inject(ManagementStore);
   private readonly auth = inject(AuthService);
@@ -58,6 +59,7 @@ export class CompanyDirectory {
   protected readonly sortDirection = signal<'asc' | 'desc'>('asc');
   protected readonly selected = signal<Set<string>>(new Set());
   protected readonly error = signal('');
+  protected readonly busy = signal(false);
   protected readonly completion = companyCompletion;
   protected readonly modifiedAt = companyModifiedAt;
   protected readonly canCompleteProfiles = computed(() => this.auth.isSuperAdmin());
@@ -100,7 +102,8 @@ export class CompanyDirectory {
       this.store.records()[company.id] ??
       (company.id === this.store.companyId() ? this.store.data() : undefined);
     const member = data?.members.find((m) => m.role === 'Company Admin' && m.status === 'Active');
-    return member ? member.name || member.email : '';
+    const summary = this.api.companies?.().find((c) => c.id === company.id)?.primary_administrator;
+    return member ? member.name || member.email : summary?.name || summary?.email || '';
   }
   protected readonly regions = computed(() =>
     [
@@ -301,14 +304,6 @@ export class CompanyDirectory {
     this.resetResults();
   }
   protected setFilter(key: FilterKey, value: string): void {
-    if (
-      key !== 'status' &&
-      value !== 'all' &&
-      this.store.companies().some((company) => company.apiSummaryOnly)
-    ) {
-      this.error.set('This filter needs company details the backend does not return yet.');
-      return;
-    }
     this.filters.update((filters) => ({ ...filters, [key]: value }));
     this.resetResults();
   }
@@ -354,25 +349,65 @@ export class CompanyDirectory {
       return next;
     });
   }
-  protected changeStatus(active: boolean, ids = this.selectedIds()): void {
-    if (!ids.length) return;
+  protected async changeStatus(active: boolean, ids = this.selectedIds()): Promise<void> {
+    if (this.busy() || !ids.length || !this.auth.isSuperAdmin()) return;
+    const changed = ids.filter((id) => {
+      const company = this.store.companies().find((c) => c.id === id);
+      return company && this.isActive(company) !== active;
+    });
+    if (!changed.length) {
+      this.toast.success('Selected companies already have this status.');
+      return;
+    }
     if (
       !window.confirm(
-        `Mark ${ids.length} ${ids.length === 1 ? 'company' : 'companies'} as ${active ? 'active' : 'inactive'}? This changes the platform status only; modules and saved records stay intact.`,
+        `Mark ${changed.length} ${changed.length === 1 ? 'company' : 'companies'} as ${active ? 'active' : 'inactive'}? This changes platform access; saved records stay intact.`,
       )
     )
       return;
-    if (
-      !this.store.setCompaniesActive(ids, active, this.auth.currentUser()?.name ?? 'Administrator')
-    ) {
-      this.error.set(this.store.companyWriteError());
-      return;
-    }
+    this.busy.set(true);
     this.error.set('');
-    this.selected.set(new Set());
-    this.toast.success('Company status updated.');
+    try {
+      const result = await this.api.bulkLifecycle(changed, active ? 'active' : 'suspended');
+      const failed = result.filter((r) => !r.ok);
+      this.selected.set(new Set(failed.map((r) => r.id)));
+      if (failed.length)
+        this.error.set(
+          failed
+            .map(
+              (r) =>
+                `${this.store.companies().find((c) => c.id === r.id)?.name ?? r.id}: ${r.detail}`,
+            )
+            .join(' '),
+        );
+      else this.toast.success('Company status updated.');
+    } catch (error) {
+      this.error.set((error as Error).message);
+    } finally {
+      this.busy.set(false);
+    }
   }
-  protected exportList(_selectedOnly = false): void {
-    this.error.set('Company exports are not supported by the backend yet.');
+  protected async exportList(selectedOnly = false): Promise<void> {
+    if (this.busy()) return;
+    const ids = selectedOnly ? this.selectedIds() : this.sorted().map((c) => c.id);
+    if (!ids.length) return;
+    this.error.set('');
+    this.busy.set(true);
+    try {
+      const blob = await this.api.exportDirectory(ids);
+      const url = URL.createObjectURL(blob);
+      try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'companies.csv';
+        link.click();
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      this.error.set((error as Error).message);
+    } finally {
+      this.busy.set(false);
+    }
   }
 }
