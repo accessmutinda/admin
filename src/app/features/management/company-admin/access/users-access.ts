@@ -82,7 +82,7 @@ export class UsersAccess {
   protected readonly configuration = signal<ModuleConfiguration | null>(null);
   protected readonly members = signal<ApiMember[]>([]);
   protected readonly invitations = signal<
-    { id: string; email: string; role_code: string; status: string; delivery_state: string }[]
+    { id: string; email: string; role_code: string; state: string; delivery_state: string }[]
   >([]);
   protected readonly selectedId = signal('');
   protected readonly selected = computed(() =>
@@ -125,7 +125,7 @@ export class UsersAccess {
         }) as Member & { required?: boolean },
     ),
     ...this.invitations()
-      .filter((invite) => invite.status === 'pending')
+      .filter((invite) => invite.state === 'pending')
       .map(
         (invite) =>
           ({
@@ -456,6 +456,37 @@ export class UsersAccess {
       if (id === this.access.companyId()) void this.loadMembers(id);
     });
   }
+  protected async invitationAction(member: Member, action: 'resend' | 'revoke'): Promise<void> {
+    if (
+      this.saving() ||
+      !this.access.core('company.memberships.manage') ||
+      member.status !== 'Invited'
+    )
+      return;
+    const id = this.access.companyId();
+    if (action === 'revoke' && !window.confirm(`Revoke the invitation for ${member.email}?`))
+      return;
+    this.saving.set(true);
+    this.error.set('');
+    this.notice.set('');
+    try {
+      await this.auth.api(
+        `/companies/${id}/invitations/${member.id}/${action}`,
+        {},
+        'POST',
+        action === 'resend' ? { 'Idempotency-Key': crypto.randomUUID() } : undefined,
+      );
+      if (id !== this.access.companyId()) return;
+      await this.loadMembers(id);
+      this.notice.set(
+        action === 'resend' ? 'Invitation queued for delivery.' : 'Invitation revoked.',
+      );
+    } catch (error) {
+      if (id === this.access.companyId()) this.error.set((error as Error).message);
+    } finally {
+      this.saving.set(false);
+    }
+  }
   private async loadMembers(id: string): Promise<void> {
     if (!this.access.core('company.memberships.read')) return;
     try {
@@ -578,7 +609,26 @@ export class UsersAccess {
       .length;
   }
   protected permissionCount(): number {
-    return this.modules().reduce((count, module) => count + this.enabledActions(module), 0);
+    const selected = new Set(this.permissionCodes());
+    return this.modules().reduce(
+      (count, module) =>
+        count +
+        module.submodules.reduce(
+          (total, submodule) =>
+            total +
+            submodule.permissions.filter((permission) => selected.has(permission.code)).length,
+          0,
+        ),
+      0,
+    );
+  }
+  protected permissionTotal(): number {
+    return this.modules().reduce(
+      (count, module) =>
+        count +
+        module.submodules.reduce((total, submodule) => total + submodule.permissions.length, 0),
+      0,
+    );
   }
   protected level(name: string) {
     const role = this.roles().find((role) => role.name === name);

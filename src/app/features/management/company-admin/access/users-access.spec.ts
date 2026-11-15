@@ -42,6 +42,32 @@ describe('Company role permission editor', () => {
     expect(editor.selected().version).toBe(1);
     expect(editor.error()).toContain('Reload');
   });
+  it('counts individual permissions including actions outside the module shortcuts', () => {
+    const configuration = editor.configuration();
+    const module = configuration.modules[0],
+      submodule = module.submodules[0];
+    editor.configuration.set({
+      ...configuration,
+      modules: [
+        {
+          ...module,
+          submodules: [
+            {
+              ...submodule,
+              permissions: [
+                ...submodule.permissions,
+                { code: 'care.records.approve', action: 'approve' },
+                { code: 'care.records.publish', action: 'publish' },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    editor.permissionCodes.set(['care.records.read', 'care.records.publish']);
+    expect(editor.permissionCount()).toBe(2);
+    expect(editor.permissionTotal()).toBe(3);
+  });
   it('accepts confirmed role permissions and clears the draft after save', async () => {
     access.saveRole.mockResolvedValue({ ...testRole, version: 2, etag: '"v2"', permissions: [] });
     editor.toggle('care', 'records', 'read');
@@ -81,5 +107,35 @@ describe('Company role permission editor', () => {
     await editor.create();
     expect(access.createRole.mock.calls[0][2]).toBe(access.createRole.mock.calls[1][2]);
     expect(access.createRole.mock.calls[0][1].code).toBe('NURSE');
+  });
+  it('shows only pending server invitations alongside memberships', () => {
+    editor.invitations.set([
+      { id: 'pending', email: 'invite@example.test', state: 'pending', role_code: testRole.code },
+      { id: 'revoked', email: 'revoked@example.test', state: 'revoked', role_code: testRole.code },
+    ]);
+    expect(editor.tableMembers().map((member: any) => member.id)).toEqual(['pending']);
+    expect(editor.tableMembers()[0].status).toBe('Invited');
+  });
+  it('resends and revokes invitations through company-scoped server endpoints', async () => {
+    access.core = () => true;
+    const api = TestBed.inject(AuthService).api as ReturnType<typeof vi.fn>;
+    api.mockResolvedValue({ results: [] });
+    const member = { id: 'invitation', email: 'invite@example.test', status: 'Invited' };
+    await editor.invitationAction(member, 'resend');
+    expect(api).toHaveBeenCalledWith(
+      '/companies/north/invitations/invitation/resend',
+      {},
+      'POST',
+      expect.objectContaining({ 'Idempotency-Key': expect.any(String) }),
+    );
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await editor.invitationAction(member, 'revoke');
+    expect(api).toHaveBeenCalledWith(
+      '/companies/north/invitations/invitation/revoke',
+      {},
+      'POST',
+      undefined,
+    );
+    vi.restoreAllMocks();
   });
 });

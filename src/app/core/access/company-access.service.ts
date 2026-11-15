@@ -312,7 +312,8 @@ export class CompanyAccessService {
       .then((value) => {
         if (id !== this.companyId()) return;
         if (generation !== this.generation) return this.refresh();
-        this.context.set(value);
+        const { request_id, ...context } = value as AccessContext & { request_id?: string };
+        this.context.set(context);
         this.error.set('');
         if (!this.canPath(this.router.url) && !isConnectedStaffPortalRoute(this.router.url))
           void this.router.navigateByUrl('/access-denied');

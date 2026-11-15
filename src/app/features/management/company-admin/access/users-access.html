@@ -129,7 +129,7 @@
           (ngModelChange)="setFilter('roleFilter', $event)"
           ><mat-option value="all">All roles</mat-option>
           @for (role of memberRoles(); track role) {
-            <mat-option [value]="role">{{ selected()?.name }}</mat-option>
+            <mat-option [value]="role">{{ role }}</mat-option>
           }
         </mat-select></label
       >
@@ -233,9 +233,7 @@
                   type="button"
                   class="ua-icon-button"
                   [disabled]="
-                    !access.core('company.memberships.manage') ||
-                    member.status === 'Invited' ||
-                    member.status === 'Revoked'
+                    !access.core('company.memberships.manage') || member.status === 'Revoked'
                   "
                   [matMenuTriggerFor]="memberMenu"
                   [attr.aria-label]="'Actions for ' + (member.name || member.email)"
@@ -243,15 +241,32 @@
                   <span class="material-symbols-outlined" aria-hidden="true"
                     >more_horiz</span
                   ></button
-                ><mat-menu #memberMenu="matMenu"
-                  ><button mat-menu-item (click)="openMember('edit', member)">
-                    <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit Role
-                    &amp; Status</button
-                  ><button mat-menu-item (click)="openMember('delete', member)">
-                    <span class="material-symbols-outlined" aria-hidden="true">person_remove</span
-                    >Delete User
-                  </button></mat-menu
-                >
+                ><mat-menu #memberMenu="matMenu">
+                  @if (member.status === 'Invited') {
+                    <button
+                      mat-menu-item
+                      [disabled]="saving()"
+                      (click)="invitationAction(member, 'resend')"
+                    >
+                      Resend invitation
+                    </button>
+                    <button
+                      mat-menu-item
+                      [disabled]="saving()"
+                      (click)="invitationAction(member, 'revoke')"
+                    >
+                      Revoke invitation
+                    </button>
+                  } @else {
+                    <button mat-menu-item (click)="openMember('edit', member)">
+                      <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
+                      Role &amp; Status</button
+                    ><button mat-menu-item (click)="openMember('delete', member)">
+                      <span class="material-symbols-outlined" aria-hidden="true">person_remove</span
+                      >Revoke access
+                    </button>
+                  }
+                </mat-menu>
               </td>
             </tr>
           } @empty {
@@ -362,7 +377,7 @@
     }
     <div class="ua-presets">
       <div class="ua-permission-count">
-        <strong>{{ permissionCount() }}/{{ modules().length * 5 }} actions enabled</strong>
+        <strong>{{ permissionCount() }}/{{ permissionTotal() }} permissions enabled</strong>
         <p>{{ selected()?.description }}</p>
       </div>
       <div class="ua-preset-buttons">

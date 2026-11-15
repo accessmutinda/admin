@@ -80,6 +80,18 @@ describe('Company product access', () => {
     expect(access.context()).toBeNull();
     expect(access.can('care', 'records')).toBe(false);
   });
+  it('keeps request tracing metadata out of the authority used by open editors', async () => {
+    api.mockResolvedValue({ ...context, request_id: 'first-request' });
+    await access.refresh();
+    const authority = JSON.stringify(access.context());
+    api.mockResolvedValue({ ...context, request_id: 'next-request' });
+    await access.refresh();
+    expect(JSON.stringify(access.context())).toBe(authority);
+    expect(access.context()).not.toHaveProperty('request_id');
+    api.mockResolvedValue({ ...context, revision: 2, permissions: [], request_id: 'revoked' });
+    await access.refresh();
+    expect(access.can('care', 'records')).toBe(false);
+  });
   it.each([
     '/staff-portal/oversight',
     '/staff-portal/dashboard',
