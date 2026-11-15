@@ -1,3 +1,6 @@
+import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { RotaService } from '../rota/rota.service';
+import { PayrollService } from '../payroll/payroll.service';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -45,7 +48,22 @@ describe('ECM records', () => {
     localStorage.clear();
     TestBed.configureTestingModule({});
     const auth = TestBed.inject(AuthService);
-    auth.signInDemoSession();
+    const company = signal('lqcs');
+    (auth as any).accessExpiresAt = Date.now() + 3_600_000;
+    vi.spyOn(auth, 'isAuthenticated').mockReturnValue(true);
+    vi.spyOn(auth, 'profile').mockImplementation(
+      () => ({ company_id: company(), company_entry_state: 'ready' }) as any,
+    );
+    vi.spyOn(auth, 'canAccessCompany').mockReturnValue(true);
+    vi.spyOn(auth, 'api').mockResolvedValue({} as never);
+    vi.spyOn(auth, 'selectWorkspace').mockImplementation(async (id) => {
+      company.set(id);
+    });
+    vi.spyOn(TestBed.inject(CompanyAccessService), 'refresh').mockResolvedValue();
+    const rota = TestBed.inject(RotaService),
+      payroll = TestBed.inject(PayrollService);
+    vi.spyOn(rota, 'can').mockImplementation((action) => rota.permissions().includes(action));
+    vi.spyOn(payroll, 'can').mockImplementation((action) => payroll.permissions().includes(action));
     TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
     actor.set({ ...DEMO_USER, roleCode: 'CA' });
     vi.spyOn(auth, 'currentUser').mockImplementation(() => actor());
