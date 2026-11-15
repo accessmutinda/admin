@@ -48,6 +48,9 @@ export class AuthService {
   private idleExpiresAt = 0;
   private refreshInFlight?: Promise<void>;
   private initialization?: Promise<void>;
+  private logoutInFlight?: Promise<void>;
+  private logoutPending = false;
+  private readonly logoutKey = 'cv_signout_pending';
   private lastActivity = 0;
   private generation = 0;
   private serverOffset = 0;
@@ -97,6 +100,15 @@ export class AuthService {
   }
 
   private async restore(): Promise<void> {
+    if (this.pendingSignOut()) {
+      this.clear();
+      try {
+        await this.finishSignOut();
+      } catch {
+        this.signOutFailed();
+      }
+      return;
+    }
     try {
       const response = await this.request<AuthResponse>('/auth/state');
       if (response.state !== 'signed_out') await this.apply(response);
@@ -121,6 +133,7 @@ export class AuthService {
     return defer(() =>
       from(
         (async () => {
+          if (this.pendingSignOut()) await this.finishSignOut();
           this.clear();
           this.sessionError.set('');
           await this.apply(
@@ -283,12 +296,41 @@ export class AuthService {
 
   signOut(): void {
     this.sessionError.set('');
-    const logout = this.request('/auth/logout', {});
+    this.rememberSignOut(true);
+    const logout = this.finishSignOut();
     this.clear();
-    void logout.catch(() =>
-      this.sessionError.set(
-        'Sign-out could not reach the server. Please retry before leaving this device.',
-      ),
+    void logout.catch(() => this.signOutFailed());
+  }
+
+  private pendingSignOut(): boolean {
+    try {
+      return this.logoutPending || localStorage.getItem(this.logoutKey) === '1';
+    } catch {
+      return this.logoutPending;
+    }
+  }
+
+  private rememberSignOut(pending: boolean): void {
+    this.logoutPending = pending;
+    try {
+      if (pending) localStorage.setItem(this.logoutKey, '1');
+      else localStorage.removeItem(this.logoutKey);
+    } catch {
+      /* Keep the current page signed out when browser storage is unavailable. */
+    }
+  }
+
+  private finishSignOut(): Promise<void> {
+    return (this.logoutInFlight ??= this.request<void>('/auth/logout', {})
+      .then(() => this.rememberSignOut(false))
+      .finally(() => {
+        this.logoutInFlight = undefined;
+      }));
+  }
+
+  private signOutFailed(): void {
+    this.sessionError.set(
+      'Sign-out could not reach the server. Please retry before leaving this device.',
     );
   }
 
@@ -543,6 +585,7 @@ export class AuthService {
       response = await fetch(`${API_BASE}${path}`, {
         method: requestMethod,
         credentials: 'include',
+        ...(path === '/auth/logout' ? { keepalive: true } : {}),
         signal: AbortSignal.timeout(
           multipart || binary ? 15 * 60_000 : responseType === 'blob' ? 5 * 60_000 : 15_000,
         ),

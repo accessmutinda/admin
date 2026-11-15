@@ -387,6 +387,53 @@ describe('CareVerity API authentication', () => {
       expect(fetchMock.mock.calls.some((call) => call[0] === `${API_BASE}/auth/logout`)).toBe(true),
     );
   });
+  it('finishes a persisted sign-out before restoring cookies after a reload', async () => {
+    localStorage.setItem('cv_signout_pending', '1');
+    await auth.initialize();
+    expect(auth.isAuthenticated()).toBe(false);
+    expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/auth/refresh'))).toBe(false);
+    expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/me'))).toBe(false);
+    const logout = fetchMock.mock.calls.find(([url]) => url.endsWith('/auth/logout'))!;
+    expect(logout[1]?.keepalive).toBe(true);
+    expect(localStorage.getItem('cv_signout_pending')).toBeNull();
+  });
+
+  it('keeps a failed logout pending and blocks cookie restoration until a retry succeeds', async () => {
+    await firstValueFrom(auth.signIn('person@example.com', 'password'));
+    const normal = fetchMock.getMockImplementation()!;
+    let offline = true;
+    fetchMock.mockImplementation(async (url, options) => {
+      if (url.endsWith('/auth/logout') && offline) throw Error('Offline');
+      return normal(url, options);
+    });
+    auth.signOut();
+    await vi.waitFor(() => expect(auth.sessionError()).toContain('Sign-out could not reach'));
+    expect(localStorage.getItem('cv_signout_pending')).toBe('1');
+    await auth.initialize();
+    expect(auth.isAuthenticated()).toBe(false);
+    expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/auth/refresh'))).toBe(false);
+    offline = false;
+    auth.signOut();
+    await vi.waitFor(() => expect(localStorage.getItem('cv_signout_pending')).toBeNull());
+  });
+
+  it('waits for pending server logout before an explicit new sign-in', async () => {
+    localStorage.setItem('cv_signout_pending', '1');
+    let finish!: (response: Response) => void;
+    const normal = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url, options) =>
+      url.endsWith('/auth/logout')
+        ? new Promise<Response>((resolve) => (finish = resolve))
+        : normal(url, options),
+    );
+    const login = firstValueFrom(auth.signIn('person@example.com', 'password'));
+    await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+    expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/auth/login'))).toBe(false);
+    finish(new Response(null, { status: 204 }));
+    await login;
+    expect(auth.isAuthenticated()).toBe(true);
+    expect(localStorage.getItem('cv_signout_pending')).toBeNull();
+  });
   it('reports real user activity without sending a body and throttles it to once a minute', async () => {
     await firstValueFrom(auth.signIn('person@example.com', 'password'));
     document.dispatchEvent(new Event('pointerdown'));
