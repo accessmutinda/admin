@@ -114,6 +114,16 @@ export class AcademyLearner {
       this.access.can('academy', 'learner', 'edit')
     );
   });
+  protected readonly learningReadOnly = computed(() => {
+    const assignment = this.assignment();
+    return (
+      !!assignment &&
+      !assignment.archived &&
+      !assignment.completedAt &&
+      !this.preview() &&
+      !this.access.can('academy', 'learner', 'edit')
+    );
+  });
   protected readonly lesson = computed(() => {
     const course = this.course();
     const index = course?.lessons.findIndex((l) => l.id === this.params().get('lessonId')) ?? -1;

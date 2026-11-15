@@ -11,6 +11,7 @@ import { CompanyAccessService } from '../../../../core/access/company-access.ser
 describe('Video playback persistence', () => {
   function open() {
     const revision = signal(1);
+    const canLearn = signal(true);
     const lesson = { id: 'lesson', title: 'Safe care', videoId: 'video', captionId: 'captions' };
     const course = { id: 'course', lessons: [lesson] };
     const assignment = {
@@ -45,7 +46,12 @@ describe('Video playback persistence', () => {
         { provide: AcademyMyLearningApi, useValue: null },
         {
           provide: CompanyAccessService,
-          useValue: { can: () => true, context: () => null, companyId: () => 'company' },
+          useValue: {
+            can: (_module: string, _feature: string, action: string) =>
+              action !== 'edit' || canLearn(),
+            context: () => null,
+            companyId: () => 'company',
+          },
         },
         {
           provide: AcademyService,
@@ -70,8 +76,24 @@ describe('Video playback persistence', () => {
     });
     TestBed.overrideComponent(AcademyLearner, { set: { template: '' } });
     const fixture = TestBed.createComponent(AcademyLearner);
-    return { fixture, revision, record, url };
+    return { fixture, revision, record, url, canLearn };
   }
+  it('explains view-only learning without recording playback until permission is granted', async () => {
+    const { fixture, canLearn, record } = open();
+    canLearn.set(false);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const learner = fixture.componentInstance;
+    expect(learner['learningReadOnly']()).toBe(true);
+    learner['resume']({ target: { currentTime: 0, duration: 4 } } as unknown as Event);
+    await Promise.resolve();
+    expect(record).not.toHaveBeenCalled();
+    canLearn.set(true);
+    fixture.detectChanges();
+    expect(learner['learningReadOnly']()).toBe(false);
+    learner['resume']({ target: { currentTime: 0, duration: 4 } } as unknown as Event);
+    await vi.waitFor(() => expect(record).toHaveBeenCalledTimes(1));
+  });
   it('keeps the same video URLs when source records refresh during playback', async () => {
     const { fixture, revision, url } = open();
     fixture.detectChanges();

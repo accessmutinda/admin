@@ -98,6 +98,12 @@
     "
     [notice]="notice()"
   />
+  @if (learningReadOnly()) {
+    <p class="notice" role="status">
+      Your role allows viewing this learning record. Ask your administrator for permission to record
+      learning progress and complete lessons.
+    </p>
+  }
   @switch (view()) {
     @case ('dashboard') {
       <div class="heading">
