@@ -179,11 +179,11 @@
             @if (a.passed && !a.invalidatedAt && !a.groupId) {
               <a
                 class="academy-button"
-                routerLink="/staff-portal/training/certificates"
+                routerLink="/staff-portal/training/history"
                 [queryParams]="context()"
                 >View training history →</a
               >
-              @if (academy.canReadCertificate()) {
+              @if (academy.canViewEvidence()) {
                 <a class="academy-button" routerLink="/manage/learning/certificates"
                   >Inspect evidence workflow →</a
                 >

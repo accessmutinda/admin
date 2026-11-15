@@ -1,12 +1,27 @@
-import { Component, Injector, inject, input } from '@angular/core';
+import {
+  Component,
+  Injector,
+  inject,
+  input,
+  computed,
+  effect,
+  signal,
+  untracked,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AcademyService } from './academy.service';
 import { AcademyDate } from './academy-date';
 @Component({
   selector: 'cv-academy-staff-training',
   imports: [RouterLink, AcademyDate],
-  template: `@if (!connected() || academy.canManage()) {
+  template: `@if (connected()) {
     <section class="panel">
+      @if (loading()) {
+        <p role="status">Loading Academy training records…</p>
+      }
+      @if (error()) {
+        <p role="alert">{{ error() }}</p>
+      }
       <div class="heading">
         <div>
           <h2>CareVerity Academy — learning & evidence</h2>
@@ -14,20 +29,22 @@ import { AcademyDate } from './academy-date';
             Assignments linked to this existing staff record. Practical sign-off remains separate.
           </p>
         </div>
-        <div class="actions">
-          <a
-            [attr.aria-disabled]="!connected()"
-            class="academy-button primary"
-            [routerLink]="connected() ? '/manage/learning/rules' : null"
-            [queryParams]="{ person: personId(), action: 'assign' }"
-            >Assign course</a
-          ><a
-            class="academy-button"
-            [routerLink]="connected() ? '/manage/learning/rules' : null"
-            [queryParams]="{ person: personId(), action: 'refresher' }"
-            >Send refresher</a
-          >
-        </div>
+        @if (academy.can('assign')) {
+          <div class="actions">
+            <a
+              [attr.aria-disabled]="!connected()"
+              class="academy-button primary"
+              [routerLink]="connected() ? '/manage/learning/rules' : null"
+              [queryParams]="{ person: personId(), action: 'assign' }"
+              >Assign course</a
+            ><a
+              class="academy-button"
+              [routerLink]="connected() ? '/manage/learning/rules' : null"
+              [queryParams]="{ person: personId(), action: 'refresher' }"
+              >Send refresher</a
+            >
+          </div>
+        }
       </div>
       <div class="scroll" tabindex="0" role="region" aria-label="Academy staff training">
         <table>
@@ -53,7 +70,7 @@ import { AcademyDate } from './academy-date';
                 <td>{{ academy.status(a) }}</td>
                 <td>
                   {{ academy.completion(a.id)?.status ?? 'No completion workflow' }}
-                  @if (a.completedAt) {
+                  @if (a.completedAt && certificateId(a.id) && academy.canViewEvidence()) {
                     <small
                       ><a [routerLink]="['/manage/learning/certificates', certificateId(a.id)]"
                         >Inspect evidence →</a
@@ -86,14 +103,35 @@ export class AcademyStaffTraining {
     return this.injector.get(AcademyService);
   }
   readonly personId = input.required<string>();
-  readonly connected = input(true);
+  protected readonly connected = computed(() => this.academy.assignmentApi.available());
+  protected readonly loading = signal(false);
+  protected readonly error = signal('');
+  constructor() {
+    effect(() => {
+      this.personId();
+      const scope = this.academy.store.companyId();
+      if (!this.connected() || !scope) return;
+      untracked(() => void this.load(scope));
+    });
+  }
+  private async load(scope: string) {
+    this.loading.set(true);
+    this.error.set('');
+    try {
+      await Promise.all([
+        this.academy.api.load(),
+        this.academy.assignmentApi.load(),
+        ...(this.academy.resultsApi.available() ? [this.academy.resultsApi.load()] : []),
+        ...(this.academy.certificatesApi.available() ? [this.academy.certificatesApi.load()] : []),
+      ]);
+    } catch (error) {
+      if (scope === this.academy.store.companyId()) this.error.set((error as Error).message);
+    } finally {
+      if (scope === this.academy.store.companyId()) this.loading.set(false);
+    }
+  }
   protected certificateId(id: string) {
-    return (
-      this.academy
-        .state()
-        .certificates.filter((c) => c.assignmentId === id)
-        .at(-1)?.id ?? ''
-    );
+    return this.academy.completion(id)?.certificateId ?? '';
   }
   protected assignments() {
     return this.academy.assignments().filter((a) => a.personId === this.personId() && !a.archived);

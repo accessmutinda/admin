@@ -2411,6 +2411,8 @@ export type AcademyLearningWrite = {
   assetId?: string;
   text?: string;
   position?: string;
+  watchStart?: string;
+  duration?: string;
 };
 
 export type AcademyResponseWrite = {
@@ -2490,6 +2492,9 @@ export type AcademyResultAssignmentRead = {
     shuffleOptions?: boolean;
   };
   positions: Record<string, unknown>;
+  watchedRanges: Record<string, unknown>;
+  videoDurations: Record<string, unknown>;
+  prerequisiteBlock: string;
   openedResourceIds: string[];
   resourceAcknowledgements: string[];
   availability: Record<string, unknown>;

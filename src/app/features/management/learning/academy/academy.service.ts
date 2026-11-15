@@ -330,8 +330,10 @@ export class AcademyService {
     const course = this.assignedCourse(a);
     const index = course?.lessons.findIndex((l) => l.id === lessonId) ?? -1;
     if (!course || index < 0) return 'Lesson is unavailable.';
+    if (a.prerequisiteBlock) return a.prerequisiteBlock;
     const person = this.store.staff().find((p) => p.id === a.personId);
     if (
+      a.prerequisiteBlock === undefined &&
       course.prerequisiteCourseIds?.some(
         (id) => !person || !evidenceCurrent(this.state(), person, id),
       )
@@ -552,7 +554,7 @@ export class AcademyService {
     );
     return duration > 0 ? Math.min(100, Math.floor((watched / duration) * 100)) : 0;
   }
-  recordVideoProgress(
+  async recordVideoProgress(
     assignmentId: string,
     lessonId: string,
     start: number,
@@ -560,8 +562,25 @@ export class AcademyService {
     duration: number,
     elapsedSeconds: number,
     workspace: string,
-  ): string | null {
-    return 'Verified video viewing evidence is not available for this lesson yet.';
+  ): Promise<string | null> {
+    if (
+      ![start, end, duration, elapsedSeconds].every(Number.isFinite) ||
+      start < 0 ||
+      end < start ||
+      duration <= 0 ||
+      end > duration + 0.25 ||
+      elapsedSeconds < 0
+    )
+      return 'Report a valid video viewing interval.';
+    return this.assessmentWrite(workspace, () =>
+      this.resultsApi.event(assignmentId, {
+        kind: 'position',
+        lessonId,
+        position: end.toFixed(3),
+        watchStart: start.toFixed(3),
+        duration: duration.toFixed(3),
+      }),
+    );
   }
   async requestTrainingRecords(workspace: string): Promise<string | null> {
     return this.assessmentWrite(workspace, () => this.certificatesApi.requestRecords());

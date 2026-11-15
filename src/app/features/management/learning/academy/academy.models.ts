@@ -257,6 +257,7 @@ export interface AcademyAssignment {
   type?: 'Initial' | 'Refresher';
   resourceAcknowledgements?: string[];
   openedResourceIds?: string[];
+  prerequisiteBlock?: string;
   watchedRanges?: Record<string, [number, number][]>;
   videoDurations?: Record<string, number>;
   id: string;

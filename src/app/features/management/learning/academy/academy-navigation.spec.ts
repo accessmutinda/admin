@@ -7,7 +7,6 @@ import { CompanyAccessService } from '../../../../core/access/company-access.ser
 import { ManagementStore } from '../../shared/management.store';
 import { AcademyService } from './academy.service';
 import { AcademyGovernanceService } from './academy-governance.service';
-import { AcademyDemoWorkflow } from './academy-demo-workflow';
 import { WorkspaceTools } from '../../care/workspace-tools';
 import { WallboardLauncher } from '../../ecm/wallboard-launcher';
 import { ManagementLayout } from '../../layout/management-layout';
@@ -42,7 +41,12 @@ describe('Academy navigation within the admin console', () => {
         {
           provide: ManagementStore,
           useValue: {
-            company: () => ({ name: 'North Training', code: 'NORTH' }),
+            company: () => ({
+              name: 'North Training',
+              code: 'NORTH',
+              apiSummaryOnly: true,
+              profileCompletion: 100,
+            }),
             storageAvailable: () => true,
           },
         },
@@ -56,7 +60,6 @@ describe('Academy navigation within the admin console', () => {
           },
         },
         { provide: AcademyGovernanceService, useValue: { seed: vi.fn() } },
-        { provide: AcademyDemoWorkflow, useValue: {} },
         { provide: WallboardLauncher, useValue: { open: vi.fn() } },
         provideRouter([
           {

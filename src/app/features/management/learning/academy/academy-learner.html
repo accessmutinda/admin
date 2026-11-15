@@ -203,7 +203,7 @@
                 >View training record →</a
               >
             } @else {
-              <a class="academy-button" routerLink="/staff-portal/training/certificates"
+              <a class="academy-button" routerLink="/staff-portal/training/history"
                 >View training history →</a
               >
             }
@@ -838,6 +838,7 @@
                       [src]="videoUrl()"
                       controls
                       (loadedmetadata)="resume($event)"
+                      (play)="position($event)"
                       (timeupdate)="position($event)"
                       (pause)="position($event)"
                       (ended)="position($event)"

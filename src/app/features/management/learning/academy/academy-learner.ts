@@ -12,6 +12,7 @@ import {
   effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { AcademyDate } from './academy-date';
 import { NgTemplateOutlet } from '@angular/common';
@@ -213,8 +214,7 @@ export class AcademyLearner {
         [captions, this.captionUrl],
       ] as const)
         if (id)
-          this.files
-            .url(id)
+          untracked(() => this.files.url(id))
             .then((url) => {
               urls.push(url);
               if (disposed) URL.revokeObjectURL(url);
@@ -595,6 +595,7 @@ export class AcademyLearner {
     const a = this.assignment();
     const lesson = this.lesson();
     if (!a || !lesson || !this.canRecordLearning()) return;
+    await this.progressSave;
     if (!(await this.flushNote())) return;
     const error = await this.academy.saveLesson(
       a.id,
@@ -645,6 +646,33 @@ export class AcademyLearner {
     return true;
   }
   private playback = { lessonId: '', position: 0, at: 0 };
+  private progressSave: Promise<void> = Promise.resolve();
+  private saveVideoProgress(start: number, end: number, duration: number, elapsed: number): void {
+    const assignment = this.assignment();
+    const lesson = this.lesson();
+    if (!assignment || !lesson || !this.canRecordLearning() || this.currentLessonDone()) return;
+    const workspace = this.academy.store.companyId();
+    this.progressSave = this.progressSave
+      .then(async () => {
+        const error = await this.academy.recordVideoProgress(
+          assignment.id,
+          lesson.id,
+          start,
+          end,
+          duration,
+          elapsed,
+          workspace,
+        );
+        if (this.assignment()?.id === assignment.id && this.lesson()?.id === lesson.id)
+          this.error.set(error ?? '');
+      })
+      .catch((error) =>
+        this.error.set(
+          error instanceof Error ? error.message : 'Video progress could not be saved.',
+        ),
+      );
+  }
+
   protected resume(event: Event) {
     const video = event.target as HTMLVideoElement;
     const saved = this.assignment()?.positions[this.lesson()?.id ?? ''] ?? 0;
@@ -654,6 +682,8 @@ export class AcademyLearner {
       position: video.currentTime,
       at: performance.now(),
     };
+    if (Number.isFinite(video.duration) && video.duration > 0)
+      this.saveVideoProgress(video.currentTime, video.currentTime, video.duration, 0);
   }
   protected position(event: Event) {
     const a = this.assignment();
@@ -667,16 +697,12 @@ export class AcademyLearner {
       return;
     this.playback = { lessonId: lesson.id, position: video.currentTime, at: now };
     if (previous.lessonId !== lesson.id || !previous.at) return;
-    const error = this.academy.recordVideoProgress(
-      a.id,
-      lesson.id,
+    this.saveVideoProgress(
       event.type === 'seeking' ? video.currentTime : previous.position,
       video.currentTime,
       video.duration,
       (now - previous.at) / 1000,
-      this.academy.store.companyId(),
     );
-    if (error) this.error.set(error);
   }
   protected toggleCaptions(video: HTMLVideoElement) {
     for (let i = 0; i < video.textTracks.length; i++)

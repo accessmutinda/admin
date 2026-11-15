@@ -8,7 +8,7 @@ import { AcademySyncStatus } from './academy.models';
   template: `<section class="timeline" aria-label="Completion evidence workflow">
     <h2>Automatic post-pass workflow</h2>
     <p class="state" role="status">
-      {{ completion()?.status ?? 'No verified integration workflow recorded' }}
+      {{ status() }}
     </p>
     <ol>
       @for (step of steps; track step.label) {
@@ -19,15 +19,19 @@ import { AcademySyncStatus } from './academy.models';
           ><strong>{{ step.label }}</strong
           ><small>{{ ack(step.stage) ? 'Acknowledged' : 'Pending' }}</small>
           @if (ack(step.stage); as a) {
-            <small>{{ a.at | ukDate: 'd MMM, HH:mm' }}</small
-            ><small>{{ a.reference }}</small>
+            <small>{{ a.at | ukDate: 'd MMM, HH:mm' }}</small>
+            @if (academy.canViewEvidence()) {
+              <small>{{ a.reference }}</small>
+            }
           }
         </li>
       }
     </ol>
     @if (completion(); as c) {
       <p>{{ c.error }}</p>
-      <small>Trace {{ c.correlationId }} · Result {{ c.id }}</small>
+      @if (academy.canViewEvidence()) {
+        <small>Trace {{ c.correlationId }} · Result {{ c.id }}</small>
+      }
     }
     <p>
       Knowledge completion, practical competency and visit-specific deployment readiness are
@@ -64,7 +68,7 @@ import { AcademySyncStatus } from './academy.models';
       }
       ol {
         display: grid;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 8px 6px;
         list-style: none;
         padding: 0;
@@ -115,15 +119,29 @@ export class AcademyTimeline {
   protected completion() {
     return this.academy.completion(this.assignmentId());
   }
+  protected status() {
+    const status = this.completion()?.status;
+    if (!status) return 'Completion evidence has not been recorded yet.';
+    return (
+      {
+        CERTIFICATE_PENDING: 'Certificate issuance pending',
+        CERTIFICATE_GENERATED: 'Certificate issued',
+        HR_LINK_PENDING: 'HR filing pending',
+        TRAINING_RECORD_PENDING: 'Training record update pending',
+        COMPLIANCE_PENDING: 'Compliance update pending',
+        ROTA_REFRESH_PENDING: 'Certificate recorded; rota update pending',
+        COMPLETE_SYNCED: 'Completion evidence recorded',
+        SYNC_EXCEPTION: 'Completion evidence needs review',
+      }[status] ?? 'Completion evidence is being processed'
+    );
+  }
   protected ack(stage: AcademySyncStatus) {
     return this.completion()?.acknowledgements.find((a) => a.stage === stage);
   }
   protected readonly steps: { stage: AcademySyncStatus; label: string; icon: string }[] = [
     { stage: 'CERTIFICATE_GENERATED', label: 'Certificate generated', icon: 'workspace_premium' },
     { stage: 'TRAINING_RECORD_PENDING', label: 'Filed in staff HR', icon: 'folder' },
-    { stage: 'COMPLIANCE_PENDING', label: 'Training record & matrix', icon: 'grid_view' },
-    { stage: 'ROTA_REFRESH_PENDING', label: 'Compliance recalculated', icon: 'verified_user' },
+    { stage: 'COMPLIANCE_PENDING', label: 'Training record & compliance', icon: 'verified_user' },
     { stage: 'COMPLETE_SYNCED', label: 'Rota refreshed', icon: 'event_available' },
-    { stage: 'COMPLETE_SYNCED', label: 'Workflow complete', icon: 'task_alt' },
   ];
 }
