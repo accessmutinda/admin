@@ -152,6 +152,7 @@ describe('Connected family-facing portal', () => {
               email: 'family@example.com',
             }),
             signOut: vi.fn(),
+            canSwitchWorkspace: () => false,
           },
         },
         {
@@ -367,5 +368,19 @@ describe('Connected family-facing portal', () => {
     request.mockRejectedValueOnce(Object.assign(Error('All access was revoked'), { status: 403 }));
     await portal.api.loadShared('person-1', 'family-1', 'notes', false);
     expect(portal.record()).toBeNull();
+  });
+  it('offers recovery from a restricted section without company-switch links for family users', async () => {
+    await page('support');
+    expect(fixture.nativeElement.querySelector('a[href="/select-workspace"]')).toBeNull();
+    request.mockRejectedValueOnce(
+      Object.assign(Error('Documents are restricted'), { status: 403 }),
+    );
+    await portal.api.loadShared('person-1', 'family-1', 'documents', false);
+    await settle(fixture);
+    expect(fixture.nativeElement.querySelector('a[href="/family-portal"]')?.textContent).toContain(
+      'Back to available care records',
+    );
+    expect(fixture.nativeElement.querySelector('a[href="/select-workspace"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Approved summary');
   });
 });

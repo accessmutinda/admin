@@ -1123,9 +1123,11 @@
                 </div>
                 <div>
                   <h3>Your account</h3>
-                  <p>Manage account security or change your current workspace.</p>
-                  <a class="button" routerLink="/account/security">Account security →</a
-                  ><a class="text-link" routerLink="/select-workspace">Switch workspace</a>
+                  <p>Manage your account security.</p>
+                  <a class="button" routerLink="/account/security">Account security →</a>
+                  @if (auth.canSwitchWorkspace()) {
+                    <a class="text-link" routerLink="/select-workspace">Switch workspace</a>
+                  }
                 </div>
               </div>
             </section>
@@ -1166,7 +1168,12 @@
         @if (api.can('read')) {
           <a class="button primary" routerLink="/manage/clients">Open service users →</a>
         }
-        <a class="text-link" routerLink="/select-workspace">Select another workspace</a>
+        @if (params().get('clientId')) {
+          <a class="button" routerLink="/family-portal">Back to available care records</a>
+        }
+        @if (auth.canSwitchWorkspace()) {
+          <a class="text-link" routerLink="/select-workspace">Select another workspace</a>
+        }
       </section>
     }
   </main>
