@@ -31,6 +31,7 @@ import {
 } from '../../../../core/access/company-access.service';
 import { ManagementStore, Member } from '../../shared/management.store';
 import { CompanyUserDialog } from '../../companies/company-user-dialog';
+import { InspectionAccessDialog } from './inspection-access-dialog';
 
 interface ApiMember {
   id: string;
@@ -455,6 +456,15 @@ export class UsersAccess {
     ref.afterClosed().subscribe(() => {
       if (id === this.access.companyId()) void this.loadMembers(id);
     });
+  }
+  protected inspectionAccess(member: Member): void {
+    if (!this.access.core('company.memberships.manage') || !this.access.core('company.memberships.read') || member.status !== 'Active') return;
+    const id = this.access.companyId();
+    const ref = this.dialog.open(InspectionAccessDialog, {
+      width: '760px', maxWidth: 'calc(100vw - 24px)', disableClose: true,
+      data: { companyId: id, membershipId: member.id, name: member.name || member.email },
+    });
+    this.closeDialog = () => ref.close();
   }
   protected async invitationAction(member: Member, action: 'resend' | 'revoke'): Promise<void> {
     if (

@@ -258,6 +258,9 @@
                       Revoke invitation
                     </button>
                   } @else {
+                    @if (member.status === 'Active' && access.core('company.memberships.read')) {
+                      <button mat-menu-item (click)="inspectionAccess(member)">Inspection access</button>
+                    }
                     <button mat-menu-item (click)="openMember('edit', member)">
                       <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
                       Role &amp; Status</button

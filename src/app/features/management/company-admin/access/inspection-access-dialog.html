@@ -1,0 +1,143 @@
+<h2 mat-dialog-title>Inspection access</h2>
+<mat-dialog-content>
+  <strong>{{ data.name }}</strong>
+  <p>
+    Authorise the dates when this user may inspect this company. Their role must also include the
+    relevant Inspector Portal permissions.
+  </p>
+  <p class="muted">
+    Dates and times use {{ zone }}. Revoking a window ends access through that window immediately.
+    Other active windows still apply.
+  </p>
+  @if (error()) {
+    <p role="alert" class="error">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p role="status" class="success">{{ notice() }}</p>
+  }
+  @if (loading()) {
+    <p role="status">Loading inspection access…</p>
+  } @else {
+    <div class="table-scroll">
+      <table aria-label="Inspection access windows">
+        <thead>
+          <tr>
+            <th>Starts</th>
+            <th>Ends</th>
+            <th>Status</th>
+            <th>Reason</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of records(); track row.id) {
+            <tr>
+              <td>{{ row.starts_at | date: 'd MMM y, HH:mm' }}</td>
+              <td>{{ row.ends_at | date: 'd MMM y, HH:mm' }}</td>
+              <td>{{ state(row) }}</td>
+              <td>{{ row.reason }}</td>
+              <td>
+                @if (!row.revoked_at) {
+                  <button
+                    type="button"
+                    [disabled]="busy() || !allowed()"
+                    (click)="chooseRevoke(row)"
+                    [attr.aria-label]="
+                      'Revoke access ending ' + (row.ends_at | date: 'd MMM y, HH:mm')
+                    "
+                  >
+                    Revoke
+                  </button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5">No inspection access has been authorised for this user.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (revoking()) {
+      <form (ngSubmit)="revoke()" novalidate>
+        <h3>Revoke this access window</h3>
+        <label
+          >Revocation reason<textarea
+            name="revokeReason"
+            [(ngModel)]="revokeReason"
+            required
+            maxlength="500"
+            [disabled]="busy()"
+            [attr.aria-invalid]="fields()['reason'] ? true : null"
+          ></textarea>
+        </label>
+        @for (message of fields()['reason'] ?? []; track message) {
+          <small class="error">{{ message }}</small>
+        }
+        <div class="actions">
+          <button type="button" (click)="revoking.set(null); fields.set({})" [disabled]="busy()">
+            Cancel revocation</button
+          ><button type="submit" class="danger" [disabled]="busy() || !allowed()">
+            Confirm revoke
+          </button>
+        </div>
+      </form>
+    } @else {
+      <form (ngSubmit)="create()" novalidate>
+        <h3>Authorise an access window</h3>
+        <fieldset [disabled]="busy() || !allowed()">
+          <div class="dates">
+            <label
+              >Access starts<input
+                name="starts"
+                type="datetime-local"
+                [(ngModel)]="starts"
+                required
+                [attr.aria-invalid]="fields()['starts_at'] ? true : null"
+              />
+              @for (message of fields()['starts_at'] ?? []; track message) {
+                <small class="error">{{ message }}</small>
+              }
+            </label>
+            <label
+              >Access ends<input
+                name="ends"
+                type="datetime-local"
+                [(ngModel)]="ends"
+                required
+                [attr.aria-invalid]="fields()['ends_at'] ? true : null"
+              />
+              @for (message of fields()['ends_at'] ?? []; track message) {
+                <small class="error">{{ message }}</small>
+              }
+            </label>
+          </div>
+          <label
+            >Authorisation reason<textarea
+              name="reason"
+              [(ngModel)]="reason"
+              maxlength="500"
+              required
+              [attr.aria-invalid]="fields()['reason'] ? true : null"
+            ></textarea>
+            @for (message of fields()['reason'] ?? []; track message) {
+              <small class="error">{{ message }}</small>
+            }
+          </label>
+          <div class="actions">
+            <button type="submit" class="primary" [disabled]="busy()">
+              {{ busy() ? 'Saving…' : 'Save inspection access' }}
+            </button>
+          </div>
+        </fieldset>
+      </form>
+    }
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end"
+  ><button type="button" (click)="load()" [disabled]="busy() || loading()">Reload access</button
+  ><button type="button" (click)="close()" [disabled]="busy()">
+    Close inspection access
+  </button></mat-dialog-actions
+>

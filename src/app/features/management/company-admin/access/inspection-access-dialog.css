@@ -1,0 +1,118 @@
+:host {
+  display: block;
+  color: #173450;
+}
+p {
+  line-height: 1.5;
+}
+.muted {
+  color: #586f83;
+  font-size: 13px;
+}
+.table-scroll {
+  overflow: auto;
+  margin: 16px 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+th,
+td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #dce5ec;
+  vertical-align: top;
+}
+th {
+  background: #f2f6f9;
+  white-space: nowrap;
+}
+form {
+  border-top: 1px solid #dce5ec;
+  padding-top: 8px;
+}
+fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+input,
+textarea {
+  font: inherit;
+  padding: 10px;
+  border: 1px solid #a9bbc9;
+  border-radius: 7px;
+  width: 100%;
+  box-sizing: border-box;
+}
+textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+[aria-invalid='true'] {
+  border-color: #bd1c28;
+  background: #fff6f6;
+}
+.error {
+  color: #ad1726;
+}
+.success {
+  color: #176342;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 12px 0;
+}
+button {
+  padding: 9px 13px;
+  border: 1px solid #b8c7d3;
+  border-radius: 7px;
+  background: white;
+  color: #173450;
+  cursor: pointer;
+  font: inherit;
+}
+button.primary {
+  color: white;
+  background: #007b9a;
+  border-color: #007b9a;
+}
+button.danger {
+  color: white;
+  background: #b32630;
+  border-color: #b32630;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #007b9a;
+  outline-offset: 2px;
+}
+@media (max-width: 540px) {
+  .dates {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
