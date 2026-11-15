@@ -90,7 +90,10 @@ export class AssessmentEditor {
     inject(DestroyRef).onDestroy(() => this.api?.disconnect());
     if (this.api) {
       void this.api.openAssessment(this.id, this.route.snapshot.paramMap.get('type')).then((ok) => {
-        if (!ok) return;
+        if (!ok) {
+          this.ready.set(true);
+          return;
+        }
         this.record = structuredClone(
           this.id
             ? this.service.data().assessments.find((a) => a.id === this.id)!

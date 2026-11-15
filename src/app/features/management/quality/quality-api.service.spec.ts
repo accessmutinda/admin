@@ -358,6 +358,22 @@ describe('Connected supervisor and assessment workflows', () => {
     expect(fixture.nativeElement.textContent).toContain('Quality visit form');
     fixture.destroy();
   });
+  it('shows an unavailable assessment when its template is missing instead of loading forever', async () => {
+    Object.defineProperty(TestBed.inject(ActivatedRoute).snapshot, 'paramMap', {
+      value: convertToParamMap({ type: 'missing-template' }),
+      configurable: true,
+    });
+    const fixture = TestBed.createComponent(AssessmentEditor);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('Assessment not found');
+    });
+    expect(fixture.nativeElement.textContent).not.toContain('Loading the saved assessment');
+    fixture.destroy();
+  });
   it('preserves a draft when the server rejects its submission', async () => {
     Object.defineProperty(TestBed.inject(ActivatedRoute).snapshot, 'paramMap', {
       value: convertToParamMap({ type: 'visit' }),
