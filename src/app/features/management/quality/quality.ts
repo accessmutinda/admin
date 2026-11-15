@@ -256,7 +256,7 @@ export class Quality {
       : templateFor(id);
   constructor() {
     inject(DestroyRef).onDestroy(() => this.api?.disconnect());
-    this.api?.connect(this.tab());
+    this.api?.connect(this.tab(), this.supervisor);
     effect(() => {
       const scope = this.api?.scope();
       const company = this.api?.store.company();
@@ -341,6 +341,7 @@ export class Quality {
       : this.service.can(this.action.revision ? 'edit' : 'create');
   }
   protected editAction(a?: CorrectiveAction): void {
+    if (this.api?.saving() || (!a && this.api?.loading())) return;
     this.action = a
       ? structuredClone(a)
       : {

@@ -333,7 +333,11 @@
             tab() === 'Corrective actions' &&
             (api ? api.canAction('create') : canCreateAssessment())
           ) {
-            <button class="button primary" (click)="editAction()">
+            <button
+              class="button primary"
+              [disabled]="!!api?.loading() || !!api?.saving()"
+              (click)="editAction()"
+            >
               <span class="material-symbols-outlined" aria-hidden="true">add</span>Add action
             </button>
           }

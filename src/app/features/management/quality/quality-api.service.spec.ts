@@ -319,10 +319,65 @@ describe('Connected supervisor and assessment workflows', () => {
     permissions.delete('export');
     expect(api.can('export')).toBe(false);
   });
+  it('waits for the action directory before opening a corrective action', async () => {
+    const fixture = TestBed.createComponent(Quality);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const component = fixture.componentInstance as any;
+    component.switchTab('Corrective actions');
+    await api.load('Corrective actions');
+    fixture.detectChanges();
+    let complete!: (value: any) => void;
+    request.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    const refresh = api.load('Corrective actions');
+    fixture.detectChanges();
+    const add = () =>
+      [...fixture.nativeElement.querySelectorAll('button')].find((button: any) =>
+        button.textContent.includes('Add action'),
+      ) as HTMLButtonElement;
+    expect(add().disabled).toBe(true);
+    component.editAction();
+    expect(component.actionModal()).toBe(false);
+    complete(page());
+    await refresh;
+    fixture.detectChanges();
+    expect(add().disabled).toBe(false);
+    add().click();
+    expect(component.actionModal()).toBe(true);
+    expect(component.action.ownerId).toBe('12');
+  });
+  it('uses the component route mode when the provider inherited another activated route', async () => {
+    api.connect('Overview', false);
+    await api.load();
+    expect(api.supervisor).toBe(false);
+    request.mockClear();
+    const fixture = TestBed.createComponent(Quality);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await api.load();
+    expect(api.supervisor).toBe(true);
+    expect(request.mock.calls.some((call: any[]) => call[0].includes('/supervisor?'))).toBe(true);
+    expect(request.mock.calls.some((call: any[]) => call[0].includes('/quality/workspace?'))).toBe(
+      false,
+    );
+    const download = vi.spyOn(api as any, 'saveBlob').mockImplementation(() => undefined);
+    request.mockResolvedValueOnce(new Blob(['{}']));
+    await api.exportReport();
+    expect((request.mock.calls.at(-1) as any[])[0]).toContain('/supervisor/export?');
+    expect(download).toHaveBeenCalled();
+    fixture.destroy();
+  });
   it('renders the supervisor dashboard with real records and clears an open action on scope change', async () => {
     const fixture = TestBed.createComponent(Quality);
     fixture.detectChanges();
     await fixture.whenStable();
+    await api.load();
+    fixture.detectChanges();
     const component = fixture.componentInstance as any;
     expect(fixture.nativeElement.textContent).toContain('Supervisor dashboard');
     expect(fixture.nativeElement.textContent).toContain('Staff supervision');

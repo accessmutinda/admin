@@ -25,7 +25,10 @@ export class QualityApi {
   readonly access = this.records.access;
   readonly scope = this.records.scope;
   private readonly route = inject(ActivatedRoute);
-  readonly supervisor = this.route.snapshot.data['supervisor'] === true;
+  private readonly supervisorMode = signal(this.route.snapshot.data['supervisor'] === true);
+  get supervisor(): boolean {
+    return this.supervisorMode();
+  }
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly error = signal('');
@@ -169,7 +172,13 @@ export class QualityApi {
   canAction(action: string) {
     return this.can('view') && this.canSource('actions', action);
   }
-  connect(view = 'Overview') {
+  connect(view = 'Overview', supervisor = this.supervisor) {
+    if (supervisor !== this.supervisor) {
+      this.generation++;
+      this.clear();
+      this.supervisorMode.set(supervisor);
+      this.view.set(null);
+    }
     this.active.set(true);
     this.denied.set(false);
     if (this.view() !== view) {
