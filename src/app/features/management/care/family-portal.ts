@@ -266,7 +266,7 @@ export class FamilyPortal {
   protected select(value: string): void {
     const choice = this.choices().find((c) => c.accessId === value);
     if (choice)
-      void this.router.navigate(['/family', choice.clientId, choice.accessId, this.page()], {
+      void this.router.navigate(['/family', choice.clientId, choice.accessId, 'overview'], {
         queryParams: choice.preview ? { preview: '1' } : {},
       });
     this.search = '';

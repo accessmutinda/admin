@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { FamilyPortal } from './family-portal';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
@@ -186,6 +186,23 @@ describe('Connected family-facing portal', () => {
       undefined,
       'json',
     );
+  });
+  it('opens the overview when switching care records from a restricted section', async () => {
+    await page('invoices');
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    portal.api.choices.set([
+      {
+        clientId: 'person-2',
+        accessId: 'family-2',
+        name: 'Second person',
+        contact: 'Family',
+        preview: false,
+      },
+    ]);
+    portal.select('family-2');
+    expect(navigate).toHaveBeenCalledWith(['/family', 'person-2', 'family-2', 'overview'], {
+      queryParams: {},
+    });
   });
   it('loads each page through the permission-checked endpoint', async () => {
     await page('notes');
