@@ -116,6 +116,19 @@ describe('Workforce compliance integration', () => {
     expect(api.page()).toBeNull();
     expect(api.error()).toContain('unavailable');
   });
+  it('keeps the first response when loading starts before the initial scope effect runs', async () => {
+    let resolve!: (value: WorkforceCompliancePage) => void;
+    request.mockImplementation(
+      () => new Promise<WorkforceCompliancePage>((done) => (resolve = done)),
+    );
+    const api = TestBed.inject(WorkforceComplianceApi);
+    const loading = api.load('check=outstanding');
+    TestBed.tick();
+    resolve(page());
+    await loading;
+    expect(api.page()?.count).toBe(21);
+    expect(api.loading()).toBe(false);
+  });
   it('rejects responses that arrive after the workspace changes', async () => {
     let resolve!: (value: WorkforceCompliancePage) => void;
     request.mockImplementation(() => new Promise<WorkforceCompliancePage>((r) => (resolve = r)));

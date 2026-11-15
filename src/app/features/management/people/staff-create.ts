@@ -84,6 +84,7 @@ export class StaffCreate {
     }
   }
   protected select(index: number): void {
+    if (this.busy()) return;
     this.error.set('');
     if (index > this.step()) {
       const errors = staffErrors(this.p).slice(0, index).flat();

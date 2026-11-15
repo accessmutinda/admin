@@ -21,9 +21,12 @@ export class WorkforceComplianceApi {
       `${this.auth.profile()?.id ?? ''}:${this.companyId()}:${JSON.stringify(this.access.context())}`,
   );
   private generation = 0;
+  private currentScope = '';
   constructor() {
     effect(() => {
-      this.scope();
+      const scope = this.scope();
+      if (scope === this.currentScope) return;
+      this.currentScope = scope;
       untracked(() => {
         this.generation++;
         this.page.set(null);
@@ -36,6 +39,7 @@ export class WorkforceComplianceApi {
     const scope = this.scope(),
       company = this.companyId(),
       generation = ++this.generation;
+    this.currentScope = scope;
     this.page.set(null);
     this.error.set('');
     this.loading.set(true);

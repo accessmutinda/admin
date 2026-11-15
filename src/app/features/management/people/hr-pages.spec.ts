@@ -1,403 +1,386 @@
+import { signal } from '@angular/core';
 import { By } from '@angular/platform-browser';
-import { MatSelect } from '@angular/material/select';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { AuthService } from '../../../core/auth/auth.service';
-import { WorkspaceService } from '../../../core/auth/workspace.service';
-import { ManagementStore } from '../shared/management.store';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { HrService } from './hr.service';
 import { HrWorkspace } from './hr-workspace';
-import { HrOnboarding } from './hr-onboarding';
-import { HrCompliance } from './hr-compliance';
 import { StaffCreate } from './staff-create';
-import { StaffProfile } from './staff-profile';
-import { HrTeam } from './hr-team';
-import { emptyRota } from '../rota/rota.models';
-import { COURSES } from '../shared/management.store';
-import { STAFF_TABS, newStaff, staffRecord, today } from './hr.models';
+import { StaffFields } from './staff-fields';
+import type { StaffOnboarding } from './onboarding.generated';
+import { PeopleApiService } from './people-api.service';
+import { RecruitmentApi, RecruitmentApplication } from '../recruitment/recruitment-api.service';
 
-describe('People & HR rendered journeys', () => {
-  let harness: RouterTestingHarness;
-  let store: ManagementStore;
-  beforeEach(async () => {
-    localStorage.clear();
-    TestBed.configureTestingModule({
-      providers: [
-        provideRouter([
-          { path: 'manage/people', component: HrWorkspace, data: { hrMode: 'overview' } },
-          { path: 'manage/people/staff', component: HrWorkspace, data: { hrMode: 'directory' } },
-          {
-            path: 'manage/people/onboarding',
-            component: HrOnboarding,
-          },
-          {
-            path: 'manage/people/compliance',
-            component: HrCompliance,
-          },
-          { path: 'manage/people/staff/new', component: StaffCreate },
-          ...STAFF_TABS.map((t) => ({
-            path: 'manage/people/staff/:id/' + t.key,
-            component: StaffProfile,
-            data: { staffSection: t.key },
-          })),
-          { path: 'manage/leave', component: HrTeam, data: { section: 'leave' } },
-          { path: 'manage/reviews', component: HrTeam, data: { section: 'reviews' } },
-        ]),
-      ],
-    });
-    TestBed.inject(AuthService).signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    store = TestBed.inject(ManagementStore);
-    harness = await RouterTestingHarness.create();
+const employee = {
+  id: 'staff-1',
+  company_id: 'north',
+  employment_id: 'employment-1',
+  version: 1,
+  reference: 'N-001',
+  name: 'Alex Worker',
+  role_id: 'role-1',
+  role: 'Care Worker',
+  branch_id: 'branch-1',
+  branch: 'North',
+  status: 'Active',
+  email: 'alex@example.test',
+  phone: '+442079460141',
+  driver: true,
+  availability: 'Weekly slots',
+};
+function summary() {
+  return {
+    company_id: 'north',
+    company: {
+      id: 'north',
+      name: 'North Care',
+      code: 'N',
+      sector: 'Care',
+      head_office_address: '',
+    },
+    totals: { staff: 21, active: 20, onboarding: 1, inactive: 0, left: 0, branches: 1, drafts: 1 },
+    unavailable: {},
+    capabilities: { staff_profile: true, staff_edit: true, staff_create: true },
+  };
+}
+function directory(path: string) {
+  const query = new URL(path, 'https://local.invalid').searchParams;
+  return {
+    count: query.get('q') === 'missing' ? 0 : 21,
+    next: null,
+    previous: null,
+    results: query.get('q') === 'missing' ? [] : [employee],
+    meta: {
+      company_id: 'north',
+      page: Number(query.get('page') ?? 1),
+      page_size: 10,
+      filters: {},
+      unavailable: {},
+      branches: [{ id: 'branch-1', label: 'North' }],
+      roles: [{ id: 'role-1', label: 'Care Worker' }],
+    },
+  };
+}
+async function renderedDirectory(url = '/manage/people/staff') {
+  const request = vi.fn(async (path: string) =>
+    path.includes('/hr/summary') ? summary() : directory(path),
+  );
+  TestBed.configureTestingModule({
+    providers: [
+      provideRouter([
+        { path: 'manage/people', component: HrWorkspace, data: { hrMode: 'overview' } },
+        { path: 'manage/people/staff', component: HrWorkspace, data: { hrMode: 'directory' } },
+      ]),
+      { provide: AuthService, useValue: { profile: signal({ id: 'reviewer' }), api: request } },
+      {
+        provide: CompanyAccessService,
+        useValue: { companyId: signal('north'), can: () => true, canPath: () => true },
+      },
+      {
+        provide: HrService,
+        useValue: { can: () => true, store: { company: () => null, initials: () => 'AW' } },
+      },
+    ],
   });
-  function text() {
-    return harness.routeNativeElement!.textContent!;
-  }
-  async function fill(label: string, value: string) {
-    const wrapper = [...harness.routeNativeElement!.querySelectorAll('label')].find((l) =>
-      l.textContent?.trim().startsWith(label),
-    )!;
-    const select = wrapper.querySelector('mat-select');
-    if (select) {
-      const debug = harness
-        .routeDebugElement!.queryAll(By.directive(MatSelect))
-        .find((d) => d.nativeElement === select)!;
-      debug.triggerEventHandler('ngModelChange', value);
-    } else {
-      const element = wrapper.querySelector('input')!;
-      element.value = value;
-      element.dispatchEvent(new Event('input'));
-    }
-    harness.detectChanges();
-    await harness.fixture.whenStable();
-  }
-  async function click(name: string) {
-    const b = [...harness.routeNativeElement!.querySelectorAll('button')].find(
-      (b) => b.textContent?.trim() === name,
-    )!;
-    b.click();
-    harness.detectChanges();
-    await harness.fixture.whenStable();
-  }
-  it('renders the landing and directory and applies URL filters without altering records', async () => {
-    await harness.navigateByUrl('/manage/people');
-    expect(text()).toContain('Manage your workforce');
-    expect(text()).toContain('Your team');
-    const count = store.staff().length;
-    await harness.navigateByUrl('/manage/people/staff?q=James');
-    expect(text()).toContain('James Carter');
-    expect(text()).not.toContain('Maria Lopez');
-    expect(store.staff()).toHaveLength(count);
-    await harness.navigateByUrl('/manage/people/staff?q=NoSuchName');
-    expect(text()).toContain('No staff match');
+  const harness = await RouterTestingHarness.create(url);
+  await vi.waitFor(() =>
+    expect(request.mock.calls.some(([path]) => path.includes('/staff?'))).toBe(true),
+  );
+  await harness.fixture.whenStable();
+  harness.detectChanges();
+  return { harness, request, text: () => harness.routeNativeElement!.textContent! };
+}
+
+describe('People & HR server-backed rendered journeys', () => {
+  it('renders workforce totals and navigation from the company response', async () => {
+    const { text, request } = await renderedDirectory('/manage/people');
+    expect(text()).toContain('North Care');
+    expect(text()).toContain('Alex Worker');
+    expect(text()).toContain('User Management');
+    expect(request).toHaveBeenCalledWith('/companies/north/hr/summary');
   });
-  it('keeps the directory focused on employee records instead of compliance and review queues', async () => {
-    await harness.navigateByUrl('/manage/people/staff');
-    const page = harness.routeNativeElement!;
-    const headings = [...page.querySelectorAll('.hr-staff-table thead th')].map((h) =>
-      h.textContent?.trim(),
+  it('sends search and status filters to the directory and renders empty results', async () => {
+    const { harness, request, text } = await renderedDirectory(
+      '/manage/people/staff?q=missing&status=Active',
     );
-    for (const name of [
+    expect(
+      request.mock.calls.some(
+        ([path]) => path.includes('q=missing') && path.includes('status=Active'),
+      ),
+    ).toBe(true);
+    expect(text()).not.toContain('Alex Worker');
+    expect(harness.routeNativeElement!.querySelectorAll('tbody tr').length).toBe(1);
+  });
+  it('keeps contact, driver and employment fields in the directory', async () => {
+    const { harness, text } = await renderedDirectory();
+    const headings = [...harness.routeNativeElement!.querySelectorAll('th')].map((element) =>
+      element.textContent!.trim(),
+    );
+    for (const title of [
       'Staff Member',
       'Contact Details',
       'Driver',
       'Availability',
       'Employment Status',
     ])
-      expect(headings).toContain(name);
+      expect(headings).toContain(title);
     expect(headings).not.toContain('DBS Status');
-    expect(headings).not.toContain('Training');
-    expect(headings).not.toContain('Supervision Due');
-    expect(page.querySelectorAll('.hr-stats .hr-stat')).toHaveLength(3);
-    expect(page.querySelector('.hr-register-toolbar')).not.toBeNull();
+    expect(text()).toContain('alex@example.test');
+    expect(text()).toContain('Weekly slots');
   });
-  it('opens staff row actions with the same menu journey as the company directory', async () => {
-    await harness.navigateByUrl('/manage/people/staff?q=James');
-    const button = harness.routeNativeElement!.querySelector<HTMLButtonElement>(
-      'button[aria-label="Actions for James Carter"]',
-    )!;
-    button.click();
-    harness.detectChanges();
-    await harness.fixture.whenStable();
-    const menu = document.querySelector('.mat-mdc-menu-panel')!;
-    expect(menu.textContent).toContain('View Staff Profile');
-    expect(menu.querySelector('a[href^="/manage/people/staff/james/employment"]')).not.toBeNull();
+  it('uses server pagination and current company role and branch options', async () => {
+    const { harness, request, text } = await renderedDirectory(
+      '/manage/people/staff?page=2&branch=branch-1&role=role-1',
+    );
     expect(
-      menu.querySelector('a[href*="/manage/people/staff/james/personal"]')?.getAttribute('href'),
-    ).toContain('edit=true');
+      request.mock.calls.some(
+        ([path]) =>
+          path.includes('page=2') &&
+          path.includes('branch=branch-1') &&
+          path.includes('role=role-1'),
+      ),
+    ).toBe(true);
+    expect(text()).toContain('North');
+    expect(text()).toContain('Care Worker');
+    expect(harness.routeNativeElement!.querySelector('button[aria-label="Page 3"]')).not.toBeNull();
   });
-  it('keeps numbered directory pagination and selected-row feedback in sync', async () => {
-    store.update((data) => ({
-      ...data,
-      people: [
-        ...data.people,
-        ...Array.from({ length: 22 }, (_, index) => ({
-          ...structuredClone(data.people.find((p) => p.id === 'james')!),
-          id: 'additional-' + index,
-          name: 'Additional staff ' + String(index).padStart(2, '0'),
-        })),
-      ],
-    }));
-    await harness.navigateByUrl('/manage/people/staff');
-    const checkbox = harness.routeNativeElement!.querySelector<HTMLInputElement>(
-      'tbody input[type="checkbox"]',
-    )!;
-    checkbox.click();
+  it('clears staff and exposes a retry when the server becomes unavailable', async () => {
+    const { harness, request, text } = await renderedDirectory();
+    request.mockRejectedValue(Error('Workforce unavailable'));
+    await TestBed.inject(PeopleApiService).load('page=1');
     harness.detectChanges();
-    expect(harness.routeNativeElement!.querySelector('tbody tr.hr-selected')).not.toBeNull();
-    expect(text()).toContain('Clear selection');
-    harness
-      .routeNativeElement!.querySelector<HTMLButtonElement>('button[aria-label="Page 2"]')!
-      .click();
-    await harness.fixture.whenStable();
-    harness.detectChanges();
-    expect(text()).toContain('Showing 11 to 20');
-    expect(
-      harness
-        .routeNativeElement!.querySelector('button[aria-label="Page 2"]')!
-        .getAttribute('aria-current'),
-    ).toBe('page');
-  });
-  it('shows saved weekly-slot availability in the directory instead of dormant custom hours', async () => {
-    store.update((data) => {
-      const updated = structuredClone(data);
-      const person = updated.people.find((p) => p.id === 'james')!;
-      person.hr = staffRecord(person);
-      person.hr.availabilityMode = 'Weekly slots';
-      person.hr.weeklySlots = [
-        {
-          title: 'Morning',
-          start: '06:00',
-          end: '12:00',
-          days: Array(7).fill('Preferred'),
-        },
-      ];
-      return updated;
-    });
-    await harness.navigateByUrl('/manage/people/staff?q=James');
-    const row = harness.routeNativeElement!.querySelector('.hr-staff-table tbody tr')!;
-    expect(row.textContent).toContain('Preferred');
-  });
-  it('groups the personal wizard into photo, basic, contact and emergency panels', async () => {
-    await harness.navigateByUrl('/manage/people/staff/new');
-    const page = harness.routeNativeElement!;
-    for (const label of [
-      'Profile Photo',
-      'Basic Information',
-      'Address & Contact Details',
-      'Emergency Contact',
-      'Next of Kin',
-      'Languages & Communication',
-      'Driving & Vehicle Details',
-    ])
-      expect(text()).toContain(label);
-    expect(page.querySelectorAll('.hr-steps li')).toHaveLength(6);
-    expect(page.querySelector('aside[aria-label="Step guidance"]')).not.toBeNull();
-  });
-  it('opens direct edit links and keeps staff identity on document and training pages', async () => {
-    await harness.navigateByUrl('/manage/people/staff/james/personal?edit=true');
-    expect(text()).toContain('Save Changes');
-    expect(text()).toContain('Basic Information');
-    await harness.navigateByUrl('/manage/people/staff/james/documents');
-    expect(harness.routeNativeElement!.querySelector('.hr-documents-layout')).not.toBeNull();
-    expect(text()).toContain('Upload New Document');
-    expect(text()).toContain('Document Categories');
-    await harness.navigateByUrl('/manage/people/staff/james/training');
-    expect(harness.routeNativeElement!.querySelector('.hr-course-strip')).not.toBeNull();
-    expect(text()).toContain('Reassessment Due');
-  });
-  it('keeps ready staff with a pending DBS renewal in the compliance queue', async () => {
-    const original = store.staff()[0];
-    const h = staffRecord(original);
-    h.status = 'Active';
-    h.induction.forEach((t) => (t.complete = true));
-    h.checks.forEach((c) => (c.status = 'Not required'));
-    const expiry = new Date(today() + 'T12:00:00Z');
-    expiry.setUTCDate(expiry.getUTCDate() + 10);
-    const dbs = h.checks.find((c) => c.title === 'DBS check')!;
-    dbs.status = 'Verified';
-    dbs.expiry = expiry.toISOString().slice(0, 10);
-    h.training = COURSES.filter((c) => c.category === 'Mandatory').map((c) => ({
-      courseId: c.id,
-      completed: '2026-01-01',
-      expiry: '',
-      assessor: '',
-      competency: 'Not assessed',
-      certificateId: '',
-    }));
-    store.update((d) => ({ ...d, people: [{ ...original, start: '2026-01-01', hr: h }] }));
-    await harness.navigateByUrl(
-      '/manage/people/compliance?check=Renewal%20required&checkType=DBS%20check',
-    );
-    expect(text()).toContain(original.name);
-    expect(text()).toContain('DBS check renewal');
-  });
-  it('validates step progression and saves/resumes a partial creation draft', async () => {
-    await harness.navigateByUrl('/manage/people/staff/new');
-    await click('Continue →');
-    expect(text()).toContain('Enter first name');
-    await fill('First name', 'Test');
-    await fill('Surname', 'Employee');
-    await fill('Email address', 'test@example.org');
-    await click('Continue →');
-    expect(text()).toContain('Employment Details');
-    await click('Save as Draft');
-    expect(text()).toContain('Draft saved');
-    const draft = store.data().staffDrafts![0];
-    expect(draft.step).toBe(1);
-    expect(store.staff().some((p) => p.email === 'test@example.org')).toBe(false);
-    await harness.navigateByUrl('/manage/people/onboarding?lane=drafts');
-    expect(text()).toContain('Test Employee');
-    await harness.navigateByUrl('/manage/people/staff/new?draft=' + draft.id);
-    expect(text()).toContain('Employment Details');
-  });
-  it('creates a staff record through all six steps and opens the saved profile', async () => {
-    const count = store.staff().length;
-    await harness.navigateByUrl('/manage/people/staff/new');
-    await fill('First name', 'Created');
-    await fill('Surname', 'Person');
-    await fill('Email address', 'created@example.org');
-    await click('Continue →');
-    await fill('Role / Job title', 'Care Worker');
-    await fill('Base branch', 'London');
-    await fill('Employment type', 'Permanent');
-    await fill('Start date', '2026-10-17');
-    await click('Continue →');
-    expect(text()).toContain('Weekly Availability');
-    await click('Continue →');
-    expect(text()).toContain('Training Assignments');
-    await click('Continue →');
-    expect(text()).toContain('Upload Documents');
-    await click('Continue →');
-    expect(text()).toContain('Review & Create');
-    await click('Create Staff Member');
-    expect(text()).toContain('Staff Profile');
-    expect(text()).toContain('Created Person');
-    expect(store.staff()).toHaveLength(count + 1);
-    const created = store.staff().find((p) => p.email === 'created@example.org')!;
-    expect(created.hr!.status).toBe('Onboarding');
-    expect(created.hr!.audit).toHaveLength(1);
-  });
-  it('renders every profile section as a direct destination and fails safely across companies', async () => {
-    const p = newStaff();
-    p.name = 'Rendered Employee';
-    p.hr!.personal.firstName = 'Rendered';
-    p.hr!.personal.surname = 'Employee';
-    store.update((d) => ({ ...d, people: [...d.people, p] }));
-    for (const t of STAFF_TABS) {
-      await harness.navigateByUrl(`/manage/people/staff/${p.id}/${t.key}`);
-      expect(text()).toContain('Rendered Employee');
-      expect(text()).not.toContain('Staff record unavailable');
-    }
-    TestBed.inject(WorkspaceService).switchWorkspace('riverside');
-    harness.detectChanges();
-    expect(text()).toContain('Staff record unavailable');
-  });
-  it('requires an annual-appraisal rating and preserves the assessor evidence and audit event', async () => {
-    const profile = await harness.navigateByUrl('/manage/people/staff/james/reviews', StaffProfile);
-    const editor = profile as unknown as {
-      review: { type: string; date: string; assessor: string; discussion: string; outcome: string };
-      scheduleReview(): void;
-      completeReview(id: string, discussion: string, outcome: string, rating: string): void;
-      error(): string;
-    };
-    editor.review = {
-      type: 'Annual appraisal',
-      date: '2026-10-17',
-      assessor: 'Registered Manager',
-      discussion: '',
-      outcome: '',
-    };
-    editor.scheduleReview();
-    const review = store
-      .data()
-      .reviews.find((r) => r.type === 'Annual appraisal' && r.personId === 'james')!;
-    editor.completeReview(
-      review.id,
-      'Evidence from recorded observations',
-      'Development plan agreed',
-      '6',
-    );
-    expect(editor.error()).toContain('1 to 5');
-    expect(store.data().reviews.find((r) => r.id === review.id)!.status).toBe('Scheduled');
-    editor.completeReview(
-      review.id,
-      'Evidence from recorded observations',
-      'Development plan agreed',
-      '4.2',
-    );
-    expect(store.data().reviews.find((r) => r.id === review.id)!.score).toBe(4.2);
-    expect(
-      store
-        .data()
-        .people.find((p) => p.id === 'james')!
-        .hr!.audit.at(-1)!.action,
-    ).toBe('Review completed');
-  });
-  it('calculates punctuality against the UK scheduled instant during summer time', async () => {
-    const rota = emptyRota();
-    rota.visits = [
-      {
-        id: 'visit',
-        callId: 'call',
-        clientId: 'client',
-        clientName: 'Example client',
-        address: '',
-        callName: 'Morning visit',
-        date: '2026-07-01',
-        start: '09:00',
-        end: '10:00',
-        carers: 1,
-        skills: [],
-        tasks: '',
-        staffIds: ['james'],
-        allocation: 'Regular',
-        state: 'Published',
-        priority: 'Standard',
-        attendance: [
-          { personId: 'james', start: '2026-07-01T08:02:00Z', end: '2026-07-01T09:00:00Z' },
-        ],
-        exception: '',
-      },
-    ];
-    store.update((d) => ({ ...d, rota }));
-    const profile = await harness.navigateByUrl(
-      '/manage/people/staff/james/performance',
-      StaffProfile,
-    );
-    const editor = profile as unknown as {
-      period: string;
-      punctuality(): string;
-      completedVisits(): number;
-    };
-    editor.period = '2026-07';
-    expect(editor.punctuality()).toBe('0%');
-    expect(editor.completedVisits()).toBe(1);
-    editor.period = '2026-06';
-    expect(editor.punctuality()).toBe('Not recorded');
-  });
-  it('links team queues to the exact employee record', async () => {
-    await harness.navigateByUrl('/manage/reviews');
-    expect(text()).toContain('Supervision & Appraisals');
-    await harness.navigateByUrl('/manage/leave');
-    expect(text()).toContain('Availability & Leave');
-    expect(text()).toContain('Request Leave');
+    expect(text()).toContain('Workforce unavailable');
+    expect(text()).not.toContain('Alex Worker');
   });
 });
 
-describe('People & HR application routes', () => {
-  beforeEach(() => localStorage.clear());
-  it('redirects legacy staff links and bookmarks to the correct new sections', async () => {
-    const { routes } = await import('../../../app.routes');
-    TestBed.configureTestingModule({ providers: [provideRouter(routes)] });
-    TestBed.inject(AuthService).signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/manage/staff');
-    expect(harness.routeNativeElement!.textContent).toContain('Staff Directory');
-    await harness.navigateByUrl('/manage/people/james?tab=Documents');
-    expect(harness.routeNativeElement!.textContent).toContain('Document Records');
-    const { Router } = await import('@angular/router');
-    expect(TestBed.inject(Router).url).toBe('/manage/people/staff/james/documents');
+async function setupWizard(source = true, restore = false) {
+  const row: RecruitmentApplication = {
+    id: 'application-1',
+    company_id: 'north',
+    version: 2,
+    etag: '"v2"',
+    name: 'Alex Applicant',
+    email: 'alex@example.test',
+    role: 'Care Worker',
+    vacancy: 'Care Worker',
+    vacancyId: 'vacancy-1',
+    location: 'North',
+    stage: 'Offer',
+    start: '',
+    staff_id: null,
+    documents: [
+      {
+        id: 'file-1',
+        name: 'evidence.pdf',
+        type: 'application/pdf',
+        size: 24,
+        state: 'clean',
+        documentType: '',
+        version: 1,
+        etag: '"v1"',
+        requirementId: null,
+      },
+    ],
+    offers: [
+      {
+        id: 'offer-1',
+        version: 1,
+        etag: '"v1"',
+        terms: 'Permanent role',
+        start_date: '2026-11-14',
+        decision: 'Accepted',
+        reason: 'Confirmed',
+        decision_at: null,
+      },
+    ],
+  };
+  const draft = signal<any>(null),
+    record = signal<RecruitmentApplication | null>(null);
+  const saveDraft = vi.fn(async (_id, facts, step) => {
+    draft.set({ facts: structuredClone(facts), step, etag: '"v1"' });
+    return draft();
+  });
+  if (restore)
+    draft.set({
+      facts: {
+        first_name: 'Resumed',
+        surname: 'Applicant',
+        email: 'resumed@example.test',
+        reference: 'DRAFT-1',
+        branch_name: 'North',
+        job_title: 'Care Worker',
+        start_date: '2026-11-14',
+        employment_type: 'Permanent',
+        facts: { employment: { hours: '35' } },
+        file_ids: [],
+      },
+      step: 2,
+      etag: '"v3"',
+    });
+  const api = {
+    companyId: signal('north'),
+    scope: signal('reviewer:north'),
+    record,
+    vacancies: signal([]),
+    detail: vi.fn(async () => {
+      record.set(row);
+    }),
+    load: vi.fn(),
+    draft: vi.fn(async () => ({ draft: draft() })),
+    saveDraft,
+    message: (error: Error) => error.message,
+    hire: vi.fn(async () => ({ staff_id: 'staff-1' })),
+    access: { can: () => true },
+    setDocumentType: vi.fn(async (file, type) => ({
+      ...file,
+      documentType: type,
+      version: 2,
+      etag: '"v2"',
+    })),
+  };
+  TestBed.configureTestingModule({
+    providers: [
+      provideRouter([
+        { path: 'manage/people/staff/new', component: StaffCreate },
+        { path: 'manage/people/onboarding', component: HrWorkspace },
+      ]),
+      { provide: RecruitmentApi, useValue: api },
+      { provide: HrService, useValue: { can: () => true, canPay: () => false } },
+      { provide: AuthService, useValue: { profile: signal({ id: 'reviewer' }), api: vi.fn() } },
+      {
+        provide: CompanyAccessService,
+        useValue: { companyId: signal('north'), context: () => ({}), can: () => true },
+      },
+    ],
+  });
+  const harness = await RouterTestingHarness.create(
+    '/manage/people/staff/new' + (source ? '?source=application-1' : ''),
+  );
+  await harness.fixture.whenStable();
+  harness.detectChanges();
+  const component = harness.routeDebugElement!.componentInstance as StaffCreate;
+  return { harness, component, api, text: () => harness.routeNativeElement!.textContent! };
+}
+describe('Accepted-offer staff setup', () => {
+  it('shows a saved photograph after its download and clears its reference when removed', async () => {
+    const { component, harness } = await setupWizard();
+    const fields = harness.routeDebugElement!.query(By.directive(StaffFields))
+      .componentInstance as StaffFields;
+    fields.staffId = 'staff-1';
+    component['p'].hr!.personal.photoFileId = 'photo-1';
+    component['p'].hr!.personal.photo = '';
+    const saved = structuredClone(component['p']);
+    saved.hr!.personal.photo = 'blob:saved-photo';
+    fields['staffApi'].value.set({
+      company_id: 'north',
+      version: 1,
+      etag: '"v1"',
+      person: saved,
+      local_date: '2026-11-14',
+      courses: [],
+      capabilities: { edit: true, approve: true, personal: true },
+      readiness: {
+        ready: false,
+        missing: [],
+        completed: 0,
+        total: 0,
+        next_task: null,
+        next_section: 'personal',
+        tasks: [],
+      },
+    } as StaffOnboarding);
+    expect(fields['photograph']()).toBe('blob:saved-photo');
+    fields['removePhoto']();
+    expect(component['p'].hr!.personal.photoFileId).toBe('');
+    expect(fields['photograph']()).toBe('');
+  });
+  it('requires an accepted recruitment source rather than opening an unbound creation form', async () => {
+    const { text, api } = await setupWizard(false);
+    expect(text()).toContain('Open an accepted recruitment offer');
+    expect(api.hire).not.toHaveBeenCalled();
+  });
+  it('keeps the current step when required personal information is missing', async () => {
+    const { component, harness, text } = await setupWizard();
+    component['p'].hr!.personal.firstName = '';
+    component['select'](1);
+    harness.detectChanges();
+    expect(component['step']()).toBe(0);
+    expect(text()).toContain('Enter first name and surname.');
+  });
+  it('saves a partial setup through the application API with its version', async () => {
+    const { component, api } = await setupWizard();
+    component['select'](1);
+    await component['saveDraft']();
+    expect(api.saveDraft).toHaveBeenCalledWith(
+      'application-1',
+      expect.objectContaining({ first_name: 'Alex' }),
+      1,
+      '"v0"',
+    );
+    expect(component['notice']()).toContain('Draft');
+  });
+  it('restores the server draft step and normalises numeric employment values', async () => {
+    const { component } = await setupWizard(true, true);
+    expect(component['step']()).toBe(2);
+    expect(component['p'].hr!.personal.firstName).toBe('Resumed');
+    expect(component['p'].hr!.employment.hours).toBe(35);
+  });
+  it('leaves induction decisions until after hiring', async () => {
+    const { component, harness, text } = await setupWizard();
+    component['p'].hr!.employment.type = 'Permanent';
+    component['select'](3);
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const boxes = [
+      ...harness.routeNativeElement!.querySelectorAll<HTMLInputElement>(
+        '.hr-training-editor .hr-panel:last-child input[type=checkbox]',
+      ),
+    ];
+    expect(boxes.length).toBeGreaterThan(0);
+    expect(boxes.every((box) => box.disabled && !box.checked)).toBe(true);
+    expect(text()).toContain('after creating the staff record');
+  });
+  it('clears a setup if company access changes while it is open', async () => {
+    const { component, api, harness, text } = await setupWizard();
+    api.scope.set('reviewer:south');
+    TestBed.tick();
+    harness.detectChanges();
+    expect(text()).toContain('workspace or recruitment access changed');
+    expect(component['p'].email).toBe('');
+  });
+  it('persists document classifications through the application before saving a setup draft', async () => {
+    const { component, api, harness } = await setupWizard();
+    const fields = harness.routeDebugElement!.query(By.directive(StaffFields))
+      .componentInstance as StaffFields;
+    const document = component['p'].documents![0];
+    await fields['changeDocumentType'](document, 'CV / Resume');
+    expect(api.setDocumentType).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'file-1', etag: '"v1"' }),
+      'CV / Resume',
+    );
+    expect(document.category).toBe('CV / Resume');
+    expect(document.version).toBe(2);
+    expect(component['busy']()).toBe(false);
+  });
+  it('retains the saved document type when its update fails', async () => {
+    const { component, api, harness } = await setupWizard();
+    const fields = harness.routeDebugElement!.query(By.directive(StaffFields))
+      .componentInstance as StaffFields;
+    const document = component['p'].documents![0],
+      category = document.category;
+    api.setDocumentType.mockRejectedValue(Error('Connection lost'));
+    await fields['changeDocumentType'](document, 'Passport');
+    expect(document.category).toBe(category);
+    expect(fields['error']()).toBe('Connection lost');
+  });
+  it('keeps the wizard on its current step during an upload', async () => {
+    const { component } = await setupWizard();
+    component['busy'].set(true);
+    component['select'](1);
+    expect(component['step']()).toBe(0);
   });
 });

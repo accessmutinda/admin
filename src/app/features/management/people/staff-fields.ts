@@ -41,6 +41,20 @@ export class StaffFields {
   protected category = 'Other Records';
   protected readonly error = signal('');
   protected readonly busy = signal(false);
+  protected photograph(): string {
+    const personal = this.p.hr!.personal;
+    if (personal.photo) return personal.photo;
+    const saved = this.staffId ? this.staffApi.person()?.hr.personal : null;
+    return personal.photoFileId && personal.photoFileId === saved?.photoFileId
+      ? (saved.photo ?? '')
+      : '';
+  }
+  protected removePhoto(): void {
+    this.p.hr!.personal.photo = '';
+    this.p.hr!.personal.photoFileId = '';
+    if (this.applicationId)
+      this.p.documents = this.p.documents?.filter((document) => document.category !== 'Photo');
+  }
   protected recruitment() {
     return (this.p.hr!.employment.recruitment ??= {});
   }
@@ -169,5 +183,26 @@ export class StaffFields {
       email: '',
       status: 'Requested',
     });
+  }
+  protected async changeDocumentType(document: StaffDocument, category: string): Promise<void> {
+    if (!this.applicationId) {
+      document.category = category;
+      return;
+    }
+    this.error.set('');
+    this.busy.set(true);
+    this.busyChange.emit(true);
+    try {
+      const source = this.recruitmentApi.record()?.documents?.find((row) => row.id === document.id);
+      if (!source) throw Error('Reload the application before editing this document.');
+      const saved = await this.recruitmentApi.setDocumentType(source, category);
+      document.category = saved.documentType;
+      document.version = saved.version;
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : 'Document type could not be saved.');
+    } finally {
+      this.busy.set(false);
+      this.busyChange.emit(false);
+    }
   }
 }

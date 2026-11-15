@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
-import { WorkspaceService } from '../../../core/auth/workspace.service';
+import { legacyHrProviders, seedLegacyHr } from './hr-test-fixtures';
 import { ManagementStore } from '../shared/management.store';
 import { People } from './people';
 
@@ -26,11 +26,11 @@ describe('People record searches', () => {
     TestBed.configureTestingModule({
       imports: [People],
       providers: [
+        ...legacyHrProviders().providers,
         { provide: ActivatedRoute, useValue: { snapshot: { data: { section: 'leave' } } } },
       ],
     }).overrideComponent(People, { set: { template: '' } });
-    TestBed.inject(AuthService).signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
+    seedLegacyHr();
     store = TestBed.inject(ManagementStore);
     store.update((data) => ({
       ...data,

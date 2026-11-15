@@ -68,6 +68,18 @@ describe('Connected availability and leave', () => {
       ],
     });
   });
+  it('retains a first-page request started before the initial scope effect', async () => {
+    let resolve!: (value: ReturnType<typeof page>) => void;
+    request.mockImplementation(
+      () => new Promise<ReturnType<typeof page>>((done) => (resolve = done)),
+    );
+    const api = TestBed.inject(AvailabilityLeaveApi);
+    const loading = api.load();
+    TestBed.tick();
+    resolve(page());
+    await loading;
+    expect(api.rows().map((row) => row.id)).toEqual(['leave-1']);
+  });
   it('loads real team leave and replaces the long inline prompt with a top Request Leave button', async () => {
     const harness = await RouterTestingHarness.create('/manage/leave');
     await harness.fixture.whenStable();

@@ -12,8 +12,8 @@
           <div class="hr-panel-body">
             <div class="hr-photo-upload">
               <div class="hr-photo-frame">
-                @if (h.personal.photo) {
-                  <img [src]="h.personal.photo" alt="Staff profile photograph" />
+                @if (photograph(); as photograph) {
+                  <img [src]="photograph" alt="Staff profile photograph" />
                 } @else {
                   <span class="material-symbols-outlined" aria-hidden="true">person</span>
                 }
@@ -40,10 +40,8 @@
                   [disabled]="busy()"
                   aria-label="Choose profile photograph"
               /></label>
-              @if (h.personal.photo) {
-                <button class="hr-text-action" type="button" (click)="h.personal.photo = ''">
-                  Remove
-                </button>
+              @if (h.personal.photoFileId || photograph()) {
+                <button class="hr-text-action" type="button" (click)="removePhoto()">Remove</button>
               }
             </div>
             @if (error()) {
@@ -338,10 +336,12 @@
               ><label
                 >Status<mat-select cvSelect [(ngModel)]="r.status" aria-label="Status">
                   <mat-option value="Requested">Requested</mat-option>
-                  <mat-option value="Received">Received</mat-option>
+                  <mat-option value="Received" [disabled]="!!applicationId">Received</mat-option>
                   <mat-option
                     value="Verified"
-                    [disabled]="!!staffId && !staffApi.value()?.capabilities?.['approve']"
+                    [disabled]="
+                      !!applicationId || (!!staffId && !staffApi.value()?.capabilities?.['approve'])
+                    "
                     >Verified</mat-option
                   >
                 </mat-select></label
@@ -411,12 +411,16 @@
                 <mat-option value="Recorded">Recorded</mat-option>
                 <mat-option
                   value="Verified"
-                  [disabled]="!!staffId && !staffApi.value()?.capabilities?.['approve']"
+                  [disabled]="
+                    !!applicationId || (!!staffId && !staffApi.value()?.capabilities?.['approve'])
+                  "
                   >Verified</mat-option
                 >
                 <mat-option
                   value="Not required"
-                  [disabled]="!!staffId && !staffApi.value()?.capabilities?.['approve']"
+                  [disabled]="
+                    !!applicationId || (!!staffId && !staffApi.value()?.capabilities?.['approve'])
+                  "
                   >Not required</mat-option
                 >
               </mat-select></label
@@ -431,7 +435,9 @@
               >
                 <mat-option value="">No evidence attached</mat-option>
                 @for (d of p.documents ?? []; track d.id) {
-                  @if (!d.sourceCertificateId) { <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option> }
+                  @if (!d.sourceCertificateId) {
+                    <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option>
+                  }
                 }
               </mat-select></label
             ><label>Review notes<input [(ngModel)]="c.note" /></label>
@@ -485,8 +491,10 @@
                 aria-label="Practical competency"
               >
                 <mat-option value="Not assessed">Not assessed</mat-option>
-                <mat-option value="Competent">Competent</mat-option>
-                <mat-option value="Needs development">Needs development</mat-option>
+                <mat-option value="Competent" [disabled]="!!applicationId">Competent</mat-option>
+                <mat-option value="Needs development" [disabled]="!!applicationId"
+                  >Needs development</mat-option
+                >
               </mat-select></label
             ><label
               >Certificate<mat-select
@@ -495,9 +503,13 @@
                 aria-label="Certificate"
               >
                 <mat-option value="">Not attached</mat-option>
-                @if (t.sourceCompletionId) { <mat-option [value]="t.certificateId">Academy completion certificate</mat-option> }
+                @if (t.sourceCompletionId) {
+                  <mat-option [value]="t.certificateId">Academy completion certificate</mat-option>
+                }
                 @for (d of p.documents ?? []; track d.id) {
-                  @if (!d.sourceCertificateId) { <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option> }
+                  @if (!d.sourceCertificateId) {
+                    <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option>
+                  }
                 }
               </mat-select></label
             >
@@ -507,9 +519,17 @@
       <section class="hr-panel">
         <div class="hr-panel-head"><h2>Induction Checklist</h2></div>
         <div class="hr-panel-body">
+          @if (applicationId) {
+            <p class="hr-muted">
+              Complete induction, verify references and approve evidence after creating the staff
+              record.
+            </p>
+          }
           @for (t of h.induction; track t.id) {
             <label class="hr-check"
-              ><input type="checkbox" [(ngModel)]="t.complete" />{{ t.title }}</label
+              ><input type="checkbox" [(ngModel)]="t.complete" [disabled]="!!applicationId" />{{
+                t.title
+              }}</label
             >
           }
         </div>
@@ -521,7 +541,10 @@
       <div class="hr-panel-head"><h2>Upload Documents</h2></div>
       <div class="hr-panel-body hr-form">
         <label
-          >Document type<cv-staff-document-type [value]="category" [disabled]="busy()" (typeChange)="category = $event" /></label
+          >Document type<cv-staff-document-type
+            [value]="category"
+            [disabled]="busy()"
+            (typeChange)="category = $event" /></label
         ><label
           >Replace an existing document<mat-select
             cvSelect
@@ -530,7 +553,9 @@
           >
             <mat-option value="">Upload as a new document</mat-option>
             @for (d of p.documents ?? []; track d.id) {
-              @if (!d.sourceCertificateId) { <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option> }
+              @if (!d.sourceCertificateId) {
+                <mat-option [value]="d.id">{{ d.name }} (v{{ d.version || 1 }})</mat-option>
+              }
             }
           </mat-select></label
         ><label
@@ -570,14 +595,25 @@
                 </td>
                 <td>
                   @if (!d.sourceCertificateId) {
-                    <cv-staff-document-type [value]="d.category || 'Other Records'" [label]="'Document type for ' + d.name" [disabled]="busy()" (typeChange)="d.category = $event" />
-                  } @else { {{ d.category || 'Other Records' }} }
+                    <cv-staff-document-type
+                      [value]="d.category || 'Other Records'"
+                      [label]="'Document type for ' + d.name"
+                      [disabled]="busy()"
+                      (typeChange)="changeDocumentType(d, $event)"
+                    />
+                  } @else {
+                    {{ d.category || 'Other Records' }}
+                  }
                 </td>
                 <td>{{ d.status || 'Pending review' }}</td>
                 <td>{{ d.version || 1 }}</td>
                 <td>
                   <label class="hr-form"
-                    >Expiry date for {{ d.name }}<input type="date" [disabled]="!!d.sourceCertificateId" [(ngModel)]="d.expiry"
+                    >Expiry date for {{ d.name
+                    }}<input
+                      type="date"
+                      [disabled]="!!d.sourceCertificateId"
+                      [(ngModel)]="d.expiry"
                   /></label>
                 </td>
               </tr>

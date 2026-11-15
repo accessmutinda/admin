@@ -86,6 +86,33 @@ describe('Interview applicant documents', () => {
     await harness.fixture.whenStable();
     return harness;
   }
+  it('saves an interview outcome using write fields and the interview version header', async () => {
+    const harness = await open();
+    const component = harness.routeDebugElement!.componentInstance as PersonDetail;
+    component['editInterview']({
+      id: 'interview-1',
+      version: 8,
+      etag: '"v8"',
+      scheduled_at: '2026-11-14T09:00:00Z',
+      panel: 'Hiring manager',
+      location: 'North',
+      outcome: 'Scheduled',
+      notes: '',
+    });
+    component['interview'].outcome = 'Passed';
+    request.mockImplementation(async () => structuredClone(applicant));
+    await component['saveInterview']();
+    const patch = request.mock.calls.find((call) => call[0].endsWith('/interviews/interview-1'))!;
+    expect(patch[1]).toEqual({
+      scheduled_at: '2026-11-14T09:00:00.000Z',
+      panel: 'Hiring manager',
+      location: 'North',
+      outcome: 'Passed',
+      notes: '',
+    });
+    expect(patch[2]).toBe('PATCH');
+    expect(patch[3]).toEqual(expect.objectContaining({ 'If-Match': '"v8"' }));
+  });
   it('shows the type dropdown in interview documents and saves the selected type', async () => {
     const harness = await open();
     const root = harness.routeNativeElement!;

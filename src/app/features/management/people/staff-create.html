@@ -29,6 +29,7 @@
       <li [class.active]="step() === i" [class.complete]="i < step()">
         <button
           type="button"
+          [disabled]="busy()"
           [attr.aria-current]="step() === i ? 'step' : null"
           (click)="select(i)"
         >

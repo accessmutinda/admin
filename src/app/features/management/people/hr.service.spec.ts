@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { AuthService } from '../../../core/auth/auth.service';
-import { WorkspaceService } from '../../../core/auth/workspace.service';
+import { legacyHrProviders, seedLegacyHr } from './hr-test-fixtures';
+import { WritableSignal } from '@angular/core';
 import { ManagementStore } from '../shared/management.store';
 import { HrService } from './hr.service';
 import { newStaff, StaffDraft, staffRecord } from './hr.models';
@@ -10,6 +11,7 @@ describe('HR saved records and drafts', () => {
   let hr: HrService;
   let store: ManagementStore;
   let auth: AuthService;
+  let editable: WritableSignal<boolean>;
   function person() {
     const p = newStaff();
     p.hr!.personal.firstName = 'New';
@@ -23,10 +25,11 @@ describe('HR saved records and drafts', () => {
   }
   beforeEach(() => {
     localStorage.clear();
-    TestBed.configureTestingModule({});
+    const fixture = legacyHrProviders();
+    editable = fixture.editable;
+    TestBed.configureTestingModule({ providers: fixture.providers });
     auth = TestBed.inject(AuthService);
-    auth.signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
+    seedLegacyHr();
     hr = TestBed.inject(HrService);
     store = TestBed.inject(ManagementStore);
   });
@@ -122,16 +125,16 @@ describe('HR saved records and drafts', () => {
     expect(hr.savePerson(p, 'lqcs', 'Created')).toBeNull();
     const saved = store.data().people.find((v) => v.id === p.id)!;
     const baseline = saved.hr!.audit.at(-1)!.id;
-    const persisted = JSON.parse(localStorage.getItem('cv_management_v1')!);
+    const persisted = JSON.parse(localStorage.getItem('cv_api_company_data_v1')!);
     persisted.lqcs.people
       .find((v: { id: string }) => v.id === p.id)
       .hr.audit.push({ id: 'another-tab', at: '', actor: 'Other user', action: 'Updated' });
-    localStorage.setItem('cv_management_v1', JSON.stringify(persisted));
+    localStorage.setItem('cv_api_company_data_v1', JSON.stringify(persisted));
     expect(hr.savePerson(saved, 'lqcs', 'Stale edit', { expectedAudit: baseline })).toContain(
       'changed',
     );
     expect(
-      JSON.parse(localStorage.getItem('cv_management_v1')!)
+      JSON.parse(localStorage.getItem('cv_api_company_data_v1')!)
         .lqcs.people.find((v: { id: string }) => v.id === p.id)
         .hr.audit.at(-1).id,
     ).toBe('another-tab');
@@ -146,6 +149,7 @@ describe('HR saved records and drafts', () => {
         'Care Worker:People & HR': [true, false, false, false, false],
       },
     }));
+    editable.set(false);
     expect(hr.can('view')).toBe(true);
     expect(hr.can('create')).toBe(false);
     expect(hr.savePerson(p, 'lqcs', 'Created')).toContain('cannot save');

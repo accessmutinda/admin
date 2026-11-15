@@ -1009,7 +1009,7 @@
           </button>
         }
       </div>
-      <cv-academy-staff-training [personId]="id" [connected]="false" />
+      <cv-academy-staff-training [personId]="id" />
       <section class="hr-panel">
         <div class="hr-panel-head">
           <h2>
@@ -2379,7 +2379,7 @@
           <iframe
             [src]="doc.safeUrl"
             [title]="doc.name"
-            sandbox
+            referrerpolicy="no-referrer"
             style="width: 100%; height: 65vh; border: 0"
           ></iframe>
         }

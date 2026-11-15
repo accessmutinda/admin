@@ -222,7 +222,15 @@ export class PersonDetail {
     const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
       .toISOString()
       .slice(0, 16);
-    this.interview = { ...row, scheduled_at: local };
+    this.interview = {
+      id: row.id,
+      etag: row.etag,
+      scheduled_at: local,
+      panel: row.panel,
+      location: row.location,
+      outcome: row.outcome,
+      notes: row.notes,
+    };
   }
   protected async saveOffer(): Promise<void> {
     await this.run(async () => {

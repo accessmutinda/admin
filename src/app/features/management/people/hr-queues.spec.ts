@@ -1,13 +1,12 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { AuthService } from '../../../core/auth/auth.service';
-import { WorkspaceService } from '../../../core/auth/workspace.service';
-import { COURSES, ManagementStore } from '../shared/management.store';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { COURSES } from '../shared/management.store';
 import { HrOnboarding } from './hr-onboarding';
 import { HrCompliance } from './hr-compliance';
-import { HrWorkspace } from './hr-workspace';
-import { HrService } from './hr.service';
 import { newStaff, StaffStatus } from './hr.models';
 import { complianceRows, onboardingRow } from './hr-queues.models';
 
@@ -21,96 +20,121 @@ function employee(id: string, status: StaffStatus = 'Onboarding') {
     location: 'London',
     start: '2026-01-01',
   });
-  const record = person.hr!;
-  record.status = status;
-  record.reference = id;
-  Object.assign(record.personal, { firstName: id, surname: 'Example' });
-  record.employment.type = 'Permanent';
-  record.checks.forEach((check) => (check.status = 'Not required'));
-  record.induction.forEach((task) => (task.complete = true));
-  record.training = COURSES.filter((course) => course.category === 'Mandatory').map((course) => ({
-    courseId: course.id,
-    completed: '2026-01-01',
-    expiry: '',
-    assessor: '',
-    competency: 'Not assessed',
-    certificateId: '',
-  }));
+  Object.assign(person.hr!.personal, { firstName: id, surname: 'Example' });
+  Object.assign(person.hr!, { status, reference: id });
+  person.hr!.employment.type = 'Permanent';
+  person.hr!.checks.forEach((check) => (check.status = 'Not required'));
+  person.hr!.induction.forEach((task) => (task.complete = true));
+  person.hr!.training = COURSES.filter((course) => course.category === 'Mandatory').map(
+    (course) => ({
+      courseId: course.id,
+      completed: '2026-01-01',
+      expiry: '',
+      assessor: '',
+      competency: 'Not assessed',
+      certificateId: '',
+    }),
+  );
   return person;
 }
-
-describe('Dedicated onboarding and compliance flows', () => {
-  let harness: RouterTestingHarness;
-  let store: ManagementStore;
-  beforeEach(async () => {
-    localStorage.clear();
-    TestBed.configureTestingModule({
-      providers: [
-        provideRouter([
-          { path: 'manage/people/onboarding', component: HrOnboarding },
-          { path: 'manage/people/compliance', component: HrCompliance },
-          { path: 'manage/people/staff', component: HrWorkspace, data: { hrMode: 'directory' } },
-        ]),
-      ],
-    });
-    TestBed.inject(AuthService).signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
-    store = TestBed.inject(ManagementStore);
-    harness = await RouterTestingHarness.create();
+function queue(kind = 'starter', ready = false) {
+  return {
+    count: 1,
+    next: null,
+    previous: null,
+    results: [
+      {
+        id: 'record-1',
+        kind,
+        source_id: 'application-1',
+        name: 'Actual Starter',
+        email: 'starter@example.test',
+        reference: 'N-1',
+        branch: 'North',
+        start_date: '2026-11-14',
+        manager: null,
+        step: kind === 'draft' ? 2 : null,
+        saved_at: null,
+        completed: ready ? 20 : 2,
+        total: 20,
+        ready,
+        next_task: ready ? null : 'DBS check',
+        next_section: 'compliance',
+        etag: '"v3"',
+      },
+    ],
+    meta: {
+      company_id: 'north',
+      counts: {
+        drafts: kind === 'draft' ? 1 : 0,
+        in_progress: !ready && kind !== 'draft' ? 1 : 0,
+        ready: ready ? 1 : 0,
+      },
+      branches: ['North'],
+      unavailable: { readiness: null, drafts: null },
+    },
+  };
+}
+async function render(body: unknown, url = '/manage/people/onboarding') {
+  const request = vi.fn().mockResolvedValue(body);
+  TestBed.configureTestingModule({
+    providers: [
+      provideRouter([
+        { path: 'manage/people/onboarding', component: HrOnboarding },
+        { path: 'manage/people/compliance', component: HrCompliance },
+      ]),
+      { provide: AuthService, useValue: { profile: signal({ id: 'reviewer' }), api: request } },
+      {
+        provide: CompanyAccessService,
+        useValue: { companyId: signal('north'), context: () => ({ revision: 1 }), can: () => true },
+      },
+    ],
   });
-  const text = () => harness.routeNativeElement!.textContent!;
-  async function button(label: string) {
-    [...harness.routeNativeElement!.querySelectorAll('button')]
-      .find((element) => element.textContent?.trim() === label)!
-      .click();
-    harness.detectChanges();
-    await harness.fixture.whenStable();
-  }
-  it('keeps onboarding tasks separate from individual compliance check actions', async () => {
-    const starter = employee('Starter');
-    starter.hr!.training = [];
-    const active = employee('Existing', 'Active');
-    active.hr!.checks[0].status = 'Pending';
-    store.update((data) => ({ ...data, people: [starter, active] }));
-    await harness.navigateByUrl('/manage/people/onboarding');
-    expect(text()).toContain('Starter Example');
-    expect(text()).not.toContain('Existing Example');
-    expect(text()).toContain('Checklist Progress');
-    expect(text()).not.toContain('DBS Status');
-    await harness.navigateByUrl('/manage/people/compliance');
-    expect(text()).toContain('Existing Example');
-    expect(text()).not.toContain('Starter Example');
-    expect(text()).not.toContain('Mandatory training');
-    expect(harness.routeNativeElement!.querySelectorAll('tbody tr')).toHaveLength(1);
-    expect(harness.routeNativeElement!.querySelectorAll('.hr-stat')).toHaveLength(4);
+  const harness = await RouterTestingHarness.create(url);
+  await vi.waitFor(() => expect(request).toHaveBeenCalled());
+  await harness.fixture.whenStable();
+  harness.detectChanges();
+  return { harness, request, text: () => harness.routeNativeElement!.textContent! };
+}
+describe('Onboarding and compliance queues', () => {
+  it('uses server readiness, filtered counts and the exact next staff section', async () => {
+    const { harness, request, text } = await render(queue());
+    expect(request.mock.calls[0][0]).toContain('/companies/north/hr/onboarding?lane=in-progress');
+    expect(text()).toContain('Actual Starter');
+    expect(text()).toContain('2 / 20 tasks');
+    expect(
+      harness.routeNativeElement!.querySelector(
+        'a[href="/manage/people/staff/record-1/compliance"]',
+      ),
+    ).not.toBeNull();
+    expect(text()).not.toContain('Complete Onboarding');
   });
-  it('moves a completed starter to active staff without duplicating the employee', async () => {
-    store.update((data) => ({ ...data, people: [employee('Ready')] }));
-    await harness.navigateByUrl('/manage/people/onboarding?lane=ready');
-    expect(text()).toContain('Ready Example');
-    await button('Complete Onboarding');
-    expect(text()).toContain('Ready Example is now active');
-    expect(harness.routeNativeElement!.querySelector('tbody')!.textContent).not.toContain(
-      'Ready Example',
+  it('offers activation only for a ready starter', async () => {
+    const { text } = await render(queue('starter', true), '/manage/people/onboarding?lane=ready');
+    expect(text()).toContain('20 / 20 tasks');
+    expect(text()).toContain('Complete Onboarding');
+  });
+  it('resumes an application draft using its source instead of a browser staff ID', async () => {
+    const { harness, request, text } = await render(
+      queue('draft'),
+      '/manage/people/onboarding?lane=drafts',
     );
-    expect(store.data().people).toHaveLength(1);
-    expect(store.data().people[0].hr!.status).toBe('Active');
-    expect(store.data().people[0].hr!.audit.at(-1)!.action).toContain('Onboarding completed');
-    await harness.navigateByUrl('/manage/people/staff?status=Active');
-    expect(text()).toContain('Ready Example');
-  });
-  it('keeps a starter in the queue and reports failed activation saves', async () => {
-    store.update((data) => ({ ...data, people: [employee('Ready')] }));
-    await harness.navigateByUrl('/manage/people/onboarding?lane=ready');
-    vi.spyOn(store, 'saveWorkspace').mockReturnValue(false);
-    await button('Complete Onboarding');
-    expect(text()).toContain('could not be saved');
-    expect(store.data().people[0].hr!.status).toBe('Onboarding');
-    expect(harness.routeNativeElement!.querySelector('tbody')!.textContent).toContain(
-      'Ready Example',
+    expect(request.mock.calls[0][0]).toContain('lane=drafts');
+    expect(text()).toContain('Actual Starter');
+    const link = harness.routeNativeElement!.querySelector(
+      'a[href="/manage/people/staff/new?source=application-1"]',
     );
+    expect(link).not.toBeNull();
+    expect(text()).not.toContain('Complete Onboarding');
   });
-  it('does not count unsupported verification or future learning as completed onboarding', () => {
+  it('does not invent ready employees when the queue belongs to another company', async () => {
+    const response = queue();
+    response.meta.company_id = 'south';
+    const { text } = await render(response);
+    expect(text()).toContain('does not match this company');
+    expect(text()).not.toContain('Actual Starter');
+  });
+  it('does not count verification without evidence or future learning as completed', () => {
     const person = employee('Evidence');
     person.hr!.checks[0].status = 'Verified';
     expect(onboardingRow(person).ready).toBe(false);
@@ -119,45 +143,14 @@ describe('Dedicated onboarding and compliance flows', () => {
     person.hr!.training[0].completed = '2999-01-01';
     expect(onboardingRow(person).ready).toBe(false);
   });
-  it('excludes departed staff and non-check readiness work from compliance and exports the filtered checks', async () => {
-    const person = employee('Current', 'Active');
-    person.hr!.checks[0].status = 'Pending';
-    person.hr!.checks[1].status = 'Pending';
-    person.hr!.checks[1].expiry = '2020-01-01';
+  it('excludes departed staff and induction tasks from the compliance check model', () => {
+    const current = employee('Current', 'Active');
+    current.hr!.checks[0].status = 'Pending';
     const departed = employee('Departed', 'Left');
     departed.hr!.checks[0].status = 'Pending';
-    store.update((data) => ({ ...data, people: [person, departed] }));
-    await harness.navigateByUrl('/manage/people/compliance?check=Expired');
-    expect(text()).not.toContain('Departed Example');
-    expect(harness.routeNativeElement!.querySelectorAll('tbody tr')).toHaveLength(1);
-    const download = vi.spyOn(store, 'download').mockImplementation(() => {});
-    await button('downloadExport Checks');
-    expect(download).toHaveBeenCalledWith(
-      'workforce-compliance-checks.csv',
-      expect.stringContaining('Expired'),
-      'text/csv',
-    );
-    expect(download.mock.calls[0][1]).not.toContain('Departed');
-    expect(download.mock.calls[0][1]).not.toContain('"Pending"');
-  });
-  it('keeps saved drafts out of staff counts and exposes them only in the draft lane', async () => {
-    const hr = TestBed.inject(HrService);
-    const draft = employee('Draft');
-    store.update((data) => ({ ...data, people: [] }));
-    expect(
-      hr.saveDraft({
-        id: 'draft',
-        companyId: 'lqcs',
-        ownerId: hr.auth.currentUser()!.id,
-        person: draft,
-        step: 2,
-        savedAt: '',
-      }),
-    ).toBeNull();
-    await harness.navigateByUrl('/manage/people/onboarding?lane=drafts');
-    expect(text()).toContain('Draft Example');
-    expect(text()).toContain('Resume Draft');
-    await harness.navigateByUrl('/manage/people/staff');
-    expect(text()).not.toContain('Draft Example');
+    const rows = complianceRows([current, departed]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].person.id).toBe('Current');
+    expect(rows[0].check.title).toBe(current.hr!.checks[0].title);
   });
 });

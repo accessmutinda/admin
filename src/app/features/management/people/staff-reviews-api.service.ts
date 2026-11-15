@@ -39,26 +39,30 @@ export class StaffReviewsApi {
   private generation = 0;
   private optionsGeneration = 0;
   private readonly keys = new Map<string, string>();
+  private currentScope = '';
   constructor() {
     effect(() => {
-      this.scope();
-      untracked(() => {
-        this.generation++;
-        this.optionsGeneration++;
-        this.rows.set([]);
-        this.loaded.set(false);
-        this.loading.set(false);
-        this.error.set('');
-        this.staff.set([]);
-        this.types.set([]);
-        this.dimensions.set([]);
-        this.localDate.set('');
-        this.canComplete.set(false);
-        this.optionError.set('');
-        this.optionsLoading.set(false);
-        this.keys.clear();
-      });
+      const scope = this.scope();
+      untracked(() => this.resetScope(scope));
     });
+  }
+  private resetScope(scope: string): void {
+    if (scope === this.currentScope) return;
+    this.currentScope = scope;
+    this.generation++;
+    this.optionsGeneration++;
+    this.rows.set([]);
+    this.loaded.set(false);
+    this.loading.set(false);
+    this.error.set('');
+    this.staff.set([]);
+    this.types.set([]);
+    this.dimensions.set([]);
+    this.localDate.set('');
+    this.canComplete.set(false);
+    this.optionError.set('');
+    this.optionsLoading.set(false);
+    this.keys.clear();
   }
   private root(): string {
     if (!this.companyId() || !this.allowed())
@@ -81,6 +85,7 @@ export class StaffReviewsApi {
     return url.pathname.slice(base.pathname.length) + url.search;
   }
   async load(q = '', status = '', staffId = ''): Promise<void> {
+    this.resetScope(this.scope());
     const scope = this.scope(),
       company = this.companyId(),
       generation = ++this.generation;
@@ -122,6 +127,7 @@ export class StaffReviewsApi {
     }
   }
   async options(): Promise<void> {
+    this.resetScope(this.scope());
     const scope = this.scope(),
       company = this.companyId(),
       generation = ++this.optionsGeneration;
