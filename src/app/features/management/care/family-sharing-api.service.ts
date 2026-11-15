@@ -1,7 +1,9 @@
 import { Injectable, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
+import { API_BASE } from '../../../core/auth/auth-api';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
 import type {
+  FamilySocketTicketRead,
   FamilyAccessRead,
   FamilyAccessWrite,
   FamilyUpdateRead,
@@ -49,6 +51,7 @@ export class FamilySharingApi {
   private destroyed = false;
   private readonly intents = new Map<string, string>();
   private urls: string[] = [];
+  private stopRealtime?: () => void;
   constructor() {
     effect(() => {
       this.scope();
@@ -60,6 +63,8 @@ export class FamilySharingApi {
     });
   }
   private clear() {
+    this.stopRealtime?.();
+    this.stopRealtime = undefined;
     this.generation++;
     this.workspace.set(null);
     this.access.set([]);
@@ -93,6 +98,65 @@ export class FamilySharingApi {
       `/companies/${this.records.companyId()}/family-portal` +
       (id && access ? `/${id}/${access}` : '')
     );
+  }
+  watch(id: string, refresh: () => void, accessId?: string, preview = false): () => void {
+    this.stopRealtime?.();
+    const scope = this.scope();
+    let stopped = false,
+      socket: WebSocket | undefined;
+    let retry: ReturnType<typeof setTimeout> | undefined,
+      update: ReturnType<typeof setTimeout> | undefined;
+    const current = () => !stopped && !this.destroyed && scope === this.scope();
+    const notify = () => {
+      clearTimeout(update);
+      update = setTimeout(() => {
+        if (current()) refresh();
+      }, 100);
+    };
+    const connect = async () => {
+      if (!current() || typeof WebSocket === 'undefined') return;
+      try {
+        const path = accessId && !preview ? this.portalRoot(id, accessId) : this.root(id);
+        const value = await this.request<FamilySocketTicketRead>(
+          path + '/socket-ticket',
+          {},
+          'POST',
+        );
+        if (!current() || typeof value.ticket !== 'string' || typeof value.path !== 'string')
+          return;
+        const url = new URL(API_BASE, window.location.origin);
+        url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+        url.pathname = value.path;
+        url.search = new URLSearchParams({ ticket: value.ticket }).toString();
+        const connection = new WebSocket(url);
+        socket = connection;
+        connection.onmessage = (event) => {
+          if (!current() || socket !== connection) return;
+          try {
+            if (['family.ready', 'family.changed'].includes(JSON.parse(event.data).type)) notify();
+          } catch {}
+        };
+        connection.onclose = () => {
+          if (current() && socket === connection) {
+            socket = undefined;
+            notify();
+            retry = setTimeout(() => void connect(), 2000);
+          }
+        };
+        connection.onerror = () => connection.close();
+      } catch {
+        if (current()) retry = setTimeout(() => void connect(), 30000);
+      }
+    };
+    void connect();
+    const stop = () => {
+      stopped = true;
+      clearTimeout(retry);
+      clearTimeout(update);
+      socket?.close();
+    };
+    this.stopRealtime = stop;
+    return stop;
   }
   private check<T extends { company_id: string; service_user_id?: string }>(
     value: T,

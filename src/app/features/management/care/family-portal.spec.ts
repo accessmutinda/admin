@@ -223,7 +223,9 @@ describe('Connected family-facing portal', () => {
     expect(fixture.nativeElement.querySelector('#family-message').disabled).toBe(true);
     resolve({ ...record().messages[0], company_id: 'north', service_user_id: 'person-1' });
     await pending;
-    expect(request.mock.calls.filter((c) => c[2] === 'POST')).toHaveLength(1);
+    expect(
+      request.mock.calls.filter((c) => c[2] === 'POST' && c[0].endsWith('/messages')),
+    ).toHaveLength(1);
   });
   it('retains a failed message for retry with the same idempotency key', async () => {
     await page('messages');
@@ -262,7 +264,9 @@ describe('Connected family-facing portal', () => {
     await settle(fixture);
     portal.message = 'Cannot send from preview';
     await portal.send();
-    expect(request.mock.calls.some((c) => c[2] === 'POST')).toBe(false);
+    expect(request.mock.calls.some((c) => c[2] === 'POST' && c[0].endsWith('/messages'))).toBe(
+      false,
+    );
   });
   it('shows unavailable state instead of cached data after a failed load', async () => {
     request.mockRejectedValueOnce(Error('Backend unavailable'));

@@ -83,6 +83,6 @@ export const CARE_ROUTES: Routes = [
     data: { careSection },
     title: 'Service user record · CareVerity',
     canDeactivate: [(c: { canLeave: () => boolean }) => c.canLeave()],
-    loadComponent: () => import('./care-records').then((m) => m.CareRecords),
+    loadComponent: () => import('../clients/client-audit').then((m) => m.ClientAudit),
   })),
 ];

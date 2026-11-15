@@ -165,6 +165,18 @@
           </table>
         </div>
       </section>
+      <section class="care-panel" aria-label="Approved care updates">
+        <h2>Approved care updates</h2>
+        @for (update of api.updates(); track update.id) {
+          <article>
+            <strong>{{ update.category }} · {{ update.date | date: 'dd MMM yyyy' }}</strong>
+            <p style="white-space: pre-wrap">{{ update.text }}</p>
+            <p class="care-note">{{ update.by }} · {{ update.at | date: 'dd MMM yyyy, HH:mm' }}</p>
+          </article>
+        } @empty {
+          <p class="care-note">No approved care updates have been shared.</p>
+        }
+      </section>
       @if (canPublish('plan') || canPublish('invoice')) {
         <section class="care-panel">
           <h2>Published information</h2>
@@ -194,13 +206,32 @@
           </div>
         </section>
       }
-      @if (api.can('create')) {
-        <section class="care-panel">
-          <h2>Family messages</h2>
-          <p class="care-note">
-            Only members with active Messages permission and sharing consent can view their
-            conversation.
-          </p>
+      <section class="care-panel">
+        <h2>Family messages</h2>
+        <button
+          type="button"
+          class="care-button"
+          (click)="api.load(id())"
+          [disabled]="busy() || printing() || !!savingAccess()"
+        >
+          Refresh conversation
+        </button>
+        <p class="care-note">
+          Only members with active Messages permission and sharing consent can view their
+          conversation.
+        </p>
+        <div role="log" aria-label="Family conversation" aria-live="polite">
+          @for (message of api.messages(); track message.id) {
+            <article>
+              <strong>{{ message.fromFamily ? 'Family' : 'Care team' }} · {{ message.by }}</strong>
+              <p style="white-space: pre-wrap">{{ message.text }}</p>
+              <p class="care-note">{{ message.at | date: 'dd MMM yyyy, HH:mm' }}</p>
+            </article>
+          } @empty {
+            <p class="care-note">No family messages have been recorded.</p>
+          }
+        </div>
+        @if (api.can('create')) {
           <form (ngSubmit)="sendMessage()">
             <fieldset [disabled]="busy() || printing() || !!savingAccess()">
               <div class="care-fields">
@@ -235,8 +266,8 @@
               </button>
             </fieldset>
           </form>
-        </section>
-      }
+        }
+      </section>
     } @else {
       <section class="care-panel">
         <p role="status">

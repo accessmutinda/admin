@@ -11,6 +11,7 @@ import {
   untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { A11yModule } from '@angular/cdk/a11y';
@@ -31,6 +32,7 @@ import type {
   imports: [
     ServiceUserState,
     FormsModule,
+    DatePipe,
     RouterLink,
     A11yModule,
     MatSelectModule,
@@ -99,7 +101,7 @@ export class FamilySharing {
       this.destroyed = true;
       this.request++;
     });
-    effect(() => {
+    effect((onCleanup) => {
       const id = this.id(),
         scope = this.api.scope();
       untracked(() => {
@@ -117,6 +119,11 @@ export class FamilySharing {
         if (id && this.api.can('read')) {
           void this.api.records.detail(id);
           void this.api.load(id);
+          onCleanup(
+            this.api.watch(id, () => {
+              if (!this.busy() && !this.editing() && !this.printing()) void this.api.load(id);
+            }),
+          );
         }
       });
     });

@@ -938,6 +938,25 @@ describe('Service user landing and creation', () => {
     await settle(fixture);
     return fixture;
   }
+
+  it('starts an unrecorded care plan as a valid draft', async () => {
+    const state = connectPlan();
+    state.plan.status = '';
+    state.plan.name = '';
+    const fixture = await openOverview();
+    (fixture.componentInstance as any).setSection('plan');
+    await settle(fixture);
+    const edit = [...fixture.nativeElement.querySelectorAll('.client-section-panel button')].find(
+      (b: any) => b.textContent.trim() === 'Edit',
+    ) as HTMLButtonElement;
+    edit.click();
+    await settle(fixture);
+    const dialog = document.querySelector('[role=dialog]')!;
+    expect(dialog.querySelector('mat-select[aria-label="Plan status"]')?.textContent).toContain(
+      'Draft',
+    );
+    expect(dialog.textContent).not.toContain('Not recorded');
+  });
   it('loads saved plan and goals in the existing page and edits the plan in a branded popup', async () => {
     const fixture = await openPlan();
     expect(fixture.nativeElement.textContent).toContain('Current plan');

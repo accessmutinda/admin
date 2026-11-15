@@ -443,4 +443,75 @@ describe('Connected family sharing administration', () => {
     expect(editor.api.denied()).toBe(false);
     expect(editor.error()).toContain('invoice is unavailable');
   });
+  it('renders received family messages and the approved update history', async () => {
+    editor.api.messages.set([
+      {
+        id: 'received',
+        company_id: 'north',
+        service_user_id: 'person-1',
+        version: 1,
+        etag: '"v1"',
+        text: 'Please confirm the next visit',
+        by: 'Family member',
+        at: '2026-11-11T10:00:00Z',
+        accessId: 'access-1',
+        fromFamily: true,
+      },
+    ]);
+    editor.api.updates.set([
+      {
+        id: 'shared',
+        company_id: 'north',
+        service_user_id: 'person-1',
+        version: 1,
+        etag: '"v1"',
+        text: 'Approved wellbeing update',
+        by: 'Care manager',
+        date: '2026-11-11',
+        category: 'Wellbeing',
+        at: '2026-11-11T10:00:00Z',
+      },
+    ]);
+    await settle(fixture);
+    expect(fixture.nativeElement.querySelector('[role=log]').textContent).toContain(
+      'Please confirm the next visit',
+    );
+    expect(fixture.nativeElement.textContent).toContain('Approved wellbeing update');
+  });
+  it('delivers family changes through the live connection and stops updates after leaving', async () => {
+    vi.useFakeTimers();
+    const sockets: any[] = [];
+    class Socket {
+      onmessage: any;
+      onclose: any;
+      onerror: any;
+      close = vi.fn();
+      constructor(readonly url: URL) {
+        sockets.push(this);
+      }
+    }
+    vi.stubGlobal('WebSocket', Socket);
+    try {
+      request.mockResolvedValueOnce({
+        ticket: 'family-ticket',
+        path: '/ws/companies/north/family/person-1/access-1',
+      });
+      const refresh = vi.fn(),
+        stop = editor.api.watch('person-1', refresh, 'access-1');
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+      expect(sockets).toHaveLength(1);
+      expect(String(sockets[0].url)).toContain('ticket=family-ticket');
+      sockets[0].onmessage({ data: JSON.stringify({ type: 'family.changed' }) });
+      await vi.advanceTimersByTimeAsync(150);
+      expect(refresh).toHaveBeenCalledTimes(1);
+      stop();
+      sockets[0].onmessage({ data: JSON.stringify({ type: 'family.changed' }) });
+      await vi.advanceTimersByTimeAsync(150);
+      expect(refresh).toHaveBeenCalledTimes(1);
+      expect(sockets[0].close).toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
 });

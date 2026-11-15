@@ -691,3 +691,19 @@ export type ServiceUserPhoto = {
   state: string;
   etag: string;
 };
+
+export type ServiceUserAuditRead = {
+  company_id: string;
+  service_user_id: string;
+  timezone: string;
+  count: number;
+  page: number;
+  next: number | null;
+  results: {
+    id: string;
+    action: string;
+    actor: string;
+    at: string;
+    version: number | null;
+  }[];
+};

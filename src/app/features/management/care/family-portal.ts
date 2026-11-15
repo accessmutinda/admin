@@ -413,13 +413,28 @@ export class FamilyPortal {
         });
       });
     });
-    effect(() => {
+    effect((onCleanup) => {
       const selected = this.selected(),
         scope = this.api.scope(),
         page = this.page(),
         preview = this.preview();
       untracked(() => {
-        if (selected) void this.api.loadShared(selected.clientId, selected.accessId, page, preview);
+        if (selected) {
+          void this.api.loadShared(selected.clientId, selected.accessId, page, preview);
+          onCleanup(
+            this.api.watch(
+              selected.clientId,
+              () => {
+                if (this.sending()) return;
+                if (page === 'messages' && this.record())
+                  void this.api.refreshMessages(selected.clientId, selected.accessId, preview);
+                else void this.api.loadShared(selected.clientId, selected.accessId, page, preview);
+              },
+              selected.accessId,
+              preview,
+            ),
+          );
+        }
       });
     });
     let previousContext = '';

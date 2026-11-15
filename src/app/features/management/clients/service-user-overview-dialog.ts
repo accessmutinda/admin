@@ -49,7 +49,12 @@ const FIELDS: Record<OverviewCard, Field[]> = {
     { key: 'name', label: 'Care plan name', required: true },
     { key: 'start', label: 'Start date', type: 'date' },
     { key: 'review', label: 'Review date', type: 'date' },
-    { key: 'status', label: 'Plan status', options: ['', 'Draft', 'Active', 'Archived'] },
+    {
+      key: 'status',
+      label: 'Plan status',
+      required: true,
+      options: ['Draft', 'Active', 'Archived'],
+    },
     { key: 'needs', label: 'Care needs', type: 'textarea' },
     { key: 'support', label: 'How to support me', type: 'textarea' },
   ],
@@ -522,7 +527,8 @@ export class ServiceUserOverviewDialog {
         this.editable.set(
           this.data.card === 'goal' && !this.data.goalId ? value.can_create_goal : value.can_edit,
         );
-        if (this.data.card === 'plan') values = { ...value.plan };
+        if (this.data.card === 'plan')
+          values = { ...value.plan, status: value.plan.status || 'Draft' };
         else if (this.data.goalId) {
           const goal = value.goals.find((goal) => goal.id === this.data.goalId);
           if (!goal) throw Error('This goal is unavailable. Reopen the care plan.');

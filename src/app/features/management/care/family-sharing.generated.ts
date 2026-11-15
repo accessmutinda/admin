@@ -732,3 +732,9 @@ export type FamilyWorkspaceRead = {
   consent: string;
   today: string;
 };
+
+export type FamilySocketTicketRead = {
+  ticket: string;
+  path: string;
+  expires_in: number;
+};
