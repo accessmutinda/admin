@@ -42,7 +42,13 @@ export class HrWorkspace {
   protected addStaff(): void {
     if (!this.canAddStaff()) return;
     this.dialog
-      .open(StaffAddDialog, { width: '780px', maxWidth: '96vw', autoFocus: 'first-heading' })
+      .open(StaffAddDialog, {
+        width: '780px',
+        maxWidth: 'calc(100vw - 24px)',
+        maxHeight: 'calc(100dvh - 24px)',
+        panelClass: 'staff-add-modal',
+        autoFocus: 'first-heading',
+      })
       .afterClosed()
       .subscribe((result?: AddedStaff) => {
         if (!result || result.company_id !== this.api.companyId()) return;

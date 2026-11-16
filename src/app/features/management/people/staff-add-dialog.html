@@ -1,18 +1,40 @@
-<h2 mat-dialog-title>Add Staff Member</h2>
+<header class="staff-dialog-header">
+  <span class="staff-dialog-icon material-symbols-outlined" aria-hidden="true">person_add</span>
+  <div class="staff-dialog-heading">
+    <h2 mat-dialog-title class="staff-dialog-title">Add Staff Member</h2>
+    <p>Create their staff record and get onboarding started.</p>
+  </div>
+  <button
+    type="button"
+    class="staff-close"
+    aria-label="Close Add Staff Member"
+    [disabled]="busy()"
+    (click)="cancel()"
+  >
+    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+  </button>
+</header>
 <form #wizard="ngForm" (ngSubmit)="step() < 3 ? next(wizard) : save()">
-  <mat-dialog-content>
-    <p>Add someone directly without going through recruitment. Required fields are marked *.</p>
-    <ol class="steps" aria-label="Staff creation steps">
-      @for (label of steps; track label; let index = $index) {
-        <li
-          [class.current]="step() === index"
-          [attr.aria-current]="step() === index ? 'step' : null"
-        >
-          <span>{{ index + 1 }}</span
-          >{{ label }}
-        </li>
-      }
-    </ol>
+  <ol class="steps" aria-label="Staff creation steps">
+    @for (label of steps; track label; let index = $index) {
+      <li
+        [class.current]="step() === index"
+        [class.complete]="step() > index"
+        [attr.aria-current]="step() === index ? 'step' : null"
+      >
+        <span class="step-number">
+          @if (step() > index) {
+            <span class="material-symbols-outlined" aria-hidden="true">check</span>
+            <span class="sr-only">Completed step {{ index + 1 }}</span>
+          } @else {
+            {{ index + 1 }}
+          }
+        </span>
+        <span class="step-label">{{ label }}</span>
+      </li>
+    }
+  </ol>
+  <mat-dialog-content class="staff-dialog-content">
     @if (error()) {
       <p class="form-error" role="alert">{{ error() }}</p>
     }
@@ -26,7 +48,10 @@
     } @else {
       @switch (step()) {
         @case (0) {
-          <h3>1. Personal details</h3>
+          <div class="section-heading">
+            <h3>Personal details</h3>
+            <span>Required fields are marked *</span>
+          </div>
           <div class="fields">
             <label
               >First name *<input
@@ -99,7 +124,10 @@
           </div>
         }
         @case (1) {
-          <h3>2. Employment</h3>
+          <div class="section-heading">
+            <h3>Employment</h3>
+            <span>Required fields are marked *</span>
+          </div>
           @if (!setup()!.branches.length) {
             <p role="alert">Add an active company branch before creating staff.</p>
           }
@@ -224,8 +252,13 @@
           </div>
         }
         @case (2) {
-          <h3>3. Contact & preferences</h3>
-          <p>These details are optional and can also be updated in the staff profile.</p>
+          <div class="section-heading">
+            <h3>Contact & preferences</h3>
+            <span>Optional</span>
+          </div>
+          <p class="section-description">
+            Add what you know now. These details can also be updated in the staff profile.
+          </p>
           <div class="fields">
             <label
               >Address<input name="address" maxlength="4000" [(ngModel)]="personal.address"
@@ -251,6 +284,10 @@
             <label
               >Languages<input name="languages" maxlength="4000" [(ngModel)]="personal.languages"
             /></label>
+            <h4 class="field-group-title wide">
+              <span class="material-symbols-outlined" aria-hidden="true">emergency</span>Emergency
+              contact
+            </h4>
             <label
               >Emergency contact name<input
                 name="emergencyName"
@@ -270,6 +307,10 @@
                 maxlength="100"
                 [(ngModel)]="personal.emergencyPhone"
             /></label>
+            <h4 class="field-group-title wide">
+              <span class="material-symbols-outlined" aria-hidden="true">work_outline</span>Work
+              preferences
+            </h4>
             <label
               >Preferred work areas<input
                 name="areas"
@@ -298,35 +339,62 @@
           </div>
         }
         @case (3) {
-          <h3>4. Review staff details</h3>
-          <dl>
-            <dt>Name</dt>
-            <dd>{{ form.first_name }} {{ form.middle_name }} {{ form.surname }}</dd>
-            <dt>Personal email</dt>
-            <dd>{{ form.email }}</dd>
-            <dt>Phone</dt>
-            <dd>{{ form.phone || 'Not provided' }}</dd>
-            <dt>Staff reference</dt>
-            <dd>{{ form.reference }}</dd>
-            <dt>Job title / branch</dt>
-            <dd>{{ form.job_title }} / {{ form.branch_name }}</dd>
-            <dt>Employment</dt>
-            <dd>{{ form.employment_type }} · Starting {{ form.start_date }}</dd>
-            <dt>Weekly hours</dt>
-            <dd>{{ hours ?? 'Not provided' }}</dd>
+          <div class="section-heading">
+            <h3>Review staff details</h3>
+            <span>Check before creating</span>
+          </div>
+          <dl class="staff-review">
+            <div class="review-item">
+              <dt>Name</dt>
+              <dd>{{ form.first_name }} {{ form.middle_name }} {{ form.surname }}</dd>
+            </div>
+            <div class="review-item">
+              <dt>Personal email</dt>
+              <dd>{{ form.email }}</dd>
+            </div>
+            <div class="review-item">
+              <dt>Phone</dt>
+              <dd>{{ form.phone || 'Not provided' }}</dd>
+            </div>
+            <div class="review-item">
+              <dt>Staff reference</dt>
+              <dd>{{ form.reference }}</dd>
+            </div>
+            <div class="review-item">
+              <dt>Job title / branch</dt>
+              <dd>{{ form.job_title }} / {{ form.branch_name }}</dd>
+            </div>
+            <div class="review-item">
+              <dt>Employment</dt>
+              <dd>{{ form.employment_type }} · Starting {{ form.start_date }}</dd>
+            </div>
+            <div class="review-item">
+              <dt>Weekly hours</dt>
+              <dd>{{ hours ?? 'Not provided' }}</dd>
+            </div>
           </dl>
-          <p>
-            A company login account will be created using the first initial and last name at
-            careverity.com. If that address is already taken, a number is added.
-          </p>
-          <p>
-            The initial password uses their first and last names followed by &#64;123. They must
-            change it at first sign-in. MFA starts switched off.
-          </p>
-          <p>
-            The staff member starts in onboarding. Upload documents, record checks, training and
-            references in their profile before activating them. Payroll is managed separately.
-          </p>
+          <div class="staff-note">
+            <span class="material-symbols-outlined" aria-hidden="true">mail_outline</span>
+            <div>
+              <h4>Account invitation</h4>
+              <p>
+                The personal email provided above will be used for sign-in and staff invitations. A
+                random temporary password will be emailed to that address and must be changed at
+                first sign-in. Updated credentials will also be emailed when onboarding is
+                completed.
+              </p>
+            </div>
+          </div>
+          <div class="staff-note onboarding-note">
+            <span class="material-symbols-outlined" aria-hidden="true">assignment_ind</span>
+            <div>
+              <h4>Next: onboarding</h4>
+              <p>
+                Upload documents, record checks, training and references in their profile before
+                activating them. Payroll is managed separately.
+              </p>
+            </div>
+          </div>
         }
       }
       @if (attempted() && wizard.invalid) {
@@ -334,13 +402,21 @@
       }
     }
   </mat-dialog-content>
-  <mat-dialog-actions align="end">
-    <button type="button" class="hr-button" [disabled]="busy()" (click)="cancel()">Cancel</button>
-    @if (step() > 0) {
-      <button type="button" class="hr-button" [disabled]="busy()" (click)="back()">Back</button>
-    }
-    <button type="submit" class="hr-button primary" [disabled]="busy() || !setup()">
-      {{ busy() ? 'Adding staff…' : step() === 3 ? 'Create staff member' : 'Continue' }}
-    </button>
+  <mat-dialog-actions class="staff-dialog-footer">
+    <div class="footer-leading">
+      <button type="button" class="hr-button" [disabled]="busy()" (click)="cancel()">Cancel</button>
+      <span class="footer-progress">Step {{ step() + 1 }} of {{ steps.length }}</span>
+    </div>
+    <div class="footer-actions">
+      @if (step() > 0) {
+        <button type="button" class="hr-button" [disabled]="busy()" (click)="back()">Back</button>
+      }
+      <button type="submit" class="hr-button primary" [disabled]="busy() || !setup()">
+        {{ busy() ? 'Adding staff…' : step() === 3 ? 'Create staff member' : 'Continue' }}
+        <span class="material-symbols-outlined" aria-hidden="true">{{
+          step() === 3 ? 'person_add' : 'arrow_forward'
+        }}</span>
+      </button>
+    </div>
   </mat-dialog-actions>
 </form>
