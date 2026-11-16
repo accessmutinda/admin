@@ -40,8 +40,8 @@ interface SecurityDialogData {
         }
         @if (data.action === 'reset-password') {
           <p>
-            The initial password uses the staff member's first and last names followed by &#64;123.
-            They must choose a new password at their next sign-in.
+            A new random temporary password will be emailed to the staff member’s personal login
+            email. They must choose a new password at their next sign-in.
           </p>
         }
         @if (data.action === 'reset-mfa') {
