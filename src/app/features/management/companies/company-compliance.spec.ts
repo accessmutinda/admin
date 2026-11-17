@@ -34,7 +34,7 @@ const stored: CompanyCompliance = {
       expiry: '2030-01-01',
       uploadedAt: '2026-11-07T10:00:00Z',
       uploadedBy: 'Saved Uploader',
-      scanState: 'not_available',
+      scanState: 'verified',
     },
   },
 };
@@ -125,7 +125,7 @@ describe('Registration and compliance API page', () => {
       'Saved Owner',
     );
     expect(root.textContent).toContain('Saved Uploader');
-    expect(root.textContent).toContain('Not verified');
+    expect(root.textContent).toContain('Verified');
     expect(root.textContent).not.toContain('stored on this device');
   });
   it('keeps edits after a failed save and sends them to the backend on retry', async () => {

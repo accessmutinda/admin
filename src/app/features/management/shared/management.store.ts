@@ -335,7 +335,7 @@ export class ManagementStore {
         color: '#087f76',
         accent: '#3b82f6',
         tagline: '',
-        logo: '',
+        logo: this.companyApi.brandLogo(company.id),
         modules: Object.keys(MODULE_CODES).filter(
           (name) =>
             company.enabled_product_modules?.includes(MODULE_CODES[name]) ??

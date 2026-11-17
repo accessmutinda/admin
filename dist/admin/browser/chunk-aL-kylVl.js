@@ -1,0 +1,1 @@
+import"./chunk-BIy20nDQ.js";import"./chunk-Bi1PEQfi.js";import"./chunk-D0qip3U1.js";import"./chunk-DlZFgxDP.js";import"./chunk-C8L9Vwsa.js";import"./chunk-CfPuw5GB.js";import"./chunk-BoPK37kA.js";import"./chunk-D9fAqgS0.js";import"./chunk-B70v4PiQ.js";import{n as ye,t as Ae}from"./chunk-D1tnqxTT.js";export{Ae as ACADEMY_ADMIN_ROUTES};

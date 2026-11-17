@@ -297,8 +297,9 @@ export class CompanyContactsPage {
     const id = this.id;
     this.dialog
       .open(CompanyContactDialog, {
-        width: '480px',
+        width: '440px',
         maxWidth: 'calc(100vw - 24px)',
+        panelClass: 'cc-contact-pane',
         autoFocus: 'first-tabbable',
         data: contact
           ? structuredClone(contact)
@@ -390,11 +391,16 @@ export class CompanyContactsPage {
   selector: 'cv-company-contact-dialog',
   imports: [FormsModule, MatDialogModule, MatSelectModule, CvSelect],
   template: ` <div class="cc-contact-dialog">
-    <h2 mat-dialog-title>{{ data.name ? 'Edit Contact' : 'Add New Contact' }}</h2>
-    <form (ngSubmit)="save()" novalidate>
+    <div class="cc-dialog-heading">
+      <span class="material-symbols-outlined" aria-hidden="true">contact_page</span>
+      <h2 mat-dialog-title>{{ data.name ? 'Edit Contact' : 'Add New Contact' }}</h2>
+    </div>
+    <form (ngSubmit)="save()" novalidate autocomplete="off">
       <mat-dialog-content>
-        <label
-          >Contact Type<mat-select
+        <div class="cc-field">
+          <label for="contact-category">Contact Type</label>
+          <mat-select
+            id="contact-category"
             cvSelect
             [(ngModel)]="contact.category"
             name="category"
@@ -403,45 +409,46 @@ export class CompanyContactsPage {
             @for (category of categories; track category.name) {
               <mat-option [value]="category.name">{{ category.name }}</mat-option>
             }
-            <mat-option value="Other">Other</mat-option></mat-select
-          ></label
-        >
+            <mat-option value="Other">Other</mat-option>
+          </mat-select>
+        </div>
         @for (field of fields; track field.key) {
-          <label [for]="'contact-' + field.key"
-            >{{ field.label }} <span aria-hidden="true">*</span></label
-          >
-          <input
-            [id]="'contact-' + field.key"
-            [name]="field.key"
-            [type]="field.type"
-            [(ngModel)]="contact[field.key]"
-            required
-            maxlength="150"
-            [attr.aria-invalid]="submitted && !!error(field.key)"
-            [attr.aria-describedby]="
-              submitted && error(field.key) ? 'contact-error-' + field.key : null
-            "
-          />
-          @if (submitted && error(field.key)) {
-            <small class="cc-error" [id]="'contact-error-' + field.key">{{
-              error(field.key)
-            }}</small>
-          }
+          <div class="cc-field">
+            <label [for]="'contact-' + field.key"
+              >{{ field.label }} <span aria-hidden="true">*</span></label
+            >
+            <input
+              [id]="'contact-' + field.key"
+              [name]="field.key"
+              [type]="field.type"
+              [attr.autocomplete]="field.autocomplete"
+              [(ngModel)]="contact[field.key]"
+              required
+              maxlength="150"
+              [attr.aria-invalid]="submitted && !!error(field.key)"
+              [attr.aria-describedby]="
+                submitted && error(field.key) ? 'contact-error-' + field.key : null
+              "
+            />
+            @if (submitted && error(field.key)) {
+              <small class="cc-error" [id]="'contact-error-' + field.key">{{
+                error(field.key)
+              }}</small>
+            }
+          </div>
         }
         <label class="cc-checkbox"
           ><input type="checkbox" [(ngModel)]="contact.active" name="active" />Active contact</label
         >
         <p>
-          Contact details will be saved with the company when you select Save Changes. This does not
-          invite a system user.
+          Contact details will be saved with the company when you select Save Changes. This does
+          not invite a system user.
         </p>
       </mat-dialog-content>
-      <mat-dialog-actions align="end"
-        ><button type="button" class="cc-dialog-button" (click)="dialog.close()">Cancel</button
-        ><button type="submit" class="cc-dialog-button cc-dialog-primary">
-          Apply Contact
-        </button></mat-dialog-actions
-      >
+      <mat-dialog-actions align="end">
+        <button type="button" class="cc-dialog-button" (click)="dialog.close()">Cancel</button>
+        <button type="submit" class="cc-dialog-button cc-dialog-primary">Apply Contact</button>
+      </mat-dialog-actions>
     </form>
   </div>`,
 })
@@ -455,11 +462,12 @@ export class CompanyContactDialog {
     key: 'name' | 'role' | 'email' | 'phone';
     label: string;
     type: string;
+    autocomplete: string;
   }[] = [
-    { key: 'name', label: 'Name', type: 'text' },
-    { key: 'role', label: 'Role / Job Title', type: 'text' },
-    { key: 'email', label: 'Email', type: 'email' },
-    { key: 'phone', label: 'Phone', type: 'tel' },
+    { key: 'name', label: 'Name', type: 'text', autocomplete: 'name' },
+    { key: 'role', label: 'Role / Job Title', type: 'text', autocomplete: 'organization-title' },
+    { key: 'email', label: 'Email', type: 'email', autocomplete: 'email' },
+    { key: 'phone', label: 'Phone', type: 'tel', autocomplete: 'tel' },
   ];
   protected error(key: 'name' | 'role' | 'email' | 'phone'): string {
     const value = this.contact[key].trim();

@@ -31,6 +31,7 @@ import {
   INSPECTION_TYPES,
   complianceErrors,
   complianceChecks,
+  documentVerified,
   complianceFileError,
   daysUntil,
 } from './company-compliance.models';
@@ -166,6 +167,7 @@ export class CompanyCompliancePage {
     { key: 'safeguardingLead', label: 'Safeguarding Lead', required: true },
     { key: 'medicationLead', label: 'Medication Governance Lead', required: true },
   ];
+  protected readonly documentVerified = documentVerified;
   protected fieldError(key: string): string {
     return this.submitted()
       ? (complianceErrors(this.draft, this.company()?.registration ?? '', false)[key] ?? '')

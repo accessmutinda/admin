@@ -400,69 +400,136 @@
   font-size: 10px;
   margin-top: 3px;
 }
+.cdk-overlay-pane.cc-contact-pane .mat-mdc-dialog-container,
+.cdk-overlay-pane.cc-contact-pane .mat-mdc-dialog-surface {
+  --mat-dialog-container-shape: 8px;
+  border-radius: 8px;
+}
+.cdk-overlay-pane.cc-contact-pane .mat-mdc-dialog-surface {
+  --mat-dialog-content-padding: 0;
+  --mat-dialog-with-actions-content-padding: 10px 14px 4px;
+  --mat-dialog-actions-padding: 8px 14px 12px;
+  padding: 0;
+}
 .cc-contact-dialog {
   color: #123352;
   font-family: var(--font-sans);
 }
-.cc-contact-dialog h2 {
+.cc-contact-dialog .cc-dialog-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 0;
+}
+.cc-contact-dialog .cc-dialog-heading > .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #e8f4ff;
+  color: #0066ac;
+  font-size: 20px;
+}
+.cc-contact-dialog h2,
+.cc-contact-dialog .mat-mdc-dialog-title {
+  margin: 0;
+  padding: 0;
   color: #002b60;
-  font-size: 18px;
+  font: 800 16px/1.3 var(--font-sans);
+}
+.cc-contact-dialog h2::before {
+  display: none;
 }
 .cc-contact-dialog mat-dialog-content {
   display: grid;
-  gap: 5px;
+  gap: 8px;
+  margin: 0;
+  max-height: none;
+  padding: 10px 14px 4px;
+}
+.cc-contact-dialog .cc-field {
+  display: grid;
+  gap: 2px;
 }
 .cc-contact-dialog label {
   font-size: 12px;
   font-weight: 700;
-  margin-top: 7px;
+  color: #10355e;
 }
 .cc-contact-dialog label > span {
   color: #d62b41;
 }
-.cc-contact-dialog input:not([type='checkbox']) {
+.cc-contact-dialog input:not([type='checkbox']),
+.cc-contact-dialog mat-select.cv-select {
   width: 100%;
-  min-height: 34px;
-  padding: 6px 9px;
-  border: 1px solid #dfe6eb;
-  border-radius: 5px;
-  font: inherit;
-  font-size: 12px;
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid #d7e0e8;
+  border-radius: 4px;
+  background: #fff;
+  font: 500 13px/1.4 var(--font-sans);
   color: #123352;
+}
+.cc-contact-dialog input:not([type='checkbox']):focus,
+.cc-contact-dialog mat-select.cv-select[aria-expanded='true'] {
+  border-color: #008afa;
+  box-shadow: 0 0 0 3px #008afa1a;
+  outline: none;
+}
+.cc-contact-dialog input:-webkit-autofill {
+  -webkit-text-fill-color: #123352;
+  box-shadow: 0 0 0 1000px #fff inset;
 }
 .cc-contact-dialog .cc-checkbox {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin: 0;
 }
 .cc-contact-dialog input[type='checkbox'] {
   accent-color: #008afa;
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
 }
 .cc-contact-dialog p {
-  font-size: 11px;
+  margin: 0;
+  font-size: 12px;
   color: #657184;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 .cc-contact-dialog .cc-error {
   color: #b42334;
   font-size: 11px;
 }
+.cc-contact-dialog mat-dialog-actions {
+  gap: 8px;
+  min-height: 0;
+  margin: 0;
+  padding: 8px 14px 12px;
+  border-top: 1px solid #e7eef3;
+}
 .cc-contact-dialog .cc-dialog-button {
-  border: 1px solid #dfe6eb;
-  border-radius: 5px;
+  border: 1px solid #d7e0e8;
+  border-radius: 4px;
   min-height: 34px;
-  padding: 6px 12px;
+  padding: 6px 14px;
   color: #16375b;
-  background: white;
+  background: #fff;
   cursor: pointer;
   font: 700 12px var(--font-sans);
+}
+.cc-contact-dialog .cc-dialog-button:hover {
+  background: #f4f8fb;
 }
 .cc-contact-dialog .cc-dialog-primary {
   background: #008afa;
   border-color: #008afa;
-  color: white;
+  color: #fff;
+}
+.cc-contact-dialog .cc-dialog-primary:hover {
+  background: #0079dc;
+  border-color: #0079dc;
 }
 .cc-contact-dialog :is(input, button, mat-select):focus-visible {
   outline: 2px solid #008bd9;

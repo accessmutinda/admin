@@ -497,11 +497,19 @@
   color: #123352;
   font-family: var(--font-sans);
 }
+.loc-dialog .loc-button {
+  border-radius: 4px;
+}
+.cdk-overlay-pane.loc-dialog-pane .mat-mdc-dialog-container,
+.cdk-overlay-pane.loc-dialog-pane .mat-mdc-dialog-surface {
+  --mat-dialog-container-shape: 6px;
+  border-radius: 6px;
+}
 .loc-dialog .loc-dialog-heading {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 16px 20px 8px;
+  gap: 8px;
+  padding: 10px 14px 2px;
 }
 .loc-dialog .loc-dialog-heading h2 {
   padding: 0;
@@ -516,16 +524,19 @@
 .loc-dialog .loc-icon {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 7px;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
   background: #008afa;
   color: white;
   font-size: 22px;
   flex-shrink: 0;
 }
-.loc-dialog mat-dialog-content {
-  padding: 0 20px 12px;
+.loc-dialog .mat-mdc-dialog-content.mdc-dialog__content {
+  padding: 0 14px 4px;
+}
+.loc-dialog .loc-dialog-company {
+  margin: 0 0 4px;
 }
 .loc-dialog p,
 .loc-dialog small {
@@ -534,7 +545,7 @@
   line-height: 1.5;
 }
 .loc-dialog p {
-  margin: 6px 0 10px;
+  margin: 2px 0 6px;
 }
 .loc-dialog small {
   display: block;
@@ -542,7 +553,7 @@
 }
 .loc-dialog label {
   display: block;
-  margin: 8px 0 3px;
+  margin: 2px 0 2px;
   font-size: 12px;
   color: #10355e;
   font-weight: 700;
@@ -558,10 +569,14 @@
   min-height: 32px;
   padding: 5px 8px;
   border: 1px solid #dfe6eb;
-  border-radius: 5px;
+  border-radius: 4px;
   background: white;
   color: #123352;
   font: 12px/1.4 var(--font-sans);
+}
+.loc-dialog input::placeholder {
+  color: #8b9aab;
+  font-weight: 400;
 }
 .loc-dialog input[type='file'] {
   font-size: 12px;
@@ -569,8 +584,8 @@
 }
 .loc-dialog .loc-dialog-fields {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px 10px;
 }
 .loc-dialog .loc-dialog-fields > div {
   min-width: 0;
@@ -581,8 +596,8 @@
 .loc-dialog .loc-dialog-subheading {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin: 10px 0 2px;
+  gap: 6px;
+  margin: 6px 0 0;
   color: #00528c;
 }
 .loc-dialog h3 {
@@ -598,8 +613,9 @@
   overflow-wrap: anywhere;
 }
 .loc-dialog mat-dialog-actions {
-  padding: 8px 20px 16px;
+  padding: 4px 14px 10px;
   gap: 8px;
+  min-height: 0;
 }
 .loc-dialog .loc-import-preview {
   overflow: auto;

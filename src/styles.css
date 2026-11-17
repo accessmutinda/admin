@@ -200,7 +200,7 @@ input:-webkit-autofill:focus {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   color: var(--cv-auth-accent);
   font-size: 11px;
   font-weight: 600;
@@ -275,7 +275,7 @@ input:-webkit-autofill:focus {
   margin-bottom: 12px;
 }
 .cv-auth-shell .cv-sign-in-fields .mat-mdc-form-field {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 .cv-sign-in-options .mat-mdc-checkbox {
   margin-inline-start: -11px;
@@ -512,6 +512,68 @@ input:-webkit-autofill:focus {
 .cv-auth-flow-compact .cv-auth-secondary {
   min-height: 40px;
   padding: 8px 16px;
+}
+.cv-password-page .cv-auth-flow-panel {
+  max-width: 22.5rem;
+  padding: 12px 16px 8px;
+  border-radius: 16px;
+}
+.cv-password-page .password-change-surface {
+  padding: 12px 16px 8px;
+  border-radius: 16px;
+}
+.cv-password-page .cv-auth-flow-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+.cv-password-page .cv-auth-flow-logo img {
+  height: 26px;
+}
+.cv-password-page .cv-auth-heading {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.15;
+}
+.cv-password-page .cv-auth-mark {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 2px;
+  border-radius: 8px;
+}
+.cv-password-page .cv-auth-flow-panel main > p,
+.cv-password-page form {
+  margin-top: 2px;
+}
+.cv-password-page .cv-field-label {
+  margin-top: 4px;
+  margin-bottom: 1px;
+}
+.cv-password-page .mat-mdc-form-field {
+  margin-bottom: 0;
+  --mat-form-field-container-height: 36px;
+  --mat-form-field-container-vertical-padding: 6px;
+}
+.cv-password-page .mb-1 {
+  margin-bottom: 0;
+}
+.cv-password-page .mat-mdc-icon-button.mat-mdc-button-base {
+  --mdc-icon-button-state-layer-size: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+}
+.cv-password-page .cv-auth-primary {
+  min-height: 36px;
+  margin-top: 6px;
+}
+.cv-password-page .cv-auth-flow-support {
+  margin-top: 6px;
+  padding-top: 2px;
+}
+.cv-password-page .cv-auth-flow-footer {
+  margin-top: 0;
 }
 .cv-mfa-generate {
   display: inline-flex;

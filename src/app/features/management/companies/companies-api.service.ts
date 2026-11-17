@@ -12,10 +12,13 @@ import {
   COMPANY_LIFECYCLE_LABELS,
 } from './companies-api.models';
 import type { CompanyProfileUpdate } from './company-profile.models';
+import { CompanyBrandingApi } from './company-branding-api.service';
 
 @Injectable({ providedIn: 'root' })
 export class CompaniesApiService {
   private readonly auth = inject(AuthService);
+  private readonly brandingApi = inject(CompanyBrandingApi);
+  private readonly brandLogos = signal<Record<string, { context: string; url: string }>>({});
   private readonly snapshot = signal<{
     context: string;
     companies: CompanySummary[];
@@ -64,6 +67,60 @@ export class CompaniesApiService {
   readonly details = computed(() =>
     this.detailSnapshot()?.context === this.context() ? this.detailSnapshot()!.records : {},
   );
+  brandLogo(id: string): string {
+    const row = this.brandLogos()[id];
+    return row?.context === this.context() ? row.url : '';
+  }
+  private brandLogoKnown(id: string): boolean {
+    return this.brandLogos()[id]?.context === this.context();
+  }
+  rememberBrandLogo(id: string, url: string): void {
+    const context = this.context();
+    if (!context || !this.auth.canAccessCompany(id)) return;
+    const current = this.brandLogos();
+    const previous = current[id];
+    if (
+      previous?.context === context &&
+      previous.url &&
+      previous.url !== url &&
+      previous.url.startsWith('blob:')
+    ) {
+      try {
+        URL.revokeObjectURL(previous.url);
+      } catch {
+        // A replaced preview URL can already have been released.
+      }
+    }
+    this.brandLogos.set({ ...current, [id]: { context, url } });
+  }
+  async ensureBrandLogo(id: string): Promise<void> {
+    if (!this.context() || !this.auth.canAccessCompany(id) || this.brandLogoKnown(id)) return;
+    try {
+      const record = await this.brandingApi.load(id);
+      const draft = this.brandingApi.theme(record, { name: '', code: '' }).logoAssetId;
+      const published = record.published
+        ? this.brandingApi.theme(record, { name: '', code: '' }, true).logoAssetId
+        : null;
+      const assets = [...new Set([draft, published].filter((asset): asset is string => !!asset))];
+      if (!this.context() || this.brandLogoKnown(id)) return;
+      let url = '';
+      for (const asset of assets) {
+        try {
+          url = URL.createObjectURL(await this.brandingApi.content(id, asset));
+          break;
+        } catch {
+          url = '';
+        }
+      }
+      if (!this.context()) {
+        if (url) URL.revokeObjectURL(url);
+        return;
+      }
+      this.rememberBrandLogo(id, url);
+    } catch {
+      return;
+    }
+  }
   detailError(id: string): string {
     return this.detailFailures()?.context === this.context()
       ? (this.detailFailures()!.records[id] ?? '')

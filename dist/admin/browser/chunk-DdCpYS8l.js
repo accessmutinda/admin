@@ -1,1 +1,0 @@
-import"./chunk-BIy20nDQ.js";import"./chunk-Bi1PEQfi.js";import"./chunk-Dv3ydmOK.js";import{n as P}from"./chunk-j5V-fuhG.js";export{P as CompaniesApiService};

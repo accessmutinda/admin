@@ -56,7 +56,12 @@ describe('Signed-in user profile menu', () => {
         },
         {
           provide: ManagementStore,
-          useValue: { company: () => null, companies: () => [], storageAvailable: () => true },
+          useValue: {
+            company: () => null,
+            companyId: () => '',
+            companies: () => [],
+            storageAvailable: () => true,
+          },
         },
         { provide: AcademyService, useValue: { can: () => false, state: () => ({}) } },
         { provide: AcademyDemoWorkflow, useValue: {} },

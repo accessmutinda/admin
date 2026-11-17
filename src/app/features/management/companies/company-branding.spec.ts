@@ -42,6 +42,8 @@ describe('Company branding server persistence', () => {
             loaded: () => true,
             error: () => '',
             refreshCompany: vi.fn().mockResolvedValue(undefined),
+            rememberBrandLogo: vi.fn(),
+            brandLogo: () => '',
           },
         },
         { provide: AuthService, useValue: { currentUser: () => ({ initials: 'SA' }) } },
@@ -107,8 +109,15 @@ describe('Company branding server persistence', () => {
     expect(api.save).not.toHaveBeenCalled();
   });
   it('blocks saving quarantined files and allows only a clean checked asset', async () => {
-    const { editor } = await open();
-    editor.pendingAssets.set([{ id: 'asset', kind: 'logo', state: 'quarantined' }]);
+    const { fixture, editor } = await open();
+    editor.pendingAssets.set([
+      { id: 'asset', kind: 'logo', state: 'quarantined', scanner_configured: true },
+    ]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      'Publishing is unavailable until uploaded images pass their security check.',
+    );
+    expect(fixture.nativeElement.querySelector('button.cp-primary').disabled).toBe(true);
     await editor.save();
     expect(api.save).not.toHaveBeenCalled();
     await editor.refreshAssets();
@@ -129,6 +138,59 @@ describe('Company branding server persistence', () => {
       'logo',
     );
     expect(api.upload).not.toHaveBeenCalled();
+  });
+  it('asks before discarding unsaved branding changes', async () => {
+    const { fixture, editor } = await open();
+    editor.draft.primaryColor = '#112233';
+    fixture.detectChanges();
+    const discard = [...fixture.nativeElement.querySelectorAll('button')].find((button) =>
+      (button.textContent ?? '').includes('Discard changes'),
+    ) as HTMLButtonElement;
+    expect(discard.className).toContain('cp-button');
+    discard.click();
+    fixture.detectChanges();
+    const dialog = fixture.nativeElement.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.textContent).toContain('Discard changes?');
+    expect(editor.draft.primaryColor).toBe('#112233');
+    (dialog.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+    expect(editor.hasChanges()).toBe(true);
+    discard.click();
+    fixture.detectChanges();
+    const confirm = [...fixture.nativeElement.querySelectorAll('[role="dialog"] button')].find(
+      (button) => (button.textContent ?? '').includes('Discard changes'),
+    ) as HTMLButtonElement;
+    confirm.click();
+    fixture.detectChanges();
+    expect(editor.hasChanges()).toBe(false);
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+  });
+  it('shows an updated company logo on the summary and shares it with other sections', async () => {
+    const { fixture, editor } = await open();
+    const created = URL.createObjectURL;
+    URL.createObjectURL = vi.fn(() => 'blob:company-logo');
+    try {
+      await editor.upload(
+        {
+          target: {
+            files: [new File(['logo'], 'logo.png', { type: 'image/png' })],
+            value: '',
+          },
+        },
+        'logo',
+      );
+    } finally {
+      URL.createObjectURL = created;
+    }
+    fixture.detectChanges();
+    const image = fixture.nativeElement.querySelector('.co-company-image img') as HTMLImageElement;
+    expect(image.getAttribute('src')).toBe('blob:company-logo');
+    expect(image.alt).toContain('North Care');
+    const api = TestBed.inject(CompaniesApiService) as unknown as {
+      rememberBrandLogo: ReturnType<typeof vi.fn>;
+    };
+    expect(api.rememberBrandLogo).toHaveBeenCalledWith('company', 'blob:company-logo');
   });
   it('discards changes to the last server snapshot and safely renders email text', async () => {
     const { fixture, editor } = await open();

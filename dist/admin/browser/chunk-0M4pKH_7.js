@@ -1,0 +1,1 @@
+function t(e){return(e??``).trim().split(/\s+/).slice(0,2).map(r=>r[0]?.toUpperCase()??``).join(``)}export{t};

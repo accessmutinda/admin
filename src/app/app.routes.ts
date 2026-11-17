@@ -31,6 +31,13 @@ import {
   workspaceSelectionGuard,
 } from './core/auth/auth.guard';
 
+function workspaceCompanyId(): string {
+  const auth = inject(AuthService);
+  if (auth.isSuperAdmin()) return auth.session()?.workspaceId ?? '';
+  const profile = auth.profile();
+  return profile?.company_entry_state === 'ready' ? (profile.company_id ?? '') : '';
+}
+
 const companyDataGuard = (
   route: import('@angular/router').ActivatedRouteSnapshot,
   state: import('@angular/router').RouterStateSnapshot,
@@ -42,14 +49,23 @@ const companyDataGuard = (
     runInInjectionContext(context, () => {
       const api = inject(m.CompaniesApiService);
       const loaded = api.ensureLoaded();
+      const path = route.routeConfig?.path ?? '';
       const id = route.paramMap.get('id');
-      if (
-        ['companies/:id', 'companies/:id/compliance', 'companies/:id/contacts'].includes(
-          route.routeConfig?.path ?? '',
-        ) &&
-        id
-      )
+      if (['companies/:id', 'companies/:id/compliance', 'companies/:id/contacts'].includes(path) && id)
         void loaded.then(() => api.loadDetail(id));
+      const logoCompany =
+        id && path.includes(':id') && path !== 'companies/:id/branding'
+          ? id
+          : [
+                'companies',
+                'companies/directory',
+                'companies/integrations',
+                'companies/access',
+                'locations',
+              ].includes(path)
+            ? workspaceCompanyId()
+            : '';
+      if (logoCompany) void loaded.then(() => api.ensureBrandLogo(logoCompany));
       return true;
     }),
   );

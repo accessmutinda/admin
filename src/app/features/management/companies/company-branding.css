@@ -869,19 +869,55 @@
   color: #657184;
   margin-top: 3px;
 }
+.cv-management .company-branding-page .cb-publish-block {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid #f2c8cf;
+  border-radius: 4px;
+  background: #fff5f6;
+  color: #b42334;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.cv-management .company-branding-page .cp-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 .cv-management .company-branding-page .cb-save-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 7px;
 }
-.cv-management .company-branding-page .cb-discard {
-  border: 0;
-  background: transparent;
-  color: #0066ac;
-  text-decoration: underline;
-  padding: 6px;
-  font-size: 11px;
+.cv-management .company-branding-page .cb-discard-dialog {
+  width: min(420px, 100%);
+  padding: 18px;
+}
+.cv-management .company-branding-page .cb-discard-dialog h2 {
+  margin: 0 0 8px;
+  color: #10355e;
+  font-size: 16px;
+}
+.cv-management .company-branding-page .cb-discard-dialog p {
+  margin: 0;
+  color: #536781;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.cv-management .company-branding-page .cb-discard-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.cv-management .company-branding-page .cp-button.cp-danger {
+  background: #b42334;
+  border-color: #b42334;
+  color: #fff;
+}
+.cv-management .company-branding-page .cp-button.cp-danger:hover {
+  background: #9e1d2c;
+  border-color: #9e1d2c;
 }
 @media (max-width: 1300px) {
   .cv-management .company-branding-page .cb-asset-content {

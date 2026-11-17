@@ -19,6 +19,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { A11yModule } from '@angular/cdk/a11y';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -50,6 +51,7 @@ import {
     CompanyLoading,
     FormsModule,
     RouterLink,
+    A11yModule,
     MatSelectModule,
     CvSelect,
   ],
@@ -83,6 +85,7 @@ export class CompanyBrandingPage {
   protected readonly error = signal('');
   protected readonly assetError = signal('');
   protected readonly uploading = signal(false);
+  protected readonly confirmingDiscard = signal(false);
   protected readonly modifiedAt = companyModifiedAt;
   protected readonly previewInitials = computed(() => this.auth.currentUser()?.initials ?? 'CV');
   protected readonly fonts = BRANDING_FONTS;
@@ -137,7 +140,8 @@ export class CompanyBrandingPage {
   constructor() {
     inject(DestroyRef).onDestroy(() => {
       this.alive = false;
-      for (const url of this.urls) URL.revokeObjectURL(url);
+      const keep = this.dataApi.brandLogo(this.id);
+      for (const url of this.urls) if (url !== keep) URL.revokeObjectURL(url);
     });
     let hydrated = '';
     effect(() => {
@@ -178,11 +182,13 @@ export class CompanyBrandingPage {
     this.draft = draft;
     this.baseline = JSON.stringify(draft);
     this.pendingAssets.set([]);
+    this.publishLogo();
   }
   protected removeAsset(kind: 'logo' | 'favicon') {
     this.draft[kind] = '';
     this.draft[kind === 'logo' ? 'logoAssetId' : 'faviconAssetId'] = null;
     this.pendingAssets.update((rows) => rows.filter((asset) => asset.kind !== kind));
+    if (kind === 'logo') this.publishLogo();
   }
   protected async refreshAssets() {
     this.uploading.set(true);
@@ -207,6 +213,7 @@ export class CompanyBrandingPage {
     } catch (error) {
       this.assetError.set((error as Error).message);
     } finally {
+      this.publishLogo();
       this.uploading.set(false);
     }
   }
@@ -322,6 +329,7 @@ export class CompanyBrandingPage {
       const url = URL.createObjectURL(file);
       this.urls.add(url);
       this.draft[kind] = url;
+      if (kind === 'logo') this.publishLogo();
       if (asset.state === 'clean')
         this.draft[kind === 'logo' ? 'logoAssetId' : 'faviconAssetId'] = asset.id;
       else this.pendingAssets.update((rows) => [...rows.filter((row) => row.kind !== kind), asset]);
@@ -338,6 +346,7 @@ export class CompanyBrandingPage {
     this.error.set('');
     this.assetError.set('');
     this.submitted.set(false);
+    this.publishLogo();
   }
   protected discard(): void {
     this.draft = JSON.parse(this.baseline) as CompanyBranding;
@@ -346,6 +355,23 @@ export class CompanyBrandingPage {
     this.error.set('');
     this.assetError.set('');
     this.submitted.set(false);
+    this.confirmingDiscard.set(false);
+    this.publishLogo();
+  }
+  private publishLogo(): void {
+    this.dataApi.rememberBrandLogo(this.id, this.draft.logo);
+  }
+  protected publishBlockReason(): string {
+    if (this.uploading()) return 'Publishing is paused while an image is uploading.';
+    if (this.saving()) return 'Publishing is paused while branding is being saved.';
+    if (this.loading()) return 'Publishing is unavailable while branding settings are loading.';
+    if (!this.record())
+      return 'Publishing is unavailable because the branding record could not be loaded. Use Retry branding and try again.';
+    if (this.pendingAssets().length)
+      return this.scannerUnavailable()
+        ? 'Publishing is unavailable until uploaded images pass a security check. Image scanning is not configured. Contact your platform administrator.'
+        : 'Publishing is unavailable until uploaded images pass their security check. Refresh image checks after they are approved.';
+    return '';
   }
   protected async save(publish = false): Promise<void> {
     if (this.uploading() || this.saving() || this.pendingAssets().length || !this.record()) return;

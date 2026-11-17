@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { AuthService } from './auth.service';
 import { WorkspaceService } from './workspace.service';
 import { ApiWorkspace } from './auth-api';
+import { companyInitials } from './models/workspace';
 
 describe('API-only workspace views', () => {
   const workspaces = signal<ApiWorkspace[]>([]);
@@ -62,5 +63,11 @@ describe('API-only workspace views', () => {
     expect(service.currentWorkspace()?.entryState).toBe('ready');
     authenticated.set(false);
     expect(service.currentWorkspace()).toBeNull();
+  });
+  it('builds a two-letter company mark from the name', () => {
+    expect(companyInitials('Neural Edge Ltd')).toBe('NE');
+    expect(companyInitials('  north   care ')).toBe('NC');
+    expect(companyInitials('Care')).toBe('C');
+    expect(companyInitials('')).toBe('');
   });
 });

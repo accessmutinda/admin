@@ -8,7 +8,8 @@ import { QuickActions } from '../shared/quick-actions';
 import { complianceComplete } from './company-compliance.models';
 import { locationsComplete } from '../locations/locations.models';
 import { contactInformationComplete } from './company-contacts.models';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { companyInitials } from '../../../core/auth/models/workspace';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ManagementStore } from '../shared/management.store';
@@ -26,6 +27,7 @@ import {
 })
 export class Companies {
   protected readonly api = inject(CompaniesApiService);
+  protected readonly companyInitials = companyInitials;
   protected readonly store = inject(ManagementStore);
   private readonly auth = inject(AuthService);
   protected readonly superAdmin = computed(() => this.auth.isSuperAdmin());
@@ -71,6 +73,11 @@ export class Companies {
   protected readonly preview = computed(() => this.filtered().slice(0, 5));
   protected readonly completion = companyCompletion;
   protected readonly modifiedAt = companyModifiedAt;
+  constructor() {
+    effect(() => {
+      for (const company of this.preview()) void this.api.ensureBrandLogo?.(company.id);
+    });
+  }
   protected readonly statsReady = computed(() => this.api.loaded() && !this.api.error());
   protected readonly total = computed(() =>
     this.statsReady()

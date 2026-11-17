@@ -75,7 +75,7 @@ import { Logo } from '../ui/logo';
       display: grid;
       min-height: 100svh;
       align-items: center;
-      padding: 24px;
+      padding: 12px;
       background:
         radial-gradient(ellipse at top left, var(--color-teal-50) 0, transparent 48%),
         var(--color-cloud);
@@ -84,7 +84,7 @@ import { Logo } from '../ui/logo';
       display: grid;
       grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
       width: 100%;
-      max-width: 1048px;
+      max-width: 860px;
       margin-inline: auto;
       overflow: hidden;
       border: 1px solid var(--color-line);
@@ -97,7 +97,7 @@ import { Logo } from '../ui/logo';
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      padding: 32px 25px 24px;
+      padding: 14px 16px 10px;
       background: var(--color-navy);
       color: white;
       isolation: isolate;
@@ -107,19 +107,22 @@ import { Logo } from '../ui/logo';
       z-index: 2;
       display: block;
     }
+    .cv-entry-logo img {
+      height: 36px;
+    }
     .cv-entry-story {
       position: relative;
       z-index: 2;
-      margin-top: 32px;
-      max-width: 540px;
+      margin-top: 8px;
+      max-width: 420px;
     }
     .cv-entry-eyebrow {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin: 0 0 16px;
+      margin: 0 0 4px;
       color: #c4e8e5;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 500;
       letter-spacing: 0.035em;
     }
@@ -131,8 +134,8 @@ import { Logo } from '../ui/logo';
     }
     h2 {
       margin: 0;
-      font-size: clamp(36px, 3.5vw, 44px);
-      line-height: 1.2;
+      font-size: clamp(22px, 2vw, 26px);
+      line-height: 1.15;
       letter-spacing: -0.04em;
       font-weight: 600;
     }
@@ -140,11 +143,11 @@ import { Logo } from '../ui/logo';
       color: #83e3d7;
     }
     .cv-entry-description {
-      max-width: 405px;
-      margin: 16px 0 0;
+      max-width: 360px;
+      margin: 6px 0 0;
       color: #d0dde8;
-      font-size: 14px;
-      line-height: 1.7;
+      font-size: 13px;
+      line-height: 1.4;
     }
     .cv-entry-visual {
       position: relative;
@@ -152,8 +155,8 @@ import { Logo } from '../ui/logo';
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      margin: 24px -25px -24px;
-      padding: 180px 25px 24px;
+      margin: 10px -16px -10px;
+      padding: 64px 16px 10px;
     }
     .cv-entry-photo {
       position: absolute;
@@ -184,7 +187,7 @@ import { Logo } from '../ui/logo';
       position: relative;
       z-index: 2;
       margin-top: 0;
-      padding: 16px;
+      padding: 10px 12px;
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 12px;
       background: rgba(15, 45, 74, 0.88);
@@ -193,7 +196,7 @@ import { Logo } from '../ui/logo';
       display: flex;
       align-items: center;
       gap: 8px;
-      margin: 0 0 16px;
+      margin: 0 0 8px;
       font-size: 12px;
       color: #dce8f1;
     }
@@ -204,7 +207,7 @@ import { Logo } from '../ui/logo';
     .cv-entry-capability-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
+      gap: 8px;
     }
     .cv-entry-capability {
       display: flex;
@@ -251,11 +254,11 @@ import { Logo } from '../ui/logo';
       flex-direction: column;
       justify-content: center;
       min-width: 0;
-      padding: 32px 25px 24px;
+      padding: 18px 20px 12px;
     }
     .cv-entry-content {
       width: 100%;
-      max-width: 368px;
+      max-width: 320px;
       margin-inline: auto;
     }
     .cv-entry-mobile-logo {
@@ -267,8 +270,8 @@ import { Logo } from '../ui/logo';
       justify-content: center;
       align-items: center;
       gap: 6px;
-      margin: 16px 0 0;
-      padding-top: 16px;
+      margin: 10px 0 0;
+      padding-top: 8px;
       border-top: 1px solid var(--color-line);
       color: var(--color-slate);
       font-size: 12px;
@@ -277,10 +280,10 @@ import { Logo } from '../ui/logo';
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      min-height: 40px;
+      min-height: 28px;
     }
     .cv-entry-footer {
-      margin: 16px 0 0;
+      margin: 8px 0 0;
       display: flex;
       justify-content: center;
       flex-wrap: wrap;
@@ -304,13 +307,13 @@ import { Logo } from '../ui/logo';
         display: none;
       }
       .cv-entry-main {
-        padding: 32px;
+        padding: 20px;
       }
       .cv-entry-mobile-logo {
         display: block;
         width: 100%;
         max-width: 368px;
-        margin: 0 auto 24px;
+        margin: 0 auto 12px;
       }
     }
     @media (max-width: 599px) {

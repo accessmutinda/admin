@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ApiError } from '../../../core/auth/auth-api';
 import { CompaniesApiService } from './companies-api.service';
+import { CompanyBrandingApi } from './company-branding-api.service';
 import {
   CompanyPage,
   CompanySummary,
@@ -46,6 +47,11 @@ describe('Companies API service', () => {
   const assigned = signal('company-1');
   const signedIn = signal(true);
   let request: ReturnType<typeof vi.fn>;
+  let branding: {
+    load: ReturnType<typeof vi.fn>;
+    theme: ReturnType<typeof vi.fn>;
+    content: ReturnType<typeof vi.fn>;
+  };
   let service: CompaniesApiService;
   beforeEach(() => {
     role.set('PO');
@@ -54,8 +60,10 @@ describe('Companies API service', () => {
     signedIn.set(true);
     localStorage.clear();
     request = vi.fn().mockResolvedValue(page([company]));
+    branding = { load: vi.fn(), theme: vi.fn(), content: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
+        { provide: CompanyBrandingApi, useValue: branding },
         {
           provide: AuthService,
           useValue: {
@@ -80,6 +88,25 @@ describe('Companies API service', () => {
     expect(request).toHaveBeenCalledExactlyOnceWith('/platform/companies');
     expect(service.companies()).toEqual([company]);
     expect(service.count()).toBe(1);
+  });
+  it('shares one saved company logo and does not load it again', async () => {
+    branding.load.mockResolvedValue({ company_id: 'company-1' });
+    branding.theme.mockReturnValue({ logoAssetId: 'asset' });
+    branding.content.mockResolvedValue(new Blob(['logo']));
+    const created = URL.createObjectURL;
+    URL.createObjectURL = vi.fn(() => 'blob:saved-logo');
+    try {
+      await service.ensureBrandLogo('company-1');
+      await service.ensureBrandLogo('company-1');
+    } finally {
+      URL.createObjectURL = created;
+    }
+    expect(branding.load).toHaveBeenCalledOnce();
+    expect(service.brandLogo('company-1')).toBe('blob:saved-logo');
+    service.rememberBrandLogo('company-1', 'blob:updated-logo');
+    expect(service.brandLogo('company-1')).toBe('blob:updated-logo');
+    signedIn.set(false);
+    expect(service.brandLogo('company-1')).toBe('');
   });
   it('loads company detail without using directory placeholders and hides it after logout', async () => {
     const detail = {

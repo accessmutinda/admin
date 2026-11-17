@@ -10,6 +10,8 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MAT_SELECT_CONFIG } from '@angular/material/select';
 import { AuthService } from '../../../core/auth/auth.service';
+import { companyInitials } from '../../../core/auth/models/workspace';
+import { CompaniesApiService } from '../companies/companies-api.service';
 import { ROLES } from '../../../core/auth/models/role';
 import { Logo } from '../../../shared/ui/logo';
 import { ManagementStore } from '../shared/management.store';
@@ -165,7 +167,13 @@ import { ModuleDesign } from '../shared/module-design';
               'Switch workspace. Current workspace: ' + (store.company()?.name ?? '')
             "
           >
-            <span class="workspace-mark">{{ store.company()?.code }}</span>
+            <span class="workspace-mark">
+              @if (workspaceLogo()) {
+                <img [src]="workspaceLogo()" [alt]="(store.company()?.name ?? 'Company') + ' logo'" />
+              } @else {
+                {{ companyInitials(store.company()?.name) }}
+              }
+            </span>
             <span class="workspace-text"
               ><strong>{{ store.company()?.name }}</strong
               ><small>Switch workspace</small></span
@@ -219,6 +227,8 @@ import { ModuleDesign } from '../shared/module-design';
 })
 export class PortalShell {
   protected readonly access = inject(CompanyAccessService);
+  private readonly companiesApi = inject(CompaniesApiService);
+  protected readonly companyInitials = companyInitials;
   protected readonly navigationState = inject(PageNavigation);
   protected readonly auth = inject(AuthService);
   private readonly injector = inject(Injector);
@@ -242,7 +252,15 @@ export class PortalShell {
     const target = this.router.currentNavigation()?.extractedUrl.toString() || this.router.url;
     return isConnectedStaffPortalRoute(target);
   });
+  protected readonly workspaceLogo = computed(() => {
+    const id = this.store.company()?.id;
+    return id ? this.companiesApi.brandLogo(id) : '';
+  });
   constructor() {
+    effect(() => {
+      const id = this.store.company()?.id;
+      if (id) void this.companiesApi.ensureBrandLogo(id);
+    });
     effect(() => {
       if (
         this.navigation() instanceof NavigationEnd &&

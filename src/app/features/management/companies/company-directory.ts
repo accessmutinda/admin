@@ -3,7 +3,8 @@ import { CompanySetupBanner } from './company-setup-banner';
 import { Skeleton } from '../../../shared/ui/skeleton';
 import { CompaniesApiService } from './companies-api.service';
 import { CardTonePipe } from '../../../shared/ui/card-tone.pipe';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { companyInitials } from '../../../core/auth/models/workspace';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
@@ -39,6 +40,7 @@ type FilterKey = 'status' | 'region' | 'service' | 'plan' | 'completion' | 'upda
 export class CompanyDirectory {
   protected readonly canManage = computed(() => this.auth.isSuperAdmin());
   protected readonly api = inject(CompaniesApiService);
+  protected readonly companyInitials = companyInitials;
   protected readonly store = inject(ManagementStore);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
@@ -274,6 +276,11 @@ export class CompanyDirectory {
       this.currentPage() * this.pageSize,
     ),
   );
+  constructor() {
+    effect(() => {
+      for (const company of this.rows()) void this.api.ensureBrandLogo?.(company.id);
+    });
+  }
   protected readonly pageNumbers = computed(() => {
     const start = Math.max(1, Math.min(this.currentPage() - 2, this.pageCount() - 4));
     return Array.from({ length: Math.min(5, this.pageCount()) }, (_, i) => start + i);

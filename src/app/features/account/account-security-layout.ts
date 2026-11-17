@@ -1,9 +1,11 @@
-import { Component, inject } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Logo } from '../../shared/ui/logo';
 import { RoleBadge } from '../../shared/ui/role-badge';
 import { AuthService } from '../../core/auth/auth.service';
+import { companyInitials } from '../../core/auth/models/workspace';
 import { WorkspaceService } from '../../core/auth/workspace.service';
+import { CompaniesApiService } from '../management/companies/companies-api.service';
 
 interface SubNavItem {
   label: string;
@@ -20,6 +22,19 @@ export class AccountSecurityLayout {
   protected readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   protected readonly workspaceSvc = inject(WorkspaceService);
+  private readonly companiesApi = inject(CompaniesApiService);
+  protected readonly companyInitials = companyInitials;
+
+  constructor() {
+    effect(() => {
+      const id = this.workspaceSvc.currentWorkspace()?.id;
+      if (id) void this.companiesApi.ensureBrandLogo(id);
+    });
+  }
+
+  protected workspaceLogo(id: string): string {
+    return this.companiesApi.brandLogo(id);
+  }
 
   protected readonly user = this.auth.currentUser();
 

@@ -16,11 +16,17 @@
           (click)="switchWorkspace()"
         >
           <span
-            class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white {{
-              workspaceSvc.currentWorkspace()!.colorClass
+            class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded text-[10px] font-bold {{
+              workspaceLogo(workspace.id)
+                ? 'border border-line bg-white'
+                : workspace.colorClass + ' text-white'
             }}"
           >
-            {{ workspaceSvc.currentWorkspace()!.shortCode }}
+            @if (workspaceLogo(workspace.id); as logo) {
+              <img class="h-full w-full object-contain" [src]="logo" [alt]="workspace.name + ' logo'" />
+            } @else {
+              {{ companyInitials(workspace.name) }}
+            }
           </span>
           <span class="hidden truncate md:inline">{{ workspaceSvc.currentWorkspace()!.name }}</span>
           <span class="material-symbols-outlined shrink-0 text-[16px] text-slate">unfold_more</span>

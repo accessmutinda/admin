@@ -67,7 +67,7 @@ export interface LocationDialogData {
     <form (ngSubmit)="save()" novalidate>
       <fieldset [disabled]="saving()" style="display: contents">
         <mat-dialog-content
-          ><p>{{ data.companyName }}</p>
+          ><p class="loc-dialog-company">{{ data.companyName }}</p>
           <div class="loc-dialog-fields">
             @for (field of fields; track field.key) {
               <div>
@@ -139,6 +139,7 @@ export interface LocationDialogData {
                         [attr.min]="field.key === 'registeredPlaces' ? 0 : null"
                         [attr.max]="field.key === 'registeredPlaces' ? 2147483647 : null"
                         [required]="!!field.required"
+                        [attr.placeholder]="field.placeholder"
                       />
                     }
                   }
@@ -172,6 +173,7 @@ export interface LocationDialogData {
                     [(ngModel)]="draft.address[field.key]"
                     maxlength="150"
                     [required]="!!field.required"
+                    [attr.placeholder]="field.placeholder"
                   />
                 } @else {
                   <div class="loc-read-value">{{ draft.address[field.key] || 'Not recorded' }}</div>
@@ -246,33 +248,46 @@ export class LocationDialog {
     label: string;
     type?: string;
     required?: boolean;
+    placeholder?: string;
   }[] = [
-    { key: 'name', label: 'Location Name', required: true },
-    { key: 'code', label: 'Location Code', required: true },
+    { key: 'name', label: 'Location Name', required: true, placeholder: 'Riverside Care Home' },
+    { key: 'code', label: 'Location Code', required: true, placeholder: 'RIV-01' },
     { key: 'type', label: 'Type', required: true },
     { key: 'status', label: 'Status', required: true },
-    { key: 'region', label: 'Region' },
-    { key: 'registeredPlaces', label: 'Registered Care Capacity', type: 'number', required: true },
-    { key: 'manager', label: 'Manager' },
-    { key: 'hours', label: 'Operating Hours' },
-    { key: 'phone', label: 'Contact Phone', type: 'tel' },
-    { key: 'email', label: 'Contact Email', type: 'email' },
-    { key: 'managerPhone', label: 'Manager Phone', type: 'tel' },
-    { key: 'managerEmail', label: 'Manager Email', type: 'email' },
-    { key: 'latitude', label: 'Latitude (optional)', type: 'number' },
-    { key: 'longitude', label: 'Longitude (optional)', type: 'number' },
+    { key: 'region', label: 'Region', placeholder: 'London' },
+    {
+      key: 'registeredPlaces',
+      label: 'Registered Care Capacity',
+      type: 'number',
+      required: true,
+      placeholder: '0 if none',
+    },
+    { key: 'manager', label: 'Manager', placeholder: 'Jane Smith' },
+    { key: 'hours', label: 'Operating Hours', placeholder: 'Mon–Fri 08:00–18:00' },
+    { key: 'phone', label: 'Contact Phone', type: 'tel', placeholder: '020 7946 0123' },
+    { key: 'email', label: 'Contact Email', type: 'email', placeholder: 'branch@company.co.uk' },
+    { key: 'managerPhone', label: 'Manager Phone', type: 'tel', placeholder: '07700 900123' },
+    {
+      key: 'managerEmail',
+      label: 'Manager Email',
+      type: 'email',
+      placeholder: 'jane.smith@company.co.uk',
+    },
+    { key: 'latitude', label: 'Latitude (optional)', type: 'number', placeholder: '51.5074' },
+    { key: 'longitude', label: 'Longitude (optional)', type: 'number', placeholder: '-0.1278' },
   ];
   protected readonly addressFields: {
     key: keyof ServiceLocation['address'];
     label: string;
     required?: boolean;
+    placeholder?: string;
   }[] = [
-    { key: 'line1', label: 'Address Line 1', required: true },
-    { key: 'line2', label: 'Address Line 2' },
-    { key: 'city', label: 'City', required: true },
-    { key: 'county', label: 'County' },
-    { key: 'postcode', label: 'Postcode', required: true },
-    { key: 'country', label: 'Country', required: true },
+    { key: 'line1', label: 'Address Line 1', required: true, placeholder: '14 High Street' },
+    { key: 'line2', label: 'Address Line 2', placeholder: 'Flat or floor' },
+    { key: 'city', label: 'City', required: true, placeholder: 'London' },
+    { key: 'county', label: 'County', placeholder: 'Greater London' },
+    { key: 'postcode', label: 'Postcode', required: true, placeholder: 'SW1A 1AA' },
+    { key: 'country', label: 'Country', required: true, placeholder: 'United Kingdom' },
   ];
   protected setField(
     key: (typeof this.fields)[number]['key'],

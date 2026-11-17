@@ -25,9 +25,9 @@
     <p>Configure your company's visual identity across the CareVerity platform.</p>
   </div>
   <section class="co-summary co-surface" aria-label="Current company overview">
-    <div class="co-company-image" [style.background]="current.logo ? '#eef7fa' : null">
-      @if (current.logo) {
-        <img [src]="current.logo" [alt]="current.name + ' logo'" />
+    <div class="co-company-image" [style.background]="draft.logo ? '#eef7fa' : null">
+      @if (draft.logo) {
+        <img [src]="draft.logo" [alt]="current.name + ' logo'" />
       } @else {
         <div class="co-reference-photo" role="img" aria-label="Care home placeholder"></div>
       }
@@ -725,6 +725,9 @@
         Publishing retains an approved version on the server. Live domains, portal deployment and
         email delivery require connected services.
       </p>
+      @if (publishBlockReason() || error(); as publishReason) {
+        <p class="cb-publish-block" id="publish-block-reason" role="alert">{{ publishReason }}</p>
+      }
     </div>
     <div class="cb-save-actions">
       <button
@@ -739,11 +742,11 @@
       @if (hasChanges()) {
         <button
           type="button"
-          class="cb-discard"
-          (click)="discard()"
+          class="cp-button"
+          (click)="confirmingDiscard.set(true)"
           [disabled]="uploading() || saving()"
         >
-          Discard changes
+          <span class="material-symbols-outlined" aria-hidden="true">undo</span>Discard changes
         </button>
       }
       <button
@@ -757,12 +760,40 @@
         type="button"
         class="cp-button cp-primary"
         (click)="save(true)"
-        [disabled]="uploading() || saving() || loading() || !record() || !!pendingAssets().length"
+        [disabled]="!!publishBlockReason()"
+        [attr.aria-describedby]="publishBlockReason() ? 'publish-block-reason' : null"
       >
         <span class="material-symbols-outlined" aria-hidden="true">send</span>Publish Branding
       </button>
     </div>
   </div>
+  @if (confirmingDiscard()) {
+    <div class="modal-backdrop" (click)="confirmingDiscard.set(false)">
+      <section
+        class="modal panel cb-discard-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="discard-branding-title"
+        cdkTrapFocus
+        [cdkTrapFocusAutoCapture]="true"
+        (click)="$event.stopPropagation()"
+        (keydown.escape)="confirmingDiscard.set(false)"
+      >
+        <h2 id="discard-branding-title">Discard changes?</h2>
+        <p>
+          Unsaved branding changes will be removed. The theme returns to the last saved version.
+        </p>
+        <div class="cb-discard-actions">
+          <button type="button" class="cp-button" (click)="confirmingDiscard.set(false)">
+            Keep editing
+          </button>
+          <button type="button" class="cp-button cp-danger" (click)="discard()">
+            Discard changes
+          </button>
+        </div>
+      </section>
+    </div>
+  }
 } @else {
   <section class="co-surface cp-not-found">
     <h1>Company not found</h1>

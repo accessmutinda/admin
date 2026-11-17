@@ -238,8 +238,9 @@ export class LocationsPage {
     if (!company || (mode !== 'new' && !row)) return;
     const id = this.store.companyId();
     const ref = this.dialog.open(LocationDialog, {
-      width: '760px',
+      width: '920px',
       maxWidth: 'calc(100vw - 24px)',
+      panelClass: 'loc-dialog-pane',
       autoFocus: mode === 'view' ? 'first-tabbable' : '#loc-name',
       data: {
         companyId: id,

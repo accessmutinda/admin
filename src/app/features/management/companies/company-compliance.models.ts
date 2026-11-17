@@ -131,12 +131,16 @@ export function complianceErrors(
   }
   return errors;
 }
+export function documentVerified(file?: { scanState?: string } | null): boolean {
+  return file?.scanState === 'verified' || file?.scanState === 'clean';
+}
 export function complianceChecks(
   value: CompanyCompliance,
   companyNumber: string,
   today = todayUk(),
 ) {
   const count = COMPLIANCE_DOCUMENTS.filter(({ key }) => !!value.documents[key]).length;
+  const insurance = value.documents.insurance;
   const insuranceDays = daysUntil(value.insuranceExpiry, today);
   return [
     {
@@ -150,11 +154,10 @@ export function complianceChecks(
       key: 'insurance',
       title: 'Insurance evidence current',
       complete:
-        value.documents.insurance?.scanState === 'clean' &&
+        documentVerified(insurance) &&
         insuranceDays !== null &&
         insuranceDays >= 0 &&
-        (!value.documents.insurance.expiry ||
-          (daysUntil(value.documents.insurance.expiry, today) ?? -1) >= 0),
+        (!insurance?.expiry || (daysUntil(insurance.expiry, today) ?? -1) >= 0),
       detail: 'Certificate uploaded and recorded expiry current',
       target: 'rc-document-insurance',
     },
@@ -165,7 +168,7 @@ export function complianceChecks(
         count === COMPLIANCE_DOCUMENTS.length &&
         COMPLIANCE_DOCUMENTS.every(
           ({ key }) =>
-            value.documents[key]?.scanState === 'clean' &&
+            documentVerified(value.documents[key]) &&
             (!value.documents[key]?.expiry ||
               (daysUntil(value.documents[key]!.expiry, today) ?? -1) >= 0),
         ),

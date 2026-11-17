@@ -27,6 +27,7 @@ function passwordsMatch(): ValidatorFn {
 
 @Component({
   selector: 'cv-reset-password',
+  host: { class: 'cv-password-page' },
   imports: [
     NgTemplateOutlet,
     AuthCenteredLayout,

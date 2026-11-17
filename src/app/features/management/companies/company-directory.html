@@ -312,9 +312,9 @@
                   <a class="co-table-company" [routerLink]="['/manage/companies', company.id]"
                     ><span class="co-table-logo">
                       @if (company.logo) {
-                        <img [src]="company.logo" alt="" />
+                        <img [src]="company.logo" [alt]="company.name + ' logo'" />
                       } @else {
-                        <span class="co-reference-photo" aria-hidden="true"></span>
+                        <span>{{ companyInitials(company.name) }}</span>
                       }</span
                     ><span>{{ company.name }}</span></a
                   >

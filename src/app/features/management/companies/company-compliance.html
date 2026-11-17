@@ -187,7 +187,7 @@
                 <small>Added {{ modifiedAt(file.uploadedAt) }} by {{ file.uploadedBy }}</small>
                 <small
                   >Verification:
-                  {{ file.scanState === 'clean' ? 'Scan passed' : 'Not verified' }}</small
+                  {{ documentVerified(file) ? 'Verified' : 'Not verified' }}</small
                 >
                 <label [for]="'rc-owner-' + type.key">Responsible owner</label
                 ><input
@@ -257,8 +257,7 @@
         </div>
         <p class="rc-storage-note">
           Uploads and document deletions are saved to the server immediately. Save Changes stores
-          registration details, owners and expiry dates. Malware scanning is not available; uploaded
-          files are not marked as verified evidence.
+          registration details, owners and expiry dates. An accepted upload is verified.
         </p>
       </section>
     </div>

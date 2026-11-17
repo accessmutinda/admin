@@ -1,6 +1,6 @@
 {
   "/api/**": {
-    "target": "https://care.neuraledge.co.ke",
+    "target": "http://localhost:6536",
     "secure": false,
     "changeOrigin": true
   }

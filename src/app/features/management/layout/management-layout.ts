@@ -22,6 +22,8 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { ROLES } from '../../../core/auth/models/role';
 import { ManagementRole } from '../shared/role-pill';
 import { AuthService } from '../../../core/auth/auth.service';
+import { companyInitials } from '../../../core/auth/models/workspace';
+import { CompaniesApiService } from '../companies/companies-api.service';
 import { Logo } from '../../../shared/ui/logo';
 import { ManagementStore } from '../shared/management.store';
 import { CompanySetupBanner } from '../companies/company-setup-banner';
@@ -82,7 +84,13 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
           [title]="store.company()?.name ?? 'Select workspace'"
           (click)="switchWorkspace()"
         >
-          <span class="workspace-mark">{{ store.company()?.code ?? 'CV' }}</span
+          <span class="workspace-mark">
+            @if (store.company()?.logo) {
+              <img [src]="store.company()!.logo" [alt]="store.company()?.name + ' logo'" />
+            } @else {
+              {{ companyInitials(store.company()?.name) || 'CV' }}
+            }
+          </span>
           ><span class="workspace-text"
             ><strong>{{ store.company()?.name ?? 'Select workspace' }}</strong
             ><small>Switch workspace</small></span
@@ -90,7 +98,13 @@ import { FINANCE_AREAS } from '../payroll/finance/finance-navigation';
         </button>
       } @else if (store.company(); as company) {
         <div class="workspace-control" aria-label="Current company">
-          <span class="workspace-mark">{{ company.code }}</span
+          <span class="workspace-mark">
+            @if (company.logo) {
+              <img [src]="company.logo" [alt]="company.name + ' logo'" />
+            } @else {
+              {{ companyInitials(company.name) || 'CV' }}
+            }
+          </span>
           ><span class="workspace-text"
             ><strong>{{ company.name }}</strong
             ><small>Company workspace</small></span
@@ -438,6 +452,8 @@ export class ManagementLayout {
         .join(', ') || ROLES[this.auth.currentUser()?.roleCode ?? 'UN'].label,
   );
   protected readonly store = inject(ManagementStore);
+  private readonly companiesApi = inject(CompaniesApiService);
+  protected readonly companyInitials = companyInitials;
   private readonly router = inject(Router);
   protected readonly navigationState = inject(PageNavigation);
   protected routerUrl(): string {
@@ -515,6 +531,10 @@ export class ManagementLayout {
   private readonly navigation = toSignal(this.router.events);
   private readonly academyGovernance = inject(AcademyGovernanceService);
   constructor() {
+    effect(() => {
+      const id = this.store.companyId();
+      if (id) void this.companiesApi.ensureBrandLogo(id);
+    });
     effect(() => {
       this.navigation();
       if (

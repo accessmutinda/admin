@@ -77,6 +77,16 @@ body {
   );
 }
 
+.cv-password-page {
+  @include mat.form-field-overrides(
+    (
+      container-height: 40px,
+      container-vertical-padding: 8px,
+      outlined-container-shape: 8px,
+    )
+  );
+}
+
 .cv-management .password-change-surface {
   @include mat.form-field-overrides(
     (

@@ -26,6 +26,9 @@
 .cv-management .app-sidebar .workspace-control .workspace-mark {
   background: #004579;
 }
+.cv-management .app-sidebar .workspace-control .workspace-mark:has(img) {
+  background: #fff;
+}
 .cv-management .app-sidebar .workspace-control .workspace-text small {
   color: #657184;
 }
