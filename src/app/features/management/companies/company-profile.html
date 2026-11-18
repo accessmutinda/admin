@@ -297,7 +297,7 @@
           aria-label="Company profile completion"
         ></progress
         ><small class="cp-completion-note"
-          >Equal share of the required sections. Integrations are not included.</small
+          >Each of the seven required sections counts equally.</small
         >
         <div
           class="cp-save-status"
@@ -358,13 +358,12 @@
               <span class="co-check-status" [class.complete]="section.complete">{{
                 section.complete ? 'Complete' : 'Pending'
               }}</span>
+              @if (!section.complete && section.hint) {
+                <small class="cp-sections-note">{{ section.hint }}</small>
+              }
             </li>
           }
         </ul>
-        <p class="cp-sections-note">
-          Completion reflects saved details. Branch records, compliance and policies need separate
-          verification.
-        </p>
       </section>
     </aside>
   </div>

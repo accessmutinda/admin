@@ -279,9 +279,9 @@ export function parseLocations(text: string): ServiceLocation[] {
   });
 }
 
+export const LOCATION_SETUP_REQUIREMENT =
+  'Add at least one active location in the register to complete Branches & Locations.';
+
 export function locationsComplete(locations: ServiceLocation[] | undefined): boolean {
-  return (
-    !!locations?.length &&
-    locations.every((row) => row.status === 'Active' || row.status === 'Inactive')
-  );
+  return locations?.some((row) => row.status === 'Active') ?? false;
 }

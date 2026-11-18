@@ -85,7 +85,7 @@ describe('Signed-in user profile menu', () => {
     id: 'company-1',
     name: 'Stored Care',
     apiSummaryOnly: true,
-    profileCompletion: 43,
+    setupCompletion: 43,
   } as Company;
 
   it('prompts company admins to complete their current company', () => {
@@ -93,7 +93,7 @@ describe('Signed-in user profile menu', () => {
     vi.spyOn(TestBed.inject(ManagementStore), 'company').mockReturnValue(incompleteCompany);
     const fixture = render();
     expect(fixture.nativeElement.querySelector('cv-company-setup-banner')?.textContent).toContain(
-      'Stored Care is 43% complete',
+      'Stored Care · Setup Completion 43%',
     );
   });
 
@@ -109,13 +109,13 @@ describe('Signed-in user profile menu', () => {
     vi.spyOn(store, 'company').mockReturnValue(incompleteCompany);
     vi.spyOn(store, 'companies').mockReturnValue([
       incompleteCompany,
-      { ...incompleteCompany, id: 'company-2', name: 'Second Care', profileCompletion: 29 },
+      { ...incompleteCompany, id: 'company-2', name: 'Second Care', setupCompletion: 29 },
     ]);
     const fixture = render();
     const banner: HTMLElement = fixture.nativeElement.querySelector('cv-company-setup-banner');
-    expect(banner.textContent).toContain('Second Care is 29% complete');
+    expect(banner.textContent).toContain('Second Care · Setup Completion 29%');
     expect(banner.querySelector('a')?.getAttribute('href')).toBe(
-      '/manage/companies/company-2?edit=true#general-information',
+      '/manage/companies/company-2',
     );
   });
 

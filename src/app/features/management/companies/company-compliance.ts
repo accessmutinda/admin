@@ -287,6 +287,7 @@ export class CompanyCompliancePage {
       this.documentSaved(key, saved);
       this.error.set('');
       this.toast.success('Document saved to the server.');
+      await this.refreshSummary(id);
     } catch (error) {
       if (!this.destroy.destroyed)
         this.fileErrors.update((errors) => ({
@@ -303,12 +304,15 @@ export class CompanyCompliancePage {
       !window.confirm('Delete this saved document? Its audit history will be retained.')
     )
       return;
+    const id = this.id;
     this.saving.set(true);
     try {
-      await this.api.remove(this.id, key, this.draft);
+      await this.api.remove(id, key, this.draft);
+      if (this.destroy.destroyed || id !== this.id) return;
       this.documentSaved(key);
       this.fileErrors.update((errors) => ({ ...errors, [key]: '' }));
       this.toast.success('Document deleted.');
+      await this.refreshSummary(id);
     } catch (error) {
       this.fileErrors.update((errors) => ({
         ...errors,

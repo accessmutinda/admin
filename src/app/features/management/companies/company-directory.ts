@@ -14,7 +14,11 @@ import { CvSelect } from '../../../shared/ui/select';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { Company, ManagementStore } from '../shared/management.store';
-import { companyCompletion, companyModifiedAt } from './company-profile.models';
+import {
+  companyCompletion,
+  companyModifiedAt,
+  companySetupCompletion,
+} from './company-profile.models';
 
 type SortColumn =
   'name' | 'code' | 'sector' | 'region' | 'status' | 'completion' | 'admin' | 'plan' | 'modifiedAt';
@@ -68,7 +72,7 @@ export class CompanyDirectory {
   protected readonly nextIncompleteCompany = computed(() =>
     this.canCompleteProfiles()
       ? this.rows().find((company) => {
-          const completion = this.completion(company);
+          const completion = companySetupCompletion(company);
           return completion != null && completion < 100;
         })
       : undefined,
@@ -166,12 +170,12 @@ export class CompanyDirectory {
         color: '#00a34e',
       },
       {
-        label: 'Pending Setup',
+        label: 'Profile Below 75%',
         value: pending,
         hint: 'Of all companies',
         shortLabel: 'pending',
         tooltip:
-          'Companies with profile completion below 75%. Pending setup can overlap with active status.',
+          'Companies with profile completion below 75%, including active companies.',
         progress: true,
         icon: 'schedule',
         color: '#ffb000',

@@ -388,6 +388,8 @@ export class CompaniesApiService {
               service_type: detail.service_type,
               updated_at: detail.updated_at,
               profile_completion_percent: detail.profile_completion_percent,
+              setup_completion_percent: detail.setup_completion_percent,
+              setup_progress: detail.setup_progress,
             }
           : company,
       ),

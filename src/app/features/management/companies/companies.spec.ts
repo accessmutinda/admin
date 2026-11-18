@@ -75,7 +75,8 @@ describe('Original Companies overview with API data', () => {
   it('uses server totals and colours setup indicators while preserving category colours', () => {
     const current: Company = {
       ...company,
-      profileCompletion: 57,
+      profileCompletion: 86,
+      setupCompletion: 57,
       setupProgress: {
         general: { complete: true, state: 'complete' },
         registration: { complete: false, state: 'in_progress' },

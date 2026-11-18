@@ -131,6 +131,27 @@ describe('Company locations backed by the server', () => {
     });
     expect(api).toHaveBeenCalledWith('/companies/north/locations');
   });
+  it('explains the same active-location requirement when the register has no active entries', async () => {
+    records = [];
+    const fixture = TestBed.createComponent(LocationsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.textContent).toContain('No locations yet');
+    expect(root.textContent).toContain('Add at least one active location');
+
+    records = [{ ...record(), status: 'inactive' }];
+    await service.load('north');
+    fixture.detectChanges();
+    expect(root.textContent).not.toContain('No locations yet');
+    expect(root.textContent).toContain('Add at least one active location');
+
+    records.push(record(2));
+    await service.load('north');
+    fixture.detectChanges();
+    expect(root.textContent).not.toContain('Add at least one active location');
+  });
   it('loads every location page and rejects pagination outside the company', async () => {
     api.mockResolvedValueOnce({
       results: [record()],

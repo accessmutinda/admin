@@ -43,6 +43,7 @@ export interface Company {
   lifecycle?: 'pending_setup' | 'active' | 'suspended' | 'archived';
   apiSummaryOnly?: boolean;
   profileCompletion?: number | null;
+  setupCompletion?: number | null;
   setupProgress?: import('../companies/companies-api.models').SetupProgress;
   tradingName?: string;
   description?: string;
@@ -319,6 +320,7 @@ export class ManagementStore {
         active: company.lifecycle === 'active',
         apiSummaryOnly: true,
         profileCompletion: company.profile_completion_percent ?? null,
+        setupCompletion: company.setup_completion_percent ?? null,
         setupProgress: company.setup_progress,
         modifiedAt: company.updated_at ?? undefined,
         sector: company.service_type ?? '',

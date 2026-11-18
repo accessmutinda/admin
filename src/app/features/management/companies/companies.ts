@@ -16,6 +16,7 @@ import { ManagementStore } from '../shared/management.store';
 import {
   companyCompletion,
   companyModifiedAt,
+  companySetupCompletion,
   generalInformationComplete,
 } from './company-profile.models';
 
@@ -46,6 +47,7 @@ export class Companies {
     return Object.entries(progress).filter(
       ([key, value]) =>
         key !== 'complete' &&
+        key !== 'documents' &&
         typeof value === 'object' &&
         value.available !== false &&
         value.complete === false,
@@ -72,6 +74,7 @@ export class Companies {
   );
   protected readonly preview = computed(() => this.filtered().slice(0, 5));
   protected readonly completion = companyCompletion;
+  protected readonly setupCompletion = companySetupCompletion;
   protected readonly modifiedAt = companyModifiedAt;
   constructor() {
     effect(() => {
@@ -134,7 +137,7 @@ export class Companies {
       {
         key: 'registration',
         title: 'Registration & Compliance',
-        description: 'Registration, documents and responsible owners',
+        description: 'Regulatory details and responsible leads',
         icon: 'shield',
         tone: 'teal',
         state: complianceComplete(c) ? 'Complete' : c?.compliance ? 'In Progress' : 'Pending',
@@ -152,7 +155,7 @@ export class Companies {
       {
         key: 'locations',
         title: 'Branches & Locations',
-        description: 'Manage all company locations and services',
+        description: 'Save at least one active location in the register',
         icon: 'location_on',
         tone: 'blue',
         state: locationsComplete(this.store.data().locations)
@@ -165,7 +168,7 @@ export class Companies {
       {
         key: 'branding',
         title: 'Branding',
-        description: 'Logo, colours and customisation settings',
+        description: 'Publish the saved company theme and assets',
         icon: 'palette',
         tone: 'teal',
         state: c && this.logo(c) ? 'Complete' : c?.branding ? 'In Progress' : 'Pending',

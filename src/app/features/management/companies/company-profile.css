@@ -339,7 +339,7 @@
   font-size: 10px;
 }
 .cv-management .company-profile-page .cp-sections-note {
-  margin-top: 10px;
+  grid-column: 2 / -1;
   font-size: 10px;
   color: #657184;
 }

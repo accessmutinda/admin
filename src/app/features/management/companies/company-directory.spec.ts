@@ -72,15 +72,15 @@ describe('Original company directory with backend data', () => {
   }
   it('shows super admins a setup banner and edit links for incomplete companies', () => {
     vi.spyOn(TestBed.inject(ManagementStore), 'companies').mockReturnValue([
-      { ...companies[0], profileCompletion: 100 },
-      { ...companies[1], profileCompletion: 43 },
-      { ...companies[2], profileCompletion: 71 },
+      { ...companies[0], profileCompletion: 100, setupCompletion: 100 },
+      { ...companies[1], profileCompletion: 86, setupCompletion: 71 },
+      { ...companies[2], profileCompletion: 71, setupCompletion: 71 },
       companies[3],
     ]);
     const { fixture } = open();
     const root: HTMLElement = fixture.nativeElement;
     expect(root.querySelector('cv-company-setup-banner')?.textContent).toContain(
-      'API Provider 1 is 43% complete',
+      'API Provider 1 · Setup Completion 71%',
     );
     const links = root.querySelectorAll('tbody a[aria-label^="Complete profile for"]');
     expect(links).toHaveLength(2);
@@ -94,7 +94,7 @@ describe('Original company directory with backend data', () => {
   it('does not add the directory setup prompts for other roles', () => {
     vi.spyOn(TestBed.inject(AuthService), 'isSuperAdmin').mockReturnValue(false);
     vi.spyOn(TestBed.inject(ManagementStore), 'companies').mockReturnValue([
-      { ...companies[0], profileCompletion: 43 },
+      { ...companies[0], profileCompletion: 43, setupCompletion: 43 },
     ]);
     const { fixture } = open();
     expect(fixture.nativeElement.querySelector('cv-company-setup-banner')).toBeNull();

@@ -127,7 +127,7 @@
         <div>
           <h2>Profile Completion</h2>
           <strong>{{ average() == null ? '—' : average() + '%' }}</strong>
-          <p>Required setup sections completed</p>
+          <p>Required profile sections completed across companies</p>
           <progress
             [value]="average()"
             max="100"
@@ -163,7 +163,7 @@
           <strong>{{
             company()?.profileCompletion == null ? '—' : company()!.profileCompletion + '%'
           }}</strong>
-          <p>Your company’s required setup sections</p>
+          <p>Your company’s required profile sections</p>
           <progress
             [value]="company()?.profileCompletion ?? 0"
             max="100"
@@ -206,14 +206,14 @@
         </h2>
         <div class="co-overall">
           <span
-            >Overall Completion
+            >Setup Completion
             <strong>{{
-              company() && completion(company()!) != null ? completion(company()!) + '%' : '—'
+              company() && setupCompletion(company()!) != null ? setupCompletion(company()!) + '%' : '—'
             }}</strong></span
           ><progress
-            [value]="company() ? completion(company()!) : 0"
+            [value]="company() ? setupCompletion(company()!) : 0"
             max="100"
-            aria-label="Current company profile completion"
+            aria-label="Current company setup completion"
           ></progress>
         </div>
       </div>

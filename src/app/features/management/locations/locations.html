@@ -98,6 +98,8 @@
   </div>
   @if (error()) {
     <p class="loc-error" role="alert">{{ error() }}</p>
+  } @else if (!hasActiveLocation()) {
+    <p>{{ setupRequirement }}</p>
   }
   <div class="loc-layout">
     <section class="co-surface loc-register" aria-labelledby="loc-register-title">
@@ -282,13 +284,9 @@
                 <td colspan="10" class="loc-empty">
                   <span class="material-symbols-outlined" aria-hidden="true">add_location_alt</span>
                   <h3>{{ locations().length ? 'No matching locations' : 'No locations yet' }}</h3>
-                  <p>
-                    {{
-                      locations().length
-                        ? 'Try another search or clear your filters.'
-                        : 'Add a branch or import your company’s locations to get started.'
-                    }}
-                  </p>
+                  @if (locations().length) {
+                    <p>Try another search or clear your filters.</p>
+                  }
                   @if (hasFilters()) {
                     <button type="button" class="loc-button loc-outline" (click)="clearFilters()">
                       Clear Filters

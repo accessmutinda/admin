@@ -69,8 +69,13 @@ export function companyProfileFields(detail: CompanyDetail): Partial<Company> {
     modifiedAt: detail.updated_at ?? undefined,
     modifiedBy: detail.updated_by?.name ?? undefined,
     profileCompletion: detail.profile_completion_percent ?? null,
+    setupCompletion: detail.setup_completion_percent ?? null,
     setupProgress: detail.setup_progress,
   };
+}
+
+export function companySetupCompletion(company: Company): number | null {
+  return company.setupCompletion ?? null;
 }
 
 export function companyCompletion(company: Company): number | null {

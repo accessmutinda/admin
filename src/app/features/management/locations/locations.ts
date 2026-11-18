@@ -12,10 +12,12 @@ import { ManagementStore } from '../shared/management.store';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { companyModifiedAt } from '../companies/company-profile.models';
 import {
+  LOCATION_SETUP_REQUIREMENT,
   LOCATION_TYPES,
   LOCATION_STATUSES,
   ServiceLocation,
   locationAddress,
+  locationsComplete,
 } from './locations.models';
 import { LocationsService } from './locations.service';
 import { LocationDialog } from './location-dialog';
@@ -47,6 +49,8 @@ export class LocationsPage {
   private readonly toast = inject(ToastService);
   protected readonly company = this.store.company;
   protected readonly locations = this.service.locations;
+  protected readonly setupRequirement = LOCATION_SETUP_REQUIREMENT;
+  protected readonly hasActiveLocation = computed(() => locationsComplete(this.locations()));
   protected readonly search = signal('');
   protected readonly type = signal('all');
   protected readonly region = signal('all');

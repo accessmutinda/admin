@@ -9,8 +9,6 @@ import { CompanyDetail } from './companies-api.models';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { ManagementStore } from '../shared/management.store';
 import { CompanyProfile } from './company-profile';
-import { CompanyComplianceApiService } from './company-compliance-api.service';
-import { COMPLIANCE_DOCUMENTS } from './company-compliance.models';
 
 const detail: CompanyDetail = {
   id: 'company-1',
@@ -105,6 +103,7 @@ describe('Company profile from the API', () => {
             detailLoading: pending,
             detailError: () => error(),
             loadDetail,
+            load: vi.fn().mockResolvedValue(undefined),
             updateDetail: vi.fn().mockResolvedValue(detail),
             changeLifecycle: vi.fn().mockResolvedValue(undefined),
             brandLogo: () => '',
@@ -182,102 +181,63 @@ describe('Company profile from the API', () => {
     expect(row?.textContent).toContain('Pending');
     expect(fixture.nativeElement.textContent).toContain('required sections');
   });
-  it('marks Branches & Locations complete from the saved setup record', () => {
+  it('keeps Branches & Locations pending until the saved setup record confirms an active location', () => {
+    details.set({
+      [detail.id]: {
+        ...detail,
+        setup_progress: {
+          locations: { complete: false, state: 'pending', missing: ['active_location'] },
+        },
+      },
+    });
+    const fixture = create();
+    const row = () => [...fixture.nativeElement.querySelectorAll('.cp-required-sections li')].find(
+      (item) => item.textContent?.includes('Branches & Locations'),
+    );
+    expect(row()?.textContent).toContain('Pending');
+    expect(row()?.textContent).toContain('Add at least one active location');
+    expect(row()?.querySelector('a')?.getAttribute('href')).toBe('/manage/locations');
     details.set({
       [detail.id]: {
         ...detail,
         setup_progress: { locations: { complete: true, state: 'complete', missing: [] } },
       },
     });
-    const fixture = create();
-    const row = [...fixture.nativeElement.querySelectorAll('.cp-required-sections li')].find(
-      (item) => item.textContent?.includes('Branches & Locations'),
-    );
-    expect(row?.textContent).toContain('Complete');
-  });
-  it('marks Documents & Policies complete from the saved evidence', async () => {
-    const document = {
-      name: 'certificate.pdf',
-      type: 'application/pdf',
-      size: 10,
-      content: '',
-      uploadedAt: '2026-11-01T00:00:00Z',
-      uploadedBy: 'Hussein',
-      owner: 'Hussein',
-      expiry: '2027-06-18',
-      scanState: 'verified',
-    };
-    TestBed.overrideComponent(CompanyProfile, {
-      set: {
-        providers: [
-          {
-            provide: CompanyComplianceApiService,
-            useValue: {
-              load: async () => ({
-                documents: Object.fromEntries(
-                  COMPLIANCE_DOCUMENTS.map(({ key }) => [key, document]),
-                ),
-              }),
-            },
-          },
-        ],
-      },
-    });
-    const fixture = create();
-    await fixture.whenStable();
     fixture.detectChanges();
-    const row = [...fixture.nativeElement.querySelectorAll('.cp-required-sections li')].find(
-      (item) => item.textContent?.includes('Documents & Policies'),
-    );
-    expect(row?.textContent).toContain('Complete');
+    expect(row()?.textContent).toContain('Complete');
+    expect(row()?.textContent).not.toContain('Add at least one active location');
   });
-  it('scores profile completion as an equal share of the required sections', async () => {
-    const document = {
-      name: 'certificate.pdf',
-      type: 'application/pdf',
-      size: 10,
-      content: '',
-      uploadedAt: '2026-11-01T00:00:00Z',
-      uploadedBy: 'Hussein',
-      owner: 'Hussein',
-      expiry: '2027-06-18',
-      scanState: 'verified',
-    };
-    TestBed.overrideComponent(CompanyProfile, {
-      set: {
-        providers: [
-          {
-            provide: CompanyComplianceApiService,
-            useValue: {
-              load: async () => ({
-                documents: Object.fromEntries(
-                  COMPLIANCE_DOCUMENTS.map(({ key }) => [key, document]),
-                ),
-              }),
-            },
-          },
-        ],
-      },
-    });
-    details.set({
-      [detail.id]: {
+  it('uses the same saved profile score before and after branding is published', () => {
+    function savedDetail(published: boolean): CompanyDetail {
+      return {
         ...detail,
+        profile_completion_percent: 86,
+        setup_completion_percent: published ? 86 : 71,
         setup_progress: {
-          general: { complete: true, state: 'complete' },
-          registration: { complete: true, state: 'complete' },
-          contacts: { complete: true, state: 'complete' },
-          locations: { complete: true, state: 'complete' },
-          modules: { complete: true, state: 'complete' },
-          access: { complete: false, state: 'in_progress', missing: ['company_admin'] },
+          general: { complete: true },
+          registration: { complete: true },
+          contacts: { complete: true },
+          locations: { complete: true },
+          modules: { complete: true },
+          documents: { complete: true },
+          branding: { complete: published },
+          access: { complete: false, state: 'in_progress' },
         },
-      },
-    });
+      };
+    }
+    details.set({ [detail.id]: savedDetail(false) });
     const fixture = create();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.cp-completion-value')?.textContent).toContain(
-      '86%',
-    );
+    const root: HTMLElement = fixture.nativeElement;
+    for (const published of [false, true]) {
+      details.set({ [detail.id]: savedDetail(published) });
+      fixture.detectChanges();
+      expect(root.querySelector('.cp-completion-value')?.textContent).toContain('86%');
+      expect(root.querySelectorAll('.cp-required-sections li .co-check-status.complete')).toHaveLength(12);
+      const documents = [...root.querySelectorAll('.cp-required-sections li')].find(
+        (item) => item.textContent?.includes('Documents & Policies'),
+      );
+      expect(documents?.textContent).toContain('Complete');
+    }
   });
   it('prefills direct edit links with the loaded profile and preserves an unlisted saved select value', async () => {
     details.set({ [detail.id]: { ...detail, service_type: 'Stored specialised care' } });

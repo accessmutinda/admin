@@ -5,6 +5,7 @@ export type SetupAreaKey =
   | 'locations'
   | 'branding'
   | 'modules'
+  | 'documents'
   | 'access'
   | 'integrations';
 export interface SetupArea {
@@ -31,6 +32,7 @@ export interface CompanySummary {
   lifecycle: CompanyLifecycle;
   registration_number?: string | null;
   profile_completion_percent?: number;
+  setup_completion_percent?: number;
   setup_progress?: SetupProgress;
   service_type?: string | null;
   region?: string | null;
