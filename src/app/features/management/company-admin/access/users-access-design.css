@@ -331,7 +331,40 @@
   line-height: 1.5;
 }
 .cv-management .users-access-page .ua-permission-section {
-  padding: 10px;
+  padding: 8px;
+}
+.cv-management .users-access-page .ua-roles-table {
+  min-width: 0;
+}
+.cv-management .users-access-page .ua-roles-table th {
+  padding: 9px 7px;
+}
+.cv-management .users-access-page .ua-roles-table td {
+  padding: 3px 7px;
+}
+.cv-management .users-access-page .ua-roles-table .ua-button {
+  min-height: 24px;
+  padding: 2px 8px;
+}
+.cv-management .users-access-page .ua-roles-table .ua-role-action {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+.cv-management .users-access-page .ua-role-empty {
+  color: #6c7587;
+  text-align: center;
+}
+.cv-management .users-access-page .ua-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .cv-management .users-access-page .ua-permission-header {
   display: flex;
@@ -416,81 +449,163 @@
   line-height: 1.45;
   margin: 6px 0 10px;
 }
-.cv-management .users-access-page .ua-module-cards {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.cv-management .users-access-page .ua-module-card {
-  padding: 9px;
+.cv-management .users-access-page .ua-matrix-wrap {
+  overflow: auto;
+  max-height: 420px;
   border: 1px solid #e5edf2;
-  border-radius: 7px;
-  min-width: 0;
+  border-radius: 8px;
   background: #fff;
 }
-.cv-management .users-access-page .ua-module-card-heading {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 8px;
+.cv-management .users-access-page .ua-extra-wrap {
+  max-height: none;
+  margin-top: 8px;
 }
-.cv-management .users-access-page .ua-module-tile {
-  width: 28px;
-  height: 28px;
+.cv-management .users-access-page .ua-matrix {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: #16375b;
+}
+.cv-management .users-access-page .ua-extra {
+  min-width: 0;
+}
+.cv-management .users-access-page .ua-matrix th,
+.cv-management .users-access-page .ua-matrix td {
+  border-bottom: 1px solid #edf1f4;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  vertical-align: middle;
+}
+.cv-management .users-access-page .ua-matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 4px 8px;
+  background: #f4f8fb;
+  color: #6c7587;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.cv-management .users-access-page .ua-matrix tbody tr {
+  background: #fff;
+}
+.cv-management .users-access-page .ua-matrix tbody tr:hover {
+  background: #f8fbfd;
+}
+.cv-management .users-access-page .ua-matrix tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: inherit;
+  text-align: left;
+  min-width: 220px;
+  box-shadow: 1px 0 0 #edf1f4;
+}
+.cv-management .users-access-page .ua-matrix thead th:first-child {
+  z-index: 3;
+  text-align: left;
+  background: #f4f8fb;
+}
+.cv-management .users-access-page .ua-matrix-module {
+  background: #f3f8fc;
+}
+.cv-management .users-access-page .ua-matrix-module th,
+.cv-management .users-access-page .ua-matrix-module td {
+  border-top: 1px solid #d7e6f2;
+}
+.cv-management .users-access-page .ua-matrix tbody tr:last-child th,
+.cv-management .users-access-page .ua-matrix tbody tr:last-child td {
+  border-bottom: 0;
+}
+.cv-management .users-access-page .ua-matrix-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 10px;
+  min-width: 0;
+}
+.cv-management .users-access-page .ua-matrix-label strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #16375b;
+  line-height: 1.2;
+}
+.cv-management .users-access-page .ua-matrix-label small {
+  display: block;
+  margin-top: 0;
+  font-size: 10px;
+  line-height: 1.2;
+  color: #6c7587;
+  font-weight: 500;
+}
+.cv-management .users-access-page .ua-matrix-icon {
+  width: 22px;
+  height: 22px;
   border-radius: 6px;
+  background: #008afa;
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 19px;
-  background: #008afa;
+  font-size: 15px;
 }
-.cv-management .users-access-page .ua-module-card h3 {
-  font-size: 12px;
-  font-weight: 700;
-  color: #16375b;
-  line-height: 1.4;
-  margin: 0;
+.cv-management .users-access-page .ua-payroll-icon {
+  background: #03a6c1;
 }
-.cv-management .users-access-page .ua-module-card small {
-  display: block;
-  font-size: 10px;
-  color: #6c7587;
-  margin-top: 2px;
-}
-.cv-management .users-access-page .ua-module-actions {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 4px;
-}
-.cv-management .users-access-page .ua-module-actions.ua-people-actions {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-.cv-management .users-access-page .ua-module-actions label {
+.cv-management .users-access-page .ua-matrix-sub {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 1px 10px 1px 40px;
+  min-height: 24px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cv-management .users-access-page .ua-matrix-inactive {
+  color: #8b93a1;
+}
+.cv-management .users-access-page .ua-state {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #e8f6ee;
+  color: #0d8a45;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.cv-management .users-access-page .ua-state-off {
+  background: #f1f3f6;
+  color: #8b93a1;
+}
+.cv-management .users-access-page .ua-matrix-check {
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 6px 2px;
-  background: #f7f9fb;
-  border: 1px solid #e9eef2;
-  border-radius: 5px;
-  font-size: 10px;
-  color: #6c7587;
+  width: 100%;
+  min-height: 24px;
+  min-width: 44px;
+  margin: 0;
   cursor: pointer;
-  min-height: 44px;
 }
-.cv-management .users-access-page .ua-module-actions .ua-checked {
-  border-color: #c9e5fa;
+.cv-management .users-access-page .ua-matrix td:has(.ua-checked) {
   background: #eef8ff;
-  color: #006ebc;
 }
-.cv-management
-  .users-access-page
-  :is(.ua-module-actions, .ua-feature-actions)
-  input[type='checkbox'] {
+.cv-management .users-access-page .ua-matrix-check input,
+.cv-management .users-access-page .ua-inline-checks input,
+.cv-management .users-access-page .ua-mfa-inline input {
   width: 15px;
   height: 15px;
   margin: 0;
@@ -498,84 +613,64 @@
   flex-shrink: 0;
   cursor: pointer;
 }
-.cv-management .users-access-page .ua-feature-cards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 12px;
+.cv-management .users-access-page .ua-matrix-check input:disabled,
+.cv-management .users-access-page .ua-inline-checks input:disabled,
+.cv-management .users-access-page .ua-mfa-inline input:disabled {
+  cursor: not-allowed;
 }
-.cv-management .users-access-page .ua-feature-card {
-  border: 1px solid #e5edf2;
-  border-radius: 7px;
-  padding: 9px;
-  min-width: 0;
-}
-.cv-management .users-access-page .ua-feature-heading {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  margin-bottom: 8px;
-}
-.cv-management .users-access-page .ua-feature-heading > div {
-  flex: 1;
-  min-width: 0;
-}
-.cv-management .users-access-page .ua-feature-heading h3 {
+.cv-management .users-access-page .ua-matrix-empty {
+  color: #c5ced6;
   font-size: 12px;
-  color: #16375b;
-  font-weight: 700;
-  margin: 0 0 3px;
 }
-.cv-management .users-access-page .ua-feature-heading p {
-  font-size: 10px;
-  line-height: 1.45;
+.cv-management .users-access-page .ua-matrix-count {
+  width: 52px;
+  padding: 0 10px;
   color: #6c7587;
-  margin: 0;
-}
-.cv-management .users-access-page .ua-payroll-tile {
-  background: #03a6c1;
-}
-.cv-management .users-access-page .ua-feature-count {
-  border-radius: 4px;
-  background: #eaf5fc;
-  color: #0079dc;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 5px;
-  white-space: nowrap;
-}
-.cv-management .users-access-page .ua-feature-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-.cv-management .users-access-page .ua-feature-actions label {
-  display: flex;
-  gap: 7px;
-  align-items: flex-start;
-  padding: 7px;
-  border: 1px solid #e8edf2;
-  border-radius: 5px;
-  background: #f8fafc;
-  cursor: pointer;
-  min-width: 0;
-}
-.cv-management .users-access-page .ua-feature-actions label.ua-checked {
-  background: #eef8ff;
-  border-color: #c9e5fa;
-}
-.cv-management .users-access-page .ua-feature-actions strong {
-  display: block;
   font-size: 11px;
   font-weight: 700;
-  color: #16375b;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.cv-management .users-access-page .ua-feature-actions small {
-  display: block;
-  font-size: 10px;
-  line-height: 1.4;
-  color: #6c7587;
-  margin-top: 3px;
+.cv-management .users-access-page .ua-extra td:nth-child(2) {
+  text-align: left;
+  padding: 2px 8px;
+}
+.cv-management .users-access-page .ua-inline-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.cv-management .users-access-page .ua-inline-checks label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 2px 8px;
+  border: 1px solid #e5edf2;
+  border-radius: 999px;
+  background: #f7f9fb;
+  color: #526074;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cv-management .users-access-page .ua-inline-checks label.ua-checked {
+  border-color: #c9e5fa;
+  background: #eef8ff;
+  color: #006ebc;
+}
+.cv-management .users-access-page .ua-mfa-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 8px;
+  border: 1px solid #e5edf2;
+  border-radius: 999px;
+  background: #fff;
+  color: #16375b;
+  font-size: 11px;
+  font-weight: 700;
 }
 .cv-management .users-access-page .ua-permission-footer {
   border-top: 1px solid #e8edf2;
@@ -615,23 +710,7 @@
   outline: 2px solid #008afa;
   outline-offset: 2px;
 }
-@media (max-width: 1200px) {
-  .cv-management .users-access-page .ua-module-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 900px) {
-  .cv-management .users-access-page .ua-feature-cards {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 @media (max-width: 600px) {
-  .cv-management .users-access-page .ua-module-cards {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .cv-management .users-access-page .ua-feature-actions {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .cv-management .users-access-page .ua-toolbar-actions {
     width: 100%;
   }
@@ -657,23 +736,6 @@
   }
 }
 
-.cv-management .users-access-page .ua-mfa-policy {
-  margin-bottom: 8px;
-  padding: 8px;
-}
-.cv-management .users-access-page .ua-mfa-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  font-size: 12px;
-}
-.cv-management .users-access-page .ua-mfa-source {
-  display: block;
-  font-size: 10px;
-  color: #657184;
-}
-
 .cv-management .users-access-page .ua-new-role {
   display: flex;
   align-items: end;
@@ -693,25 +755,4 @@
   border: 1px solid #dfe6eb;
   border-radius: 5px;
   font: inherit;
-}
-.cv-management .users-access-page .ua-submodules {
-  margin-top: 8px;
-  border-top: 1px solid #e5edf2;
-  padding-top: 8px;
-  font-size: 11px;
-}
-.cv-management .users-access-page .ua-submodules summary {
-  cursor: pointer;
-  color: #0066ac;
-}
-.cv-management .users-access-page .ua-submodule {
-  margin-top: 8px;
-}
-.cv-management .users-access-page .ua-submodule > small {
-  display: block;
-  color: #6c7587;
-  margin: 3px 0 6px;
-}
-.cv-management .users-access-page .ua-core-permissions {
-  margin-top: 8px;
 }

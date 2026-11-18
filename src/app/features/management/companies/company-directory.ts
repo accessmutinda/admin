@@ -281,6 +281,9 @@ export class CompanyDirectory {
       for (const company of this.rows()) void this.api.ensureBrandLogo?.(company.id);
     });
   }
+  protected logo(company: { id: string; logo?: string }): string {
+    return this.api.brandLogo?.(company.id) || company.logo || '';
+  }
   protected readonly pageNumbers = computed(() => {
     const start = Math.max(1, Math.min(this.currentPage() - 2, this.pageCount() - 4));
     return Array.from({ length: Math.min(5, this.pageCount()) }, (_, i) => start + i);

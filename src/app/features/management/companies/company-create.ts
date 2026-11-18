@@ -169,14 +169,20 @@ export class CompanyCreatePage {
   }
   protected stageErrors(index: number): { key: string; message: string }[] {
     const errors = this.errors();
-    return Object.entries(errors)
+    const items = Object.entries(errors)
       .filter(([key]) => index === 4 || STEP_FIELDS[index]?.includes(key))
       .map(([key, message]) => ({ key, message }));
+    const email = index === 4 ? this.adminEmailError() : '';
+    if (email) items.push({ key: 'initialAdminEmail', message: email });
+    return items;
   }
   protected stageComplete(index: number): boolean {
-    return index === 4
-      ? this.reviewed() && !Object.keys(this.errors()).length
-      : !this.stageErrors(index).length;
+    return !this.stageErrors(index).length;
+  }
+  private adminEmailError(): string {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.initialAdminEmail.trim())
+      ? ''
+      : 'Enter the initial company administrator’s email address.';
   }
   protected completedCount(): number {
     return this.steps.filter((_, i) => this.stageComplete(i)).length;
@@ -320,9 +326,9 @@ export class CompanyCreatePage {
     const company = prepareCreatedCompany(this.draft.company);
     company.modifiedAt = new Date().toISOString();
     company.modifiedBy = this.auth.currentUser()?.name ?? 'Company administrator';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.initialAdminEmail.trim())) {
+    if (this.adminEmailError()) {
       this.step.set(4);
-      this.error.set('Enter the initial company administrator’s email address.');
+      this.error.set(this.adminEmailError());
       return;
     }
     const address = company.contacts?.addresses.headOffice;

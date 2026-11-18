@@ -311,8 +311,8 @@
                 <td>
                   <a class="co-table-company" [routerLink]="['/manage/companies', company.id]"
                     ><span class="co-table-logo">
-                      @if (company.logo) {
-                        <img [src]="company.logo" [alt]="company.name + ' logo'" />
+                      @if (logo(company); as mark) {
+                        <img [src]="mark" [alt]="company.name + ' logo'" />
                       } @else {
                         <span>{{ companyInitials(company.name) }}</span>
                       }</span

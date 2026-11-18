@@ -82,7 +82,6 @@ export function companyCompletion(company: Company): number | null {
     company.postcode,
     company.sector,
     company.size,
-    company.logo,
     company.modules.length,
   ];
   return Math.round((fields.filter(Boolean).length / fields.length) * 100);

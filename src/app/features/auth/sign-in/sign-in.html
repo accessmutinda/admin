@@ -3,8 +3,8 @@
     <span aria-hidden="true" class="material-symbols-outlined">shield_lock</span>
     <span>Your care workspace</span>
   </div>
-  <h1 class="cv-auth-heading">Welcome back</h1>
-  <p class="mt-1 text-sm text-slate">Good to see you. Sign in to continue.</p>
+  <h1 class="cv-auth-heading text-center">Welcome back</h1>
+  <p class="mt-1 text-center text-sm text-slate">Good to see you. Sign in to continue.</p>
   @if (invitationAccepted) {
     <p class="mt-3 text-sm text-slate" role="status">
       Invitation accepted. Sign in again to complete your company's security checks.
@@ -67,6 +67,19 @@
         <mat-error>Password is required</mat-error>
       }
     </mat-form-field>
+
+    <div class="cv-sign-in-options mb-2 flex justify-end">
+      <a
+        class="cv-auth-link text-sm"
+        routerLink="/auth/forgot-password"
+        [queryParams]="
+          form.controls.email.valid && form.controls.email.value
+            ? { email: form.controls.email.value }
+            : {}
+        "
+        >Forgot password?</a
+      >
+    </div>
 
     <button
       mat-flat-button

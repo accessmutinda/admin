@@ -198,6 +198,12 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'auth/reset-password',
+    title: 'Choose a new password · CareVerity',
+    loadComponent: () =>
+      import('./features/auth/password-reset/password-reset').then((m) => m.PasswordReset),
+  },
+  {
     path: 'auth/invite/:token',
     title: 'Accept invitation · CareVerity',
     loadComponent: () =>

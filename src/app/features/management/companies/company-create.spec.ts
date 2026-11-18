@@ -130,4 +130,16 @@ describe('Original five-step company creation with API submission', () => {
     await editor.create();
     expect(create).not.toHaveBeenCalled();
   });
+  it('reaches 100% when the required details are filled, before the review confirmation', () => {
+    const { fixture, editor } = open();
+    const readiness = editor as unknown as { percentage(): number };
+    fill(editor);
+    editor.initialAdminEmail = '';
+    fixture.detectChanges();
+    expect(readiness.percentage()).toBe(80);
+    editor.initialAdminEmail = 'admin@example.com';
+    editor.reviewed.set(false);
+    fixture.detectChanges();
+    expect(readiness.percentage()).toBe(100);
+  });
 });

@@ -533,7 +533,7 @@ export class ManagementLayout {
   constructor() {
     effect(() => {
       const id = this.store.companyId();
-      if (id) void this.companiesApi.ensureBrandLogo(id);
+      if (id) void this.companiesApi.ensureBrandLogo?.(id);
     });
     effect(() => {
       this.navigation();

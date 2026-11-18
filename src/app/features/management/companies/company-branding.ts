@@ -330,9 +330,17 @@ export class CompanyBrandingPage {
       this.urls.add(url);
       this.draft[kind] = url;
       if (kind === 'logo') this.publishLogo();
-      if (asset.state === 'clean')
+      if (asset.state === 'clean') {
         this.draft[kind === 'logo' ? 'logoAssetId' : 'faviconAssetId'] = asset.id;
-      else this.pendingAssets.update((rows) => [...rows.filter((row) => row.kind !== kind), asset]);
+        const current = this.record();
+        if (current && !this.invalidFields().length) {
+          const saved = await this.brandingApi.save(this.id, this.draft, current.etag);
+          await this.accept(saved);
+          await this.dataApi.refreshCompany(this.id);
+          if (kind === 'logo') this.toast.success('Company logo updated.');
+        }
+      } else
+        this.pendingAssets.update((rows) => [...rows.filter((row) => row.kind !== kind), asset]);
     } catch (error) {
       this.assetError.set((error as Error).message);
     } finally {

@@ -9,6 +9,8 @@ import { CompanyDetail } from './companies-api.models';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { ManagementStore } from '../shared/management.store';
 import { CompanyProfile } from './company-profile';
+import { CompanyComplianceApiService } from './company-compliance-api.service';
+import { COMPLIANCE_DOCUMENTS } from './company-compliance.models';
 
 const detail: CompanyDetail = {
   id: 'company-1',
@@ -105,6 +107,8 @@ describe('Company profile from the API', () => {
             loadDetail,
             updateDetail: vi.fn().mockResolvedValue(detail),
             changeLifecycle: vi.fn().mockResolvedValue(undefined),
+            brandLogo: () => '',
+            ensureBrandLogo: () => Promise.resolve(),
           },
         },
       ],
@@ -133,6 +137,147 @@ describe('Company profile from the API', () => {
     expect(root.querySelector('#profile-registeredPlaces dd')?.textContent?.trim()).toBe('0');
     expect(root.querySelector('#profile-establishedDate dd')?.textContent).toContain('15 Mar 2010');
     expect(root.textContent).not.toContain('Summary name');
+  });
+  it('marks Registration & Compliance complete from the saved setup record', () => {
+    details.set({
+      [detail.id]: {
+        ...detail,
+        setup_progress: { registration: { complete: true, state: 'complete', missing: [] } },
+      },
+    });
+    const fixture = create();
+    const row = [...fixture.nativeElement.querySelectorAll('.cp-required-sections li')].find(
+      (item) => item.textContent?.includes('Registration & Compliance'),
+    );
+    expect(row?.textContent).toContain('Complete');
+    expect(row?.querySelector('.co-check-status.complete')).toBeTruthy();
+  });
+  it('marks Contact Information complete from the saved setup record', () => {
+    details.set({
+      [detail.id]: {
+        ...detail,
+        setup_progress: { contacts: { complete: true, state: 'complete', missing: [] } },
+      },
+    });
+    const fixture = create();
+    const row = [...fixture.nativeElement.querySelectorAll('.cp-required-sections li')].find(
+      (item) => item.textContent?.includes('Contact Information'),
+    );
+    expect(row?.textContent).toContain('Complete');
+    expect(row?.querySelector('.co-check-status.complete')).toBeTruthy();
+  });
+  it('keeps Roles & Permissions pending until a company admin is active', () => {
+    details.set({
+      [detail.id]: {
+        ...detail,
+        setup_progress: {
+          access: { complete: false, state: 'in_progress', missing: ['company_admin'] },
+        },
+      },
+    });
+    const fixture = create();
+    const row = [...fixture.nativeElement.querySelectorAll('.cp-required-sections li')].find(
+      (item) => item.textContent?.includes('Roles & Permissions'),
+    );
+    expect(row?.textContent).toContain('Pending');
+    expect(fixture.nativeElement.textContent).toContain('required sections');
+  });
+  it('marks Branches & Locations complete from the saved setup record', () => {
+    details.set({
+      [detail.id]: {
+        ...detail,
+        setup_progress: { locations: { complete: true, state: 'complete', missing: [] } },
+      },
+    });
+    const fixture = create();
+    const row = [...fixture.nativeElement.querySelectorAll('.cp-required-sections li')].find(
+      (item) => item.textContent?.includes('Branches & Locations'),
+    );
+    expect(row?.textContent).toContain('Complete');
+  });
+  it('marks Documents & Policies complete from the saved evidence', async () => {
+    const document = {
+      name: 'certificate.pdf',
+      type: 'application/pdf',
+      size: 10,
+      content: '',
+      uploadedAt: '2026-11-01T00:00:00Z',
+      uploadedBy: 'Hussein',
+      owner: 'Hussein',
+      expiry: '2027-06-18',
+      scanState: 'verified',
+    };
+    TestBed.overrideComponent(CompanyProfile, {
+      set: {
+        providers: [
+          {
+            provide: CompanyComplianceApiService,
+            useValue: {
+              load: async () => ({
+                documents: Object.fromEntries(
+                  COMPLIANCE_DOCUMENTS.map(({ key }) => [key, document]),
+                ),
+              }),
+            },
+          },
+        ],
+      },
+    });
+    const fixture = create();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const row = [...fixture.nativeElement.querySelectorAll('.cp-required-sections li')].find(
+      (item) => item.textContent?.includes('Documents & Policies'),
+    );
+    expect(row?.textContent).toContain('Complete');
+  });
+  it('scores profile completion as an equal share of the required sections', async () => {
+    const document = {
+      name: 'certificate.pdf',
+      type: 'application/pdf',
+      size: 10,
+      content: '',
+      uploadedAt: '2026-11-01T00:00:00Z',
+      uploadedBy: 'Hussein',
+      owner: 'Hussein',
+      expiry: '2027-06-18',
+      scanState: 'verified',
+    };
+    TestBed.overrideComponent(CompanyProfile, {
+      set: {
+        providers: [
+          {
+            provide: CompanyComplianceApiService,
+            useValue: {
+              load: async () => ({
+                documents: Object.fromEntries(
+                  COMPLIANCE_DOCUMENTS.map(({ key }) => [key, document]),
+                ),
+              }),
+            },
+          },
+        ],
+      },
+    });
+    details.set({
+      [detail.id]: {
+        ...detail,
+        setup_progress: {
+          general: { complete: true, state: 'complete' },
+          registration: { complete: true, state: 'complete' },
+          contacts: { complete: true, state: 'complete' },
+          locations: { complete: true, state: 'complete' },
+          modules: { complete: true, state: 'complete' },
+          access: { complete: false, state: 'in_progress', missing: ['company_admin'] },
+        },
+      },
+    });
+    const fixture = create();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.cp-completion-value')?.textContent).toContain(
+      '86%',
+    );
   });
   it('prefills direct edit links with the loaded profile and preserves an unlisted saved select value', async () => {
     details.set({ [detail.id]: { ...detail, service_type: 'Stored specialised care' } });

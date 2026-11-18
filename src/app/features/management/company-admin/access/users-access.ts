@@ -33,6 +33,16 @@ import { ManagementStore, Member } from '../../shared/management.store';
 import { CompanyUserDialog } from '../../companies/company-user-dialog';
 import { InspectionAccessDialog } from './inspection-access-dialog';
 
+export function companyRoleCode(value: string): string {
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 16)
+    .replace(/_+$/g, '');
+}
+
 interface ApiMember {
   id: string;
   name: string;
@@ -241,6 +251,7 @@ export class UsersAccess {
   private readonly drafts = new Map<string, { permissions: string[]; core: string[] }>();
   private closeDialog?: () => void;
   protected readonly creating = signal(false);
+  protected readonly roleDetail = signal(false);
   protected name = '';
   protected code = '';
   protected description = '';
@@ -257,6 +268,19 @@ export class UsersAccess {
     { code: 'pay', label: 'Pay' },
     { code: 'publish', label: 'Publish' },
   ];
+  protected readonly matrixActions = computed(() => {
+    const used = new Set(
+      this.modules().flatMap((module) =>
+        module.submodules.flatMap((submodule) =>
+          submodule.permissions.map((permission) => permission.action),
+        ),
+      ),
+    );
+    return [
+      ...this.actions.slice(0, 5),
+      ...this.actions.slice(5).filter((action) => used.has(action.code)),
+    ];
+  });
   protected readonly writable = computed(
     () =>
       this.access.context()?.company_id === this.access.companyId() &&
@@ -277,6 +301,8 @@ export class UsersAccess {
         this.members.set([]);
         this.invitations.set([]);
         this.selectedId.set('');
+        this.roleDetail.set(false);
+        this.creating.set(false);
         this.permissionCodes.set([]);
         this.coreCodes.set([]);
         this.configuration.set(null);
@@ -298,14 +324,17 @@ export class UsersAccess {
       this.roles.set(roles.results);
       this.configuration.set(configuration);
       const requestedRole = this.route.snapshot.queryParamMap.get('role');
+      const requested = roles.results.find(
+        (role) => role.code === requestedRole || role.name === requestedRole,
+      );
       this.choose(
         this.selectedId() ||
-          roles.results.find((role) => role.code === requestedRole || role.name === requestedRole)
-            ?.id ||
+          requested?.id ||
           roles.results.find((role) => role.code === 'RM')?.id ||
           roles.results[0]?.id ||
           '',
       );
+      if (requested) this.roleDetail.set(true);
       if (
         this.route.snapshot.queryParamMap.get('invite') === 'true' &&
         this.invitedCompany !== id
@@ -398,16 +427,39 @@ export class UsersAccess {
       this.saving.set(false);
     }
   }
+  protected roleCodeReady(): boolean {
+    return /^[A-Z][A-Z0-9_]{1,15}$/.test(companyRoleCode(this.code || this.name));
+  }
+  protected openRole(id: string): void {
+    this.creating.set(false);
+    this.error.set('');
+    this.choose(id);
+    this.roleDetail.set(true);
+  }
+  protected closeRole(): void {
+    if (!this.canLeave()) return;
+    this.roleDetail.set(false);
+    this.notice.set('');
+  }
   protected async create(): Promise<void> {
     const id = this.access.companyId();
     if (this.saving() || !this.access.context()?.can_create_roles) return;
+    const code = companyRoleCode(this.code || this.name);
+    if (!/^[A-Z][A-Z0-9_]{1,15}$/.test(code)) {
+      this.error.set('Use a role code of 2–16 letters or numbers, starting with a letter.');
+      return;
+    }
+    if (code === 'PO' || code === 'CA' || code === 'IN') {
+      this.error.set('This role code is reserved.');
+      return;
+    }
     this.saving.set(true);
     this.error.set('');
     try {
       const role = await this.access.createRole(
         id,
         {
-          code: this.code.trim().toUpperCase(),
+          code,
           name: this.name.trim(),
           description: this.description.trim(),
         },
@@ -417,9 +469,10 @@ export class UsersAccess {
         this.roles.update((roles) => [...roles, role]);
         this.choose(role.id);
         this.creating.set(false);
+        this.roleDetail.set(true);
         this.roleCreateKey = crypto.randomUUID();
         this.name = this.code = this.description = '';
-        this.notice.set('Company role created. Choose its permissions below.');
+        this.notice.set('Role created. Attach its permissions below.');
         await this.access.refresh();
       }
     } catch (error) {
@@ -458,10 +511,17 @@ export class UsersAccess {
     });
   }
   protected inspectionAccess(member: Member): void {
-    if (!this.access.core('company.memberships.manage') || !this.access.core('company.memberships.read') || member.status !== 'Active') return;
+    if (
+      !this.access.core('company.memberships.manage') ||
+      !this.access.core('company.memberships.read') ||
+      member.status !== 'Active'
+    )
+      return;
     const id = this.access.companyId();
     const ref = this.dialog.open(InspectionAccessDialog, {
-      width: '760px', maxWidth: 'calc(100vw - 24px)', disableClose: true,
+      width: '760px',
+      maxWidth: 'calc(100vw - 24px)',
+      disableClose: true,
       data: { companyId: id, membershipId: member.id, name: member.name || member.email },
     });
     this.closeDialog = () => ref.close();
@@ -618,19 +678,40 @@ export class UsersAccess {
     return this.moduleActions(module).filter((action) => this.moduleHas(module, action.code))
       .length;
   }
-  protected permissionCount(): number {
-    const selected = new Set(this.permissionCodes());
-    return this.modules().reduce(
-      (count, module) =>
-        count +
-        module.submodules.reduce(
-          (total, submodule) =>
-            total +
-            submodule.permissions.filter((permission) => selected.has(permission.code)).length,
-          0,
-        ),
+  protected moduleSupports(module: ProductModule, action: string): boolean {
+    return (
+      this.moduleActions(module).some((item) => item.code === action) &&
+      module.submodules.some((submodule) =>
+        submodule.permissions.some((permission) => permission.action === action),
+      )
+    );
+  }
+  protected enabledPermissions(moduleCode: string, submodule: ProductSubmodule): number {
+    return submodule.permissions.filter((permission) =>
+      this.has(moduleCode, submodule.code, permission.action),
+    ).length;
+  }
+  protected moduleEnabledCount(module: ProductModule): number {
+    return module.submodules.reduce(
+      (total, submodule) => total + this.enabledPermissions(module.code, submodule),
       0,
     );
+  }
+  protected modulePermissionTotal(module: ProductModule): number {
+    return module.submodules.reduce((total, submodule) => total + submodule.permissions.length, 0);
+  }
+  protected percent(enabled: number, total: number): number {
+    if (!total) return 0;
+    return Math.round((enabled / total) * 100);
+  }
+  protected enabledCore(): number {
+    const selected = new Set(this.coreCodes());
+    return (this.configuration()?.core_permissions ?? []).filter((permission) =>
+      selected.has(permission.code),
+    ).length;
+  }
+  protected permissionCount(): number {
+    return this.modules().reduce((count, module) => count + this.moduleEnabledCount(module), 0);
   }
   protected permissionTotal(): number {
     return this.modules().reduce(

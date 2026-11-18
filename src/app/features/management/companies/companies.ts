@@ -75,8 +75,13 @@ export class Companies {
   protected readonly modifiedAt = companyModifiedAt;
   constructor() {
     effect(() => {
+      const current = this.company()?.id;
+      if (current) void this.api.ensureBrandLogo?.(current);
       for (const company of this.preview()) void this.api.ensureBrandLogo?.(company.id);
     });
+  }
+  protected logo(company: { id: string; logo?: string }): string {
+    return this.api.brandLogo?.(company.id) || company.logo || '';
   }
   protected readonly statsReady = computed(() => this.api.loaded() && !this.api.error());
   protected readonly total = computed(() =>
@@ -163,7 +168,7 @@ export class Companies {
         description: 'Logo, colours and customisation settings',
         icon: 'palette',
         tone: 'teal',
-        state: c?.logo ? 'Complete' : c?.branding ? 'In Progress' : 'Pending',
+        state: c && this.logo(c) ? 'Complete' : c?.branding ? 'In Progress' : 'Pending',
         link: [...this.profileLink(), 'branding'],
       },
       {

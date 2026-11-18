@@ -32,8 +32,13 @@ describe('Company roles page', () => {
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     expect(element.textContent).toContain('Company nurse');
-    expect(element.textContent).toContain('Service User Records');
+    expect(element.textContent).not.toContain('Service User Records');
     expect(element.textContent).not.toContain('Add company role');
+    (element.querySelector(
+      'button[aria-label="Open Company nurse permissions"]',
+    ) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(element.textContent).toContain('Service User Records');
     expect(element.querySelector('input[aria-label="View Service User Records"]')).toBeTruthy();
   });
 });

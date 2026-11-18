@@ -67,6 +67,11 @@ describe('Company role permission editor', () => {
     editor.permissionCodes.set(['care.records.read', 'care.records.publish']);
     expect(editor.permissionCount()).toBe(2);
     expect(editor.permissionTotal()).toBe(3);
+    expect(editor.percent(editor.permissionCount(), editor.permissionTotal())).toBe(67);
+    editor.toggle('care', 'records', 'approve');
+    expect(editor.permissionCount()).toBe(3);
+    expect(editor.moduleEnabledCount(editor.modules()[0])).toBe(3);
+    expect(editor.percent(editor.permissionCount(), editor.permissionTotal())).toBe(100);
   });
   it('accepts confirmed role permissions and clears the draft after save', async () => {
     access.saveRole.mockResolvedValue({ ...testRole, version: 2, etag: '"v2"', permissions: [] });
@@ -107,6 +112,21 @@ describe('Company role permission editor', () => {
     await editor.create();
     expect(access.createRole.mock.calls[0][2]).toBe(access.createRole.mock.calls[1][2]);
     expect(access.createRole.mock.calls[0][1].code).toBe('NURSE');
+  });
+  it('builds a role code from a name that contains spaces', async () => {
+    editor.name = 'Senior nurse';
+    editor.code = '';
+    access.createRole.mockResolvedValue({
+      ...testRole,
+      id: 'role-new',
+      code: 'SENIOR_NURSE',
+      name: 'Senior nurse',
+      permissions: [],
+      core_permissions: [],
+    });
+    await editor.create();
+    expect(access.createRole.mock.calls[0][1].code).toBe('SENIOR_NURSE');
+    expect(editor.roleDetail()).toBe(true);
   });
   it('shows only pending server invitations alongside memberships', () => {
     editor.invitations.set([

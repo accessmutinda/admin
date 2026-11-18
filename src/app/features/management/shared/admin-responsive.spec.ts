@@ -65,6 +65,13 @@ describe('Compact admin navigation and disclosure controls', () => {
     const fixture = TestBed.createComponent(UsersAccess);
     fixture.detectChanges();
     await fixture.whenStable();
+    fixture.detectChanges();
+    const openRole: HTMLButtonElement | null = fixture.nativeElement.querySelector(
+      'button[aria-label$="permissions"]',
+    );
+    openRole?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
     const store = TestBed.inject(ManagementStore);
     const before = JSON.stringify(store.data());
     const accordion: HTMLElement = fixture.nativeElement.querySelector('.ua-module-card');

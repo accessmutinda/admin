@@ -162,7 +162,14 @@ export class CompanyModulesPage {
   protected activeSubmoduleCount(module: ProductModule): number {
     return module.submodules.filter((submodule) => submodule.effective_enabled).length;
   }
+  protected logo(company: { id: string; logo?: string }): string {
+    return this.companiesApi.brandLogo?.(company.id) || company.logo || '';
+  }
   constructor() {
+    effect(() => {
+      const id = this.id();
+      if (id) void this.companiesApi.ensureBrandLogo?.(id);
+    });
     effect(() => {
       const id = this.id();
       untracked(() => {

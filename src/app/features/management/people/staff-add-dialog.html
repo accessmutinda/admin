@@ -129,7 +129,9 @@
             <span>Required fields are marked *</span>
           </div>
           @if (!setup()!.branches.length) {
-            <p role="alert">Add an active company branch before creating staff.</p>
+            <p>
+              This company has no branch yet. The name you enter becomes its first active branch.
+            </p>
           }
           <div class="fields">
             <label
@@ -165,20 +167,37 @@
               }
             </label>
             <label
-              >Branch *<select
-                name="branch_name"
-                required
-                [(ngModel)]="form.branch_name"
-                [attr.aria-invalid]="!!fieldError('branch_name', wizard)"
-                [attr.aria-describedby]="
-                  fieldError('branch_name', wizard) ? 'staff-error-branch_name' : null
-                "
-              >
-                <option value="">Choose a branch</option>
-                @for (branch of setup()!.branches; track $index) {
-                  <option [value]="branch">{{ branch }}</option>
-                }
-              </select>
+              >Branch *
+              @if (setup()!.branches.length) {
+                <select
+                  name="branch_name"
+                  required
+                  [(ngModel)]="form.branch_name"
+                  [attr.aria-invalid]="!!fieldError('branch_name', wizard)"
+                  [attr.aria-describedby]="
+                    fieldError('branch_name', wizard) ? 'staff-error-branch_name' : null
+                  "
+                >
+                  <option value="">Choose a branch</option>
+                  @for (branch of setup()!.branches; track $index) {
+                    <option [value]="branch">{{ branch }}</option>
+                  }
+                </select>
+              } @else {
+                <input
+                  name="branch_name"
+                  required
+                  maxlength="150"
+                  [(ngModel)]="form.branch_name"
+                  placeholder="Head office"
+                  autocomplete="organization"
+                  [attr.aria-invalid]="!!fieldError('branch_name', wizard)"
+                  [attr.aria-describedby]="
+                    fieldError('branch_name', wizard) ? 'staff-error-branch_name' : null
+                  "
+                  pattern=".*\S.*"
+                />
+              }
               @if (fieldError('branch_name', wizard); as message) {
                 <small class="field-error" id="staff-error-branch_name">{{ message }}</small>
               }

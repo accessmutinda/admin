@@ -75,7 +75,14 @@ export class CompanyCompliancePage {
   protected readonly saving = signal(false);
   protected readonly busy = computed(() => this.loading() || this.saving() || !!this.uploading());
   private loadGeneration = 0;
+  protected logo(company: { id: string; logo?: string }): string {
+    return this.companiesApi.brandLogo?.(company.id) || company.logo || '';
+  }
   constructor() {
+    effect(() => {
+      const id = this.id;
+      if (id) void this.companiesApi.ensureBrandLogo?.(id);
+    });
     effect(() => {
       const id = this.id;
       const allowed = this.auth.canAccessCompany(id);

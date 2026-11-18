@@ -1,7 +1,14 @@
 import { CompanyLoading } from './company-loading';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CompaniesApiService } from './companies-api.service';
-import { complianceChecks, complianceComplete, emptyCompliance } from './company-compliance.models';
+import {
+  COMPLIANCE_DOCUMENTS,
+  complianceComplete,
+  daysUntil,
+  documentVerified,
+} from './company-compliance.models';
+import { CompanyComplianceApiService } from './company-compliance-api.service';
+import type { CompanyCompliance } from './company-compliance.models';
 import { locationsComplete } from '../locations/locations.models';
 import { contactInformationComplete } from './company-contacts.models';
 import {
@@ -20,14 +27,28 @@ import { CvSelect } from '../../../shared/ui/select';
 import { LanguageField } from './language-field';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ToastService } from '../../../shared/ui/toast.service';
+import { SetupAreaKey } from './companies-api.models';
 import { Company, ManagementStore } from '../shared/management.store';
 import {
-  companyCompletion,
   companyModifiedAt,
   companyProfileUpdate,
   generalInformationComplete,
   wholePlaces,
 } from './company-profile.models';
+
+function savedDocumentsComplete(value: CompanyCompliance | null): boolean {
+  if (!value) return false;
+  return COMPLIANCE_DOCUMENTS.every(({ key }) => {
+    const file = value.documents[key];
+    return !!file && documentVerified(file) && (!file.expiry || (daysUntil(file.expiry) ?? -1) >= 0);
+  });
+}
+
+function savedAreaComplete(company: Company | undefined, key: SetupAreaKey): boolean | null {
+  const area = company?.setupProgress?.[key];
+  if (!area || area.complete == null) return null;
+  return area.complete === true;
+}
 
 interface ProfileField {
   key: keyof Company;
@@ -44,6 +65,7 @@ interface ProfileField {
   selector: 'cv-company-profile',
   host: { class: 'module-page companies-page company-profile-page' },
   imports: [CompanyLoading, FormsModule, RouterLink, MatSelectModule, CvSelect, LanguageField],
+  providers: [CompanyComplianceApiService],
   templateUrl: './company-profile.html',
 })
 export class CompanyProfile {
@@ -53,6 +75,10 @@ export class CompanyProfile {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly api = inject(CompaniesApiService);
+  private readonly complianceApi = inject(CompanyComplianceApiService);
+  private documentLoad = 0;
+  private readonly documentsChecked = signal(false);
+  protected readonly savedCompliance = signal<CompanyCompliance | null>(null);
   private readonly routeParams = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
   });
@@ -187,48 +213,61 @@ export class CompanyProfile {
     },
   ];
   protected readonly completion = computed(() => {
-    const company = this.company();
-    return company ? companyCompletion(company) : 0;
+    const counted = this.sections().filter(
+      (section) => section.title !== 'Documents & Policies' || this.documentsChecked(),
+    );
+    if (!counted.length) return 0;
+    return Math.round(
+      (counted.filter((section) => section.complete).length / counted.length) * 100,
+    );
   });
+  protected logo(company: { id: string; logo?: string }): string {
+    return this.api.brandLogo?.(company.id) || company.logo || '';
+  }
   protected readonly sections = computed(() => {
     const c = this.company();
     return [
       {
         title: 'General Information',
-        complete: generalInformationComplete(c),
+        complete: savedAreaComplete(c, 'general') ?? generalInformationComplete(c),
         fragment: 'general-information',
       },
       {
         title: 'Registration & Compliance',
-        complete: complianceComplete(c),
+        complete: savedAreaComplete(c, 'registration') ?? complianceComplete(c),
         link: ['/manage/companies', this.id, 'compliance'],
       },
       {
         title: 'Contact Information',
-        complete: contactInformationComplete(c),
+        complete: savedAreaComplete(c, 'contacts') ?? contactInformationComplete(c),
         link: ['/manage/companies', this.id, 'contacts'],
       },
       {
         title: 'Branches & Locations',
-        complete: locationsComplete(
-          c?.id === this.store.companyId()
-            ? this.store.data().locations
-            : this.store.records()[c?.id ?? '']?.locations,
-        ),
+        complete:
+          savedAreaComplete(c, 'locations') ??
+          locationsComplete(
+            c?.id === this.store.companyId()
+              ? this.store.data().locations
+              : this.store.records()[c?.id ?? '']?.locations,
+          ),
         link: c?.id === this.store.companyId() ? ['/manage/locations'] : undefined,
       },
       {
         title: 'Services & Care Types',
-        complete: !!c?.sector && !!c.modules.length,
+        complete: savedAreaComplete(c, 'modules') ?? (!!c?.sector && !!c.modules.length),
         link: ['/manage/companies', this.id, 'modules'],
       },
       {
         title: 'Documents & Policies',
-        complete: complianceChecks(emptyCompliance(c), c?.registration ?? '').find(
-          (check) => check.key === 'documents',
-        )!.complete,
+        complete: savedDocumentsComplete(this.savedCompliance()),
         link: ['/manage/companies', this.id, 'compliance'],
         fragment: 'rc-mapping',
+      },
+      {
+        title: 'Roles & Permissions',
+        complete: savedAreaComplete(c, 'access') === true,
+        link: ['/manage/companies/access'],
       },
     ];
   });
@@ -240,6 +279,15 @@ export class CompanyProfile {
       });
     });
     let previousId = '';
+    effect(() => {
+      const id = this.company()?.id;
+      if (id) void this.api.ensureBrandLogo?.(id);
+    });
+    effect(() => {
+      const id = this.routeParams().get('id') ?? '';
+      if (!id) return;
+      untracked(() => void this.readDocuments(id));
+    });
     effect(() => {
       const company = this.company();
       if (!company || this.profilePending() || previousId === this.id) return;
@@ -257,6 +305,21 @@ export class CompanyProfile {
     if (this.api.error()) await this.api.load();
     await this.api.loadDetail(this.id);
     if (!this.api.detailError(this.id)) this.draft = this.newDraft();
+    await this.readDocuments(this.id);
+  }
+  private async readDocuments(id: string): Promise<void> {
+    const generation = ++this.documentLoad;
+    this.documentsChecked.set(false);
+    this.savedCompliance.set(null);
+    try {
+      const value = await this.complianceApi.load(id);
+      if (generation !== this.documentLoad) return;
+      this.savedCompliance.set(value);
+    } catch {
+      if (generation !== this.documentLoad) return;
+      this.savedCompliance.set(null);
+    }
+    this.documentsChecked.set(true);
   }
   private newDraft(): Company {
     const c = this.company();

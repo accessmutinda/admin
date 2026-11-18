@@ -26,9 +26,9 @@
     </p>
   </div>
   <section class="co-summary co-surface" aria-label="Company overview">
-    <div class="co-company-image" [style.background]="current.logo ? '#eef7fa' : null">
-      @if (current.logo) {
-        <img [src]="current.logo" [alt]="current.name + ' logo'" />
+    <div class="co-company-image" [style.background]="logo(current) ? '#eef7fa' : null">
+      @if (logo(current); as mark) {
+        <img [src]="mark" [alt]="current.name + ' logo'" />
       } @else {
         <div class="co-reference-photo" role="img" aria-label="Care home placeholder"></div>
       }
@@ -297,7 +297,7 @@
           aria-label="Company profile completion"
         ></progress
         ><small class="cp-completion-note"
-          >Based on company identity, registration, location, staff size, logo and modules.</small
+          >Equal share of the required sections. Integrations are not included.</small
         >
         <div
           class="cp-save-status"

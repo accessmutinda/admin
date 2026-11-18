@@ -259,7 +259,9 @@
                     </button>
                   } @else {
                     @if (member.status === 'Active' && access.core('company.memberships.read')) {
-                      <button mat-menu-item (click)="inspectionAccess(member)">Inspection access</button>
+                      <button mat-menu-item (click)="inspectionAccess(member)">
+                        Inspection access
+                      </button>
                     }
                     <button mat-menu-item (click)="openMember('edit', member)">
                       <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
@@ -310,331 +312,457 @@
       </div>
     </div>
   </section>
-  <section
-    class="co-surface ua-panel ua-permission-section"
-    id="ua-permission-editor"
-    tabindex="-1"
-    aria-labelledby="ua-permissions-title"
-  >
-    <div class="ua-permission-header">
-      <div class="ua-permission-heading">
-        <span class="ua-permission-tile material-symbols-outlined" aria-hidden="true">shield</span>
-        <div>
-          <h2 id="ua-permissions-title">Role Permissions</h2>
-          <p>Select a role, then configure its module and action permissions.</p>
-        </div>
-      </div>
-      @if (access.context()?.can_create_roles) {
-        <button
-          type="button"
-          class="ua-button ua-primary"
-          [disabled]="saving()"
-          (click)="creating.set(!creating())"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">add</span
-          >{{ creating() ? 'Cancel new role' : 'Add company role' }}
-        </button>
-      }
-      <label class="ua-role-select"
-        >Role<mat-select
-          cvSelect
-          [ngModel]="selectedId()"
-          (ngModelChange)="choose($event)"
-          aria-label="Permission role"
-          [panelWidth]="compact()?.matches ? 'auto' : 360"
-          ><mat-select-trigger
-            ><cv-management-role [label]="selected()?.name ?? 'Choose a role'"
-          /></mat-select-trigger>
-          @for (item of roles(); track item.id) {
-            <mat-option [value]="item.id"
-              ><span class="role-option"
-                ><cv-management-role [label]="item.name" /><small>{{
-                  item.description
-                }}</small></span
-              ></mat-option
-            >
-          }
-        </mat-select></label
-      >
-    </div>
-    @if (creating()) {
-      <form class="ua-new-role" (ngSubmit)="create()">
-        <label>Role name<input name="roleName" [(ngModel)]="name" required maxlength="80" /></label
-        ><label>Role code<input name="roleCode" [(ngModel)]="code" required maxlength="16" /></label
-        ><label
-          >Description<input
-            name="roleDescription"
-            [(ngModel)]="description"
-            maxlength="1000" /></label
-        ><button
-          type="submit"
-          class="ua-button ua-primary"
-          [disabled]="saving() || !name.trim() || !code.trim()"
-        >
-          Create role
-        </button>
-      </form>
-    }
-    @if (notice()) {
-      <p class="ua-permission-hint" role="status">{{ notice() }}</p>
-    }
-    <div class="ua-presets">
-      <div class="ua-permission-count">
-        <strong>{{ permissionCount() }}/{{ permissionTotal() }} permissions enabled</strong>
-        <p>{{ selected()?.description }}</p>
-      </div>
-      <div class="ua-preset-buttons">
-        <button
-          type="button"
-          class="ua-button ua-outline"
-          [disabled]="saving() || !writable()"
-          (click)="applyPermissionPreset('view')"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">visibility</span>View Only</button
-        ><button
-          type="button"
-          class="ua-button ua-outline"
-          [disabled]="saving() || !writable()"
-          (click)="applyPermissionPreset('standard')"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">edit_square</span>Standard
-          Access</button
-        ><button
-          type="button"
-          class="ua-button"
-          [disabled]="saving() || !writable()"
-          (click)="applyPermissionPreset('none')"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">block</span>No Access
-        </button>
-      </div>
-    </div>
-    <p class="ua-permission-hint">
-      Presets update this role’s draft. Standard Access excludes Delete. Save Changes applies the
-      selected role.
-    </p>
-    <section class="ua-feature-card ua-mfa-policy" aria-labelledby="ua-mfa-title">
-      <div class="ua-feature-heading">
-        <span class="material-symbols-outlined ua-module-tile" aria-hidden="true">shield_lock</span>
-        <div>
-          <h3 id="ua-mfa-title">Role MFA policy</h3>
-          <p id="ua-mfa-help">
-            Saved default for {{ selected()?.name }}. Individual user overrides take precedence.
-          </p>
-        </div>
-      </div>
-      <label class="ua-mfa-toggle"
-        ><input
-          type="checkbox"
-          [ngModel]="selected()?.mfa_required"
-          [disabled]="true"
-          title="Managed through the company security policy"
-          aria-describedby="ua-mfa-help"
-        />Require MFA for this role</label
-      >
-      <p class="ua-permission-hint">
-        MFA requirements are managed through the company security policy.
-      </p>
-    </section>
-    <div class="ua-module-cards">
-      @for (module of modules(); track module.code; let moduleIndex = $index) {
-        <section class="ua-module-card" [attr.aria-labelledby]="'ua-module-' + moduleIndex">
-          <div class="ua-module-card-heading">
-            <span
-              class="material-symbols-outlined ua-module-tile"
-              [style.background]="moduleColors[moduleIndex % moduleColors.length]"
-              aria-hidden="true"
-              >{{ moduleIcons[module.code] }}</span
-            >
-            <div>
-              <h3 [id]="'ua-module-' + moduleIndex">{{ displayModule(module) }}</h3>
-              <small
-                >{{ enabledActions(module) }}/{{ moduleActions(module).length }} actions
-                enabled</small
-              >
-            </div>
-          </div>
-          <div
-            class="ua-module-actions"
-            [class.ua-people-actions]="module.code === 'people'"
-            role="group"
-            [attr.aria-label]="displayModule(module) + ' permissions'"
-          >
-            @for (action of moduleActions(module); track action.code) {
-              <label [class.ua-checked]="moduleHas(module, action.code)"
-                ><input
-                  type="checkbox"
-                  [checked]="moduleHas(module, action.code)"
-                  [indeterminate]="modulePartial(module, action.code)"
-                  [disabled]="saving() || !writable()"
-                  (change)="toggleModuleAction(module, action.code)"
-                  [attr.aria-label]="action.label + ' ' + displayModule(module)"
-                /><span>{{ action.code === 'archive' ? 'Delete' : action.label }}</span></label
-              >
-            }
-          </div>
-          <details class="ua-submodules">
-            <summary>Submodule permissions</summary>
-            @for (sub of module.submodules; track sub.code) {
-              <section class="ua-submodule" [attr.aria-label]="sub.name + ' permissions'">
-                <strong>{{ sub.name }}</strong
-                ><small>{{
-                  sub.effective_enabled ? 'Active for company' : 'Inactive for company'
-                }}</small>
-                <div class="ua-module-actions">
-                  @for (action of actions; track action.code) {
-                    @if (availableAction(sub, action.code)) {
-                      <label [class.ua-checked]="has(module.code, sub.code, action.code)"
-                        ><input
-                          type="checkbox"
-                          [checked]="has(module.code, sub.code, action.code)"
-                          [disabled]="saving() || !writable()"
-                          [attr.aria-label]="action.label + ' ' + sub.name"
-                          (change)="toggle(module.code, sub.code, action.code)"
-                        /><span>{{
-                          action.code === 'archive' ? 'Delete' : action.label
-                        }}</span></label
-                      >
-                    }
-                  }
-                </div>
-              </section>
-            }
-          </details>
-        </section>
-      }
-    </div>
-    <div class="ua-feature-cards">
-      <section class="ua-feature-card" aria-labelledby="ua-rota-title">
-        <div class="ua-feature-heading">
-          <span class="material-symbols-outlined ua-module-tile" aria-hidden="true"
-            >calendar_month</span
+  @if (!roleDetail()) {
+    <section class="co-surface ua-panel" aria-labelledby="ua-roles-title">
+      <div class="ua-permission-header">
+        <div class="ua-permission-heading">
+          <span class="ua-permission-tile material-symbols-outlined" aria-hidden="true"
+            >shield</span
           >
           <div>
-            <h3 id="ua-rota-title">Visits &amp; Rota Access</h3>
-            <p id="ua-rota-help">
-              Works alongside Care delivery. Enable View rota to use other actions.
-            </p>
+            <h2 id="ua-roles-title">Company roles</h2>
+            <p>Create the role first. Open it to attach permissions.</p>
           </div>
-          <span class="ua-feature-count">{{ rotaAccess().length }}/{{ rotaActions.length }}</span>
         </div>
-        <div class="ua-feature-actions" role="group" aria-describedby="ua-rota-help">
-          @for (action of rotaActions; track action.key) {
-            <label [class.ua-checked]="hasRotaAction(action.key)"
-              ><input
-                type="checkbox"
-                [checked]="hasRotaAction(action.key)"
-                [disabled]="
-                  saving() || !writable() || (action.key !== 'view' && !hasRotaAction('view'))
-                "
-                (change)="toggleRotaAction(action.key)"
-                [attr.aria-label]="action.label"
-              /><span
-                ><strong>{{ action.label }}</strong
-                ><small>{{ action.description }}</small></span
-              ></label
-            >
-          }
-        </div>
-      </section>
-      <section class="ua-feature-card" aria-labelledby="ua-payroll-title">
-        <div class="ua-feature-heading">
-          <span class="material-symbols-outlined ua-module-tile ua-payroll-tile" aria-hidden="true"
-            >account_balance_wallet</span
+        @if (access.context()?.can_create_roles) {
+          <button
+            type="button"
+            class="ua-button ua-primary"
+            [disabled]="saving()"
+            (click)="creating.set(!creating()); error.set('')"
           >
-          <div>
-            <h3 id="ua-payroll-title">Payroll &amp; Payments Access</h3>
-            <p id="ua-payroll-help">
-              Works alongside Finance. Enable View payroll to use other actions.
-            </p>
-          </div>
-          <span class="ua-feature-count"
-            >{{ payrollAccess().length }}/{{ payrollActions.length }}</span
-          >
-        </div>
-        <div class="ua-feature-actions" role="group" aria-describedby="ua-payroll-help">
-          @for (action of payrollActions; track action.key) {
-            <label [class.ua-checked]="hasPayrollAction(action.key)"
-              ><input
-                type="checkbox"
-                [checked]="hasPayrollAction(action.key)"
-                [disabled]="
-                  saving() || !writable() || (action.key !== 'view' && !hasPayrollAction('view'))
-                "
-                (change)="togglePayrollAction(action.key)"
-                [attr.aria-label]="action.label"
-              /><span
-                ><strong>{{ action.label }}</strong
-                ><small>{{ payrollActionDescriptions[action.key] }}</small></span
-              ></label
-            >
-          }
-        </div>
-      </section>
-    </div>
-    <section
-      class="ua-feature-card ua-core-permissions"
-      aria-label="Company administration permissions"
-    >
-      <div class="ua-feature-heading">
-        <span class="material-symbols-outlined ua-module-tile" aria-hidden="true"
-          >admin_panel_settings</span
-        >
-        <div>
-          <h3>Company administration permissions</h3>
-          <p>Protected Company Admin permissions are retained.</p>
-        </div>
-      </div>
-      <div class="ua-feature-actions">
-        @for (permission of configuration()?.core_permissions; track permission.code) {
-          <label [class.ua-checked]="coreCodes().includes(permission.code)"
-            ><input
-              type="checkbox"
-              [checked]="coreCodes().includes(permission.code)"
-              [disabled]="saving() || !writable() || !!selected()?.protected"
-              (change)="coreToggle(permission.code)"
-            /><span>{{ permission.label }}</span></label
-          >
+            <span class="material-symbols-outlined" aria-hidden="true">add</span
+            >{{ creating() ? 'Cancel new role' : 'Add company role' }}
+          </button>
         }
       </div>
-    </section>
-    <div class="ua-permission-footer">
-      @if (error()) {
-        <p class="ua-error" role="alert">{{ error() }}</p>
+      @if (creating()) {
+        <form class="ua-new-role" (ngSubmit)="create()">
+          <label
+            >Role name<input name="roleName" [(ngModel)]="name" required maxlength="80" /></label
+          ><label
+            >Role code<input
+              name="roleCode"
+              [(ngModel)]="code"
+              maxlength="16"
+              placeholder="Optional" /></label
+          ><label
+            >Description<input name="roleDescription" [(ngModel)]="description" maxlength="1000"
+          /></label>
+          <button
+            type="submit"
+            class="ua-button ua-primary"
+            [disabled]="saving() || !name.trim() || !roleCodeReady()"
+          >
+            Create role
+          </button>
+          <p class="ua-permission-hint">
+            The code is built from the name when you leave it blank. Use 2–16 letters or numbers.
+          </p>
+          @if (error()) {
+            <p class="ua-error" role="alert">{{ error() }}</p>
+          }
+        </form>
       }
-      <span class="ua-save-state" aria-live="polite"
-        ><span class="material-symbols-outlined" aria-hidden="true">{{
-          permissionsChanged() ? 'edit_note' : 'check_circle'
-        }}</span
-        >{{
-          permissionsChanged()
-            ? 'Unsaved changes for ' + selected()?.name
-            : 'Permissions are up to date'
-        }}</span
-      >
-      <div>
-        <button
-          type="button"
-          class="ua-button ua-outline"
-          [disabled]="saving() || !writable() || !permissionsChanged()"
-          (click)="discardPermissions()"
-        >
-          Discard Changes</button
-        ><button
-          type="button"
-          class="ua-button ua-primary"
-          [disabled]="saving() || !writable() || !permissionsChanged()"
-          (click)="savePermissions()"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Changes
-        </button>
+      <div class="ua-table-wrap">
+        <table class="ua-users-table ua-roles-table" aria-label="Company roles">
+          <thead>
+            <tr>
+              <th scope="col">Role</th>
+              <th scope="col">Code</th>
+              <th scope="col">Description</th>
+              <th scope="col"><span class="ua-sr">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of roles(); track item.id) {
+              <tr>
+                <td>{{ item.name }}</td>
+                <td>{{ item.code }}</td>
+                <td>{{ item.description || 'Not recorded' }}</td>
+                <td class="ua-role-action">
+                  <button
+                    type="button"
+                    class="ua-button ua-outline"
+                    [attr.aria-label]="'Open ' + item.name + ' permissions'"
+                    (click)="openRole(item.id)"
+                  >
+                    Permissions
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="ua-role-empty" colspan="4">No company roles yet.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
-    </div>
-    <p class="ua-permission-hint ua-local-note">
-      Permission changes save to this company. Disabled modules remain unavailable to company users.
-      Super Admin can access all modules and submodules.
-    </p>
-  </section>
+    </section>
+  } @else {
+    <section
+      class="co-surface ua-panel ua-permission-section"
+      id="ua-permission-editor"
+      tabindex="-1"
+      aria-labelledby="ua-permissions-title"
+    >
+      <div class="ua-permission-header">
+        <button type="button" class="ua-button ua-outline" (click)="closeRole()">
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Roles
+        </button>
+        <div class="ua-permission-heading">
+          <span class="ua-permission-tile material-symbols-outlined" aria-hidden="true"
+            >shield</span
+          >
+          <div>
+            <h2 id="ua-permissions-title">{{ selected()?.name }}</h2>
+            <p>{{ selected()?.code }} · Attach permissions for this role.</p>
+          </div>
+        </div>
+      </div>
+      @if (notice()) {
+        <p class="ua-permission-hint" role="status">{{ notice() }}</p>
+      }
+      <div class="ua-presets">
+        <div class="ua-permission-count">
+          <strong>{{ percent(permissionCount(), permissionTotal()) }}% enabled</strong>
+          <p class="ua-permission-share">
+            {{ permissionCount() }} of {{ permissionTotal() }} permissions
+          </p>
+          <p>{{ selected()?.description }}</p>
+        </div>
+        <label
+          class="ua-mfa-inline"
+          title="Managed through the company security policy"
+          aria-describedby="ua-mfa-help"
+          ><input type="checkbox" [ngModel]="selected()?.mfa_required" [disabled]="true" />Require
+          MFA for this role</label
+        >
+        <div class="ua-preset-buttons">
+          <button
+            type="button"
+            class="ua-button ua-outline"
+            [disabled]="saving() || !writable()"
+            (click)="applyPermissionPreset('view')"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">visibility</span>View Only</button
+          ><button
+            type="button"
+            class="ua-button ua-outline"
+            [disabled]="saving() || !writable()"
+            (click)="applyPermissionPreset('standard')"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">edit_square</span>Standard
+            Access</button
+          ><button
+            type="button"
+            class="ua-button"
+            [disabled]="saving() || !writable()"
+            (click)="applyPermissionPreset('none')"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">block</span>No Access
+          </button>
+        </div>
+      </div>
+      <p class="ua-permission-hint" id="ua-mfa-help">
+        Presets update this role’s draft. Standard Access excludes Delete. A module row sets that
+        action for every area inside it. MFA requirements are managed through the company security
+        policy.
+      </p>
+      <div class="ua-matrix-wrap">
+        <table class="ua-matrix">
+          <caption class="ua-sr">
+            Permissions for
+            {{
+              selected()?.name
+            }}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Area</th>
+              @for (action of matrixActions(); track action.code) {
+                <th scope="col" [attr.title]="action.label">
+                  {{ action.code === 'manage_users' ? 'Users' : action.label }}
+                </th>
+              }
+              <th scope="col" class="ua-matrix-count">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (module of modules(); track module.code; let moduleIndex = $index) {
+              <tr class="ua-matrix-module">
+                <th scope="row" [id]="'ua-module-' + moduleIndex">
+                  <span class="ua-matrix-label">
+                    <span
+                      class="material-symbols-outlined ua-matrix-icon"
+                      [style.background]="moduleColors[moduleIndex % moduleColors.length]"
+                      aria-hidden="true"
+                      >{{ moduleIcons[module.code] }}</span
+                    >
+                    <span>
+                      <strong>{{ displayModule(module) }}</strong>
+                      <small>All areas in this module</small>
+                    </span>
+                  </span>
+                </th>
+                @for (action of matrixActions(); track action.code) {
+                  <td>
+                    @if (moduleSupports(module, action.code)) {
+                      <label
+                        class="ua-matrix-check"
+                        [class.ua-checked]="moduleHas(module, action.code)"
+                        ><input
+                          type="checkbox"
+                          [checked]="moduleHas(module, action.code)"
+                          [indeterminate]="modulePartial(module, action.code)"
+                          [disabled]="saving() || !writable()"
+                          (change)="toggleModuleAction(module, action.code)"
+                          [attr.aria-label]="action.label + ' ' + displayModule(module)"
+                      /></label>
+                    } @else {
+                      <span class="ua-matrix-empty" aria-hidden="true">—</span>
+                    }
+                  </td>
+                }
+                <td
+                  class="ua-matrix-count"
+                  [attr.title]="
+                    moduleEnabledCount(module) +
+                    ' of ' +
+                    modulePermissionTotal(module) +
+                    ' permissions'
+                  "
+                >
+                  {{ percent(moduleEnabledCount(module), modulePermissionTotal(module)) }}%
+                </td>
+              </tr>
+              @for (sub of module.submodules; track sub.code) {
+                <tr [class.ua-matrix-inactive]="!sub.effective_enabled">
+                  <th scope="row">
+                    <span class="ua-matrix-sub">
+                      <span>{{ sub.name }}</span>
+                      <span class="ua-state" [class.ua-state-off]="!sub.effective_enabled">{{
+                        sub.effective_enabled ? 'Active' : 'Inactive'
+                      }}</span>
+                    </span>
+                  </th>
+                  @for (action of matrixActions(); track action.code) {
+                    <td>
+                      @if (availableAction(sub, action.code)) {
+                        <label
+                          class="ua-matrix-check"
+                          [class.ua-checked]="has(module.code, sub.code, action.code)"
+                          ><input
+                            type="checkbox"
+                            [checked]="has(module.code, sub.code, action.code)"
+                            [disabled]="saving() || !writable()"
+                            [attr.aria-label]="action.label + ' ' + sub.name"
+                            (change)="toggle(module.code, sub.code, action.code)"
+                        /></label>
+                      } @else {
+                        <span class="ua-matrix-empty" aria-hidden="true">—</span>
+                      }
+                    </td>
+                  }
+                  <td
+                    class="ua-matrix-count"
+                    [attr.title]="
+                      enabledPermissions(module.code, sub) +
+                      ' of ' +
+                      sub.permissions.length +
+                      ' permissions'
+                    "
+                  >
+                    {{ percent(enabledPermissions(module.code, sub), sub.permissions.length) }}%
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="ua-matrix-wrap ua-extra-wrap">
+        <table class="ua-matrix ua-extra">
+          <caption class="ua-sr">
+            Visits, payroll and company administration access
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Additional access</th>
+              <th scope="col">Actions</th>
+              <th scope="col" class="ua-matrix-count">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" id="ua-rota-title">
+                <span class="ua-matrix-label">
+                  <span class="material-symbols-outlined ua-matrix-icon" aria-hidden="true"
+                    >calendar_month</span
+                  >
+                  <span>
+                    <strong>Visits &amp; Rota</strong>
+                    <small id="ua-rota-help"
+                      >Works alongside Care delivery. Enable View rota to use other actions.</small
+                    >
+                  </span>
+                </span>
+              </th>
+              <td>
+                <div class="ua-inline-checks" role="group" aria-describedby="ua-rota-help">
+                  @for (action of rotaActions; track action.key) {
+                    <label
+                      [class.ua-checked]="hasRotaAction(action.key)"
+                      [attr.title]="action.description"
+                      ><input
+                        type="checkbox"
+                        [checked]="hasRotaAction(action.key)"
+                        [disabled]="
+                          saving() ||
+                          !writable() ||
+                          (action.key !== 'view' && !hasRotaAction('view'))
+                        "
+                        (change)="toggleRotaAction(action.key)"
+                        [attr.aria-label]="action.label"
+                      /><span>{{ action.label }}</span></label
+                    >
+                  }
+                </div>
+              </td>
+              <td
+                class="ua-matrix-count"
+                [attr.title]="rotaAccess().length + ' of ' + rotaActions.length"
+              >
+                {{ percent(rotaAccess().length, rotaActions.length) }}%
+              </td>
+            </tr>
+            <tr>
+              <th scope="row" id="ua-payroll-title">
+                <span class="ua-matrix-label">
+                  <span
+                    class="material-symbols-outlined ua-matrix-icon ua-payroll-icon"
+                    aria-hidden="true"
+                    >account_balance_wallet</span
+                  >
+                  <span>
+                    <strong>Payroll &amp; Payments</strong>
+                    <small id="ua-payroll-help"
+                      >Works alongside Finance. Enable View payroll to use other actions.</small
+                    >
+                  </span>
+                </span>
+              </th>
+              <td>
+                <div class="ua-inline-checks" role="group" aria-describedby="ua-payroll-help">
+                  @for (action of payrollActions; track action.key) {
+                    <label
+                      [class.ua-checked]="hasPayrollAction(action.key)"
+                      [attr.title]="payrollActionDescriptions[action.key]"
+                      ><input
+                        type="checkbox"
+                        [checked]="hasPayrollAction(action.key)"
+                        [disabled]="
+                          saving() ||
+                          !writable() ||
+                          (action.key !== 'view' && !hasPayrollAction('view'))
+                        "
+                        (change)="togglePayrollAction(action.key)"
+                        [attr.aria-label]="action.label"
+                      /><span>{{ action.label }}</span></label
+                    >
+                  }
+                </div>
+              </td>
+              <td
+                class="ua-matrix-count"
+                [attr.title]="payrollAccess().length + ' of ' + payrollActions.length"
+              >
+                {{ percent(payrollAccess().length, payrollActions.length) }}%
+              </td>
+            </tr>
+            @if (configuration()?.core_permissions?.length) {
+              <tr>
+                <th scope="row">
+                  <span class="ua-matrix-label">
+                    <span class="material-symbols-outlined ua-matrix-icon" aria-hidden="true"
+                      >admin_panel_settings</span
+                    >
+                    <span>
+                      <strong>Company administration</strong>
+                      <small>Protected Company Admin permissions are retained.</small>
+                    </span>
+                  </span>
+                </th>
+                <td>
+                  <div
+                    class="ua-inline-checks"
+                    role="group"
+                    aria-label="Company administration permissions"
+                  >
+                    @for (permission of configuration()?.core_permissions; track permission.code) {
+                      <label [class.ua-checked]="coreCodes().includes(permission.code)"
+                        ><input
+                          type="checkbox"
+                          [checked]="coreCodes().includes(permission.code)"
+                          [disabled]="saving() || !writable() || !!selected()?.protected"
+                          (change)="coreToggle(permission.code)"
+                        /><span>{{ permission.label }}</span></label
+                      >
+                    }
+                  </div>
+                </td>
+                <td
+                  class="ua-matrix-count"
+                  [attr.title]="
+                    enabledCore() + ' of ' + (configuration()?.core_permissions?.length ?? 0)
+                  "
+                >
+                  {{ percent(enabledCore(), configuration()?.core_permissions?.length ?? 0) }}%
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="ua-permission-footer">
+        @if (error()) {
+          <p class="ua-error" role="alert">{{ error() }}</p>
+        }
+        <span class="ua-save-state" aria-live="polite"
+          ><span class="material-symbols-outlined" aria-hidden="true">{{
+            permissionsChanged() ? 'edit_note' : 'check_circle'
+          }}</span
+          >{{
+            permissionsChanged()
+              ? 'Unsaved changes for ' + selected()?.name
+              : 'Permissions are up to date'
+          }}</span
+        >
+        <div>
+          <button
+            type="button"
+            class="ua-button ua-outline"
+            [disabled]="saving() || !writable() || !permissionsChanged()"
+            (click)="discardPermissions()"
+          >
+            Discard Changes</button
+          ><button
+            type="button"
+            class="ua-button ua-primary"
+            [disabled]="saving() || !writable() || !permissionsChanged()"
+            (click)="savePermissions()"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">save</span>Save Changes
+          </button>
+        </div>
+      </div>
+      <p class="ua-permission-hint ua-local-note">
+        Permission changes save to this company. Disabled modules remain unavailable to company
+        users. Super Admin can access all modules and submodules.
+      </p>
+    </section>
+  }
 } @else {
   <section class="co-surface ua-panel">
     <h2>No company workspace selected</h2>

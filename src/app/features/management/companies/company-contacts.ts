@@ -91,7 +91,14 @@ export class CompanyContactsPage {
   protected readonly checked = signal<Partial<Record<AddressKind, boolean>>>({});
   protected readonly categories = CONTACT_CATEGORIES;
   protected readonly modifiedAt = companyModifiedAt;
+  protected logo(company: { id: string; logo?: string }): string {
+    return this.companiesApi.brandLogo?.(company.id) || company.logo || '';
+  }
   constructor() {
+    effect(() => {
+      const id = this.id;
+      if (id) void this.companiesApi.ensureBrandLogo?.(id);
+    });
     effect(() => {
       const id = this.id;
       const allowed = this.auth.canAccessCompany(id);

@@ -5,13 +5,47 @@ import { vi } from 'vitest';
 import { AuthService } from '../../core/auth/auth.service';
 import { ForgotPassword } from './forgot-password/forgot-password';
 import { InviteAccept } from './invite-accept/invite-accept';
+import { PasswordReset } from './password-reset/password-reset';
 
 describe('Authentication actions', () => {
-  it('shows recovery as unavailable without simulating email delivery', () => {
-    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+  it('asks for an email and shows the same confirmation the server returns', () => {
+    const requestPasswordReset = vi.fn(() => of('Check your inbox for a reset link.'));
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({ email: 'person@example.com' }) } },
+        },
+        { provide: AuthService, useValue: { requestPasswordReset } },
+      ],
+    });
     const fixture = TestBed.createComponent(ForgotPassword);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('not available yet');
+    const email = fixture.nativeElement.querySelector('#forgot-password-email') as HTMLInputElement;
+    expect(email.value).toBe('person@example.com');
+    fixture.nativeElement.querySelector('form').requestSubmit();
+    fixture.detectChanges();
+    expect(requestPasswordReset).toHaveBeenCalledWith('person@example.com');
+    expect(fixture.nativeElement.querySelector('[role=status]').textContent).toContain(
+      'Check your inbox for a reset link.',
+    );
+    expect(fixture.nativeElement.querySelector('form')).toBeNull();
+  });
+  it('keeps an incomplete reset link from setting a password', () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+        },
+        { provide: AuthService, useValue: { confirmPasswordReset: vi.fn() } },
+      ],
+    });
+    const fixture = TestBed.createComponent(PasswordReset);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Reset link incomplete');
     expect(fixture.nativeElement.querySelector('form')).toBeNull();
   });
   it('accepts a server invitation and exposes server failures for retry', () => {

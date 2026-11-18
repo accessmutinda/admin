@@ -21,9 +21,9 @@
   }
   @if (company(); as current) {
     <section class="co-summary co-surface" aria-label="Current company overview">
-      <div class="co-company-image" [style.background]="current.logo ? '#eef7fa' : null">
-        @if (current.logo) {
-          <img [src]="current.logo" [alt]="current.name + ' logo'" />
+      <div class="co-company-image" [style.background]="logo(current) ? '#eef7fa' : null">
+        @if (logo(current); as mark) {
+          <img [src]="mark" [alt]="current.name + ' logo'" />
         } @else {
           <div class="co-reference-photo" role="img" aria-label="Care home placeholder"></div>
         }
@@ -308,8 +308,8 @@
                   <td>
                     <a class="co-table-company" [routerLink]="['/manage/companies', row.id]"
                       ><span class="co-table-logo">
-                        @if (row.logo) {
-                          <img [src]="row.logo" [alt]="row.name + ' logo'" />
+                        @if (logo(row); as mark) {
+                          <img [src]="mark" [alt]="row.name + ' logo'" />
                         } @else {
                           <span>{{ companyInitials(row.name) }}</span>
                         }</span

@@ -205,6 +205,38 @@ export class AuthService {
     );
   }
 
+  requestPasswordReset(email: string): Observable<string> {
+    return defer(() =>
+      from(
+        (async () => {
+          const result = await this.request<{ detail?: string }>('/auth/password/forgot', {
+            email: email.trim(),
+          });
+          return (
+            result.detail ||
+            'If an account exists for that email, you will receive password reset instructions.'
+          );
+        })(),
+      ),
+    );
+  }
+
+  confirmPasswordReset(uid: string, token: string, newPassword: string, confirmation: string): Observable<string> {
+    return defer(() =>
+      from(
+        (async () => {
+          const result = await this.request<{ detail?: string }>('/auth/password/reset', {
+            uid,
+            token,
+            new_password: newPassword,
+            confirmation,
+          });
+          return result.detail || 'Password has been reset. You can sign in now.';
+        })(),
+      ),
+    );
+  }
+
   async loadWorkspaces(): Promise<void> {
     if (!this.profile()?.platform_roles.includes('PO'))
       throw new Error('Workspace selection is limited to Super Admin.');
