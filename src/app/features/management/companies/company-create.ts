@@ -382,9 +382,7 @@ export class CompanyCreatePage {
       );
       company.id = result.id;
       company.code = result.code;
-      this.notice.set(
-        'Company created with the selected settings. The administrator invitation is queued.',
-      );
+      this.notice.set('');
       void this.companiesApi.load();
       void this.auth
         .loadWorkspaces()

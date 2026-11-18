@@ -23,7 +23,6 @@ interface Editor {
   reviewed: ReturnType<typeof signal<boolean>>;
   created(): boolean;
   error(): string;
-  notice(): string;
   create(): Promise<void>;
 }
 describe('Original five-step company creation with API submission', () => {
@@ -93,7 +92,7 @@ describe('Original five-step company creation with API submission', () => {
     expect(root.querySelector('.cn-modules')).not.toBeNull();
   });
   it('submits the supported backend payload and never creates a local company substitute', async () => {
-    const { editor } = open();
+    const { fixture, editor } = open();
     fill(editor);
     await editor.create();
     expect(create).toHaveBeenCalledTimes(1);
@@ -103,8 +102,26 @@ describe('Original five-step company creation with API submission', () => {
     });
     expect(editor.created()).toBe(true);
     expect(editor.draft.company.id).toBe('server-company');
-    expect(editor.notice()).toContain('invitation');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.cn-success').textContent).toContain(
+      'The initial Company Admin invitation was queued for email delivery.',
+    );
     expect(localStorage.getItem('cv_api_company_details_v1')).toBeNull();
+  });
+  it('explains before submission that the Company Admin invitation is queued separately from the welcome email', () => {
+    const { fixture, editor } = open();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector('#cn-email-help')?.textContent).toContain(
+      'Welcome emails are currently unavailable.',
+    );
+    editor.step.set(4);
+    fixture.detectChanges();
+    const email = root.querySelector('#cn-initial-admin-email')!;
+    const help = root.querySelector(`#${email.getAttribute('aria-describedby')}`);
+    expect(help?.textContent).toContain('Create Company queues a Company Admin invitation');
+    expect(root.querySelector('.cn-guidance')?.textContent).toContain(
+      'The optional welcome email is a separate message.',
+    );
   });
   it('preserves the idempotency key on an unchanged retry', async () => {
     create.mockRejectedValueOnce(new Error('Network unavailable.'));

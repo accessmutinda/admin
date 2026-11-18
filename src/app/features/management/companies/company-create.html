@@ -28,6 +28,7 @@
   <section class="co-surface cn-success" role="status">
     <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
     <h2>{{ draft.company.name }} has been created</h2>
+    <p>The initial Company Admin invitation was queued for email delivery.</p>
     <p>
       The new workspace is ready with {{ draft.company.modules.length }} modules. Add users and
       complete the remaining company sections when ready.
@@ -239,9 +240,10 @@
                 role="switch"
                 aria-describedby="cn-email-help"
               /><span
-                ><strong>Send welcome email</strong
+                ><strong>Send welcome email (optional)</strong
                 ><small id="cn-email-help"
-                  >Email delivery is not configured. Invite users after creation.</small
+                  >Welcome emails are currently unavailable. Create Company still queues the initial
+                  Company Admin invitation.</small
                 ></span
               ></label
             >
@@ -512,10 +514,13 @@
             name="initialAdminEmail"
             type="email"
             autocomplete="email"
+            aria-describedby="cn-initial-admin-email-help"
             [(ngModel)]="initialAdminEmail"
             required
           />
-          <small>The administrator will receive an invitation to this company.</small>
+          <small id="cn-initial-admin-email-help">
+            Create Company queues a Company Admin invitation for this address.
+          </small>
         </div>
         <label class="cn-confirm"
           ><input
@@ -566,10 +571,10 @@
         <div class="cn-guide-row">
           <span class="material-symbols-outlined" aria-hidden="true">group_add</span>
           <div>
-            <strong>Onboarding tip</strong>
+            <strong>Administrator invitation</strong>
             <p>
-              Invite users and complete registration evidence after creation. Creating a company
-              does not send invitations.
+              Create Company queues the initial Company Admin invitation. Email delivery happens
+              separately after submission. The optional welcome email is a separate message.
             </p>
           </div>
         </div>
