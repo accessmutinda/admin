@@ -1,4 +1,5 @@
 import { Skeleton } from '../../../shared/ui/skeleton';
+import { ViewportScroller } from '@angular/common';
 import { CompanyLoading } from './company-loading';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CompanyComplianceApiService } from './company-compliance-api.service';
@@ -10,6 +11,7 @@ import {
   signal,
   HostListener,
   DestroyRef,
+  afterRenderEffect,
   effect,
   untracked,
 } from '@angular/core';
@@ -47,6 +49,7 @@ export class CompanyCompliancePage {
   protected readonly store = inject(ManagementStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly scroller = inject(ViewportScroller);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly api = inject(CompanyComplianceApiService);
@@ -54,6 +57,9 @@ export class CompanyCompliancePage {
   private readonly destroy = inject(DestroyRef);
   private readonly routeParams = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
+  });
+  private readonly fragment = toSignal(this.route.fragment, {
+    initialValue: this.route.snapshot.fragment,
   });
   private get id(): string {
     return this.routeParams().get('id') ?? '';
@@ -79,6 +85,11 @@ export class CompanyCompliancePage {
     return this.companiesApi.brandLogo?.(company.id) || company.logo || '';
   }
   constructor() {
+    afterRenderEffect(() => {
+      const fragment = this.fragment();
+      if ((fragment === 'rc-registration' || fragment === 'rc-mapping') && !this.dataPending() && !this.dataError() && this.company())
+        this.scroller.scrollToAnchor(fragment);
+    });
     effect(() => {
       const id = this.id;
       if (id) void this.companiesApi.ensureBrandLogo?.(id);

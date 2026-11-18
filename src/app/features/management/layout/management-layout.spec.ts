@@ -86,6 +86,7 @@ describe('Signed-in user profile menu', () => {
     name: 'Stored Care',
     apiSummaryOnly: true,
     setupCompletion: 43,
+    setupProgress: { documents: { complete: false } },
   } as Company;
 
   it('prompts company admins to complete their current company', () => {
@@ -115,7 +116,7 @@ describe('Signed-in user profile menu', () => {
     const banner: HTMLElement = fixture.nativeElement.querySelector('cv-company-setup-banner');
     expect(banner.textContent).toContain('Second Care · Setup Completion 29%');
     expect(banner.querySelector('a')?.getAttribute('href')).toBe(
-      '/manage/companies/company-2',
+      '/manage/companies/company-2/compliance#rc-mapping',
     );
   });
 

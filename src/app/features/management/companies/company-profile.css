@@ -316,6 +316,9 @@
   background: #f3f8fc;
   color: #0066ac;
 }
+.cv-management .company-profile-page .cp-required-sections {
+  scroll-margin-top: 65px;
+}
 .cv-management .company-profile-page .cp-required-sections ul {
   list-style: none;
   margin: 0;

@@ -339,16 +339,12 @@
                       [attr.aria-label]="company.name + ' profile completion'"
                     ></progress>
                   </div>
-                  @if (
-                    canCompleteProfiles() &&
-                    completion(company) != null &&
-                    completion(company)! < 100
-                  ) {
+                  @if (canCompleteProfiles() ? profileAction(company) : null; as action) {
                     <a
                       class="text-link"
-                      [routerLink]="['/manage/companies', company.id]"
-                      [queryParams]="{ edit: true }"
-                      fragment="general-information"
+                      [routerLink]="action.link"
+                      [queryParams]="action.queryParams"
+                      [fragment]="action.fragment"
                       [attr.aria-label]="'Complete profile for ' + company.name"
                       >Complete profile</a
                     >

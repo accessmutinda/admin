@@ -2,6 +2,7 @@ import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { Company } from '../shared/management.store';
 import { companySetupCompletion } from './company-profile.models';
+import { completeCompanyProfileAction } from './company-profile-actions';
 import type { SetupAreaKey } from './companies-api.models';
 
 const setupActions: Partial<Record<SetupAreaKey, string>> = {
@@ -18,25 +19,29 @@ const setupActions: Partial<Record<SetupAreaKey, string>> = {
   selector: 'cv-company-setup-banner',
   imports: [RouterLink],
   template: `
-    @if (completion() != null && completion()! < 100) {
+    @if (setupPending() || profileAction()) {
       <section class="setup-banner" aria-label="Complete company setup">
         <div class="setup-copy">
-          <strong>{{ company().name }} · Setup Completion {{ completion() }}%</strong>
-          <progress
-            [value]="completion()"
-            max="100"
-            aria-label="Company setup completion"
-          ></progress>
-          @if (remaining().length) {
-            <small>Remaining setup · {{ remaining().join(' · ') }}</small>
+          @if (setupPending()) {
+            <strong>{{ company().name }} · Setup Completion {{ completion() }}%</strong>
+            <progress [value]="completion()" max="100" aria-label="Company setup completion"></progress>
+            @if (remaining().length) {
+              <small>Remaining setup · {{ remaining().join(' · ') }}</small>
+            }
+          } @else {
+            <strong>{{ company().name }} · Profile Completion{{ company().profileCompletion == null ? '' : ' ' + company().profileCompletion + '%' }}</strong>
+          }
+          @if (profileAction(); as action) {
+            <small>{{ action.guidance }}</small>
           }
         </div>
-        <a
-          [routerLink]="['/manage/companies', company().id]"
-          >View company profile<span class="material-symbols-outlined" aria-hidden="true"
-            >arrow_forward</span
-          ></a
-        >
+        @if (profileAction(); as action) {
+          <a [routerLink]="action.link" [queryParams]="action.queryParams" [fragment]="action.fragment">
+            Complete profile<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          </a>
+        } @else if (company().setupProgress?.branding?.complete === false) {
+          <a [routerLink]="['/manage/companies', company().id, 'branding']">Review branding</a>
+        }
       </section>
     }
   `,
@@ -116,6 +121,8 @@ const setupActions: Partial<Record<SetupAreaKey, string>> = {
 export class CompanySetupBanner {
   readonly company = input.required<Company>();
   protected readonly completion = computed(() => companySetupCompletion(this.company()));
+  protected readonly setupPending = computed(() => this.completion() != null && this.completion()! < 100);
+  protected readonly profileAction = computed(() => completeCompanyProfileAction(this.company()));
   protected readonly remaining = computed(() =>
     Object.entries(setupActions)
       .filter(([key]) => this.company().setupProgress?.[key as SetupAreaKey]?.complete === false)

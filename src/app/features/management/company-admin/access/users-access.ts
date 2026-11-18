@@ -18,6 +18,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../../shared/ui/select';
 import { ManagementRole } from '../../shared/role-pill';
 import { CompanyLoading } from '../../companies/company-loading';
+import { CompaniesApiService } from '../../companies/companies-api.service';
 import { companyModifiedAt } from '../../companies/company-profile.models';
 import { PAYROLL_ACTIONS, PayrollAction } from '../../payroll/payroll.models';
 import { ROTA_ACTIONS, RotaAction } from '../../rota/rota.models';
@@ -81,6 +82,7 @@ export class UsersAccess {
   protected readonly access = inject(CompanyAccessService);
   protected readonly store = inject(ManagementStore);
   private readonly auth = inject(AuthService);
+  private readonly companiesApi = inject(CompaniesApiService);
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private invitedCompany = '';
@@ -506,8 +508,10 @@ export class UsersAccess {
       data: { companyId: id, mode, member, initialRole },
     });
     this.closeDialog = () => ref.close();
-    ref.afterClosed().subscribe(() => {
-      if (id === this.access.companyId()) void this.loadMembers(id);
+    ref.afterClosed().subscribe((saved) => {
+      if (id !== this.access.companyId()) return;
+      void this.loadMembers(id);
+      if (saved) void this.companiesApi.refreshCompany(id);
     });
   }
   protected inspectionAccess(member: Member): void {
@@ -548,6 +552,7 @@ export class UsersAccess {
       );
       if (id !== this.access.companyId()) return;
       await this.loadMembers(id);
+      await this.companiesApi.refreshCompany(id);
       this.notice.set(
         action === 'resend' ? 'Invitation queued for delivery.' : 'Invitation revoked.',
       );

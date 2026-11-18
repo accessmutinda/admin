@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { CompanyAccessService } from '../../../../core/access/company-access.service';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { CompaniesApiService } from '../../companies/companies-api.service';
 import { ManagementStore } from '../../shared/management.store';
 import { UsersAccess } from './users-access';
 import { accessFixture, testRole } from './access-test-fixtures.test-support';
@@ -19,6 +20,7 @@ describe('Company role permission editor', () => {
         provideRouter([]),
         { provide: CompanyAccessService, useValue: access },
         { provide: AuthService, useValue: { api: vi.fn() } },
+        { provide: CompaniesApiService, useValue: { refreshCompany: vi.fn().mockResolvedValue(undefined) } },
         { provide: MatDialog, useValue: { open: vi.fn() } },
         {
           provide: ManagementStore,

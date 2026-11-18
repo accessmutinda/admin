@@ -45,6 +45,7 @@ export interface Company {
   profileCompletion?: number | null;
   setupCompletion?: number | null;
   setupProgress?: import('../companies/companies-api.models').SetupProgress;
+  primaryAdministratorState?: string | null;
   tradingName?: string;
   description?: string;
   establishedDate?: string;
@@ -322,6 +323,7 @@ export class ManagementStore {
         profileCompletion: company.profile_completion_percent ?? null,
         setupCompletion: company.setup_completion_percent ?? null,
         setupProgress: company.setup_progress,
+        primaryAdministratorState: company.primary_administrator?.assignment_state,
         modifiedAt: company.updated_at ?? undefined,
         sector: company.service_type ?? '',
         region: company.region ?? '',

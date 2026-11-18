@@ -71,6 +71,7 @@ export function companyProfileFields(detail: CompanyDetail): Partial<Company> {
     profileCompletion: detail.profile_completion_percent ?? null,
     setupCompletion: detail.setup_completion_percent ?? null,
     setupProgress: detail.setup_progress,
+    primaryAdministratorState: detail.primary_administrator?.assignment_state,
   };
 }
 

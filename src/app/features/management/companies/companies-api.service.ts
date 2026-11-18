@@ -390,6 +390,7 @@ export class CompaniesApiService {
               profile_completion_percent: detail.profile_completion_percent,
               setup_completion_percent: detail.setup_completion_percent,
               setup_progress: detail.setup_progress,
+              primary_administrator: detail.primary_administrator,
             }
           : company,
       ),

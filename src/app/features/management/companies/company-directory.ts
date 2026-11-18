@@ -13,6 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { CvSelect } from '../../../shared/ui/select';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ToastService } from '../../../shared/ui/toast.service';
+import { completeCompanyProfileAction } from './company-profile-actions';
 import { Company, ManagementStore } from '../shared/management.store';
 import {
   companyCompletion,
@@ -69,11 +70,12 @@ export class CompanyDirectory {
   protected readonly completion = companyCompletion;
   protected readonly modifiedAt = companyModifiedAt;
   protected readonly canCompleteProfiles = computed(() => this.auth.isSuperAdmin());
+  protected readonly profileAction = completeCompanyProfileAction;
   protected readonly nextIncompleteCompany = computed(() =>
     this.canCompleteProfiles()
       ? this.rows().find((company) => {
           const completion = companySetupCompletion(company);
-          return completion != null && completion < 100;
+          return (completion != null && completion < 100) || !!this.profileAction(company);
         })
       : undefined,
   );

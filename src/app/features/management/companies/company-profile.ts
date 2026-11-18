@@ -1,12 +1,11 @@
 import { CompanyLoading } from './company-loading';
+import { ViewportScroller } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CompaniesApiService } from './companies-api.service';
-import { complianceComplete } from './company-compliance.models';
-import { LOCATION_SETUP_REQUIREMENT, locationsComplete } from '../locations/locations.models';
-import { contactInformationComplete } from './company-contacts.models';
 import {
   Component,
   HostListener,
+  afterRenderEffect,
   computed,
   effect,
   inject,
@@ -20,20 +19,13 @@ import { CvSelect } from '../../../shared/ui/select';
 import { LanguageField } from './language-field';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ToastService } from '../../../shared/ui/toast.service';
-import { SetupAreaKey } from './companies-api.models';
+import { companyProfileSteps } from './company-profile-actions';
 import { Company, ManagementStore } from '../shared/management.store';
 import {
   companyModifiedAt,
   companyProfileUpdate,
-  generalInformationComplete,
   wholePlaces,
 } from './company-profile.models';
-
-function savedAreaComplete(company: Company | undefined, key: SetupAreaKey): boolean | null {
-  const area = company?.setupProgress?.[key];
-  if (!area || area.complete == null) return null;
-  return area.complete === true;
-}
 
 interface ProfileField {
   key: keyof Company;
@@ -56,6 +48,7 @@ export class CompanyProfile {
   protected readonly store = inject(ManagementStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly scroller = inject(ViewportScroller);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly api = inject(CompaniesApiService);
@@ -64,6 +57,9 @@ export class CompanyProfile {
   });
   private readonly queryParams = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
+  });
+  private readonly fragment = toSignal(this.route.fragment, {
+    initialValue: this.route.snapshot.fragment,
   });
   private get id(): string {
     return this.routeParams().get('id') ?? '';
@@ -197,54 +193,14 @@ export class CompanyProfile {
     return this.api.brandLogo?.(company.id) || company.logo || '';
   }
   protected readonly sections = computed(() => {
-    const c = this.company();
-    return [
-      {
-        title: 'General Information',
-        complete: savedAreaComplete(c, 'general') ?? generalInformationComplete(c),
-        fragment: 'general-information',
-      },
-      {
-        title: 'Registration & Compliance',
-        complete: savedAreaComplete(c, 'registration') ?? complianceComplete(c),
-        link: ['/manage/companies', this.id, 'compliance'],
-      },
-      {
-        title: 'Contact Information',
-        complete: savedAreaComplete(c, 'contacts') ?? contactInformationComplete(c),
-        link: ['/manage/companies', this.id, 'contacts'],
-      },
-      {
-        title: 'Branches & Locations',
-        hint: LOCATION_SETUP_REQUIREMENT,
-        complete:
-          savedAreaComplete(c, 'locations') ??
-          locationsComplete(
-            c?.id === this.store.companyId()
-              ? this.store.data().locations
-              : this.store.records()[c?.id ?? '']?.locations,
-          ),
-        link: c?.id === this.store.companyId() ? ['/manage/locations'] : undefined,
-      },
-      {
-        title: 'Services & Care Types',
-        complete: savedAreaComplete(c, 'modules') ?? (!!c?.sector && !!c.modules.length),
-        link: ['/manage/companies', this.id, 'modules'],
-      },
-      {
-        title: 'Documents & Policies',
-        complete: savedAreaComplete(c, 'documents') === true,
-        link: ['/manage/companies', this.id, 'compliance'],
-        fragment: 'rc-mapping',
-      },
-      {
-        title: 'Roles & Permissions',
-        complete: savedAreaComplete(c, 'access') === true,
-        link: ['/manage/companies/access'],
-      },
-    ];
+    const company = this.company();
+    return company ? companyProfileSteps(company) : [];
   });
   constructor() {
+    afterRenderEffect(() => {
+      if (this.fragment() === 'required-sections' && !this.profilePending() && !this.profileError() && this.company())
+        this.scroller.scrollToAnchor('required-sections');
+    });
     effect(() => {
       const requested = this.queryParams().get('edit') === 'true';
       untracked(() => {

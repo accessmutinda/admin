@@ -332,14 +332,14 @@
           </div>
         </div>
       </section>
-      <section class="co-surface cp-required-sections" aria-labelledby="cp-required-title">
+      <section id="required-sections" class="co-surface cp-required-sections" aria-labelledby="cp-required-title">
         <div class="cp-panel-heading">
           <span class="cp-heading-icon material-symbols-outlined" aria-hidden="true"
             >description</span
           >
           <div>
             <h2 id="cp-required-title">Required Sections</h2>
-            <p>Review the remaining company setup sections.</p>
+            <p>Check each required profile section and follow any remaining actions.</p>
           </div>
         </div>
         <ul>
@@ -348,18 +348,17 @@
               <div class="co-check-status" [class.complete]="section.complete">
                 <span class="co-status-icon" aria-hidden="true"></span>
               </div>
-              @if (section.link) {
-                <a [routerLink]="section.link">{{ section.title }}</a>
-              } @else if (section.fragment) {
-                <a routerLink="." [fragment]="section.fragment">{{ section.title }}</a>
-              } @else {
-                <span>{{ section.title }}</span>
-              }
+              <a
+                [routerLink]="section.link"
+                [queryParams]="section.complete === false ? section.queryParams : null"
+                [fragment]="section.fragment"
+                >{{ section.title }}</a
+              >
               <span class="co-check-status" [class.complete]="section.complete">{{
-                section.complete ? 'Complete' : 'Pending'
+                section.complete === null ? 'Not available' : section.complete ? 'Complete' : 'Pending'
               }}</span>
-              @if (!section.complete && section.hint) {
-                <small class="cp-sections-note">{{ section.hint }}</small>
+              @if (section.complete === false) {
+                <small class="cp-sections-note">{{ section.nextAction }}</small>
               }
             </li>
           }

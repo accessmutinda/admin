@@ -388,7 +388,7 @@ export class CompanyAccessService {
                 ? 'company.compliance.read'
                 : path.includes('/settings') || path.includes('/integrations')
                   ? 'company.settings.read'
-                  : path.startsWith('/manage/locations')
+                  : path.startsWith('/manage/locations') || path.endsWith('/locations')
                     ? 'company.locations.read'
                     : 'company.profile.read';
       return this.core(permission);

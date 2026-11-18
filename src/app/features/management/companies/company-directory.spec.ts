@@ -73,8 +73,8 @@ describe('Original company directory with backend data', () => {
   it('shows super admins a setup banner and edit links for incomplete companies', () => {
     vi.spyOn(TestBed.inject(ManagementStore), 'companies').mockReturnValue([
       { ...companies[0], profileCompletion: 100, setupCompletion: 100 },
-      { ...companies[1], profileCompletion: 86, setupCompletion: 71 },
-      { ...companies[2], profileCompletion: 71, setupCompletion: 71 },
+      { ...companies[1], profileCompletion: 86, setupCompletion: 71, setupProgress: { contacts: { complete: false } } },
+      { ...companies[2], profileCompletion: 71, setupCompletion: 71, setupProgress: { access: { complete: false }, modules: { complete: false } } },
       companies[3],
     ]);
     const { fixture } = open();
@@ -85,10 +85,10 @@ describe('Original company directory with backend data', () => {
     const links = root.querySelectorAll('tbody a[aria-label^="Complete profile for"]');
     expect(links).toHaveLength(2);
     expect(links[0].getAttribute('href')).toBe(
-      '/manage/companies/api-1?edit=true#general-information',
+      '/manage/companies/api-1/contacts',
     );
     expect(links[1].getAttribute('href')).toBe(
-      '/manage/companies/api-2?edit=true#general-information',
+      '/manage/companies/api-2#required-sections',
     );
   });
   it('does not add the directory setup prompts for other roles', () => {

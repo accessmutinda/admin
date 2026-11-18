@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { ViewportScroller } from '@angular/common';
 import { signal } from '@angular/core';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
@@ -46,6 +47,7 @@ describe('Company profile from the API', () => {
   const pending = signal(false);
   const params = new BehaviorSubject(convertToParamMap({ id: detail.id }));
   const queryParams = new BehaviorSubject(convertToParamMap({}));
+  const fragment = new BehaviorSubject<string | null>(null);
   let queryEdit = false;
   let loadDetail: ReturnType<typeof vi.fn>;
   beforeEach(() => {
@@ -55,6 +57,7 @@ describe('Company profile from the API', () => {
     pending.set(false);
     params.next(convertToParamMap({ id: detail.id }));
     queryParams.next(convertToParamMap({}));
+    fragment.next(null);
     queryEdit = false;
     loadDetail = vi.fn(async () => {
       details.set({ [detail.id]: detail });
@@ -69,8 +72,10 @@ describe('Company profile from the API', () => {
           useValue: {
             paramMap: params.asObservable(),
             queryParamMap: queryParams.asObservable(),
+            fragment: fragment.asObservable(),
             snapshot: {
               paramMap: convertToParamMap({ id: detail.id }),
+              fragment: null,
               get queryParamMap() {
                 return convertToParamMap(queryEdit ? { edit: 'true' } : {});
               },
@@ -196,7 +201,7 @@ describe('Company profile from the API', () => {
     );
     expect(row()?.textContent).toContain('Pending');
     expect(row()?.textContent).toContain('Add at least one active location');
-    expect(row()?.querySelector('a')?.getAttribute('href')).toBe('/manage/locations');
+    expect(row()?.querySelector('a')?.getAttribute('href')).toBe('/manage/companies/company-1/locations');
     details.set({
       [detail.id]: {
         ...detail,
@@ -206,6 +211,33 @@ describe('Company profile from the API', () => {
     fixture.detectChanges();
     expect(row()?.textContent).toContain('Complete');
     expect(row()?.textContent).not.toContain('Add at least one active location');
+  });
+  it('opens the checklist after loading and shows the action for each pending section', () => {
+    const scroll = vi.spyOn(TestBed.inject(ViewportScroller), 'scrollToAnchor').mockImplementation(() => {});
+    pending.set(true);
+    fragment.next('required-sections');
+    details.set({
+      [detail.id]: {
+        ...detail,
+        primary_administrator: { assignment_state: 'invited' },
+        setup_progress: {
+          general: { complete: true },
+          contacts: { complete: false },
+          access: { complete: false },
+        },
+      },
+    });
+    const fixture = create();
+    expect(scroll).not.toHaveBeenCalled();
+    pending.set(false);
+    fixture.detectChanges();
+
+    expect(scroll).toHaveBeenCalledWith('required-sections');
+    const checklist: HTMLElement = fixture.nativeElement.querySelector('#required-sections');
+    expect(checklist.textContent).toContain('Save the company email, phone number and required addresses.');
+    expect(checklist.textContent).toContain('The invited Company Admin must accept the invitation and become active.');
+    expect(checklist.querySelector('a[href$="/contacts"]')).toBeTruthy();
+    expect(checklist.querySelector('a[href$="/access#ua-users-title"]')).toBeTruthy();
   });
   it('uses the same saved profile score before and after branding is published', () => {
     function savedDetail(published: boolean): CompanyDetail {
@@ -294,6 +326,7 @@ describe('Company profile from the API', () => {
       replaceUrl: true,
     });
     queryParams.next(convertToParamMap({}));
+    fragment.next(null);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('#input-name')).toBeNull();
     queryParams.next(convertToParamMap({ edit: 'true' }));

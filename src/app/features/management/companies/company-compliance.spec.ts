@@ -63,7 +63,7 @@ describe('Registration and compliance API page', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: params }, paramMap: of(params) },
+          useValue: { snapshot: { paramMap: params, fragment: null }, paramMap: of(params), fragment: of(null) },
         },
         {
           provide: AuthService,

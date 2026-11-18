@@ -38,6 +38,7 @@ export interface CompanySummary {
   region?: string | null;
   plan?: string | null;
   primary_administrator?: {
+    assignment_state?: string | null;
     name?: string | null;
     email?: string | null;
     state?: string | null;

@@ -51,7 +51,13 @@ const companyDataGuard = (
       const loaded = api.ensureLoaded();
       const path = route.routeConfig?.path ?? '';
       const id = route.paramMap.get('id');
-      if (['companies/:id', 'companies/:id/compliance', 'companies/:id/contacts'].includes(path) && id)
+      if (id && [
+        'companies/:id',
+        'companies/:id/compliance',
+        'companies/:id/contacts',
+        'companies/:id/locations',
+        'companies/:id/access',
+      ].includes(path))
         void loaded.then(() => api.loadDetail(id));
       const logoCompany =
         id && path.includes(':id') && path !== 'companies/:id/branding'
@@ -383,6 +389,21 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/management/companies/company-contacts').then(
             (m) => m.CompanyContactsPage,
+          ),
+      },
+      {
+        path: 'companies/:id/locations',
+        title: 'Branches & service locations · CareVerity',
+        loadComponent: () =>
+          import('./features/management/locations/locations').then((m) => m.LocationsPage),
+      },
+      {
+        path: 'companies/:id/access',
+        title: 'Users & role permissions · CareVerity',
+        canDeactivate: [(component: { canLeave: () => boolean }) => component.canLeave()],
+        loadComponent: () =>
+          import('./features/management/company-admin/access/users-access').then(
+            (m) => m.UsersAccess,
           ),
       },
       {

@@ -68,6 +68,13 @@ describe('Company product access', () => {
     access.context.set({ ...context, company_id: 'south' });
     expect(access.can('care', 'records')).toBe(false);
   });
+  it('uses the same permission for company-scoped and workspace location links', () => {
+    access.context.set({ ...context, core_permissions: ['company.profile.read'] });
+    expect(access.canPath('/manage/companies/north/locations')).toBe(false);
+    access.context.set({ ...context, core_permissions: ['company.locations.read'] });
+    expect(access.canPath('/manage/companies/north/locations')).toBe(true);
+    expect(access.canPath('/manage/locations')).toBe(true);
+  });
   it('denies inactive companies even when a role grant exists', () => {
     access.context.set({ ...context, company_active: false });
     expect(access.can('care', 'records')).toBe(false);
