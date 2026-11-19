@@ -32,7 +32,10 @@
           <p class="eyebrow">{{ p.stage === 'Hired' ? 'TEAM MEMBER' : 'APPLICANT PROFILE' }}</p>
           <h1>{{ p.name }}</h1>
           <p class="profile-role-line">
-            <cv-management-role [label]="p.role" /><span class="footer-dot">·</span>{{ p.location }}
+            <cv-management-role [label]="p.role" />
+            @if ((p.stage === 'Hired' ? employmentBranch() : p.location); as location) {
+              <span class="footer-dot">·</span>{{ location }}
+            }
           </p>
         </div>
       </div>
@@ -152,9 +155,15 @@
                 <dt>Role</dt>
                 <dd><cv-management-role [label]="p.role" /></dd>
               </div>
+              @if (p.stage === 'Hired') {
+                <div>
+                  <dt>Base branch</dt>
+                  <dd>{{ employmentBranch() || 'Not recorded' }}</dd>
+                </div>
+              }
               <div>
-                <dt>Base location</dt>
-                <dd>{{ p.location }}</dd>
+                <dt>Applicant location</dt>
+                <dd>{{ p.location || 'Not recorded' }}</dd>
               </div>
               <div>
                 <dt>Employee / applicant ID</dt>
@@ -173,8 +182,24 @@
               <h3 class="application-response-heading">Application responses</h3>
               <dl class="details-list application-responses">
                 <div>
-                  <dt>Received through vacancy page</dt>
-                  <dd>{{ application.submitted | date: 'medium' }}</dd>
+                  <dt>
+                    @switch (application.source) {
+                      @case ('public') {
+                        Received through vacancy page
+                      }
+                      @case ('recruiter') {
+                        Added by a recruiter
+                      }
+                      @default {
+                        Application recorded
+                      }
+                    }
+                  </dt>
+                  <dd>
+                    <time [attr.datetime]="application.submitted">{{
+                      application.submitted | date: 'medium'
+                    }}</time>
+                  </dd>
                 </div>
                 <div>
                   <dt>Phone number</dt>
@@ -536,7 +561,7 @@
                   name="email"
                   required /></label
               ><label>Role<input [(ngModel)]="d.role" name="role" required /></label
-              ><label>Location<input [(ngModel)]="d.location" name="location" /></label
+              ><label>Applicant location<input [(ngModel)]="d.location" name="location" /></label
               ><label>Start date<input type="date" [(ngModel)]="d.start" name="start" /></label>
             </div>
             <div class="form-footer">

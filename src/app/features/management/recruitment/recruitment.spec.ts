@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { NgForm } from '@angular/forms';
 import { API_BASE } from '../../../core/auth/auth-api';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -15,6 +16,7 @@ import {
 import { ApplicationForm } from './application-form';
 import { hireInput } from './recruitment-hire';
 import { newStaff } from '../people/hr.models';
+import { PersonDetail } from '../people/person-detail';
 import { vi } from 'vitest';
 
 const summary = (company_id: string): RecruitmentSummary => ({
@@ -282,5 +284,79 @@ describe('Public application and hire transport', () => {
     expect(text).not.toContain('somebody');
     expect(text).not.toContain('readiness');
     expect(body.status).toBe('Onboarding');
+  });
+});
+
+async function openApplicantProfile(row: RecruitmentApplication) {
+  const request = vi.fn().mockResolvedValue(row);
+  TestBed.configureTestingModule({
+    providers: [
+      provideRouter([{ path: 'manage/people/:id', component: PersonDetail }]),
+      { provide: AuthService, useValue: { profile: () => ({ id: 'operator' }), api: request } },
+      {
+        provide: CompanyAccessService,
+        useValue: {
+          companyId: signal('north'),
+          can: (_module: string, submodule: string) => submodule === 'recruitment',
+        },
+      },
+      {
+        provide: ManagementStore,
+        useValue: { company: () => ({ name: 'North' }), initials: () => 'AA' },
+      },
+    ],
+  });
+  const harness = await RouterTestingHarness.create('/manage/people/application-1');
+  await harness.fixture.whenStable();
+  harness.detectChanges();
+  return { root: harness.routeNativeElement!, request };
+}
+
+describe('Recruitment applicant profile', () => {
+  it.each([
+    { source: 'recruiter', label: 'Added by a recruiter' },
+    { source: 'public', label: 'Received through vacancy page' },
+    { source: 'unknown', label: 'Application recorded' },
+  ] as const)(
+    'shows the $source source and stored time when opening application responses',
+    async ({ source, label }) => {
+      const submitted = '2026-11-10T09:41:33Z';
+      const { root, request } = await openApplicantProfile({
+        ...application('north'),
+        application: { source, submitted, phone: '', answers: [] },
+      });
+      expect(request).toHaveBeenCalledWith('/companies/north/applications/application-1');
+      const responses = root.querySelector('.application-responses')!;
+      const time = responses.querySelector('time')!;
+      expect(time.getAttribute('datetime')).toBe(submitted);
+      expect(time.textContent?.trim()).toBeTruthy();
+      expect(time.closest('div')?.querySelector('dt')?.textContent?.trim()).toBe(label);
+    },
+  );
+
+  it.each([
+    ['Aderwich Test Branch', 'Aderwich Test Branch'],
+    [null, 'Not recorded'],
+  ])('shows the assigned branch and retains the applicant location separately', async (branch, expected) => {
+    const row: RecruitmentApplication = {
+      ...application('north'),
+      stage: 'Hired',
+      staff_id: 'staff-1',
+      location: 'Oxford',
+      vacancy_location: 'London',
+      employment_branch: branch,
+    };
+    const { root, request } = await openApplicantProfile(row);
+    expect(root.textContent).toContain('Staff file');
+    expect(request).toHaveBeenCalledWith('/companies/north/applications/application-1');
+    const valueFor = (label: string) =>
+      [...root.querySelectorAll('dt')]
+        .find((term) => term.textContent === label)
+        ?.nextElementSibling?.textContent?.trim();
+    expect(valueFor('Base branch')).toBe(expected);
+    expect(valueFor('Applicant location')).toBe('Oxford');
+    const hero = root.querySelector('.profile-role-line')?.textContent;
+    expect(hero).not.toContain('Oxford');
+    if (branch) expect(hero).toContain(branch);
   });
 });

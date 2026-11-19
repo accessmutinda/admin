@@ -203,6 +203,7 @@ describe('Existing onboarding profile editor', () => {
 
   it('renders the saved recruitment history when opening Employment & Recruitment', async () => {
     const saved = profile();
+    (saved.person as ReturnType<typeof newStaff>).location = 'Aderwich Test Branch';
     const notes = 'Passed after a practical assessment.';
     Object.assign((saved.person as ReturnType<typeof newStaff>).hr!.employment, {
       recruitment: {
@@ -226,6 +227,10 @@ describe('Existing onboarding profile editor', () => {
       )
       .map((label) => label.nextElementSibling?.textContent?.trim());
     expect(milestones).toEqual(['2026-11-01', '2026-11-04', '2026-11-06']);
+    const branch = [...root.querySelectorAll('dt')].find(
+      (label) => label.textContent?.trim() === 'Base branch',
+    );
+    expect(branch?.nextElementSibling?.textContent?.trim()).toBe('Aderwich Test Branch');
     expect(root.textContent).toContain(notes);
   });
 

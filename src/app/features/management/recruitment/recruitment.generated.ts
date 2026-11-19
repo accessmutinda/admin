@@ -68,6 +68,7 @@ export type RecruitmentApplication = {
   start: string;
   staff_id: string | null;
   application?: {
+    source: 'public' | 'recruiter' | 'unknown';
     submitted: string;
     phone: string;
     answers: {
@@ -126,6 +127,7 @@ export type RecruitmentApplication = {
   working_pattern?: '' | 'Full time' | 'Part time' | 'Bank / flexible';
   contract_type?: '' | 'Permanent' | 'Fixed term' | 'Bank' | 'Agency' | 'Contract';
   vacancy_location?: string;
+  employment_branch?: string | null;
   recruitment_milestones?: {
     applicationDate: string;
     interviewDate: string;
@@ -476,6 +478,7 @@ export type RecruitmentApplicationPage = {
     start: string;
     staff_id: string | null;
     application?: {
+      source: 'public' | 'recruiter' | 'unknown';
       submitted: string;
       phone: string;
       answers: {

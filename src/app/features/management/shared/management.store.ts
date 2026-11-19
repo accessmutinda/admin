@@ -90,6 +90,7 @@ export interface Person {
   vacancy: string;
   vacancyId?: string;
   application?: {
+    source?: 'public' | 'recruiter' | 'unknown';
     submitted: string;
     phone: string;
     answers: { fieldId?: string; label: string; value: string }[];

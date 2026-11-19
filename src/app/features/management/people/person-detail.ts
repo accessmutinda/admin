@@ -56,6 +56,7 @@ export class PersonDetail {
     const value = this.api.record();
     return value?.id === this.id ? asPerson(value, this.api.compliance()) : null;
   });
+  protected readonly employmentBranch = computed(() => this.api.record()?.employment_branch ?? '');
   protected readonly tabs = [
     'Profile',
     'Onboarding',
