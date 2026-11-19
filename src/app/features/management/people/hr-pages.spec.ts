@@ -174,6 +174,12 @@ async function setupWizard(source = true, restore = false, vacancyLocation = ' N
     stage: 'Offer',
     start: '',
     staff_id: null,
+    recruitment_milestones: {
+      applicationDate: '2026-11-01',
+      interviewDate: '2026-11-04',
+      offerDate: '2026-11-06',
+      interviewNotes: 'Passed after a practical assessment.',
+    },
     documents: [
       {
         id: 'file-1',
@@ -218,7 +224,14 @@ async function setupWizard(source = true, restore = false, vacancyLocation = ' N
         job_title: 'Care Worker',
         start_date: '2026-11-14',
         employment_type: 'Permanent',
-        facts: { employment: { hours: '35' } },
+        facts: {
+          employment: {
+            hours: '35',
+            applicationDate: '2026-10-01',
+            interviewNotes: 'Outdated draft notes',
+            recruitmentSource: 'Company website',
+          },
+        },
         file_ids: [],
       },
       step: 2,
@@ -356,6 +369,28 @@ describe('Accepted-offer staff setup', () => {
     expect(root.querySelector('[aria-label="Contract type"]')?.textContent).toContain('Fixed term');
     expect(root.querySelector('[aria-label="Base branch"]')?.textContent).toContain('North');
     expect(root.textContent).toContain('Applicant location Oxford');
+  });
+  it('shows linked recruitment milestones as read-only when resuming a draft', async () => {
+    const { component, harness, api } = await setupWizard(true, true);
+    component['select'](1);
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const root = harness.routeNativeElement!;
+    const fields = [...root.querySelectorAll<HTMLInputElement>('input[type="date"][readonly]')];
+    expect(fields.map((field) => field.value)).toEqual([
+      '2026-11-01',
+      '2026-11-04',
+      '2026-11-06',
+    ]);
+    expect(root.querySelector<HTMLTextAreaElement>('textarea[readonly]')?.value).toBe(
+      'Passed after a practical assessment.',
+    );
+    await component['saveDraft']();
+    const saved = api.saveDraft.mock.calls[0][1].facts.employment;
+    expect(saved.recruitmentSource).toBe('Company website');
+    for (const key of ['applicationDate', 'interviewDate', 'offerDate', 'interviewNotes'])
+      expect(saved).not.toHaveProperty(key);
   });
   it('requires a recruiter selection when the vacancy location does not match a branch', async () => {
     const { component, api, harness, text } = await setupWizard(true, false, 'Oxfordshire outreach');

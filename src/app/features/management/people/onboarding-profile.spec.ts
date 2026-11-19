@@ -41,50 +41,55 @@ function profile(): StaffOnboarding {
     capabilities: { edit: true, approve: true, personal: true },
   };
 }
+function setupProfile(response = profile()) {
+  const company = signal('north'),
+    request = vi.fn(),
+    localSave = vi.fn();
+  request.mockResolvedValue(response);
+  TestBed.configureTestingModule({
+    providers: [
+      provideRouter(
+        ['personal', 'employment'].map((section) => ({
+          path: `manage/people/staff/:id/${section}`,
+          component: StaffProfile,
+          data: { staffSection: section },
+        })),
+      ),
+      {
+        provide: AuthService,
+        useValue: {
+          profile: () => ({ id: 'user-1' }),
+          currentUser: () => ({ name: 'Reviewer' }),
+          api: request,
+        },
+      },
+      {
+        provide: CompanyAccessService,
+        useValue: {
+          companyId: company,
+          context: () => ({ revision: 1 }),
+          can: () => true,
+          canPath: () => true,
+        },
+      },
+      { provide: PayrollService, useValue: { can: () => false } },
+      {
+        provide: HrService,
+        useValue: {
+          can: () => true,
+          canPay: () => false,
+          store: { companyId: company, company: () => ({ name: 'North' }) },
+          savePerson: localSave,
+        },
+      },
+    ],
+  });
+  return { request, localSave };
+}
+
 describe('Existing onboarding profile editor', () => {
   it('loads staff from the backend and saves the existing personal form without a browser workspace save', async () => {
-    const company = signal('north'),
-      request = vi.fn(),
-      localSave = vi.fn();
-    request.mockResolvedValue(profile());
-    TestBed.configureTestingModule({
-      providers: [
-        provideRouter([
-          {
-            path: 'manage/people/staff/:id/personal',
-            component: StaffProfile,
-            data: { staffSection: 'personal' },
-          },
-        ]),
-        {
-          provide: AuthService,
-          useValue: {
-            profile: () => ({ id: 'user-1' }),
-            currentUser: () => ({ name: 'Reviewer' }),
-            api: request,
-          },
-        },
-        {
-          provide: CompanyAccessService,
-          useValue: {
-            companyId: company,
-            context: () => ({ revision: 1 }),
-            can: () => true,
-            canPath: () => true,
-          },
-        },
-        { provide: PayrollService, useValue: { can: () => false } },
-        {
-          provide: HrService,
-          useValue: {
-            can: () => true,
-            canPay: () => false,
-            store: { companyId: company, company: () => ({ name: 'North' }) },
-            savePerson: localSave,
-          },
-        },
-      ],
-    });
+    const { request, localSave } = setupProfile();
     const harness = await RouterTestingHarness.create(
       '/manage/people/staff/staff-1/personal?edit=true',
     );
@@ -111,4 +116,33 @@ describe('Existing onboarding profile editor', () => {
     expect(localSave).not.toHaveBeenCalled();
     expect(harness.routeNativeElement!.textContent).toContain('Staff details saved securely.');
   });
+
+  it('renders the saved recruitment history when opening Employment & Recruitment', async () => {
+    const saved = profile();
+    const notes = 'Passed after a practical assessment.';
+    Object.assign((saved.person as ReturnType<typeof newStaff>).hr!.employment, {
+      recruitment: {
+        applicationDate: '2026-11-01',
+        interviewDate: '2026-11-04',
+        offerDate: '2026-11-06',
+        interviewNotes: notes,
+      },
+    });
+    const { request } = setupProfile(saved);
+    const harness = await RouterTestingHarness.create('/manage/people/staff/staff-1/employment');
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(request).toHaveBeenCalledWith(
+      '/companies/north/staff/staff-1/workforce-compliance/profile',
+    );
+    const root = harness.routeNativeElement!;
+    const milestones = [...root.querySelectorAll('dt')]
+      .filter((label) =>
+        ['Application date', 'Interview date', 'Offer date'].includes(label.textContent!.trim()),
+      )
+      .map((label) => label.nextElementSibling?.textContent?.trim());
+    expect(milestones).toEqual(['2026-11-01', '2026-11-04', '2026-11-06']);
+    expect(root.textContent).toContain(notes);
+  });
+
 });

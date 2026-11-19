@@ -102,6 +102,10 @@ export class StaffCreate {
         this.draftEtag = saved.draft.etag;
         this.step.set(saved.draft.step);
       }
+      this.p.hr!.employment.recruitment = {
+        ...this.p.hr!.employment.recruitment,
+        ...row.recruitment_milestones,
+      };
       this.selectBranch(branchId);
       if (!this.branchId && this.step() > 1) this.step.set(1);
       this.baseline = JSON.stringify(this.p);

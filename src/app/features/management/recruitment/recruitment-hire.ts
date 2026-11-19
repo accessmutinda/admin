@@ -52,11 +52,7 @@ export function hireInput(person: Person, branchId?: string | null): HireInput &
         ...(recruitment
           ? {
               recruitmentSource: recruitment.source ?? '',
-              applicationDate: recruitment.applicationDate ?? '',
-              interviewDate: recruitment.interviewDate ?? '',
-              offerDate: recruitment.offerDate ?? '',
               nextReview: recruitment.nextReview ?? '',
-              interviewNotes: recruitment.interviewNotes ?? '',
             }
           : {}),
       },
@@ -90,7 +86,16 @@ export function restoreHire(person: Person, source: HireInput): Person {
     phone: source.phone ?? '',
     driver: source.is_driver ?? false,
   });
-  Object.assign(h.employment, facts['employment'] ?? {}, {
+  const {
+    recruitmentSource,
+    nextReview,
+    applicationDate: _applicationDate,
+    interviewDate: _interviewDate,
+    offerDate: _offerDate,
+    interviewNotes: _interviewNotes,
+    ...employment
+  } = facts['employment'] ?? {};
+  Object.assign(h.employment, employment, {
     type: source.employment_type ?? '',
     workingPattern:
       workingPattern(source.working_pattern ?? source.employment_type) ||
@@ -102,6 +107,11 @@ export function restoreHire(person: Person, source: HireInput): Person {
         : contractType(source.contract_type),
     contractEnd: source.contract_end ?? '',
   });
+  h.employment.recruitment = {
+    ...h.employment.recruitment,
+    source: recruitmentSource ?? h.employment.recruitment?.source,
+    nextReview: nextReview ?? h.employment.recruitment?.nextReview,
+  };
   for (const field of ['hours', 'rate', 'probationMonths', 'noticeWeeks'] as const) {
     const value = h.employment[field];
     h.employment[field] = value === null || String(value) === '' ? null : Number(value);

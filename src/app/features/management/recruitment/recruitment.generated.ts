@@ -126,6 +126,12 @@ export type RecruitmentApplication = {
   working_pattern?: '' | 'Full time' | 'Part time' | 'Bank / flexible';
   contract_type?: '' | 'Permanent' | 'Fixed term' | 'Bank' | 'Agency' | 'Contract';
   vacancy_location?: string;
+  recruitment_milestones?: {
+    applicationDate: string;
+    interviewDate: string;
+    offerDate: string;
+    interviewNotes: string;
+  };
 };
 
 export type RecruitmentApplicationWrite = {
