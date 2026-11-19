@@ -129,11 +129,7 @@
         <div>
           <dt>Other contacts</dt>
           <dd>
-            <a
-              [routerLink]="['/manage/clients', client().id]"
-              [queryParams]="{ section: 'details' }"
-              >View all contacts</a
-            >
+            <a [routerLink]="['/manage/clients', client().id, 'contacts']">View all contacts</a>
           </dd>
         </div>
       </dl>

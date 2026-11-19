@@ -684,6 +684,23 @@ describe('Service user landing and creation', () => {
     await settle(fixture);
     return fixture;
   }
+  it('opens the current service user’s Contacts workspace from the overview', async () => {
+    const fixture = await openOverview();
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    const profile: HTMLElement = fixture.nativeElement;
+    const link = [...profile.querySelectorAll<HTMLAnchorElement>('cv-client-overview a')].find(
+      (anchor) => anchor.textContent?.trim() === 'View all contacts',
+    )!;
+
+    expect(link.getAttribute('href')).toBe('/manage/clients/user-1/contacts');
+    link.dispatchEvent(new MouseEvent('click', { button: 0, bubbles: true, cancelable: true }));
+    expect(navigate).toHaveBeenCalledOnce();
+    const [destination] = navigate.mock.calls[0];
+    expect(router.serializeUrl(destination as ReturnType<Router['createUrlTree']>)).toBe(
+      '/manage/clients/user-1/contacts',
+    );
+  });
   async function openDemographics() {
     const fixture = await openOverview();
     (fixture.componentInstance as any).setSection('details');
