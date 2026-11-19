@@ -1,0 +1,1 @@
+import"./chunk-BIy20nDQ.js";import"./chunk-BUgQ0XiJ.js";import"./chunk-DI3ohc2R.js";import"./chunk-DjwnaQz-.js";import"./chunk-BB3h7WBT.js";import"./chunk-BheX-Sub.js";import"./chunk-Cjm0ZAmp.js";import{t as v}from"./chunk-De_-KqiT.js";export{v as AcademySettingsApi};

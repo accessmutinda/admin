@@ -1,0 +1,1 @@
+var i=[`Full time`,`Part time`,`Bank / flexible`];var a=[`Permanent`,`Fixed term`,`Bank`,`Agency`,`Contract`];function r(e,o){let t=n=>n.toLowerCase().replaceAll(`-`,` `).trim().replace(/\s+/g,` `);return o.find(n=>t(n)===t(e??``))??``}function c(e){return r(e,i)}function s(e){return r(e,a)}export{s as i,c as n,i as r,a as t};
