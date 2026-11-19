@@ -73,7 +73,7 @@ export type OnboardingEmploymentWrite = {
   role: string;
   location: string;
   start: string;
-  type:
+  type?:
     | 'Permanent'
     | 'Full time'
     | 'Full-time'
@@ -83,7 +83,8 @@ export type OnboardingEmploymentWrite = {
     | 'Agency'
     | 'Fixed term'
     | 'Contract'
-    | 'Bank / flexible';
+    | 'Bank / flexible'
+    | '';
   manager: string;
   department: string;
   hours: string | null;
@@ -101,6 +102,8 @@ export type OnboardingEmploymentWrite = {
     email: string;
     status: 'Requested' | 'Received' | 'Verified';
   }[];
+  workingPattern?: '' | 'Full time' | 'Part time' | 'Bank / flexible';
+  contractType?: '' | 'Permanent' | 'Fixed term' | 'Bank' | 'Agency' | 'Contract';
 };
 
 export type OnboardingChecksWrite = {

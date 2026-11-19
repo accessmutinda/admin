@@ -8,7 +8,8 @@ interface StaffSetup {
   company_id: string;
   local_date: string;
   branches: string[];
-  employment_types: string[];
+  working_patterns: string[];
+  contract_types: string[];
 }
 export interface AddedStaff {
   company_id: string;
@@ -47,7 +48,8 @@ export class StaffAddDialog {
     branch_name: '',
     job_title: '',
     start_date: '',
-    employment_type: 'Full time',
+    working_pattern: 'Full time',
+    contract_type: '',
     contract_end: '',
     is_driver: false,
   };
@@ -119,7 +121,7 @@ export class StaffAddDialog {
       reference: 'staff reference',
       job_title: 'job title',
       branch_name: 'branch',
-      employment_type: 'employment type',
+      working_pattern: 'working pattern',
       start_date: 'start date',
     };
     if (control.hasError('required') || control.hasError('pattern'))

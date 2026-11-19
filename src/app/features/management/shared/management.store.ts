@@ -121,6 +121,7 @@ export interface Vacancy {
   title: string;
   location: string;
   type: string;
+  contract_type?: string;
   salary: string;
   description?: string;
   published?: boolean;

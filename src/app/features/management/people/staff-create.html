@@ -81,7 +81,11 @@
               <dt>Email</dt>
               <dd>{{ p.email }}</dd>
               <dt>Employment</dt>
-              <dd>{{ p.role }} · {{ p.location }} · {{ p.hr!.employment.type }}</dd>
+              <dd>{{ p.role }} · {{ p.location }}</dd>
+              <dt>Working pattern</dt>
+              <dd>{{ p.hr!.employment.workingPattern || 'Not recorded' }}</dd>
+              <dt>Contract type</dt>
+              <dd>{{ p.hr!.employment.contractType || 'Not specified' }}</dd>
               <dt>Start date</dt>
               <dd>{{ p.start }}</dd>
               <dt>Status</dt>

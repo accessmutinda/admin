@@ -4,6 +4,7 @@ import { CompanyAccessService } from '../../../core/access/company-access.servic
 import { API_BASE } from '../../../core/auth/auth-api';
 import type { Vacancy, Person, StaffDocument, Company } from '../shared/management.store';
 import { vacancyClosed, vacancyScheduled } from './vacancy-deadline';
+import type { WorkingPattern } from '../people/employment-terms';
 
 import type {
   RecruitmentVacancy as VacancyDto,
@@ -202,6 +203,7 @@ export class RecruitmentApi {
       title: vacancy.title,
       location: vacancy.location,
       type: vacancy.type,
+      ...(vacancy.contract_type === undefined ? {} : { contract_type: vacancy.contract_type }),
       salary: vacancy.salary,
       description: vacancy.description ?? '',
       published: !!vacancy.published,
@@ -422,9 +424,10 @@ export class RecruitmentApi {
   }
 }
 
-export type HireInput = Omit<HireDto, 'facts' | 'status' | 'employment_type'> & {
+export type HireInput = Omit<HireDto, 'facts' | 'status' | 'employment_type' | 'working_pattern'> & {
   facts: Record<string, unknown>;
-  employment_type: string;
+  employment_type?: string;
+  working_pattern?: WorkingPattern | '';
   status?: string;
 };
 

@@ -10,6 +10,7 @@ import { FormsModule } from '@angular/forms';
 import { COURSES, Person, StaffDocument } from '../shared/management.store';
 import { HrService } from './hr.service';
 import { StaffTraining, StaffCheck, checkState, today } from './hr.models';
+import { CONTRACT_TYPES, WORKING_PATTERNS } from './employment-terms';
 @Component({
   selector: 'cv-staff-fields',
   host: { '[class.hr-compact-editor]': 'compact' },
@@ -30,6 +31,8 @@ export class StaffFields {
   @Output() savedVersion = new EventEmitter<string>();
   @Output() busyChange = new EventEmitter<boolean>();
   protected readonly hr = inject(HrService);
+  protected readonly workingPatterns = WORKING_PATTERNS;
+  protected readonly contractTypes = CONTRACT_TYPES;
   @Input() courses = COURSES;
   protected readonly checkState = (check: StaffCheck) =>
     checkState(check, this.staffId ? this.staffApi.localDate() : today());

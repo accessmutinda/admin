@@ -13,6 +13,9 @@
     <div class="job-meta">
       <span>{{ vacancy().location || 'Location' }}</span
       ><span>{{ vacancy().type }}</span>
+      @if (vacancy().contract_type; as contractType) {
+        <span>{{ contractType }}</span>
+      }
     </div>
     @if (vacancy().salary) {
       <p class="salary">{{ vacancy().salary }}</p>

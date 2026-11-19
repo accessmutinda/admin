@@ -57,15 +57,23 @@
                 maxlength="160"
             /></label>
             <label
-              >Employment type<mat-select
+              >Working pattern<mat-select
                 cvSelect
                 [(ngModel)]="draft.type"
-                name="employmentType"
-                aria-label="Employment type"
+                name="workingPattern"
+                aria-label="Working pattern"
               >
-                <mat-option value="Full time">Full time</mat-option
-                ><mat-option value="Part time">Part time</mat-option
-                ><mat-option value="Bank / flexible">Bank / flexible</mat-option>
+                @for (pattern of workingPatterns; track pattern) {
+                  <mat-option [value]="pattern">{{ pattern }}</mat-option>
+                }
+              </mat-select></label
+            >
+            <label
+              >Contract type<mat-select cvSelect [(ngModel)]="draft.contract_type" name="contractType" aria-label="Contract type">
+                <mat-option value="">Not specified</mat-option>
+                @for (type of contractTypes; track type) {
+                  <mat-option [value]="type">{{ type }}</mat-option>
+                }
               </mat-select></label
             >
             <label class="wide"
@@ -535,7 +543,8 @@
             <thead>
               <tr>
                 <th scope="col">Vacancy</th>
-                <th scope="col">Type</th>
+                <th scope="col">Working pattern</th>
+                <th scope="col">Contract type</th>
                 <th scope="col">Location</th>
                 <th scope="col">Salary</th>
                 <th class="table-date" scope="col">Go-live date</th>
@@ -552,6 +561,7 @@
                     <strong>{{ vacancy.title }}</strong>
                   </td>
                   <td>{{ vacancy.type }}</td>
+                  <td>{{ vacancy.contract_type || 'Not specified' }}</td>
                   <td>{{ vacancy.location }}</td>
                   <td>{{ vacancy.salary || 'Not specified' }}</td>
                   <td>
@@ -618,7 +628,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="9">
+                  <td colspan="10">
                     {{
                       api.vacancies().length
                         ? 'No vacancies match these filters.'

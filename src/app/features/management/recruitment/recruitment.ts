@@ -15,6 +15,7 @@ import { RouterLink } from '@angular/router';
 import { ManagementStore, STAGES, Vacancy } from '../shared/management.store';
 import { ApplicationForm } from './application-form';
 import { ToastService } from '../../../shared/ui/toast.service';
+import { CONTRACT_TYPES, WORKING_PATTERNS, workingPattern } from '../people/employment-terms';
 @Component({
   selector: 'cv-recruitment',
   imports: [
@@ -47,6 +48,8 @@ import { ToastService } from '../../../shared/ui/toast.service';
 export class Recruitment {
   protected readonly store = inject(ManagementStore);
   protected readonly api = inject(RecruitmentApi);
+  protected readonly workingPatterns = WORKING_PATTERNS;
+  protected readonly contractTypes = CONTRACT_TYPES;
   protected readonly saving = signal(false);
   private readonly toast = inject(ToastService);
   protected readonly stages = [...STAGES, 'Rejected', 'Withdrawn'];
@@ -66,7 +69,7 @@ export class Recruitment {
       .vacancies()
       .filter(
         (vacancy) =>
-          `${vacancy.title} ${vacancy.location} ${vacancy.type} ${vacancy.salary}`
+          `${vacancy.title} ${vacancy.location} ${vacancy.type} ${vacancy.contract_type ?? ''} ${vacancy.salary}`
             .toLowerCase()
             .includes(this.search().trim().toLowerCase()) &&
           (this.vacancyState() === 'All statuses' ||
@@ -187,6 +190,8 @@ export class Recruitment {
     this.vacancy = existing
       ? {
           ...structuredClone(existing),
+          type: workingPattern(existing.type) || existing.type,
+          contract_type: existing.contract_type ?? '',
           fields: structuredClone(existing.fields ?? []),
           documents: structuredClone(existing.documents ?? []),
         }
@@ -195,6 +200,7 @@ export class Recruitment {
           title: '',
           location: '',
           type: 'Full time',
+          contract_type: '',
           salary: '',
           description: '',
           published: this.api.can('publish'),

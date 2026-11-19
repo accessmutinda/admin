@@ -167,6 +167,8 @@ async function setupWizard(source = true, restore = false) {
     role: 'Care Worker',
     vacancy: 'Care Worker',
     vacancyId: 'vacancy-1',
+    working_pattern: 'Full time',
+    contract_type: 'Fixed term',
     location: 'North',
     stage: 'Offer',
     start: '',
@@ -232,7 +234,7 @@ async function setupWizard(source = true, restore = false) {
     draft: vi.fn(async () => ({ draft: draft() })),
     saveDraft,
     message: (error: Error) => error.message,
-    hire: vi.fn(async () => ({ staff_id: 'staff-1' })),
+    createStaff: vi.fn(async () => ({ staff_id: 'staff-1' })),
     access: { can: () => true },
     setDocumentType: vi.fn(async (file, type) => ({
       ...file,
@@ -300,7 +302,7 @@ describe('Accepted-offer staff setup', () => {
   it('requires an accepted recruitment source rather than opening an unbound creation form', async () => {
     const { text, api } = await setupWizard(false);
     expect(text()).toContain('Open an accepted recruitment offer');
-    expect(api.hire).not.toHaveBeenCalled();
+    expect(api.createStaff).not.toHaveBeenCalled();
   });
   it('keeps the current step when required personal information is missing', async () => {
     const { component, harness, text } = await setupWizard();
@@ -327,6 +329,18 @@ describe('Accepted-offer staff setup', () => {
     expect(component['step']()).toBe(2);
     expect(component['p'].hr!.personal.firstName).toBe('Resumed');
     expect(component['p'].hr!.employment.hours).toBe(35);
+    expect(component['p'].hr!.employment.workingPattern).toBe('Full time');
+    expect(component['p'].hr!.employment.contractType).toBe('Permanent');
+  });
+  it('prefills the advertised pattern and the contract type as separate selections', async () => {
+    const { component, harness } = await setupWizard();
+    component['select'](1);
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const root = harness.routeNativeElement!;
+    expect(root.querySelector('[aria-label="Working pattern"]')?.textContent).toContain('Full time');
+    expect(root.querySelector('[aria-label="Contract type"]')?.textContent).toContain('Fixed term');
   });
   it('leaves induction decisions until after hiring', async () => {
     const { component, harness, text } = await setupWizard();

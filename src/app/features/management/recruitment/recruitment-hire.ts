@@ -1,12 +1,14 @@
 import { Person } from '../shared/management.store';
 import { DAYS, staffRecord, weeklySlots } from '../people/hr.models';
 import { HireInput } from './recruitment-api.service';
+import { contractType, workingPattern } from '../people/employment-terms';
 
 export function hireInput(person: Person): HireInput & { status: string } {
   const h = staffRecord(person);
   const { firstName, surname, middleName, birthDate, phone, driver, photo, ...personal } =
     h.personal;
-  const { recruitment, ...employment } = h.employment;
+  const { recruitment, type, workingPattern: pattern, contractType: contract, ...employment } =
+    h.employment;
   const rows =
     h.weeklySlots && h.availabilityMode !== 'Custom times'
       ? h.weeklySlots.flatMap((slot) =>
@@ -30,7 +32,8 @@ export function hireInput(person: Person): HireInput & { status: string } {
     branch_name: person.location,
     job_title: person.role,
     start_date: person.start,
-    employment_type: employment.type,
+    working_pattern: workingPattern(pattern ?? type),
+    contract_type: contractType(contract ?? type),
     is_driver: driver,
     contract_end: employment.contractEnd || null,
     facts: {
@@ -43,7 +46,6 @@ export function hireInput(person: Person): HireInput & { status: string } {
       employment: {
         ...Object.fromEntries(
           Object.entries(employment)
-            .filter(([key]) => key !== 'type')
             .map(([key, value]) => [key, value === null ? null : String(value)]),
         ),
         ...(recruitment
@@ -89,6 +91,14 @@ export function restoreHire(person: Person, source: HireInput): Person {
   });
   Object.assign(h.employment, facts['employment'] ?? {}, {
     type: source.employment_type ?? '',
+    workingPattern:
+      workingPattern(source.working_pattern ?? source.employment_type) ||
+      h.employment.workingPattern ||
+      '',
+    contractType:
+      source.contract_type === undefined
+        ? contractType(source.employment_type) || h.employment.contractType || ''
+        : contractType(source.contract_type),
     contractEnd: source.contract_end ?? '',
   });
   for (const field of ['hours', 'rate', 'probationMonths', 'noticeWeeks'] as const) {

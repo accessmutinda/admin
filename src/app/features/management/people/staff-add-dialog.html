@@ -203,22 +203,30 @@
               }
             </label>
             <label
-              >Employment type *<select
-                name="employment_type"
+              >Working pattern *<select
+                name="working_pattern"
                 required
-                [(ngModel)]="form.employment_type"
-                [attr.aria-invalid]="!!fieldError('employment_type', wizard)"
+                [(ngModel)]="form.working_pattern"
+                [attr.aria-invalid]="!!fieldError('working_pattern', wizard)"
                 [attr.aria-describedby]="
-                  fieldError('employment_type', wizard) ? 'staff-error-employment_type' : null
+                  fieldError('working_pattern', wizard) ? 'staff-error-working_pattern' : null
                 "
               >
-                @for (type of setup()!.employment_types; track type) {
+                @for (pattern of setup()!.working_patterns; track pattern) {
+                  <option [value]="pattern">{{ pattern }}</option>
+                }
+              </select>
+              @if (fieldError('working_pattern', wizard); as message) {
+                <small class="field-error" id="staff-error-working_pattern">{{ message }}</small>
+              }
+            </label>
+            <label>Contract type
+              <select name="contract_type" [(ngModel)]="form.contract_type">
+                <option value="">Not specified</option>
+                @for (type of setup()!.contract_types; track type) {
                   <option [value]="type">{{ type }}</option>
                 }
               </select>
-              @if (fieldError('employment_type', wizard); as message) {
-                <small class="field-error" id="staff-error-employment_type">{{ message }}</small>
-              }
             </label>
             <label
               >Start date *<input
@@ -384,8 +392,16 @@
               <dd>{{ form.job_title }} / {{ form.branch_name }}</dd>
             </div>
             <div class="review-item">
-              <dt>Employment</dt>
-              <dd>{{ form.employment_type }} · Starting {{ form.start_date }}</dd>
+              <dt>Working pattern</dt>
+              <dd>{{ form.working_pattern }}</dd>
+            </div>
+            <div class="review-item">
+              <dt>Contract type</dt>
+              <dd>{{ form.contract_type || 'Not specified' }}</dd>
+            </div>
+            <div class="review-item">
+              <dt>Start date</dt>
+              <dd>{{ form.start_date }}</dd>
             </div>
             <div class="review-item">
               <dt>Weekly hours</dt>

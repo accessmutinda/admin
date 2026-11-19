@@ -27,6 +27,7 @@ export type RecruitmentVacancy = {
     required: boolean;
   }[];
   applicant_count: number;
+  contract_type?: '' | 'Permanent' | 'Fixed term' | 'Bank' | 'Agency' | 'Contract';
 };
 
 export type RecruitmentVacancyWrite = {
@@ -49,6 +50,7 @@ export type RecruitmentVacancyWrite = {
     label: string;
     required?: boolean;
   }[];
+  contract_type?: '' | 'Permanent' | 'Fixed term' | 'Bank' | 'Agency' | 'Contract';
 };
 
 export type RecruitmentApplication = {
@@ -121,6 +123,8 @@ export type RecruitmentApplication = {
     reason: string;
     decision_at: string | null;
   }[];
+  working_pattern?: '' | 'Full time' | 'Part time' | 'Bank / flexible';
+  contract_type?: '' | 'Permanent' | 'Fixed term' | 'Bank' | 'Agency' | 'Contract';
 };
 
 export type RecruitmentApplicationWrite = {
@@ -212,6 +216,10 @@ export type RecruitmentUpload = {
   expires_at?: string;
 };
 
+export type RecruitmentDocumentTypeWrite = {
+  document_type: string;
+};
+
 export type RecruitmentUploadSession = {
   company_id?: string;
   vacancy_id: string;
@@ -294,6 +302,7 @@ export type RecruitmentPublicVacancy = {
     code: string;
   };
   consent_version: string;
+  contract_type?: '' | 'Permanent' | 'Fixed term' | 'Bank' | 'Agency' | 'Contract';
 };
 
 export type RecruitmentReceipt = {
@@ -313,7 +322,7 @@ export type RecruitmentHire = {
   branch_name: string;
   job_title: string;
   start_date: string;
-  employment_type:
+  employment_type?:
     | 'Full time'
     | 'Part time'
     | 'Bank / flexible'
@@ -337,6 +346,8 @@ export type RecruitmentHire = {
     references?: {}[];
   };
   file_ids?: string[];
+  working_pattern?: 'Full time' | 'Part time' | 'Bank / flexible';
+  contract_type?: '' | 'Permanent' | 'Fixed term' | 'Bank' | 'Agency' | 'Contract';
 };
 
 export type RecruitmentSetupDraft = {
@@ -377,6 +388,8 @@ export type RecruitmentSetupDraft = {
       references?: {}[];
     };
     file_ids?: string[];
+    working_pattern?: '' | 'Full time' | 'Part time' | 'Bank / flexible';
+    contract_type?: '' | 'Permanent' | 'Fixed term' | 'Bank' | 'Agency' | 'Contract';
   };
 };
 
@@ -581,8 +594,4 @@ export type RecruitmentOnboardingPage = {
       drafts: string | null;
     };
   };
-};
-
-export type RecruitmentDocumentTypeWrite = {
-  document_type: string;
 };

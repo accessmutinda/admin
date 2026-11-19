@@ -144,8 +144,8 @@
       <div>
         <span class="material-symbols-outlined" aria-hidden="true">work</span
         ><span
-          ><dd>{{ p.hr.employment.type || 'Not recorded' }}</dd>
-          <dt>Employment type</dt></span
+          ><dd>{{ p.hr.employment.workingPattern || 'Not recorded' }}</dd>
+          <dt>Working pattern</dt></span
         >
       </div>
     </dl>
@@ -319,8 +319,10 @@
                   <dd>{{ p.role }}</dd>
                   <dt>Staff reference</dt>
                   <dd>{{ p.hr.reference }}</dd>
-                  <dt>Employment type</dt>
-                  <dd>{{ p.hr.employment.type || 'Not recorded' }}</dd>
+                  <dt>Working pattern</dt>
+                  <dd>{{ p.hr.employment.workingPattern || 'Not recorded' }}</dd>
+                  <dt>Contract type</dt>
+                  <dd>{{ p.hr.employment.contractType || 'Not specified' }}</dd>
                   <dt>Base branch</dt>
                   <dd>{{ p.location }}</dd>
                   <dt>Start date</dt>
@@ -607,8 +609,10 @@
               <dd>{{ p.role }}</dd>
               <dt>Staff reference</dt>
               <dd>{{ p.hr.reference }}</dd>
-              <dt>Employment type</dt>
-              <dd>{{ p.hr.employment.type || 'Not recorded' }}</dd>
+              <dt>Working pattern</dt>
+              <dd>{{ p.hr.employment.workingPattern || 'Not recorded' }}</dd>
+              <dt>Contract type</dt>
+              <dd>{{ p.hr.employment.contractType || 'Not specified' }}</dd>
               <dt>Branch</dt>
               <dd>{{ p.location }}</dd>
               <dt>Start date</dt>
@@ -657,8 +661,10 @@
             <dl class="hr-detail">
               <dt>Current role</dt>
               <dd>{{ p.role }}</dd>
-              <dt>Employment type</dt>
-              <dd>{{ p.hr.employment.type || 'Not recorded' }}</dd>
+              <dt>Working pattern</dt>
+              <dd>{{ p.hr.employment.workingPattern || 'Not recorded' }}</dd>
+              <dt>Contract type</dt>
+              <dd>{{ p.hr.employment.contractType || 'Not specified' }}</dd>
               <dt>Start date</dt>
               <dd>{{ formatDate(p.start) }}</dd>
               <dt>Current status</dt>

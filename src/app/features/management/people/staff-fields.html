@@ -254,17 +254,23 @@
           ><label>Role / Job title *<input [(ngModel)]="p.role" required /></label
           ><label>Base branch / Location *<input [(ngModel)]="p.location" required /></label
           ><label
-            >Employment type *<mat-select
+            >Working pattern{{ staffId ? '' : ' *' }}<mat-select
               cvSelect
-              [(ngModel)]="h.employment.type"
-              required
-              aria-label="Employment type"
+              [(ngModel)]="h.employment.workingPattern"
+              [required]="!staffId"
+              aria-label="Working pattern"
             >
-              <mat-option value="">Select employment type</mat-option>
-              <mat-option value="Permanent">Permanent</mat-option>
-              <mat-option value="Fixed term">Fixed term</mat-option>
-              <mat-option value="Bank">Bank</mat-option>
-              <mat-option value="Agency">Agency</mat-option>
+              <mat-option value="">Select working pattern</mat-option>
+              @for (pattern of workingPatterns; track pattern) {
+                <mat-option [value]="pattern">{{ pattern }}</mat-option>
+              }
+            </mat-select></label
+          ><label
+            >Contract type<mat-select cvSelect [(ngModel)]="h.employment.contractType" aria-label="Contract type">
+              <mat-option value="">Not specified</mat-option>
+              @for (type of contractTypes; track type) {
+                <mat-option [value]="type">{{ type }}</mat-option>
+              }
             </mat-select></label
           ><label>Department<input [(ngModel)]="h.employment.department" /></label
           ><label>Line manager<input [(ngModel)]="h.employment.manager" /></label

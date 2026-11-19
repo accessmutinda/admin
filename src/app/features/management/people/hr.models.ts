@@ -1,6 +1,7 @@
 import type { AcademyData } from '../learning/academy/academy.models';
 import { requirementsFor, evidenceCurrent } from '../learning/academy/academy-governance.models';
 import { CHECKS, COURSES, ONBOARDING, Person } from '../shared/management.store';
+import { contractType, workingPattern } from './employment-terms';
 
 export type StaffStatus = 'Onboarding' | 'Active' | 'Inactive' | 'Left';
 export type CheckStatus = 'Not started' | 'Pending' | 'Recorded' | 'Verified' | 'Not required';
@@ -105,6 +106,8 @@ export interface StaffRecord {
       interviewNotes?: string;
     };
     type: string;
+    workingPattern?: string;
+    contractType?: string;
     department: string;
     manager: string;
     hours: number | null;
@@ -363,7 +366,7 @@ export function readiness(
     missing.push('Mandatory training');
   return { ready: !missing.length, missing };
 }
-export function staffErrors(p: Person): string[][] {
+export function staffErrors(p: Person, requireWorkingPattern = false): string[][] {
   const h = staffRecord(p);
   const personal: string[] = [];
   if (!h.personal.firstName.trim() || !h.personal.surname.trim())
@@ -373,8 +376,9 @@ export function staffErrors(p: Person): string[][] {
   if (h.personal.birthDate && (!dateValid(h.personal.birthDate) || h.personal.birthDate >= today()))
     personal.push('Enter a valid date of birth in the past.');
   const employment: string[] = [];
-  if (!p.role.trim() || !p.location.trim() || !h.employment.type.trim())
-    employment.push('Enter role, branch and employment type.');
+  if (!p.role.trim() || !p.location.trim()) employment.push('Enter role and branch.');
+  if (!h.employment.workingPattern && (requireWorkingPattern || !h.employment.contractType))
+    employment.push('Choose a working pattern.');
   if (!dateValid(p.start)) employment.push('Enter a valid start date.');
   if (!h.reference.trim()) employment.push('Enter a staff reference.');
   if (

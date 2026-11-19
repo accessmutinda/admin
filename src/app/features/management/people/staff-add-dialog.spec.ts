@@ -13,7 +13,8 @@ async function dialog() {
     company_id: 'north',
     local_date: '2026-11-13',
     branches: ['London'],
-    employment_types: ['Full time'],
+    working_patterns: ['Full time', 'Part time', 'Bank / flexible'],
+    contract_types: ['Permanent', 'Fixed term', 'Bank', 'Agency', 'Contract'],
   });
   TestBed.configureTestingModule({
     providers: [
@@ -38,6 +39,16 @@ const fields = {
 };
 
 describe('Direct staff wizard', () => {
+  it('lists unique working patterns separately from contract types', async () => {
+    const { fixture, component } = await dialog();
+    component['step'].set(1);
+    fixture.detectChanges();
+    const options = (name: string) =>
+      Array.from(fixture.nativeElement.querySelectorAll(`select[name="${name}"] option`))
+        .map((option) => (option as HTMLOptionElement).value);
+    expect(options('working_pattern')).toEqual(['Full time', 'Part time', 'Bank / flexible']);
+    expect(options('contract_type')).toEqual(['', 'Permanent', 'Fixed term', 'Bank', 'Agency', 'Contract']);
+  });
   it('validates required details before advancing and retains entered data when moving back', async () => {
     const { fixture, component } = await dialog();
     const submit = () => {

@@ -4,8 +4,9 @@ import { Person } from '../shared/management.store';
 import { HrService } from './hr.service';
 import { STAFF_STEPS, newStaff, staffRecord, staffErrors, readiness } from './hr.models';
 import { StaffFields } from './staff-fields';
-import { RecruitmentApi, asPerson, HireInput } from '../recruitment/recruitment-api.service';
+import { RecruitmentApi, asPerson } from '../recruitment/recruitment-api.service';
 import { hireInput, restoreHire } from '../recruitment/recruitment-hire';
+import { contractType, workingPattern } from './employment-terms';
 import { PageLoading } from '../../../shared/layouts/page-loading';
 @Component({
   selector: 'cv-staff-create',
@@ -60,13 +61,15 @@ export class StaffCreate {
   private async load(): Promise<void> {
     try {
       if (!this.sourceId) throw Error('Open an accepted recruitment offer to begin staff setup.');
-      await Promise.all([this.api.detail(this.sourceId), this.api.load()]);
+      await this.api.detail(this.sourceId);
       const row = this.api.record(),
         offer = row?.offers?.find((item) => item.decision === 'Accepted');
       if (!row || row.id !== this.sourceId || row.stage !== 'Offer' || !offer)
         throw Error('This application must have an accepted offer before staff setup.');
       this.p = asPerson(row);
       this.p.hr = staffRecord(this.p);
+      this.p.hr.employment.workingPattern = workingPattern(row.working_pattern);
+      this.p.hr.employment.contractType = contractType(row.contract_type);
       this.p.start = offer.start_date;
       const saved = await this.api.draft(this.sourceId);
       if (this.initialScope !== this.api.scope())
@@ -87,7 +90,7 @@ export class StaffCreate {
     if (this.busy()) return;
     this.error.set('');
     if (index > this.step()) {
-      const errors = staffErrors(this.p).slice(0, index).flat();
+      const errors = staffErrors(this.p, true).slice(0, index).flat();
       if (errors.length) {
         this.error.set(errors.join(' '));
         return;
@@ -124,7 +127,7 @@ export class StaffCreate {
     try {
       if (this.companyId !== this.api.companyId() || this.initialScope !== this.api.scope())
         throw Error('The workspace changed. Return to the original company.');
-      const errors = staffErrors(this.p).flat();
+      const errors = staffErrors(this.p, true).flat();
       if (errors.length) throw Error(errors[0]);
       await this.api.command('hire', hireInput(this.p), undefined, this.hireKey);
       this.finished = true;
