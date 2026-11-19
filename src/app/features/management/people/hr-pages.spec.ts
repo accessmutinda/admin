@@ -156,7 +156,7 @@ describe('People & HR server-backed rendered journeys', () => {
   });
 });
 
-async function setupWizard(source = true, restore = false) {
+async function setupWizard(source = true, restore = false, vacancyLocation = ' North ') {
   const row: RecruitmentApplication = {
     id: 'application-1',
     company_id: 'north',
@@ -169,7 +169,8 @@ async function setupWizard(source = true, restore = false) {
     vacancyId: 'vacancy-1',
     working_pattern: 'Full time',
     contract_type: 'Fixed term',
-    location: 'North',
+    location: 'Oxford',
+    vacancy_location: vacancyLocation,
     stage: 'Offer',
     start: '',
     staff_id: null,
@@ -213,6 +214,7 @@ async function setupWizard(source = true, restore = false) {
         email: 'resumed@example.test',
         reference: 'DRAFT-1',
         branch_name: 'North',
+        branch_id: 'alternate-branch',
         job_title: 'Care Worker',
         start_date: '2026-11-14',
         employment_type: 'Permanent',
@@ -231,10 +233,15 @@ async function setupWizard(source = true, restore = false) {
       record.set(row);
     }),
     load: vi.fn(),
+    hireBranches: vi.fn().mockResolvedValue([
+      { id: 'hiring-branch', name: 'North', code: 'NORTH' },
+      { id: 'alternate-branch', name: 'West', code: 'WEST' },
+      { id: 'personal-city-branch', name: 'Oxford', code: 'OX' },
+    ]),
     draft: vi.fn(async () => ({ draft: draft() })),
     saveDraft,
     message: (error: Error) => error.message,
-    createStaff: vi.fn(async () => ({ staff_id: 'staff-1' })),
+    command: vi.fn(async () => ({ staff_id: 'staff-1' })),
     access: { can: () => true },
     setDocumentType: vi.fn(async (file, type) => ({
       ...file,
@@ -302,7 +309,7 @@ describe('Accepted-offer staff setup', () => {
   it('requires an accepted recruitment source rather than opening an unbound creation form', async () => {
     const { text, api } = await setupWizard(false);
     expect(text()).toContain('Open an accepted recruitment offer');
-    expect(api.createStaff).not.toHaveBeenCalled();
+    expect(api.command).not.toHaveBeenCalled();
   });
   it('keeps the current step when required personal information is missing', async () => {
     const { component, harness, text } = await setupWizard();
@@ -318,7 +325,11 @@ describe('Accepted-offer staff setup', () => {
     await component['saveDraft']();
     expect(api.saveDraft).toHaveBeenCalledWith(
       'application-1',
-      expect.objectContaining({ first_name: 'Alex' }),
+      expect.objectContaining({
+        first_name: 'Alex',
+        branch_name: 'North',
+        branch_id: 'hiring-branch',
+      }),
       1,
       '"v0"',
     );
@@ -331,6 +342,8 @@ describe('Accepted-offer staff setup', () => {
     expect(component['p'].hr!.employment.hours).toBe(35);
     expect(component['p'].hr!.employment.workingPattern).toBe('Full time');
     expect(component['p'].hr!.employment.contractType).toBe('Permanent');
+    expect(component['p'].location).toBe('West');
+    expect(component['applicantLocation']).toBe('Oxford');
   });
   it('prefills the advertised pattern and the contract type as separate selections', async () => {
     const { component, harness } = await setupWizard();
@@ -341,6 +354,25 @@ describe('Accepted-offer staff setup', () => {
     const root = harness.routeNativeElement!;
     expect(root.querySelector('[aria-label="Working pattern"]')?.textContent).toContain('Full time');
     expect(root.querySelector('[aria-label="Contract type"]')?.textContent).toContain('Fixed term');
+    expect(root.querySelector('[aria-label="Base branch"]')?.textContent).toContain('North');
+    expect(root.textContent).toContain('Applicant location Oxford');
+  });
+  it('requires a recruiter selection when the vacancy location does not match a branch', async () => {
+    const { component, api, harness, text } = await setupWizard(true, false, 'Oxfordshire outreach');
+    component['select'](1);
+    harness.detectChanges();
+    expect(component['p'].location).toBe('');
+    expect(text()).toContain('Select the branch where the employee will be based.');
+    await component['create']();
+    expect(api.command).not.toHaveBeenCalled();
+    component['selectBranch']('alternate-branch');
+    await component['saveDraft']();
+    expect(api.saveDraft).toHaveBeenCalledWith(
+      'application-1',
+      expect.objectContaining({ branch_id: 'alternate-branch', branch_name: 'West' }),
+      1,
+      '"v0"',
+    );
   });
   it('leaves induction decisions until after hiring', async () => {
     const { component, harness, text } = await setupWizard();

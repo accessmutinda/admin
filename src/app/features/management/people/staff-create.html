@@ -56,9 +56,18 @@
   <div class="hr-create-layout" [class.availability-step]="step() === 2">
     <main aria-label="Staff setup form">
       @if (step() < 5) {
+        @if (step() === 1) {
+          <div class="hr-notice">
+            <p><strong>Vacancy location</strong> {{ vacancyLocation || 'Not recorded' }}</p>
+            <p><strong>Applicant location</strong> {{ applicantLocation || 'Not recorded' }}</p>
+          </div>
+        }
         <cv-staff-fields
           [p]="p"
           [applicationId]="sourceId"
+          [hireBranches]="branches"
+          [hireBranchId]="branchId"
+          (hireBranchIdChange)="selectBranch($event)"
           [step]="step()"
           (busyChange)="busy.set($event)"
         />

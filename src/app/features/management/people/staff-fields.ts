@@ -1,6 +1,6 @@
 import type { WorkforceLeave } from './availability-leave.generated';
 import { OnboardingStaffApi } from './onboarding-staff-api.service';
-import { RecruitmentApi } from '../recruitment/recruitment-api.service';
+import { RecruitmentApi, StaffBranchOption } from '../recruitment/recruitment-api.service';
 import { StaffAvailability } from './staff-availability';
 import { StaffDocumentType } from './staff-document-type';
 import { MatSelectModule } from '@angular/material/select';
@@ -26,10 +26,13 @@ export class StaffFields {
   @Input() localDate = '';
   protected readonly staffApi = inject(OnboardingStaffApi);
   @Input() applicationId = '';
+  @Input() hireBranches: StaffBranchOption[] | null = null;
+  @Input() hireBranchId = '';
   private readonly recruitmentApi = inject(RecruitmentApi);
   @Input() compact = false;
   @Output() savedVersion = new EventEmitter<string>();
   @Output() busyChange = new EventEmitter<boolean>();
+  @Output() hireBranchIdChange = new EventEmitter<string>();
   protected readonly hr = inject(HrService);
   protected readonly workingPatterns = WORKING_PATTERNS;
   protected readonly contractTypes = CONTRACT_TYPES;

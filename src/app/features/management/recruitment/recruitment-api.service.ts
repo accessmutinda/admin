@@ -25,6 +25,11 @@ export type RecruitmentSummary = SummaryDto;
 export type CandidateCompliance = ComplianceDto;
 export type Upload = UploadDto;
 export type PublicVacancy = PublicVacancyDto;
+export interface StaffBranchOption {
+  id: string;
+  name: string;
+  code: string;
+}
 interface Page<T> {
   count: number;
   next: string | null;
@@ -390,6 +395,16 @@ export class RecruitmentApi {
     id: string,
   ): Promise<{ draft: { etag: string; step: number; facts: HireInput } | null }> {
     return this.auth.api(this.path(`/applications/${id}/setup-draft`));
+  }
+  async hireBranches(): Promise<StaffBranchOption[]> {
+    const company = this.companyId();
+    const scope = this.scope();
+    const result = await this.auth.api<{ company_id: string; branch_options: StaffBranchOption[] }>(
+      this.path('/staff/setup'),
+    );
+    if (scope !== this.scope() || result.company_id !== company || !Array.isArray(result.branch_options))
+      throw Error('Staff setup does not match the selected company.');
+    return result.branch_options;
   }
   async saveDraft(
     id: string,

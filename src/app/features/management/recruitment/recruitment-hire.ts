@@ -3,7 +3,7 @@ import { DAYS, staffRecord, weeklySlots } from '../people/hr.models';
 import { HireInput } from './recruitment-api.service';
 import { contractType, workingPattern } from '../people/employment-terms';
 
-export function hireInput(person: Person): HireInput & { status: string } {
+export function hireInput(person: Person, branchId?: string | null): HireInput & { status: string } {
   const h = staffRecord(person);
   const { firstName, surname, middleName, birthDate, phone, driver, photo, ...personal } =
     h.personal;
@@ -30,6 +30,7 @@ export function hireInput(person: Person): HireInput & { status: string } {
     birth_date: birthDate || null,
     reference: h.reference,
     branch_name: person.location,
+    ...(branchId === undefined ? {} : { branch_id: branchId }),
     job_title: person.role,
     start_date: person.start,
     working_pattern: workingPattern(pattern ?? type),

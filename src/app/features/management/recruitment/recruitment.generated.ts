@@ -125,6 +125,7 @@ export type RecruitmentApplication = {
   }[];
   working_pattern?: '' | 'Full time' | 'Part time' | 'Bank / flexible';
   contract_type?: '' | 'Permanent' | 'Fixed term' | 'Bank' | 'Agency' | 'Contract';
+  vacancy_location?: string;
 };
 
 export type RecruitmentApplicationWrite = {
@@ -319,7 +320,7 @@ export type RecruitmentHire = {
   phone?: string;
   birth_date?: string | null;
   reference: string;
-  branch_name: string;
+  branch_name?: string;
   job_title: string;
   start_date: string;
   employment_type?:
@@ -348,6 +349,7 @@ export type RecruitmentHire = {
   file_ids?: string[];
   working_pattern?: 'Full time' | 'Part time' | 'Bank / flexible';
   contract_type?: '' | 'Permanent' | 'Fixed term' | 'Bank' | 'Agency' | 'Contract';
+  branch_id?: string | null;
 };
 
 export type RecruitmentSetupDraft = {
@@ -390,6 +392,7 @@ export type RecruitmentSetupDraft = {
     file_ids?: string[];
     working_pattern?: '' | 'Full time' | 'Part time' | 'Bank / flexible';
     contract_type?: '' | 'Permanent' | 'Fixed term' | 'Bank' | 'Agency' | 'Contract';
+    branch_id?: string | null;
   };
 };
 

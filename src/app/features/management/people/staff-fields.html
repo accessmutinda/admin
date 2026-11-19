@@ -252,8 +252,26 @@
         <div class="hr-panel-body hr-form hr-employment-fields">
           <label>Staff reference *<input [(ngModel)]="h.reference" required /></label
           ><label>Role / Job title *<input [(ngModel)]="p.role" required /></label
-          ><label>Base branch / Location *<input [(ngModel)]="p.location" required /></label
-          ><label
+          >
+          @if (hireBranches !== null) {
+            <label>Base branch *
+              <mat-select cvSelect required aria-label="Base branch"
+                [ngModel]="hireBranchId" (ngModelChange)="hireBranchIdChange.emit($event)">
+                <mat-option value="">Select an active branch</mat-option>
+                @for (branch of hireBranches; track branch.id) {
+                  <mat-option [value]="branch.id">{{ branch.name }} · {{ branch.code }}</mat-option>
+                }
+              </mat-select>
+              @if (hireBranches.length === 0) {
+                <small>Add an active company branch before creating this staff record.</small>
+              } @else if (!hireBranchId) {
+                <small>Select the branch where the employee will be based.</small>
+              }
+            </label>
+          } @else {
+            <label>Base branch / Location *<input [(ngModel)]="p.location" required /></label>
+          }
+          <label
             >Working pattern{{ staffId ? '' : ' *' }}<mat-select
               cvSelect
               [(ngModel)]="h.employment.workingPattern"

@@ -4,7 +4,7 @@ import { Person } from '../shared/management.store';
 import { HrService } from './hr.service';
 import { STAFF_STEPS, newStaff, staffRecord, staffErrors, readiness } from './hr.models';
 import { StaffFields } from './staff-fields';
-import { RecruitmentApi, asPerson } from '../recruitment/recruitment-api.service';
+import { RecruitmentApi, asPerson, StaffBranchOption } from '../recruitment/recruitment-api.service';
 import { hireInput, restoreHire } from '../recruitment/recruitment-hire';
 import { contractType, workingPattern } from './employment-terms';
 import { PageLoading } from '../../../shared/layouts/page-loading';
@@ -38,6 +38,10 @@ export class StaffCreate {
   protected readonly invalid = signal('');
   protected readonly ready = readiness;
   protected p: Person = newStaff();
+  protected branches: StaffBranchOption[] = [];
+  protected branchId = '';
+  protected vacancyLocation = '';
+  protected applicantLocation = '';
   protected readonly sourceId = this.route.snapshot.queryParamMap.get('source') ?? '';
   private baseline = '';
   private finished = false;
@@ -61,12 +65,21 @@ export class StaffCreate {
   private async load(): Promise<void> {
     try {
       if (!this.sourceId) throw Error('Open an accepted recruitment offer to begin staff setup.');
-      await this.api.detail(this.sourceId);
+      const [, branches] = await Promise.all([
+        this.api.detail(this.sourceId),
+        this.api.hireBranches(),
+      ]);
+      if (this.initialScope !== this.api.scope())
+        throw Error('The workspace or recruitment access changed.');
       const row = this.api.record(),
         offer = row?.offers?.find((item) => item.decision === 'Accepted');
       if (!row || row.id !== this.sourceId || row.stage !== 'Offer' || !offer)
         throw Error('This application must have an accepted offer before staff setup.');
+      this.branches = branches;
+      this.vacancyLocation = row.vacancy_location ?? '';
+      this.applicantLocation = row.location;
       this.p = asPerson(row);
+      this.p.location = '';
       this.p.hr = staffRecord(this.p);
       this.p.hr.employment.workingPattern = workingPattern(row.working_pattern);
       this.p.hr.employment.contractType = contractType(row.contract_type);
@@ -74,17 +87,45 @@ export class StaffCreate {
       const saved = await this.api.draft(this.sourceId);
       if (this.initialScope !== this.api.scope())
         throw Error('The workspace or recruitment access changed.');
+      let branchId = this.matchBranch(this.vacancyLocation);
       if (saved.draft) {
-        this.p = restoreHire(this.p, saved.draft.facts);
+        const facts = saved.draft.facts;
+        this.p = restoreHire(this.p, facts);
+        if (facts.branch_id !== undefined) {
+          branchId = facts.branch_id ?? '';
+        } else if (
+          facts.branch_name &&
+          this.locationKey(facts.branch_name) !== this.locationKey(this.applicantLocation)
+        ) {
+          branchId = this.matchBranch(facts.branch_name);
+        }
         this.draftEtag = saved.draft.etag;
         this.step.set(saved.draft.step);
       }
+      this.selectBranch(branchId);
+      if (!this.branchId && this.step() > 1) this.step.set(1);
       this.baseline = JSON.stringify(this.p);
     } catch (error) {
       this.invalid.set(this.api.message(error));
     } finally {
       this.loading.set(false);
     }
+  }
+  private locationKey(value: string): string {
+    return value.trim().toLowerCase();
+  }
+  private matchBranch(name: string): string {
+    const key = this.locationKey(name);
+    if (!key) return '';
+    const matches = this.branches.filter(
+      (branch) => this.locationKey(branch.name) === key,
+    );
+    return matches.length === 1 ? matches[0].id : '';
+  }
+  protected selectBranch(id: string): void {
+    const branch = this.branches.find((option) => option.id === id);
+    this.branchId = branch?.id ?? '';
+    this.p.location = branch?.name ?? '';
   }
   protected select(index: number): void {
     if (this.busy()) return;
@@ -107,7 +148,7 @@ export class StaffCreate {
         throw Error('The workspace changed. Return to the original company.');
       const saved = await this.api.saveDraft(
         this.sourceId,
-        hireInput(this.p),
+        hireInput(this.p, this.branchId || null),
         this.step(),
         this.draftEtag,
       );
@@ -127,9 +168,13 @@ export class StaffCreate {
     try {
       if (this.companyId !== this.api.companyId() || this.initialScope !== this.api.scope())
         throw Error('The workspace changed. Return to the original company.');
+      if (!this.branchId) {
+        this.step.set(1);
+        throw Error('Choose an active company branch before creating the staff record.');
+      }
       const errors = staffErrors(this.p, true).flat();
       if (errors.length) throw Error(errors[0]);
-      await this.api.command('hire', hireInput(this.p), undefined, this.hireKey);
+      await this.api.command('hire', hireInput(this.p, this.branchId), undefined, this.hireKey);
       this.finished = true;
       await this.router.navigate(['/manage/people/onboarding'], {
         queryParams: { q: this.p.name },
