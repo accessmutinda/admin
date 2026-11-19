@@ -67,6 +67,7 @@ describe('Risk assessments backend workflow', () => {
       assessments: [record()],
       history: [],
       legacy: [],
+      legacy_history: [],
       documents: [],
       incidents_available: false,
       company_name: 'North Care',
@@ -160,6 +161,57 @@ describe('Risk assessments backend workflow', () => {
       'Critical',
     ]);
   });
+  it('shows only the current profile risk after reload and keeps dated revisions in history', async () => {
+    const reference = { name: 'Risk at the front steps', date: '2026-11-10', level: 'High' };
+    workspace.legacy = [
+      { ...reference, id: 'second', detail: 'Updated after review', status: 'Active' },
+    ];
+    workspace.legacy_history = [
+      {
+        ...reference,
+        id: 'first',
+        detail: 'First assessment',
+        status: 'Superseded',
+        recorded_at: '2026-11-10T10:30:00Z',
+      },
+    ];
+    await settle(fixture);
+
+    workspace.legacy_history.unshift({
+      ...workspace.legacy[0],
+      status: 'Superseded',
+      recorded_at: '2026-11-10T11:30:00Z',
+    });
+    workspace.legacy = [{ ...reference, id: 'third', detail: 'Latest findings', status: 'Active' }];
+    fixture.destroy();
+    fixture = TestBed.createComponent(RiskAssessments);
+    await settle(fixture);
+
+    const root: HTMLElement = fixture.nativeElement;
+    const panel = [...root.querySelectorAll('section')].find(
+      (section) => section.querySelector('h2')?.textContent === 'Existing risk records',
+    )!;
+    const current = panel.querySelectorAll(':scope > .legacy-row');
+    expect(current).toHaveLength(1);
+    expect(current[0].textContent).toContain('Latest findings');
+    expect(current[0].querySelector('.status')?.textContent).toBe('Active');
+    const history = panel.querySelector<HTMLDetailsElement>('details')!;
+    expect(history.open).toBe(false);
+    expect(history.querySelector('summary')?.textContent).toContain('Revision history (2)');
+    history.open = true;
+    expect(
+      [...history.querySelectorAll('.legacy-row div p:last-child')].map((row) => row.textContent),
+    ).toEqual(['Updated after review', 'First assessment']);
+    expect([...history.querySelectorAll('.status')].map((badge) => badge.textContent)).toEqual([
+      'Superseded',
+      'Superseded',
+    ]);
+    expect([...history.querySelectorAll('time')].map((date) => date.dateTime)).toEqual([
+      '2026-11-10T11:30:00Z',
+      '2026-11-10T10:30:00Z',
+    ]);
+  });
+
   it('saves the existing creation form with allowlisted input and an idempotency key', async () => {
     await settle(fixture);
     editor.start('General');

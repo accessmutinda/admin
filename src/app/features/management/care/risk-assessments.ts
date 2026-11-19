@@ -114,6 +114,7 @@ export class RiskAssessments {
     latestRisks(this.register().assessments.filter((a) => a.status === 'Approved')),
   );
   protected readonly legacy = computed(() => this.data()?.legacy ?? []);
+  protected readonly legacyHistory = computed(() => this.data()?.legacy_history ?? []);
   protected readonly manager = computed(() => this.api.can('approve'));
   protected readonly canEdit = computed(() => this.api.can('edit'));
   protected readonly canCreate = computed(() => this.api.can('create'));

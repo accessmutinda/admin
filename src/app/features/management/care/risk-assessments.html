@@ -238,15 +238,14 @@
                     </table>
                   </div>
                 </section>
-                @if (legacy().length) {
+                @if (legacy().length || legacyHistory().length) {
                   <section class="panel">
                     <div class="panel-title">
                       <h2>Existing risk records</h2>
-                      <span class="muted">Original records retained</span>
                     </div>
                     <p class="muted">
-                      These records have not been scored using the new matrix. Review them before
-                      creating a structured assessment.
+                      Current records from the service user profile. Review them before creating a
+                      scored assessment.
                     </p>
                     @for (r of legacy(); track r.id) {
                       <div class="legacy-row">
@@ -258,9 +257,28 @@
                         ><a
                           [routerLink]="['/manage/clients', id()]"
                           [queryParams]="{ section: 'risks', entry: r.id }"
-                          >Open original →</a
+                          >Open profile register →</a
                         >
                       </div>
+                    }
+                    @if (legacyHistory().length) {
+                      <details class="legacy-history">
+                        <summary>Revision history ({{ legacyHistory().length }})</summary>
+                        @for (revision of legacyHistory(); track revision.id) {
+                          <div class="legacy-row">
+                            <div>
+                              <strong>{{ revision.name }}</strong>
+                              <p>
+                                Saved <time [attr.datetime]="revision.recorded_at">{{
+                                  revision.recorded_at | date: 'd MMM y, HH:mm:ss'
+                                }}</time>
+                              </p>
+                              <p>{{ revision.detail }}</p>
+                            </div>
+                            <span class="status">{{ revision.status }}</span>
+                          </div>
+                        }
+                      </details>
                     }
                   </section>
                 }

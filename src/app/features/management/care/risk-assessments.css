@@ -440,6 +440,14 @@ th small {
   color: #718398;
   white-space: pre-line;
 }
+.legacy-history {
+  margin-top: 12px;
+}
+.legacy-history summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 10px 0;
+}
 .type-panel {
   max-width: 1000px;
   margin-left: auto;

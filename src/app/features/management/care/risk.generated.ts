@@ -433,6 +433,15 @@ export type RiskWorkspace = {
     date: string;
     level: string;
   }[];
+  legacy_history: {
+    status: string;
+    id: string;
+    name: string;
+    detail: string;
+    date: string;
+    level: string;
+    recorded_at: string;
+  }[];
   documents: {
     status: string;
     id: string;
@@ -551,6 +560,16 @@ export type RiskReference = {
   detail: string;
   date: string;
   level: string;
+};
+
+export type RiskRevisionReference = {
+  status: string;
+  id: string;
+  name: string;
+  detail: string;
+  date: string;
+  level: string;
+  recorded_at: string;
 };
 
 export type RiskActionWrite = {
