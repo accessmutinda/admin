@@ -144,7 +144,13 @@ export interface StaffRecord {
   };
   training: StaffTraining[];
   trainingHistory?: StaffTraining[];
-  induction: { id: string; title: string; complete: boolean; evidenceId?: string }[];
+  induction: {
+    id: string;
+    title: string;
+    complete: boolean;
+    evidenceId?: string;
+    completedByOffer?: boolean;
+  }[];
   bookings?: {
     id: string;
     courseId: string;
@@ -211,6 +217,8 @@ export function checkId(title: string): string {
 export function staffRecord(p: Person): StaffRecord {
   if (p.hr?.version === 1) {
     const h = structuredClone(p.hr);
+    h.employment.workingPattern = workingPattern(h.employment.workingPattern ?? h.employment.type);
+    h.employment.contractType = contractType(h.employment.contractType ?? h.employment.type);
     h.bookings ??= [];
     for (const courseId of p.learning)
       if (!h.training.some((t) => t.courseId === courseId))

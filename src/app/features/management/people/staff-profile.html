@@ -724,7 +724,15 @@
               <dt>Start date</dt>
               <dd>{{ formatDate(p.start) }}</dd>
               <dt>Induction status</dt>
-              <dd>{{ p.hr.induction.every(inductionComplete) ? 'Completed' : 'In progress' }}</dd>
+              <dd>
+                @if (!p.hr.induction.length) {
+                  Not recorded
+                } @else if (p.hr.induction.every(inductionComplete)) {
+                  Completed
+                } @else {
+                  In progress
+                }
+              </dd>
               <dt>Next review due</dt>
               <dd>{{ p.hr.employment.recruitment?.nextReview || 'Not scheduled' }}</dd>
             </dl>
@@ -911,6 +919,8 @@
                   t.complete ? 'Completed' : 'Outstanding'
                 }}</span>
               </div>
+            } @empty {
+              <p class="hr-muted">No induction tasks recorded.</p>
             }
           </div>
         </section>
@@ -1278,6 +1288,8 @@
                   t.complete ? 'Completed' : 'Outstanding'
                 }}</span>
               </div>
+            } @empty {
+              <p class="hr-muted">No induction tasks recorded.</p>
             }
           </div>
         </section>

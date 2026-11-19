@@ -551,10 +551,15 @@
           }
           @for (t of h.induction; track t.id) {
             <label class="hr-check"
-              ><input type="checkbox" [(ngModel)]="t.complete" [disabled]="!!applicationId" />{{
-                t.title
-              }}</label
-            >
+              ><input
+                type="checkbox"
+                [(ngModel)]="t.complete"
+                [disabled]="!!applicationId || !!t.completedByOffer"
+              />{{ t.title }}
+              @if (t.completedByOffer) {
+                <span class="hr-muted">Recorded in Recruitment</span>
+              }
+            </label>
           }
         </div>
       </section>
