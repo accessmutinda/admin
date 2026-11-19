@@ -1,4 +1,6 @@
 import { TestBed } from '@angular/core/testing';
+import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
+import { MatSelectHarness } from '@angular/material/select/testing';
 import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -50,7 +52,7 @@ function setupProfile(response = profile()) {
   TestBed.configureTestingModule({
     providers: [
       provideRouter(
-        ['personal', 'employment', 'training'].map((section) => ({
+        ['overview', 'personal', 'employment', 'training'].map((section) => ({
           path: `manage/people/staff/:id/${section}`,
           component: StaffProfile,
           data: { staffSection: section },
@@ -120,6 +122,83 @@ describe('Existing onboarding profile editor', () => {
     expect(save[1]).not.toHaveProperty('reviewer');
     expect(localSave).not.toHaveBeenCalled();
     expect(harness.routeNativeElement!.textContent).toContain('Staff details saved securely.');
+  });
+
+  it('shows the same saved employment terms in Overview, Employment Summary and the edit form', async () => {
+    let saved = profile();
+    const savedTerms = () => (saved.person as ReturnType<typeof newStaff>).hr!.employment;
+    Object.assign(savedTerms(), {
+      type: 'Full-time',
+      workingPattern: 'Full time',
+      contractType: '',
+    });
+    const { request } = setupProfile(saved);
+    const staffPath = '/manage/people/staff/staff-1';
+    const apiPath = '/companies/north/staff/staff-1';
+    request.mockImplementation(async (path, body, method) => {
+      if (path === apiPath + '/workforce-compliance/employment' && method === 'PATCH') {
+        Object.assign(savedTerms(), {
+          workingPattern: body.workingPattern,
+          contractType: body.contractType,
+        });
+        saved = { ...saved, version: 2, etag: '"v2"' };
+      }
+      return structuredClone(saved);
+    });
+    const harness = await RouterTestingHarness.create(staffPath + '/overview');
+    const settle = async () => {
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+    };
+    const reopen = async (section: string) => {
+      await harness.navigateByUrl(`${staffPath}/${section}`);
+      await settle();
+    };
+    const display = (heading: string) => {
+      const panel = [...harness.routeNativeElement!.querySelectorAll('section.hr-panel')].find(
+        (section) =>
+          section.querySelector('h2')?.textContent?.replace(/\s+/g, ' ').includes(heading),
+      )!;
+      return ['Working pattern', 'Contract type'].map((term) =>
+        [...panel.querySelectorAll('dt')]
+          .find((label) => label.textContent?.trim() === term)
+          ?.nextElementSibling?.textContent?.trim(),
+      );
+    };
+    const loader = TestbedHarnessEnvironment.loader(harness.fixture);
+    const select = (label: string) =>
+      loader.getHarness(MatSelectHarness.with({ selector: `[aria-label="${label}"]` }));
+
+    await settle();
+    expect(display('Employment Details')).toEqual(['Full time', 'Not specified']);
+    await reopen('employment?edit=true');
+    let pattern = await select('Working pattern');
+    let contract = await select('Contract type');
+    expect(await pattern.getValueText()).toBe('Full time');
+    await pattern.clickOptions({ text: 'Part time' });
+    await contract.clickOptions({ text: 'Fixed term' });
+    const save = [...harness.routeNativeElement!.querySelectorAll('button')].find(
+      (button) => button.textContent?.trim() === 'Save Changes',
+    )!;
+    save.click();
+    await settle();
+    expect(request).toHaveBeenCalledWith(
+      apiPath + '/workforce-compliance/employment',
+      expect.objectContaining({ workingPattern: 'Part time', contractType: 'Fixed term' }),
+      'PATCH',
+      { 'If-Match': '"v1"' },
+    );
+
+    await reopen('overview');
+    const savedDisplay = display('Employment Details');
+    expect(savedDisplay).toEqual(['Part time', 'Fixed term']);
+    await reopen('employment');
+    expect(display('Employment Summary')).toEqual(savedDisplay);
+    await reopen('overview');
+    await reopen('employment?edit=true');
+    pattern = await select('Working pattern');
+    contract = await select('Contract type');
+    expect([await pattern.getValueText(), await contract.getValueText()]).toEqual(savedDisplay);
   });
 
   it('renders the saved recruitment history when opening Employment & Recruitment', async () => {
