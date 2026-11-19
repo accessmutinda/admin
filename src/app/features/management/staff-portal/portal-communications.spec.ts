@@ -188,6 +188,70 @@ describe('Professional communications backend workflow', () => {
     expect(call[1]).not.toHaveProperty('id');
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
+  it.each([
+    ['email', 'nurse@example.com'],
+    ['phone', '070000003'],
+  ])('preserves the draft and accepts %s as the only contact method', async (field, value) => {
+    await settle(fixture);
+    await editor.openContact();
+    await settle(fixture);
+    const root: HTMLElement = fixture.nativeElement;
+    const form = root.querySelector<HTMLFormElement>('.contact-editor form')!;
+    const input = (name: string) => form.querySelector<HTMLInputElement>(`[name="${name}"]`)!;
+    const enter = (name: string, text: string) => {
+      input(name).value = text;
+      input(name).dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    const submit = () =>
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    const description = input('phone').getAttribute('aria-describedby');
+    expect(input('email').getAttribute('aria-describedby')).toBe(description);
+    expect(form.querySelector(`#${description}`)?.textContent?.trim()).toBe(
+      'Either a phone number or an email address is required.',
+    );
+
+    enter('name', 'Alex Smith');
+    enter('relationship', 'Community care team');
+    enter('phone', '   ');
+    await settle(fixture);
+    submit();
+    await settle(fixture);
+    const alerts = root.querySelectorAll('[role="alert"]');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].id).toBe(description);
+    expect(alerts[0].textContent?.trim()).toBe('Enter a phone number or email address.');
+    expect(input('phone').getAttribute('aria-invalid')).toBe('true');
+    expect(input('email').getAttribute('aria-invalid')).toBe('true');
+    expect(input('name').value).toBe('Alex Smith');
+    expect(input('relationship').value).toBe('Community care team');
+    expect(
+      request.mock.calls.some(
+        ([path, , method]) => path.endsWith('/contacts') && method === 'POST',
+      ),
+    ).toBe(false);
+
+    enter('phone', '');
+    enter(field, value);
+    await settle(fixture);
+    expect(form.querySelector('[role="alert"]')).toBeNull();
+    expect(input('phone').hasAttribute('aria-invalid')).toBe(false);
+    expect(input('email').hasAttribute('aria-invalid')).toBe(false);
+    submit();
+    await settle(fixture);
+    expect(request).toHaveBeenCalledWith(
+      '/companies/north/service-users/person-1/contacts',
+      expect.objectContaining({
+        name: 'Alex Smith',
+        relationship: 'Community care team',
+        [field]: value,
+        [field === 'email' ? 'phone' : 'email']: '',
+      }),
+      'POST',
+      expect.any(Object),
+      'json',
+    );
+    expect(root.querySelector('.contact-editor')).toBeNull();
+  });
   it('edits the existing representative through its shared contact identity', async () => {
     await settle(fixture);
     await editor.openContact(workspace.contacts[0]);

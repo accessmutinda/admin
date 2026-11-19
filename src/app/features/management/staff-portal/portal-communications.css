@@ -133,3 +133,7 @@
 .professional-form-fields [aria-invalid='true'] {
   border-color: #d62b41;
 }
+.contact-method {
+  grid-column: 1 / -1;
+  margin: 0;
+}

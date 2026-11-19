@@ -254,18 +254,31 @@
             placeholder="District nurse · community team" /></label
         ><label
           >Phone<input
-            [attr.aria-invalid]="fieldError('phone') ? true : null"
+            [attr.aria-invalid]="contactMethodMissing() || fieldError('phone') ? true : null"
+            aria-describedby="professional-contact-method"
             [attr.title]="fieldError('phone') || null"
             name="phone"
-            [(ngModel)]="contact.phone" /></label
+            [(ngModel)]="contact.phone"
+            (ngModelChange)="clearContactMethodError($event)" /></label
         ><label
           >Email<input
             type="email"
-            [attr.aria-invalid]="fieldError('email') ? true : null"
+            [attr.aria-invalid]="contactMethodMissing() || fieldError('email') ? true : null"
+            aria-describedby="professional-contact-method"
             [attr.title]="fieldError('email') || null"
             name="email"
             [(ngModel)]="contact.email"
+            (ngModelChange)="clearContactMethodError($event)"
         /></label>
+        @if (contactMethodMissing()) {
+          <p id="professional-contact-method" class="contact-method portal-alert error" role="alert">
+            Enter a phone number or email address.
+          </p>
+        } @else {
+          <p id="professional-contact-method" class="contact-method portal-muted">
+            Either a phone number or an email address is required.
+          </p>
+        }
       </div>
       <label
         >Contact type<mat-select

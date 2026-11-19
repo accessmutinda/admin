@@ -66,6 +66,7 @@ export class PortalCommunications {
   protected readonly error = signal('');
   protected readonly notice = signal('');
   protected readonly fields = signal<Record<string, string[]>>({});
+  protected readonly contactMethodMissing = signal(false);
   protected readonly types = [
     'GP note',
     'District nurse note',
@@ -149,6 +150,7 @@ export class PortalCommunications {
         this.notice.set('');
         this.resetRecord();
         this.contact = this.blankContact();
+        this.contactMethodMissing.set(false);
         this.contactClean = JSON.stringify(this.contact);
         if (id && this.api.can('read')) void this.reload();
         else {
@@ -510,6 +512,7 @@ export class PortalCommunications {
       return;
     this.fields.set({});
     this.error.set('');
+    this.contactMethodMissing.set(false);
     const generation = ++this.contactGeneration,
       scope = this.api.scope(),
       id = this.id();
@@ -565,6 +568,10 @@ export class PortalCommunications {
     this.contactDialogOpen.set(false);
     this.addingContact.set(false);
     this.fields.set({});
+    this.contactMethodMissing.set(false);
+  }
+  protected clearContactMethodError(value: string): void {
+    if (value.trim()) this.contactMethodMissing.set(false);
   }
   protected async saveContact(): Promise<void> {
     if (this.saving()) return;
@@ -576,9 +583,12 @@ export class PortalCommunications {
       this.error.set('The workspace changed. Reopen the contact.');
       return;
     }
-    this.saving.set(true);
     this.error.set('');
     this.fields.set({});
+    const missing = !draft.phone.trim() && !draft.email.trim();
+    this.contactMethodMissing.set(missing);
+    if (missing) return;
+    this.saving.set(true);
     try {
       const hash = JSON.stringify(draft);
       if (hash !== this.contactIntent) {
