@@ -1,3 +1,3 @@
 export const environment = {
-  apiBase: 'https://api.careverity.co.uk/api/v1'
+  apiBase: 'https://care.neuraledge.co.ke/api/v1'
 };
