@@ -232,9 +232,7 @@
                 <button
                   type="button"
                   class="ua-icon-button"
-                  [disabled]="
-                    !access.core('company.memberships.manage') || member.status === 'Revoked'
-                  "
+                  [disabled]="!access.core('company.memberships.manage')"
                   [matMenuTriggerFor]="memberMenu"
                   [attr.aria-label]="'Actions for ' + (member.name || member.email)"
                 >
@@ -242,22 +240,25 @@
                     >more_horiz</span
                   ></button
                 ><mat-menu #memberMenu="matMenu">
-                  @if (member.status === 'Invited') {
+                  @if (member.status === 'Invited' || member.status === 'Revoked') {
                     <button
                       mat-menu-item
                       [disabled]="saving()"
                       (click)="invitationAction(member, 'resend')"
                     >
-                      Resend invitation
+                      Reinvite
                     </button>
-                    <button
-                      mat-menu-item
-                      [disabled]="saving()"
-                      (click)="invitationAction(member, 'revoke')"
-                    >
-                      Revoke invitation
-                    </button>
-                  } @else {
+                    @if (member.status === 'Invited') {
+                      <button
+                        mat-menu-item
+                        [disabled]="saving()"
+                        (click)="invitationAction(member, 'revoke')"
+                      >
+                        Revoke invitation
+                      </button>
+                    }
+                  }
+                  @if (member.source === 'membership' && member.status !== 'Invited') {
                     @if (member.status === 'Active' && access.core('company.memberships.read')) {
                       <button mat-menu-item (click)="inspectionAccess(member)">
                         Inspection access

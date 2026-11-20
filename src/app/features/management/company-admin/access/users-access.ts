@@ -115,31 +115,39 @@ export class UsersAccess {
   protected readonly selection = signal<string[]>([]);
   protected readonly statusFilter = signal('all');
   protected readonly roleFilter = signal('all');
-  protected readonly tableMembers = computed(() => [
-    ...this.members().map(
-      (member) =>
-        ({
-          id: member.id,
-          name: member.name,
-          email: member.email,
-          role: this.roleNames(member.role_codes),
-          roleCode: member.role_codes[0],
-          status:
-            member.status === 'active'
-              ? 'Active'
-              : member.status === 'revoked'
-                ? 'Revoked'
-                : 'Suspended',
-          version: member.version,
-          department: member.department,
-          lastLoginAt: member.last_login_at,
-          mfaPolicy: member.mfa.override,
-          required: member.mfa.required,
-        }) as Member & { required?: boolean },
-    ),
-    ...this.invitations()
-      .filter((invite) => invite.state === 'pending')
-      .map(
+  protected readonly tableMembers = computed(() => {
+    const invitations = this.invitations().filter(
+      (invite) => invite.state === 'pending' || invite.state === 'revoked',
+    );
+    const invitedEmails = new Set(
+      invitations.map((invite) => String(invite.email).trim().toLowerCase()),
+    );
+    return [
+      ...this.members()
+        .filter((member) => !invitedEmails.has(member.email.trim().toLowerCase()))
+        .map(
+          (member) =>
+            ({
+              id: member.id,
+              name: member.name,
+              email: member.email,
+              role: this.roleNames(member.role_codes),
+              roleCode: member.role_codes[0],
+              status:
+                member.status === 'active'
+                  ? 'Active'
+                  : member.status === 'revoked'
+                    ? 'Revoked'
+                    : 'Suspended',
+              version: member.version,
+              department: member.department,
+              lastLoginAt: member.last_login_at,
+              mfaPolicy: member.mfa.override,
+              required: member.mfa.required,
+              source: 'membership',
+            }) as Member & { required?: boolean; source: 'membership' | 'invitation' },
+        ),
+      ...invitations.map(
         (invite) =>
           ({
             id: invite.id,
@@ -147,10 +155,12 @@ export class UsersAccess {
             email: invite.email,
             role: this.roleNames([invite.role_code]),
             roleCode: invite.role_code,
-            status: 'Invited',
-          }) as Member & { required?: boolean },
+            status: invite.state === 'pending' ? 'Invited' : 'Revoked',
+            source: 'invitation',
+          }) as Member & { required?: boolean; source: 'membership' | 'invitation' },
       ),
-  ]);
+    ];
+  });
   protected readonly filtered = computed(() =>
     this.tableMembers().filter(
       (member) =>
@@ -531,15 +541,22 @@ export class UsersAccess {
     this.closeDialog = () => ref.close();
   }
   protected async invitationAction(member: Member, action: 'resend' | 'revoke'): Promise<void> {
+    const source = (member as Member & { source?: string }).source;
+    const invitation = source === 'invitation' || member.status === 'Invited';
     if (
       this.saving() ||
       !this.access.core('company.memberships.manage') ||
-      member.status !== 'Invited'
+      (action === 'revoke' && member.status !== 'Invited') ||
+      (action === 'resend' && member.status !== 'Invited' && member.status !== 'Revoked')
     )
       return;
     const id = this.access.companyId();
     if (action === 'revoke' && !window.confirm(`Revoke the invitation for ${member.email}?`))
       return;
+    if (action === 'resend' && !invitation) {
+      await this.reinviteMember(member, id);
+      return;
+    }
     this.saving.set(true);
     this.error.set('');
     this.notice.set('');
@@ -556,6 +573,31 @@ export class UsersAccess {
       this.notice.set(
         action === 'resend' ? 'Invitation queued for delivery.' : 'Invitation revoked.',
       );
+    } catch (error) {
+      if (id === this.access.companyId()) this.error.set((error as Error).message);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+  private async reinviteMember(member: Member, id: string): Promise<void> {
+    if (!member.roleCode) {
+      this.error.set('This person has no company role to reinvite.');
+      return;
+    }
+    this.saving.set(true);
+    this.error.set('');
+    this.notice.set('');
+    try {
+      await this.auth.api(
+        `/companies/${id}/invitations`,
+        { email: member.email.trim().toLowerCase(), role_code: member.roleCode },
+        'POST',
+        { 'Idempotency-Key': crypto.randomUUID() },
+      );
+      if (id !== this.access.companyId()) return;
+      await this.loadMembers(id);
+      await this.companiesApi.refreshCompany(id);
+      this.notice.set('Invitation queued for delivery.');
     } catch (error) {
       if (id === this.access.companyId()) this.error.set((error as Error).message);
     } finally {

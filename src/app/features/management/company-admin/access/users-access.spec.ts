@@ -130,13 +130,13 @@ describe('Company role permission editor', () => {
     expect(access.createRole.mock.calls[0][1].code).toBe('SENIOR_NURSE');
     expect(editor.roleDetail()).toBe(true);
   });
-  it('shows only pending server invitations alongside memberships', () => {
+  it('shows pending and revoked invitations alongside memberships', () => {
     editor.invitations.set([
       { id: 'pending', email: 'invite@example.test', state: 'pending', role_code: testRole.code },
       { id: 'revoked', email: 'revoked@example.test', state: 'revoked', role_code: testRole.code },
     ]);
-    expect(editor.tableMembers().map((member: any) => member.id)).toEqual(['pending']);
-    expect(editor.tableMembers()[0].status).toBe('Invited');
+    expect(editor.tableMembers().map((member: any) => member.id)).toEqual(['pending', 'revoked']);
+    expect(editor.tableMembers().map((member: any) => member.status)).toEqual(['Invited', 'Revoked']);
   });
   it('resends and revokes invitations through company-scoped server endpoints', async () => {
     access.core = () => true;
