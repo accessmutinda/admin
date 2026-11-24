@@ -1,0 +1,1 @@
+import{_ as D}from"./chunk-BIy20nDQ.js";import{T as we}from"./chunk-BUgQ0XiJ.js";import"./chunk-DI3ohc2R.js";import{i as W}from"./chunk-BB3h7WBT.js";var S=async(s,a)=>{let e=D(W),c=D(we);return await e.refreshForNavigation(),e.canPath(a.url)||c.createUrlTree([`/access-denied`])};export{S as moduleGuard};
