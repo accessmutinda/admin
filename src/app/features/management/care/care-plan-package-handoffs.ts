@@ -17,7 +17,7 @@ import { PackageHandoff } from './care-plan.models';
     './care-plan.css',
     './care-plan-demo-workflows.css',
   ],
-  template: `<section class="plan-card demo-workflow">
+  template: `<section class="plan-card demo-workflow" [class.rota-handoff]="rotaMode()">
     <div class="card-heading">
       <div>
         <p class="eyebrow">{{ connected() ? 'CARE PLAN → ROTA' : 'CARE PLAN → ROTA · DEMO' }}</p>

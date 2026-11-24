@@ -149,6 +149,88 @@ describe('Connected rota screens', () => {
     expect(editor.service.data().calls[0].end).toBe('08:30');
     fixture.destroy();
   });
+  it('loads call-type defaults from the API and adds a new type', async () => {
+    TestBed.inject(ActivatedRoute).snapshot.data = { rotaSection: 'call-packages' };
+    const previous = request.getMockImplementation()! as (...args: any[]) => any;
+    request.mockImplementation(async (path: string, body?: any, method?: string, headers?: any) => {
+      if (path.endsWith('/ecm/call-types') && method !== 'POST')
+        return {
+          company_id: 'north',
+          options: [
+            {
+              name: 'Morning call',
+              background: '#eff6ff',
+              color: '#1e40af',
+              label: 'Morning',
+              duration: 45,
+              priority: 'High',
+              skills: [],
+              active: true,
+            },
+            {
+              name: 'Night call',
+              background: '#eff6ff',
+              color: '#1e40af',
+              label: 'Night',
+              duration: 20,
+              priority: 'Standard',
+              skills: [],
+              active: true,
+            },
+          ],
+        };
+      if (path.endsWith('/ecm/call-types'))
+        return {
+          company_id: 'north',
+          name: body.name,
+          style: {
+            background: '#eff6ff',
+            color: '#1e40af',
+            label: body.name,
+            duration: 30,
+            priority: 'High',
+            skills: [],
+            active: true,
+          },
+        };
+      return previous(path, body, method, headers);
+    });
+    const fixture = TestBed.createComponent(Rota);
+    await settle(fixture);
+    const editor = fixture.componentInstance as any;
+    editor.packageClient.set('client');
+    await settle(fixture);
+    await editor.open('call');
+    await settle(fixture);
+    expect(editor.callTypes()).toContain('Night call');
+    expect(editor.call.icon).toBe('morning.jpeg');
+    editor.call.end = '';
+    editor['applyOptionalEnd']();
+    expect(editor.call.end).toBe('08:45');
+    editor.setCallType('Night call');
+    expect(editor.call.name).toBe('Night call');
+    expect(editor.call.icon).toBe('');
+    expect(editor.call.end).toBe('08:20');
+    editor.setCallType(editor.callTypeAdd);
+    expect(editor.call.name).toBe('Night call');
+    editor.callTypeName = '   ';
+    await editor.addCallType();
+    expect(editor.callTypeError()).toBe('Enter a call type.');
+    editor.setCallTypeName('Evening call');
+    await editor.addCallType();
+    await settle(fixture);
+    expect(editor.call.name).toBe('Evening call');
+    expect(editor.call.priority).toBe('High');
+    expect(editor.call.end).toBe('08:30');
+    expect(editor.callTypes()).toContain('Evening call');
+    expect(request).toHaveBeenCalledWith(
+      '/companies/north/ecm/call-types',
+      { name: 'Evening call' },
+      'POST',
+      expect.objectContaining({ 'Idempotency-Key': expect.any(String) }),
+    );
+    fixture.destroy();
+  });
   it('renders call packages from the API without allocation workflow cards', async () => {
     TestBed.inject(ActivatedRoute).snapshot.data = { rotaSection: 'call-packages' };
     const fixture = TestBed.createComponent(Rota);
@@ -212,6 +294,12 @@ describe('Connected rota screens', () => {
     await editor.open('call', 'call');
     fixture.detectChanges();
     expect(editor.call.tasks).toBe('Latest recorded instructions');
+    const tea = fixture.nativeElement.querySelector('[aria-label="Tea Call"]');
+    expect(fixture.nativeElement.querySelectorAll('.call-icon-choice').length).toBe(30);
+    tea.click();
+    fixture.detectChanges();
+    expect(editor.call.icon).toBe('tea.jpeg');
+    expect(tea.getAttribute('aria-pressed')).toBe('true');
     expect(
       fixture.nativeElement.querySelector('[role="dialog"].service-user-popup'),
     ).not.toBeNull();

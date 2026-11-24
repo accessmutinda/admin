@@ -148,13 +148,17 @@
               (edit)="editOverviewSection($event)"
               (open)="setSection($event)"
             />
+          } @else if (sectionKey() === 'packages') {
             <section class="panel client-call-packages">
               <div class="panel-toolbar">
                 <div class="client-panel-title">
                   <span class="client-icon material-symbols-outlined" aria-hidden="true"
-                    >schedule</span
+                    >event_repeat</span
                   >
-                  <h2>Call packages</h2>
+                  <div>
+                    <h2>Call packages</h2>
+                    <p>Regular visits and the tasks planned for each call.</p>
+                  </div>
                 </div>
                 <a
                   class="text-link"
@@ -187,7 +191,12 @@
                       @for (call of calls(); track call.id) {
                         <tr>
                           <td data-label="Package">
-                            <strong>{{ call.name }}</strong>
+                            <strong class="package-name"
+                              >@if (callIconSrc(call.icon, call.name); as src) {
+                                <img class="package-icon" [src]="src" alt="" />
+                              }
+                              {{ call.name }}</strong
+                            >
                           </td>
                           <td data-label="Time">
                             {{
@@ -372,9 +381,11 @@
                           <dd>
                             {{
                               file().details[field.key]
-                                ? field.type === 'date'
-                                  ? (file().details[field.key] | date: 'dd MMM yyyy')
-                                  : file().details[field.key]
+                                ? field.key === 'sexuality'
+                                  ? sexualityLabel(file().details[field.key])
+                                  : field.type === 'date'
+                                    ? (file().details[field.key] | date: 'dd MMM yyyy')
+                                    : file().details[field.key]
                                 : 'Not recorded'
                             }}
                           </dd>
@@ -701,7 +712,7 @@
     <form
       class="panel client-editor client-profile-editor"
       (ngSubmit)="save()"
-      [inert]="api.saving()"
+      [inert]="api.saving() || fundingBusy()"
     >
       <div class="profile-form-content" [class.su-dialog-content]="profileDialogOpen()">
         <div class="client-profile-form-header">
@@ -783,21 +794,117 @@
             @for (field of personalFields; track field.key) {
               @if (field.type !== 'textarea') {
                 <label
-                  >{{ field.label
-                  }}<input
-                    [type]="field.type || 'text'"
-                    [name]="field.key"
-                    [attr.name]="field.key"
-                    [(ngModel)]="draft.file!.details[field.key]"
-                    [max]="field.key === 'dob' ? today : null"
-                    [attr.aria-invalid]="!!fieldError('details.' + field.key)"
-                    [attr.aria-describedby]="
-                      fieldError('details.' + field.key)
-                        ? 'su-details-' + field.key + '-error'
-                        : null
-                    "
-                    (ngModelChange)="clearFieldError('details.' + field.key)"
-                  />
+                  >{{ field.label }}
+                  @if (field.key === 'gender') {
+                    <mat-select
+                      cvSelect
+                      name="gender"
+                      aria-label="Gender"
+                      [ngModel]="genderChoice"
+                      (ngModelChange)="setGender($event)"
+                      [attr.aria-invalid]="!!fieldError('details.gender')"
+                      [attr.aria-describedby]="
+                        fieldError('details.gender') ? 'su-details-gender-error' : null
+                      "
+                    >
+                      <mat-option value="">Not recorded</mat-option>
+                      @for (option of genderOptions(); track option) {
+                        <mat-option [value]="option">{{ option }}</mat-option>
+                      }
+                      <mat-option [value]="genderAdd">Add new</mat-option>
+                    </mat-select>
+                    @if (genderChoice === genderAdd) {
+                      <small class="client-form-hint">New gender option</small>
+                      <input
+                        name="genderName"
+                        aria-label="New gender option"
+                        maxlength="80"
+                        [ngModel]="genderName"
+                        (ngModelChange)="setGenderName($event)"
+                        [attr.aria-invalid]="!!fieldError('genderName')"
+                        [attr.aria-describedby]="
+                          fieldError('genderName') ? 'su-gender-name-error' : null
+                        "
+                      />
+                      @if (fieldError('genderName')) {
+                        <small class="client-field-error" id="su-gender-name-error">{{
+                          fieldError('genderName')
+                        }}</small>
+                      }
+                    }
+                  } @else if (field.key === 'sexuality') {
+                    <mat-select
+                      cvSelect
+                      name="sexuality"
+                      aria-label="Sexuality"
+                      [ngModel]="sexualityChoice"
+                      (ngModelChange)="setSexualityChoice($event)"
+                      [attr.aria-invalid]="!!fieldError('details.sexuality')"
+                      [attr.aria-describedby]="
+                        fieldError('details.sexuality') ? 'su-details-sexuality-error' : null
+                      "
+                    >
+                      <mat-option value="">Not recorded</mat-option>
+                      @for (option of sexualityOptions(); track option) {
+                        <mat-option [value]="option">{{ option }}</mat-option>
+                      }
+                      <mat-option [value]="sexualityAdd">Add new</mat-option>
+                    </mat-select>
+                    @if (sexualityChoice === sexualityOther) {
+                      <small class="client-form-hint">Please specify</small>
+                      <input
+                        name="sexualityDetail"
+                        aria-label="Other sexual orientation"
+                        [ngModel]="sexualityDetail"
+                        (ngModelChange)="setSexualityDetail($event)"
+                        [attr.aria-invalid]="!!fieldError('details.sexualityDetail')"
+                        [attr.aria-describedby]="
+                          fieldError('details.sexualityDetail')
+                            ? 'su-details-sexuality-detail-error'
+                            : null
+                        "
+                      />
+                      @if (fieldError('details.sexualityDetail')) {
+                        <small class="client-field-error" id="su-details-sexuality-detail-error">{{
+                          fieldError('details.sexualityDetail')
+                        }}</small>
+                      }
+                    }
+                    @if (sexualityChoice === sexualityAdd) {
+                      <small class="client-form-hint">New sexuality option</small>
+                      <input
+                        name="sexualityName"
+                        aria-label="New sexuality option"
+                        maxlength="80"
+                        [ngModel]="sexualityName"
+                        (ngModelChange)="setSexualityName($event)"
+                        [attr.aria-invalid]="!!fieldError('sexualityName')"
+                        [attr.aria-describedby]="
+                          fieldError('sexualityName') ? 'su-sexuality-name-error' : null
+                        "
+                      />
+                      @if (fieldError('sexualityName')) {
+                        <small class="client-field-error" id="su-sexuality-name-error">{{
+                          fieldError('sexualityName')
+                        }}</small>
+                      }
+                    }
+                  } @else {
+                    <input
+                      [type]="field.type || 'text'"
+                      [name]="field.key"
+                      [attr.name]="field.key"
+                      [(ngModel)]="draft.file!.details[field.key]"
+                      [max]="field.key === 'dob' ? today : null"
+                      [attr.aria-invalid]="!!fieldError('details.' + field.key)"
+                      [attr.aria-describedby]="
+                        fieldError('details.' + field.key)
+                          ? 'su-details-' + field.key + '-error'
+                          : null
+                      "
+                      (ngModelChange)="clearFieldError('details.' + field.key)"
+                    />
+                  }
                   @if (fieldError('details.' + field.key)) {
                     <small class="client-field-error" [id]="'su-details-' + field.key + '-error'">{{
                       fieldError('details.' + field.key)
@@ -873,19 +980,39 @@
                 cvSelect
                 name="funding"
                 aria-label="Funding"
-                [(ngModel)]="draft.funding"
+                [ngModel]="fundingChoice"
+                (ngModelChange)="setFunding($event)"
                 [attr.aria-invalid]="!!fieldError('funding')"
                 [attr.aria-describedby]="fieldError('funding') ? 'su-funding-error' : null"
-                (ngModelChange)="clearFieldError('funding')"
               >
-                @for (value of ['Local authority', 'Private', 'NHS']; track value) {
+                @for (value of fundingOptions(); track value) {
                   <mat-option [value]="value">{{ value }}</mat-option>
                 }
+                <mat-option [value]="fundingAdd">Add new</mat-option>
               </mat-select>
               @if (fieldError('funding')) {
                 <small class="client-field-error" [id]="'su-funding-error'">{{
                   fieldError('funding')
                 }}</small>
+              }
+              @if (fundingChoice === fundingAdd) {
+                <small class="client-form-hint">New funding name</small>
+                <input
+                  name="fundingName"
+                  aria-label="New funding name"
+                  maxlength="30"
+                  [ngModel]="fundingName"
+                  (ngModelChange)="setFundingName($event)"
+                  [attr.aria-invalid]="!!fieldError('fundingName')"
+                  [attr.aria-describedby]="
+                    fieldError('fundingName') ? 'su-funding-name-error' : null
+                  "
+                />
+                @if (fieldError('fundingName')) {
+                  <small class="client-field-error" id="su-funding-name-error">{{
+                    fieldError('fundingName')
+                  }}</small>
+                }
               }
             </label>
             <label

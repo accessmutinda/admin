@@ -116,6 +116,32 @@
   margin: 0 0 8px;
   color: #17395f;
 }
+.plan-card.rota-handoff {
+  padding: 10px 12px;
+  margin: 0 0 8px;
+  border-radius: 4px;
+}
+.plan-card.rota-handoff :is(.message, .demo-handoff) {
+  border-radius: 4px;
+}
+.plan-card.rota-handoff .card-heading {
+  gap: 6px;
+  margin: 0;
+}
+.plan-card.rota-handoff h2,
+.plan-card.rota-handoff p,
+.plan-card.rota-handoff .message {
+  margin: 0;
+}
+.plan-card.rota-handoff .card-heading + .message,
+.plan-card.rota-handoff .message + .message,
+.plan-card.rota-handoff .message + p,
+.plan-card.rota-handoff .card-heading + p {
+  margin-top: 6px;
+}
+.plan-card.rota-handoff .message {
+  padding: 8px 10px;
+}
 .plan-card h3 {
   font-size: 13px;
   margin: 10px 0;

@@ -7,10 +7,12 @@ import { MatSelectModule } from '@angular/material/select';
 import { A11yModule } from '@angular/cdk/a11y';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CvSelect } from '../../../shared/ui/select';
+import { ApiError } from '../../../core/auth/auth-api';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { RosterApi } from './roster-api.service';
 import { AccessRequired } from '../shared/access-required';
 import { validVacancyDate } from '../recruitment/vacancy-deadline';
+import { CALL_ICONS_TALL, CALL_ICONS_WIDE, callIconFile, callIconSrc } from './call-icons';
 import {
   RotaCall,
   RotaClient,
@@ -20,6 +22,7 @@ import {
   londonDate,
   londonInstant,
   minutes,
+  validTime,
   RISK_FLAGS,
 } from './rota.models';
 
@@ -62,7 +65,17 @@ export class Rota {
   protected readonly handoffClientId = this.route.snapshot.queryParamMap.get('client') || '';
   protected readonly clientFiles = !!this.route.snapshot.data['clientFiles'];
   protected readonly riskFlags = RISK_FLAGS;
+  private readonly apiCallStyles = signal<Record<
+    string,
+    {
+      duration?: number;
+      priority?: 'Standard' | 'High';
+      skills?: string[];
+      active?: boolean;
+    }
+  > | null>(null);
   private readonly callStyles = computed(() => {
+    const recorded = this.apiCallStyles() ?? this.service.data().ecm?.styles ?? {};
     if (this.section === 'call-packages') {
       const defaults: Record<
         string,
@@ -72,7 +85,7 @@ export class Rota {
           skills?: string[];
           active?: boolean;
         }
-      > = { ...this.service.data().ecm?.styles };
+      > = { ...recorded };
       for (const call of this.service.data().calls)
         if (call.scheduleRecorded && call.active && !defaults[call.name])
           defaults[call.name] = {
@@ -83,7 +96,7 @@ export class Rota {
           };
       return defaults;
     }
-    return this.service.data().ecm?.styles ?? {};
+    return recorded;
   });
   protected readonly callTypes = computed(() => Object.keys(this.callStyles()));
   protected readonly tab = signal('Overview');
@@ -200,6 +213,14 @@ export class Rota {
   };
   protected client: RotaClient = this.blankClient();
   protected call: RotaCall = this.blankCall();
+  protected readonly callTypeAdd = '__add_call_type__';
+  protected readonly wideIcons = CALL_ICONS_WIDE;
+  protected readonly tallIcons = CALL_ICONS_TALL;
+  protected readonly callIconSrc = callIconSrc;
+  protected callTypeChoice = '';
+  protected callTypeName = '';
+  protected readonly callTypeError = signal('');
+  protected readonly callTypeSaving = signal(false);
   protected cover = {
     staffIds: [] as string[],
     type: 'Temporary' as RotaVisit['allocation'],
@@ -532,6 +553,7 @@ export class Rota {
       driverRequired: false,
       backupStaffId: '',
       name: 'Morning call',
+      icon: 'morning.jpeg',
       start: '08:00',
       end: '08:45',
       weekdays: [1, 2, 3, 4, 5, 6, 0],
@@ -545,6 +567,76 @@ export class Rota {
   }
   protected clientRecord() {
     return this.service.data().clients.find((c) => c.id === this.packageClient());
+  }
+  protected canAddCallType(): boolean {
+    return this.service.access.can('care', 'ecm', 'edit');
+  }
+  protected chooseIcon(file: string): void {
+    this.call.icon = file;
+  }
+  protected setCallType(value: string): void {
+    this.callTypeChoice = value;
+    this.callTypeError.set('');
+    if (value === this.callTypeAdd) return;
+    this.call.name = value;
+    this.call.icon = callIconFile('', value);
+    this.callDefaults();
+  }
+  protected setCallTypeName(value: string): void {
+    this.callTypeName = value;
+    this.callTypeError.set('');
+  }
+  protected async addCallType(): Promise<void> {
+    const name = this.callTypeName.trim();
+    if (!name || name.length > 150) {
+      this.callTypeError.set(
+        name ? 'Call type must be 150 characters or fewer.' : 'Enter a call type.',
+      );
+      return;
+    }
+    if (this.callTypeSaving()) return;
+    this.callTypeSaving.set(true);
+    this.callTypeError.set('');
+    try {
+      const created = await this.service.addCallType(name);
+      this.apiCallStyles.update((current) => ({
+        ...(current ?? this.service.data().ecm?.styles ?? {}),
+        [created.name]: created.style,
+      }));
+      this.callTypeName = '';
+      this.setCallType(created.name);
+    } catch (error) {
+      const conflict =
+        error instanceof ApiError && error.code === 'call_type_conflict'
+          ? await this.service.loadCallTypes()
+          : null;
+      const match = conflict
+        ? Object.entries(conflict).find(([label]) => label.toLowerCase() === name.toLowerCase())
+        : undefined;
+      if (match) {
+        this.apiCallStyles.set(conflict);
+        this.callTypeName = '';
+        this.setCallType(match[0]);
+        return;
+      }
+      this.callTypeError.set(
+        error instanceof ApiError && error.fieldErrors['name']
+          ? error.fieldErrors['name'].join(' ')
+          : error instanceof Error
+            ? error.message
+            : 'The call type could not be added.',
+      );
+    } finally {
+      this.callTypeSaving.set(false);
+    }
+  }
+  private applyOptionalEnd(): void {
+    if (this.call.end || !validTime(this.call.start)) return;
+    const duration = this.callStyles()[this.call.name]?.duration ?? 45;
+    const end = (minutes(this.call.start) + duration) % 1440;
+    this.call.end = `${Math.floor(end / 60)
+      .toString()
+      .padStart(2, '0')}:${(end % 60).toString().padStart(2, '0')}`;
   }
   protected callDefaults(): void {
     const defaults = this.callStyles()[this.call.name];
@@ -751,6 +843,14 @@ export class Rota {
         client !== this.packageClient()
       )
         return;
+      const styles = kind === 'call' ? await this.service.loadCallTypes() : null;
+      if (
+        scope !== this.service.scope() ||
+        generation !== this.openGeneration ||
+        client !== this.packageClient()
+      )
+        return;
+      if (styles) this.apiCallStyles.set(styles);
       if (call) {
         if (client && call.clientId !== client)
           throw Error('This call package belongs to another service user.');
@@ -777,7 +877,11 @@ export class Rota {
         : this.blankClient();
     if (kind === 'call') {
       this.call = id ? this.call : this.blankCall();
+      this.call.icon = callIconFile(this.call.icon, this.call.name);
       this.callWasActive = !!id && this.call.active;
+      this.callTypeChoice = this.call.name;
+      this.callTypeName = '';
+      this.callTypeError.set('');
     }
     if (kind === 'allocation') {
       this.allocation = {
@@ -848,7 +952,10 @@ export class Rota {
     let result: string | null = 'Choose a valid action.';
     const kind = this.modal();
     if (kind === 'client') result = await this.service.saveClient(this.client);
-    if (kind === 'call') result = await this.service.saveCall(this.call);
+    if (kind === 'call') {
+      this.applyOptionalEnd();
+      result = await this.service.saveCall(this.call);
+    }
     if (kind === 'allocation')
       result = await this.service.generate(
         this.allocation.clientId,

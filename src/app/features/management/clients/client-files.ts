@@ -31,15 +31,22 @@ import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { RotaService } from '../rota/rota.service';
+import { callIconSrc } from '../rota/call-icons';
 import { RISK_FLAGS, RotaCall, RotaClient, completedVisit, londonDate } from '../rota/rota.models';
 import { AccessRequired } from '../shared/access-required';
 import { ManagementStore } from '../shared/management.store';
 import {
   CLIENT_SECTIONS,
   CLIENT_SECTION_GROUPS,
+  GENDER_OPTIONS,
   PERSONAL_FIELDS,
+  SEXUALITY_OPTIONS,
+  SEXUALITY_OTHER,
   ClientEntry,
   emptyClientFile,
+  joinSexuality,
+  sexualityLabel,
+  splitSexuality,
 } from './client-file.models';
 
 const RECORD_SECTIONS = [
@@ -64,6 +71,9 @@ const PROFILE_FIELD_LABELS: Record<string, string> = {
   phone: 'Phone',
   email: 'Email',
   funding: 'Funding',
+  fundingName: 'Funding name',
+  sexualityName: 'Sexuality option',
+  genderName: 'Gender option',
   priority: 'Care priority',
   active: 'Record status',
   photo: 'Profile photo',
@@ -399,6 +409,30 @@ export class ClientFiles {
     );
   }
   protected readonly personalFields = PERSONAL_FIELDS;
+  protected readonly fundingAdd = '__add_funding__';
+  protected readonly fundingOptions = signal([
+    'Local authority',
+    'Private',
+    'NHS',
+  ]);
+  protected fundingChoice = 'Local authority';
+  protected fundingName = '';
+  protected readonly fundingBusy = signal(false);
+  private fundingLoad = 0;
+  protected readonly sexualityOther = SEXUALITY_OTHER;
+  protected readonly sexualityLabel = sexualityLabel;
+  protected readonly genderAdd = '__add_gender__';
+  protected readonly genderOptions = signal([...GENDER_OPTIONS]);
+  protected genderChoice = '';
+  protected genderName = '';
+  private genderLoad = 0;
+  protected readonly sexualityAdd = '__add_sexuality__';
+  protected readonly sexualityOptions = signal([...SEXUALITY_OPTIONS]);
+  protected sexualityChoice = '';
+  protected sexualityDetail = '';
+  protected sexualityName = '';
+  private sexualityBaseline = '';
+  private sexualityLoad = 0;
   protected readonly riskFlags = RISK_FLAGS;
   protected readonly sectionKey = signal(
     CLIENT_SECTIONS.some(
@@ -436,6 +470,7 @@ export class ClientFiles {
   protected readonly highRisk = computed(
     () => this.api.summary()?.high_risk ?? this.api.summary()?.high_priority ?? '—',
   );
+  protected readonly callIconSrc = callIconSrc;
   protected readonly calls = computed<Partial<RotaCall>[]>(() =>
     this.client()?.overview
       ? this.client()!.overview!.record.packages.map((call) => ({ ...call, active: true }))
@@ -551,6 +586,15 @@ export class ClientFiles {
     this.sourceWorkspace = this.api.companyId();
     this.profileScope = this.api.scope();
     this.original = create ? null : this.api.selected();
+    this.loadSexuality();
+    this.sexualityName = '';
+    void this.loadSexualityOptions();
+    this.genderChoice = this.draft.file?.details['gender'] ?? '';
+    this.genderName = '';
+    void this.loadGenderOptions();
+    this.fundingChoice = this.draft.funding || 'Local authority';
+    this.fundingName = '';
+    void this.loadFunding();
     this.error.set('');
     this.fieldErrors.set({});
     this.editing.set('profile');
@@ -584,6 +628,192 @@ export class ClientFiles {
     this.entry = entry ? structuredClone(entry) : this.blankEntry();
     this.error.set('');
     this.editing.set('entry');
+  }
+  private async loadFunding(): Promise<void> {
+    const scope = this.profileScope;
+    const request = ++this.fundingLoad;
+    try {
+      const list = await this.api.fundingOptions();
+      if (request !== this.fundingLoad || scope !== this.api.scope() || this.editing() !== 'profile')
+        return;
+      const names = list.options.map((option) => option.name);
+      const current = this.draft.funding;
+      if (current && !names.some((name) => name.toLowerCase() === current.toLowerCase()))
+        names.push(current);
+      this.fundingOptions.set(names);
+      if (this.fundingChoice === this.fundingAdd) return;
+      const selected = this.fundingChoice || current;
+      const match = names.find((name) => name.toLowerCase() === selected.toLowerCase());
+      this.fundingChoice = match ?? names[0] ?? '';
+      if (this.fundingChoice) this.draft.funding = this.fundingChoice;
+    } catch {
+      if (request !== this.fundingLoad || scope !== this.api.scope()) return;
+    }
+  }
+  protected setFunding(value: string): void {
+    this.fundingChoice = value;
+    if (value !== this.fundingAdd) {
+      this.draft.funding = value;
+      this.fundingName = '';
+    }
+    this.clearFieldError('funding');
+    this.clearFieldError('fundingName');
+  }
+  protected setFundingName(value: string): void {
+    this.fundingName = value;
+    this.clearFieldError('fundingName');
+  }
+  private async chosenFunding(scope: string): Promise<string> {
+    if (this.fundingChoice !== this.fundingAdd) return this.fundingChoice;
+    const name = this.fundingName.trim();
+    try {
+      return (await this.api.addFunding(name, scope)).name;
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 'funding_conflict') throw error;
+      const list = await this.api.fundingOptions();
+      if (scope !== this.api.scope()) throw error;
+      const match = list.options.find((option) => option.name.toLowerCase() === name.toLowerCase());
+      if (!match) throw error;
+      return match.name;
+    }
+  }
+  private async loadGenderOptions(): Promise<void> {
+    const scope = this.profileScope;
+    const request = ++this.genderLoad;
+    try {
+      const list = await this.api.genderOptions();
+      if (request !== this.genderLoad || scope !== this.api.scope() || this.editing() !== 'profile')
+        return;
+      const names = list.options.map((option) => option.name);
+      const current = this.draft.file?.details['gender'] ?? '';
+      if (current && !names.some((name) => name.toLowerCase() === current.toLowerCase()))
+        names.push(current);
+      this.genderOptions.set(names);
+      if (this.genderChoice === this.genderAdd) return;
+      const selected = this.genderChoice || current;
+      const match = names.find((name) => name.toLowerCase() === selected.toLowerCase());
+      if (!match) return;
+      this.genderChoice = match;
+      if (this.draft.file) this.draft.file.details['gender'] = match;
+    } catch {
+      if (request !== this.genderLoad || scope !== this.api.scope()) return;
+    }
+  }
+  protected setGender(value: string): void {
+    this.genderChoice = value;
+    if (value !== this.genderAdd && this.draft.file) {
+      this.draft.file.details['gender'] = value;
+      this.genderName = '';
+    }
+    this.clearFieldError('details.gender');
+    this.clearFieldError('genderName');
+  }
+  protected setGenderName(value: string): void {
+    this.genderName = value;
+    this.clearFieldError('genderName');
+  }
+  private async chosenGender(scope: string): Promise<void> {
+    if (this.genderChoice !== this.genderAdd) return;
+    const name = this.genderName.trim();
+    let created: string;
+    try {
+      created = (await this.api.addGender(name, scope)).name;
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 'gender_conflict') throw error;
+      const list = await this.api.genderOptions();
+      if (scope !== this.api.scope()) throw error;
+      const match = list.options.find((option) => option.name.toLowerCase() === name.toLowerCase());
+      if (!match) throw error;
+      created = match.name;
+    }
+    if (!this.genderOptions().some((option) => option.toLowerCase() === created.toLowerCase()))
+      this.genderOptions.update((options) => [...options, created]);
+    this.genderName = '';
+    this.setGender(created);
+  }
+  private loadSexuality(): void {
+    this.sexualityBaseline = this.draft.file?.details['sexuality'] ?? '';
+    const parts = splitSexuality(this.sexualityBaseline, this.sexualityOptions());
+    this.sexualityChoice = parts.choice;
+    this.sexualityDetail = parts.detail;
+  }
+  private async loadSexualityOptions(): Promise<void> {
+    const scope = this.profileScope;
+    const request = ++this.sexualityLoad;
+    try {
+      const list = await this.api.sexualityOptions();
+      if (request !== this.sexualityLoad || scope !== this.api.scope() || this.editing() !== 'profile')
+        return;
+      const names = list.options.map((option) => option.name);
+      const stored = splitSexuality(this.sexualityBaseline, names);
+      if (
+        stored.choice &&
+        stored.choice !== SEXUALITY_OTHER &&
+        !names.some((name) => name.toLowerCase() === stored.choice.toLowerCase())
+      )
+        names.push(stored.choice);
+      const opened = splitSexuality(this.sexualityBaseline, this.sexualityOptions());
+      const touched =
+        this.sexualityChoice !== opened.choice || this.sexualityDetail !== opened.detail;
+      this.sexualityOptions.set(names);
+      if (this.sexualityChoice === this.sexualityAdd || touched) return;
+      this.sexualityChoice = stored.choice;
+      this.sexualityDetail = stored.detail;
+      this.applySexuality();
+    } catch {
+      if (request !== this.sexualityLoad || scope !== this.api.scope()) return;
+    }
+  }
+  protected setSexualityChoice(choice: string): void {
+    this.sexualityChoice = choice;
+    if (choice === this.sexualityAdd) this.sexualityDetail = '';
+    else {
+      if (choice !== SEXUALITY_OTHER) this.sexualityDetail = '';
+      this.applySexuality();
+    }
+    this.clearFieldError('details.sexuality');
+    this.clearFieldError('details.sexualityDetail');
+    this.clearFieldError('sexualityName');
+  }
+  protected setSexualityName(value: string): void {
+    this.sexualityName = value;
+    this.clearFieldError('sexualityName');
+  }
+  private async chosenSexuality(scope: string): Promise<void> {
+    if (this.sexualityChoice !== this.sexualityAdd) {
+      this.applySexuality();
+      return;
+    }
+    const name = this.sexualityName.trim();
+    let created: string;
+    try {
+      created = (await this.api.addSexuality(name, scope)).name;
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 'sexuality_conflict') throw error;
+      const list = await this.api.sexualityOptions();
+      if (scope !== this.api.scope()) throw error;
+      const match = list.options.find((option) => option.name.toLowerCase() === name.toLowerCase());
+      if (!match) throw error;
+      created = match.name;
+    }
+    if (!this.sexualityOptions().some((option) => option.toLowerCase() === created.toLowerCase()))
+      this.sexualityOptions.update((options) => [...options, created]);
+    this.sexualityName = '';
+    this.setSexualityChoice(created);
+  }
+  protected setSexualityDetail(detail: string): void {
+    this.sexualityDetail = detail;
+    this.applySexuality();
+    this.clearFieldError('details.sexualityDetail');
+  }
+  private applySexuality(): void {
+    if (!this.draft.file) return;
+    const loaded = splitSexuality(this.sexualityBaseline, this.sexualityOptions());
+    const unchanged =
+      this.sexualityChoice === loaded.choice && this.sexualityDetail === loaded.detail;
+    this.draft.file.details['sexuality'] = unchanged
+      ? this.sexualityBaseline
+      : joinSexuality(this.sexualityChoice, this.sexualityDetail);
   }
   protected toggleRisk(flag: (typeof RISK_FLAGS)[number]): void {
     this.clearFieldError('riskFlags');
@@ -634,6 +864,28 @@ export class ClientFiles {
     const dob = this.draft.file?.details['dob'];
     if (dob && (!validDate(dob) || dob > this.today))
       errors['details.dob'] = 'Enter a valid date of birth on or before today.';
+    if (!this.photoOnly()) {
+      if (this.fundingChoice === this.fundingAdd) {
+        const name = this.fundingName.trim();
+        if (!name) errors['fundingName'] = 'Enter a funding name.';
+        else if (name.length > 30)
+          errors['fundingName'] = 'Funding must be 30 characters or fewer.';
+      } else if (!this.fundingChoice.trim()) errors['funding'] = 'Funding is required.';
+    }
+    if (this.genderChoice === this.genderAdd) {
+      const name = this.genderName.trim();
+      if (!name) errors['genderName'] = 'Enter a gender option.';
+      else if (name.length > 80) errors['genderName'] = 'Gender must be 80 characters or fewer.';
+    }
+    if (this.sexualityChoice === this.sexualityAdd) {
+      const name = this.sexualityName.trim();
+      if (!name) errors['sexualityName'] = 'Enter a sexuality option.';
+      else if (name.length > 80)
+        errors['sexualityName'] = 'Sexuality must be 80 characters or fewer.';
+    } else if (this.sexualityChoice === SEXUALITY_OTHER && !this.sexualityDetail.trim())
+      errors['details.sexualityDetail'] = 'Please specify the sexual orientation.';
+    else if ((this.draft.file?.details['sexuality'] ?? '').length > 200)
+      errors['details.sexualityDetail'] = 'Sexual orientation must be 200 characters or fewer.';
     if (Object.keys(errors).length) {
       this.showFieldErrors(errors);
       return false;
@@ -653,6 +905,12 @@ export class ClientFiles {
         }
       }
       if (error.code === 'reference_conflict') errors['reference'] = error.message;
+      if (this.genderChoice === this.genderAdd && error.fieldErrors['name'])
+        errors['genderName'] = error.fieldErrors['name'].join(' ');
+      else if (this.sexualityChoice === this.sexualityAdd && error.fieldErrors['name'])
+        errors['sexualityName'] = error.fieldErrors['name'].join(' ');
+      else if (this.fundingChoice === this.fundingAdd && error.fieldErrors['name'])
+        errors['fundingName'] = error.fieldErrors['name'].join(' ');
     }
     if (Object.keys(errors).length) this.showFieldErrors(errors);
     else
@@ -662,12 +920,26 @@ export class ClientFiles {
   }
   protected async save(): Promise<void> {
     if (this.editing() === 'profile') {
-      if (this.photoLoading() || this.api.saving()) return;
+      if (this.photoLoading() || this.api.saving() || this.fundingBusy()) return;
       this.fieldErrors.set({});
       this.error.set('');
       if (!this.validateProfile()) return;
       const scope = this.profileScope;
+      this.fundingBusy.set(true);
       try {
+        if (!this.photoOnly()) {
+          const funding = await this.chosenFunding(scope);
+          if (scope !== this.api.scope()) return;
+          this.draft.funding = funding;
+          this.fundingChoice = funding;
+          if (!this.fundingOptions().some((name) => name.toLowerCase() === funding.toLowerCase()))
+            this.fundingOptions.update((options) => [...options, funding]);
+          this.fundingName = '';
+          await this.chosenSexuality(scope);
+          if (scope !== this.api.scope()) return;
+          await this.chosenGender(scope);
+          if (scope !== this.api.scope()) return;
+        }
         const row =
           this.photoOnly() && this.original
             ? await this.api.savePhoto(this.draft, this.original, scope)
@@ -678,6 +950,8 @@ export class ClientFiles {
         if (!this.id()) void this.router.navigate(['/manage/clients', row.id]);
       } catch (error) {
         if (scope === this.api.scope()) this.profileError(error);
+      } finally {
+        this.fundingBusy.set(false);
       }
       return;
     }

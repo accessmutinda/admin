@@ -1285,7 +1285,7 @@ describe('Service user landing and creation', () => {
     const fixture = await openOverview();
     const nav = fixture.nativeElement.querySelector('nav[aria-label="Client record sections"]');
     const buttons = Array.from(nav.querySelectorAll('button')) as HTMLButtonElement[];
-    expect(buttons).toHaveLength(15);
+    expect(buttons).toHaveLength(16);
     for (const button of buttons.slice(1)) {
       button.click();
       await settle(fixture);

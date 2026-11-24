@@ -34,6 +34,58 @@ export interface ClientField {
   options?: string[];
 }
 
+export const GENDER_OPTIONS = ['Female', 'Male', 'Non-binary', 'Prefer not to say'];
+
+export const SEXUALITY_OTHER = 'Other sexual orientation (please specify)';
+
+export const SEXUALITY_OPTIONS = [
+  'Straight / Heterosexual',
+  'Gay',
+  'Lesbian',
+  'Bisexual',
+  'Pansexual',
+  'Asexual',
+  'Queer',
+  SEXUALITY_OTHER,
+  'Unsure',
+  'Prefer not to say',
+];
+
+const SEXUALITY_OTHER_PREFIX = SEXUALITY_OTHER + ': ';
+
+export function splitSexuality(
+  value: string,
+  options: readonly string[] = SEXUALITY_OPTIONS,
+): { choice: string; detail: string } {
+  const stored = value?.trim() ?? '';
+  if (!stored) return { choice: '', detail: '' };
+  const match = options.find((option) => option.toLowerCase() === stored.toLowerCase());
+  if (match) return { choice: match, detail: '' };
+  if (stored.toLowerCase().startsWith(SEXUALITY_OTHER_PREFIX.toLowerCase()))
+    return {
+      choice: SEXUALITY_OTHER,
+      detail: stored.slice(SEXUALITY_OTHER_PREFIX.length).trim(),
+    };
+  return { choice: SEXUALITY_OTHER, detail: stored };
+}
+
+export function joinSexuality(choice: string, detail: string): string {
+  if (choice !== SEXUALITY_OTHER) return choice;
+  const text = detail.trim();
+  return text ? SEXUALITY_OTHER_PREFIX + text : SEXUALITY_OTHER;
+}
+
+export function sexualityLabel(value: string): string {
+  const stored = value?.trim() ?? '';
+  if (!stored) return '';
+  if ((SEXUALITY_OPTIONS as readonly string[]).includes(stored)) return stored;
+  if (stored.startsWith(SEXUALITY_OTHER_PREFIX)) {
+    const detail = stored.slice(SEXUALITY_OTHER_PREFIX.length).trim();
+    return detail ? `Other sexual orientation: ${detail}` : SEXUALITY_OTHER;
+  }
+  return stored;
+}
+
 export interface ClientSection {
   key: string;
   label: string;
@@ -273,6 +325,13 @@ export const CLIENT_SECTIONS: ClientSection[] = [
     nameLabel: 'Document name',
     detailLabel: 'Type, version and storage reference',
   },
+  {
+    key: 'packages',
+    label: 'Call packages',
+    icon: 'event_repeat',
+    tone: 'teal',
+    description: 'Regular visits and the tasks planned for each call.',
+  },
 ];
 
 export const CLIENT_SECTION_GROUPS = [
@@ -290,7 +349,7 @@ export const CLIENT_SECTION_GROUPS = [
       'allergies',
     ],
   },
-  { label: 'Daily support', keys: ['access', 'tasks', 'support'] },
+  { label: 'Daily support', keys: ['access', 'tasks', 'support', 'packages'] },
   { label: 'Documents', keys: ['documents'] },
 ];
 
@@ -304,7 +363,7 @@ export const PERSONAL_FIELDS: ClientField[] = [
   { key: 'ethnicity', label: 'Ethnicity' },
   { key: 'gp', label: 'GP / practice and contact' },
   { key: 'living', label: 'Living arrangement' },
-  { key: 'sexuality', label: 'Sexuality' },
+  { key: 'sexuality', label: 'Sexuality', options: ['', ...SEXUALITY_OPTIONS] },
   { key: 'likes', label: 'Likes', type: 'textarea' },
   { key: 'dislikes', label: 'Dislikes', type: 'textarea' },
   { key: 'about', label: 'What matters to me', type: 'textarea' },

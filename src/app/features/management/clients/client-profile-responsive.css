@@ -22,7 +22,7 @@
   }
   :host .reference-profile {
     grid-template-columns: 72px minmax(0, 1fr);
-    padding: var(--profile-panel-padding);
+    padding: 0 10px 8px;
     gap: 10px;
   }
   .profile-photo-button,
@@ -43,8 +43,8 @@
     border: 0;
   }
   .profile-address {
-    margin-top: 8px;
-    gap: 6px;
+    margin-top: 2px;
+    gap: 2px;
   }
   .profile-signal-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

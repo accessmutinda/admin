@@ -70,6 +70,7 @@ export class ServiceUserDirectory {
   protected readonly page = signal(1);
   protected readonly pageSize = 8;
   protected readonly sort = signal('name');
+  protected readonly funders = computed(() => this.api.facets()?.funding ?? []);
   protected readonly needs = computed(() => this.api.facets()?.needs ?? []);
   protected readonly packages = computed(() => this.api.facets()?.packages ?? []);
   protected readonly count = computed(() => this.api.directory()?.count ?? 0);

@@ -383,6 +383,9 @@
           @for (c of clientCalls(packageClient()); track c.id) {
             <article class="rota-call">
               <div class="rota-call-heading">
+                @if (callIconSrc(c.icon, c.name); as src) {
+                  <img class="rota-call-icon" [src]="src" alt="" />
+                }
                 <strong>{{ c.name }}</strong
                 ><span class="badge">{{
                   !c.active
@@ -999,48 +1002,122 @@
               /></label>
             }
           } @else if (modal() === 'call') {
-            <label class="full-width"
-              >Call name<input name="name" [(ngModel)]="call.name" required /></label
-            ><label
+            <label
               >Apply call-type defaults<mat-select
                 cvSelect
                 name="callType"
                 aria-label="Call type defaults"
-                [ngModel]="call.name"
-                (ngModelChange)="call.name = $event; callDefaults()"
+                [ngModel]="callTypeChoice"
+                (ngModelChange)="setCallType($event)"
               >
                 @for (name of callTypes(); track name) {
                   <mat-option [value]="name">{{ name }}</mat-option>
                 }
+                @if (canAddCallType()) {
+                  <mat-option [value]="callTypeAdd">Add new</mat-option>
+                }
               </mat-select></label
-            ><label
-              >Call priority<mat-select
-                cvSelect
-                name="callPriority"
-                aria-label="Call priority"
-                [(ngModel)]="call.priority"
-                ><mat-option value="Standard">Standard</mat-option
-                ><mat-option value="High">High</mat-option></mat-select
-              ></label
-            ><label
-              >Start time (UK)<input
-                type="time"
-                name="start"
-                [(ngModel)]="call.start"
-                required /></label
-            ><label
-              >End time (UK)<input type="time" name="end" [(ngModel)]="call.end" required /></label
-            ><small class="full-width"
-              >An end time before the start means the call ends the next day.</small
+            ><label>Call name<input name="name" [(ngModel)]="call.name" required /></label>
+            @if (callTypeChoice === callTypeAdd) {
+              <label class="full-width"
+                >New call type<span class="call-type-add"
+                  ><input
+                    name="callTypeName"
+                    aria-label="New call type"
+                    maxlength="150"
+                    [ngModel]="callTypeName"
+                    (ngModelChange)="setCallTypeName($event)"
+                    (keydown.enter)="$event.preventDefault(); addCallType()"
+                  /><button
+                    class="button"
+                    type="button"
+                    [disabled]="callTypeSaving()"
+                    (click)="addCallType()"
+                  >
+                    Add call type
+                  </button></span
+                ></label
+              >
+              @if (callTypeError()) {
+                <small class="rota-error full-width" role="alert">{{ callTypeError() }}</small>
+              }
+            }
+            <fieldset class="full-width call-icons">
+              <legend>Icon</legend>
+              <div class="call-icon-grid">
+                @for (icon of wideIcons; track icon.file) {
+                  <button
+                    class="call-icon-choice"
+                    type="button"
+                    [class.selected]="call.icon === icon.file"
+                    [attr.aria-pressed]="call.icon === icon.file"
+                    [attr.aria-label]="icon.label"
+                    (click)="chooseIcon(icon.file)"
+                  >
+                    <img [src]="callIconSrc(icon.file)" [alt]="icon.label" />
+                  </button>
+                }
+              </div>
+              <div class="call-icon-grid call-icon-grid-tall">
+                @for (icon of tallIcons; track icon.file) {
+                  <button
+                    class="call-icon-choice"
+                    type="button"
+                    [class.selected]="call.icon === icon.file"
+                    [attr.aria-pressed]="call.icon === icon.file"
+                    [attr.aria-label]="icon.label"
+                    (click)="chooseIcon(icon.file)"
+                  >
+                    <img [src]="callIconSrc(icon.file)" [alt]="icon.label" />
+                  </button>
+                }
+              </div>
+            </fieldset>
+            <div class="full-width call-time-row">
+              <label
+                >Call priority<mat-select
+                  cvSelect
+                  name="callPriority"
+                  aria-label="Call priority"
+                  [(ngModel)]="call.priority"
+                  ><mat-option value="Standard">Standard</mat-option
+                  ><mat-option value="High">High</mat-option></mat-select
+                ></label
+              ><label
+                >Start time (UK)<input
+                  type="time"
+                  name="start"
+                  [(ngModel)]="call.start"
+                  required /></label
+              ><label
+                >End time (UK)<input type="time" name="end" [(ngModel)]="call.end" /></label
+              >
+            </div>
+            <small class="full-width"
+              >Leave the end time blank to use the call-type length. An earlier end time means the
+              call finishes the next day.</small
             >
-            <label class="check-label"
-              ><input
-                type="checkbox"
-                name="timeSensitive"
-                [(ngModel)]="call.timeSensitive"
-              />Time-sensitive visit</label
-            >
-            <label
+            <div class="full-width call-check-row">
+              <label class="check-label"
+                ><input
+                  type="checkbox"
+                  name="timeSensitive"
+                  [(ngModel)]="call.timeSensitive"
+                />Time-sensitive visit</label
+              >
+              <label class="check-label"
+                ><input type="checkbox" name="flexible" [(ngModel)]="call.flexible" />Flexible
+                visit</label
+              >
+              <label class="check-label"
+                ><input
+                  type="checkbox"
+                  name="driverRequired"
+                  [(ngModel)]="call.driverRequired"
+                />Driver required</label
+              >
+            </div>
+            <label class="full-width"
               >Tolerance (minutes)<input
                 type="number"
                 min="0"
@@ -1048,17 +1125,6 @@
                 name="toleranceMinutes"
                 [(ngModel)]="call.toleranceMinutes"
             /></label>
-            <label class="check-label"
-              ><input type="checkbox" name="flexible" [(ngModel)]="call.flexible" />Flexible
-              visit</label
-            >
-            <label class="check-label"
-              ><input
-                type="checkbox"
-                name="driverRequired"
-                [(ngModel)]="call.driverRequired"
-              />Driver required</label
-            >
             <label
               >Location<mat-select
                 cvSelect

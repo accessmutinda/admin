@@ -15,7 +15,14 @@ import { MatSelectModule } from '@angular/material/select';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CvSelect } from '../../../shared/ui/select';
 import { ApiError } from '../../../core/auth/auth-api';
-import { CLIENT_SECTIONS } from './client-file.models';
+import {
+  CLIENT_SECTIONS,
+  GENDER_OPTIONS,
+  SEXUALITY_OPTIONS,
+  SEXUALITY_OTHER,
+  joinSexuality,
+  splitSexuality,
+} from './client-file.models';
 import { DirectoryUser, ServiceUsersApi } from './service-users-api.service';
 
 interface Field {
@@ -83,7 +90,7 @@ const FIELDS: Record<OverviewCard, Field[]> = {
     { key: 'name', label: 'Full name', required: true },
     { key: 'reference', label: 'Client reference', required: true },
     { key: 'dob', label: 'Date of birth', type: 'date' },
-    { key: 'gender', label: 'Gender' },
+    { key: 'gender', label: 'Gender', options: ['', ...GENDER_OPTIONS] },
     { key: 'preferredName', label: 'Preferred name' },
     { key: 'language', label: 'Preferred language' },
     { key: 'nhs', label: 'NHS number' },
@@ -93,7 +100,7 @@ const FIELDS: Record<OverviewCard, Field[]> = {
     { key: 'address', label: 'Address', required: true },
     { key: 'postcode', label: 'Postcode', required: true },
     { key: 'living', label: 'Living arrangement' },
-    { key: 'sexuality', label: 'Sexuality' },
+    { key: 'sexuality', label: 'Sexuality', options: ['', ...SEXUALITY_OPTIONS] },
     { key: 'phone', label: 'Phone', type: 'tel' },
     { key: 'email', label: 'Email', type: 'email' },
     { key: 'likes', label: 'Likes', type: 'textarea' },
@@ -235,6 +242,12 @@ const FIELDS: Record<OverviewCard, Field[]> = {
                   @for (option of field.options; track option) {
                     <mat-option [value]="option">{{ option || 'Not recorded' }}</mat-option>
                   }
+                  @if (field.key === 'sexuality') {
+                    <mat-option [value]="sexualityAdd">Add new</mat-option>
+                  }
+                  @if (field.key === 'gender') {
+                    <mat-option [value]="genderAdd">Add new</mat-option>
+                  }
                 </mat-select>
               } @else if (field.type === 'textarea') {
                 <textarea
@@ -271,6 +284,65 @@ const FIELDS: Record<OverviewCard, Field[]> = {
                 <small class="client-field-error" [id]="'overview-' + field.key + '-error'">{{
                   errors()[field.key]
                 }}</small>
+              }
+              @if (field.key === 'gender' && draft['gender'] === genderAdd) {
+                <small class="client-form-hint">New gender option</small>
+                <input
+                  name="genderName"
+                  aria-label="New gender option"
+                  maxlength="80"
+                  [(ngModel)]="draft['genderName']"
+                  [readonly]="busy() || loading() || !editable()"
+                  [attr.aria-invalid]="!!errors()['genderName']"
+                  [attr.aria-describedby]="
+                    errors()['genderName'] ? 'overview-gender-name-error' : null
+                  "
+                  (ngModelChange)="clearError('genderName')"
+                />
+                @if (errors()['genderName']) {
+                  <small class="client-field-error" id="overview-gender-name-error">{{
+                    errors()['genderName']
+                  }}</small>
+                }
+              }
+              @if (field.key === 'sexuality' && draft['sexuality'] === sexualityAdd) {
+                <small class="client-form-hint">New sexuality option</small>
+                <input
+                  name="sexualityName"
+                  aria-label="New sexuality option"
+                  maxlength="80"
+                  [(ngModel)]="draft['sexualityName']"
+                  [readonly]="busy() || loading() || !editable()"
+                  [attr.aria-invalid]="!!errors()['sexualityName']"
+                  [attr.aria-describedby]="
+                    errors()['sexualityName'] ? 'overview-sexuality-name-error' : null
+                  "
+                  (ngModelChange)="clearError('sexualityName')"
+                />
+                @if (errors()['sexualityName']) {
+                  <small class="client-field-error" id="overview-sexuality-name-error">{{
+                    errors()['sexualityName']
+                  }}</small>
+                }
+              }
+              @if (field.key === 'sexuality' && draft['sexuality'] === sexualityOther) {
+                <small class="client-form-hint">Please specify</small>
+                <input
+                  name="sexualityDetail"
+                  aria-label="Other sexual orientation"
+                  [(ngModel)]="draft['sexualityDetail']"
+                  [readonly]="busy() || loading() || !editable()"
+                  [attr.aria-invalid]="!!errors()['sexualityDetail']"
+                  [attr.aria-describedby]="
+                    errors()['sexualityDetail'] ? 'overview-sexuality-detail-error' : null
+                  "
+                  (ngModelChange)="clearError('sexualityDetail')"
+                />
+                @if (errors()['sexualityDetail']) {
+                  <small class="client-field-error" id="overview-sexuality-detail-error">{{
+                    errors()['sexualityDetail']
+                  }}</small>
+                }
               }
               @if (field.hint) {
                 <small>{{ field.hint }}</small>
@@ -361,6 +433,11 @@ export class ServiceUserOverviewDialog {
         (field.key === 'medication_reference' && !this.data.person.overview?.medication_edit),
     }));
   draft: Record<string, string> = {};
+  readonly sexualityOther = SEXUALITY_OTHER;
+  readonly genderAdd = '__add_gender__';
+  readonly sexualityAdd = '__add_sexuality__';
+  private sexualityOriginal = '';
+  private sexualityCatalog = [...SEXUALITY_OPTIONS];
   private readonly scope = this.data.api.scope();
   private initial: string;
   constructor() {
@@ -458,7 +535,11 @@ export class ServiceUserOverviewDialog {
         });
       return fields;
     }
-    return FIELDS[this.data.card];
+    return FIELDS[this.data.card].map((field) =>
+      field.key === 'sexuality' || field.key === 'gender'
+        ? { ...field, options: field.options ? [...field.options] : undefined }
+        : field,
+    );
   }
   private readonly selections: Record<string, { raw: string; values: string[] }> = {};
   selectedValues(key: string): string[] {
@@ -553,6 +634,25 @@ export class ServiceUserOverviewDialog {
         this.editable.set(value.can_edit);
       }
       for (const field of this.fields) this.draft[field.key] = String(values[field.key] ?? '');
+      if (this.data.card === 'demographics') {
+        this.sexualityCatalog = await this.loadSexualityCatalog();
+        if (this.closed || this.scope !== this.data.api.scope()) return;
+        const sexuality = this.fields.find((field) => field.key === 'sexuality');
+        if (sexuality) sexuality.options = ['', ...this.sexualityCatalog];
+        this.sexualityOriginal = this.draft['sexuality'] ?? '';
+        const parts = splitSexuality(this.sexualityOriginal, this.sexualityCatalog);
+        this.draft['sexuality'] = parts.choice;
+        this.draft['sexualityDetail'] = parts.detail;
+        this.draft['sexualityName'] = '';
+        const names = await this.loadGenderCatalog();
+        if (this.closed || this.scope !== this.data.api.scope()) return;
+        const gender = this.fields.find((field) => field.key === 'gender');
+        if (gender) gender.options = ['', ...names];
+        const recorded = this.draft['gender'] ?? '';
+        const match = names.find((name) => name.toLowerCase() === recorded.toLowerCase());
+        if (match) this.draft['gender'] = match;
+        this.draft['genderName'] = '';
+      }
       for (const field of this.fields) {
         const value = this.draft[field.key];
         if (field.options && value && !field.options.includes(value))
@@ -566,6 +666,46 @@ export class ServiceUserOverviewDialog {
         this.error.set(error instanceof Error ? error.message : 'Could not load saved details.');
     } finally {
       if (!this.closed) this.loading.set(false);
+    }
+  }
+  private async createSexuality(name: string): Promise<string> {
+    try {
+      return (await this.data.api.addSexuality(name, this.scope)).name;
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 'sexuality_conflict') throw error;
+      const list = await this.data.api.sexualityOptions();
+      const match = list.options.find((option) => option.name.toLowerCase() === name.toLowerCase());
+      if (!match) throw error;
+      return match.name;
+    }
+  }
+  private async createGender(name: string): Promise<string> {
+    try {
+      return (await this.data.api.addGender(name, this.scope)).name;
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 'gender_conflict') throw error;
+      const list = await this.data.api.genderOptions();
+      const match = list.options.find((option) => option.name.toLowerCase() === name.toLowerCase());
+      if (!match) throw error;
+      return match.name;
+    }
+  }
+  private async loadGenderCatalog(): Promise<string[]> {
+    try {
+      const list = await this.data.api.genderOptions();
+      if (this.closed || this.scope !== this.data.api.scope()) return [...GENDER_OPTIONS];
+      return list.options.map((option) => option.name);
+    } catch {
+      return [...GENDER_OPTIONS];
+    }
+  }
+  private async loadSexualityCatalog(): Promise<string[]> {
+    try {
+      const list = await this.data.api.sexualityOptions();
+      if (this.closed || this.scope !== this.data.api.scope()) return [...SEXUALITY_OPTIONS];
+      return list.options.map((option) => option.name);
+    } catch {
+      return [...SEXUALITY_OPTIONS];
     }
   }
   clearError(key: string): void {
@@ -584,9 +724,118 @@ export class ServiceUserOverviewDialog {
   }
   async save(): Promise<void> {
     if (this.busy() || this.loading() || !this.editable()) return;
+    if (this.data.card === 'demographics' && this.draft['gender'] === this.genderAdd) {
+      const name = (this.draft['genderName'] ?? '').trim();
+      if (!name || name.length > 80) {
+        this.errors.set({
+          genderName: name ? 'Gender must be 80 characters or fewer.' : 'Enter a gender option.',
+        });
+        this.error.set('Please check the highlighted fields.');
+        this.changeDetector.detectChanges();
+        this.host.nativeElement.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+        return;
+      }
+    }
+    if (this.data.card === 'demographics' && this.draft['sexuality'] === this.sexualityAdd) {
+      const name = (this.draft['sexualityName'] ?? '').trim();
+      if (!name || name.length > 80) {
+        this.errors.set({
+          sexualityName: name
+            ? 'Sexuality must be 80 characters or fewer.'
+            : 'Enter a sexuality option.',
+        });
+        this.error.set('Please check the highlighted fields.');
+        this.changeDetector.detectChanges();
+        this.host.nativeElement.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+        return;
+      }
+    } else if (
+      this.data.card === 'demographics' &&
+      this.draft['sexuality'] === SEXUALITY_OTHER &&
+      !(this.draft['sexualityDetail'] ?? '').trim()
+    ) {
+      this.errors.set({ sexualityDetail: 'Please specify the sexual orientation.' });
+      this.error.set('Please check the highlighted fields.');
+      this.changeDetector.detectChanges();
+      this.host.nativeElement.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      return;
+    }
+    const sexuality = this.draft['sexuality'] ?? '';
+    const sexualityDetail = this.draft['sexualityDetail'] ?? '';
+    if (
+      this.data.card === 'demographics' &&
+      sexuality !== this.sexualityAdd &&
+      joinSexuality(sexuality, sexualityDetail).length > 200
+    ) {
+      this.errors.set({
+        sexualityDetail: 'Sexual orientation must be 200 characters or fewer.',
+      });
+      this.error.set('Please check the highlighted fields.');
+      return;
+    }
     this.busy.set(true);
     this.error.set('');
     this.errors.set({});
+    if (this.data.card === 'demographics' && this.draft['gender'] === this.genderAdd) {
+      try {
+        const created = await this.createGender((this.draft['genderName'] ?? '').trim());
+        if (this.closed || this.scope !== this.data.api.scope()) return;
+        this.draft['gender'] = created;
+        this.draft['genderName'] = '';
+        const field = this.fields.find((item) => item.key === 'gender');
+        if (
+          field?.options &&
+          !field.options.some((option) => option.toLowerCase() === created.toLowerCase())
+        )
+          field.options = [...field.options, created];
+      } catch (error) {
+        if (!this.closed && this.scope === this.data.api.scope()) {
+          const message =
+            error instanceof ApiError && error.fieldErrors['name']
+              ? error.fieldErrors['name'].join(' ')
+              : error instanceof Error
+                ? error.message
+                : 'The gender option could not be added.';
+          this.errors.set({ genderName: message });
+          this.error.set('Please check the highlighted fields.');
+          this.busy.set(false);
+          this.changeDetector.detectChanges();
+          this.host.nativeElement.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+        }
+        return;
+      }
+    }
+    if (this.data.card === 'demographics' && this.draft['sexuality'] === this.sexualityAdd) {
+      try {
+        const created = await this.createSexuality((this.draft['sexualityName'] ?? '').trim());
+        if (this.closed || this.scope !== this.data.api.scope()) return;
+        this.draft['sexuality'] = created;
+        this.draft['sexualityName'] = '';
+        const field = this.fields.find((item) => item.key === 'sexuality');
+        if (
+          field?.options &&
+          !field.options.some((option) => option.toLowerCase() === created.toLowerCase())
+        )
+          field.options = [...field.options, created];
+      } catch (error) {
+        if (!this.closed && this.scope === this.data.api.scope()) {
+          const message =
+            error instanceof ApiError && error.fieldErrors['name']
+              ? error.fieldErrors['name'].join(' ')
+              : error instanceof Error
+                ? error.message
+                : 'The sexuality option could not be added.';
+          this.errors.set({ sexualityName: message });
+          this.error.set('Please check the highlighted fields.');
+          this.busy.set(false);
+          this.changeDetector.detectChanges();
+          this.host.nativeElement.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+        }
+        return;
+      }
+    }
+    const chosenSexuality = this.draft['sexuality'] ?? '';
+    const chosenDetail = this.draft['sexualityDetail'] ?? '';
     const body: Record<string, string | null> = {};
     const sparse =
       this.data.card === 'record-section' ||
@@ -596,6 +845,13 @@ export class ServiceUserOverviewDialog {
       if (!field.readonly && (!sparse || this.draft[field.key] !== original[field.key]))
         body[field.key] =
           field.type === 'date' ? this.draft[field.key] || null : this.draft[field.key];
+    if (this.data.card === 'demographics' && 'sexuality' in body) {
+      const loaded = splitSexuality(this.sexualityOriginal, this.sexualityCatalog);
+      const unchanged = chosenSexuality === loaded.choice && chosenDetail === loaded.detail;
+      body['sexuality'] = unchanged
+        ? this.sexualityOriginal
+        : joinSexuality(chosenSexuality, chosenDetail);
+    }
     if (sparse && !Object.keys(body).length) {
       this.busy.set(false);
       this.ref.close();

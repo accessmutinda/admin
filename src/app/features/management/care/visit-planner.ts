@@ -29,6 +29,7 @@ import {
   visitWindow,
   completedVisit,
 } from '../rota/rota.models';
+import { callIconSrc } from '../rota/call-icons';
 import { liveVisit, emptyEcm } from '../ecm/ecm.models';
 import { csv, validDate, weekDates } from './care.models';
 @Component({
@@ -805,6 +806,9 @@ export class VisitPlanner {
         : v.state === 'Draft'
           ? 'Allocated · Draft'
           : liveVisit(v, this.now(), this.service.data().ecm ?? emptyEcm()).status;
+  }
+  protected packageIcon(visit: { icon?: string; callName: string }): string {
+    return callIconSrc(visit.icon, visit.callName);
   }
   protected background(v: RotaVisit): string {
     return this.callBackground(v.callName);

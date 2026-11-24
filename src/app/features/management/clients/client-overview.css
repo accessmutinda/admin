@@ -84,6 +84,13 @@ a:focus-visible {
   color: #06376b;
   border-radius: 4px;
 }
+.service-tile > .service-icon {
+  width: 52px;
+  height: 36px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  border-radius: 4px;
+}
 .service-tile > .material-symbols-outlined {
   font-size: 25px;
   color: #008afa;
@@ -210,6 +217,35 @@ p {
   line-height: 1.5;
   margin: 0;
   overflow-wrap: anywhere;
+}
+.overview-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.preferences-panel .overview-clamp {
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+  max-height: calc(1.5em * 2 + 35px);
+}
+.overview-more {
+  display: inline-flex;
+  margin: 4px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #0066ac;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.overview-more:hover {
+  text-decoration: underline;
 }
 .important {
   display: flex;

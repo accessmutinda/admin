@@ -3,10 +3,12 @@ import { visibleWorkspaceTabCount } from './workspace-tab-overflow';
 import {
   Component,
   computed,
+  effect,
   inject,
   input,
   output,
   signal,
+  untracked,
   viewChild,
   ElementRef,
   afterNextRender,
@@ -139,6 +141,14 @@ export class CareHeader {
     this.overflowTabs().some((tab) => tab.path === this.active()),
   );
   protected readonly overflowOpen = signal(false);
+  protected readonly addressExpanded = signal(false);
+  protected readonly livingExpanded = signal(false);
+  protected readonly addressCanExpand = signal(false);
+  protected readonly livingCanExpand = signal(false);
+  private readonly addressText = viewChild<ElementRef<HTMLElement>>('addressText');
+  private readonly livingText = viewChild<ElementRef<HTMLElement>>('livingText');
+  private addressKey = '';
+  private livingKey = '';
   private readonly workspaceNav = viewChild<ElementRef<HTMLElement>>('workspaceNav');
   private readonly tabSizer = viewChild<ElementRef<HTMLElement>>('tabSizer');
   private readonly moreButton = viewChild<ElementRef<HTMLButtonElement>>('moreButton');
@@ -146,6 +156,11 @@ export class CareHeader {
   private readonly changes = inject(ChangeDetectorRef);
   constructor() {
     const destroyRef = inject(DestroyRef);
+    effect(() => {
+      const address = `${this.client().address ?? ''}, ${this.client().postcode ?? ''}`;
+      const living = this.file().details['living'] || 'Living arrangement not recorded';
+      untracked(() => this.syncProfileText(address, living));
+    });
     afterNextRender(() => {
       const nav = this.workspaceNav()?.nativeElement;
       if (!nav) return;
@@ -156,6 +171,7 @@ export class CareHeader {
           frame = requestAnimationFrame(() => {
             frame = undefined;
             this.updateOverflow();
+            this.measureProfileText();
           });
       };
       const observer =
@@ -167,6 +183,7 @@ export class CareHeader {
       window.addEventListener('resize', schedule);
       document.fonts?.ready.then(schedule);
       this.updateOverflow();
+      this.measureProfileText();
       destroyRef.onDestroy(() => {
         destroyed = true;
         observer?.disconnect();
@@ -174,6 +191,35 @@ export class CareHeader {
         if (frame !== undefined) cancelAnimationFrame(frame);
       });
     });
+  }
+  private syncProfileText(address: string, living: string): void {
+    if (address !== this.addressKey) {
+      this.addressKey = address;
+      this.addressExpanded.set(false);
+    }
+    if (living !== this.livingKey) {
+      this.livingKey = living;
+      this.livingExpanded.set(false);
+    }
+    queueMicrotask(() => this.measureProfileText());
+  }
+  protected measureProfileText(): void {
+    const address = this.addressText()?.nativeElement;
+    const living = this.livingText()?.nativeElement;
+    if (address && !this.addressExpanded())
+      this.addressCanExpand.set(this.textOverflows(address));
+    if (living && !this.livingExpanded()) this.livingCanExpand.set(this.textOverflows(living, 2));
+  }
+  private textOverflows(element: HTMLElement, maxLines = 1): boolean {
+    if (maxLines === 1) return element.scrollWidth > element.clientWidth + 1;
+    const line = element.parentElement;
+    const wasExpanded = line?.classList.contains('expanded') ?? false;
+    line?.classList.add('expanded');
+    const parsed = Number.parseFloat(getComputedStyle(element).lineHeight);
+    const height = element.scrollHeight;
+    if (!wasExpanded) line?.classList.remove('expanded');
+    const row = Number.isFinite(parsed) && parsed > 0 ? parsed : 14;
+    return height > row * maxLines + 1;
   }
   protected updateOverflow() {
     const nav = this.workspaceNav()?.nativeElement;

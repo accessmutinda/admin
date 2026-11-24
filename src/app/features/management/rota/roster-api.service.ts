@@ -222,6 +222,7 @@ export class RosterApi {
       priority: v.priority as RotaVisit['priority'],
       location: v.location as RotaVisit['location'],
       mileage: v.mileage === null ? undefined : Number(v.mileage),
+      icon: v.icon || '',
       backupStaffId: v.backupStaffId ?? undefined,
       travelMinutes: v.travelMinutes ?? undefined,
       toleranceMinutes: v.toleranceMinutes ?? undefined,
@@ -234,10 +235,72 @@ export class RosterApi {
       priority: c.priority as RotaCall['priority'],
       location: c.location as RotaCall['location'],
       mileage: c.mileage === null ? undefined : Number(c.mileage),
+      icon: c.icon || '',
       backupStaffId: c.backupStaffId ?? undefined,
       travelMinutes: c.travelMinutes ?? undefined,
       toleranceMinutes: c.toleranceMinutes ?? undefined,
     };
+  }
+  private callTypePath(): string {
+    return `/companies/${this.records.companyId()}/ecm/call-types`;
+  }
+  private rememberCallStyles(
+    styles: NonNullable<RosterWorkspace['ecm']>['styles'],
+  ): void {
+    const current = this.raw();
+    if (!current?.ecm) return;
+    this.raw.set({
+      ...current,
+      ecm: { ...current.ecm, styles: { ...current.ecm.styles, ...styles } },
+    });
+  }
+  async loadCallTypes(): Promise<NonNullable<RosterWorkspace['ecm']>['styles'] | null> {
+    try {
+      return await this.readCallTypes();
+    } catch {
+      return null;
+    }
+  }
+  private async readCallTypes(): Promise<NonNullable<RosterWorkspace['ecm']>['styles'] | null> {
+    const value = await this.auth.api<{
+      company_id?: string;
+      options?: Array<{ name: string } & NonNullable<RosterWorkspace['ecm']>['styles'][string]>;
+    }>(this.callTypePath());
+    if (!value || !Array.isArray(value.options)) return null;
+    if (value.company_id !== this.records.companyId())
+      throw Error('The workspace changed. Reopen this form.');
+    const styles: NonNullable<RosterWorkspace['ecm']>['styles'] = {};
+    for (const option of value.options) {
+      if (!option?.name) continue;
+      styles[option.name] = {
+        background: option.background,
+        color: option.color,
+        label: option.label,
+        duration: option.duration,
+        priority: option.priority,
+        skills: option.skills ?? [],
+        active: option.active !== false,
+      };
+    }
+    this.rememberCallStyles(styles);
+    return styles;
+  }
+  async addCallType(name: string): Promise<{
+    name: string;
+    style: NonNullable<RosterWorkspace['ecm']>['styles'][string];
+  }> {
+    const scope = this.scope();
+    const value = await this.auth.api<{
+      company_id: string;
+      name: string;
+      style: NonNullable<RosterWorkspace['ecm']>['styles'][string];
+    }>(this.callTypePath(), { name }, 'POST', {
+      'Idempotency-Key': this.key(this.callTypePath(), { name }),
+    });
+    if (!this.current(scope) || value.company_id !== this.records.companyId())
+      throw Error('The workspace changed. Reopen this form.');
+    this.rememberCallStyles({ [value.name]: value.style });
+    return { name: value.name, style: value.style };
   }
   async load(
     start: string,
@@ -622,6 +685,7 @@ export class RosterApi {
         ...this.inputs(c),
         clientId: c.clientId,
         name: c.name,
+        icon: c.icon || '',
         start: c.start,
         end: c.end,
         weekdays: c.weekdays,

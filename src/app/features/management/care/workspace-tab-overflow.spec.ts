@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { WorkspaceService } from '../../../core/auth/workspace.service';
+import { emptyClientFile } from '../clients/client-file.models';
 import { CareHeader } from './care-header';
 import { visibleWorkspaceTabCount } from './workspace-tab-overflow';
 
@@ -103,6 +104,46 @@ describe('Service-user navigation overflow', () => {
     fixture.detectChanges();
     expect(nav.querySelectorAll(':scope > a')).toHaveLength(11);
     expect(page.querySelector('.workspace-more')).toBeNull();
+    fixture.destroy();
+  });
+  it('shows a view-more icon for a long address or living arrangement and expands it', async () => {
+    const { fixture, page } = setup();
+    const living =
+      'I live with my parents and older sister in our family home. I enjoy spending time with my family and feel safest when familiar adults are around me.';
+    fixture.componentRef.setInput('client', {
+      id: 'overflow-client',
+      name: 'Demo Person',
+      reference: 'DEMO-1',
+      address: '56 POLE HILL ROAD',
+      postcode: 'UB10 0QA',
+      active: true,
+      funding: 'Private',
+      priority: 'Standard',
+      file: { ...emptyClientFile(), details: { living } },
+    });
+    fixture.detectChanges();
+    for (const text of page.querySelectorAll<HTMLElement>('.profile-address-text')) {
+      Object.defineProperty(text, 'scrollWidth', { configurable: true, get: () => 400 });
+      Object.defineProperty(text, 'clientWidth', { configurable: true, get: () => 120 });
+      Object.defineProperty(text, 'scrollHeight', { configurable: true, get: () => 48 });
+    }
+    await Promise.resolve();
+    (fixture.componentInstance as any).measureProfileText();
+    fixture.detectChanges();
+    const buttons = page.querySelectorAll<HTMLButtonElement>('.profile-address-more');
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0].getAttribute('aria-label')).toBe('View full address');
+    expect(buttons[1].getAttribute('aria-expanded')).toBe('false');
+    buttons[1].click();
+    fixture.detectChanges();
+    expect(page.querySelectorAll('.profile-address-line')[1].classList.contains('expanded')).toBe(
+      true,
+    );
+    expect(buttons[1].getAttribute('aria-expanded')).toBe('true');
+    expect(buttons[1].getAttribute('aria-label')).toBe('Show less living arrangement');
+    expect(page.querySelectorAll('.profile-address-text')[1].textContent).toContain(
+      'family home',
+    );
     fixture.destroy();
   });
 });

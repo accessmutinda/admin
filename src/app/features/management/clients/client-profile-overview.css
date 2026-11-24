@@ -22,9 +22,9 @@
 :host .reference-profile {
   display: grid;
   grid-template-columns: 88px minmax(220px, 1fr) minmax(360px, 1.3fr);
-  align-items: center;
+  align-items: start;
   gap: 12px;
-  padding: var(--profile-panel-padding);
+  padding: 0 10px 8px;
   margin: 0 0 var(--profile-section-gap);
 }
 :host .reference-profile .client-profile-info {
@@ -46,7 +46,7 @@
   cursor: pointer;
   overflow: hidden;
   width: 88px;
-  height: 88px;
+  height: 98px;
 }
 .profile-photo-button:disabled {
   cursor: default;
@@ -55,7 +55,7 @@
 :host .reference-profile .client-profile-photo,
 :host .reference-profile .client-avatar-large {
   width: 88px;
-  height: 88px;
+  height: 98px;
   object-fit: cover;
   border-radius: 7px;
   font-size: 28px;
@@ -78,7 +78,7 @@
   gap: 6px 0;
   color: #06376b;
   font-size: 12px;
-  margin-top: 6px;
+  margin-top: 2px;
 }
 .profile-demographics > span {
   padding: 0 10px;
@@ -92,26 +92,80 @@
 }
 .profile-address {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-  margin-top: 6px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  margin-top: 2px;
   font-size: 11px;
   color: #123352;
+  min-width: 0;
 }
-.profile-address > span {
+.profile-address-line {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
 }
-.profile-address .material-symbols-outlined {
+.profile-address-line.expanded,
+.profile-address-line-living {
+  align-items: flex-start;
+}
+.profile-address-line > .material-symbols-outlined {
+  flex: none;
   color: #06376b;
-  font-size: 21px;
+  font-size: 14px;
+  line-height: 1;
+}
+.profile-address-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.profile-address-line-living .profile-address-text {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.profile-address-line.expanded .profile-address-text {
+  display: block;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+.profile-address-more {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #0066ac;
+  cursor: pointer;
+}
+.profile-address-more:hover {
+  background: #eaf5fc;
+}
+.profile-address-more .material-symbols-outlined {
+  font-size: 16px;
 }
 .profile-reference {
   display: block;
   color: #657184;
   font-size: 11px;
-  margin-top: 6px;
+  margin-top: 2px;
 }
 .profile-signal-grid {
   display: grid;

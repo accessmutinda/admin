@@ -83,7 +83,8 @@ export class RotaService {
       !client.reference.trim() ||
       !client.address.trim() ||
       !client.postcode.trim() ||
-      !['Local authority', 'Private', 'NHS'].includes(client.funding) ||
+      !client.funding.trim() ||
+      client.funding.trim().length > 30 ||
       !['Standard', 'High'].includes(client.priority)
     )
       return 'Enter the service user name, reference, address, postcode, funding and priority.';

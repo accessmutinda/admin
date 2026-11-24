@@ -57,7 +57,7 @@
         [ngModel]="funding()"
         (ngModelChange)="funding.set($event); page.set(1)"
         ><mat-option value="">All</mat-option>
-        @for (f of ['Local authority', 'Private', 'NHS']; track f) {
+        @for (f of funders(); track f) {
           <mat-option [value]="f">{{ f }}</mat-option>
         }
       </mat-select></label

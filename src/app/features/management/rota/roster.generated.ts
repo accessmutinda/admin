@@ -60,6 +60,7 @@ export type RosterCallRead = {
   driverRequired: boolean;
   travelMinutes: number | null;
   name: string;
+  icon?: string;
   active: boolean;
   scheduleRecorded: boolean;
   weekdays: number[];
@@ -81,6 +82,7 @@ export type RosterCallWrite = {
   travelMinutes: number | null;
   clientId: string;
   name: string;
+  icon?: string;
   start: string;
   end: string;
   weekdays: number[];
@@ -1291,6 +1293,7 @@ export type RosterVisitRead = {
   clientName: string;
   address: string;
   callName: string;
+  icon?: string;
   date: string;
   start: string;
   end: string;

@@ -205,6 +205,17 @@
 .client-package-table td {
   vertical-align: top;
 }
+.package-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.package-icon {
+  width: 56px;
+  height: 36px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
 :host .client-facts {
   gap: 12px 16px;
   padding: 10px;

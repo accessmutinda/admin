@@ -80,13 +80,47 @@
         ><span>NHS: {{ file().details['nhs'] || 'Not recorded' }}</span>
       </div>
       <div class="profile-address">
+        <span class="profile-address-line" [class.expanded]="addressExpanded()">
+          <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
+          <span #addressText class="profile-address-text">{{ c.address }}, {{ c.postcode }}</span>
+          @if (addressCanExpand()) {
+            <button
+              type="button"
+              class="profile-address-more"
+              [attr.aria-expanded]="addressExpanded()"
+              [attr.aria-label]="addressExpanded() ? 'Show less address' : 'View full address'"
+              (click)="addressExpanded.set(!addressExpanded())"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">{{
+                addressExpanded() ? 'expand_less' : 'expand_more'
+              }}</span>
+            </button>
+          }
+        </span>
         <span
-          ><span class="material-symbols-outlined" aria-hidden="true">location_on</span
-          >{{ c.address }}, {{ c.postcode }}</span
-        ><span
-          ><span class="material-symbols-outlined" aria-hidden="true">home</span
-          >{{ file().details['living'] || 'Living arrangement not recorded' }}</span
+          class="profile-address-line profile-address-line-living"
+          [class.expanded]="livingExpanded()"
         >
+          <span class="material-symbols-outlined" aria-hidden="true">home</span>
+          <span #livingText class="profile-address-text">{{
+            file().details['living'] || 'Living arrangement not recorded'
+          }}</span>
+          @if (livingCanExpand()) {
+            <button
+              type="button"
+              class="profile-address-more"
+              [attr.aria-expanded]="livingExpanded()"
+              [attr.aria-label]="
+                livingExpanded() ? 'Show less living arrangement' : 'View full living arrangement'
+              "
+              (click)="livingExpanded.set(!livingExpanded())"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">{{
+                livingExpanded() ? 'expand_less' : 'expand_more'
+              }}</span>
+            </button>
+          }
+        </span>
       </div>
       <small class="profile-reference"
         >{{ c.reference }} · Care priority: {{ c.priority }} · Funding: {{ c.funding }}</small

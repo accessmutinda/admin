@@ -1,6 +1,12 @@
 .cv-management cv-rota {
   display: block;
 }
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota.operations-page :is(.panel, .metric.co-stat) {
+  border-radius: 4px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota.operations-page .panel > .panel-toolbar {
+  border-radius: 4px 4px 0 0;
+}
 .cv-management cv-rota .metric {
   text-align: left;
 }
@@ -168,6 +174,59 @@
 .cv-management cv-rota .rota-modal {
   max-width: 680px;
 }
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-modal.service-user-popup > .panel-toolbar.su-dialog-heading {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  padding: 0 8px;
+  min-height: 0;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-modal.service-user-popup > .panel-toolbar.su-dialog-heading h2 {
+  text-transform: uppercase;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-modal.service-user-popup > .panel-toolbar .icon-button {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-modal.service-user-popup .panel-body.form-grid {
+  gap: 2px 8px;
+  padding: 6px 10px 8px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-modal.service-user-popup :is(.call-time-row, .call-check-row) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px 8px;
+  min-width: 0;
+}
+@media (max-width: 560px) {
+  .cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-modal.service-user-popup :is(.call-time-row, .call-check-row) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-modal.service-user-popup .form-grid label > :is(input:not([type='checkbox'], [type='radio'], [type='file']), mat-select, textarea) {
+  margin-top: 1px;
+  min-height: 32px;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-modal.service-user-popup .form-grid > small,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-modal.service-user-popup .call-check-row,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-modal.service-user-popup .call-check-row > .check-label {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-modal.service-user-popup .form-grid > label.check-label,
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-modal.service-user-popup .call-check-row > label.check-label {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  min-height: 0;
+  gap: 8px;
+  line-height: 1;
+}
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-modal.service-user-popup .form-grid > label.check-label > input[type='checkbox'],
+.cv-management .app-body main.page-content:not(:has(cv-ecm-wallboard)) cv-rota .rota-modal.service-user-popup .call-check-row > label.check-label > input[type='checkbox'] {
+  margin: 0;
+  align-self: center;
+}
 .cv-management cv-rota .rota-allocation-modal {
   max-width: 760px;
 }
@@ -187,15 +246,12 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 40px;
-  padding: 8px;
-  border: 1px solid #e0e7ef;
-  border-radius: 8px;
+  min-height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
   cursor: pointer;
-}
-.cv-management cv-rota .rota-weekdays .is-selected {
-  background: #edf7f5;
-  border-color: #c8dfd7;
 }
 .cv-management cv-rota .rota-weekdays input,
 .cv-management cv-rota .rota-check input {
@@ -268,6 +324,53 @@
 .cv-management cv-rota .rota-call-heading strong {
   flex: 1;
   font-size: 13px;
+}
+.cv-management cv-rota .rota-call-icon {
+  width: 72px;
+  height: 48px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  border-radius: 4px;
+}
+.cv-management cv-rota .call-icons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.cv-management cv-rota .call-icons legend {
+  padding: 0;
+  font: 700 12px/1.4 var(--font-sans, 'Lato', Arial, sans-serif);
+  color: #10355e;
+}
+.cv-management cv-rota .call-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 2px;
+  margin: 0;
+  overflow: visible;
+}
+.cv-management cv-rota .call-icon-grid-tall {
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+}
+.cv-management cv-rota .call-icon-choice {
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+.cv-management cv-rota .call-icon-choice.selected {
+  border-color: #0b6e4f;
+}
+.cv-management cv-rota .call-icon-choice img {
+  display: block;
+  width: 100%;
+  height: 64px;
+  object-fit: contain;
 }
 .cv-management cv-rota .rota-call p,
 .cv-management cv-rota .rota-call small {

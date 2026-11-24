@@ -2,6 +2,7 @@ import { PortalRecordSummary } from '../staff-portal/portal-record-summary';
 import { Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
+import { callIconSrc } from '../rota/call-icons';
 import { RotaClient } from '../rota/rota.models';
 import { age } from '../care/care.models';
 import { CompanyAccessService } from '../../../core/access/company-access.service';
@@ -174,6 +175,9 @@ export class ClientOverview {
     { label: 'Reassuring approaches', value: this.section('support', 'behaviour') },
     { label: 'Continuity', value: this.section('support', 'continuity') },
   ]);
+  protected iconSrc(call: { icon?: string; name?: string }): string {
+    return callIconSrc(call.icon, call.name ?? '');
+  }
   protected callIcon(name: string): string {
     const text = name.toLowerCase();
     return text.includes('morning')

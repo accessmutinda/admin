@@ -329,7 +329,13 @@
                             }}<small>{{ v.start }} – {{ v.end }} · {{ duration(v) }}m</small>
                           </td>
                           <td>
-                            {{ v.clientName }}<small>{{ v.callName }}</small>
+                            {{ v.clientName
+                            }}<small
+                              >@if (packageIcon(v); as src) {
+                                <img class="visit-package-thumb" [src]="src" alt="" />
+                              }
+                              {{ v.callName }}</small
+                            >
                           </td>
                           <td>
                             @for (id of v.staffIds; track id) {
@@ -401,7 +407,11 @@
                             [style.background]="background(v)"
                             (click)="edit(v)"
                           >
-                            <strong>{{ v.start }} {{ v.callName }}</strong
+                            <strong
+                              >@if (packageIcon(v); as src) {
+                                <img class="visit-package-thumb" [src]="src" alt="" />
+                              }
+                              {{ v.start }} {{ v.callName }}</strong
                             ><small>{{ v.clientName }}</small
                             ><small>{{
                               v.staffIds.length
@@ -454,7 +464,11 @@
                                 (click)="edit(v)"
                               >
                                 <strong>{{ v.start }} – {{ v.end }}</strong
-                                ><small>{{ v.callName }}</small
+                                ><small
+                                  >@if (packageIcon(v); as src) {
+                                    <img class="visit-package-thumb" [src]="src" alt="" />
+                                  }
+                                  {{ v.callName }}</small
                                 ><small>{{ status(v) }}</small>
                               </button>
                             }
@@ -491,12 +505,16 @@
                                 [style.background]="background(v)"
                                 (click)="edit(v)"
                               >
-                                <span
-                                  class="material-symbols-outlined visit-kind-icon"
-                                  [style.color]="careColour(v)"
-                                  aria-hidden="true"
-                                  >{{ v.staffIds.length < v.carers ? 'warning' : 'group' }}</span
-                                >
+                                @if (packageIcon(v); as src) {
+                                  <img class="visit-package-icon" [src]="src" alt="" />
+                                } @else {
+                                  <span
+                                    class="material-symbols-outlined visit-kind-icon"
+                                    [style.color]="careColour(v)"
+                                    aria-hidden="true"
+                                    >{{ v.staffIds.length < v.carers ? 'warning' : 'group' }}</span
+                                  >
+                                }
                                 <strong class="visit-time">{{ v.start }} – {{ v.end }}</strong
                                 ><small class="visit-client">{{ v.clientName }}</small
                                 ><small>{{ v.callName }}</small
@@ -521,7 +539,11 @@
                           @for (v of dayVisits(date); track v.id) {
                             @if (v.staffIds.length < v.carers) {
                               <button class="visit-card needs-cover" (click)="edit(v)">
-                                <strong>{{ v.start }} {{ v.clientName }}</strong
+                                @if (packageIcon(v); as src) {
+                                  <img class="visit-package-icon" [src]="src" alt="" />
+                                }
+                                <strong class="visit-time">{{ v.start }}</strong
+                                ><small class="visit-client">{{ v.clientName }}</small
                                 ><small>{{ v.callName }} · Needs staff</small>
                               </button>
                             }
@@ -614,8 +636,10 @@
             </div>
             @for (v of unallocated().slice(0, 4); track v.id) {
               <div class="planner-cover-row" [class.time-sensitive]="v.timeSensitive">
-                <span class="material-symbols-outlined" aria-hidden="true">warning</span>
                 <div>
+                  @if (packageIcon(v); as src) {
+                    <img class="visit-package-icon" [src]="src" alt="" />
+                  }
                   <small>{{ v.date | date: 'EEE d MMM' }} · {{ v.start }}–{{ v.end }}</small>
                   <strong>{{ v.clientName }}</strong
                   ><small>{{ v.callName }} · {{ v.address }}</small>

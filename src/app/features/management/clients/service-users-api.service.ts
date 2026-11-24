@@ -15,6 +15,12 @@ import type {
   ServiceUserCarePlan,
   ServiceUserRecordSection,
 } from './service-users.generated';
+export type FundingOption = { id: string; name: string };
+export type FundingOptions = { company_id: string; options: FundingOption[] };
+export type SexualityOption = { id: string; name: string };
+export type SexualityOptions = { company_id: string; options: SexualityOption[] };
+export type GenderOption = { id: string; name: string };
+export type GenderOptions = { company_id: string; options: GenderOption[] };
 export type DirectoryUser = RotaClient & {
   company_id: string;
   version: number;
@@ -594,6 +600,54 @@ export class ServiceUsersApi {
     if (photo.state !== 'Clean')
       throw Error('The photo did not pass the security scan. Choose another photo.');
     return photo.id;
+  }
+  async fundingOptions(): Promise<FundingOptions> {
+    const value = await this.auth.api<FundingOptions>(`${this.root()}/service-user-funding`);
+    return this.validate(value);
+  }
+  async addFunding(name: string, scope: string): Promise<FundingOption & { company_id: string }> {
+    if (!this.current(scope)) throw Error('The workspace changed. Reopen the form.');
+    const value = await this.auth.api<FundingOption & { company_id: string }>(
+      `${this.root()}/service-user-funding`,
+      { name },
+      'POST',
+    );
+    this.validate(value);
+    this.facets.update((current) => {
+      if (!current || current.funding.some((item) => item.toLowerCase() === value.name.toLowerCase()))
+        return current;
+      return { ...current, funding: [...current.funding, value.name] };
+    });
+    return value;
+  }
+  async genderOptions(): Promise<GenderOptions> {
+    const value = await this.auth.api<GenderOptions>(`${this.root()}/service-user-gender`);
+    return this.validate(value);
+  }
+  async addGender(name: string, scope: string): Promise<GenderOption & { company_id: string }> {
+    if (!this.current(scope)) throw Error('The workspace changed. Reopen the form.');
+    const value = await this.auth.api<GenderOption & { company_id: string }>(
+      `${this.root()}/service-user-gender`,
+      { name },
+      'POST',
+    );
+    return this.validate(value);
+  }
+  async sexualityOptions(): Promise<SexualityOptions> {
+    const value = await this.auth.api<SexualityOptions>(`${this.root()}/service-user-sexuality`);
+    return this.validate(value);
+  }
+  async addSexuality(
+    name: string,
+    scope: string,
+  ): Promise<SexualityOption & { company_id: string }> {
+    if (!this.current(scope)) throw Error('The workspace changed. Reopen the form.');
+    const value = await this.auth.api<SexualityOption & { company_id: string }>(
+      `${this.root()}/service-user-sexuality`,
+      { name },
+      'POST',
+    );
+    return this.validate(value);
   }
   async save(
     draft: RotaClient,

@@ -14,12 +14,16 @@
   <div class="service-strip">
     @for (call of calls(); track call.id) {
       <a class="service-tile" [routerLink]="['/manage/clients', client().id, 'visits']"
-        ><span
-          class="material-symbols-outlined"
-          [attr.data-kind]="callIcon(call.name)"
-          aria-hidden="true"
-          >{{ callIcon(call.name) }}</span
-        >
+        >@if (iconSrc(call); as src) {
+          <img class="service-icon" [src]="src" alt="" />
+        } @else {
+          <span
+            class="material-symbols-outlined"
+            [attr.data-kind]="callIcon(call.name)"
+            aria-hidden="true"
+            >{{ callIcon(call.name) }}</span
+          >
+        }
         <div>
           <strong>{{ call.name }}</strong
           ><small>{{ frequency(call.weekdays ?? []) }} · {{ call.start }}</small>
@@ -155,15 +159,20 @@
             <dd>
               <span
                 [class]="
-                  row.value === 'Not recorded'
+                  (row.section === 'allergies' ? 'overview-clamp ' : '') +
+                  (row.value === 'Not recorded'
                     ? 'unrecorded'
                     : row.tone
                       ? 'fact-status ' + row.tone
-                      : ''
+                      : '')
                 "
                 >{{ row.value }}</span
               >
-              @if (row.section && canOpen(row.section)) {
+              @if (row.section === 'allergies' && access.can('care', 'records', 'read')) {
+                <button class="overview-more" type="button" (click)="open.emit('allergies')">
+                  View more
+                </button>
+              } @else if (row.section && canOpen(row.section)) {
                 @if (row.section === 'medication') {
                   <a
                     class="inline-link"
@@ -197,10 +206,15 @@
         @for (row of support(); track row.label) {
           <div>
             <dt>{{ row.label }}</dt>
-            <dd>{{ row.value }}</dd>
+            <dd class="overview-clamp">{{ row.value }}</dd>
           </div>
         }
       </dl>
+      @if (access.can('care', 'records', 'read')) {
+        <button class="overview-more" type="button" (click)="open.emit('support')">
+          View more
+        </button>
+      }
     </section>
   </div>
   <div class="profile-column">
@@ -237,20 +251,25 @@
       <div class="preferences">
         <div class="likes">
           <h3><span class="material-symbols-outlined" aria-hidden="true">favorite</span>Likes</h3>
-          <p>{{ details('likes') }}</p>
+          <p class="overview-clamp">{{ details('likes') }}</p>
         </div>
         <div class="dislikes">
           <h3><span class="material-symbols-outlined" aria-hidden="true">cancel</span>Dislikes</h3>
-          <p>{{ details('dislikes') }}</p>
+          <p class="overview-clamp">{{ details('dislikes') }}</p>
         </div>
       </div>
       <div class="important">
         <span class="material-symbols-outlined" aria-hidden="true">info</span>
         <div>
           <h3>Important Notes · What matters to me</h3>
-          <p>{{ details('about') }}</p>
+          <p class="overview-clamp">{{ details('about') }}</p>
         </div>
       </div>
+      @if (access.can('care', 'records', 'read')) {
+        <button class="overview-more" type="button" (click)="open.emit('details')">
+          View more
+        </button>
+      }
     </section>
     <section class="profile-panel record-safeguards">
       <header>

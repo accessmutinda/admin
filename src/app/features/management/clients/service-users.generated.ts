@@ -349,6 +349,7 @@ export type ServiceUserOverview = {
     packages: {
       id: string;
       name: string;
+      icon?: string;
     }[];
     next_visit: {
       id: string;
@@ -492,6 +493,7 @@ export type ServiceUser = {
   packages: {
     id: string;
     name: string;
+    icon?: string;
   }[];
   next_visit: {
     id: string;
@@ -539,7 +541,7 @@ export type ServiceUserWrite = {
   reference: string;
   address: string;
   postcode: string;
-  funding: 'Local authority' | 'Private' | 'NHS';
+  funding: string;
   priority?: 'Standard' | 'High';
   active?: boolean;
   phone?: string;
@@ -616,6 +618,7 @@ export type ServiceUserPage = {
     packages: {
       id: string;
       name: string;
+      icon?: string;
     }[];
     next_visit: {
       id: string;

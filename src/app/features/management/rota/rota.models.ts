@@ -39,7 +39,7 @@ export interface RotaClient {
   reference: string;
   address: string;
   postcode: string;
-  funding: 'Local authority' | 'Private' | 'NHS';
+  funding: string;
   priority: 'Standard' | 'High';
   active: boolean;
 }
@@ -71,6 +71,7 @@ export interface RotaCall extends VisitRequirements {
   id: string;
   clientId: string;
   name: string;
+  icon?: string;
   start: string;
   end: string;
   weekdays: number[];
@@ -97,6 +98,7 @@ export interface RotaVisit extends VisitRequirements {
   clientName: string;
   address: string;
   callName: string;
+  icon?: string;
   date: string;
   start: string;
   end: string;
