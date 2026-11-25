@@ -1,17 +1,40 @@
 import { Injectable, computed, inject } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
-import { Prescription, Administration } from './care.models';
+import { Prescription } from './care.models';
+import { isMarMonth } from './medication-time';
 import type {
   MedicationRead,
   MedicationMarReport,
   MedicationWorkspace,
   MedicationWrite,
+  MedicationWitnessRead,
+  CovertAuthorityRead,
+  CovertAuthorityRegister,
+  CovertAuthorityWrite,
+  CovertAuthorityTransition,
   MarRead,
   MarWrite,
 } from './medication.generated';
 export type SavedMedication = Prescription & { etag: string; version: number };
-export type SavedAdministration = Administration & { etag: string; version: number };
+export type SavedAdministration = Omit<MarRead, 'doseUnits' | 'correctionOf'> & {
+  doseUnits: number | null;
+  correctionOf?: string;
+};
+export type MarRecordDraft = Pick<
+  MarWrite,
+  | 'date'
+  | 'time'
+  | 'outcome'
+  | 'actualAt'
+  | 'witnessApprovalId'
+  | 'covertAuthorityId'
+  | 'covertAcknowledged'
+> & {
+  doseUnits: number | null;
+  reason: string;
+  response: string;
+};
 export type MedicationData = Omit<MedicationWorkspace, 'prescriptions' | 'administrations'> & {
   prescriptions: SavedMedication[];
   administrations: SavedAdministration[];
@@ -55,9 +78,9 @@ export class MedicationApi {
   private administration(row: MarRead): SavedAdministration {
     return {
       ...row,
-      doseUnits: Number(row.doseUnits),
+      doseUnits: row.outcome === 'Given' && row.doseUnits !== null ? Number(row.doseUnits) : null,
       correctionOf: row.correctionOf ?? undefined,
-    } as SavedAdministration;
+    };
   }
   async load(id: string): Promise<MedicationData> {
     const scope = this.scope();
@@ -186,33 +209,104 @@ export class MedicationApi {
   async record(
     id: string,
     row: SavedMedication,
-    draft: Omit<Administration, 'id' | 'at' | 'by' | 'userId'>,
+    draft: MarRecordDraft,
     original: SavedAdministration | undefined,
     key: string,
   ): Promise<void> {
     const scope = this.scope();
-    const body: MarWrite = {
-      date: draft.date,
-      time: draft.time,
-      outcome: draft.outcome,
-      doseUnits: String(draft.doseUnits),
-      reason: draft.reason,
-      response: draft.response,
-      witness: draft.witness,
-    };
     const result = await this.auth.api<MarRead>(
       `${this.root(id)}/${row.id}/administrations${original ? '/' + original.id : ''}`,
-      body,
+      this.marBody(draft),
       original ? 'PATCH' : 'POST',
       { 'If-Match': original?.etag ?? row.etag, 'Idempotency-Key': key },
     );
     this.validate(result, scope);
   }
-  async export(id: string): Promise<Blob> {
+  private marBody(draft: MarRecordDraft): MarWrite {
+    return {
+      date: draft.date,
+      time: draft.time,
+      outcome: draft.outcome,
+      actualAt: draft.actualAt,
+      doseUnits: draft.doseUnits === null ? null : String(draft.doseUnits),
+      reason: draft.reason,
+      response: draft.response,
+      witnessApprovalId: draft.witnessApprovalId,
+      covertAuthorityId: draft.covertAuthorityId,
+      covertAcknowledged: draft.covertAcknowledged,
+    };
+  }
+  async covertAuthorities(
+    id: string,
+    medication: SavedMedication,
+    proposal?: { draft: CovertAuthorityWrite; key: string },
+    transition?: { authority: CovertAuthorityRead; body: CovertAuthorityTransition },
+  ): Promise<CovertAuthorityRead[]> {
+    const scope = this.scope();
+    const path = `${this.root(id)}/${medication.id}/covert-authorities`;
+    const response = this.validate(
+      await this.auth.api<CovertAuthorityRegister>(
+        transition ? `${path}/${transition.authority.id}` : path,
+        transition?.body ?? proposal?.draft,
+        transition ? 'PATCH' : proposal ? 'POST' : undefined,
+        transition
+          ? { 'If-Match': transition.authority.etag }
+          : proposal
+            ? { 'If-Match': medication.etag, 'Idempotency-Key': proposal.key }
+            : undefined,
+      ),
+      scope,
+    );
+    if (response.medicationId !== medication.id || !Array.isArray(response.records))
+      throw Error('The covert authority register is unavailable.');
+    return response.records;
+  }
+  async requestWitness(
+    id: string,
+    row: SavedMedication,
+    draft: MarRecordDraft,
+    original?: SavedAdministration,
+  ): Promise<MedicationWitnessRead> {
+    const scope = this.scope();
+    return this.validate(
+      await this.auth.api<MedicationWitnessRead>(
+        `${this.root(id)}/${row.id}/witness-approvals`,
+        { draft: this.marBody(draft), correctionOf: original?.id ?? null },
+        'POST',
+        { 'If-Match': original?.etag ?? row.etag },
+      ),
+      scope,
+    );
+  }
+  async witnessApproval(
+    id: string,
+    medicationId: string,
+    approvalId: string,
+    attest = false,
+  ): Promise<MedicationWitnessRead> {
+    const scope = this.scope();
+    const result = this.validate(
+      await this.auth.api<MedicationWitnessRead>(
+        `${this.root(id)}/${medicationId}/witness-approvals/${approvalId}`,
+        attest ? { attested: true } : undefined,
+        attest ? 'PATCH' : undefined,
+      ),
+      scope,
+    );
+    if (result.id !== approvalId || result.medicationId !== medicationId)
+      throw Error('The witness request is unavailable.');
+    return result;
+  }
+  async export(
+    id: string,
+    period?: { month: string; sheet: MedicationMarReport['sheet'] },
+  ): Promise<Blob> {
     const scope = this.scope();
     if (!this.can('export')) throw Error('Medication export is not permitted.');
+    if (period && !isMarMonth(period.month)) throw Error('Choose a valid MAR reporting month.');
+    const path = period ? `/mar/export?${new URLSearchParams(period)}` : '/export';
     const blob = await this.auth.api<Blob>(
-      `${this.root(id)}/export`,
+      this.root(id) + path,
       undefined,
       undefined,
       undefined,

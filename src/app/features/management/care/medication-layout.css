@@ -162,9 +162,14 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+.covert-instructions {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 @media print {
   cv-care-header,
-  .mar-medication-actions {
+  .mar-medication-actions,
+  :host(.mar-print-authorized) > :not(cv-mar-report) {
     display: none;
   }
 }

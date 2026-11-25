@@ -1,3 +1,75 @@
+@if (printReport(); as printed) {
+  <section class="mar-print-output" aria-label="Printable medication administration record">
+    <h2>Medication Administration Record</h2>
+    <p>
+      {{ printClientName() }} · {{ printed.month + '-01' | date: 'MMMM yyyy' }} ·
+      {{
+        printed.sheet === 'controlled'
+          ? 'Controlled drugs'
+          : printed.sheet === 'standard'
+            ? 'Standard medications'
+            : 'All medications'
+      }}
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">MAR date and slot</th>
+          <th scope="col">Medication</th>
+          <th scope="col">Outcome and quantity</th>
+          <th scope="col">Administration and staff</th>
+          <th scope="col">Authority and witness</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of printEntries(); track item.entry.id) {
+          <tr>
+            <td>{{ item.date | date: 'd MMM yyyy' }} · {{ item.time }}</td>
+            <td>{{ item.medicine.name }} {{ item.medicine.strength }}</td>
+            <td>
+              {{ item.entry.outcome }}
+              @if (item.entry.doseUnits !== null) {
+                · {{ item.entry.doseUnits }} units
+              }
+              @if (item.entry.reason) {
+                <div>{{ item.entry.reason }}</div>
+              }
+              @if (item.entry.response) {
+                <div>{{ item.entry.response }}</div>
+              }
+            </td>
+            <td>
+              @if (item.entry.actualAt) {
+                <div>{{ item.entry.actualAt | companyDate: printed.timezone }}</div>
+              }
+              {{ item.entry.staffName }} ·
+              {{ signatureCode(item.entry.staffInitials, item.entry.staffId) }}
+            </td>
+            <td>
+              @if (item.entry.covertAuthorityRecord; as authority) {
+                <div>
+                  Covert authority {{ authority.decisionReference }} · v{{ authority.revision }}
+                </div>
+              } @else if (item.entry.covert) {
+                <div>Covert · authority not linked</div>
+              }
+              @if (item.entry.witnessEvidence; as witness) {
+                <div>Witness {{ witnessLabel(witness) }}</div>
+                @if (witness.attestedAt) {
+                  <div>Attested {{ witness.attestedAt | companyDate: printed.timezone }}</div>
+                }
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="5">No MAR administrations recorded for this period.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+}
 <section class="mar-support" aria-labelledby="mar-report-title">
   <div class="preview-toolbar">
     <h2 id="mar-report-title">Medication Administration Record</h2>
@@ -128,10 +200,10 @@
                         <tr>
                           <th scope="col">Date</th>
                           <th scope="col">Time</th>
-                          <th scope="col">Dose units</th>
+                          <th scope="col">Administered units</th>
                           <th scope="col">Reason</th>
                           <th scope="col">Outcome / Effectiveness</th>
-                          <th scope="col">Staff Initials</th>
+                          <th scope="col">Staff initials / ID</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -139,7 +211,13 @@
                           <tr>
                             <td>{{ entry.date | date: 'd MMM yyyy' }}</td>
                             <td>{{ entry.actualTime ?? entry.time }}</td>
-                            <td>{{ entry.doseUnits | number: '1.0-3' }}</td>
+                            <td>
+                              @if (entry.outcome === 'Given') {
+                                {{ entry.doseUnits | number: '1.0-3' }}
+                              } @else {
+                                <span aria-label="No quantity administered">—</span>
+                              }
+                            </td>
                             <td>{{ entry.reason || '—' }}</td>
                             <td>
                               <strong>{{ entry.outcome }}</strong>
@@ -147,7 +225,25 @@
                                 <small>{{ entry.response }}</small>
                               }
                             </td>
-                            <td [title]="entry.staffName">{{ entry.staffInitials || '—' }}</td>
+                            <td [title]="entry.staffName">
+                              {{ signatureCode(entry.staffInitials, entry.staffId) }}
+                              @if (entry.witnessEvidence; as witness) {
+                                <small class="mar-witness"
+                                  >Witness: {{ witnessLabel(witness) }}</small
+                                >
+                              }
+                              @if (entry.covertAuthorityRecord; as authority) {
+                                <small class="mar-covert-authority"
+                                  >Covert · {{ authority.decisionReference }} · v{{
+                                    authority.revision
+                                  }}</small
+                                >
+                              } @else if (entry.covert) {
+                                <small class="mar-covert-authority"
+                                  >Covert · authority not linked</small
+                                >
+                              }
+                            </td>
                           </tr>
                         } @empty {
                           <tr>
@@ -189,13 +285,35 @@
                               >{{ entry.outcome }} · {{ entry.staffName }}</span
                             >
                             @if (entry.actualTime) {
+                              @let actualDate = entry.actualAt ? localDate(entry.actualAt) : '';
                               <small>{{ entry.actualTime }}</small>
+                              @if (
+                                actualDate && actualDate !== (column.date | date: 'dd/MM/yyyy')
+                              ) {
+                                <small>{{ actualDate }}</small>
+                              }
                             } @else if (entry.outcome === 'Given') {
                               <small title="Actual time not recorded">—</small>
                             }
                             <small [title]="entry.staffName">{{
-                              entry.staffInitials || '—'
+                              signatureCode(entry.staffInitials, entry.staffId)
                             }}</small>
+                            @if (entry.witnessEvidence; as witness) {
+                              <small class="mar-witness"
+                                >Witness: {{ witnessLabel(witness) }}</small
+                              >
+                            }
+                            @if (entry.covertAuthorityRecord; as authority) {
+                              <small class="mar-covert-authority"
+                                >Covert · {{ authority.decisionReference }} · v{{
+                                  authority.revision
+                                }}</small
+                              >
+                            } @else if (entry.covert) {
+                              <small class="mar-covert-authority"
+                                >Covert · authority not linked</small
+                              >
+                            }
                           } @else {
                             @let state = cellStates[cell.state];
                             <span [title]="state.label" aria-hidden="true">{{ state.symbol }}</span>
@@ -260,21 +378,20 @@
       <section class="support-card" aria-labelledby="mar-staff-key">
         <h3 id="mar-staff-key">
           <span class="material-symbols-outlined" aria-hidden="true">group</span>Staff Signature Key
-          (Initials)
         </h3>
         @if (saved.staff.length) {
           <table aria-labelledby="mar-staff-key">
             <thead>
               <tr>
-                <th scope="col">Initials</th>
-                <th scope="col">Staff Name</th>
+                <th scope="col">Initials / ID</th>
+                <th scope="col">Staff name / account</th>
                 <th scope="col">Role</th>
               </tr>
             </thead>
             <tbody>
-              @for (person of saved.staff; track person.id) {
+              @for (person of saved.staff; track signatureCode(person.initials, person.id)) {
                 <tr>
-                  <td>{{ person.initials || 'Not recorded' }}</td>
+                  <td>{{ signatureCode(person.initials, person.id) }}</td>
                   <th scope="row">{{ person.name }}</th>
                   <td>{{ person.role || 'Not recorded' }}</td>
                 </tr>

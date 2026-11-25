@@ -409,8 +409,39 @@ thead small {
   }
 }
 
+.mar-witness,
+.mar-covert-authority {
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.mar-print-output {
+  display: none;
+}
+
 @media print {
-  :host {
+  :host:not(.mar-print-authorized),
+  .mar-support {
     display: none;
+  }
+  .mar-print-output {
+    display: block;
+  }
+  .mar-print-output table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .mar-print-output tr {
+    break-inside: avoid;
+  }
+  .mar-print-output th,
+  .mar-print-output td {
+    border: 1px solid currentColor;
+    padding: 0.35em;
+    text-align: left;
+    vertical-align: top;
+    overflow-wrap: anywhere;
   }
 }

@@ -93,10 +93,13 @@ export type MarWrite = {
   time: string;
   outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Not available' | 'Not required';
   actualAt?: string | null;
-  doseUnits: string;
+  doseUnits?: string | null;
   reason?: string;
   response?: string;
   witness?: string;
+  witnessApprovalId?: string;
+  covertAuthorityId?: string;
+  covertAcknowledged?: boolean;
 };
 
 export type MarRead = {
@@ -107,10 +110,21 @@ export type MarRead = {
   time: string;
   outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Not available' | 'Not required' | 'Void';
   actualAt?: string | null;
-  doseUnits: string;
+  doseUnits: string | null;
   reason: string;
   response: string;
   witness: string;
+  witnessEvidence?: {
+    status: 'verified' | 'unverified';
+    name: string;
+    userId: string | null;
+    attestedAt: string | null;
+  } | null;
+  covertAuthorityRecord?: {
+    id: string;
+    revision: number;
+    decisionReference: string;
+  } | null;
   correctionOf: string | null;
   at: string;
   by: string;
@@ -133,6 +147,12 @@ export type MedicationWorkspace = {
   service_user_id: string;
   today: string;
   timezone: string;
+  outcomes: {
+    outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Not available' | 'Not required';
+    code: string;
+    label: string;
+    description: string;
+  }[];
   prescriptions: {
     name: string;
     strength: string;
@@ -188,10 +208,21 @@ export type MedicationWorkspace = {
     time: string;
     outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Not available' | 'Not required' | 'Void';
     actualAt?: string | null;
-    doseUnits: string;
+    doseUnits: string | null;
     reason: string;
     response: string;
     witness: string;
+    witnessEvidence?: {
+      status: 'verified' | 'unverified';
+      name: string;
+      userId: string | null;
+      attestedAt: string | null;
+    } | null;
+    covertAuthorityRecord?: {
+      id: string;
+      revision: number;
+      decisionReference: string;
+    } | null;
     correctionOf: string | null;
     at: string;
     by: string;
@@ -251,12 +282,24 @@ export type MedicationMarReport = {
           actualAt: string | null;
           actualTime: string | null;
           staffId: string;
-          staffInitials: string | null;
+          staffInitials: string;
           staffName: string;
           staffRole: string | null;
-          doseUnits: string;
+          doseUnits: string | null;
           reason: string;
           response: string;
+          witnessEvidence?: {
+            status: 'verified' | 'unverified';
+            name: string;
+            userId: string | null;
+            attestedAt: string | null;
+          } | null;
+          covert?: boolean;
+          covertAuthorityRecord?: {
+            id: string;
+            revision: number;
+            decisionReference: string;
+          } | null;
         } | null;
       }[];
     }[];
@@ -267,19 +310,31 @@ export type MedicationMarReport = {
       actualAt: string | null;
       actualTime: string | null;
       staffId: string;
-      staffInitials: string | null;
+      staffInitials: string;
       staffName: string;
       staffRole: string | null;
-      doseUnits: string;
+      doseUnits: string | null;
       reason: string;
       response: string;
+      witnessEvidence?: {
+        status: 'verified' | 'unverified';
+        name: string;
+        userId: string | null;
+        attestedAt: string | null;
+      } | null;
+      covert?: boolean;
+      covertAuthorityRecord?: {
+        id: string;
+        revision: number;
+        decisionReference: string;
+      } | null;
       date: string;
       time: string;
     }[];
   }[];
   staff: {
     id: string;
-    initials: string | null;
+    initials: string;
     name: string;
     role: string | null;
   }[];
@@ -310,4 +365,119 @@ export type MedicationMarReport = {
   }[];
   as_of: string;
   request_id: string;
+};
+
+export type MedicationWitnessRequest = {
+  draft: {
+    date: string;
+    time: string;
+    outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Not available' | 'Not required';
+    actualAt?: string | null;
+    doseUnits?: string | null;
+    reason?: string;
+    response?: string;
+    witness?: string;
+    witnessApprovalId?: string;
+    covertAuthorityId?: string;
+    covertAcknowledged?: boolean;
+  };
+  correctionOf?: string | null;
+};
+
+export type MedicationWitnessRead = {
+  id: string;
+  company_id: string;
+  medicationId: string;
+  medicationName: string;
+  requester: string;
+  draft: {
+    date: string;
+    time: string;
+    outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Not available' | 'Not required';
+    actualAt?: string | null;
+    doseUnits?: string | null;
+    reason?: string;
+    response?: string;
+    witness?: string;
+    witnessApprovalId?: string;
+    covertAuthorityId?: string;
+    covertAcknowledged?: boolean;
+  };
+  correctionOf: string | null;
+  expiresAt: string;
+  status: 'pending' | 'approved' | 'stale' | 'used';
+  canAttest: boolean;
+  witnessEvidence: {
+    status: 'verified' | 'unverified';
+    name: string;
+    userId: string | null;
+    attestedAt: string | null;
+  } | null;
+};
+
+export type MedicationWitnessAttest = {
+  attested: boolean;
+};
+
+export type CovertAuthorityWrite = {
+  decisionReference: string;
+  prescriber: string;
+  careLead: string;
+  representative: string;
+  instructions: string;
+  effectiveFrom: string;
+  effectiveTo: string;
+  reviewDue: string;
+};
+
+export type CovertAuthorityTransition = {
+  action: 'approve' | 'revoke';
+  confirmed?: boolean;
+  reason?: string;
+};
+
+export type CovertAuthorityRead = {
+  decisionReference: string;
+  prescriber: string;
+  careLead: string;
+  representative: string;
+  instructions: string;
+  effectiveFrom: string;
+  effectiveTo: string;
+  reviewDue: string;
+  id: string;
+  revision: number;
+  etag: string;
+  status:
+    'pending' | 'approved' | 'scheduled' | 'superseded' | 'expired' | 'revoked' | 'review_due';
+  approvedAt: string | null;
+  approvedBy: string | null;
+  revokedAt: string | null;
+  revokedBy: string | null;
+  revocationReason: string;
+};
+
+export type CovertAuthorityRegister = {
+  company_id: string;
+  medicationId: string;
+  records: {
+    decisionReference: string;
+    prescriber: string;
+    careLead: string;
+    representative: string;
+    instructions: string;
+    effectiveFrom: string;
+    effectiveTo: string;
+    reviewDue: string;
+    id: string;
+    revision: number;
+    etag: string;
+    status:
+      'pending' | 'approved' | 'scheduled' | 'superseded' | 'expired' | 'revoked' | 'review_due';
+    approvedAt: string | null;
+    approvedBy: string | null;
+    revokedAt: string | null;
+    revokedBy: string | null;
+    revocationReason: string;
+  }[];
 };

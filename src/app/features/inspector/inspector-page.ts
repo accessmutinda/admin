@@ -1811,6 +1811,7 @@ export class InspectorPage {
             'Outcome',
             'Recorded by',
             'Witness',
+            'Covert authority',
           ],
           rows: this.scopedMar().map((a) =>
             row(
@@ -1823,6 +1824,7 @@ export class InspectorPage {
                 a.superseded ? 'Superseded · ' + a.outcome : a.outcome,
                 a.by,
                 a.witness || 'Not recorded',
+                a.covertAuthority || '—',
               ],
               {
                 Medicine: a.medication,
@@ -1840,6 +1842,7 @@ export class InspectorPage {
                 Response: a.response,
                 'Recorded by': a.by,
                 Witness: a.witness || 'Not recorded',
+                'Covert authority': a.covertAuthority || '—',
                 'Recorded at': this.providerDates.transform(
                   a.at,
                   this.data.medicationBackend?.value()?.meta.timezone,

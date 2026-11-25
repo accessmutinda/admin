@@ -9,6 +9,70 @@
     [printBusy]="exportBusy()"
     (printRequested)="print()"
   />
+  @if (witnessReference()) {
+    <section class="care-panel" aria-labelledby="witness-review-title">
+      <h2 id="witness-review-title">Controlled-drug witness attestation</h2>
+      @if (witnessReviewBusy()) {
+        <p role="status">Working on the witness request…</p>
+      }
+      @if (witnessReviewError()) {
+        <p class="care-error" role="alert">{{ witnessReviewError() }}</p>
+      }
+      @if (witnessReview(); as review) {
+        <p>
+          {{ c.name }} · {{ review.medicationName }} · {{ review.draft.doseUnits }} administered
+          stock units
+        </p>
+        <p>
+          {{ review.correctionOf ? 'Correction' : 'New administration' }} requested by
+          {{ review.requester }}.
+        </p>
+        <p>
+          MAR slot {{ review.draft.date }} {{ review.draft.time }} ({{ recordTimezone() }}). Actual
+          administration {{ review.draft.actualAt | companyDate: recordTimezone() }}.
+        </p>
+        @if (review.draft.reason) {
+          <p>Reason: {{ review.draft.reason }}</p>
+        }
+        @if (review.draft.response) {
+          <p>Response: {{ review.draft.response }}</p>
+        }
+        @if (review.canAttest) {
+          <label>
+            <input
+              type="checkbox"
+              [(ngModel)]="witnessConfirmed"
+              [disabled]="witnessReviewBusy()"
+            />
+            {{
+              review.correctionOf
+                ? 'I witnessed this administration and confirm the corrected details shown above.'
+                : 'I witnessed this administration and confirm the details shown above.'
+            }}
+          </label>
+          <button
+            class="care-button primary"
+            type="button"
+            [disabled]="!witnessConfirmed || witnessReviewBusy()"
+            (click)="attestWitness()"
+          >
+            Attest as witness
+          </button>
+        } @else if (review.status === 'approved' || review.status === 'used') {
+          <p role="status">
+            {{ witnessLabel(review.witnessEvidence) }} ·
+            {{ review.witnessEvidence?.attestedAt | companyDate: recordTimezone() }}
+          </p>
+        } @else if (review.status === 'stale') {
+          <p role="status">
+            This request has expired or the prescription has changed. Ask for a fresh request.
+          </p>
+        } @else {
+          <p role="status">Waiting for a separate authorised witness to attest.</p>
+        }
+      }
+    </section>
+  }
   <div class="care-heading">
     <div>
       <h2 id="medication-workspace-title">
@@ -29,7 +93,15 @@
         <button class="care-button" [disabled]="exportBusy()" (click)="print()">
           Print / Save PDF</button
         ><button class="care-button" [disabled]="exportBusy()" (click)="export()">
-          Export MAR
+          Export monthly MAR
+        </button>
+        <button
+          class="care-button"
+          [disabled]="exportBusy()"
+          (click)="export('history')"
+          title="Includes all months, both sheets, and superseded and withdrawn records"
+        >
+          Export MAR history
         </button>
       }
     </div>
@@ -78,7 +150,7 @@
       <div>
         <h2>Covert medication</h2>
         <strong>{{ covert().length }}</strong
-        ><small>Covert plans recorded</small>
+        ><small>Prescriptions flagged for covert administration</small>
       </div>
     </div>
     <div class="metric co-stat" data-tone="red">
@@ -93,7 +165,10 @@
   <cv-mar-report
     [clientId]="c.id"
     [reportMonth]="marMonth()"
-    [reportSheet]="sheet() === 'Controlled' ? 'controlled' : 'standard'"
+    [reportSheet]="marSheet()"
+    [printReport]="printReport()"
+    [printClientName]="c.name"
+    [revision]="marRevision()"
     (reportMonthChange)="marMonthOverride.set($event)"
   >
     <div marReportActions class="mar-medication-actions">
@@ -130,20 +205,25 @@
         </button>
         <mat-menu #medicationMenu="matMenu">
           @for (m of medicines(); track m.id) {
-            @if (m.discontinuedAt) {
+            @if (m.discontinuedAt && !m.covert) {
               <button mat-menu-item type="button" disabled>{{ m.name }} {{ m.strength }}</button>
             } @else {
               <button mat-menu-item type="button" [matMenuTriggerFor]="actions">
                 {{ m.name }} {{ m.strength }}
               </button>
               <mat-menu #actions="matMenu">
-                @if (can('edit')) {
+                @if (m.covert) {
+                  <button mat-menu-item type="button" (click)="open('covert', m)">
+                    Manage covert authority
+                  </button>
+                }
+                @if (!m.discontinuedAt && can('edit')) {
                   <button mat-menu-item type="button" (click)="open('medication', m)">
                     View / Edit
                   </button>
                   <button mat-menu-item type="button" (click)="open('stock', m)">Stock</button>
                 }
-                @if (can('archive')) {
+                @if (!m.discontinuedAt && can('archive')) {
                   <button mat-menu-item type="button" (click)="open('discontinue', m)">
                     Discontinue
                   </button>
@@ -219,17 +299,26 @@
                   ? record.correctionOf
                     ? 'Review / correct MAR'
                     : 'Record administration'
-                  : modal() === 'stock'
-                    ? 'Adjust stock'
-                    : 'Discontinue medication'
+                  : modal() === 'covert'
+                    ? 'Covert authority'
+                    : modal() === 'stock'
+                      ? 'Adjust stock'
+                      : 'Discontinue medication'
             }}
           </h2>
           <button class="care-button" (click)="close()" aria-label="Close medication editor">
             ×
           </button>
         </div>
-        <form #editorForm="ngForm" (ngSubmit)="editorForm.valid && save()">
-          <fieldset class="medication-editor-fields" [disabled]="saving()">
+        @if (modal() === 'record' && fetching()) {
+          <p class="care-note" role="status">Loading prescription details…</p>
+        }
+        <form
+          #editorForm="ngForm"
+          [attr.aria-busy]="saving() || fetching()"
+          (ngSubmit)="editorForm.valid && save()"
+        >
+          <fieldset class="medication-editor-fields" [disabled]="saving() || fetching()">
             <div class="care-panel care-fields">
               @if (modal() === 'medication') {
                 <label class="care-wide"
@@ -485,15 +574,10 @@
                   />Covert medication</label
                 >
                 @if (draft.covert) {
-                  <label class="care-wide"
-                    >Covert authority / plan *<textarea
-                      [attr.aria-invalid]="fieldError('covertAuthority') ? true : null"
-                      [attr.title]="fieldError('covertAuthority') || null"
-                      name="covertAuthority"
-                      [(ngModel)]="draft.covertAuthority"
-                      required
-                    ></textarea>
-                  </label>
+                  <p class="care-note care-wide">
+                    Save the prescription, then use Manage covert authority to record and approve
+                    the decision before recording a covert dose as Given.
+                  </p>
                 }
                 <label class="care-wide"
                   >Side effects / monitoring<textarea
@@ -510,14 +594,161 @@
                     [(ngModel)]="draft.notes"
                   ></textarea>
                 </label>
+              } @else if (modal() === 'covert') {
+                <p class="care-wide">{{ draft.name }} {{ draft.strength }}</p>
+                @if (draft.covertAuthority) {
+                  <p class="care-note care-wide">
+                    Unverified historical note. {{ draft.covertAuthority }}
+                  </p>
+                }
+                @for (authority of authorities(); track authority.id) {
+                  <section class="care-wide care-note" aria-label="Covert authority version">
+                    <strong
+                      >{{ authority.decisionReference }} · v{{ authority.revision }} ·
+                      {{ authorityLabels[authority.status] }}</strong
+                    >
+                    <p>
+                      Effective {{ authority.effectiveFrom }} through {{ authority.effectiveTo }}.
+                      Review due {{ authority.reviewDue }}.
+                    </p>
+                    <p>
+                      Prescriber {{ authority.prescriber }} · Care lead {{ authority.careLead }} ·
+                      Representative {{ authority.representative }}
+                    </p>
+                    <p class="covert-instructions">{{ authority.instructions }}</p>
+                    @if (authority.approvedAt) {
+                      <p>
+                        Approval recorded by {{ authority.approvedBy }} ·
+                        {{ authority.approvedAt | companyDate: recordTimezone() }}
+                      </p>
+                    }
+                    @if (authority.revokedAt) {
+                      <p>
+                        Revoked by {{ authority.revokedBy }} ·
+                        {{ authority.revokedAt | companyDate: recordTimezone() }}.
+                        {{ authority.revocationReason }}
+                      </p>
+                    }
+                    @if (
+                      can('approve') && authority.status === 'pending' && !draft.discontinuedAt
+                    ) {
+                      <label class="care-check"
+                        ><input
+                          type="checkbox"
+                          name="verifyCovertDecision"
+                          [(ngModel)]="authorityConfirmed"
+                        />I verified the recorded decision and its participants.</label
+                      >
+                      <button
+                        class="care-button"
+                        type="button"
+                        [disabled]="!authorityConfirmed"
+                        (click)="transitionAuthority(authority, 'approve')"
+                      >
+                        Approve authority
+                      </button>
+                    }
+                    @if (
+                      can('approve') &&
+                      (authority.status === 'approved' || authority.status === 'scheduled')
+                    ) {
+                      @if (authorityRevoking === authority.id) {
+                        <label
+                          >Revocation reason<textarea
+                            name="revokeCovertReason"
+                            [(ngModel)]="authorityRevocationReason"
+                          ></textarea>
+                        </label>
+                        <button
+                          class="care-button"
+                          type="button"
+                          [disabled]="!authorityRevocationReason.trim()"
+                          (click)="transitionAuthority(authority, 'revoke')"
+                        >
+                          Confirm revocation
+                        </button>
+                      } @else {
+                        <button
+                          class="care-button"
+                          type="button"
+                          (click)="authorityRevoking = authority.id; authorityRevocationReason = ''"
+                        >
+                          Revoke authority
+                        </button>
+                      }
+                    }
+                  </section>
+                } @empty {
+                  <p class="care-note care-wide">No covert authority has been recorded.</p>
+                }
+                @if (can('edit') && !draft.discontinuedAt) {
+                  <h3 class="care-wide">Propose an authority version</h3>
+                  <label class="care-wide"
+                    >Decision record reference<input
+                      name="covertDecisionReference"
+                      [(ngModel)]="authorityDraft.decisionReference"
+                      required
+                      maxlength="200"
+                  /></label>
+                  <label
+                    >Prescriber<input
+                      name="covertPrescriber"
+                      [(ngModel)]="authorityDraft.prescriber"
+                      required
+                      maxlength="200"
+                  /></label>
+                  <label
+                    >Care lead<input
+                      name="covertCareLead"
+                      [(ngModel)]="authorityDraft.careLead"
+                      required
+                      maxlength="200"
+                  /></label>
+                  <label class="care-wide"
+                    >Family member or advocate<input
+                      name="covertRepresentative"
+                      [(ngModel)]="authorityDraft.representative"
+                      required
+                      maxlength="200"
+                  /></label>
+                  <label
+                    >Effective from<input
+                      name="covertEffectiveFrom"
+                      type="date"
+                      [(ngModel)]="authorityDraft.effectiveFrom"
+                      required
+                  /></label>
+                  <label
+                    >Effective through<input
+                      name="covertEffectiveTo"
+                      type="date"
+                      [(ngModel)]="authorityDraft.effectiveTo"
+                      required
+                  /></label>
+                  <label
+                    >Review due<input
+                      name="covertReviewDue"
+                      type="date"
+                      [(ngModel)]="authorityDraft.reviewDue"
+                      required
+                  /></label>
+                  <label class="care-wide"
+                    >Recorded administration instructions<textarea
+                      name="covertInstructions"
+                      [(ngModel)]="authorityDraft.instructions"
+                      required
+                      maxlength="10000"
+                    ></textarea>
+                  </label>
+                }
               } @else if (modal() === 'record') {
                 <label class="care-wide"
                   >Medication *<mat-select
                     [disabled]="saving() || fetching()"
                     cvSelect
                     aria-label="Record medication"
-                    [ngModel]="selectedId"
-                    (ngModelChange)="chooseMedication($event)"
+                    [value]="selectedId"
+                    (selectionChange)="chooseMedication($event)"
                     [attr.aria-invalid]="fieldError('recordMedication') ? true : null"
                     [attr.title]="fieldError('recordMedication') || null"
                     name="recordMedication"
@@ -538,8 +769,8 @@
                       [attr.aria-invalid]="fieldError('existingRecord') ? true : null"
                       [attr.title]="fieldError('existingRecord') || null"
                       name="existingRecord"
-                      [ngModel]="record.correctionOf || ''"
-                      (ngModelChange)="selectRecord($event)"
+                      [value]="record.correctionOf || ''"
+                      (selectionChange)="chooseRecord($event)"
                     >
                       <mat-option value="" [disabled]="!can('create')"
                         >New administration</mat-option
@@ -554,18 +785,65 @@
                 }
                 @if (reviewed) {
                   <p class="care-note care-wide">
-                    Existing record: {{ reviewed.outcome }} · {{ reviewed.doseUnits }} units ·
+                    Existing record: {{ reviewed.outcome }} ·
+                    @if (reviewed.outcome === 'Given') {
+                      {{ reviewed.doseUnits }} administered units ·
+                    }
                     {{ reviewed.by }} · {{ ukStamp(reviewed.at) }}. Reason:
                     {{ reviewed.reason || 'None recorded' }}. Response:
                     {{ reviewed.response || 'Not recorded' }}.
+                    @if (reviewed.outcome === 'Given') {
+                      Actual administration:
+                      {{ reviewed.actualAt | companyDate: recordTimezone() }}.
+                    }
+                    @if (reviewed.witnessEvidence; as evidence) {
+                      {{ reviewed.correctionOf ? 'Correction witness' : 'Original witness' }}:
+                      {{ witnessLabel(evidence) }}.
+                      @if (evidence.attestedAt) {
+                        {{ evidence.attestedAt | companyDate: recordTimezone() }}.
+                      }
+                    }
+                    @if (reviewed.covertAuthorityRecord; as authority) {
+                      Covert authority {{ authority.decisionReference }} · v{{
+                        authority.revision
+                      }}.
+                    } @else if (draft.covert && reviewed.outcome === 'Given') {
+                      Covert authority was not linked to this entry.
+                    }
                   </p>
+                  @for (previous of earlierRecordVersions(); track previous.id) {
+                    @if (previous.witnessEvidence; as evidence) {
+                      <p class="care-note care-wide">
+                        {{
+                          previous.correctionOf ? 'Earlier correction witness' : 'Original witness'
+                        }}: {{ witnessLabel(evidence) }}.
+                        @if (evidence.attestedAt) {
+                          Attested {{ evidence.attestedAt | companyDate: recordTimezone() }}.
+                        }
+                      </p>
+                    }
+                    @if (previous.covertAuthorityRecord; as authority) {
+                      <p class="care-note care-wide">
+                        {{
+                          previous.correctionOf
+                            ? 'Earlier correction authority'
+                            : 'Original covert authority'
+                        }}
+                        {{ authority.decisionReference }} · v{{ authority.revision }}.
+                      </p>
+                    }
+                  }
                 }
-                <p class="care-wide">
-                  {{ draft.name }} {{ draft.strength }} · {{ draft.dose }}. Enter actual dose
-                  quantity in the same units used for stock.
-                </p>
+                <p class="care-wide">{{ draft.name }} {{ draft.strength }} · {{ draft.dose }}.</p>
                 <label
-                  >Date *<input
+                  >{{
+                    draft.frequency !== 'PRN'
+                      ? 'Scheduled date'
+                      : record.outcome === 'Given'
+                        ? 'Actual administration date'
+                        : 'Entry date'
+                  }}
+                  *<input
                     [attr.aria-invalid]="fieldError('date') ? true : null"
                     [attr.title]="fieldError('date') || null"
                     name="date"
@@ -574,7 +852,14 @@
                     [readonly]="!!record.correctionOf"
                     required /></label
                 ><label
-                  >Time ({{ data()?.timezone ?? 'company time' }}) *<input
+                  >{{
+                    draft.frequency !== 'PRN'
+                      ? 'Scheduled time'
+                      : record.outcome === 'Given'
+                        ? 'Actual administration time'
+                        : 'Entry time'
+                  }}
+                  ({{ recordTimezone() }}) *<input
                     [attr.aria-invalid]="fieldError('time') ? true : null"
                     [attr.title]="fieldError('time') || null"
                     name="time"
@@ -592,26 +877,62 @@
                     aria-label="Administration outcome"
                     [(ngModel)]="record.outcome"
                   >
-                    @for (o of ['Given', 'Refused', 'Omitted', 'Absent']; track o) {
-                      <mat-option [value]="o">{{ o }}</mat-option>
+                    @for (option of recordOutcomes(); track option.outcome) {
+                      <mat-option [value]="option.outcome">
+                        {{ option.label }} ({{ option.code }})
+                      </mat-option>
                     }
                   </mat-select></label
-                ><label
-                  >Dose quantity (stock units) *<input
-                    type="number"
-                    [attr.aria-invalid]="fieldError('doseUnits') ? true : null"
-                    [attr.title]="fieldError('doseUnits') || null"
-                    name="doseUnits"
-                    [(ngModel)]="record.doseUnits"
-                    min="0.01"
-                    step="any"
-                    required /></label
-                ><label class="care-wide"
-                  >Reason / correction explanation<textarea
+                >
+                @if (record.outcome === 'Given' && draft.frequency !== 'PRN') {
+                  <label class="care-wide">
+                    Actual administration date and time ({{ recordTimezone() }})
+                    <input
+                      type="datetime-local"
+                      name="actualAt"
+                      [(ngModel)]="record.actualLocal"
+                      [required]="requiresCovertAuthority()"
+                      [attr.aria-invalid]="fieldError('actualAt') ? true : null"
+                      [attr.aria-describedby]="
+                        fieldError('actualAt') ? 'actual-time-error' : 'actual-time-help'
+                      "
+                    />
+                    @if (fieldError('actualAt')) {
+                      <small id="actual-time-error" class="care-error">{{
+                        fieldError('actualAt')
+                      }}</small>
+                    } @else {
+                      <small id="actual-time-help">{{
+                        requiresCovertAuthority()
+                          ? 'Required to verify which covert authority applied.'
+                          : 'Leave blank if the actual time is unknown.'
+                      }}</small>
+                    }
+                  </label>
+                }
+                @if (record.outcome === 'Given') {
+                  <label>
+                    Administered quantity (stock units) *
+                    <input
+                      type="number"
+                      [attr.aria-invalid]="fieldError('doseUnits') ? true : null"
+                      [attr.title]="fieldError('doseUnits') || null"
+                      name="doseUnits"
+                      [(ngModel)]="record.doseUnits"
+                      min="0.001"
+                      step="any"
+                      required
+                    />
+                  </label>
+                }
+                <label class="care-wide"
+                  >Reason / correction explanation{{ recordReasonRequired() ? ' *' : ''
+                  }}<textarea
                     [attr.aria-invalid]="fieldError('reason') ? true : null"
                     [attr.title]="fieldError('reason') || null"
                     name="reason"
                     [(ngModel)]="record.reason"
+                    [attr.aria-required]="recordReasonRequired() || null"
                   ></textarea></label
                 ><label class="care-wide"
                   >Response / monitoring outcome<textarea
@@ -621,15 +942,101 @@
                     [(ngModel)]="record.response"
                   ></textarea>
                 </label>
-                @if (draft.controlled && record.outcome === 'Given') {
-                  <label class="care-wide"
-                    >Independent witness *<input
-                      [attr.aria-invalid]="fieldError('witness') ? true : null"
-                      [attr.title]="fieldError('witness') || null"
-                      name="witness"
-                      [(ngModel)]="record.witness"
-                      required
-                  /></label>
+                @if (requiresCovertAuthority()) {
+                  <section class="care-wide care-note" aria-labelledby="covert-dose-title">
+                    <h3 id="covert-dose-title">Covert authority</h3>
+                    @let applicable = applicableAuthority();
+                    @if (displayedAuthority(); as authority) {
+                      <p>
+                        {{ authority.decisionReference }} · v{{ authority.revision }} ·
+                        {{
+                          applicable
+                            ? 'Approved at administration'
+                            : authorityLabels[authority.status]
+                        }}
+                      </p>
+                      <p>
+                        Effective {{ authority.effectiveFrom }} through {{ authority.effectiveTo }}.
+                        Review due {{ authority.reviewDue }}.
+                      </p>
+                      @if (applicable || authority.status === 'approved') {
+                        <p class="covert-instructions">{{ authority.instructions }}</p>
+                      }
+                    }
+                    @if (applicable) {
+                      <label class="care-check">
+                        <input
+                          type="checkbox"
+                          name="covertAcknowledged"
+                          [checked]="hasAcknowledgedAuthority()"
+                          (change)="acknowledgeAuthority($any($event.target).checked)"
+                        />
+                        I reviewed the approved instructions and confirm this authority applies to
+                        the dose.
+                      </label>
+                    } @else {
+                      <p role="status">
+                        {{
+                          authorities().length
+                            ? 'Given requires approved authority covering the actual administration time.'
+                            : 'No approved covert authority is recorded for this prescription.'
+                        }}
+                      </p>
+                    }
+                  </section>
+                }
+                @if (requiresWitness()) {
+                  <section class="care-wide" aria-labelledby="witness-request-title">
+                    <h3 id="witness-request-title">Independent witness</h3>
+                    @if (currentWitness(); as witness) {
+                      @if (witnessApproved()) {
+                        <p role="status">
+                          {{ witnessLabel(witness.witnessEvidence) }} ·
+                          {{ witness.witnessEvidence?.attestedAt | companyDate: recordTimezone() }}
+                        </p>
+                      } @else if (witness.status === 'pending') {
+                        <label>
+                          Share this link with an authorised witness signed in to their own account.
+                          <input
+                            type="url"
+                            aria-label="Witness request link"
+                            readonly
+                            [value]="witnessLink(witness)"
+                          />
+                        </label>
+                        <p>
+                          Request expires {{ witness.expiresAt | companyDate: recordTimezone() }}.
+                        </p>
+                        <button class="care-button" type="button" (click)="updateWitness(true)">
+                          Check approval
+                        </button>
+                      } @else {
+                        <p role="status">This approval is no longer available for this dose.</p>
+                      }
+                    } @else {
+                      <p>
+                        {{
+                          record.correctionOf
+                            ? 'Request a fresh attestation for this correction.'
+                            : 'An authorised witness must attest to this dose in their own account.'
+                        }}
+                      </p>
+                    }
+                    @if (!witnessApproved()) {
+                      <button
+                        class="care-button"
+                        type="button"
+                        [disabled]="requiresCovertAuthority() && !hasAcknowledgedAuthority()"
+                        (click)="updateWitness(false)"
+                      >
+                        {{
+                          currentWitness()
+                            ? 'Request a new attestation'
+                            : 'Request witness attestation'
+                        }}
+                      </button>
+                    }
+                  </section>
                 }
                 @if (record.correctionOf) {
                   <p class="care-note care-wide">
@@ -667,14 +1074,34 @@
             }
           </fieldset>
           <footer>
-            <button class="care-button" type="button" (click)="close()">Cancel</button
-            ><button
-              class="care-button primary"
-              [disabled]="saving() || editorForm.invalid"
-              type="submit"
-            >
-              Save {{ modal() === 'record' ? 'MAR record' : 'changes' }}
+            <button class="care-button" type="button" (click)="close()">
+              {{ modal() === 'covert' ? 'Close' : 'Cancel' }}
             </button>
+            @if (modal() !== 'covert' || (can('edit') && !draft.discontinuedAt)) {
+              <button
+                class="care-button primary"
+                [disabled]="
+                  saving() ||
+                  fetching() ||
+                  (modal() === 'record' && recordReasonRequired() && !record.reason.trim()) ||
+                  (modal() === 'record' &&
+                    requiresCovertAuthority() &&
+                    !hasAcknowledgedAuthority()) ||
+                  (modal() === 'record' && requiresWitness()
+                    ? !witnessApproved()
+                    : editorForm.invalid)
+                "
+                type="submit"
+              >
+                {{
+                  modal() === 'covert'
+                    ? 'Save proposal'
+                    : modal() === 'record'
+                      ? 'Save MAR record'
+                      : 'Save changes'
+                }}
+              </button>
+            }
           </footer>
         </form>
       </section>

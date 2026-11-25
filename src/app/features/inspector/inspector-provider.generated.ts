@@ -692,6 +692,7 @@ export type InspectorMedicationAdministration = {
   reason: string;
   response: string;
   witness: string;
+  covertAuthority?: string;
   by: string;
   at: string;
   doseUnits: string;
@@ -710,6 +711,7 @@ export type InspectorMedicationAdministrationDetail = {
   reason: string;
   response: string;
   witness: string;
+  covertAuthority?: string;
   by: string;
   at: string;
   doseUnits: string;
@@ -757,6 +759,7 @@ export type InspectorMedicationClient = {
     reason: string;
     response: string;
     witness: string;
+    covertAuthority?: string;
     by: string;
     at: string;
     doseUnits: string;
@@ -816,6 +819,7 @@ export type InspectorMedicationPage = {
       reason: string;
       response: string;
       witness: string;
+      covertAuthority?: string;
       by: string;
       at: string;
       doseUnits: string;

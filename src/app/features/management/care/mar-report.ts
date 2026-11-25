@@ -12,21 +12,55 @@ import {
   untracked,
 } from '@angular/core';
 import { MedicationApi } from './medication-api.service';
+import { isMarMonth } from './medication-time';
+import { witnessLabel } from './medication-witness-label';
+import { CompanyDatePipe } from '../../../shared/pipes/company-date.pipe';
 import type { MedicationMarReport } from './medication.generated';
 
 @Component({
   selector: 'cv-mar-report',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, DecimalPipe, NgTemplateOutlet],
+  imports: [DatePipe, DecimalPipe, NgTemplateOutlet, CompanyDatePipe],
   templateUrl: './mar-report.html',
   styleUrl: './mar-report.css',
+  host: { '[class.mar-print-authorized]': 'printReport() !== null' },
 })
 export class MarReport {
+  protected readonly witnessLabel = witnessLabel;
   private readonly api = inject(MedicationApi);
   private readonly pending = inject(PendingTasks);
   readonly clientId = input.required<string>();
   readonly reportMonth = input.required<string>();
   readonly reportSheet = input.required<MedicationMarReport['sheet']>();
+  readonly printReport = input<MedicationMarReport | null>(null);
+  readonly printClientName = input('');
+  protected readonly printEntries = computed(() =>
+    (this.printReport()?.prescriptions ?? [])
+      .flatMap((medicine) => [
+        ...medicine.slots.flatMap((slot) =>
+          slot.cells.flatMap((cell) =>
+            cell.administration
+              ? [
+                  {
+                    medicine,
+                    date: cell.date,
+                    time: slot.scheduledTime,
+                    entry: cell.administration,
+                  },
+                ]
+              : [],
+          ),
+        ),
+        ...medicine.prnAdministrations.map((entry) => ({
+          medicine,
+          date: entry.date,
+          time: 'PRN',
+          entry,
+        })),
+      ])
+      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time)),
+  );
+  readonly revision = input(0);
   readonly reportMonthChange = output<string>();
   private readonly query = computed(() => {
     const id = this.clientId();
@@ -80,6 +114,7 @@ export class MarReport {
   constructor() {
     effect((onCleanup) => {
       this.retry();
+      this.revision();
       const { available, id, month, sheet, key } = this.query();
       this.result.set(null);
       if (!available) return;
@@ -106,7 +141,7 @@ export class MarReport {
   }
 
   protected updateReportMonth(month: string): void {
-    if (/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(month)) this.reportMonthChange.emit(month);
+    if (isMarMonth(month)) this.reportMonthChange.emit(month);
   }
 
   protected tone(code: string): string | null {
@@ -122,6 +157,10 @@ export class MarReport {
 
   protected toneForOutcome(outcome: string): string | null {
     return this.tone(this.report()?.codes.find((item) => item.outcome === outcome)?.code ?? '');
+  }
+
+  protected signatureCode(initials: string | null, staffId: string): string {
+    return initials || `ID-${staffId}`;
   }
 
   protected localDate(timestamp: string): string {
