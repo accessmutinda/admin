@@ -1029,237 +1029,233 @@
                       }
                     </section>
 
-                    <section class="plan-card review-banner">
-                      <div class="card-heading">
-                        <div>
-                          <p class="eyebrow">
-                            {{
-                              service.connected
-                                ? 'CARE PLAN QUALITY REVIEW'
-                                : 'CARE PLAN REVIEW • WORKFLOW PREVIEW'
-                            }}
-                          </p>
-                          <h2>
-                            {{
-                              service.connected
-                                ? 'Care-plan readiness and recorded review'
-                                : 'Care-plan review and quality checking'
-                            }}
-                          </h2>
-                          <p>
-                            {{
-                              service.connected
-                                ? 'Review the saved plan inputs and record follow-up decisions.'
-                                : 'Explore evidence selection, discrepancies and human review decisions.'
-                            }}
-                          </p>
-                        </div>
-                        <button class="button primary" (click)="runReview()">
-                          {{ service.connected ? 'Refresh saved checks' : 'Run review' }}
-                        </button>
-                      </div>
-                      <p class="message">
-                        {{
-                          service.connected
-                            ? 'These checks use saved care-plan inputs. Automated suggestions are unavailable; management review remains required.'
-                            : 'Suggested wording requires management or supervisor review. These are fictional examples; no external review request is sent.'
-                        }}
-                      </p>
-                      <div class="review-metrics">
-                        <div>
-                          <strong>{{ reviewCount('Pending') }}</strong
-                          ><span>Awaiting review</span>
-                        </div>
-                        <div>
-                          <strong>{{ reviewCount('Accepted') }}</strong
-                          ><span>Accepted</span>
-                        </div>
-                        <div>
-                          <strong>{{ reviewCount('Rejected') }}</strong
-                          ><span>Rejected</span>
-                        </div>
-                        <div>
-                          <strong>{{ report.sources.length }}</strong
-                          ><span>Evidence records</span>
-                        </div>
-                      </div>
-                      <p class="muted" role="status">
-                        {{ reviewStatus }} · {{ report.generatedAt | date: 'medium' }}
-                      </p>
-                    </section>
-                    <section class="plan-card">
-                      <h2>
-                        {{
-                          service.connected
-                            ? 'Recorded review sources'
-                            : 'Permitted linked evidence · seeded examples'
-                        }}
-                      </h2>
-                      <p>
-                        {{
-                          service.connected
-                            ? 'Required readiness checks use the saved plan and its authorised linked records.'
-                            : 'Choose the evidence categories included in this demo review. Turning a category off excludes findings that depend on it.'
-                        }}
-                      </p>
-                      <div class="evidence-options">
-                        @for (category of sourceCategories; track category) {
-                          <label class="check"
-                            ><input
-                              type="checkbox"
-                              [ngModel]="categoryEnabled(category)"
-                              [disabled]="service.connected"
-                              (ngModelChange)="toggleSourceCategory(category, $event)"
-                            />{{ category }}</label
+                    @if (service.connected) {
+                      <section class="plan-card review-banner">
+                        <div class="card-heading">
+                          <div>
+                            <h2>Care-plan readiness and recorded review</h2>
+                            <p>
+                              These checks use the saved draft and its authorised linked records.
+                            </p>
+                          </div>
+                          <button
+                            class="button"
+                            [disabled]="api?.loading() || api?.saving()"
+                            (click)="reloadSavedReview()"
                           >
+                            Refresh saved checks
+                          </button>
+                        </div>
+                        <p class="message" role="status">
+                          Automated suggestions are unavailable. Management review remains required.
+                        </p>
+                        @if (savedReview(); as review) {
+                          <details>
+                            <summary>Recorded review sources</summary>
+                            @for (source of review.sources; track source.id) {
+                              @if (source.enabled) {
+                                <p>{{ source.title }} · {{ source.detail }}</p>
+                              }
+                            }
+                          </details>
                         }
-                      </div>
-                      <details>
-                        <summary>
-                          {{
-                            service.connected
-                              ? 'Browse recorded review sources'
-                              : 'Browse the fictional evidence records'
-                          }}
-                        </summary>
-                        <div class="evidence-list">
-                          @for (source of report.sources; track source.id) {
-                            <button
-                              class="text-button"
-                              [disabled]="!source.enabled"
-                              (click)="openSource(source.id)"
+                      </section>
+                    } @else if (demoReviewEnabled) {
+                      <section class="plan-card review-banner">
+                        <div class="card-heading">
+                          <div>
+                            <p class="eyebrow">CARE PLAN REVIEW · DEMONSTRATION</p>
+                            <h2>Care-plan review and quality checking</h2>
+                            <p>
+                              Explore evidence selection, discrepancies and human review decisions.
+                            </p>
+                          </div>
+                          <button class="button primary" (click)="runReview()">
+                            Run demo review
+                          </button>
+                        </div>
+                        <p class="message">This demonstration uses fictional examples.</p>
+                        <div class="review-metrics">
+                          <div>
+                            <strong>{{ reviewCount('Pending') }}</strong
+                            ><span>Awaiting review</span>
+                          </div>
+                          <div>
+                            <strong>{{ reviewCount('Accepted') }}</strong
+                            ><span>Accepted</span>
+                          </div>
+                          <div>
+                            <strong>{{ reviewCount('Rejected') }}</strong
+                            ><span>Rejected</span>
+                          </div>
+                          <div>
+                            <strong>{{ report.sources.length }}</strong
+                            ><span>Evidence records</span>
+                          </div>
+                        </div>
+                        <p class="muted" role="status">
+                          {{ reviewStatus }} · {{ report.generatedAt | date: 'medium' }}
+                        </p>
+                      </section>
+                      <section class="plan-card">
+                        <h2>Fictional evidence</h2>
+                        <p>Choose the evidence categories included in this demo review.</p>
+                        <div class="evidence-options">
+                          @for (category of sourceCategories; track category) {
+                            <label class="check"
+                              ><input
+                                type="checkbox"
+                                [ngModel]="categoryEnabled(category)"
+                                (ngModelChange)="toggleSourceCategory(category, $event)"
+                              />{{ category }}</label
                             >
-                              {{ source.title }} · {{ source.date | date: 'dd MMM yyyy' }}
-                            </button>
                           }
                         </div>
-                      </details>
-                      @if (selectedSource; as source) {
-                        <article
-                          id="care-plan-source-preview"
-                          class="source-preview"
-                          aria-live="polite"
-                        >
-                          <div class="card-heading">
-                            <h3>{{ source.title }}</h3>
-                            <button class="text-button" (click)="selectedSource = undefined">
-                              Close evidence
-                            </button>
-                          </div>
-                          <p>
-                            {{ source.category }} · {{ source.date | date: 'dd MMM yyyy' }} ·
-                            {{ source.author }}
-                          </p>
-                          <p>{{ source.detail }}</p>
-                          <span class="pill">Fictional demo evidence</span>
-                        </article>
-                      }
-                    </section>
-                    <section class="plan-card">
-                      <div class="card-heading">
-                        <div>
-                          <h2>AI findings and proposed care-plan changes</h2>
-                          <p>
-                            Accepting applies edited wording to the draft only. Rejecting retains
-                            the current wording.
-                          </p>
-                        </div>
-                      </div>
-                      <div class="form-grid">
-                        <label
-                          >Severity<select [(ngModel)]="reviewSeverity">
-                            <option>All</option>
-                            <option>High</option>
-                            <option>Medium</option>
-                            <option>Low</option>
-                          </select></label
-                        ><label
-                          >Review status<select [(ngModel)]="reviewDecision">
-                            <option>All</option>
-                            <option>Pending</option>
-                            <option>Accepted</option>
-                            <option>Rejected</option>
-                          </select></label
-                        >
-                      </div>
-                      @for (finding of filteredFindings(); track finding.id) {
-                        <article class="finding-card" [attr.data-severity]="finding.severity">
-                          <div class="card-heading">
-                            <div>
-                              <span class="eyebrow">{{ finding.category }}</span>
-                              <h3>{{ finding.title }}</h3>
-                            </div>
-                            <div class="actions">
-                              <span class="pill">{{ finding.severity }}</span
-                              ><span class="pill">{{ finding.decision }}</span>
-                            </div>
-                          </div>
-                          <p>{{ finding.detail }}</p>
-                          <div class="actions">
-                            @for (sourceId of finding.sourceIds; track sourceId) {
-                              <button class="source-link" (click)="openSource(sourceId)">
-                                {{ sourceId }}
+                        <details>
+                          <summary>Browse the fictional evidence records</summary>
+                          <div class="evidence-list">
+                            @for (source of report.sources; track source.id) {
+                              <button
+                                class="text-button"
+                                [disabled]="!source.enabled"
+                                (click)="openSource(source.id)"
+                              >
+                                {{ source.title }} · {{ source.date | date: 'dd MMM yyyy' }}
                               </button>
                             }
-                            <button class="text-button" (click)="openFindingArea(finding.section)">
-                              Open {{ finding.section }} →
-                            </button>
                           </div>
-                          <div class="form-grid">
-                            <label
-                              >Suggested {{ finding.section }} wording<textarea
-                                rows="4"
-                                [(ngModel)]="finding.suggested"
+                        </details>
+                        @if (selectedSource; as source) {
+                          <article
+                            id="care-plan-source-preview"
+                            class="source-preview"
+                            aria-live="polite"
+                          >
+                            <div class="card-heading">
+                              <h3>{{ source.title }}</h3>
+                              <button class="text-button" (click)="selectedSource = undefined">
+                                Close evidence
+                              </button>
+                            </div>
+                            <p>
+                              {{ source.category }} · {{ source.date | date: 'dd MMM yyyy' }} ·
+                              {{ source.author }}
+                            </p>
+                            <p>{{ source.detail }}</p>
+                            <span class="pill">Fictional demo evidence</span>
+                          </article>
+                        }
+                      </section>
+                      <section class="plan-card">
+                        <div class="card-heading">
+                          <div>
+                            <h2>Demo findings and proposed care-plan changes</h2>
+                            <p>
+                              Accepting applies edited wording to the draft only. Rejecting retains
+                              the current wording.
+                            </p>
+                          </div>
+                        </div>
+                        <div class="form-grid">
+                          <label
+                            >Severity<select [(ngModel)]="reviewSeverity">
+                              <option>All</option>
+                              <option>High</option>
+                              <option>Medium</option>
+                              <option>Low</option>
+                            </select></label
+                          ><label
+                            >Review status<select [(ngModel)]="reviewDecision">
+                              <option>All</option>
+                              <option>Pending</option>
+                              <option>Accepted</option>
+                              <option>Rejected</option>
+                            </select></label
+                          >
+                        </div>
+                        @for (finding of filteredFindings(); track finding.id) {
+                          <article class="finding-card" [attr.data-severity]="finding.severity">
+                            <div class="card-heading">
+                              <div>
+                                <span class="eyebrow">{{ finding.category }}</span>
+                                <h3>{{ finding.title }}</h3>
+                              </div>
+                              <div class="actions">
+                                <span class="pill">{{ finding.severity }}</span
+                                ><span class="pill">{{ finding.decision }}</span>
+                              </div>
+                            </div>
+                            <p>{{ finding.detail }}</p>
+                            <div class="actions">
+                              @for (sourceId of finding.sourceIds; track sourceId) {
+                                <button class="source-link" (click)="openSource(sourceId)">
+                                  {{ sourceId }}
+                                </button>
+                              }
+                              <button
+                                class="text-button"
+                                (click)="openFindingArea(finding.section)"
+                              >
+                                Open {{ finding.section }} →
+                              </button>
+                            </div>
+                            <div class="form-grid">
+                              <label
+                                >Suggested {{ finding.section }} wording<textarea
+                                  rows="4"
+                                  [(ngModel)]="finding.suggested"
+                                  [disabled]="!editable() || finding.decision !== 'Pending'"
+                                ></textarea></label
+                              ><label
+                                >Reviewer rationale<textarea
+                                  rows="4"
+                                  [(ngModel)]="finding.rationale"
+                                  [disabled]="!editable() || finding.decision !== 'Pending'"
+                                  placeholder="Record why you accept, edit or reject this suggestion"
+                                ></textarea>
+                              </label>
+                            </div>
+                            <div class="actions">
+                              <button
+                                class="button primary"
                                 [disabled]="!editable() || finding.decision !== 'Pending'"
-                              ></textarea></label
-                            ><label
-                              >Reviewer rationale<textarea
-                                rows="4"
-                                [(ngModel)]="finding.rationale"
+                                (click)="decideFinding(finding, 'Accepted')"
+                              >
+                                Accept / apply edited suggestion</button
+                              ><button
+                                class="button"
                                 [disabled]="!editable() || finding.decision !== 'Pending'"
-                                placeholder="Record why you accept, edit or reject this suggestion"
-                              ></textarea>
-                            </label>
-                          </div>
-                          <div class="actions">
-                            <button
-                              class="button primary"
-                              [disabled]="!editable() || finding.decision !== 'Pending'"
-                              (click)="decideFinding(finding, 'Accepted')"
-                            >
-                              Accept / apply edited suggestion</button
-                            ><button
-                              class="button"
-                              [disabled]="!editable() || finding.decision !== 'Pending'"
-                              (click)="decideFinding(finding, 'Rejected')"
-                            >
-                              Reject suggestion
-                            </button>
-                          </div>
-                        </article>
-                      } @empty {
-                        <p class="message">
-                          No demo findings match the selected evidence and filters. This does not
-                          establish clinical completeness.
-                        </p>
-                      }
-                    </section>
+                                (click)="decideFinding(finding, 'Rejected')"
+                              >
+                                Reject suggestion
+                              </button>
+                            </div>
+                          </article>
+                        } @empty {
+                          <p class="message">
+                            No demo findings match the selected evidence and filters. This does not
+                            establish clinical completeness.
+                          </p>
+                        }
+                      </section>
+                    }
                     <section class="plan-card">
                       <h2>Checks against your current saved record</h2>
-                      <p class="message">AI suggestion – management/supervisor review required.</p>
-                      <p>
-                        Local checks compare care wording with linked incidents, risks and
-                        medication refusals, and flag missing fields, overdue reviews, incomplete
-                        assessments and actions. Professional judgement is required.
-                      </p>
+                      @if (service.connected && !savedReview()) {
+                        <p class="message">
+                          Saved readiness checks are unavailable for this version.
+                        </p>
+                      }
                       <ul class="findings">
                         @for (issue of issues(); track $index) {
                           <li><span class="material-symbols-outlined">warning</span>{{ issue }}</li>
                         } @empty {
-                          <li>
-                            No issues found by the available checks. Confirm the linked evidence
-                            before submitting.
-                          </li>
+                          @if (!service.connected || savedReview()) {
+                            <li>
+                              No issues found by the available checks. Confirm the linked evidence
+                              before submitting.
+                            </li>
+                          }
                         }
                       </ul>
                       <label
@@ -1269,10 +1265,6 @@
                           [disabled]="!editable()"
                         ></textarea>
                       </label>
-                      <p class="muted">
-                        These checks use the current device record. The AI panel above uses separate
-                        fictional evidence so you can explore every frontend review flow.
-                      </p>
                       <div class="actions">
                         <button class="button" (click)="openWorkspace('visit-notes')">
                           Review visit evidence</button

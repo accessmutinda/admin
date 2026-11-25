@@ -16,7 +16,7 @@ import {
 } from './care-plan-review.models';
 import { ApprovedCareInstructions } from './approved-care-instructions';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { CarePlan } from './care-plan';
+import { CARE_PLAN_DEMO_REVIEW, CarePlan } from './care-plan';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -42,6 +42,7 @@ describe('Electronic care-plan lifecycle', () => {
     TestBed.configureTestingModule({
       imports: [CarePlan],
       providers: [
+        { provide: CARE_PLAN_DEMO_REVIEW, useValue: true },
         provideRouter([]),
         {
           provide: ActivatedRoute,
@@ -509,6 +510,19 @@ describe('Electronic care-plan lifecycle', () => {
     expect(draft().events.some((e) => e.action === 'Review suggestion accepted')).toBe(true);
     editor.load();
     expect(editor.report.findings[0].rationale).toContain('fictional evidence');
+  });
+  it('rejects findings from a previously loaded demo draft', () => {
+    service.initialise(id, workspace);
+    const fixture = TestBed.createComponent(CarePlan);
+    fixture.detectChanges();
+    const editor = fixture.componentInstance as any;
+    const previous = editor.report.findings[0];
+    previous.rationale = 'Reviewed the example.';
+    editor.load();
+    const before = structuredClone(editor.plan);
+    editor.decideFinding(previous, 'Accepted');
+    expect(editor.plan).toEqual(before);
+    expect(previous.decision).toBe('Pending');
   });
   it('rejects an evidence suggestion without altering existing section wording', () => {
     service.initialise(id, workspace);

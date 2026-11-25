@@ -390,9 +390,6 @@ export class CarePlanApi {
         professional: b.professional,
         related: b.related,
       })),
-      decisions: (plan.reviewReport?.findings || [])
-        .filter((f) => f.decision !== 'Pending')
-        .map((f) => ({ key: f.id, decision: f.decision, rationale: f.rationale })),
       reason: reason || 'Save the entered care-plan draft and review decisions',
     };
   }

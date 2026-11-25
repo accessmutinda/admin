@@ -41,6 +41,7 @@ import {
   computed,
   effect,
   inject,
+  InjectionToken,
   OnDestroy,
   signal,
 } from '@angular/core';
@@ -64,6 +65,10 @@ import {
   planDate,
   sectionError,
 } from './care-plan.models';
+
+export const CARE_PLAN_DEMO_REVIEW = new InjectionToken<boolean>('Care plan demo review', {
+  factory: () => false,
+});
 
 @Component({
   selector: 'cv-care-plan',
@@ -94,6 +99,7 @@ import {
 export class CarePlan implements OnDestroy {
   protected readonly service = inject(CarePlanService);
   protected readonly api = this.service.connected ? (this.service as unknown as CarePlanApi) : null;
+  protected readonly demoReviewEnabled = !this.service.connected && inject(CARE_PLAN_DEMO_REVIEW);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
@@ -315,11 +321,12 @@ export class CarePlan implements OnDestroy {
   protected wordingScenario = 'No change';
   protected wordingProposals: WordingProposal[] = [];
   protected wordingStatus = 'Ready';
-  protected report: ReviewReport = seededReviewReport();
+  protected report: ReviewReport = { mode: 'Recorded', generatedAt: '', sources: [], findings: [] };
+  private demoReviewPlan?: PlanVersion;
   protected reviewSeverity = 'All';
   protected reviewDecision = 'All';
   protected selectedSource?: ReviewSource;
-  protected reviewStatus = 'Demo results ready';
+  protected reviewStatus = '';
   protected transcript = '';
   protected suggestion = '';
   protected voiceField = 'situation';
@@ -415,12 +422,14 @@ export class CarePlan implements OnDestroy {
     this.signatureName = '';
     this.signatureConfirmed = false;
     this.clean = JSON.stringify(this.plan);
-    this.report = structuredClone(
-      this.plan?.reviewReport ||
-        (this.api
-          ? { mode: 'Recorded', generatedAt: '', sources: [], findings: [] }
-          : seededReviewReport()),
-    );
+    this.selectedSource = undefined;
+    this.demoReviewPlan = this.demoReviewEnabled ? this.plan : undefined;
+    if (this.demoReviewPlan) {
+      const savedReport = this.demoReviewPlan.reviewReport;
+      this.report =
+        savedReport?.mode === 'Demo' ? structuredClone(savedReport) : seededReviewReport();
+      this.reviewStatus = 'Demo results ready';
+    }
     this.wordingProposals = [];
     this.wordingStatus = 'Ready';
   }
@@ -751,7 +760,44 @@ export class CarePlan implements OnDestroy {
     return this.plan?.sections.filter((s) => s.complete || !s.required).length || 0;
   }
   protected issues() {
+    if (this.api) return this.savedReview()?.findings.map((finding) => finding.title) ?? [];
     return this.plan && this.client() ? planIssues(this.plan, this.client()!, this.calls()) : [];
+  }
+  protected savedReview(): ReviewReport | undefined {
+    if (!this.api || !this.plan || !this.record) return;
+    const versionId = this.plan.id;
+    const saved = this.api.read(this.id);
+    if (!saved || saved.revision !== this.record.revision) return;
+    const report = saved.versions.find((version) => version.id === versionId)?.reviewReport;
+    if (
+      report?.mode !== 'Recorded' ||
+      !Array.isArray(report.sources) ||
+      !Array.isArray(report.findings)
+    )
+      return;
+    const sources = report.sources.filter((source) => source.enabled && source.id === versionId);
+    if (!sources.length) return;
+    const findings = report.findings.filter(
+      (finding) =>
+        Array.isArray(finding.sourceIds) &&
+        finding.sourceIds.length &&
+        finding.sourceIds.every((id) => id === versionId),
+    );
+    if (report.findings.length && !findings.length) return;
+    return { ...report, sources, findings };
+  }
+  protected async reloadSavedReview(): Promise<void> {
+    if (!this.api || !this.plan || this.api.loading() || this.api.saving()) return;
+    if (this.dirty() || this.aboutEditDirty) {
+      this.error.set('Save the draft before refreshing the saved readiness checks.');
+      return;
+    }
+    const version = this.plan.id;
+    await this.api.load(this.id);
+    if (!this.api.error() && this.plan?.id === version) {
+      this.load(version);
+      this.error.set('');
+    }
   }
   protected save(action: 'save' | 'submit' | 'approve' | 'return' | 'review' | 'package' = 'save') {
     if (!this.plan || !this.record) return;
@@ -985,21 +1031,19 @@ export class CarePlan implements OnDestroy {
     return this.report.sources.filter((s) => s.category === category).every((s) => s.enabled);
   }
   protected toggleSourceCategory(category: string, enabled: boolean) {
+    if (!this.demoReviewEnabled || this.report.mode !== 'Demo') return;
     this.report.sources
       .filter((s) => s.category === category)
       .forEach((s) => (s.enabled = enabled));
   }
   protected runReview() {
-    if (this.api) {
-      this.report = structuredClone(
-        this.plan?.reviewReport || { mode: 'Recorded', generatedAt: '', sources: [], findings: [] },
-      );
-      this.reviewStatus = 'Checks from the saved care-plan inputs';
-      this.notice.set(
-        'Saved care-plan checks loaded. Save draft changes to recalculate the review.',
-      );
+    if (
+      !this.demoReviewEnabled ||
+      !this.plan ||
+      this.plan !== this.demoReviewPlan ||
+      this.report.mode !== 'Demo'
+    )
       return;
-    }
     this.report.generatedAt = new Date().toISOString();
     this.reviewStatus = 'Review completed';
     this.selectedSource = undefined;
@@ -1021,6 +1065,7 @@ export class CarePlan implements OnDestroy {
     );
   }
   protected openSource(id: string) {
+    if (!this.demoReviewEnabled || this.report.mode !== 'Demo') return;
     this.selectedSource = this.report.sources.find((s) => s.id === id && s.enabled);
     this.changeDetector.detectChanges();
     document
@@ -1028,7 +1073,16 @@ export class CarePlan implements OnDestroy {
       ?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
   }
   protected decideFinding(finding: ReviewFinding, decision: 'Accepted' | 'Rejected') {
-    if (!this.plan || !this.editable() || finding.decision !== 'Pending') return;
+    if (
+      !this.demoReviewEnabled ||
+      !this.plan ||
+      this.plan !== this.demoReviewPlan ||
+      this.report.mode !== 'Demo' ||
+      !visibleReviewFindings(this.report).includes(finding) ||
+      !this.editable() ||
+      finding.decision !== 'Pending'
+    )
+      return;
     if (!finding.rationale.trim()) {
       this.error.set('Record a reviewer rationale before accepting or rejecting this finding.');
       return;

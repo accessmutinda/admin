@@ -8,7 +8,8 @@ import { ServiceUsersApi } from '../clients/service-users-api.service';
 import { CareDocumentsApi } from './care-documents-api.service';
 import { CarePlanApi } from './care-plan-api.service';
 import { CARE_PLAN_PROVIDERS } from './care-plan.providers';
-import { CarePlan } from './care-plan';
+import { CARE_PLAN_DEMO_REVIEW, CarePlan } from './care-plan';
+import { seededReviewReport } from './care-plan-review.models';
 import { seedCarePlan } from './care-plan.models';
 import { emptyClientFile } from '../clients/client-file.models';
 
@@ -186,7 +187,33 @@ describe('Care-plan screen with connected services', () => {
     expect(call[1].signature_confirmed).toBe(true);
   });
   it('shows recorded checks and an unavailable task-evidence source honestly', async () => {
+    TestBed.overrideProvider(CARE_PLAN_DEMO_REVIEW, { useValue: true });
+    const saved = workspace();
+    const report = saved.record.versions[0].reviewReport;
+    report.sources = [
+      {
+        id: 'version',
+        title: 'Saved version evidence',
+        detail: 'Attributed plan sources',
+        enabled: true,
+      },
+      {
+        id: 'another-version',
+        title: 'Unrelated version evidence',
+        enabled: true,
+      },
+    ];
+    report.findings = [
+      { id: 'identity', title: 'Confirm the service-user information.', sourceIds: ['version'] },
+      {
+        id: 'different-version',
+        title: 'Unrelated readiness finding',
+        sourceIds: ['another-version'],
+      },
+    ];
+    request.mockResolvedValue(saved);
     const fixture = await screen();
+    const editor = fixture.componentInstance as any;
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const tab = [...fixture.nativeElement.querySelectorAll('button')].find((button: any) =>
       button.textContent.includes('Quality Review'),
@@ -195,8 +222,53 @@ describe('Care-plan screen with connected services', () => {
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Care-plan readiness and recorded review');
+    expect(text).toContain('Automated suggestions are unavailable');
+    expect(text).toContain('Confirm the service-user information.');
+    expect(text).toContain('Saved version evidence');
     expect(text).toContain('Task-linked visit evidence is unavailable');
-    expect(text).not.toContain('Browse the fictional evidence records');
+    for (const hidden of [
+      'Demo results ready',
+      'Awaiting review',
+      'Fictional',
+      'Unrelated version evidence',
+      'Unrelated readiness finding',
+      'Accept / apply edited suggestion',
+      'Reject suggestion',
+    ])
+      expect(text).not.toContain(hidden);
+
+    const demo = seededReviewReport();
+    const finding = demo.findings[0];
+    finding.rationale = 'Attempt to apply fictional evidence.';
+    editor.report = demo;
+    const before = structuredClone(editor.plan);
+    request.mockClear();
+    editor.runReview();
+    editor.decideFinding(finding, 'Accepted');
+    editor.decideFinding(finding, 'Rejected');
+    expect(editor.plan).toEqual(before);
+    expect(finding.decision).toBe('Pending');
+    expect(request).not.toHaveBeenCalled();
+
+    finding.decision = 'Accepted';
+    editor.plan.reviewReport = demo;
+    await editor.save();
+    const patch = request.mock.calls.find((call) => call[2] === 'PATCH');
+    expect(patch?.[1]).not.toHaveProperty('decisions');
+    expect(JSON.stringify(patch?.[1])).not.toContain(finding.suggested);
+  });
+  it('does not expose a demo report returned with a connected care-plan response', async () => {
+    const value = workspace();
+    value.record.versions[0].reviewReport = seededReviewReport();
+    request.mockResolvedValue(value);
+    const fixture = await screen();
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    (fixture.componentInstance as any).openWorkflowTab('Quality review');
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Saved readiness checks are unavailable for this version.');
+    expect(text).not.toContain(value.record.versions[0].reviewReport.findings[0].title);
+    expect(text).not.toContain('No issues found by the available checks');
   });
   it('renders every remaining care area and highlights missing required inputs without saving', async () => {
     const fixture = await screen(),
