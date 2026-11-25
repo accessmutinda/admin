@@ -1,7 +1,15 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { BehaviorSubject } from 'rxjs';
+import {
+  ActivatedRoute,
+  convertToParamMap,
+  NavigationEnd,
+  provideRouter,
+  Router,
+} from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { BehaviorSubject, filter, firstValueFrom } from 'rxjs';
+import { routes } from '../../../app.routes';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { ApiError } from '../../../core/auth/auth-api';
@@ -177,6 +185,68 @@ describe('Service user record navigation and persistence', () => {
     ] as HTMLAnchorElement[];
     expect(links.length).toBeGreaterThan(4);
     expect(links.every((link) => link.getAttribute('href')!.includes('/user-1'))).toBe(true);
+  });
+  it('routes the Service Users breadcrumb to the directory and Documents to the selected user register', async () => {
+    const router = TestBed.inject(Router);
+    const managementRoutes = routes.find((route) => route.path === 'manage')!.children!;
+    router.resetConfig([
+      {
+        path: 'manage',
+        children: managementRoutes.filter((route) =>
+          ['clients', 'clients/:id'].includes(route.path!),
+        ),
+      },
+    ]);
+    request.mockImplementation(async (path: string) =>
+      path.includes('/documents?')
+        ? { company_id: 'north', service_user_id: 'user-1', results: [], next: null }
+        : overview(),
+    );
+    const profileUrl = '/manage/clients/user-1';
+    const harness = await RouterTestingHarness.create(profileUrl);
+    const follow = async (link: HTMLAnchorElement) => {
+      const navigation = firstValueFrom(
+        router.events.pipe(filter((event) => event instanceof NavigationEnd)),
+      );
+      link.click();
+      const destination = await navigation;
+      await settle(harness.fixture);
+      return destination.urlAfterRedirects;
+    };
+    await settle(harness.fixture);
+    const breadcrumb = harness.routeNativeElement!.querySelector<HTMLAnchorElement>(
+      'nav[aria-label="Breadcrumb"] a',
+    )!;
+    expect(breadcrumb.textContent?.trim()).toBe('Service Users');
+    expect(await follow(breadcrumb)).toBe('/manage/clients');
+    expect(harness.routeNativeElement!.querySelector('h1')?.textContent).toBe('Service Users');
+
+    await harness.navigateByUrl(profileUrl, ClientFiles);
+    await settle(harness.fixture);
+    const workspace = harness.routeNativeElement!.querySelector(
+      'nav[aria-label="Service user workspace"]',
+    )!;
+    const more = workspace.querySelector<HTMLButtonElement>(
+      'button[aria-label="More service-user sections"]',
+    );
+    if (more) {
+      more.click();
+      harness.detectChanges();
+    }
+    const documents = [...workspace.querySelectorAll<HTMLAnchorElement>('a')].find(
+      (link) => link.lastChild?.textContent?.trim() === 'Documents',
+    )!;
+    expect(await follow(documents)).toBe(`${profileUrl}/documents`);
+    expect(
+      harness.routeNativeElement!.querySelector('[aria-label="Documents register"]'),
+    ).not.toBeNull();
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/service-users/user-1/documents?'),
+      undefined,
+      undefined,
+      undefined,
+      'json',
+    );
   });
   it('does not imply recorded consent or clinical assessment when source fields are empty', async () => {
     const value = overview();
