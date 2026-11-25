@@ -1,3 +1,3 @@
 export const environment = {
-  apiBase: 'http://localhost:4200/api/v1',
+  apiBase: 'https://care.neuraledge.co.ke/api/v1',
 };
