@@ -307,16 +307,29 @@ export class VisitNotes {
   protected isEditingExisting(): boolean {
     return !!this.owner?.original;
   }
-  protected chooseVisit(): void {
-    const visit = this.visits().find((v) => v.id === this.draft.visitId);
-    if (!visit) return;
+  protected chooseVisit(id: string): void {
+    this.draft.visitId = id;
+    const visit = this.linkedVisit();
+    if (!visit) {
+      if (!this.draft.visitId) this.draft.status = 'Completed';
+      return;
+    }
     Object.assign(this.draft, {
       date: visit.date,
       start: visit.start,
       end: visit.end,
       visitType: visit.callName,
-      carerId: visit.staffIds.find((id) => this.staff().some((p) => p.id === id)) ?? '',
+      carerId:
+        visit.staffIds.find((id) => this.staff().some((p) => p.id === id)) ??
+        (this.staff().length === 1 && visit.lifecycle !== 'Completed' ? this.staff()[0].id : ''),
+      status: visit.lifecycle === 'Completed' ? 'Completed' : 'Planning',
     });
+  }
+  protected linkedVisit() {
+    return this.visits().find((visit) => visit.id === this.draft.visitId);
+  }
+  protected canRecordCompletion(): boolean {
+    return !this.draft.visitId || this.linkedVisit()?.lifecycle === 'Completed';
   }
   protected async close(): Promise<void> {
     if (this.busy() || !this.canLeave()) return;
@@ -343,6 +356,10 @@ export class VisitNotes {
       this.error.set('The service user or workspace changed. Reopen this note.');
       return;
     }
+    if (this.draft.status === 'Completed' && !this.canRecordCompletion()) {
+      this.error.set('Choose a different note status or record the visit details manually.');
+      return;
+    }
     this.busy.set(true);
     this.fieldErrors.set({});
     try {
@@ -366,7 +383,12 @@ export class VisitNotes {
       this.error.set('');
       this.notice.set('Visit note saved.');
     } catch (e) {
-      if (this.same(owner)) this.fail(e);
+      if (this.same(owner)) {
+        this.fail(e);
+        if (this.draft.visitId && (this.fieldErrors()['status'] || this.fieldErrors()['visitId'])) {
+          await this.api.loadOptions(owner.client, this.queryString(true));
+        }
+      }
     } finally {
       if (owner.scope === this.api.scope() && owner.client === this.id()) this.busy.set(false);
     }

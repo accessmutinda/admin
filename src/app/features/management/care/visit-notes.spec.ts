@@ -3,11 +3,14 @@ import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
+import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
+import { MatSelectHarness } from '@angular/material/select/testing';
 import { ApiError } from '../../../core/auth/auth-api';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
 import { VisitNotes } from './visit-notes';
 import { VisitNotesApi } from './visit-notes-api.service';
 import { CareHeader } from './care-header';
+import { VisitNoteVisit } from './visit-notes.generated';
 
 @Component({ selector: 'cv-care-header', template: '' })
 class HeaderStub {
@@ -58,9 +61,13 @@ describe('Connected visit notes', () => {
     scope: ReturnType<typeof signal<string>>,
     permissions: Set<string>,
     workspace: any,
+    linkedLifecycle: VisitNoteVisit['lifecycle'],
+    linkedStaff: string[],
     params: BehaviorSubject<any>;
   beforeEach(async () => {
     scope = signal('north:actor');
+    linkedLifecycle = 'Draft';
+    linkedStaff = ['carer-1'];
     permissions = new Set(['read', 'create', 'edit', 'publish', 'archive', 'export']);
     params = new BehaviorSubject(convertToParamMap({ id: 'person-1' }));
     workspace = {
@@ -91,7 +98,8 @@ describe('Connected visit notes', () => {
               start: '07:00',
               end: '07:30',
               callName: 'Morning care',
-              staffIds: ['carer-1'],
+              staffIds: linkedStaff,
+              lifecycle: linkedLifecycle,
             },
           ],
           visits_available: true,
@@ -285,15 +293,58 @@ describe('Connected visit notes', () => {
   });
   it('prefills linked visit fields using the existing allocation', async () => {
     await editor.open();
-    editor.draft.visitId = 'visit-1';
-    editor.chooseVisit();
+    await settle(fixture);
+    const picker = await TestbedHarnessEnvironment.loader(fixture).getHarness(
+      MatSelectHarness.with({ selector: '[name="visit"]' }),
+    );
+    await picker.clickOptions({ text: /Morning care.*Draft.*staff assigned/ });
     expect(editor.draft).toMatchObject({
       date: '2026-11-10',
       start: '07:00',
       end: '07:30',
       carerId: 'carer-1',
       visitType: 'Morning care',
+      status: 'Planning',
     });
+  });
+  it.each([
+    ['Draft', [], 'Planning'],
+    ['Draft', ['carer-1'], 'Planning'],
+    ['Published', ['carer-1'], 'Planning'],
+    ['Completed', ['carer-1'], 'Completed'],
+  ] as const)(
+    'defaults a %s linked visit with allocation %j to %s',
+    async (lifecycle, staff, status) => {
+      linkedLifecycle = lifecycle;
+      linkedStaff = [...staff];
+      await editor.api.loadOptions('person-1');
+      await editor.open();
+      editor.chooseVisit('visit-1');
+      expect(editor.draft.status).toBe(status);
+      expect(editor.canRecordCompletion()).toBe(status === 'Completed');
+      editor.chooseVisit('');
+      expect(editor.canRecordCompletion()).toBe(true);
+      expect(editor.draft.status).toBe('Completed');
+    },
+  );
+  it('refreshes stale lifecycle options after a rejected save and retains the note draft', async () => {
+    linkedLifecycle = 'Completed';
+    await editor.api.loadOptions('person-1');
+    await editor.open();
+    editor.chooseVisit('visit-1');
+    editor.draft.body = 'Retain these observations for review';
+    linkedLifecycle = 'Published';
+    request.mockRejectedValueOnce(
+      new ApiError('Completion could not be verified', 409, 'state_conflict', {
+        status: ['Choose a valid status for the linked visit.'],
+      }),
+    );
+    await editor.save();
+    expect(editor.editing()).toBe(true);
+    expect(editor.draft.body).toBe('Retain these observations for review');
+    expect(editor.linkedVisit().lifecycle).toBe('Published');
+    expect(editor.canRecordCompletion()).toBe(false);
+    expect(editor.error()).toContain('could not be verified');
   });
   it('updates sharing through its versioned command', async () => {
     await editor.toggle(editor.notes()[0], 'family');

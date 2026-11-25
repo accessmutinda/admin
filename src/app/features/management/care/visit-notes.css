@@ -194,6 +194,11 @@
   background: #fff6df;
   color: #936300;
 }
+.note-badge.planning,
+.note-status.planning {
+  background: #eaf5fc;
+  color: #0066ac;
+}
 .note-switch {
   display: inline-flex;
   align-items: center;

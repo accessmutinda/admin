@@ -1,5 +1,5 @@
 export type VisitNoteAudience = 'staff' | 'family' | 'inspector';
-export type VisitNoteStatus = 'Completed' | 'Flagged';
+export type VisitNoteStatus = 'Completed' | 'Flagged' | 'Planning';
 export interface VisitNoteAttachment {
   etag?: string;
   state?: string;

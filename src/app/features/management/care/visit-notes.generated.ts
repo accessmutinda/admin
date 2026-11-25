@@ -81,6 +81,7 @@ export type VisitNoteOptions = {
     end: string;
     callName: string;
     staffIds: string[];
+    lifecycle: 'Draft' | 'Published' | 'In progress' | 'Completed';
   }[];
   visits_available: boolean;
 };
@@ -220,6 +221,7 @@ export type VisitNoteVisit = {
   end: string;
   callName: string;
   staffIds: string[];
+  lifecycle: 'Draft' | 'Published' | 'In progress' | 'Completed';
 };
 
 export type VisitNoteWrite = {
@@ -230,7 +232,7 @@ export type VisitNoteWrite = {
   carerId: string;
   visitType: string;
   body: string;
-  status: 'Completed' | 'Flagged';
+  status: 'Completed' | 'Flagged' | 'Planning';
   visibility: {
     staff: boolean;
     family: boolean;

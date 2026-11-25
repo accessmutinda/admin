@@ -1426,7 +1426,7 @@ export type InspectorSharedVisitNote = {
   visit_type: string;
   carer: string;
   body: string;
-  status: 'Completed' | 'Flagged';
+  status: 'Completed' | 'Flagged' | 'Planning';
 };
 
 export type InspectorStaffCheck = {
@@ -1751,7 +1751,7 @@ export type InspectorVisitPage = {
     visit_type: string;
     carer: string;
     body: string;
-    status: 'Completed' | 'Flagged';
+    status: 'Completed' | 'Flagged' | 'Planning';
   }[];
   summary: {
     published: number;

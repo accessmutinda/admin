@@ -135,9 +135,12 @@
                       <p class="note-summary">{{ note.body }}</p>
                     </td>
                     <td>
-                      <span class="note-badge" [class.flagged]="note.status === 'Flagged'">{{
-                        note.status
-                      }}</span>
+                      <span
+                        class="note-badge"
+                        [class.flagged]="note.status === 'Flagged'"
+                        [class.planning]="note.status === 'Planning'"
+                        >{{ note.status }}</span
+                      >
                     </td>
                     @for (audience of audiences; track audience) {
                       <td class="visibility-cell">
@@ -257,20 +260,36 @@
               <span class="material-symbols-outlined" aria-hidden="true">close</span>
             </button>
           </div>
-          <div class="note-status" [class.flagged]="note.status === 'Flagged'">
+          <div
+            class="note-status"
+            [class.flagged]="note.status === 'Flagged'"
+            [class.planning]="note.status === 'Planning'"
+          >
             <span class="material-symbols-outlined" aria-hidden="true">{{
-              note.status === 'Flagged' ? 'flag' : 'check_circle'
+              note.status === 'Planning'
+                ? 'event_note'
+                : note.status === 'Flagged'
+                  ? 'flag'
+                  : 'check_circle'
             }}</span
-            >{{ note.status === 'Flagged' ? 'Flagged Visit' : 'Completed Visit' }}
+            >{{
+              note.status === 'Planning'
+                ? 'Planning note'
+                : note.status === 'Flagged'
+                  ? 'Flagged note'
+                  : note.visitId
+                    ? 'Completed visit'
+                    : 'Manually recorded completion'
+            }}
           </div>
           <dl class="note-facts">
             <dt>Date &amp; Time</dt>
             <dd>{{ note.date | date: 'dd/MM/yyyy' }} · {{ note.start }} – {{ note.end }}</dd>
-            <dt>Carer</dt>
+            <dt>{{ note.status === 'Planning' ? 'Planning contact' : 'Carer' }}</dt>
             <dd>{{ carerName(note.carerId) }}</dd>
             <dt>Visit Type</dt>
             <dd>{{ note.visitType }}</dd>
-            <dt>Duration</dt>
+            <dt>{{ note.status === 'Planning' ? 'Planned duration' : 'Duration' }}</dt>
             <dd>{{ duration(note) }}</dd>
             <dt>Created</dt>
             <dd>{{ ukStamp(note.createdAt) }}</dd>
@@ -401,27 +420,40 @@
             name="visit"
             aria-label="Linked visit"
             [attr.aria-invalid]="fieldErrors()['visitId'] ? true : null"
-            [(ngModel)]="draft.visitId"
-            (ngModelChange)="chooseVisit()"
+            [ngModel]="draft.visitId"
+            (ngModelChange)="chooseVisit($event)"
             ><mat-option value="">Record visit details manually</mat-option>
+            @if (draft.visitId && !linkedVisit()) {
+              <mat-option [value]="draft.visitId" disabled>Previously linked visit</mat-option>
+            }
             @for (visit of visits(); track visit.id) {
               <mat-option [value]="visit.id"
-                >{{ visit.date | date: 'dd MMM yyyy' }} · {{ visit.start }} ·
-                {{ visit.callName }}</mat-option
-              >
+                >{{ visit.date | date: 'dd MMM yyyy' }} · {{ visit.start }} · {{ visit.callName }} ·
+                {{ visit.lifecycle }}
+                @if (visit.lifecycle === 'Draft') {
+                  ({{ visit.staffIds.length ? 'staff assigned' : 'unallocated' }})
+                }
+              </mat-option>
             }
           </mat-select></label
         >
+        @if (draft.visitId && !canRecordCompletion()) {
+          <p class="full-width">
+            Completion requires verified attendance for the linked visit. Use a planning note for
+            scheduling details.
+          </p>
+        }
         <label
           >Date<input
             type="date"
             name="date"
             [attr.aria-invalid]="fieldErrors()['date'] ? true : null"
             [(ngModel)]="draft.date"
-            [max]="today()"
+            [attr.max]="draft.status === 'Planning' ? null : today()"
             required /></label
         ><label
-          >Carer<mat-select
+          >{{ draft.status === 'Planning' ? 'Planning contact' : 'Carer'
+          }}<mat-select
             cvSelect
             name="carer"
             aria-label="Visit note carer"
@@ -469,8 +501,13 @@
             aria-label="Visit note status"
             [attr.aria-invalid]="fieldErrors()['status'] ? true : null"
             [(ngModel)]="draft.status"
-            ><mat-option value="Completed">Completed</mat-option
-            ><mat-option value="Flagged">Flagged</mat-option></mat-select
+            ><mat-option value="Completed" [disabled]="!canRecordCompletion()"
+              >Completed</mat-option
+            >
+            @if (draft.visitId) {
+              <mat-option value="Planning">Planning</mat-option>
+            }
+            <mat-option value="Flagged">Flagged</mat-option></mat-select
           ></label
         >
         <label class="full-width"
@@ -531,7 +568,11 @@
         }
         <div class="note-editor-footer full-width">
           <button class="care-button" type="button" (click)="close()">Cancel</button
-          ><button class="care-button primary" type="submit" [disabled]="busy()">
+          ><button
+            class="care-button primary"
+            type="submit"
+            [disabled]="busy() || (draft.status === 'Completed' && !canRecordCompletion())"
+          >
             Save Visit Note
           </button>
         </div>
