@@ -280,6 +280,7 @@ describe('Service user landing and creation', () => {
           useValue: {
             profile: () => ({ id: 'actor' }),
             currentUser: () => ({ roleCode: 'CA' }),
+            workspaces: () => [{ id: company(), name: 'Current workspace' }],
             api: request,
           },
         },
@@ -1824,6 +1825,7 @@ describe('Service user landing and creation', () => {
   });
   it('excludes medication fields from the health popup when the owning feature is unavailable', async () => {
     const value = overview();
+    Object.assign(value.clinical, { emergency_escalation: 'Follow the saved plan.' });
     value.medication_read = false;
     value.medication_edit = false;
     value.medication_reference = null;
@@ -1842,6 +1844,10 @@ describe('Service user landing and creation', () => {
     await settle(fixture);
     const dialog = document.querySelector('[role="dialog"]')!;
     expect(dialog.querySelector('[name="medication_reference"]')).toBeNull();
+    const escalation = dialog.querySelector<HTMLTextAreaElement>('[name="emergency_escalation"]')!;
+    expect(escalation.value).toBe('Follow the saved plan.');
+    escalation.value = 'Follow the updated plan.';
+    escalation.dispatchEvent(new Event('input', { bubbles: true }));
     dialog
       .querySelector('form')!
       .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
@@ -1849,5 +1855,6 @@ describe('Service user landing and creation', () => {
     const body = request.mock.calls.find(([path]) => path.endsWith('/overview/health'))?.[1] as any;
     expect(body).toBeTruthy();
     expect(body).not.toHaveProperty('medication_reference');
+    expect(body.emergency_escalation).toBe('Follow the updated plan.');
   });
 });

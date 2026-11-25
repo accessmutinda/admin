@@ -40,7 +40,7 @@
     </div>
   </div>
   <section
-    class="panel client-profile client-record-header reference-profile"
+    class="panel client-profile client-record-header reference-profile mar-profile"
     aria-labelledby="client-record-name"
   >
     <button
@@ -62,6 +62,7 @@
         >
       }
     </button>
+<<<<<<< HEAD
     <div class="client-profile-info">
       <div class="row">
         <h2 id="client-record-name">{{ c.name }}</h2>
@@ -124,10 +125,98 @@
       </div>
       <small class="profile-reference"
         >{{ c.reference }} · Care priority: {{ c.priority }} · Funding: {{ c.funding }}</small
+=======
+    <ng-template #marTable let-rows let-preview="preview">
+      <table class="mar-profile-table">
+        <tbody>
+          @for (row of rows; track row.label) {
+            <tr>
+              <th scope="row">{{ row.label }}</th>
+              <td [attr.title]="preview ? row.value : null">
+                @if (row.identity) {
+                  <div class="mar-profile-identity">
+                    <strong [attr.id]="preview ? 'client-record-name' : null">{{
+                      row.value
+                    }}</strong>
+                    <span class="badge" [class.success]="c.active">{{
+                      c.active ? 'Active' : 'Inactive'
+                    }}</span>
+                  </div>
+                } @else {
+                  {{ row.value }}
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </ng-template>
+    @for (panel of marPanels(); track panel.id) {
+      <section
+        class="mar-profile-card"
+        [class]="panel.sectionClass"
+        [attr.aria-labelledby]="panel.id"
+>>>>>>> 87f9a7e ((feat) share the clinical profile header across service user tabs)
       >
-    </div>
-    <div class="profile-signal-grid" aria-label="Clinical and contact summary">
-      @for (flag of profileSignals(); track $index) {
+        <div class="mar-profile-card-header">
+          <h2 [id]="panel.id">
+            <span class="material-symbols-outlined" aria-hidden="true">{{ panel.icon }}</span
+            >{{ panel.title }}
+          </h2>
+          <button
+            class="mar-profile-more"
+            type="button"
+            aria-haspopup="dialog"
+            [attr.aria-label]="'More ' + panel.title.toLowerCase()"
+            [attr.aria-controls]="panel.id + '-dialog'"
+            (click)="fullDetails.showModal()"
+          >
+            More<span class="material-symbols-outlined" aria-hidden="true">open_in_new</span>
+          </button>
+        </div>
+        <ng-container
+          *ngTemplateOutlet="
+            marTable;
+            context: { $implicit: panel.rows.slice(0, 4), preview: true }
+          "
+        />
+        <dialog
+          #fullDetails
+          class="mar-profile-dialog"
+          [id]="panel.id + '-dialog'"
+          [attr.aria-labelledby]="panel.id + '-dialog-title'"
+        >
+          <div class="mar-profile-card-header">
+            <h2 [id]="panel.id + '-dialog-title'">{{ panel.title }}</h2>
+            <button class="mar-profile-more" type="button" autofocus (click)="fullDetails.close()">
+              Close<span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+          </div>
+          <ng-container
+            *ngTemplateOutlet="marTable; context: { $implicit: panel.rows, preview: false }"
+          />
+          @if (panel.id === 'mar-provider-clinical' && canEdit()) {
+            <div class="mar-profile-source-links">
+              <a
+                [routerLink]="['/manage/clients', c.id]"
+                fragment="health-title"
+                (click)="fullDetails.close()"
+                >Health conditions</a
+              >
+              @if (access.canPath('/manage/clients/' + c.id + '/contacts')) {
+                <a
+                  [routerLink]="['/manage/clients', c.id, 'contacts']"
+                  (click)="fullDetails.close()"
+                  >Manage contacts</a
+                >
+              }
+            </div>
+          }
+        </dialog>
+      </section>
+    }
+    <div class="profile-signal-grid" role="group" aria-label="Clinical and contact summary">
+      @for (flag of marSignals(); track $index) {
         <div class="profile-signal" [attr.data-tone]="flag.tone">
           <span class="material-symbols-outlined" aria-hidden="true">{{ flag.icon }}</span
           ><span>{{ flag.label }}</span>

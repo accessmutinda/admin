@@ -207,8 +207,15 @@
             name="relationship"
             [(ngModel)]="contact.relationship"
             maxlength="150"
+            [attr.list]="contact.type === 'Professional' ? 'professional-contact-roles' : null"
             [attr.aria-invalid]="fieldErrors()['relationship'] ? true : null"
           />
+          @if (contact.type === 'Professional') {
+            <datalist id="professional-contact-roles">
+              <option value="Care Coordinator"></option>
+            </datalist>
+            <small>Use Care Coordinator to show this contact in Medication &amp; MAR.</small>
+          }
           @if (fieldErrors()['relationship']) {
             <small class="care-error">{{ fieldErrors()['relationship'].join(' ') }}</small>
           }

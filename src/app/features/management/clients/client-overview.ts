@@ -153,6 +153,14 @@ export class ClientOverview {
       section: 'capacity',
     },
     { label: 'Allergies', value: this.entries('allergies'), tone: 'red', section: 'allergies' },
+    ...(this.client().overview?.clinical.emergency_escalation === undefined
+      ? []
+      : [
+          {
+            label: 'Emergency and escalation instructions',
+            value: this.client().overview?.clinical.emergency_escalation || 'Not recorded',
+          },
+        ]),
     { label: 'Current medication', value: this.medication(), section: 'medication' },
     { label: 'Dietary needs', value: this.section('diagnoses', 'diet') },
     { label: 'Ongoing health care', value: this.section('diagnoses', 'ongoing') },

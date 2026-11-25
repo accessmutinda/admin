@@ -1,0 +1,276 @@
+:host {
+  container-type: inline-size;
+}
+
+:host .reference-profile.mar-profile {
+  --mar-photo-width: 128px;
+  --mar-photo-height: 140px;
+  grid-template-columns: var(--mar-photo-width) minmax(0, 0.86fr) minmax(0, 0.96fr) minmax(
+      0,
+      1.23fr
+    );
+  grid-template-areas: 'photo details provider signals';
+  gap: 8px;
+  align-items: start;
+  color: #123352;
+  font: 400 12px/1.4 var(--font-sans);
+}
+
+.mar-profile .profile-photo-button {
+  grid-area: photo;
+}
+
+.mar-profile .profile-photo-button,
+:host .mar-profile .client-profile-photo,
+:host .mar-profile .client-avatar-large {
+  width: var(--mar-photo-width);
+  height: var(--mar-photo-height);
+}
+
+.mar-profile-details {
+  grid-area: details;
+}
+
+.mar-profile-provider {
+  grid-area: provider;
+}
+
+.mar-profile-card {
+  min-width: 0;
+  align-self: stretch;
+  border: 1px solid #dce6ed;
+  border-radius: 7px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.mar-profile-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 3px 6px;
+  background: #eaf5fc;
+}
+
+.mar-profile-card > .mar-profile-card-header {
+  padding-block: 2px;
+}
+
+.mar-profile-card-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #002b60;
+  font: 800 14px/1.4 var(--font-sans);
+  letter-spacing: -0.35px;
+}
+
+.mar-profile-card-header h2 .material-symbols-outlined {
+  color: #00528c;
+  font-size: 22px;
+  font-variation-settings: 'FILL' 1;
+}
+
+.mar-profile-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 30px;
+  padding: 3px 5px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #00528c;
+  font: 700 11px/1.2 var(--font-sans);
+  cursor: pointer;
+}
+
+.mar-profile-more:hover {
+  border-color: #dce6ed;
+  background: #fff;
+}
+
+.mar-profile-more .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.mar-profile-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.mar-profile-table th,
+.mar-profile-table td {
+  padding: 4px 6px;
+  border-top: 1px solid #dce6ed;
+  overflow-wrap: anywhere;
+  text-align: left;
+  vertical-align: top;
+}
+
+.mar-profile-table th {
+  width: 42%;
+  border-right: 1px solid #dce6ed;
+  background: #eff5f8;
+  color: #53677f;
+  font-weight: 700;
+}
+
+.mar-profile-table td {
+  white-space: pre-line;
+}
+
+.mar-profile-card > .mar-profile-table {
+  font-size: 11px;
+}
+
+.mar-profile-card > .mar-profile-table :is(th, td) {
+  padding: 2px 5px;
+}
+
+.mar-profile-card > .mar-profile-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mar-profile-dialog {
+  position: fixed;
+  inset: 0;
+  width: min(520px, calc(100% - 24px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid #dce6ed;
+  border-radius: 9px;
+  background: #fff;
+  color: #123352;
+  box-shadow: 0 12px 36px #09325240;
+}
+
+.mar-profile-dialog::backdrop {
+  background: #09325266;
+}
+
+.mar-profile-dialog .mar-profile-card-header {
+  position: sticky;
+  top: 0;
+  padding-inline: 10px;
+}
+
+.mar-profile-dialog .mar-profile-table :is(th, td) {
+  padding: 6px 10px;
+}
+
+.mar-profile-source-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 4px 10px;
+  border-top: 1px solid #dce6ed;
+}
+
+.mar-profile-source-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: #00528c;
+  text-decoration: underline;
+}
+
+@media (pointer: coarse) {
+  .mar-profile-more,
+  .mar-profile-source-links a {
+    min-height: 44px;
+  }
+}
+
+:host .mar-profile #client-record-name {
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: normal;
+}
+
+.mar-profile-identity {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.mar-profile-card > .mar-profile-table .mar-profile-identity strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mar-profile-identity .badge {
+  flex-shrink: 0;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.mar-profile .profile-signal-grid {
+  grid-area: signals;
+  grid-template: repeat(4, auto) / repeat(2, minmax(0, 1fr));
+  grid-auto-flow: column;
+  gap: 4px;
+}
+
+.mar-profile .profile-signal {
+  padding: 4px 5px;
+  white-space: pre-line;
+}
+
+.mar-profile .profile-signal > .material-symbols-outlined {
+  font-size: 18px;
+}
+
+@container (width >= 960px) {
+  .mar-profile .profile-photo-button {
+    align-self: stretch;
+    height: auto;
+  }
+
+  :host .mar-profile .client-profile-photo,
+  :host .mar-profile .client-avatar-large {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+  }
+
+  .mar-profile-card {
+    contain: size;
+  }
+}
+
+@container (width < 960px) {
+  :host .reference-profile.mar-profile {
+    --mar-photo-width: 104px;
+    --mar-photo-height: 116px;
+    grid-template-columns: var(--mar-photo-width) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'photo details provider'
+      'signals signals signals';
+  }
+}
+
+@container (width < 620px) {
+  :host .reference-profile.mar-profile {
+    --mar-photo-width: 80px;
+    --mar-photo-height: 90px;
+    grid-template-columns: var(--mar-photo-width) minmax(0, 1fr);
+    grid-template-areas:
+      'photo details'
+      'provider provider'
+      'signals signals';
+  }
+}
+
+@container (width < 340px) {
+  :host .reference-profile.mar-profile {
+    --mar-photo-width: 72px;
+    --mar-photo-height: 82px;
+  }
+}

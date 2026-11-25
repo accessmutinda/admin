@@ -2,12 +2,6 @@
   display: block;
   min-width: 0;
 }
-.row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 .badge {
   border: 1px solid #dfe8ee;
   border-radius: 4px;
@@ -19,9 +13,6 @@
   color: #087550;
   background: #e9faf2;
   border-color: #c3ecdb;
-}
-.client-profile-info {
-  min-width: 0;
 }
 .button {
   display: inline-flex;
@@ -52,9 +43,6 @@ a:focus-visible,
 summary:focus-visible {
   outline: 2px solid #008afa;
   outline-offset: 2px;
-}
-.client-profile-info .row {
-  margin-bottom: 0;
 }
 :host .reference-profile {
   margin-top: 0;

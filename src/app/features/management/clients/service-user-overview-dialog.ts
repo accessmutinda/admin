@@ -35,6 +35,7 @@ interface Field {
   choices?: { id: string; name: string }[];
   multiple?: boolean;
   hint?: string;
+  maxLength?: number;
   required?: boolean;
 }
 export type OverviewCard =
@@ -127,6 +128,12 @@ const FIELDS: Record<OverviewCard, Field[]> = {
     { key: 'welfare_lpa', label: 'Health & Welfare attorney and contact' },
     { key: 'finance_lpa', label: 'Property & Finance attorney and contact' },
     { key: 'allergies', label: 'Allergies, reactions and response guidance', type: 'textarea' },
+    {
+      key: 'emergency_escalation',
+      label: 'Emergency and escalation instructions',
+      type: 'textarea',
+      maxLength: 2000,
+    },
     {
       key: 'medication_reference',
       label: 'Medication and support information',
@@ -255,6 +262,7 @@ const FIELDS: Record<OverviewCard, Field[]> = {
                   [attr.name]="field.key"
                   [(ngModel)]="draft[field.key]"
                   [readonly]="field.readonly || loading() || !editable()"
+                  [attr.maxlength]="field.maxLength ?? null"
                   rows="3"
                   [attr.aria-invalid]="!!errors()[field.key]"
                   [attr.aria-describedby]="
@@ -423,7 +431,10 @@ export class ServiceUserOverviewDialog {
   }[this.data.card];
   readonly fields: Field[] = this.sourceFields()
     .filter(
-      (field) => field.key !== 'medication_reference' || this.data.person.overview?.medication_read,
+      (field) =>
+        (field.key !== 'medication_reference' || this.data.person.overview?.medication_read) &&
+        (field.key !== 'emergency_escalation' ||
+          this.data.person.overview?.clinical.emergency_escalation !== undefined),
     )
     .map((field) => ({
       ...field,

@@ -121,6 +121,7 @@ describe('Service user record navigation and persistence', () => {
           useValue: {
             profile: () => ({ id: 'actor' }),
             currentUser: () => ({ roleCode: 'CA' }),
+            workspaces: () => [{ id: company(), name: 'Current company' }],
             api: request,
           },
         },

@@ -1,4 +1,5 @@
 import { CompanyAccessService } from '../../../core/access/company-access.service';
+import { AuthService } from '../../../core/auth/auth.service';
 import { visibleWorkspaceTabCount } from './workspace-tab-overflow';
 import {
   Component,
@@ -6,6 +7,7 @@ import {
   effect,
   inject,
   input,
+  LOCALE_ID,
   output,
   signal,
   untracked,
@@ -16,15 +18,16 @@ import {
   HostListener,
   ChangeDetectorRef,
 } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { formatDate, NgTemplateOutlet } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { RotaClient } from '../rota/rota.models';
 import { RotaService } from '../rota/rota.service';
 import { age } from './care.models';
 import { emptyClientFile } from '../clients/client-file.models';
+import { CareContactsApi } from './care-contacts-api.service';
 @Component({
   selector: 'cv-care-header',
-  imports: [DatePipe, RouterLink],
+  imports: [NgTemplateOutlet, RouterLink],
   templateUrl: './care-header.html',
   styleUrls: [
     './service-user-spacing.css',
@@ -33,13 +36,19 @@ import { emptyClientFile } from '../clients/client-file.models';
     '../clients/client-profile-overview.css',
     '../clients/client-profile-responsive.css',
     './care-profile-header.css',
+    './mar-profile-header.css',
     './workspace-tab-overflow.css',
   ],
 })
 export class CareHeader {
   protected readonly embeddedInCarePlan =
     inject(ActivatedRoute).snapshot.data?.['carePlanWorkspace'] === true;
+  private readonly auth = inject(AuthService);
+  private readonly locale = inject(LOCALE_ID);
+  private readonly marContacts = inject(CareContactsApi, { optional: true });
   readonly client = input.required<RotaClient>();
+  private readonly clientId = computed(() => this.client().id);
+  private readonly marHeaderAvailable = computed(() => Boolean(this.client().overview?.mar_header));
   readonly active = input('overview');
   readonly breadcrumb = input(true);
   readonly local = input(false);
@@ -54,6 +63,32 @@ export class CareHeader {
   private readonly router = inject(Router);
   protected readonly age = (dob: string) => age(dob, this.client().overview?.local_date);
   protected readonly file = computed(() => this.client().file ?? emptyClientFile());
+  protected readonly marUserRows = computed(() => {
+    const client = this.client();
+    const details = this.file().details;
+    const dob = details['dob'];
+    const years = this.age(dob);
+    return [
+      { label: 'Full Name', value: client.name, identity: true },
+      {
+        label: 'Date of Birth',
+        value:
+          years === null
+            ? 'Not recorded'
+            : `${formatDate(dob, 'dd MMM yyyy', this.locale)} (Age ${years})`,
+      },
+      { label: 'NHS Number', value: details['nhs'] || 'Not recorded' },
+      { label: 'Service User ID', value: client.reference || 'Not recorded' },
+      {
+        label: 'Address',
+        value: [client.address, client.postcode].filter(Boolean).join(', ') || 'Not recorded',
+      },
+      { label: 'Gender', value: details['gender'] || 'Not recorded' },
+      { label: 'Living Arrangement', value: details['living'] || 'Not recorded' },
+      { label: 'Care Priority', value: client.priority || 'Not recorded' },
+      { label: 'Funding', value: client.funding || 'Not recorded' },
+    ];
+  });
   protected readonly calls = computed(() =>
     this.client().overview
       ? []
@@ -157,9 +192,20 @@ export class CareHeader {
   constructor() {
     const destroyRef = inject(DestroyRef);
     effect(() => {
+<<<<<<< HEAD
       const address = `${this.client().address ?? ''}, ${this.client().postcode ?? ''}`;
       const living = this.file().details['living'] || 'Living arrangement not recorded';
       untracked(() => this.syncProfileText(address, living));
+=======
+      const contacts = this.marContacts;
+      if (!contacts || this.embeddedInCarePlan) return;
+      const id = this.clientId();
+      contacts.scope();
+      if (this.marHeaderAvailable() || this.active() === 'contacts') return;
+      untracked(() => {
+        if (contacts.can('read')) void contacts.load(id);
+      });
+>>>>>>> 87f9a7e ((feat) share the clinical profile header across service user tabs)
     });
     afterNextRender(() => {
       const nav = this.workspaceNav()?.nativeElement;
@@ -320,17 +366,31 @@ export class CareHeader {
       )[path] || 'folder'
     );
   }
-  protected readonly profileSignals = computed(() => {
+  private readonly diagnoses = computed(() => {
     const file = this.file();
-    const diagnoses = [
-      file.sections['diagnoses']?.['primary'],
-      ...(file.entries['diagnoses'] ?? []).filter((e) => e.status === 'Active').map((e) => e.name),
-    ].filter(Boolean);
-    const conditions = [...new Set([...diagnoses, ...(this.client()?.riskFlags ?? [])])];
-    const kin =
-      file.contacts?.find((c) => c.nextOfKin)?.name || this.client()?.representative?.name;
     return [
-      ...conditions.slice(0, 2).map((label) => ({ label, icon: 'neurology', tone: 'red' })),
+      file.sections['diagnoses']?.['primary'],
+      ...(file.entries['diagnoses'] ?? [])
+        .filter((entry) => entry.status === 'Active')
+        .map((entry) => entry.name),
+    ].filter(Boolean);
+  });
+  private readonly profileConditions = computed(() => [
+    ...new Set([...this.diagnoses(), ...(this.client().riskFlags ?? [])]),
+  ]);
+  private readonly profileContextSignals = computed(() => {
+    const file = this.file();
+    const mar = this.client().overview?.mar_header;
+    const kin =
+      mar?.next_of_kin ??
+      (file.contacts?.find((c) => c.nextOfKin)?.name || this.client().representative?.name);
+    const scheduledCalls = this.calls();
+    const calls = mar
+      ? mar.time_sensitive_calls
+      : scheduledCalls.length
+        ? scheduledCalls.some((call) => call.timeSensitive)
+        : null;
+    return [
       {
         label: 'Capacity: ' + (file.sections['capacity']?.['status'] || 'Not recorded'),
         icon: 'balance',
@@ -351,15 +411,9 @@ export class CareHeader {
         tone: file.sections['capacity']?.['financeLpa'] ? 'green' : 'neutral',
       },
       {
-        label:
-          'Time-sensitive calls: ' +
-          (this.calls().some((c) => c.timeSensitive)
-            ? 'Yes'
-            : this.calls().length
-              ? 'No'
-              : 'Not recorded'),
+        label: 'Time-sensitive calls: ' + (calls === null ? 'Not recorded' : calls ? 'Yes' : 'No'),
         icon: 'schedule',
-        tone: this.calls().some((c) => c.timeSensitive) ? 'red' : 'neutral',
+        tone: calls ? 'red' : 'neutral',
       },
       {
         label:
@@ -376,4 +430,112 @@ export class CareHeader {
       { label: 'Next of kin: ' + (kin || 'Not recorded'), icon: 'group', tone: 'blue' },
     ];
   });
+  protected readonly marSignals = computed(() => {
+    const allergy = [
+      ...new Set(
+        [
+          this.client().overview?.clinical.allergies,
+          ...(this.file().entries['allergies'] ?? [])
+            .filter((entry) => entry.status === 'Active')
+            .map((entry) => [entry.name, entry.detail].filter(Boolean).join(' · ')),
+        ]
+          .map((value) => value?.trim())
+          .filter((value): value is string => !!value),
+      ),
+    ].join('\n');
+    return [
+      {
+        label: 'Allergy status: ' + (allergy || 'Not recorded'),
+        icon: 'warning',
+        tone: allergy ? 'red' : 'neutral',
+      },
+      ...this.profileContextSignals(),
+    ];
+  });
+  protected readonly marClinicalRows = computed(() => {
+    const client = this.client();
+    const mar = client.overview?.mar_header;
+    const escalation = client.overview?.clinical.emergency_escalation;
+    const companyId = client.overview?.record.company_id || this.access.companyId();
+    const provider =
+      mar?.provider ?? this.auth.workspaces().find((workspace) => workspace.id === companyId)?.name;
+    const contacts =
+      this.marContacts
+        ?.contacts()
+        .filter(
+          (contact) => contact.company_id === companyId && contact.service_user_id === client.id,
+        ) ?? [];
+    const gp = contacts.find((contact) => contact.type === 'GP');
+    const emergency = contacts.find((contact) => contact.type === 'Emergency');
+    const emergencyDetails = (
+      mar
+        ? [mar.emergency_contact_name, mar.emergency_contact_phone, mar.emergency_contact_email]
+        : [emergency?.name, emergency?.phone, emergency?.email]
+    )
+      .filter(Boolean)
+      .join(' · ');
+    const roleName = (role: string) =>
+      contacts.find(
+        (contact) =>
+          contact.type === 'Professional' && contact.relationship.trim().toLowerCase() === role,
+      )?.name;
+    const unavailable =
+      !mar && this.marContacts?.loading()
+        ? 'Loading…'
+        : !mar && this.marContacts?.error()
+          ? 'Unavailable'
+          : 'Not recorded';
+    const conditions = [
+      ...new Set(
+        [
+          ...this.profileConditions(),
+          client.overview?.clinical.primary_diagnosis,
+          client.overview?.clinical.other_conditions,
+          ...(client.overview?.risks ?? []).map((risk) => risk.title),
+        ]
+          .map((value) => value?.trim())
+          .filter(Boolean),
+      ),
+    ].join('\n');
+    return [
+      { label: 'Provider', value: provider || 'Not recorded' },
+      {
+        label: 'GP Practice',
+        value: (mar?.gp_practice ?? (this.file().details['gp'] || gp?.name)) || unavailable,
+      },
+      { label: 'GP Telephone', value: (mar?.gp_telephone ?? gp?.phone) || unavailable },
+      {
+        label: 'Emergency / Escalation',
+        value: emergencyDetails || (escalation ? 'See escalation instructions' : unavailable),
+      },
+      {
+        label: 'Care Coordinator',
+        value: (mar?.care_coordinator ?? roleName('care coordinator')) || unavailable,
+      },
+      {
+        label: 'Registered Manager',
+        value: (mar?.registered_manager ?? roleName('registered manager')) || unavailable,
+      },
+      { label: 'Relevant Conditions & Risks', value: conditions || 'Not recorded' },
+      ...(escalation === undefined
+        ? []
+        : [{ label: 'Escalation Instructions', value: escalation || 'Not recorded' }]),
+    ];
+  });
+  protected readonly marPanels = computed(() => [
+    {
+      id: 'mar-service-user-details',
+      title: 'Service User Details',
+      icon: 'person',
+      sectionClass: 'mar-profile-details',
+      rows: this.marUserRows(),
+    },
+    {
+      id: 'mar-provider-clinical',
+      title: 'Provider & Clinical Information',
+      icon: 'clinical_notes',
+      sectionClass: 'mar-profile-provider',
+      rows: this.marClinicalRows(),
+    },
+  ]);
 }

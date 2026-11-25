@@ -361,6 +361,7 @@ export type ServiceUserOverview = {
     primary_diagnosis: string;
     other_conditions: string;
     allergies: string;
+    emergency_escalation?: string;
     diet: string;
     ongoing: string;
     equipment: string;
@@ -380,6 +381,18 @@ export type ServiceUserOverview = {
     behaviour: string;
     continuity: string;
     key_safe_location: string;
+  };
+  mar_header?: {
+    provider: string;
+    care_coordinator: string;
+    registered_manager: string;
+    gp_practice: string;
+    gp_telephone: string;
+    emergency_contact_name: string;
+    emergency_contact_phone: string;
+    emergency_contact_email: string;
+    next_of_kin: string;
+    time_sensitive_calls: boolean | null;
   };
   capacity: {
     status: string;
@@ -402,6 +415,7 @@ export type ServiceUserOverviewHealthWrite = {
   primary_diagnosis?: string;
   other_conditions?: string;
   allergies?: string;
+  emergency_escalation?: string;
   diet?: string;
   ongoing?: string;
   equipment?: string;
