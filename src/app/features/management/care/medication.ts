@@ -967,12 +967,13 @@ export class Medication {
     try {
       const blob = await this.api.export(id, period);
       if (this.destroyed || scope !== this.api.scope() || id !== this.id()) return;
-      if (period && blob.size === 0) {
+      if (period && (!blob || blob.size === 0)) {
         this.notice.set(
           `No MAR administrations recorded for ${period.month} on the ${period.sheet} sheet.`,
         );
         return;
       }
+      if (!blob) throw Error('The MAR export returned no file. Please try again.');
       const url = URL.createObjectURL(blob),
         link = document.createElement('a');
       link.href = url;

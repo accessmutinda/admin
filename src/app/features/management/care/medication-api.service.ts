@@ -300,12 +300,12 @@ export class MedicationApi {
   async export(
     id: string,
     period?: { month: string; sheet: MedicationMarReport['sheet'] },
-  ): Promise<Blob> {
+  ): Promise<Blob | undefined> {
     const scope = this.scope();
     if (!this.can('export')) throw Error('Medication export is not permitted.');
     if (period && !isMarMonth(period.month)) throw Error('Choose a valid MAR reporting month.');
     const path = period ? `/mar/export?${new URLSearchParams(period)}` : '/export';
-    const blob = await this.auth.api<Blob>(
+    const blob = await this.auth.api<Blob | undefined>(
       this.root(id) + path,
       undefined,
       undefined,

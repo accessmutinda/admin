@@ -3,8 +3,9 @@ import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { MatMenuHarness } from '@angular/material/menu/testing';
 import { MatSelectHarness } from '@angular/material/select/testing';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
+import type { Mock } from 'vitest';
 import { Medication } from './medication';
 import { MedicationApi } from './medication-api.service';
 import { CareHeader } from './care-header';
@@ -57,7 +58,8 @@ async function settle(fixture: ComponentFixture<Medication>) {
 describe('Medication backend workflow', () => {
   let fixture: ComponentFixture<Medication>,
     editor: any,
-    api: ReturnType<typeof vi.fn>,
+    api: Mock<(path: string, body?: any, method?: string, ...options: any[]) => Promise<any>>,
+    requestThroughAuth: AuthService['api'],
     scope: ReturnType<typeof signal<string>>,
     permissions: Set<string>,
     workspace: any,
@@ -223,7 +225,7 @@ describe('Medication backend workflow', () => {
     });
     TestBed.configureTestingModule({
       providers: [
-        { provide: AuthService, useValue: { api } },
+        provideRouter([]),
         {
           provide: ActivatedRoute,
           useValue: {
@@ -241,6 +243,9 @@ describe('Medication backend workflow', () => {
         providers: [MedicationApi, { provide: ServiceUsersApi, useValue: records }],
       },
     });
+    const auth = TestBed.inject(AuthService);
+    requestThroughAuth = auth.api.bind(auth);
+    vi.spyOn(auth, 'api').mockImplementation((...args) => api(...args));
     fixture = TestBed.createComponent(Medication);
     editor = fixture.componentInstance;
   });
@@ -821,7 +826,7 @@ describe('Medication backend workflow', () => {
   });
   it('exports the selected month and sheet, reports an empty period, and keeps history separate', async () => {
     await settle(fixture);
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:export');
+    const createDownload = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:export');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     const downloads: string[] = [];
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
@@ -837,7 +842,10 @@ describe('Medication backend workflow', () => {
       await settle(fixture);
     };
     const root = '/companies/north/service-users/client/medications';
+    const monthlyCsv = new Blob(['date,outcome\n2026-11-11,Given\n'], { type: 'text/csv' });
+    api.mockResolvedValueOnce(monthlyCsv);
     await editor.export();
+    expect(createDownload).toHaveBeenLastCalledWith(monthlyCsv);
     await selectMonth('2026-10');
     editor.sheet.set('Controlled');
     await settle(fixture);
@@ -854,8 +862,13 @@ describe('Medication backend workflow', () => {
     expect(page.textContent).toContain(
       'No MAR administrations recorded for 2026-09 on the controlled sheet.',
     );
+    const historyCsv = new Blob(['date,outcome\n2026-10-11,Given\n2026-11-11,Given\n'], {
+      type: 'text/csv',
+    });
+    api.mockResolvedValueOnce(historyCsv);
     await editor.export('history');
     expect(downloads.at(-1)).toBe('mar-history-client.csv');
+    expect(createDownload).toHaveBeenLastCalledWith(historyCsv);
     expect(
       api.mock.calls.filter(([path]) => path.includes('/export')).map(([path]) => path),
     ).toEqual([
@@ -864,6 +877,51 @@ describe('Medication backend workflow', () => {
       root + '/mar/export?month=2026-09&sheet=controlled',
       root + '/export',
     ]);
+  });
+  it('renders an empty monthly export notice when the shared request helper receives HTTP 204', async () => {
+    await settle(fixture);
+    const page = fixture.nativeElement as HTMLElement;
+    const month = page.querySelector<HTMLInputElement>('#mar-report-month')!;
+    month.value = '2026-10';
+    month.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    const button = [...page.querySelectorAll('button')].find(
+      (item) => item.textContent?.trim() === 'Export monthly MAR',
+    )!;
+    const download = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:export');
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const request = vi.mocked(TestBed.inject(AuthService).api);
+    const exportFile = vi.spyOn(editor, 'export');
+    request.mockImplementationOnce(requestThroughAuth);
+    button.click();
+    await exportFile.mock.results[0].value;
+    await settle(fixture);
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/mar/export?month=2026-10&sheet=standard'),
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(page.querySelector('.care-note[role="status"]')?.textContent?.trim()).toBe(
+      'No MAR administrations recorded for 2026-10 on the standard sheet.',
+    );
+    expect(download).not.toHaveBeenCalled();
+    expect(button.disabled).toBe(false);
+
+    fetch.mockResolvedValueOnce(
+      Response.json({ detail: 'Export temporarily unavailable.' }, { status: 503 }),
+    );
+    request.mockImplementationOnce(requestThroughAuth);
+    button.click();
+    await exportFile.mock.results[1].value;
+    await settle(fixture);
+    expect(page.querySelector('[role="alert"]')?.textContent?.trim()).toBe(
+      'Export temporarily unavailable.',
+    );
+    expect(page.textContent).not.toContain('No MAR administrations recorded for 2026-10');
+    expect(download).not.toHaveBeenCalled();
+    expect(button.disabled).toBe(false);
   });
   it('revalidates printing through the same permission and reporting period', async () => {
     reportAuthority = { id: 'authority-1', revision: 1, decisionReference: 'Decision-1042' };
