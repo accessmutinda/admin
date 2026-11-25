@@ -62,70 +62,6 @@
         >
       }
     </button>
-<<<<<<< HEAD
-    <div class="client-profile-info">
-      <div class="row">
-        <h2 id="client-record-name">{{ c.name }}</h2>
-        <span class="badge" [class.success]="c.active">{{ c.active ? 'Active' : 'Inactive' }}</span>
-      </div>
-      <div class="profile-demographics">
-        <span>{{ file().details['gender'] || 'Gender not recorded' }}</span
-        ><span>
-          @if (file().details['dob']) {
-            {{ age(file().details['dob']) }} years ({{
-              file().details['dob'] | date: 'dd MMM yyyy'
-            }})
-          } @else {
-            Date of birth not recorded
-          }</span
-        ><span>NHS: {{ file().details['nhs'] || 'Not recorded' }}</span>
-      </div>
-      <div class="profile-address">
-        <span class="profile-address-line" [class.expanded]="addressExpanded()">
-          <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
-          <span #addressText class="profile-address-text">{{ c.address }}, {{ c.postcode }}</span>
-          @if (addressCanExpand()) {
-            <button
-              type="button"
-              class="profile-address-more"
-              [attr.aria-expanded]="addressExpanded()"
-              [attr.aria-label]="addressExpanded() ? 'Show less address' : 'View full address'"
-              (click)="addressExpanded.set(!addressExpanded())"
-            >
-              <span class="material-symbols-outlined" aria-hidden="true">{{
-                addressExpanded() ? 'expand_less' : 'expand_more'
-              }}</span>
-            </button>
-          }
-        </span>
-        <span
-          class="profile-address-line profile-address-line-living"
-          [class.expanded]="livingExpanded()"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">home</span>
-          <span #livingText class="profile-address-text">{{
-            file().details['living'] || 'Living arrangement not recorded'
-          }}</span>
-          @if (livingCanExpand()) {
-            <button
-              type="button"
-              class="profile-address-more"
-              [attr.aria-expanded]="livingExpanded()"
-              [attr.aria-label]="
-                livingExpanded() ? 'Show less living arrangement' : 'View full living arrangement'
-              "
-              (click)="livingExpanded.set(!livingExpanded())"
-            >
-              <span class="material-symbols-outlined" aria-hidden="true">{{
-                livingExpanded() ? 'expand_less' : 'expand_more'
-              }}</span>
-            </button>
-          }
-        </span>
-      </div>
-      <small class="profile-reference"
-        >{{ c.reference }} · Care priority: {{ c.priority }} · Funding: {{ c.funding }}</small
-=======
     <ng-template #marTable let-rows let-preview="preview">
       <table class="mar-profile-table">
         <tbody>
@@ -156,7 +92,6 @@
         class="mar-profile-card"
         [class]="panel.sectionClass"
         [attr.aria-labelledby]="panel.id"
->>>>>>> 87f9a7e ((feat) share the clinical profile header across service user tabs)
       >
         <div class="mar-profile-card-header">
           <h2 [id]="panel.id">

@@ -1,17 +1,29 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { CompanyAccessService } from '../../../core/access/company-access.service';
 import { AuthService } from '../../../core/auth/auth.service';
-import { WorkspaceService } from '../../../core/auth/workspace.service';
+import { RotaService } from '../rota/rota.service';
 import { emptyClientFile } from '../clients/client-file.models';
 import { CareHeader } from './care-header';
 import { visibleWorkspaceTabCount } from './workspace-tab-overflow';
 
 describe('Service-user navigation overflow', () => {
   beforeEach(() => {
-    localStorage.clear();
-    TestBed.configureTestingModule({ providers: [provideRouter([])] });
-    TestBed.inject(AuthService).signInDemoSession();
-    TestBed.inject(WorkspaceService).switchWorkspace('lqcs');
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: { workspaces: () => [] } },
+        { provide: RotaService, useValue: { data: () => ({ calls: [] }) } },
+        {
+          provide: CompanyAccessService,
+          useValue: {
+            companyId: () => 'lqcs',
+            can: () => true,
+            canPath: (path: string) => !path.endsWith('/communications'),
+          },
+        },
+      ],
+    });
   });
   function setup(width = 550, active = 'overview') {
     const fixture = TestBed.createComponent(CareHeader);
@@ -106,7 +118,7 @@ describe('Service-user navigation overflow', () => {
     expect(page.querySelector('.workspace-more')).toBeNull();
     fixture.destroy();
   });
-  it('shows a view-more icon for a long address or living arrangement and expands it', async () => {
+  it('shows the full address and living arrangement in the service user details dialog', () => {
     const { fixture, page } = setup();
     const living =
       'I live with my parents and older sister in our family home. I enjoy spending time with my family and feel safest when familiar adults are around me.';
@@ -122,28 +134,13 @@ describe('Service-user navigation overflow', () => {
       file: { ...emptyClientFile(), details: { living } },
     });
     fixture.detectChanges();
-    for (const text of page.querySelectorAll<HTMLElement>('.profile-address-text')) {
-      Object.defineProperty(text, 'scrollWidth', { configurable: true, get: () => 400 });
-      Object.defineProperty(text, 'clientWidth', { configurable: true, get: () => 120 });
-      Object.defineProperty(text, 'scrollHeight', { configurable: true, get: () => 48 });
-    }
-    await Promise.resolve();
-    (fixture.componentInstance as any).measureProfileText();
-    fixture.detectChanges();
-    const buttons = page.querySelectorAll<HTMLButtonElement>('.profile-address-more');
-    expect(buttons).toHaveLength(2);
-    expect(buttons[0].getAttribute('aria-label')).toBe('View full address');
-    expect(buttons[1].getAttribute('aria-expanded')).toBe('false');
-    buttons[1].click();
-    fixture.detectChanges();
-    expect(page.querySelectorAll('.profile-address-line')[1].classList.contains('expanded')).toBe(
-      true,
-    );
-    expect(buttons[1].getAttribute('aria-expanded')).toBe('true');
-    expect(buttons[1].getAttribute('aria-label')).toBe('Show less living arrangement');
-    expect(page.querySelectorAll('.profile-address-text')[1].textContent).toContain(
-      'family home',
-    );
+    const details = page.querySelector('.mar-profile-details')!;
+    const dialog = details.querySelector('dialog')!;
+    dialog.showModal = vi.fn();
+    details.querySelector<HTMLButtonElement>('button[aria-haspopup="dialog"]')!.click();
+    expect(dialog.showModal).toHaveBeenCalledOnce();
+    expect(dialog.textContent).toContain('56 POLE HILL ROAD, UB10 0QA');
+    expect(dialog.textContent).toContain(living);
     fixture.destroy();
   });
 });
