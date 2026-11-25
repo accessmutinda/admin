@@ -77,7 +77,7 @@ export class CareContacts {
   });
   protected readonly types = ['Family', 'Emergency', 'GP', 'Pharmacy', 'Professional'];
   protected contact = this.blank();
-  private original: ProfessionalContactRead | null = null;
+  protected original: ProfessionalContactRead | null = null;
   private owner: { id: string; scope: string } | null = null;
   private baseline = '';
   private request = 0;
@@ -167,6 +167,7 @@ export class CareContacts {
             email: fresh.email,
             type: fresh.type as ProfessionalContactWrite['type'],
             nextOfKin: fresh.nextOfKin,
+            ...(fresh.primaryGp ? { primaryGp: true } : {}),
           }
         : this.blank();
       this.fieldErrors.set({});
@@ -185,7 +186,7 @@ export class CareContacts {
       this.error.set('Enter a contact name.');
       return;
     }
-    if (!this.contact.phone.trim() && !this.contact.email.trim()) {
+    if (this.contact.type !== 'GP' && !this.contact.phone.trim() && !this.contact.email.trim()) {
       this.fieldErrors.set({
         phone: ['Enter a phone number or email address.'],
         email: ['Enter a phone number or email address.'],
@@ -197,11 +198,15 @@ export class CareContacts {
     this.error.set('');
     this.fieldErrors.set({});
     try {
+      const changesGp = this.contact.type === 'GP' || this.original?.type === 'GP';
       await this.api.save(owner.id, { ...this.contact }, this.original);
       if (this.destroyed || owner !== this.owner || owner.scope !== this.api.scope()) return;
       this.reset();
       this.notice.set('Contact saved.');
-      await this.api.load(owner.id);
+      await Promise.all([
+        this.api.load(owner.id),
+        changesGp ? this.api.records.detail(owner.id, true) : undefined,
+      ]);
     } catch (e) {
       if (owner === this.owner && owner.scope === this.api.scope()) {
         this.fieldErrors.set((e as { fieldErrors?: Record<string, string[]> }).fieldErrors ?? {});

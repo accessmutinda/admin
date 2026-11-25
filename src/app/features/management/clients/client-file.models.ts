@@ -361,7 +361,6 @@ export const PERSONAL_FIELDS: ClientField[] = [
   { key: 'nhs', label: 'NHS number' },
   { key: 'religion', label: 'Religion / beliefs' },
   { key: 'ethnicity', label: 'Ethnicity' },
-  { key: 'gp', label: 'GP / practice and contact' },
   { key: 'living', label: 'Living arrangement' },
   { key: 'sexuality', label: 'Sexuality', options: ['', ...SEXUALITY_OPTIONS] },
   { key: 'likes', label: 'Likes', type: 'textarea' },

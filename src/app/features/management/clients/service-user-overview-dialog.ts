@@ -24,6 +24,7 @@ import {
   splitSexuality,
 } from './client-file.models';
 import { DirectoryUser, ServiceUsersApi } from './service-users-api.service';
+import type { ServiceUserDemographics } from './service-users.generated';
 
 interface Field {
   key: string;
@@ -97,7 +98,15 @@ const FIELDS: Record<OverviewCard, Field[]> = {
     { key: 'nhs', label: 'NHS number' },
     { key: 'religion', label: 'Religion / beliefs' },
     { key: 'ethnicity', label: 'Ethnicity' },
-    { key: 'gp', label: 'GP / practice and contact' },
+    {
+      key: 'gp',
+      label: 'Legacy GP notes',
+      type: 'textarea',
+      readonly: true,
+      hint: 'Review these notes before entering the practice and telephone separately.',
+    },
+    { key: 'gpPractice', label: 'GP practice', maxLength: 200 },
+    { key: 'gpPhone', label: 'GP telephone', type: 'tel', maxLength: 50 },
     { key: 'address', label: 'Address', required: true },
     { key: 'postcode', label: 'Postcode', required: true },
     { key: 'living', label: 'Living arrangement' },
@@ -433,6 +442,7 @@ export class ServiceUserOverviewDialog {
     .filter(
       (field) =>
         (field.key !== 'medication_reference' || this.data.person.overview?.medication_read) &&
+        (field.key !== 'gp' || !!this.data.person.file?.details['gp']) &&
         (field.key !== 'emergency_escalation' ||
           this.data.person.overview?.clinical.emergency_escalation !== undefined),
     )
@@ -448,6 +458,7 @@ export class ServiceUserOverviewDialog {
   readonly genderAdd = '__add_gender__';
   readonly sexualityAdd = '__add_sexuality__';
   private sexualityOriginal = '';
+  private primaryGp: ServiceUserDemographics['primary_gp'];
   private sexualityCatalog = [...SEXUALITY_OPTIONS];
   private readonly scope = this.data.api.scope();
   private initial: string;
@@ -640,6 +651,10 @@ export class ServiceUserOverviewDialog {
             : await this.data.api.getDemographics(this.data.person.id);
         if (this.closed || this.scope !== this.data.api.scope()) return;
         values = { ...('details' in value ? value.details : {}), ...value };
+        if ('details' in value) {
+          this.primaryGp = value.primary_gp;
+          values = { ...values, gpPractice: this.primaryGp?.name, gpPhone: this.primaryGp?.phone };
+        }
         this.etag = value.etag;
         if ('local_date' in value) this.localDate = value.local_date;
         this.editable.set(value.can_edit);
@@ -735,6 +750,13 @@ export class ServiceUserOverviewDialog {
   }
   async save(): Promise<void> {
     if (this.busy() || this.loading() || !this.editable()) return;
+    const gpPractice = this.draft['gpPractice']?.trim() ?? '';
+    const gpPhone = this.draft['gpPhone']?.trim() ?? '';
+    if (this.data.card === 'demographics' && !gpPractice && (gpPhone || this.primaryGp)) {
+      this.errors.set({ gpPractice: 'Enter the GP practice name.' });
+      this.error.set('Please check the highlighted fields.');
+      return;
+    }
     if (this.data.card === 'demographics' && this.draft['gender'] === this.genderAdd) {
       const name = (this.draft['genderName'] ?? '').trim();
       if (!name || name.length > 80) {
@@ -853,7 +875,11 @@ export class ServiceUserOverviewDialog {
       (this.data.card === 'record-entry' && !!this.data.entryId);
     const original: Record<string, string> = JSON.parse(this.initial);
     for (const field of this.fields)
-      if (!field.readonly && (!sparse || this.draft[field.key] !== original[field.key]))
+      if (
+        !field.readonly &&
+        !['gpPractice', 'gpPhone'].includes(field.key) &&
+        (!sparse || this.draft[field.key] !== original[field.key])
+      )
         body[field.key] =
           field.type === 'date' ? this.draft[field.key] || null : this.draft[field.key];
     if (this.data.card === 'demographics' && 'sexuality' in body) {
@@ -890,16 +916,40 @@ export class ServiceUserOverviewDialog {
         );
       else if (this.data.card === 'family')
         await this.data.api.saveFamily(body, this.data.person, this.etag, this.scope);
-      else if (this.data.card === 'demographics')
-        await this.data.api.saveDemographics(body, this.data.person, this.etag, this.scope);
-      else await this.data.api.saveCard(this.data.card, body, this.data.person, this.scope);
+      else if (this.data.card === 'demographics') {
+        const existing = this.primaryGp;
+        const changed =
+          gpPractice && (gpPractice !== existing?.name || gpPhone !== existing?.phone);
+        await this.data.api.saveDemographics(
+          changed
+            ? {
+                ...body,
+                primary_gp: {
+                  ...(existing ? { id: existing.id, etag: existing.etag } : {}),
+                  name: gpPractice,
+                  phone: gpPhone,
+                },
+              }
+            : body,
+          this.data.person,
+          this.etag,
+          this.scope,
+        );
+      } else await this.data.api.saveCard(this.data.card, body, this.data.person, this.scope);
       this.ref.close(true);
     } catch (error) {
       if (!this.closed && this.scope === this.data.api.scope()) {
         if (error instanceof ApiError)
           this.errors.set(
             Object.fromEntries(
-              Object.entries(error.fieldErrors).map(([key, value]) => [key, value.join(' ')]),
+              Object.entries(error.fieldErrors).map(([key, value]) => [
+                key === 'primary_gp.name'
+                  ? 'gpPractice'
+                  : key === 'primary_gp.phone'
+                    ? 'gpPhone'
+                    : key,
+                value.join(' '),
+              ]),
             ),
           );
         this.error.set(error instanceof Error ? error.message : 'Could not save these details.');

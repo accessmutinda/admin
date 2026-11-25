@@ -191,8 +191,8 @@
                       @for (call of calls(); track call.id) {
                         <tr>
                           <td data-label="Package">
-                            <strong class="package-name"
-                              >@if (callIconSrc(call.icon, call.name); as src) {
+                            <strong class="package-name">
+                              @if (callIconSrc(call.icon, call.name); as src) {
                                 <img class="package-icon" [src]="src" alt="" />
                               }
                               {{ call.name }}</strong
@@ -389,6 +389,20 @@
                                 : 'Not recorded'
                             }}
                           </dd>
+                        </div>
+                      }
+                      <div>
+                        <dt>GP practice</dt>
+                        <dd>{{ c.overview?.mar_header?.gp_practice || 'Not recorded' }}</dd>
+                      </div>
+                      <div>
+                        <dt>GP telephone</dt>
+                        <dd>{{ c.overview?.mar_header?.gp_telephone || 'Not recorded' }}</dd>
+                      </div>
+                      @if (!c.overview?.mar_header?.gp_practice && file().details['gp']) {
+                        <div class="client-wide">
+                          <dt>Legacy GP notes</dt>
+                          <dd>{{ file().details['gp'] }}</dd>
                         </div>
                       }
                       <div>
@@ -911,7 +925,53 @@
                     }}</small>
                   }
                 </label>
-                @if (field.key === 'gp') {
+                @if (field.key === 'ethnicity') {
+                  @if (draft.file!.details['gp']) {
+                    <label class="full-width">
+                      Legacy GP notes
+                      <textarea readonly [value]="draft.file!.details['gp']"></textarea>
+                      <small class="client-form-hint">
+                        Review these notes before entering the practice and telephone separately.
+                      </small>
+                    </label>
+                  }
+                  <label>
+                    GP practice
+                    <input
+                      name="gpPractice"
+                      [(ngModel)]="gpPractice"
+                      maxlength="200"
+                      [attr.aria-invalid]="!!fieldError('primary_gp.name')"
+                      [attr.aria-describedby]="
+                        fieldError('primary_gp.name') ? 'su-gp-practice-error' : null
+                      "
+                      (ngModelChange)="clearFieldError('primary_gp.name')"
+                    />
+                    @if (fieldError('primary_gp.name')) {
+                      <small class="client-field-error" id="su-gp-practice-error">{{
+                        fieldError('primary_gp.name')
+                      }}</small>
+                    }
+                  </label>
+                  <label>
+                    GP telephone
+                    <input
+                      name="gpPhone"
+                      type="tel"
+                      [(ngModel)]="gpPhone"
+                      maxlength="50"
+                      [attr.aria-invalid]="!!fieldError('primary_gp.phone')"
+                      [attr.aria-describedby]="
+                        fieldError('primary_gp.phone') ? 'su-gp-phone-error' : null
+                      "
+                      (ngModelChange)="clearFieldError('primary_gp.phone')"
+                    />
+                    @if (fieldError('primary_gp.phone')) {
+                      <small class="client-field-error" id="su-gp-phone-error">{{
+                        fieldError('primary_gp.phone')
+                      }}</small>
+                    }
+                  </label>
                   <label
                     >Address *<input
                       name="address"

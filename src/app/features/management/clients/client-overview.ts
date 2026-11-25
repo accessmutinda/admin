@@ -120,7 +120,17 @@ export class ClientOverview {
       label: 'Address',
       value: [this.client().address, this.client().postcode].filter(Boolean).join('\n'),
     },
-    { label: 'GP', value: this.details('gp') },
+    {
+      label: 'GP practice',
+      value: this.client().overview?.mar_header?.gp_practice || 'Not recorded',
+    },
+    {
+      label: 'GP telephone',
+      value: this.client().overview?.mar_header?.gp_telephone || 'Not recorded',
+    },
+    ...(this.details('gp') !== 'Not recorded' && !this.client().overview?.mar_header?.gp_practice
+      ? [{ label: 'Legacy GP notes', value: this.details('gp') }]
+      : []),
     { label: 'Gender', value: this.details('gender') },
     { label: 'Ethnicity', value: this.details('ethnicity') },
     { label: 'Preferred language', value: this.details('language') },

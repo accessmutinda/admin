@@ -210,6 +210,12 @@ export type ServiceUserDemographics = {
     dislikes?: string;
     about?: string;
   };
+  primary_gp?: {
+    id: string;
+    etag: string;
+    name: string;
+    phone: string;
+  } | null;
   local_date: string;
   can_edit: boolean;
 };
@@ -234,6 +240,12 @@ export type ServiceUserDemographicsWrite = {
   postcode?: string;
   phone?: string;
   email?: string;
+  primary_gp?: {
+    id?: string;
+    etag?: string;
+    name: string;
+    phone?: string;
+  };
 };
 
 export type ServiceUserOverview = {
@@ -394,6 +406,12 @@ export type ServiceUserOverview = {
     next_of_kin: string;
     time_sensitive_calls: boolean | null;
   };
+  primary_gp?: {
+    id: string;
+    etag: string;
+    name: string;
+    phone: string;
+  } | null;
   capacity: {
     status: string;
     assessed_on: string | null;
@@ -574,6 +592,12 @@ export type ServiceUserWrite = {
     likes?: string;
     dislikes?: string;
     about?: string;
+  };
+  primary_gp?: {
+    id?: string;
+    etag?: string;
+    name: string;
+    phone?: string;
   };
   representative: {
     name?: string;

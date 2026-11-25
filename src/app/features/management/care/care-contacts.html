@@ -107,6 +107,9 @@
               <tr>
                 <td>
                   {{ contact.name }}
+                  @if (contact.primaryGp) {
+                    <span class="care-tag" data-tone="green">Primary GP</span>
+                  }
                   @if (contact.nextOfKin) {
                     <span class="care-tag" data-tone="green">Next of kin</span>
                   }
@@ -189,7 +192,7 @@
       }
       <form class="note-editor" (ngSubmit)="save()">
         <label
-          >Name *<input
+          >{{ contact.type === 'GP' ? 'GP practice' : 'Name' }} *<input
             [disabled]="busy()"
             name="name"
             [(ngModel)]="contact.name"
@@ -236,8 +239,20 @@
             <small class="care-error">{{ fieldErrors()['type'].join(' ') }}</small>
           }
         </label>
+        @if (contact.type === 'GP' && !original?.primaryGp) {
+          <label class="full-width">
+            <input
+              type="checkbox"
+              name="primaryGp"
+              [disabled]="busy()"
+              [(ngModel)]="contact.primaryGp"
+            />
+            Use as the primary GP
+          </label>
+        }
         <label
-          >Phone<input
+          >{{ contact.type === 'GP' ? 'GP telephone' : 'Phone'
+          }}<input
             [disabled]="busy()"
             name="phone"
             type="tel"

@@ -229,9 +229,26 @@ describe('Service user landing and creation', () => {
           for (const [key, value] of Object.entries(changes)) {
             if (['name', 'reference', 'address', 'postcode', 'phone', 'email'].includes(key))
               (source as any)[key] = value;
-            else (source.details as any)[key] = value;
+            else if (key !== 'primary_gp') (source.details as any)[key] = value;
           }
-          return overview({ ...source, version: 3, etag: '\"v3\"' });
+          const result = overview({ ...source, version: 3, etag: '"v3"' });
+          if (changes['primary_gp']) {
+            const gp = { id: 'gp-1', etag: '"v1"', ...changes['primary_gp'] };
+            result.primary_gp = gp;
+            result.mar_header = {
+              provider: 'Current workspace',
+              gp_practice: gp.name,
+              gp_telephone: gp.phone,
+              care_coordinator: '',
+              registered_manager: '',
+              emergency_contact_name: '',
+              emergency_contact_phone: '',
+              emergency_contact_email: '',
+              next_of_kin: '',
+              time_sensitive_calls: null,
+            };
+          }
+          return result;
         }
         return { ...row(), version: 2, etag: '\"v2\"', local_date: '2026-11-10', can_edit: true };
       }
@@ -641,7 +658,7 @@ describe('Service user landing and creation', () => {
     fillRequired(fixture);
     request.mockRejectedValueOnce(
       new ApiError('This field may not be blank.', 400, 'validation_error', {
-        'details.gp': ['This field may not be blank.'],
+        'primary_gp.name': ['This field may not be blank.'],
         'representative.email': ['Enter a valid email address.'],
       }),
     );
@@ -649,18 +666,41 @@ describe('Service user landing and creation', () => {
       .querySelector('form')
       .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await settle(fixture);
-    for (const name of ['gp', 'representativeEmail']) {
+    for (const name of ['gpPractice', 'representativeEmail']) {
       const input = fixture.nativeElement.querySelector(`[name="${name}"]`) as HTMLInputElement;
       expect(input.getAttribute('aria-invalid')).toBe('true');
       expect(document.getElementById(input.getAttribute('aria-describedby')!)).toBeTruthy();
     }
-    expect(fixture.nativeElement.querySelector('#su-details-gp-error').textContent).toContain(
-      'GP / practice and contact is required.',
+    expect(fixture.nativeElement.querySelector('#su-gp-practice-error').textContent).toContain(
+      'GP practice is required.',
     );
     expect((fixture.nativeElement.querySelector('[name="name"]') as HTMLInputElement).value).toBe(
       'Alex Citizen',
     );
     expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+  });
+  it('sends the practice and telephone as a structured GP contact during onboarding', async () => {
+    const fixture = await openCreateForm();
+    fillRequired(fixture);
+    for (const [name, value] of Object.entries({
+      gpPractice: 'New Practice',
+      gpPhone: '020 1234 5678',
+    })) {
+      const input = fixture.nativeElement.querySelector(`[name="${name}"]`) as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    }
+    fixture.nativeElement
+      .querySelector('form')
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    const creation = request.mock.calls.find(
+      ([path, , method]) => path.endsWith('/service-users') && method === 'POST',
+    );
+    expect(creation?.[1]).toMatchObject({
+      primary_gp: { name: 'New Practice', phone: '020 1234 5678' },
+    });
+    expect(creation?.[1].details).not.toHaveProperty('gp');
   });
   it('marks the reference field when the backend rejects a duplicate reference', async () => {
     const fixture = await openCreateForm();
@@ -713,6 +753,41 @@ describe('Service user landing and creation', () => {
     await settle(fixture);
     return { fixture, dialog: document.querySelector('[role="dialog"]')! };
   }
+  it('keeps legacy GP notes read-only and shows the reviewed practice and telephone across the profile', async () => {
+    const { fixture, dialog } = await openDemographics();
+    const legacy = dialog.querySelector<HTMLTextAreaElement>('textarea[name="gp"]')!;
+    expect(legacy.value).toBe('North Practice');
+    expect(legacy.readOnly).toBe(true);
+    for (const [name, value] of Object.entries({
+      gpPractice: 'Reviewed Practice',
+      gpPhone: '020 4567 8900',
+    })) {
+      const input = dialog.querySelector<HTMLInputElement>('[name="' + name + '"]')!;
+      expect(input.value).toBe('');
+      input.value = value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    dialog
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle(fixture);
+    const save = request.mock.calls.find(
+      ([path, , method]) => path.endsWith('/demographics') && method === 'PATCH',
+    );
+    expect(save?.[1]).toMatchObject({
+      primary_gp: { name: 'Reviewed Practice', phone: '020 4567 8900' },
+    });
+    expect(save?.[1]).not.toHaveProperty('gp');
+    const page = fixture.nativeElement as HTMLElement;
+    for (const selector of [
+      'cv-care-header .mar-profile-provider > table',
+      '.client-section-panel',
+    ]) {
+      const section = page.querySelector(selector);
+      expect(section?.textContent).toContain('Reviewed Practice');
+      expect(section?.textContent).toContain('020 4567 8900');
+    }
+  });
   it('loads fresh demographics in a branded popup and saves with its version without navigating', async () => {
     const { fixture, dialog } = await openDemographics();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');

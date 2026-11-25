@@ -83,6 +83,8 @@ const PROFILE_FIELD_LABELS: Record<string, string> = {
   'representative.relationship': 'Relationship',
   'representative.phone': 'Contact phone',
   'representative.email': 'Contact email',
+  'primary_gp.name': 'GP practice',
+  'primary_gp.phone': 'GP telephone',
   ...Object.fromEntries(PERSONAL_FIELDS.map((field) => ['details.' + field.key, field.label])),
 };
 
@@ -410,11 +412,7 @@ export class ClientFiles {
   }
   protected readonly personalFields = PERSONAL_FIELDS;
   protected readonly fundingAdd = '__add_funding__';
-  protected readonly fundingOptions = signal([
-    'Local authority',
-    'Private',
-    'NHS',
-  ]);
+  protected readonly fundingOptions = signal(['Local authority', 'Private', 'NHS']);
   protected fundingChoice = 'Local authority';
   protected fundingName = '';
   protected readonly fundingBusy = signal(false);
@@ -487,6 +485,8 @@ export class ClientFiles {
   protected readonly completedVisit = (visit: { state: string }): boolean =>
     visit.state === 'Completed';
   protected draft: RotaClient = this.blankClient();
+  protected gpPractice = '';
+  protected gpPhone = '';
   protected values: Record<string, string> = {};
   protected entry: ClientEntry = this.blankEntry();
   protected sourceId = '';
@@ -586,6 +586,8 @@ export class ClientFiles {
     this.sourceWorkspace = this.api.companyId();
     this.profileScope = this.api.scope();
     this.original = create ? null : this.api.selected();
+    this.gpPractice = this.original?.overview?.primary_gp?.name ?? '';
+    this.gpPhone = this.original?.overview?.primary_gp?.phone ?? '';
     this.loadSexuality();
     this.sexualityName = '';
     void this.loadSexualityOptions();
@@ -634,7 +636,11 @@ export class ClientFiles {
     const request = ++this.fundingLoad;
     try {
       const list = await this.api.fundingOptions();
-      if (request !== this.fundingLoad || scope !== this.api.scope() || this.editing() !== 'profile')
+      if (
+        request !== this.fundingLoad ||
+        scope !== this.api.scope() ||
+        this.editing() !== 'profile'
+      )
         return;
       const names = list.options.map((option) => option.name);
       const current = this.draft.funding;
@@ -742,7 +748,11 @@ export class ClientFiles {
     const request = ++this.sexualityLoad;
     try {
       const list = await this.api.sexualityOptions();
-      if (request !== this.sexualityLoad || scope !== this.api.scope() || this.editing() !== 'profile')
+      if (
+        request !== this.sexualityLoad ||
+        scope !== this.api.scope() ||
+        this.editing() !== 'profile'
+      )
         return;
       const names = list.options.map((option) => option.name);
       const stored = splitSexuality(this.sexualityBaseline, names);
@@ -848,6 +858,12 @@ export class ClientFiles {
   }
   private validateProfile(): boolean {
     const errors: Record<string, string> = {};
+    if (
+      !this.photoOnly() &&
+      !this.gpPractice.trim() &&
+      (this.gpPhone.trim() || this.original?.overview?.primary_gp)
+    )
+      errors['primary_gp.name'] = 'Enter the GP practice name.';
     for (const key of ['name', 'reference', 'address', 'postcode'] as const) {
       if (!this.draft[key].trim()) errors[key] = PROFILE_FIELD_LABELS[key] + ' is required.';
     }
@@ -940,10 +956,17 @@ export class ClientFiles {
           await this.chosenGender(scope);
           if (scope !== this.api.scope()) return;
         }
+        const originalGp = this.original?.overview?.primary_gp;
+        const name = this.gpPractice.trim();
+        const phone = this.gpPhone.trim();
+        const gp =
+          name && (name !== originalGp?.name || phone !== originalGp?.phone)
+            ? { ...(originalGp ? { id: originalGp.id, etag: originalGp.etag } : {}), name, phone }
+            : undefined;
         const row =
           this.photoOnly() && this.original
             ? await this.api.savePhoto(this.draft, this.original, scope)
-            : await this.api.save(this.draft, this.original, scope);
+            : await this.api.save(this.draft, this.original, scope, gp);
         if (scope !== this.api.scope()) return;
         this.discard();
         this.toast.success('Client record saved.');

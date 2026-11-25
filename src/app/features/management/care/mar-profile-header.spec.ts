@@ -71,7 +71,9 @@ describe('Service user profile header', () => {
                 company_id: 'provider-1',
                 service_user_id: 'client-1',
                 type: 'GP',
+                name: 'Primary contact practice',
                 phone: 'Recorded GP number',
+                primaryGp: true,
               },
               {
                 company_id: 'provider-1',
@@ -129,6 +131,8 @@ describe('Service user profile header', () => {
     expect(provider).toContain('Recorded Provider');
     expect(provider).toContain('Recorded Coordinator');
     expect(provider).toContain('Recorded GP number');
+    expect(provider).toContain('Primary contact practice');
+    expect(provider).not.toContain('Example GP Practice');
     expect(provider).toContain('Recorded condition');
     expect(provider).not.toContain('Other client number');
     expect(userDialog.open).toBe(false);

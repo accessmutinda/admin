@@ -143,6 +143,7 @@ export type ProfessionalContactRead = {
   email: string;
   type: string;
   nextOfKin: boolean;
+  primaryGp?: boolean;
   source: 'contact' | 'representative';
   version: number;
   etag: string;
@@ -157,6 +158,7 @@ export type ProfessionalContactWrite = {
   email: string;
   type: 'Professional' | 'GP' | 'Family' | 'Emergency' | 'Pharmacy';
   nextOfKin: boolean;
+  primaryGp?: boolean;
 };
 
 export type ProfessionalContactQuery = {
@@ -177,6 +179,7 @@ export type ProfessionalContacts = {
     email: string;
     type: string;
     nextOfKin: boolean;
+    primaryGp?: boolean;
     source: 'contact' | 'representative';
     version: number;
     etag: string;
@@ -193,6 +196,7 @@ export type ProfessionalContacts = {
     email: string;
     type: string;
     nextOfKin: boolean;
+    primaryGp?: boolean;
     source: 'contact' | 'representative';
     version: number;
     etag: string;

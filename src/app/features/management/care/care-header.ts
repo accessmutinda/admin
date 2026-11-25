@@ -420,7 +420,9 @@ export class CareHeader {
         .filter(
           (contact) => contact.company_id === companyId && contact.service_user_id === client.id,
         ) ?? [];
-    const gp = contacts.find((contact) => contact.type === 'GP');
+    const gp =
+      contacts.find((contact) => contact.primaryGp) ??
+      contacts.find((contact) => contact.type === 'GP');
     const emergency = contacts.find((contact) => contact.type === 'Emergency');
     const emergencyDetails = (
       mar
@@ -456,7 +458,7 @@ export class CareHeader {
       { label: 'Provider', value: provider || 'Not recorded' },
       {
         label: 'GP Practice',
-        value: (mar?.gp_practice ?? (this.file().details['gp'] || gp?.name)) || unavailable,
+        value: (mar?.gp_practice ?? gp?.name) || unavailable,
       },
       { label: 'GP Telephone', value: (mar?.gp_telephone ?? gp?.phone) || unavailable },
       {
@@ -472,6 +474,9 @@ export class CareHeader {
         value: (mar?.registered_manager ?? roleName('registered manager')) || unavailable,
       },
       { label: 'Relevant Conditions & Risks', value: conditions || 'Not recorded' },
+      ...(!(mar?.gp_practice ?? gp?.name) && this.file().details['gp']
+        ? [{ label: 'Legacy GP notes', value: this.file().details['gp'] }]
+        : []),
       ...(escalation === undefined
         ? []
         : [{ label: 'Escalation Instructions', value: escalation || 'Not recorded' }]),

@@ -614,7 +614,10 @@ export class ServiceUsersApi {
     );
     this.validate(value);
     this.facets.update((current) => {
-      if (!current || current.funding.some((item) => item.toLowerCase() === value.name.toLowerCase()))
+      if (
+        !current ||
+        current.funding.some((item) => item.toLowerCase() === value.name.toLowerCase())
+      )
         return current;
       return { ...current, funding: [...current.funding, value.name] };
     });
@@ -653,6 +656,7 @@ export class ServiceUsersApi {
     draft: RotaClient,
     original: DirectoryUser | null,
     scope: string,
+    primaryGp?: ServiceUserWrite['primary_gp'],
   ): Promise<DirectoryUser> {
     if (this.saving()) throw Error('A service user save is already in progress.');
     if (!this.current(scope)) throw Error('The workspace changed. Reopen the form.');
@@ -678,6 +682,7 @@ export class ServiceUsersApi {
         phone: draft.phone ?? '',
         email: draft.email ?? '',
         details,
+        ...(primaryGp ? { primary_gp: primaryGp } : {}),
         representative: {
           name: draft.representative?.name ?? '',
           relationship: draft.representative?.relationship ?? '',
@@ -706,6 +711,12 @@ export class ServiceUsersApi {
       if (row.photo_id === original?.photo_id && original?.file?.photo)
         row.file!.photo = original.file.photo;
       this.selected.set(row);
+      if (primaryGp && original) {
+        await this.detail(row.id, true);
+        const refreshed = this.selected();
+        if (this.current(scope) && refreshed?.id === row.id) return refreshed;
+        return row;
+      }
       if (row.photo_id && !row.file?.photo)
         void this.loadPhoto(
           row,
