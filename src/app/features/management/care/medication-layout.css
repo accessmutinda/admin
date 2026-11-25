@@ -1,63 +1,8 @@
-.medication-workspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  align-items: start;
-  gap: var(--profile-section-gap) var(--profile-column-gap);
-  margin-bottom: var(--profile-section-gap);
-}
-.medication-main {
-  display: contents;
-}
-.medication-register-panel {
-  grid-column: 1 / -1;
-}
-.mar-settings-preview,
 .medication-audit-panel {
   min-width: 0;
+  margin-bottom: var(--profile-section-gap);
 }
-.mar-preview-description {
-  margin: 6px 0 10px;
-  font-size: 11px;
-}
-.mar-preview-selector {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  font-weight: 600;
-}
-.mar-preview-selector mat-select {
-  width: auto;
-  flex: 1;
-  min-width: 0;
-}
-.mar-preview-table {
-  min-width: 470px;
-}
-.mar-preview-table td[rowspan] {
-  vertical-align: top;
-}
-.mar-preview-table th:nth-child(n + 3),
-.mar-preview-slot {
-  text-align: center;
-}
-.mar-preview-check {
-  color: #09835c;
-  font-size: 18px;
-  font-variation-settings: 'FILL' 1;
-  vertical-align: middle;
-}
-.mar-preview-legend {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  margin: 8px 0 0;
-}
-.medication-workspace .care-panel {
-  margin: 0;
-}
-.medication-workspace h2,
+.medication-audit-panel h2,
 :host #medication-workspace-title {
   display: flex;
   align-items: center;
@@ -67,9 +12,15 @@
   line-height: 1.4;
   margin: 0;
 }
-.medication-workspace h2 .material-symbols-outlined {
-  font-size: 22px;
-  color: #007caa;
+.mar-medication-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-inline-start: auto;
+  max-width: 100%;
+  font-size: 12px;
 }
 .medication-sheet-filter {
   display: flex;
@@ -81,59 +32,14 @@
 .medication-sheet-filter mat-select {
   width: 195px;
 }
-.medication-register-panel .care-actions > mat-select {
+.mar-medication-actions > mat-select {
   width: 160px;
 }
-.medication-register-panel .care-table {
-  min-width: 960px;
-}
-.medication-workspace .care-table td {
+.medication-audit-panel .care-table td {
   padding: 5px 8px;
 }
-.medication-workspace .care-table th {
+.medication-audit-panel .care-table th {
   white-space: nowrap;
-}
-.medication-workspace .care-table td small {
-  font-size: 11px;
-}
-.medication-workspace aside h3 {
-  margin: 10px 0 4px;
-  font-size: 12px;
-}
-.medication-workspace aside .care-dl > div {
-  padding: 4px 0;
-}
-.medication-workspace .mar-table {
-  min-width: 700px;
-}
-.medication-workspace .mar-cell {
-  min-width: 65px;
-  min-height: 36px;
-  font-size: 12px;
-}
-.medication-workspace .mar-cell small {
-  display: block;
-  font-size: 11px;
-}
-.medication-workspace .care-toolbar .care-actions {
-  gap: 6px;
-  font-size: 12px;
-}
-.medication-workspace .care-toolbar .care-actions label {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-.medication-workspace .care-toolbar input {
-  max-width: 125px;
-}
-.medication-workspace .care-toolbar .care-actions .care-button {
-  min-height: 36px;
-  padding: 6px 8px;
-  font-size: 12px;
-}
-.medication-workspace .medication-legend {
-  font-size: 11px;
 }
 .medication-audit-panel .care-scroll {
   margin-top: 8px;
@@ -141,45 +47,6 @@
 }
 .medication-audit-panel .care-table {
   min-width: 430px;
-}
-.mar-indicator,
-.cd-indicator {
-  font-size: 18px;
-  color: #76889b;
-}
-.mar-indicator.required {
-  color: #09835c;
-  font-weight: 700;
-}
-.support-badge[data-support='Prompt'] {
-  background: #dcf7e9;
-  color: #087550;
-}
-.support-badge[data-support='Support'] {
-  background: #e2f1ff;
-  color: #0066ac;
-}
-.support-badge[data-support='Administer'] {
-  background: #f0e6fc;
-  color: #713ab0;
-}
-.medication-row-actions summary {
-  cursor: pointer;
-  list-style: none;
-  color: #0079cc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 32px;
-  min-width: 36px;
-}
-.medication-row-actions summary::-webkit-details-marker {
-  display: none;
-}
-.medication-row-actions[open] .care-button {
-  display: flex;
-  width: 100%;
-  white-space: nowrap;
 }
 .care-drawer {
   background: #f8fcfe;
@@ -255,15 +122,6 @@
   line-height: 1.4;
   color: #526580;
 }
-@media (max-width: 1000px) {
-  .medication-workspace {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .medication-workspace .care-panel {
-    grid-column: 1;
-    grid-row: auto;
-  }
-}
 @media (max-width: 760px) {
   .medication-sheet-filter {
     flex: 1 1 100%;
@@ -272,10 +130,10 @@
     flex: 1;
     width: auto;
   }
-  .medication-register-panel .care-actions {
+  .mar-medication-actions {
     width: 100%;
   }
-  .medication-register-panel .care-actions > mat-select {
+  .mar-medication-actions > mat-select {
     flex: 1;
     width: auto;
     min-width: 140px;
@@ -288,14 +146,7 @@
 }
 @media print {
   cv-care-header,
-  .medication-sheet-filter,
-  .medication-row-actions {
-    display: none;
-  }
-  .medication-workspace {
-    display: block;
-  }
-  .medication-workspace aside {
+  .mar-medication-actions {
     display: none;
   }
 }

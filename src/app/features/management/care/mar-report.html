@@ -1,0 +1,372 @@
+<section class="mar-support" aria-labelledby="mar-report-title">
+  <div class="preview-toolbar">
+    <h2 id="mar-report-title">Medication Administration Record</h2>
+    <div class="mar-report-controls">
+      <label for="mar-report-month">Reporting month</label>
+      <input
+        #reportMonthInput
+        id="mar-report-month"
+        type="month"
+        [value]="reportMonth()"
+        (change)="updateReportMonth(reportMonthInput.value)"
+      />
+    </div>
+  </div>
+  @let saved = report();
+  <div class="preview-toolbar mar-chart-toolbar">
+    @if (saved && saved.prescriptions.length && saved.dates.length > 12) {
+      <button
+        type="button"
+        aria-controls="mar-report-grid"
+        [attr.aria-expanded]="expanded()"
+        (click)="expanded.set(!expanded())"
+      >
+        {{ expanded() ? 'Show fewer days' : 'Show all ' + saved.dates.length + ' days' }}
+      </button>
+    }
+    <ng-content select="[marReportActions]" />
+  </div>
+  @if (saved) {
+    @if (saved.prescriptions.length) {
+      @let month = saved.month + '-01' | date: 'MMMM yyyy';
+      <ng-template #medicineDetails let-medicine let-number="number" let-span="span">
+        <td [attr.rowspan]="span">{{ number }}</td>
+        <th
+          class="medicine-name"
+          [attr.scope]="span > 1 ? 'rowgroup' : 'row'"
+          [attr.rowspan]="span"
+        >
+          {{ medicine.name }}
+        </th>
+        <td [attr.rowspan]="span">{{ medicine.strength }}</td>
+        <td [attr.rowspan]="span">{{ medicine.form }}</td>
+        <td [attr.rowspan]="span">
+          {{ medicine.dose }}<small>({{ medicine.route }})</small>
+        </td>
+        <td [attr.rowspan]="span" class="frequency">
+          {{ medicine.frequency }}
+          @if (medicine.slots.length) {
+            <div class="times">
+              @for (slot of medicine.slots; track slot.scheduledTime) {
+                <span>{{ slot.scheduledTime }}</span>
+              }
+            </div>
+          }
+          @if (medicine.frequency === 'PRN') {
+            @if (medicine.prnMax !== null) {
+              <small>Max {{ medicine.prnMax | number: '1.0-3' }} units in 24 hours</small>
+            }
+            @if (medicine.prnInterval !== null) {
+              <small>Minimum interval {{ medicine.prnInterval | number: '1.0-3' }} hours</small>
+            }
+          }
+        </td>
+        <td [attr.rowspan]="span">{{ medicine.start | date: 'dd/MM/yyyy' }}</td>
+        <td [attr.rowspan]="span">
+          @if (medicine.discontinuedAt) {
+            Discontinued<small>{{ localDate(medicine.discontinuedAt) }}</small>
+          } @else {
+            {{ medicine.end ? (medicine.end | date: 'dd/MM/yyyy') : 'Ongoing' }}
+          }
+        </td>
+        <td [attr.rowspan]="span" class="instructions">
+          {{ medicine.notes || '—' }}
+          @if (medicine.prnIndication) {
+            <small>{{ medicine.prnIndication }}</small>
+          }
+        </td>
+      </ng-template>
+      <div class="chart-scroll" tabindex="0" role="region" aria-labelledby="mar-grid-heading">
+        <table class="chart" id="mar-report-grid" [class.full-month]="expanded()">
+          <thead>
+            <tr>
+              <th rowspan="2" scope="col">No.</th>
+              <th rowspan="2" scope="col">Medication <small>(Brand / Generic)</small></th>
+              <th rowspan="2" scope="col">Strength</th>
+              <th rowspan="2" scope="col">Form</th>
+              <th rowspan="2" scope="col">Prescribed Dose &amp; Route</th>
+              <th rowspan="2" scope="col">Frequency &amp; Scheduled Time(s)</th>
+              <th rowspan="2" scope="col">Start Date</th>
+              <th rowspan="2" scope="col">End Date</th>
+              <th rowspan="2" scope="col" class="instructions">Special Instructions</th>
+              <th [attr.colspan]="columns().length + 1">
+                <h2 id="mar-grid-heading">Administration Record – {{ month }}</h2>
+              </th>
+            </tr>
+            <tr>
+              <th scope="col">Time</th>
+              @for (column of columns(); track column?.date) {
+                <th scope="col" class="day">
+                  @if (column) {
+                    <small>{{ column.date | date: 'EEE' }}</small
+                    >{{ column.date | date: 'd' }}
+                  } @else {
+                    <span aria-label="Middle dates collapsed">…</span>
+                  }
+                </th>
+              }
+            </tr>
+          </thead>
+          @for (medicine of saved.prescriptions; track medicine.id; let number = $index) {
+            <tbody>
+              @if (medicine.frequency === 'PRN') {
+                <tr>
+                  <ng-container
+                    *ngTemplateOutlet="
+                      medicineDetails;
+                      context: { $implicit: medicine, number: number + 1, span: 1 }
+                    "
+                  />
+                  <td [attr.colspan]="columns().length + 1" class="prn-cell">
+                    <table class="prn-table">
+                      <caption>
+                        PRN Administration ({{
+                          month
+                        }})
+                      </caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Date</th>
+                          <th scope="col">Time</th>
+                          <th scope="col">Dose units</th>
+                          <th scope="col">Reason</th>
+                          <th scope="col">Outcome / Effectiveness</th>
+                          <th scope="col">Staff Initials</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (entry of medicine.prnAdministrations; track entry.id) {
+                          <tr>
+                            <td>{{ entry.date | date: 'd MMM yyyy' }}</td>
+                            <td>{{ entry.actualTime ?? entry.time }}</td>
+                            <td>{{ entry.doseUnits | number: '1.0-3' }}</td>
+                            <td>{{ entry.reason || '—' }}</td>
+                            <td>
+                              <strong>{{ entry.outcome }}</strong>
+                              @if (entry.response) {
+                                <small>{{ entry.response }}</small>
+                              }
+                            </td>
+                            <td [title]="entry.staffName">{{ entry.staffInitials || '—' }}</td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="6">No PRN administrations recorded for this period.</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+              } @else {
+                @for (slot of medicine.slots; track slot.scheduledTime; let first = $first) {
+                  <tr>
+                    @if (first) {
+                      <ng-container
+                        *ngTemplateOutlet="
+                          medicineDetails;
+                          context: {
+                            $implicit: medicine,
+                            number: number + 1,
+                            span: medicine.slots.length,
+                          }
+                        "
+                      />
+                    }
+                    <th scope="row" class="slot-time">{{ slot.scheduledTime }}</th>
+                    @for (column of columns(); track column?.date) {
+                      <td class="entry">
+                        @if (column) {
+                          @let cell = slot.cells[column.index];
+                          @if (cell.administration; as entry) {
+                            <span
+                              class="outcome"
+                              [attr.data-status]="tone(entry.code)"
+                              aria-hidden="true"
+                              >{{ entry.code === 'G' ? '✓' : entry.code }}</span
+                            >
+                            <span class="visually-hidden"
+                              >{{ entry.outcome }} · {{ entry.staffName }}</span
+                            >
+                            @if (entry.actualTime) {
+                              <small>{{ entry.actualTime }}</small>
+                            } @else if (entry.outcome === 'Given') {
+                              <small title="Actual time not recorded">—</small>
+                            }
+                            <small [title]="entry.staffName">{{
+                              entry.staffInitials || '—'
+                            }}</small>
+                          } @else {
+                            @let state = cellStates[cell.state];
+                            <span [title]="state.label" aria-hidden="true">{{ state.symbol }}</span>
+                            <span class="visually-hidden">{{ state.label }}</span>
+                          }
+                        } @else {
+                          <span aria-hidden="true">…</span>
+                        }
+                      </td>
+                    }
+                  </tr>
+                } @empty {
+                  <tr>
+                    <ng-container
+                      *ngTemplateOutlet="
+                        medicineDetails;
+                        context: { $implicit: medicine, number: number + 1, span: 1 }
+                      "
+                    />
+                    <td [attr.colspan]="columns().length + 1">
+                      No schedule recorded for this prescription.
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          }
+        </table>
+      </div>
+      <p class="mar-chart-key">… Pending · ? Unrecorded</p>
+    } @else {
+      <p class="mar-card-state">No MAR prescriptions for this period.</p>
+    }
+    <div class="supporting-cards">
+      <section class="support-card" aria-labelledby="mar-code-key">
+        <h3 id="mar-code-key">
+          <span class="material-symbols-outlined" aria-hidden="true">info</span>Key – Administration
+          / Omission Codes
+        </h3>
+        <table aria-labelledby="mar-code-key">
+          <thead>
+            <tr>
+              <th scope="col">Code</th>
+              <th scope="col">Meaning</th>
+              <th scope="col">When to use</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of saved.codes; track item.code) {
+              <tr>
+                <td class="outcome legend-code" [attr.data-status]="tone(item.code)">
+                  {{ item.code }}
+                </td>
+                <th scope="row">{{ item.label }}</th>
+                <td>{{ item.description }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+
+      <section class="support-card" aria-labelledby="mar-staff-key">
+        <h3 id="mar-staff-key">
+          <span class="material-symbols-outlined" aria-hidden="true">group</span>Staff Signature Key
+          (Initials)
+        </h3>
+        @if (saved.staff.length) {
+          <table aria-labelledby="mar-staff-key">
+            <thead>
+              <tr>
+                <th scope="col">Initials</th>
+                <th scope="col">Staff Name</th>
+                <th scope="col">Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (person of saved.staff; track person.id) {
+                <tr>
+                  <td>{{ person.initials || 'Not recorded' }}</td>
+                  <th scope="row">{{ person.name }}</th>
+                  <td>{{ person.role || 'Not recorded' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <p class="mar-card-state">No staff signatures recorded for this period.</p>
+        }
+      </section>
+
+      <section class="support-card" aria-labelledby="mar-month-summary">
+        <h3 id="mar-month-summary">
+          <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>
+          Monthly Summary ({{ saved.month + '-01' | date: 'MMMM yyyy' }})
+        </h3>
+        <table class="summary" aria-labelledby="mar-month-summary">
+          <tbody>
+            <tr>
+              <th scope="row">Total Scheduled Doses</th>
+              <td>{{ saved.summary.scheduled }}</td>
+            </tr>
+            <tr>
+              <th scope="row">Doses Due</th>
+              <td>{{ saved.summary.due }}</td>
+            </tr>
+            @for (item of saved.summary.outcomes; track item.outcome) {
+              <tr [attr.data-status]="toneForOutcome(item.outcome)">
+                <th scope="row">{{ item.outcome }}</th>
+                <td>{{ item.count }}</td>
+              </tr>
+            }
+            <tr>
+              <th scope="row">Pending</th>
+              <td>{{ saved.summary.pending }}</td>
+            </tr>
+            <tr>
+              <th scope="row">Unrecorded</th>
+              <td>{{ saved.summary.unrecorded }}</td>
+            </tr>
+            <tr data-status="given">
+              <th scope="row">Compliance Rate</th>
+              <td>
+                {{
+                  saved.summary.complianceRate === null
+                    ? 'No required doses due'
+                    : saved.summary.complianceRate + '%'
+                }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="support-card" aria-labelledby="mar-saved-notes">
+        <h3 id="mar-saved-notes">
+          <span class="material-symbols-outlined" aria-hidden="true">description</span>Notes /
+          Additional Information
+        </h3>
+        @if (saved.notes.length) {
+          <div
+            class="mar-notes-scroll"
+            tabindex="0"
+            role="region"
+            aria-labelledby="mar-saved-notes"
+          >
+            <ul class="mar-notes">
+              @for (note of saved.notes; track note.id) {
+                <li>
+                  <strong>{{ note.medicationName }}</strong>
+                  <small
+                    >{{ noteLabels[note.kind] }}
+                    @if (note.date) {
+                      · {{ note.date | date: 'd MMM yyyy' }}
+                    }
+                  </small>
+                  <p>{{ note.text }}</p>
+                </li>
+              }
+            </ul>
+          </div>
+        } @else {
+          <p class="mar-card-state">No notes recorded for this period.</p>
+        }
+      </section>
+    </div>
+  } @else if (reportError(); as error) {
+    <div class="preview-toolbar mar-card-state">
+      <p role="alert">{{ error }}</p>
+      <button type="button" (click)="retry.set(retry() + 1)">Retry</button>
+    </div>
+  } @else {
+    <p class="mar-card-state" role="status">Loading saved MAR information…</p>
+  }
+</section>

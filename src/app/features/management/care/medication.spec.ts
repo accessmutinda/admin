@@ -1,4 +1,6 @@
 import { Component, input, output, signal } from '@angular/core';
+import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
+import { MatMenuHarness } from '@angular/material/menu/testing';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
@@ -85,6 +87,102 @@ describe('Medication backend workflow', () => {
       access: { can: vi.fn((_m: string, _s: string, a: string) => permissions.has(a)) },
     };
     api = vi.fn(async (path: string, body?: any, method?: string) => {
+      if (path.includes('/medications/mar?')) {
+        const query = new URLSearchParams(path.split('?')[1]);
+        const month = query.get('month')!;
+        const [year, monthNumber] = month.split('-').map(Number);
+        const dates = Array.from(
+          { length: new Date(Date.UTC(year, monthNumber, 0)).getUTCDate() },
+          (_, index) => `${month}-${String(index + 1).padStart(2, '0')}`,
+        );
+        const entry = {
+          id: 'dose-1',
+          outcome: 'Given',
+          code: 'G',
+          actualTime: '08:05',
+          staffInitials: 'BK',
+          staffName: 'Saved staff member',
+          doseUnits: '1.000',
+          reason: '',
+          response: '',
+        };
+        const medicine = {
+          ...prescription(),
+          name: 'Monthly prescription',
+          notes: 'Saved instructions',
+          discontinuedAt: null,
+          prnAdministrations: [],
+        };
+        return {
+          company_id: 'north',
+          service_user_id: 'client',
+          month,
+          sheet: query.get('sheet'),
+          timezone: 'Europe/London',
+          dates,
+          prescriptions: [
+            {
+              ...medicine,
+              slots: [
+                {
+                  scheduledTime: '08:00',
+                  cells: dates.map((date, index) => ({
+                    date,
+                    state: index === 0 ? 'recorded' : 'unrecorded',
+                    administration: index === 0 ? entry : null,
+                  })),
+                },
+              ],
+            },
+            {
+              ...medicine,
+              id: 'med-2',
+              name: 'As-required prescription',
+              frequency: 'PRN',
+              slots: [],
+              prnAdministrations: [
+                {
+                  ...entry,
+                  id: 'dose-2',
+                  date: dates[0],
+                  time: '14:30',
+                  actualTime: '14:30',
+                  response: 'Saved effectiveness',
+                },
+              ],
+            },
+          ],
+          codes: [
+            {
+              code: 'R',
+              label: 'Refused',
+              outcome: 'Refused',
+              description: 'Backend reason for this code.',
+            },
+          ],
+          staff: [
+            { id: 'staff-1', initials: 'BK', name: 'Saved staff member', role: 'Care Worker' },
+          ],
+          summary: {
+            scheduled: 10,
+            due: 5,
+            requiredDue: 5,
+            pending: 5,
+            unrecorded: 1,
+            complianceRate: '60.0',
+            outcomes: [{ outcome: 'Refused', count: 1 }],
+          },
+          notes: [
+            {
+              id: 'saved-note',
+              medicationName: 'Recorded medicine',
+              kind: 'prescription',
+              date: null,
+              text: 'Saved note from the backend.',
+            },
+          ],
+        };
+      }
       if (path.endsWith('/export'))
         return new Blob(['Medication,Outcome\nRecorded medicine,Given'], { type: 'text/csv' });
       if (path.endsWith('/administrations')) return { company_id: 'north', id: 'dose-1' };
@@ -112,15 +210,114 @@ describe('Medication backend workflow', () => {
     editor = fixture.componentInstance;
   });
   afterEach(() => vi.restoreAllMocks());
-  it('loads real records and renders the existing register and schedule preview', async () => {
+  it('keeps the audit trail below the MAR after removing the old cards', async () => {
     await settle(fixture);
     expect(api).toHaveBeenCalledWith('/companies/north/service-users/client/medications');
-    expect(
-      fixture.nativeElement.querySelector('[aria-label="Medication register"]').textContent,
-    ).toContain('Recorded medicine');
-    expect(fixture.nativeElement.querySelectorAll('[aria-label="Scheduled dose"]')).toHaveLength(4);
+    const page = fixture.nativeElement as HTMLElement;
+    const audit = page.querySelector('cv-mar-report + .medication-audit-panel');
+    expect(audit?.textContent).toContain('Medication audit trail');
+    expect(audit?.textContent).toContain('No medication changes recorded.');
+    expect(page.querySelector('.medication-register-panel')).toBeNull();
+    expect(page.querySelector('.mar-settings-preview')).toBeNull();
     expect(editor.lowStock()).toHaveLength(0);
-    expect(fixture.nativeElement.querySelector('.mar-table')).toBeNull();
+  });
+  it('renders saved scheduled and PRN entries and expands the reported month locally', async () => {
+    await settle(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const page = fixture.nativeElement as HTMLElement;
+    const preview = page.querySelector('cv-mar-report')!;
+    expect(preview.querySelector('.chart')?.textContent).toContain('Monthly prescription');
+    expect(preview.querySelector('.chart')?.textContent).toContain('08:05');
+    expect(preview.querySelector('.prn-table')?.textContent).toContain('Saved effectiveness');
+    expect(preview.querySelectorAll('.day')).toHaveLength(12);
+    expect(preview.querySelector('.summary')?.textContent).toContain('60.0%');
+
+    const requestCount = api.mock.calls.length;
+    const toggle = preview.querySelector<HTMLButtonElement>(
+      'button[aria-controls="mar-report-grid"]',
+    )!;
+    const actions = toggle.nextElementSibling!;
+    const controls = actions.querySelectorAll('mat-select, button');
+    expect(controls).toHaveLength(4);
+    expect(controls[0].getAttribute('aria-label')).toBe('MAR sheet type');
+    expect(controls[1].getAttribute('aria-label')).toBe('Medication status');
+    expect(controls[2].textContent).toContain('Manage medications');
+    expect(controls[3].textContent).toContain('Add Medication');
+    toggle.click();
+    fixture.detectChanges();
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(preview.querySelectorAll('.day')).toHaveLength(30);
+    expect(preview.querySelectorAll('.entry .outcome')).toHaveLength(1);
+    expect(api).toHaveBeenCalledTimes(requestCount);
+  });
+  it('loads all four supporting cards for the selected month and sheet', async () => {
+    await settle(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const page = fixture.nativeElement as HTMLElement;
+    const live = page.querySelector('.mar-support')!;
+    expect(api).toHaveBeenCalledWith(
+      '/companies/north/service-users/client/medications/mar?month=2026-11&sheet=standard',
+    );
+    expect(live.textContent).toContain('Backend reason for this code.');
+    expect(live.textContent).toContain('Saved staff member');
+    expect(live.textContent).toContain('Saved note from the backend.');
+    const month = live.querySelector<HTMLInputElement>('#mar-report-month')!;
+    month.value = '2026-10';
+    month.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    editor.sheet.set('Controlled');
+    await settle(fixture);
+    expect(api).toHaveBeenCalledWith(
+      '/companies/north/service-users/client/medications/mar?month=2026-10&sheet=controlled',
+    );
+    expect(live.textContent).toContain('October 2026');
+  });
+
+  it('clears saved support cards during a period change and offers a retry on failure', async () => {
+    await settle(fixture);
+    const fallback = api.getMockImplementation() as (
+      path: string,
+      ...args: unknown[]
+    ) => Promise<unknown>;
+    api.mockImplementation(async (path, ...args) => {
+      if (path.includes('month=2026-10')) throw Error('MAR unavailable');
+      return fallback(path, ...args);
+    });
+    const live = (fixture.nativeElement as HTMLElement).querySelector('.mar-support')!;
+    const month = live.querySelector<HTMLInputElement>('#mar-report-month')!;
+    month.value = '2026-10';
+    month.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(live.querySelector('[role="alert"]')?.textContent).toContain('could not be loaded');
+    expect(live.textContent).not.toContain('Saved staff member');
+    expect(live.querySelector('.chart')).toBeNull();
+    api.mockImplementation(fallback);
+    live.querySelector<HTMLButtonElement>('.mar-card-state button')!.click();
+    await settle(fixture);
+    expect(live.textContent).toContain('Saved staff member');
+  });
+
+  it('shows an empty period when the report returns no prescriptions', async () => {
+    const fallback = api.getMockImplementation() as (
+      path: string,
+      ...args: unknown[]
+    ) => Promise<object>;
+    api.mockImplementation(async (path, ...args) => {
+      const response = await fallback(path, ...args);
+      return path.includes('/medications/mar?')
+        ? { ...response, prescriptions: [], staff: [], notes: [] }
+        : response;
+    });
+    await settle(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const report = (fixture.nativeElement as HTMLElement).querySelector('cv-mar-report')!;
+    expect(report.textContent).toContain('No MAR prescriptions for this period.');
+    expect(report.querySelector('.chart')).toBeNull();
+    expect(report.querySelector('.prn-table')).toBeNull();
   });
   it('fetches current details before opening a prefilled branded editor and sends its ETag', async () => {
     await settle(fixture);
@@ -165,7 +362,13 @@ describe('Medication backend workflow', () => {
   });
   it('sends stock adjustments and discontinuation to their backend commands', async () => {
     await settle(fixture);
-    await editor.open('stock', editor.prescriptions()[0]);
+    const loader = TestbedHarnessEnvironment.loader(fixture);
+    const menu = await loader.getHarness(
+      MatMenuHarness.with({ triggerText: 'Manage medications' }),
+    );
+    await menu.clickItem({ text: 'Recorded medicine 10 mg' }, { text: 'Stock' });
+    await settle(fixture);
+    expect(editor.modal()).toBe('stock');
     editor.stockChange = 4;
     editor.reason = 'Delivery';
     await editor.save();

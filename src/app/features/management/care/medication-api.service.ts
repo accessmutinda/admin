@@ -4,6 +4,7 @@ import { ServiceUsersApi } from '../clients/service-users-api.service';
 import { Prescription, Administration } from './care.models';
 import type {
   MedicationRead,
+  MedicationMarReport,
   MedicationWorkspace,
   MedicationWrite,
   MarRead,
@@ -68,6 +69,38 @@ export class MedicationApi {
       prescriptions: row.prescriptions.map((m) => this.project(m)),
       administrations: row.administrations.map((a) => this.administration(a)),
     };
+  }
+  async marReport(
+    id: string,
+    month: string,
+    sheet: MedicationMarReport['sheet'],
+  ): Promise<MedicationMarReport> {
+    const scope = this.scope();
+    const query = new URLSearchParams({ month, sheet });
+    const report = this.validate(
+      await this.auth.api<MedicationMarReport>(`${this.root(id)}/mar?${query}`),
+      scope,
+    );
+    if (report.service_user_id !== id || report.month !== month || report.sheet !== sheet)
+      throw Error('The returned MAR report does not match the selected record and period.');
+    if (
+      !Array.isArray(report.notes) ||
+      !Array.isArray(report.staff) ||
+      !Array.isArray(report.summary?.outcomes) ||
+      !Array.isArray(report.codes) ||
+      report.codes.some((code) => typeof code.description !== 'string') ||
+      !Array.isArray(report.dates) ||
+      !Array.isArray(report.prescriptions) ||
+      !report.prescriptions.every((prescription) =>
+        prescription.slots.every(
+          (slot) =>
+            slot.cells.length === report.dates.length &&
+            slot.cells.every((cell, index) => cell.date === report.dates[index]),
+        ),
+      )
+    )
+      throw Error('The saved MAR report is incomplete.');
+    return report;
   }
   async detail(id: string, medication: string): Promise<SavedMedication> {
     const scope = this.scope();

@@ -75,10 +75,6 @@
 }
 @media (pointer: coarse) {
   :host .care-button,
-  :host .medication-workspace .care-button,
-  :host .medication-workspace .mar-cell,
-  :host .medication-workspace .care-table td .care-button,
-  :host .medication-workspace .care-toolbar .care-actions .care-button,
   :host .calendar-controls button,
   :host .workspace .calendar-panel .visit,
   :host .allocation-panel .icon-button,

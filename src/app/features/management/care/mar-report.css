@@ -1,0 +1,416 @@
+:host {
+  display: block;
+  min-width: 0;
+  margin-bottom: var(--profile-section-gap, 12px);
+  color: #123352;
+  font: 400 12px/1.4 var(--font-sans);
+  container-type: inline-size;
+  --mar-navy: #093252;
+  --mar-heading: #002b60;
+  --mar-gridline: #dce6ed;
+  --mar-pale-blue: #eaf5fc;
+  --mar-table-heading: #eff5f8;
+}
+
+.preview-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+}
+
+.preview-toolbar p {
+  margin: 0;
+  color: #657184;
+}
+
+.preview-toolbar button {
+  min-height: 32px;
+  padding: 4px 9px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  background: linear-gradient(#fff, #f9fcfd);
+  color: #16375b;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.preview-toolbar button:hover {
+  background: var(--mar-pale-blue);
+}
+
+.preview-toolbar button:focus-visible,
+.chart-scroll:focus-visible {
+  outline: 2px solid #008bd9;
+  outline-offset: 2px;
+}
+
+.chart-scroll,
+.support-card {
+  min-width: 0;
+  border: 1px solid var(--mar-gridline);
+  border-radius: 9px;
+  background: linear-gradient(120deg, #fff, #fcfefe);
+  box-shadow: 0 2px 7px #123c541f;
+}
+
+.chart-scroll {
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 4px 6px;
+  border: 1px solid var(--mar-gridline);
+  vertical-align: middle;
+}
+
+tr > :first-child:not(.slot-time) {
+  border-left: 0;
+}
+
+tr > :last-child {
+  border-right: 0;
+}
+
+thead th {
+  background: var(--mar-table-heading);
+  color: #53677f;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.chart {
+  min-width: 1110px;
+  text-align: center;
+}
+
+.chart.full-month {
+  min-width: 2010px;
+}
+
+.chart > thead th {
+  background: var(--mar-navy);
+  border-color: #536f87;
+  color: #fff;
+  padding: 3px 5px;
+}
+
+.chart > thead > tr:first-child > th {
+  border-top: 0;
+}
+
+.chart > tbody:last-child > tr > * {
+  border-bottom: 0;
+}
+
+h2,
+h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: -0.35px;
+}
+
+.day {
+  min-width: 39px;
+}
+
+.medicine-name,
+.instructions {
+  text-align: left;
+}
+
+.medicine-name {
+  min-width: 89px;
+}
+
+.chart > thead .instructions {
+  text-align: center;
+}
+
+.instructions {
+  width: 111px;
+  min-width: 102px;
+}
+
+.frequency {
+  min-width: 87px;
+}
+
+.times {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+}
+
+.times span {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--mar-pale-blue);
+  color: var(--mar-heading);
+  font-weight: 700;
+}
+
+.slot-time {
+  background: var(--mar-pale-blue);
+  color: var(--mar-heading);
+}
+
+.entry,
+.slot-time {
+  padding: 2px 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.entry {
+  position: relative;
+}
+
+small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+thead small {
+  font-size: inherit;
+}
+
+.entry .outcome {
+  display: block;
+}
+
+.outcome {
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 800;
+  color: var(--mar-status-color, #53677f);
+}
+
+[data-status='given'] {
+  --mar-status-color: #087337;
+  --mar-status-bg: #c9f4df;
+}
+
+[data-status='refused'] {
+  --mar-status-color: #b42334;
+  --mar-status-bg: #fff5f6;
+}
+
+[data-status='omitted'] {
+  --mar-status-color: #713ab0;
+  --mar-status-bg: #f5f0ff;
+}
+
+[data-status='unavailable'] {
+  --mar-status-color: #905000;
+  --mar-status-bg: #fff8e9;
+}
+
+[data-status='notRequired'] {
+  --mar-status-color: #0066ac;
+  --mar-status-bg: #eaf5fc;
+}
+
+.prn-cell {
+  padding: 5px 6px;
+}
+
+.prn-table {
+  border: 1px solid var(--mar-gridline);
+}
+
+.prn-table caption,
+.support-card h3 {
+  background: var(--mar-pale-blue);
+  color: var(--mar-heading);
+}
+
+.prn-table caption {
+  border-radius: 5px 5px 0 0;
+  padding: 2px 6px;
+  font-weight: 700;
+}
+
+.prn-table td,
+.prn-table th {
+  padding: 3px 4px;
+}
+
+.supporting-cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 8px;
+}
+
+.mar-support {
+  display: grid;
+  gap: 8px;
+}
+
+.mar-support > .preview-toolbar h2 {
+  color: var(--mar-heading);
+}
+
+.mar-chart-key {
+  margin: 0;
+  color: #53677f;
+  font-size: 11px;
+}
+
+.mar-report-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.mar-report-controls label {
+  font-weight: 700;
+}
+
+.mar-report-controls input {
+  min-height: 32px;
+  max-width: 100%;
+  padding: 3px 6px;
+  border: 1px solid #dfe6eb;
+  border-radius: 5px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
+.mar-card-state {
+  margin: 0;
+  padding: 8px;
+  color: #53677f;
+}
+
+.mar-notes-scroll {
+  max-height: 285px;
+  overflow: auto;
+}
+
+.support-card .mar-notes {
+  padding: 6px 8px;
+  list-style: none;
+}
+
+.mar-notes li + li {
+  padding-top: 5px;
+  border-top: 1px solid var(--mar-gridline);
+}
+
+.mar-notes small {
+  color: #53677f;
+}
+
+.mar-notes p {
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mar-notes-scroll:focus-visible,
+.mar-report-controls input:focus-visible {
+  outline: 2px solid #008bd9;
+  outline-offset: -2px;
+}
+
+.support-card {
+  overflow: hidden;
+}
+
+.support-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 35px;
+  padding: 4px 7px;
+}
+
+.support-card .material-symbols-outlined {
+  flex: none;
+  font-size: 22px;
+  font-variation-settings: 'FILL' 1;
+  color: #00528c;
+}
+
+.support-card table {
+  text-align: left;
+}
+
+.support-card tbody th {
+  font-weight: 700;
+}
+
+.legend-code,
+.summary td {
+  text-align: center;
+}
+
+.summary tr {
+  background: var(--mar-status-bg, transparent);
+  color: var(--mar-status-color, inherit);
+}
+
+.summary td {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.support-card ul {
+  margin: 0;
+  padding: 6px 8px 7px 23px;
+  list-style: disc;
+}
+
+.support-card li + li {
+  margin-top: 4px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@container (width < 1060px) {
+  .supporting-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (width < 560px) {
+  .supporting-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (pointer: coarse) {
+  .preview-toolbar button,
+  .mar-report-controls input {
+    min-height: 44px;
+  }
+}
+
+@media print {
+  :host {
+    display: none;
+  }
+}

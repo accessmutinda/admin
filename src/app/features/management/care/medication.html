@@ -90,280 +90,112 @@
       </div>
     </div>
   </section>
-  <div class="medication-workspace">
-    <div class="medication-main">
-      <section class="care-panel medication-register-panel">
-        <div class="care-toolbar">
-          <h2>
-            <span class="material-symbols-outlined" aria-hidden="true">pill</span>Current
-            Medications ({{ medicines().length }})
-          </h2>
-          <div class="care-actions">
-            <label class="medication-sheet-filter">
-              <span>Medication type</span>
-              <mat-select
-                cvSelect
-                aria-label="MAR sheet type"
-                [ngModel]="sheet()"
-                (ngModelChange)="sheet.set($event)"
-              >
-                <mat-option value="Standard">Standard medications</mat-option>
-                <mat-option value="Controlled">Controlled drugs</mat-option>
-              </mat-select>
-            </label>
-            <mat-select
-              cvSelect
-              aria-label="Medication status"
-              [ngModel]="filter()"
-              (ngModelChange)="filter.set($event)"
-            >
-              @for (f of ['Active', 'Discontinued', 'All']; track f) {
-                <mat-option [value]="f">{{ f }} medications</mat-option>
-              }
-            </mat-select>
-            @if (can('create')) {
-              <button
-                class="care-button primary"
-                [disabled]="fetching() || saving()"
-                (click)="open('medication')"
-              >
-                Add Medication <span class="material-symbols-outlined" aria-hidden="true">add</span>
-              </button>
-            }
-          </div>
-        </div>
-        <div class="care-scroll" tabindex="0" role="region" aria-label="Medication register">
-          <table class="care-table">
-            <thead>
-              <tr>
-                <th>Medication</th>
-                <th>Dose / form</th>
-                <th>Route</th>
-                <th>Frequency / times</th>
-                <th>Support</th>
-                <th>MAR</th>
-                <th>CD</th>
-                <th>Stock</th>
-                <th>Dates</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (m of medicines(); track m.id) {
-                <tr>
-                  <td>
-                    <strong>{{ m.name }}</strong
-                    ><small>{{ m.strength }}</small>
-                    @if (m.controlled) {
-                      <span class="care-tag" data-tone="amber">Controlled drug</span>
-                    }
-                    @if (m.covert) {
-                      <span class="care-tag" data-tone="amber">Covert plan recorded</span>
-                    }
-                  </td>
-                  <td>
-                    {{ m.dose }}<small>{{ m.form }}</small>
-                  </td>
-                  <td>{{ m.route }}</td>
-                  <td>
-                    {{ m.frequency }}<small>{{ m.times.join(', ') }}</small>
-                  </td>
-                  <td>
-                    <span class="care-tag support-badge" [attr.data-support]="m.support">{{
-                      m.support
-                    }}</span>
-                  </td>
-                  <td>
-                    <span
-                      class="material-symbols-outlined mar-indicator"
-                      [class.required]="m.requiresMar"
-                      [attr.aria-label]="m.requiresMar ? 'Requires MAR' : 'MAR not required'"
-                      >{{ m.requiresMar ? 'check' : 'remove' }}</span
-                    >
-                  </td>
-                  <td>
-                    <span
-                      class="material-symbols-outlined cd-indicator"
-                      [attr.aria-label]="m.controlled ? 'Controlled drug' : 'Standard medication'"
-                      >{{ m.controlled ? 'lock' : 'remove' }}</span
-                    >
-                  </td>
-                  <td>
-                    <span [class.care-error]="m.stock !== null && m.stock <= m.lowStock">{{
-                      m.stock === null ? 'Not tracked' : m.stock
-                    }}</span>
-                  </td>
-                  <td>
-                    {{ m.start | date: 'dd MMM yyyy'
-                    }}<small>{{
-                      m.discontinuedAt
-                        ? 'Discontinued ' + (m.discontinuedAt | date: 'dd MMM yyyy')
-                        : m.end
-                          ? 'Until ' + (m.end | date: 'dd MMM yyyy')
-                          : 'Ongoing'
-                    }}</small>
-                  </td>
-                  <td>
-                    @if ((can('edit') || can('archive')) && !m.discontinuedAt) {
-                      <details class="medication-row-actions">
-                        <summary [attr.aria-label]="'Actions for ' + m.name">
-                          <span class="material-symbols-outlined" aria-hidden="true"
-                            >more_horiz</span
-                          >
-                        </summary>
-                        @if (can('edit')) {
-                          <button class="care-button" (click)="open('medication', m)">
-                            View / Edit
-                          </button>
-                          <button class="care-button" (click)="open('stock', m)">Stock</button>
-                        }
-                        @if (can('archive')) {
-                          <button class="care-button" (click)="open('discontinue', m)">
-                            Discontinue
-                          </button>
-                        }
-                      </details>
-                    }
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="10" class="care-empty">
-                    No prescriptions match this view. Existing medication notes remain in the
-                    profile register.
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-    <section class="care-panel mar-settings-preview" aria-labelledby="mar-preview-title">
-      <div class="care-toolbar">
-        <h2 id="mar-preview-title">
-          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>MAR
-          Settings Preview
-        </h2>
-        @if (previewMedication(); as m) {
-          @if (can('edit')) {
-            <button class="care-button" (click)="open('medication', m)">
-              <span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit
-            </button>
-          }
-        }
-      </div>
-      <p class="care-note mar-preview-description">
-        Preview of how this medication will appear on the MAR. Updates automatically when medication
-        settings are saved.
-      </p>
-      @if (previewMedication(); as m) {
-        <label class="mar-preview-selector"
-          >Medication
-          <mat-select
-            cvSelect
-            aria-label="MAR preview medication"
-            [ngModel]="m.id"
-            (ngModelChange)="previewMedicationId.set($event)"
-          >
-            @for (medicine of previewMedicines(); track medicine.id) {
-              <mat-option [value]="medicine.id"
-                >{{ medicine.name }} {{ medicine.strength }}</mat-option
-              >
-            }
-          </mat-select>
-        </label>
-        <div
-          class="care-scroll"
-          tabindex="0"
-          role="region"
-          aria-label="MAR settings schedule preview"
+  <cv-mar-report
+    [clientId]="c.id"
+    [reportMonth]="marMonth()"
+    [reportSheet]="sheet() === 'Controlled' ? 'controlled' : 'standard'"
+    (reportMonthChange)="marMonthOverride.set($event)"
+  >
+    <div marReportActions class="mar-medication-actions">
+      <label class="medication-sheet-filter">
+        <span>Medication type</span>
+        <mat-select
+          cvSelect
+          aria-label="MAR sheet type"
+          [ngModel]="sheet()"
+          (ngModelChange)="sheet.set($event)"
         >
-          <table class="care-table mar-preview-table">
-            <thead>
-              <tr>
-                <th>Medication</th>
-                <th>Time</th>
-                @for (date of previewDates(); track date) {
-                  <th>{{ date | date: 'EEE d MMM' }}</th>
+          <mat-option value="Standard">Standard medications</mat-option>
+          <mat-option value="Controlled">Controlled drugs</mat-option>
+        </mat-select>
+      </label>
+      @if (can('edit') || can('archive')) {
+        <mat-select
+          cvSelect
+          aria-label="Medication status"
+          [ngModel]="filter()"
+          (ngModelChange)="filter.set($event)"
+        >
+          @for (f of ['Active', 'Discontinued', 'All']; track f) {
+            <mat-option [value]="f">{{ f }} medications</mat-option>
+          }
+        </mat-select>
+        <button
+          class="care-button"
+          type="button"
+          [matMenuTriggerFor]="medicationMenu"
+          [disabled]="fetching() || saving()"
+        >
+          Manage medications
+        </button>
+        <mat-menu #medicationMenu="matMenu">
+          @for (m of medicines(); track m.id) {
+            @if (m.discontinuedAt) {
+              <button mat-menu-item type="button" disabled>{{ m.name }} {{ m.strength }}</button>
+            } @else {
+              <button mat-menu-item type="button" [matMenuTriggerFor]="actions">
+                {{ m.name }} {{ m.strength }}
+              </button>
+              <mat-menu #actions="matMenu">
+                @if (can('edit')) {
+                  <button mat-menu-item type="button" (click)="open('medication', m)">
+                    View / Edit
+                  </button>
+                  <button mat-menu-item type="button" (click)="open('stock', m)">Stock</button>
                 }
-              </tr>
-            </thead>
-            <tbody>
-              @for (time of m.times; track time; let first = $first) {
-                <tr>
-                  @if (first) {
-                    <td [attr.rowspan]="m.times.length">
-                      <strong>{{ m.name }}</strong
-                      ><small>{{ m.strength }} ({{ m.route }})</small><small>{{ m.dose }}</small>
-                    </td>
-                  }
-                  <td>{{ time }}</td>
-                  @for (date of previewDates(); track date) {
-                    <td class="mar-preview-slot">
-                      @if (due(m, date)) {
-                        <span
-                          class="material-symbols-outlined mar-preview-check"
-                          aria-label="Scheduled dose"
-                          >check_circle</span
-                        >
-                      } @else {
-                        <span aria-label="Not scheduled">—</span>
-                      }
-                    </td>
-                  }
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="6" class="care-empty">
-                    No dose times configured. Edit the medication to add times.
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-        <p class="care-note mar-preview-legend">
-          <span class="material-symbols-outlined mar-preview-check" aria-hidden="true"
-            >check_circle</span
-          >Scheduled dose · — Not scheduled
-        </p>
-      } @else {
-        <p class="care-empty">
-          No active scheduled medications requiring MAR for this medication type.
-        </p>
-      }
-    </section>
-    <section class="care-panel medication-audit-panel">
-      <h2>Medication audit trail</h2>
-      <div class="care-scroll">
-        <table class="care-table">
-          <thead>
-            <tr>
-              <th>Date & time</th>
-              <th>User</th>
-              <th>Action</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (a of audit(); track a.id) {
-              <tr>
-                <td>{{ ukStamp(a.at) }}</td>
-                <td>{{ a.by }}</td>
-                <td>{{ a.action }}</td>
-                <td>{{ a.detail }}</td>
-              </tr>
-            } @empty {
-              <tr>
-                <td colspan="4">No medication changes recorded.</td>
-              </tr>
+                @if (can('archive')) {
+                  <button mat-menu-item type="button" (click)="open('discontinue', m)">
+                    Discontinue
+                  </button>
+                }
+              </mat-menu>
             }
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </div>
+          } @empty {
+            <button mat-menu-item type="button" disabled>No matching medications</button>
+          }
+        </mat-menu>
+      }
+      @if (can('create')) {
+        <button
+          class="care-button primary"
+          type="button"
+          [disabled]="fetching() || saving()"
+          (click)="open('medication')"
+        >
+          Add Medication <span class="material-symbols-outlined" aria-hidden="true">add</span>
+        </button>
+      }
+    </div>
+  </cv-mar-report>
+  <section class="care-panel medication-audit-panel">
+    <h2>Medication audit trail</h2>
+    <div class="care-scroll">
+      <table class="care-table">
+        <thead>
+          <tr>
+            <th>Date & time</th>
+            <th>User</th>
+            <th>Action</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (a of audit(); track a.id) {
+            <tr>
+              <td>{{ ukStamp(a.at) }}</td>
+              <td>{{ a.by }}</td>
+              <td>{{ a.action }}</td>
+              <td>{{ a.detail }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4">No medication changes recorded.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
   @if (modal()) {
     <div class="care-overlay" (click)="close()">
       <section

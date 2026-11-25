@@ -1,4 +1,4 @@
-// Generated from backend/docs-api/companies.openapi.json. Regenerate with scripts/generate-company-access-types.py.
+// Generated from backend OpenAPI. Regenerate with scripts/generate-company-access-types.py.
 
 export type MedicationWrite = {
   name: string;
@@ -91,7 +91,8 @@ export type MedicationRead = {
 export type MarWrite = {
   date: string;
   time: string;
-  outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent';
+  outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Not available' | 'Not required';
+  actualAt?: string | null;
   doseUnits: string;
   reason?: string;
   response?: string;
@@ -104,7 +105,8 @@ export type MarRead = {
   medicationId: string;
   date: string;
   time: string;
-  outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Void';
+  outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Not available' | 'Not required' | 'Void';
+  actualAt?: string | null;
   doseUnits: string;
   reason: string;
   response: string;
@@ -184,7 +186,8 @@ export type MedicationWorkspace = {
     medicationId: string;
     date: string;
     time: string;
-    outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Void';
+    outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Not available' | 'Not required' | 'Void';
+    actualAt?: string | null;
     doseUnits: string;
     reason: string;
     response: string;
@@ -211,4 +214,100 @@ export type MedicationAudit = {
   by: string;
   action: string;
   detail: string;
+};
+
+export type MedicationMarReport = {
+  company_id: string;
+  service_user_id: string;
+  timezone: string;
+  month: string;
+  sheet: 'standard' | 'controlled' | 'all';
+  dates: string[];
+  prescriptions: {
+    id: string;
+    name: string;
+    dose: string;
+    strength: string;
+    form: string;
+    route: string;
+    frequency: 'Daily' | 'Selected days' | 'PRN';
+    start: string;
+    end: string | null;
+    discontinuedAt: string | null;
+    controlled: boolean;
+    notes: string;
+    prnIndication: string;
+    prnMax: string | null;
+    prnInterval: string | null;
+    slots: {
+      scheduledTime: string;
+      cells: {
+        date: string;
+        state: 'recorded' | 'not_applicable' | 'pending' | 'unrecorded';
+        administration: {
+          outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Not available' | 'Not required';
+          code: string;
+          id: string;
+          actualAt: string | null;
+          actualTime: string | null;
+          staffId: string;
+          staffInitials: string | null;
+          staffName: string;
+          staffRole: string | null;
+          doseUnits: string;
+          reason: string;
+          response: string;
+        } | null;
+      }[];
+    }[];
+    prnAdministrations: {
+      outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Not available' | 'Not required';
+      code: string;
+      id: string;
+      actualAt: string | null;
+      actualTime: string | null;
+      staffId: string;
+      staffInitials: string | null;
+      staffName: string;
+      staffRole: string | null;
+      doseUnits: string;
+      reason: string;
+      response: string;
+      date: string;
+      time: string;
+    }[];
+  }[];
+  staff: {
+    id: string;
+    initials: string | null;
+    name: string;
+    role: string | null;
+  }[];
+  summary: {
+    scheduled: number;
+    due: number;
+    requiredDue: number;
+    pending: number;
+    unrecorded: number;
+    outcomes: {
+      outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Not available' | 'Not required';
+      count: number;
+    }[];
+    complianceRate: string | null;
+  };
+  codes: {
+    outcome: 'Given' | 'Refused' | 'Omitted' | 'Absent' | 'Not available' | 'Not required' | null;
+    code: string;
+    label: string;
+    description: string;
+  }[];
+  notes: {
+    id: string;
+    medicationName: string;
+    date: string | null;
+    kind: 'prescription' | 'reason' | 'response';
+    text: string;
+  }[];
+  as_of: string;
+  request_id: string;
 };

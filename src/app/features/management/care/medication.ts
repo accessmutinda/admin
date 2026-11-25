@@ -11,15 +11,17 @@ import {
   DestroyRef,
   ChangeDetectorRef,
 } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { A11yModule } from '@angular/cdk/a11y';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { ModuleDesign } from '../shared/module-design';
 import { CareHeader } from './care-header';
+import { CareContactsApi } from './care-contacts-api.service';
+import { MarReport } from './mar-report';
 import {
   MedicationApi,
   MedicationData,
@@ -35,19 +37,19 @@ import {
   MEDICATION_ROUTES,
   blankPrescription,
   medicationActive,
-  medicationDue,
   weekDates,
 } from './care.models';
 import { addDays, londonDate } from '../rota/rota.models';
 @Component({
-  providers: [MedicationApi, ServiceUsersApi],
+  providers: [MedicationApi, ServiceUsersApi, CareContactsApi],
   selector: 'cv-medication',
   imports: [
     ModuleDesign,
     CareHeader,
-    DatePipe,
+    MarReport,
     FormsModule,
     A11yModule,
+    MatMenuModule,
     MatSelectModule,
     CvSelect,
     ServiceUserState,
@@ -92,6 +94,7 @@ export class Medication {
         this.saving.set(false);
         this.exportBusy.set(false);
         this.data.set(null);
+        this.marMonthOverride.set('');
         this.notice.set('');
         this.error.set('');
         if (id && allowed) {
@@ -224,6 +227,10 @@ export class Medication {
     }
   }
   protected readonly sheet = signal('Standard');
+  protected readonly marMonthOverride = signal('');
+  protected readonly marMonth = computed(
+    () => this.marMonthOverride() || this.data()?.today.slice(0, 7) || '',
+  );
   protected readonly chart = computed(() =>
     this.prescriptions()
       .filter(
@@ -233,23 +240,6 @@ export class Medication {
           (this.sheet() === 'Controlled' ? m.controlled : !m.controlled),
       )
       .flatMap((m) => m.times.map((time) => ({ m, time }))),
-  );
-  protected readonly previewMedicationId = signal('');
-  protected readonly previewMedicines = computed(() =>
-    this.active().filter(
-      (m) =>
-        m.requiresMar &&
-        m.frequency !== 'PRN' &&
-        (this.sheet() === 'Controlled' ? m.controlled : !m.controlled),
-    ),
-  );
-  protected readonly previewMedication = computed(
-    () =>
-      this.previewMedicines().find((m) => m.id === this.previewMedicationId()) ??
-      this.previewMedicines()[0],
-  );
-  protected readonly previewDates = computed(() =>
-    Array.from({ length: 4 }, (_, i) => addDays(this.data()?.today ?? londonDate(), i)),
   );
   protected readonly records = computed(() => {
     const all = this.data()?.administrations ?? [];
@@ -383,9 +373,6 @@ export class Medication {
       date.setUTCMonth(date.getUTCMonth() + Math.sign(days));
       this.week.set(date.toISOString().slice(0, 10));
     } else this.week.set(addDays(this.week(), days));
-  }
-  protected due(m: Prescription, date: string): boolean {
-    return medicationDue(m, date);
   }
   protected cell(m: Prescription, date: string, time: string): Administration | undefined {
     return this.records().find(
