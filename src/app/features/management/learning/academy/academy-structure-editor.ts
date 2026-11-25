@@ -464,9 +464,9 @@ export class AcademyStructureEditor {
     return true;
   }
   protected async preview() {
-    if ((await this.save()) && this.course)
-      void this.router.navigate(['/staff-portal/training/courses', this.course.id], {
-        queryParams: { preview: '1' },
+    if (this.course && (JSON.stringify(this.course) === this.original || (await this.save())))
+      void this.router.navigate(['/manage/learning/preview', this.course.id], {
+        queryParams: { from: 'structure' },
       });
   }
   protected async back() {

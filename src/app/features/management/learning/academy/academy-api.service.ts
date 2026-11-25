@@ -216,11 +216,14 @@ export class AcademyApi {
     const source: AcademyCourseWrite = { ...body, code: course.code ?? '' };
     return structuredClone(source);
   }
-  async detail(id: string): Promise<void> {
+  async detail(id: string): Promise<CourseRecord> {
     const scope = this.scope();
     this.check(scope);
     try {
-      this.accept(await this.auth.api<CourseRecord>(`${this.root()}/courses/${id}`), scope);
+      const record = await this.auth.api<CourseRecord>(`${this.root()}/courses/${id}`);
+      if (record.course.id !== id) throw Error('The returned course does not match the selected course.');
+      this.accept(record, scope);
+      return record;
     } catch (e) {
       this.failed(e, scope);
       throw e;

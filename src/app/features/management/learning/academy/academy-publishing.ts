@@ -382,8 +382,8 @@ export class AcademyPublishing {
   }
   protected async preview() {
     if (this.course && (JSON.stringify(this.course) === this.original || (await this.save())))
-      void this.router.navigate(['/staff-portal/training/courses', this.course.id], {
-        queryParams: { ...this.context(), preview: '1' },
+      void this.router.navigate(['/manage/learning/preview', this.course.id], {
+        queryParams: { ...this.context(), from: 'publish' },
       });
   }
   protected async publish() {

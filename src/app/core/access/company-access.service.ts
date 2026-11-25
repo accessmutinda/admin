@@ -116,6 +116,7 @@ export function routeAccess(url: string): [string, string][] {
       courses: 'courses',
       content: 'courses',
       structure: 'courses',
+      preview: 'courses',
       questions: 'assessments',
       rules: 'assignments',
       manage: 'assignments',

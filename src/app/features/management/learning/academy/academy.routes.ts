@@ -361,6 +361,21 @@ export const ACADEMY_ADMIN_ROUTES: Routes = [
       import('./academy-rules-assignments').then((m) => m.AcademyRulesAssignments),
   })),
   {
+    path: 'preview/:courseId',
+    canActivate: [
+      () => {
+        const access = inject(CompanyAccessService);
+        return (
+          (access.can('academy', 'courses', 'read') && access.can('academy', 'courses', 'edit')) ||
+          inject(Router).createUrlTree(['/access-denied'])
+        );
+      },
+    ],
+    title: 'Learner journey preview · CareVerity',
+    loadComponent: () =>
+      import('./academy-course-preview').then((m) => m.AcademyCoursePreview),
+  },
+  {
     path: 'structure/:courseId',
     canActivate: [admin, academyLoaded],
     canDeactivate: [leave],

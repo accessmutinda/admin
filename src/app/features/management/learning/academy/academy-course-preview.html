@@ -1,0 +1,97 @@
+<div class="heading">
+  <div>
+    <h1>Learner Journey Preview</h1>
+    <p>Read-only preview of the saved course.</p>
+  </div>
+  <a
+    class="academy-button"
+    [routerLink]="['/manage/learning', returnPage(), id()]"
+    [queryParams]="returnContext()"
+    >Back to course authoring</a
+  >
+</div>
+@if (error()) {
+  <p class="notice" role="alert">{{ error() }}</p>
+} @else if (course(); as current) {
+  <div class="lesson-plan-grid">
+    <div class="lesson-main">
+      <section class="panel">
+        <h2>{{ current.title }}</h2>
+        <p class="preserve">{{ current.description }}</p>
+      </section>
+      @if (lesson(); as selected) {
+        <section class="panel lesson-player-card">
+          <div class="lesson-card-heading">
+            <h2>{{ selected.title }}</h2>
+            <span>{{ selected.minutes }} min</span>
+          </div>
+          @if (video(); as url) {
+            <video class="lesson-video" [src]="url" controls [attr.aria-label]="selected.title">
+              @if (captions(); as url) {
+                <track
+                  kind="subtitles"
+                  [src]="url"
+                  [srclang]="captionLanguage(selected.captionId)"
+                  label="Lesson captions"
+                  default
+                />
+              }
+            </video>
+          } @else if (selected.videoId && !mediaError()) {
+            <p role="status">Loading lesson video…</p>
+          }
+          @if (selected.content) {
+            <p class="preserve lesson-copy">{{ selected.content }}</p>
+          }
+          @if (selected.transcript) {
+            <details class="transcript-panel">
+              <summary>Lesson transcript</summary>
+              <p class="preserve">{{ selected.transcript }}</p>
+            </details>
+          }
+          @if (mediaError()) {
+            <p class="notice" role="alert">{{ mediaError() }}</p>
+          }
+        </section>
+        @if (selected.handoutIds.length) {
+          <section class="panel">
+            <h2>Lesson resources</h2>
+            @for (id of selected.handoutIds; track id; let number = $index) {
+              <div class="list-item">
+                <span>{{ assetName(id) || 'Resource ' + (number + 1) }}</span>
+                <button class="academy-button" type="button" (click)="downloadResource(id)">
+                  Download {{ assetName(id) || 'resource ' + (number + 1) }}
+                </button>
+              </div>
+            }
+          </section>
+        }
+      } @else if (current.lessons.length) {
+        <section class="panel"><p>Select a lesson from the course outline.</p></section>
+      }
+    </div>
+    <nav class="panel lesson-sidebar" aria-label="Course lessons">
+      <h2>Course outline</h2>
+      @for (item of current.lessons; track item.id) {
+        <div class="list-item">
+          <div>
+            @if (item.moduleTitle) {
+              <small>{{ item.moduleTitle }}</small>
+            }
+            <a
+              [routerLink]="[]"
+              [queryParams]="{ lesson: item.id }"
+              queryParamsHandling="merge"
+              [attr.aria-current]="lesson()?.id === item.id ? 'page' : null"
+              >{{ item.title }}</a
+            >
+          </div>
+        </div>
+      } @empty {
+        <p>Save a lesson in Modules &amp; Lessons to preview it here.</p>
+      }
+    </nav>
+  </div>
+} @else {
+  <p role="status">Loading course preview…</p>
+}
