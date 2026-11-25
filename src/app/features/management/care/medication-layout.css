@@ -13,6 +13,7 @@
   margin: 0;
 }
 .mar-medication-actions {
+  --mar-action-height: 36px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -22,6 +23,18 @@
   max-width: 100%;
   font-size: 12px;
 }
+.mar-medication-actions :is(.care-button, .cv-select.mat-mdc-select) {
+  min-height: var(--mar-action-height);
+}
+.mar-medication-actions .cv-select.mat-mdc-select {
+  display: inline-flex;
+  align-items: center;
+  padding-block: 0;
+}
+.mar-medication-actions .care-button > .material-symbols-outlined {
+  font-size: 18px;
+  line-height: 1;
+}
 .medication-sheet-filter {
   display: flex;
   align-items: center;
@@ -30,7 +43,7 @@
   font-weight: 600;
 }
 .medication-sheet-filter mat-select {
-  width: 195px;
+  width: 176px;
 }
 .mar-medication-actions > mat-select {
   width: 160px;
@@ -121,6 +134,11 @@
   font-size: 10px;
   line-height: 1.4;
   color: #526580;
+}
+@media (pointer: coarse), (max-width: 760px) {
+  .mar-medication-actions {
+    --mar-action-height: 44px;
+  }
 }
 @media (max-width: 760px) {
   .medication-sheet-filter {
