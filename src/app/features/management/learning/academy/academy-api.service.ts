@@ -1,5 +1,9 @@
 import { ACADEMY_LEARNER_ONLY } from './academy-learner-context';
-import type { AcademyCourseWrite, AcademyBankWrite } from './academy.generated';
+import type {
+  AcademyCourseWrite,
+  AcademyBankWrite,
+  AcademyQuestionHistoryRead,
+} from './academy.generated';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ManagementStore } from '../../shared/management.store';
@@ -255,6 +259,22 @@ export class AcademyApi {
       this.writing.set(false);
     }
   }
+  async questionHistory(courseId: string, questionId: string) {
+    const scope = this.scope();
+    this.check(scope);
+    const response = await this.auth.api<AcademyQuestionHistoryRead>(
+      `${this.root()}/courses/${courseId}/questions/${questionId}/history`,
+    );
+    this.check(scope);
+    if (
+      response.company_id !== this.store.companyId() ||
+      response.course_id !== courseId ||
+      response.question_id !== questionId
+    )
+      throw Error('The returned history does not match the selected question.');
+    return response.revisions;
+  }
+
   async bank(
     courseId: string,
     questions: AcademyQuestion[],

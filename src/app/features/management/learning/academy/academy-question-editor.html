@@ -360,7 +360,7 @@
           <details class="version-history" open>
             <summary>
               <span class="material-symbols-outlined" aria-hidden="true">history</span>Version
-              history ({{ history().length }})<span
+              history{{ historyLoading() || historyError() ? '' : ' (' + history().length + ')' }}<span
                 class="material-symbols-outlined expand-icon"
                 aria-hidden="true"
                 >expand_less</span
@@ -377,25 +377,35 @@
                   </tr>
                 </thead>
                 <tbody>
-                  @for (event of history(); track event.id; let index = $index) {
-                    <tr>
-                      <td>
-                        <span class="version-pill" [class.current]="index === 0"
-                          >v{{ draft.version - index }}{{ index === 0 ? ' (Current)' : '' }}</span
-                        >
-                      </td>
-                      <td>{{ event.at | ukDate: 'd MMM yyyy, HH:mm' }}</td>
-                      <td>{{ event.actor }}</td>
-                      <td>
-                        {{ draft.version - index === 1 ? 'Initial version' : 'Question saved' }}
-                      </td>
-                    </tr>
-                  } @empty {
+                  @if (historyLoading() || historyError()) {
                     <tr>
                       <td colspan="4">
-                        No saved revisions yet. Save this bank to create the first version.
+                        <span role="status">{{ historyError() || 'Loading version history…' }}</span>
                       </td>
                     </tr>
+                  } @else {
+                    @for (revision of history(); track revision.version; let first = $first) {
+                      <tr>
+                        <td>
+                          <span class="version-pill" [class.current]="first"
+                            >v{{ revision.version }}{{ first ? ' (Current)' : '' }}</span
+                          >
+                        </td>
+                        <td>
+                          <time [attr.datetime]="revision.at">{{
+                            revision.at | ukDate: 'd MMM yyyy, HH:mm:ss'
+                          }}</time>
+                        </td>
+                        <td>{{ revision.by }}</td>
+                        <td>{{ revision.summary }}</td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="4">
+                          Save the question bank to create this question’s first revision.
+                        </td>
+                      </tr>
+                    }
                   }
                 </tbody>
               </table>

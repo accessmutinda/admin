@@ -1483,6 +1483,26 @@ export type AcademyPolicyWrite = {
   shuffleOptions?: boolean;
 };
 
+export type AcademyQuestionHistoryEntry = {
+  version: number;
+  at: string;
+  by: string;
+  summary: string;
+};
+
+export type AcademyQuestionHistoryRead = {
+  company_id: string;
+  course_id: string;
+  question_id: string;
+  revisions: {
+    version: number;
+    at: string;
+    by: string;
+    summary: string;
+  }[];
+  request_id?: string;
+};
+
 export type AcademyQuestionRead = {
   id: string;
   courseId: string;

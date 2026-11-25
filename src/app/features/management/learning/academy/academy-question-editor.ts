@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, HostListener, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { A11yModule } from '@angular/cdk/a11y';
@@ -16,6 +16,7 @@ import {
 import { AcademyAdminNav, AcademyMessage } from './academy-shared';
 import { AcademyImage } from './academy-image';
 import { AcademyDate } from './academy-date';
+import type { AcademyQuestionHistoryEntry } from './academy.generated';
 @Component({
   host: {
     class: 'module-page academy-page',
@@ -50,7 +51,16 @@ export class AcademyQuestionEditor {
   protected course: AcademyCourse | undefined;
   protected bank: AcademyQuestion[] = [];
   protected groups: AcademyQuestionGroup[] = [];
-  protected draft!: AcademyQuestion;
+  private readonly selectedQuestion = signal<AcademyQuestion | null>(null);
+  protected get draft(): AcademyQuestion {
+    return this.selectedQuestion()!;
+  }
+  protected set draft(question: AcademyQuestion) {
+    this.selectedQuestion.set(question);
+  }
+  protected readonly history = signal<AcademyQuestionHistoryEntry[]>([]);
+  protected readonly historyLoading = signal(false);
+  protected readonly historyError = signal('');
   protected tags = '';
   protected readonly error = signal('');
   protected readonly notice = signal('');
@@ -81,6 +91,31 @@ export class AcademyQuestionEditor {
       this.id ?? '',
       this.route.snapshot.routeConfig?.path === 'questions/new',
     );
+    effect((cleanup) => {
+      const question = this.selectedQuestion();
+      this.academy.api.scope();
+      let cancelled = false;
+      cleanup(() => (cancelled = true));
+      this.history.set([]);
+      this.historyError.set('');
+      this.historyLoading.set(!!question?.version);
+      if (!question?.version) return;
+      untracked(() => {
+        void this.academy.api
+          .questionHistory(question.courseId, question.id)
+          .then(
+            (history) => {
+              if (!cancelled) this.history.set(history);
+            },
+            () => {
+              if (!cancelled) this.historyError.set('Version history could not be loaded.');
+            },
+          )
+          .finally(() => {
+            if (!cancelled) this.historyLoading.set(false);
+          });
+      });
+    });
   }
   private blank(): AcademyQuestion {
     return {
@@ -359,14 +394,6 @@ export class AcademyQuestionEditor {
   protected percent(type: string) {
     const count = this.bank.filter((q) => q.status !== 'Archived').length;
     return count ? Math.round((this.count(type) * 100) / count) : 0;
-  }
-  protected history() {
-    return this.academy
-      .state()
-      .events.filter(
-        (e) => e.action === 'Question saved' && e.detail.startsWith(this.draft.id + ' ·'),
-      )
-      .slice(0, 8);
   }
   protected async save(publish = false) {
     if (!this.course) return;
