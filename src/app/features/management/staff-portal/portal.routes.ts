@@ -28,6 +28,11 @@ export const PORTAL_ROUTES: Routes = [
   ...ACADEMY_STAFF_ROUTES,
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
   {
+    path: 'work',
+    title: 'My visits and activity · CareVerity',
+    loadComponent: () => import('./portal-work').then((m) => m.PortalWork),
+  },
+  {
     path: 'dashboard-2',
     pathMatch: 'full',
     redirectTo: ({ queryParams, fragment }) =>

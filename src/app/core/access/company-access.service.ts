@@ -187,6 +187,7 @@ export function routeAccess(url: string): [string, string][] {
           {
             journal: 'journal',
             tasks: 'tasks',
+            work: 'work',
             concerns: 'concerns',
             'service-users': 'clients',
             oversight: 'oversight',

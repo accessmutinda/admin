@@ -4,6 +4,7 @@ const STAFF_PAGES = new Set([
   'dashboard-2',
   'journal',
   'tasks',
+  'work',
   'concerns',
   'service-users',
   'oversight',

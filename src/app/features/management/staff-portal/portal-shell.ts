@@ -280,6 +280,7 @@ export class PortalShell {
   );
   protected readonly links = [
     { path: 'dashboard', label: 'My dashboard', icon: 'space_dashboard' },
+    { path: 'work', label: 'My visits and activity', icon: 'calendar_month' },
     { path: 'training', label: 'CareVerity Academy', icon: 'school' },
     { path: 'journal', label: 'Journal & messages', icon: 'forum' },
     { path: 'tasks', label: 'Staff & tasks', icon: 'assignment' },
