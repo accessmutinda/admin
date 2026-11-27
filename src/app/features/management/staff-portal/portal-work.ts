@@ -39,8 +39,8 @@ type Work = {
   selector: 'cv-portal-work',
   imports: [RouterLink],
   templateUrl: './portal-work.html',
-  styleUrls: ['./portal-work.css'],
-  host: { class: 'module-page portal-work' },
+  styleUrls: ['./portal-ui.css', './portal-work.css'],
+  host: { class: 'module-page operations-page portal-work' },
 })
 export class PortalWork {
   private readonly auth = inject(AuthService);

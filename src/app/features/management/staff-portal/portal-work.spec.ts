@@ -70,8 +70,10 @@ describe('My visits and activity', () => {
         fixture.detectChanges();
       };
       const button = (label: string) =>
-        [...view.querySelectorAll<HTMLButtonElement>('button')].find(
-          (item) => item.textContent?.trim() === label,
+        [...view.querySelectorAll<HTMLButtonElement>('button')].find((item) =>
+          [...item.childNodes].some(
+            (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim() === label,
+          ),
         );
 
       await update();

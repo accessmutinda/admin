@@ -1,127 +1,152 @@
 <header class="page-heading">
   <h1>My visits and activity</h1>
   <button class="button" type="button" [disabled]="busy() || loading()" (click)="refresh()">
-    Refresh
+    <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Refresh
   </button>
 </header>
 @if (error()) {
-  <p role="alert">{{ error() }}</p>
+  <p class="portal-panel portal-panel-body work-error" role="alert">{{ error() }}</p>
 }
 @if (notice()) {
-  <p role="status">{{ notice() }}</p>
+  <p class="portal-panel portal-panel-body" role="status">{{ notice() }}</p>
 }
 @if (loading() && !data()) {
-  <p role="status">Loading your schedule…</p>
+  <p class="portal-panel portal-panel-body" role="status">Loading your schedule…</p>
 }
 @if (data(); as work) {
-  <section class="panel work-panel" aria-labelledby="work-visits">
-    <h2 id="work-visits">Assigned visits</h2>
-    <ul class="work-visits">
-      @for (visit of work.visits; track visit.id) {
-        <li>
-          <h3>{{ visit.clientName }} · {{ visit.callName }}</h3>
-          <p>
-            {{ time(visit.startsAt) }} to {{ time(visit.endsAt) }} ·
-            {{
-              visit.carers === 2
-                ? 'Double-up'
-                : visit.carers === 1
-                  ? 'Single carer'
-                  : visit.carers + ' carers'
-            }}
-          </p>
-          @if (visit.checkedInAt) {
-            <p>Checked in {{ time(visit.checkedInAt) }}</p>
-          }
-          @if (visit.checkedOutAt) {
-            <p>Checked out {{ time(visit.checkedOutAt) }}</p>
-          }
-          @if (visit.tasks.length) {
-            <details>
-              <summary>Approved care plan tasks</summary>
-              <ul>
-                @for (task of visit.tasks; track $index) {
-                  <li>{{ task }}</li>
-                }
-              </ul>
-            </details>
-          }
-          <div class="work-actions">
-            @if (visit.canClock) {
-              <button
-                class="button primary"
-                type="button"
-                [disabled]="busy() || loading()"
-                (click)="attendance(visit)"
-              >
-                {{ visit.checkedInAt ? 'Check out' : 'Check in' }}
-              </button>
-            }
-            @if (work.canOpenClient) {
-              <a
-                class="button"
-                [routerLink]="['/staff-portal/service-users', visit.clientId, 'allocation']"
-                >Visit details</a
-              >
-            }
-          </div>
-        </li>
-      } @empty {
-        <li>No visits assigned for today or tomorrow.</li>
-      }
-    </ul>
-  </section>
-  <section class="panel work-panel" aria-labelledby="work-activity">
-    <h2 id="work-activity">Availability and travel</h2>
-    <p>{{ statuses[work.status] || work.status }} · {{ locationStates[work.locationState] }}</p>
-    @if (canReport()) {
-      <p>
-        Share a single position with your coordinator. Your device may ask for location permission.
-      </p>
-      <div class="work-actions">
-        <label
-          >Travel mode
-          <select
-            [value]="mode()"
-            (change)="mode.set($any($event.target).value)"
-            [disabled]="busy() || loading()"
-          >
-            <option value="">Select a mode</option>
-            <option value="driving">Driving</option>
-            <option value="walking">Walking</option>
-            <option value="transit">Public transport</option>
-          </select>
-        </label>
-        <button
-          class="button"
-          type="button"
-          [disabled]="busy() || loading()"
-          (click)="report('travelling')"
-        >
-          Report travelling
-        </button>
-        <button
-          class="button"
-          type="button"
-          [disabled]="busy() || loading()"
-          (click)="report('available')"
-        >
-          Report available
-        </button>
-        <button
-          class="button"
-          type="button"
-          [disabled]="busy() || loading()"
-          (click)="report(undefined, true)"
-        >
-          Share current position
-        </button>
+  <div class="portal-grid">
+    <section class="portal-panel" aria-labelledby="work-visits">
+      <div class="portal-panel-header">
+        <h2 id="work-visits">
+          <span class="material-symbols-outlined" aria-hidden="true">event_note</span>Assigned
+          visits
+        </h2>
       </div>
-    }
-    @if (work.canClearPosition) {
-      <button class="button" type="button" [disabled]="busy() || loading()" (click)="report()">
-        Remove shared position
-      </button>
-    }
-  </section>
+      <ul class="portal-panel-body work-visits">
+        @for (visit of work.visits; track visit.id) {
+          <li>
+            <h3>{{ visit.clientName }} · {{ visit.callName }}</h3>
+            <p class="portal-muted">
+              {{ time(visit.startsAt) }} to {{ time(visit.endsAt) }}
+              <span class="portal-badge" [attr.data-tone]="visit.carers === 2 ? 'purple' : 'blue'">
+                {{
+                  visit.carers === 2
+                    ? 'Double-up'
+                    : visit.carers === 1
+                      ? 'Single carer'
+                      : visit.carers + ' carers'
+                }}</span
+              >
+            </p>
+            @if (visit.checkedInAt) {
+              <p>Checked in {{ time(visit.checkedInAt) }}</p>
+            }
+            @if (visit.checkedOutAt) {
+              <p>Checked out {{ time(visit.checkedOutAt) }}</p>
+            }
+            @if (visit.tasks.length) {
+              <details>
+                <summary>Approved care plan tasks</summary>
+                <ul>
+                  @for (task of visit.tasks; track $index) {
+                    <li>{{ task }}</li>
+                  }
+                </ul>
+              </details>
+            }
+            <div class="work-actions">
+              @if (visit.canClock) {
+                <button
+                  class="button primary"
+                  type="button"
+                  [disabled]="busy() || loading()"
+                  (click)="attendance(visit)"
+                >
+                  {{ visit.checkedInAt ? 'Check out' : 'Check in' }}
+                </button>
+              }
+              @if (work.canOpenClient) {
+                <a
+                  class="button"
+                  [routerLink]="['/staff-portal/service-users', visit.clientId, 'allocation']"
+                  >Visit details</a
+                >
+              }
+            </div>
+          </li>
+        } @empty {
+          <li>No visits assigned for today or tomorrow.</li>
+        }
+      </ul>
+    </section>
+    <section class="portal-panel" aria-labelledby="work-activity">
+      <div class="portal-panel-header">
+        <h2 id="work-activity">
+          <span class="material-symbols-outlined" aria-hidden="true">directions_car</span
+          >Availability and travel
+        </h2>
+      </div>
+      <div class="portal-panel-body">
+        <p class="work-status">
+          <span
+            class="portal-badge"
+            [attr.data-tone]="work.status === 'available' ? 'green' : 'blue'"
+            >{{ statuses[work.status] || work.status }}</span
+          >
+          <span class="portal-muted">{{ locationStates[work.locationState] }}</span>
+        </p>
+        @if (canReport()) {
+          <p>
+            Share a single position with your coordinator. Your device may ask for location
+            permission.
+          </p>
+          <div class="work-actions">
+            <label
+              >Travel mode
+              <select
+                [value]="mode()"
+                (change)="mode.set($any($event.target).value)"
+                [disabled]="busy() || loading()"
+              >
+                <option value="">Select a mode</option>
+                <option value="driving">Driving</option>
+                <option value="walking">Walking</option>
+                <option value="transit">Public transport</option>
+              </select>
+            </label>
+            <button
+              class="button"
+              type="button"
+              [disabled]="busy() || loading()"
+              (click)="report('travelling')"
+            >
+              Report travelling
+            </button>
+            <button
+              class="button"
+              type="button"
+              [disabled]="busy() || loading()"
+              (click)="report('available')"
+            >
+              Report available
+            </button>
+            <button
+              class="button primary"
+              type="button"
+              [disabled]="busy() || loading()"
+              (click)="report(undefined, true)"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">my_location</span>Share
+              current position
+            </button>
+          </div>
+        }
+        @if (work.canClearPosition) {
+          <button class="button" type="button" [disabled]="busy() || loading()" (click)="report()">
+            Remove shared position
+          </button>
+        }
+      </div>
+    </section>
+  </div>
 }
