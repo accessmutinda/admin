@@ -123,6 +123,25 @@ describe('On the Road', () => {
     expect(request.mock.calls.some(([path]) => path.includes('/estimate?'))).toBe(false);
   });
 
+  it.each([
+    ['no-route', 'No public transport route'],
+    ['unavailable', 'Routing provider temporarily unavailable'],
+  ])('retains the next visit when the transit estimate is %s', async (state, message) => {
+    data.journeys = [{ ...journey, travelMode: 'transit' }];
+    request.mockImplementation(async (path: string) =>
+      path.includes('/estimate?')
+        ? { company_id: 'north', journeyKey: 'journey-key', state }
+        : data,
+    );
+    const fixture = await open();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('tbody')?.textContent).toContain('Next service user');
+    expect(element.querySelector('tbody')?.textContent).toContain('08:15');
+    expect(element.querySelector('.road-unavailable')?.textContent).toContain(message);
+    expect(element.querySelector('.road-delay')?.textContent).toContain('Delay unconfirmed');
+    expect(element.querySelector('.road-map .leaflet-overlay-pane svg path')).toBeNull();
+  });
+
   it('keeps journey details available without a routing provider and saves the chosen mode', async () => {
     data.routingAvailable = false;
     const fixture = await open();

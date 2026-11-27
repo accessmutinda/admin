@@ -62,7 +62,7 @@ type RoadSnapshot = {
   journeys: Journey[];
 };
 type Estimate = { company_id: string; journeyKey: string } & (
-  | { state: 'unavailable' | 'no-route' }
+  | { state: 'unavailable' | 'no-route' | 'request-failed' }
   | {
       state: 'estimated';
       calculatedAt: string;
@@ -244,8 +244,13 @@ export class OnTheRoad {
     if (!journey.nextVisit.position) return 'Next visit coordinates unavailable';
     if (!this.data()?.routingAvailable) return 'Routing service is not configured';
     const estimate = this.estimate(journey);
-    if (estimate?.state === 'no-route') return 'No route available for this travel mode';
-    if (estimate?.state === 'unavailable') return 'Route estimate unavailable';
+    if (estimate?.state === 'no-route') {
+      return journey.travelMode === 'transit'
+        ? 'No public transport route for these stops and departure time'
+        : 'No route available for this travel mode';
+    }
+    if (estimate?.state === 'unavailable') return 'Routing provider temporarily unavailable';
+    if (estimate?.state === 'request-failed') return 'Could not refresh the route estimate';
     return 'Calculating route…';
   }
   protected delay(journey: Journey): string {
@@ -313,7 +318,7 @@ export class OnTheRoad {
           result = {
             company_id: data.company_id,
             journeyKey: row.journeyKey,
-            state: 'unavailable',
+            state: 'request-failed',
           };
         }
         if (
