@@ -123,24 +123,44 @@ export type RosterCallsRead = {
   }[];
 };
 
+export type RosterRouteLeg = {
+  direction: 'incoming' | 'outgoing';
+  state: 'estimated' | 'unavailable' | 'no-route';
+  availableSeconds: number;
+  durationSeconds?: number;
+  distanceMeters?: number;
+};
+
+export type RosterRouteReview = {
+  previous: string | null;
+  next: string | null;
+  origin: string | null;
+  mode: string;
+  districtMatches: number;
+  straightLineMeters: number | null;
+  travelSeconds: number | null;
+  addedSeconds: number | null;
+  travelRisk: boolean;
+  legs: RosterRouteLeg[];
+};
+
 export type RosterCandidate = {
   id: string;
   name: string;
   hours: number;
   preferred: boolean;
+  assigned: boolean;
+  busy: boolean;
+  available: boolean | null;
   issues: string[];
+  routeReview?: RosterRouteReview;
 };
 
 export type RosterCandidates = {
   company_id: string;
   visit_id: string;
-  candidates: {
-    id: string;
-    name: string;
-    hours: number;
-    preferred: boolean;
-    issues: string[];
-  }[];
+  routingAvailable: boolean;
+  candidates: RosterCandidate[];
 };
 
 export type RosterClientRead = {

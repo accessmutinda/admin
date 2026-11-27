@@ -187,6 +187,31 @@
               >
             </div>
             <div class="care-fields roster-secondary-filters">
+              <label>
+                Staffing<mat-select
+                  cvSelect
+                  aria-label="Staffing requirement filter"
+                  [(ngModel)]="filterDraft.carers"
+                >
+                  <mat-option value="">All visits</mat-option>
+                  <mat-option [value]="1">Single carer (1:1)</mat-option>
+                  <mat-option [value]="2">Double-up (2:1)</mat-option>
+                </mat-select>
+              </label>
+              <label>
+                Postcode districts
+                <mat-select
+                  cvSelect
+                  multiple
+                  aria-label="Filter postcode districts"
+                  [(ngModel)]="filterDraft.postcodes"
+                  placeholder="All districts"
+                >
+                  @for (district of districts(); track district) {
+                    <mat-option [value]="district">{{ district }}</mat-option>
+                  }
+                </mat-select>
+              </label>
               @for (filter of specialistFilters; track filter.key) {
                 <label
                   >{{ filter.label
@@ -302,7 +327,7 @@
                         <th>Date / time</th>
                         <th>Service user / call</th>
                         <th>Carers</th>
-                        <th>Care type</th>
+                        <th>Staffing</th>
                         <th>Time sensitive</th>
                         <th>Flexible</th>
                         <th>Location / task</th>
@@ -330,8 +355,8 @@
                           </td>
                           <td>
                             {{ v.clientName
-                            }}<small
-                              >@if (packageIcon(v); as src) {
+                            }}<small>
+                              @if (packageIcon(v); as src) {
                                 <img class="visit-package-thumb" [src]="src" alt="" />
                               }
                               {{ v.callName }}</small
@@ -348,8 +373,7 @@
                             }
                           </td>
                           <td>
-                            {{ v.carers === 2 ? 'Double' : 'Single'
-                            }}<small>{{ v.allocation }}</small>
+                            {{ staffingLabel(v) }}<small>{{ v.allocation }}</small>
                           </td>
                           <td>
                             {{
@@ -407,11 +431,12 @@
                             [style.background]="background(v)"
                             (click)="edit(v)"
                           >
-                            <strong
-                              >@if (packageIcon(v); as src) {
+                            <strong>
+                              @if (packageIcon(v); as src) {
                                 <img class="visit-package-thumb" [src]="src" alt="" />
                               }
-                              {{ v.start }} {{ v.callName }}</strong
+                              {{ v.start }} {{ v.callName
+                              }}{{ v.carers ? ' · ' + v.carers + ':1' : '' }}</strong
                             ><small>{{ v.clientName }}</small
                             ><small>{{
                               v.staffIds.length
@@ -464,11 +489,12 @@
                                 (click)="edit(v)"
                               >
                                 <strong>{{ v.start }} – {{ v.end }}</strong
-                                ><small
-                                  >@if (packageIcon(v); as src) {
+                                ><small>
+                                  @if (packageIcon(v); as src) {
                                     <img class="visit-package-thumb" [src]="src" alt="" />
                                   }
-                                  {{ v.callName }}</small
+                                  {{ v.callName
+                                  }}{{ v.carers ? ' · ' + v.carers + ':1' : '' }}</small
                                 ><small>{{ status(v) }}</small>
                               </button>
                             }
@@ -517,7 +543,9 @@
                                 }
                                 <strong class="visit-time">{{ v.start }} – {{ v.end }}</strong
                                 ><small class="visit-client">{{ v.clientName }}</small
-                                ><small>{{ v.callName }}</small
+                                ><small
+                                  >{{ v.callName
+                                  }}{{ v.carers ? ' · ' + v.carers + ':1' : '' }}</small
                                 ><small>{{ v.address }}</small>
                                 <span class="sr-only">{{ status(v) }}</span>
                               </button>
@@ -537,14 +565,14 @@
                       @for (date of days(); track date) {
                         <div>
                           @for (v of dayVisits(date); track v.id) {
-                            @if (v.staffIds.length < v.carers) {
+                            @if (!v.requirementsRecorded || v.staffIds.length < v.carers) {
                               <button class="visit-card needs-cover" (click)="edit(v)">
                                 @if (packageIcon(v); as src) {
                                   <img class="visit-package-icon" [src]="src" alt="" />
                                 }
                                 <strong class="visit-time">{{ v.start }}</strong
                                 ><small class="visit-client">{{ v.clientName }}</small
-                                ><small>{{ v.callName }} · Needs staff</small>
+                                ><small>{{ v.callName }} · {{ status(v) }}</small>
                               </button>
                             }
                           }
@@ -582,7 +610,7 @@
                   >
                   <div class="care-actions">
                     <button class="care-button" (click)="findAvailable()">
-                      Find Available Staff
+                      Review carers and routes
                     </button>
                     @if (service.can('edit')) {
                       <button
@@ -595,7 +623,7 @@
                           preparing()
                         "
                       >
-                        Auto Allocate</button
+                        Suggest allocations</button
                       ><button
                         class="care-button"
                         (click)="prepareBulk()"
@@ -723,7 +751,9 @@
                   "
                 >
                   <span class="material-symbols-outlined" aria-hidden="true">group_add</span
-                  ><span><strong>Auto Allocate</strong><small>Suggest best matches</small></span>
+                  ><span
+                    ><strong>Suggest allocations</strong><small>Review suitable carers</small></span
+                  >
                 </button>
                 <button
                   class="planner-quick"
@@ -739,7 +769,8 @@
               <button class="planner-quick" data-tone="green" (click)="findAvailable()">
                 <span class="material-symbols-outlined" aria-hidden="true">person_search</span
                 ><span
-                  ><strong>Find Available Staff</strong><small>View staff availability</small></span
+                  ><strong>Smart allocation</strong
+                  ><small>Compare eligible carers and travel</small></span
                 >
               </button>
               @if (service.can('export')) {
@@ -768,13 +799,15 @@
           <div class="care-toolbar">
             <h2 id="planner-dialog-title">
               {{
-                modal() === 'visit'
-                  ? 'Visit details & allocation'
-                  : modal() === 'plan'
-                    ? 'Plan recurring visits'
-                    : modal() === 'auto'
-                      ? 'Review automatic allocations'
-                      : 'Bulk allocate selected visits'
+                modal() === 'view'
+                  ? 'Visit details'
+                  : modal() === 'visit'
+                    ? 'Visit details & allocation'
+                    : modal() === 'plan'
+                      ? 'Plan recurring visits'
+                      : modal() === 'auto'
+                        ? 'Review automatic allocations'
+                        : 'Bulk allocate selected visits'
               }}
             </h2>
             <button class="care-button" aria-label="Close planner" (click)="close()">×</button>
@@ -792,8 +825,8 @@
                     <dd>{{ draft.date }} · {{ draft.start }} – {{ draft.end }}</dd>
                   </div>
                   <div>
-                    <dt>Carers</dt>
-                    <dd>{{ preferredNames(draft.staffIds.join(',')) }}</dd>
+                    <dt>Staffing requirement</dt>
+                    <dd>{{ staffingLabel(draft) }}</dd>
                   </div>
                   <div>
                     <dt>Instructions</dt>
@@ -814,21 +847,21 @@
                     type="date"
                     name="date"
                     [(ngModel)]="draft.date"
-                    (ngModelChange)="service.loadCandidates(draft)"
+                    (ngModelChange)="refreshCandidates()"
                     required /></label
                 ><label
                   >Start (UK)<input
                     type="time"
                     name="start"
                     [(ngModel)]="draft.start"
-                    (ngModelChange)="service.loadCandidates(draft)"
+                    (ngModelChange)="refreshCandidates()"
                     required /></label
                 ><label
                   >End (UK)<input
                     type="time"
                     name="end"
                     [(ngModel)]="draft.end"
-                    (ngModelChange)="service.loadCandidates(draft)"
+                    (ngModelChange)="refreshCandidates()"
                     required /></label
                 ><label class="care-wide"
                   >Carers<mat-select
@@ -837,7 +870,7 @@
                     name="staffIds"
                     aria-label="Allocated carers"
                     [(ngModel)]="draft.staffIds"
-                    (ngModelChange)="service.loadCandidates(draft)"
+                    (ngModelChange)="refreshCandidates()"
                   >
                     @for (candidate of candidateList(); track candidate.id) {
                       <mat-option [value]="candidate.id"
@@ -853,7 +886,7 @@
                     name="allocation"
                     aria-label="Allocation type"
                     [(ngModel)]="draft.allocation"
-                    (ngModelChange)="service.loadCandidates(draft)"
+                    (ngModelChange)="refreshCandidates()"
                     ><mat-option value="Regular">Regular</mat-option
                     ><mat-option value="Temporary">Temporary cover</mat-option></mat-select
                   ></label
@@ -863,7 +896,7 @@
                     name="location"
                     aria-label="Visit location"
                     [(ngModel)]="draft.location"
-                    (ngModelChange)="service.loadCandidates(draft)"
+                    (ngModelChange)="refreshCandidates()"
                     ><mat-option value="Home">Home</mat-option
                     ><mat-option value="Community">Community</mat-option></mat-select
                   ></label
@@ -871,7 +904,7 @@
                   >Task category<input
                     name="taskType"
                     [(ngModel)]="draft.taskType"
-                    (ngModelChange)="service.loadCandidates(draft)" /></label
+                    (ngModelChange)="refreshCandidates()" /></label
                 ><label
                   >Mileage<input
                     type="number"
@@ -879,13 +912,13 @@
                     step="0.1"
                     name="mileage"
                     [(ngModel)]="draft.mileage"
-                    (ngModelChange)="service.loadCandidates(draft)" /></label
+                    (ngModelChange)="refreshCandidates()" /></label
                 ><label class="care-check"
                   ><input
                     type="checkbox"
                     name="sensitive"
                     [(ngModel)]="draft.timeSensitive"
-                    (ngModelChange)="service.loadCandidates(draft)"
+                    (ngModelChange)="refreshCandidates()"
                   />Time-sensitive visit</label
                 ><label
                   >Tolerance (minutes)<input
@@ -894,46 +927,30 @@
                     max="120"
                     name="tolerance"
                     [(ngModel)]="draft.toleranceMinutes"
-                    (ngModelChange)="service.loadCandidates(draft)" /></label
+                    (ngModelChange)="refreshCandidates()" /></label
                 ><label class="care-check"
                   ><input
                     type="checkbox"
                     name="flexible"
                     [(ngModel)]="draft.flexible"
-                    (ngModelChange)="service.loadCandidates(draft)"
+                    (ngModelChange)="refreshCandidates()"
                   />Flexible visit</label
                 ><label class="care-check"
                   ><input
                     type="checkbox"
                     name="driver"
                     [(ngModel)]="draft.driverRequired"
-                    (ngModelChange)="service.loadCandidates(draft)"
+                    (ngModelChange)="refreshCandidates()"
                   />Driver required</label
                 ><label class="care-wide"
                   >Tasks & instructions<textarea
                     name="tasks"
                     [(ngModel)]="draft.tasks"
-                    (ngModelChange)="service.loadCandidates(draft)"
+                    (ngModelChange)="refreshCandidates()"
                   ></textarea></label
                 ><label class="care-wide"
                   >Change reason *<textarea name="reason" [(ngModel)]="reason" required></textarea>
                 </label>
-                <div class="care-wide">
-                  <h3>Available staff & requirements</h3>
-                  @if (service.candidateLoading()) {
-                    <p role="status">Checking staff availability and requirements…</p>
-                  }
-                  @for (candidate of candidateList(); track candidate.id) {
-                    <p [class.planner-alert]="candidate.issues.length">
-                      {{ candidate.name }}:
-                      {{
-                        candidate.issues.length
-                          ? candidate.issues.join(' ')
-                          : 'Available · requirements met'
-                      }}
-                    </p>
-                  }
-                </div>
               } @else if (modal() === 'plan') {
                 <label class="care-wide"
                   >Service user<mat-select
@@ -1039,6 +1056,199 @@
                     required
                   ></textarea>
                 </label>
+              }
+              @if ((modal() === 'visit' || modal() === 'view') && draft; as visit) {
+                <section class="care-wide" aria-label="Assigned carers and attendance">
+                  <h3>{{ staffingLabel(visit) }}</h3>
+                  @let canReadAttendance =
+                    service.raw()?.attendance_available !== false &&
+                    service.access.can('care', 'ecm', 'read');
+                  @if (visit.state === 'Published' && !canReadAttendance) {
+                    <p>Attendance records unavailable.</p>
+                  }
+                  @for (id of visit.staffIds; track id) {
+                    <p>
+                      <strong>{{ name(id) }}</strong>
+                      @if (visit.state === 'Published' && canReadAttendance) {
+                        @if (visitAttendance(visit, id); as record) {
+                          <br />Check-in {{ attendanceStamp(record.start) }} UK <br />{{
+                            record.end
+                              ? 'Check-out ' + attendanceStamp(record.end) + ' UK'
+                              : 'Awaiting check-out'
+                          }}
+                        } @else {
+                          <br />No check-in recorded
+                        }
+                      }
+                    </p>
+                  } @empty {
+                    <p>No carers assigned.</p>
+                  }
+                  @if (visit.staffIds.length && visit.staffIds.length < visit.carers) {
+                    <p>{{ visit.carers - visit.staffIds.length }} carer place still unallocated.</p>
+                  }
+                </section>
+                @if (canReviewCover(visit)) {
+                  <section class="care-wide" aria-label="Cover candidates">
+                    <h3>Smart allocation</h3>
+                    <p>
+                      Review eligible carers and compare travel within the visit times shown above.
+                    </p>
+                    <label>
+                      Show carers<mat-select
+                        cvSelect
+                        name="coverFilter"
+                        aria-label="Cover candidate filter"
+                        [ngModel]="candidateFilter()"
+                        (ngModelChange)="candidateFilter.set($event)"
+                      >
+                        <mat-option value="All">All candidates</mat-option>
+                        <mat-option value="Available">Available for this visit</mat-option>
+                        <mat-option value="Assigned">Assigned to this visit</mat-option>
+                        <mat-option value="Busy">Assigned to an overlapping visit</mat-option>
+                        <mat-option value="Suitable">Suitable for this visit</mat-option>
+                      </mat-select>
+                    </label>
+                    <div class="care-actions">
+                      <label>
+                        Preview travel mode
+                        <mat-select
+                          cvSelect
+                          name="smartTravelMode"
+                          aria-label="Route planning travel mode"
+                          [ngModel]="routeMode()"
+                          (ngModelChange)="
+                            routeMode.set($event); routeRequested() && reviewRoutes()
+                          "
+                          [disabled]="service.candidateLoading()"
+                        >
+                          <mat-option value="">Worker's recorded mode</mat-option>
+                          <mat-option value="driving">Driving</mat-option>
+                          <mat-option value="walking">Walking</mat-option>
+                          <mat-option value="transit">Public transport</mat-option>
+                        </mat-select>
+                      </label>
+                      <button
+                        class="care-button"
+                        type="button"
+                        (click)="reviewRoutes()"
+                        [disabled]="service.candidateLoading()"
+                      >
+                        Compare routes
+                      </button>
+                    </div>
+                    @if (service.candidateLoading()) {
+                      <p role="status">
+                        {{
+                          routeRequested()
+                            ? 'Comparing travel between scheduled visits…'
+                            : 'Checking staff availability and requirements…'
+                        }}
+                      </p>
+                    } @else {
+                      @if (routeRequested()) {
+                        @if (service.candidateRoutingAvailable()) {
+                          <p class="care-note">
+                            Route estimates compare up to eight eligible carers with known locations
+                            and a travel mode.
+                          </p>
+                        } @else {
+                          <p class="care-note">
+                            Routing is unavailable. Recorded postcode matches and suitability checks
+                            are shown where available.
+                          </p>
+                        }
+                      }
+                      @let suggested = suggestedCarer();
+                      @for (candidate of filteredCandidates(); track candidate.id) {
+                        <div class="planner-candidate">
+                          <p>
+                            <strong>{{ candidate.name }}</strong>
+                            @if (candidate.id === suggested) {
+                              · Suggested carer
+                            }
+                            @if (candidate.assigned) {
+                              · Assigned to this visit
+                            }
+                            @if (candidate.preferred) {
+                              · Preferred
+                            }
+                            @if (candidate.available === true) {
+                              · Available
+                            }
+                            @if (suitable(candidate)) {
+                              · Suitable for this visit
+                            } @else if (candidate.issues.length) {
+                              <br /><span class="planner-alert">{{
+                                candidate.issues.join(' ')
+                              }}</span>
+                            }
+                          </p>
+                          @if (candidate.routeReview; as route) {
+                            @if (route.districtMatches) {
+                              <p>
+                                {{
+                                  route.districtMatches === 1
+                                    ? '1 adjacent visit in this postcode district'
+                                    : route.districtMatches +
+                                      ' adjacent visits in this postcode district'
+                                }}
+                              </p>
+                            }
+                            @if (route.straightLineMeters !== null && !route.legs.length) {
+                              <p>
+                                {{ (route.straightLineMeters / 1000).toFixed(1) }} km straight-line
+                                distance across known stops
+                              </p>
+                            }
+                            @if (routeRequested() && route.legs.length) {
+                              <ul class="planner-route-legs">
+                                @for (leg of route.legs; track leg.direction) {
+                                  <li>
+                                    <strong>{{
+                                      leg.direction === 'incoming'
+                                        ? (route.previous || 'Reported worker position') +
+                                          ' → this visit'
+                                        : 'This visit → ' + route.next
+                                    }}</strong>
+                                    {{ routeLegLabel(leg) }}
+                                  </li>
+                                }
+                              </ul>
+                              @if (route.travelRisk) {
+                                <p class="planner-alert">
+                                  The route could not be confirmed within the scheduled gaps.
+                                </p>
+                              }
+                              @if (route.addedSeconds !== null) {
+                                <p>
+                                  {{ routeDifference(route.addedSeconds) }} compared with the direct
+                                  route.
+                                </p>
+                              }
+                            }
+                          }
+                          @if (
+                            modal() === 'visit' &&
+                            suitable(candidate) &&
+                            visit.staffIds.length < visit.carers &&
+                            !visit.staffIds.includes(candidate.id)
+                          ) {
+                            <button
+                              class="care-button"
+                              type="button"
+                              (click)="addCandidate(candidate)"
+                            >
+                              Add {{ candidate.name }} to draft
+                            </button>
+                          }
+                        </div>
+                      } @empty {
+                        <p>No carers match this filter.</p>
+                      }
+                    }
+                  </section>
+                }
               }
             </div>
             @if (error()) {

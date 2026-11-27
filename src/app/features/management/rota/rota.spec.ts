@@ -243,6 +243,27 @@ describe('Connected rota screens', () => {
     );
     expect(fixture.nativeElement.querySelector('.rota-workflows')).toBeNull();
   });
+  it('shows an open check-in independently of the second carer in visit history', async () => {
+    TestBed.inject(ActivatedRoute).snapshot.data = { rotaSection: 'history' };
+    workspace.visits = [
+      {
+        ...rosterVisit(),
+        date: '2025-01-01',
+        state: 'Published',
+        carers: 2,
+        staffIds: ['worker', 'other-worker'],
+        attendance: [{ personId: 'worker', start: '2025-01-01T08:00:00Z', end: null }],
+      },
+    ];
+    const fixture = TestBed.createComponent(Rota);
+    await settle(fixture);
+    const editor = fixture.componentInstance as any;
+    editor.selected.set('visit');
+    await settle(fixture);
+    const details = fixture.nativeElement.querySelector('.rota-detail-body');
+    expect(details.textContent).toContain('Awaiting check-out');
+    expect(details.textContent).toContain('No check-in recorded');
+  });
   it('uses historical sources with an open start date and server counts, and retains dates when opening audit', async () => {
     TestBed.inject(ActivatedRoute).snapshot.data = { rotaSection: 'history' };
     workspace.visits = [{ ...rosterVisit(), date: '2025-01-01', staffIds: ['worker'] }];

@@ -185,6 +185,9 @@ export function londonInstant(date: string, time: string): string | null {
   });
   return matches.length === 1 ? new Date(matches[0]).toISOString() : null;
 }
+export const visitAttendance = (visit: RotaVisit, personId: string): VisitAttendance | undefined =>
+  visit.attendance.find((record) => record.personId === personId);
+
 export const completedVisit = (v: RotaVisit): boolean =>
   v.state === 'Published' &&
   v.carers > 0 &&

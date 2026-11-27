@@ -21,6 +21,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { ModuleDesign } from '../shared/module-design';
 import { RosterApi } from '../rota/roster-api.service';
+import type { RosterCandidate, RosterRouteLeg } from '../rota/roster.generated';
+import { postcodeDistrict, postcodeDistrictOptions } from '../rota/postcode-districts';
 import {
   RotaVisit,
   addDays,
@@ -28,6 +30,7 @@ import {
   minutes,
   visitWindow,
   completedVisit,
+  visitAttendance,
 } from '../rota/rota.models';
 import { callIconSrc } from '../rota/call-icons';
 import { liveVisit, emptyEcm } from '../ecm/ecm.models';
@@ -92,7 +95,9 @@ export class VisitPlanner {
         ? {
             client: this.clientFilter(),
             staff: this.staffFilter(),
+            carers: this.carersFilter().toString(),
             location: this.locationFilter(),
+            postcodes: this.postcodeFilter().join(','),
             skill: this.skillFilter(),
             gender: this.genderFilter(),
             driver: this.driverFilter(),
@@ -103,10 +108,12 @@ export class VisitPlanner {
             ...this.trainingFilters(),
           }
         : undefined;
+      const schedulePostcodes = this.overviewView ? '' : this.postcodeFilter().join(',');
       if (this.overviewView) this.now();
       if (!id)
         untracked(() => {
-          if (this.service.can('view')) void this.loadPeriod(start, end, filters);
+          if (this.service.can('view'))
+            void this.loadPeriod(start, end, filters, schedulePostcodes);
         });
     });
     const timer = setInterval(() => this.now.set(Date.now()), 60000);
@@ -136,9 +143,10 @@ export class VisitPlanner {
     start: string,
     end: string,
     filters?: Record<string, string>,
+    postcodes = '',
   ): Promise<void> {
     if (filters) for (const key of Object.keys(filters)) if (!filters[key]) delete filters[key];
-    if (!(await this.service.load(start, end, '', false, filters))) return;
+    if (!(await this.service.load(start, end, '', false, filters, false, postcodes))) return;
     const visible = new Set(this.visits().map((v) => v.id));
     this.selected.update((ids) => ids.filter((id) => visible.has(id)));
     const id = this.route.snapshot.queryParamMap.get('visit');
@@ -228,6 +236,7 @@ export class VisitPlanner {
   protected readonly query = signal('');
   protected readonly clientFilter = signal('');
   protected readonly staffFilter = signal('');
+  protected readonly carersFilter = signal<number | ''>('');
   protected readonly locationFilter = signal('');
   protected readonly skillFilter = signal('');
   protected readonly genderFilter = signal('');
@@ -261,10 +270,22 @@ export class VisitPlanner {
   protected readonly moreFilters = signal(false);
   protected readonly trainingFilters = signal<Record<string, string>>({});
   protected readonly availabilityFilter = signal('');
+  protected readonly postcodeFilter = signal<string[]>([]);
+  protected readonly districts = computed(() =>
+    postcodeDistrictOptions(this.service.data().clients.map((client) => client.postcode)),
+  );
+  private readonly clientDistricts = computed(
+    () =>
+      new Map(
+        this.service.data().clients.map((client) => [client.id, postcodeDistrict(client.postcode)]),
+      ),
+  );
   protected filterDraft = {
     staff: '',
+    carers: '' as number | '',
     client: '',
     location: '',
+    postcodes: [] as string[],
     skill: '',
     gender: '',
     driver: '',
@@ -283,8 +304,10 @@ export class VisitPlanner {
   protected applyFilters(): void {
     const filter = this.filterDraft;
     this.staffFilter.set(filter.staff);
+    this.carersFilter.set(filter.carers);
     this.clientFilter.set(filter.client);
     this.locationFilter.set(filter.location);
+    this.postcodeFilter.set(filter.postcodes);
     this.skillFilter.set(filter.skill);
     this.genderFilter.set(filter.gender);
     this.driverFilter.set(filter.driver);
@@ -297,6 +320,10 @@ export class VisitPlanner {
       dementia: filter.dementia,
       challenging: filter.challenging,
     });
+    if (!this.overviewView) {
+      const visible = new Set(this.visits().map((visit) => visit.id));
+      this.selected.update((ids) => ids.filter((id) => visible.has(id)));
+    }
     this.staffPage.set(1);
   }
   private trained(person: ReturnType<RosterApi['staff']>[number], course: string): boolean {
@@ -424,8 +451,11 @@ export class VisitPlanner {
               (!this.clientId() || v.clientId === this.clientId()) &&
               (!this.clientFilter() || v.clientId === this.clientFilter()) &&
               (!this.staffFilter() || v.staffIds.includes(this.staffFilter())) &&
+              (!this.carersFilter() || v.carers === this.carersFilter()) &&
               (!this.locationFilter() ||
                 v.address.toLowerCase().includes(this.locationFilter().toLowerCase())) &&
+              (!this.postcodeFilter().length ||
+                this.postcodeFilter().includes(this.clientDistricts().get(v.clientId) ?? '')) &&
               (this.showUnallocated() ||
                 (v.requirementsRecorded !== false &&
                   v.carers > 0 &&
@@ -833,8 +863,10 @@ export class VisitPlanner {
   protected clear(): void {
     this.filterDraft = {
       staff: '',
+      carers: '',
       client: '',
       location: '',
+      postcodes: [],
       skill: '',
       gender: '',
       driver: '',
@@ -850,7 +882,9 @@ export class VisitPlanner {
     this.query.set('');
     this.clientFilter.set('');
     this.staffFilter.set('');
+    this.carersFilter.set('');
     this.locationFilter.set('');
+    this.postcodeFilter.set([]);
     this.skillFilter.set('');
     this.genderFilter.set('');
     this.driverFilter.set('');
@@ -893,6 +927,9 @@ export class VisitPlanner {
     this.workspace = this.store.companyId();
     this.sourceId = this.clientId();
     this.reason = '';
+    this.candidateFilter.set('All');
+    this.routeMode.set('');
+    this.routeRequested.set(false);
     this.error.set('');
     this.modal.set(kind);
   }
@@ -903,17 +940,10 @@ export class VisitPlanner {
     try {
       const fresh = await this.service.detailVisit(v.id);
       if (scope !== this.service.scope() || generation !== this.editorGeneration) return;
-      this.begin(
-        this.service.can('edit') &&
-          fresh.requirementsRecorded &&
-          !fresh.attendance.length &&
-          fresh.state !== 'Cancelled'
-          ? 'visit'
-          : 'view',
-      );
+      this.begin(this.service.can('edit') && this.canReviewCover(fresh) ? 'visit' : 'view');
       this.draft = fresh;
       this.original = JSON.stringify(fresh);
-      void this.service.loadCandidates(fresh);
+      if (this.canReviewCover(fresh)) void this.service.loadCandidates(fresh);
     } catch (e) {
       if (scope === this.service.scope() && generation === this.editorGeneration)
         this.error.set(e instanceof Error ? e.message : 'This visit is unavailable.');
@@ -932,6 +962,85 @@ export class VisitPlanner {
   }
   protected candidateList() {
     return this.draft ? this.service.candidates(this.draft) : [];
+  }
+  protected readonly candidateFilter = signal('All');
+  protected readonly routeMode = signal('');
+  protected readonly routeRequested = signal(false);
+  protected async reviewRoutes(): Promise<void> {
+    if (!this.draft || this.service.candidateLoading()) return;
+    this.routeRequested.set(true);
+    await this.service.loadCandidates(this.draft, true, this.routeMode());
+  }
+  protected refreshCandidates(): void {
+    if (!this.draft) return;
+    this.routeRequested.set(false);
+    void this.service.loadCandidates(this.draft);
+  }
+  protected suggestedCarer(): string | undefined {
+    const selected = this.draft?.staffIds ?? [];
+    return this.candidateList().find((row) => this.suitable(row) && !selected.includes(row.id))?.id;
+  }
+  protected suitable(candidate: RosterCandidate): boolean {
+    return !candidate.issues.length && !candidate.routeReview?.travelRisk;
+  }
+  protected addCandidate(candidate: RosterCandidate): void {
+    if (
+      this.modal() !== 'visit' ||
+      this.service.candidateLoading() ||
+      !this.suitable(candidate) ||
+      !this.draft ||
+      this.draft.staffIds.length >= this.draft.carers ||
+      this.draft.staffIds.includes(candidate.id)
+    )
+      return;
+    this.draft.staffIds = [...this.draft.staffIds, candidate.id];
+  }
+  protected routeLegLabel(leg: RosterRouteLeg): string {
+    if (leg.state === 'no-route') return 'No route found for this mode';
+    if (leg.state === 'unavailable') return 'Travel estimate unavailable';
+    const minutes = Math.ceil((leg.durationSeconds ?? 0) / 60);
+    const gap = Math.floor(leg.availableSeconds / 60);
+    const distance = ((leg.distanceMeters ?? 0) / 1000).toFixed(1);
+    return `${minutes} min · ${distance} km · ${gap} min between visits`;
+  }
+  protected routeDifference(seconds: number): string {
+    const minutes = Math.round(Math.abs(seconds) / 60);
+    if (!minutes) return 'Under 1 min difference';
+    return seconds > 0 ? `${minutes} min added travel` : `${minutes} min less travelling`;
+  }
+  protected canReviewCover(visit: RotaVisit): boolean {
+    return !!visit.requirementsRecorded && !visit.attendance.length && visit.state !== 'Cancelled';
+  }
+  protected filteredCandidates() {
+    const filter = this.candidateFilter();
+    return this.candidateList().filter((candidate) => {
+      switch (filter) {
+        case 'Available':
+          return candidate.available === true;
+        case 'Assigned':
+          return candidate.assigned;
+        case 'Busy':
+          return candidate.busy;
+        case 'Suitable':
+          return this.suitable(candidate);
+        default:
+          return true;
+      }
+    });
+  }
+  protected staffingLabel(v: RotaVisit): string {
+    if (v.carers === 2) return 'Double-up (2:1)';
+    if (v.carers === 1) return 'Single carer (1:1)';
+    return 'Requirements not recorded';
+  }
+  protected readonly visitAttendance = visitAttendance;
+  private readonly attendanceTime = new Intl.DateTimeFormat('en-GB', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Europe/London',
+  });
+  protected attendanceStamp(instant: string): string {
+    return this.attendanceTime.format(new Date(instant));
   }
   protected create(): void {
     if (!this.service.can('create') || this.service.saving()) return;
@@ -982,7 +1091,8 @@ export class VisitPlanner {
         return;
       this.plans = result.plans;
       this.unfilled = result.unfilled;
-      this.reason = 'Assign available trained carers, preferring continuity and balanced hours.';
+      this.reason =
+        'Review allocation by staff suitability, nearby visits and existing commitments.';
     } catch (e) {
       if (generation === this.suggestionGeneration && scope === this.service.scope())
         this.error.set(e instanceof Error ? e.message : 'Suggestions are unavailable.');
@@ -1072,6 +1182,7 @@ export class VisitPlanner {
         'Service user',
         'Call',
         'Carers',
+        'Staffing requirement',
         'Status',
         'Task',
         'Mileage',
@@ -1084,6 +1195,7 @@ export class VisitPlanner {
         v.clientName,
         v.callName,
         v.staffIds.map((id) => this.name(id)).join('; '),
+        this.staffingLabel(v),
         this.status(v),
         v.taskType,
         v.mileage,

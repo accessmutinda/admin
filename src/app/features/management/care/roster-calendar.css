@@ -29,7 +29,7 @@
   border-radius: 4px;
 }
 .roster-secondary-filters {
-  grid-template-columns: 1.16fr 1.2fr 1.2fr 0.8fr 1.2fr 0.76fr 0.98fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: end;
   gap: 14px;
   margin-top: 13px;

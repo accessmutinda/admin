@@ -839,10 +839,15 @@
           @for (id of v.staffIds; track id) {
             <p>
               <strong>{{ personName(id) }}</strong> · {{ v.allocation }}
+              @if (v.state === 'Published' && service.raw()?.attendance_available !== false) {
+                @if (visitAttendance(v, id); as record) {
+                  <br />Check-in {{ ukStamp(record.start) }}
+                  <br />{{ record.end ? 'Check-out ' + ukStamp(record.end) : 'Awaiting check-out' }}
+                } @else {
+                  <br />No check-in recorded
+                }
+              }
             </p>
-          }
-          @for (a of v.attendance; track a.personId) {
-            <p>{{ personName(a.personId) }} · {{ ukStamp(a.start) }} to {{ ukStamp(a.end) }}</p>
           }
           @if (v.exception) {
             <p>{{ v.exception }}</p>
@@ -860,7 +865,11 @@
               @if (!v.attendance.length && service.can('archive')) {
                 <button class="button" (click)="open('cancel')">Cancel visit</button>
               }
-              @if (v.state === 'Published' && !completed(v) && service.can('attendance')) {
+              @if (
+                v.state === 'Published' &&
+                carersWithoutAttendance(v).length &&
+                service.can('attendance')
+              ) {
                 <button class="button primary" (click)="open('attendance')">
                   Record actual attendance
                 </button>
@@ -1416,7 +1425,7 @@
                 name="staff"
                 [(ngModel)]="attendance.personId"
               >
-                @for (id of visit()?.staffIds; track id) {
+                @for (id of carersWithoutAttendance(visit()); track id) {
                   <mat-option [value]="id">{{ personName(id) }}</mat-option>
                 }
               </mat-select></label

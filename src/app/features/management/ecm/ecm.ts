@@ -14,7 +14,7 @@ import { RISK_FLAGS, RiskFlag } from '../rota/rota.models';
 import { COURSES } from '../shared/management.store';
 import { ManagementStore } from '../shared/management.store';
 import { AccessRequired } from '../shared/access-required';
-import { RotaVisit, londonDate, londonInstant } from '../rota/rota.models';
+import { RotaVisit, londonDate, londonInstant, visitAttendance } from '../rota/rota.models';
 import { EcmApi } from './ecm-api.service';
 import { EcmService } from './ecm.service';
 import {
@@ -282,6 +282,7 @@ export class Ecm {
   protected live(v: RotaVisit) {
     return liveVisit(v, this.now(), this.service.data());
   }
+  protected readonly visitAttendance = visitAttendance;
   protected time(value: string, seconds = false): string {
     return value
       ? new Intl.DateTimeFormat('en-GB', {

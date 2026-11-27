@@ -529,10 +529,13 @@
               @for (id of v.staffIds; track id) {
                 <div class="ecm-attendance-line">
                   <strong>{{ name(id) }}</strong>
-                  @for (a of v.attendance; track a.personId) {
-                    @if (a.personId === id) {
-                      <span>In {{ time(a.start) }} · Out {{ a.end ? time(a.end) : 'Open' }}</span>
-                    }
+                  @if (visitAttendance(v, id); as record) {
+                    <span>
+                      Check-in {{ time(record.start) }} ·
+                      {{ record.end ? 'Check-out ' + time(record.end) : 'Awaiting check-out' }}
+                    </span>
+                  } @else {
+                    <span>No check-in recorded</span>
                   }
                 </div>
               }

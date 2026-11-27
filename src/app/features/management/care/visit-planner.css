@@ -234,3 +234,17 @@
 :host .care-grid.planner-schedule-only {
   grid-template-columns: minmax(0, 1fr);
 }
+.planner-candidate {
+  padding: 10px 0;
+  border-bottom: 1px solid #dbe5ef;
+}
+.planner-candidate p {
+  margin: 6px 0;
+}
+.planner-route-legs {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+.planner-route-legs strong {
+  display: block;
+}

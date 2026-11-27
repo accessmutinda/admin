@@ -23,6 +23,7 @@ import {
   londonInstant,
   minutes,
   validTime,
+  visitAttendance,
   RISK_FLAGS,
 } from './rota.models';
 
@@ -776,9 +777,10 @@ export class Rota {
     const end = londonInstant(v.end > v.start ? v.date : addDays(v.date, 1), v.end);
     return end && Date.parse(end) < this.clock() ? 'Attendance overdue' : 'Expected';
   }
-  protected completed(v: RotaVisit): boolean {
-    return completedVisit(v);
+  protected carersWithoutAttendance(v: RotaVisit | undefined): string[] {
+    return v ? v.staffIds.filter((id) => !visitAttendance(v, id)) : [];
   }
+  protected readonly visitAttendance = visitAttendance;
   protected overnight(v: Pick<RotaVisit, 'start' | 'end'>): boolean {
     return v.end <= v.start;
   }
@@ -902,7 +904,7 @@ export class Rota {
     if (kind === 'attendance') {
       const v = this.visit()!;
       this.attendance = {
-        personId: v.staffIds.find((id) => !v.attendance.some((a) => a.personId === id)) ?? '',
+        personId: this.carersWithoutAttendance(v)[0] ?? '',
         start: `${v.date}T${v.start}`,
         end: `${this.overnight(v) ? addDays(v.date, 1) : v.date}T${v.end}`,
         note: '',

@@ -44,6 +44,7 @@ export class RosterApi {
   readonly denied = signal(false);
   readonly readable = computed(() => this.can('view'));
   readonly candidateRows = signal<RosterCandidates['candidates']>([]);
+  readonly candidateRoutingAvailable = signal(false);
   readonly candidateLoading = signal(false);
   private candidateVisit = '';
   private period: {
@@ -51,6 +52,7 @@ export class RosterApi {
     end: string;
     client: string;
     overview?: Record<string, string>;
+    postcodes?: string;
     packages?: string;
     publishing?: boolean;
     history?: Record<string, string>;
@@ -309,8 +311,9 @@ export class RosterApi {
     exporting = false,
     overview?: Record<string, string>,
     publishing = false,
+    postcodes = '',
   ): Promise<boolean> {
-    if (!exporting) this.period = { start, end, client, overview, publishing };
+    if (!exporting) this.period = { start, end, client, overview, publishing, postcodes };
     const scope = this.scope(),
       generation = ++this.generation;
     this.loading.set(true);
@@ -324,6 +327,7 @@ export class RosterApi {
     }
     try {
       const query = new URLSearchParams({ start, end, ...overview });
+      if (postcodes) query.set('postcodes', postcodes);
       const value = this.check(
         await this.request<RosterWorkspace>(
           this.root() +
@@ -437,7 +441,7 @@ export class RosterApi {
       }
       return this.loadPackages(p.packages);
     }
-    return this.load(p.start, p.end, p.client, exporting, p.overview, p.publishing);
+    return this.load(p.start, p.end, p.client, exporting, p.overview, p.publishing, p.postcodes);
   }
   async loadHistory(filters: Record<string, string>, exporting = false): Promise<boolean> {
     const scope = this.scope(),
@@ -815,14 +819,15 @@ export class RosterApi {
       ...(v.carers > v.staffIds.length ? ['Carer allocation is incomplete.'] : []),
     ];
   }
-  candidates(_v: RotaVisit) {
-    return this.candidateRows();
+  candidates(v: RotaVisit) {
+    return this.candidateVisit === v.id ? this.candidateRows() : [];
   }
-  async loadCandidates(v: RotaVisit): Promise<void> {
+  async loadCandidates(v: RotaVisit, routing = false, mode = ''): Promise<void> {
     const scope = this.scope(),
       generation = ++this.candidateGeneration;
     if (this.candidateVisit !== v.id) this.candidateRows.set([]);
     this.candidateVisit = v.id;
+    this.candidateRoutingAvailable.set(false);
     if (!v.requirementsRecorded) {
       this.candidateRows.set([]);
       this.candidateLoading.set(false);
@@ -834,13 +839,22 @@ export class RosterApi {
     try {
       const result = this.check(
         await this.request<RosterCandidates>(
-          this.root() + '/visits/' + v.id + '/candidates',
+          this.root() +
+            '/visits/' +
+            v.id +
+            '/candidates' +
+            (routing
+              ? '?' + new URLSearchParams({ routing: 'true', ...(mode ? { mode } : {}) })
+              : ''),
           this.visitBody(v, 'Review allocation candidates'),
           'POST',
         ),
         scope,
       );
-      if (generation === this.candidateGeneration) this.candidateRows.set(result.candidates);
+      if (generation === this.candidateGeneration) {
+        this.candidateRows.set(result.candidates);
+        this.candidateRoutingAvailable.set(result.routingAvailable === true);
+      }
     } catch (e) {
       if (this.current(scope) && generation === this.candidateGeneration) {
         this.candidateRows.set([]);

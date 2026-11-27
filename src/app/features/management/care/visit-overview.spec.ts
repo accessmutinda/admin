@@ -133,6 +133,140 @@ describe('Visits overview source integration', () => {
       await fixture.whenStable();
     }
   }
+  it('applies staffing and unallocated filters together', async () => {
+    const fixture = await openOverview(),
+      component = fixture.componentInstance as any;
+    component.filterDraft.carers = 2;
+    component.filterDraft.postcodes = ['UB3', 'UB10'];
+    component.filterDraft.unallocated = true;
+    component.applyFilters();
+    await settle(fixture);
+    const query = new URLSearchParams(request.mock.calls.at(-1)![0].split('?')[1]);
+    expect(query.get('carers')).toBe('2');
+    expect(query.get('postcodes')).toBe('UB3,UB10');
+    expect(query.get('allocation')).toBe('Unallocated');
+  });
+  it('compares routes and adds the eligible recommendation only to the draft', async () => {
+    const fixture = await openOverview(),
+      component = fixture.componentInstance as any;
+    await component.edit(rosterVisit());
+    await component.service.loadCandidates(component.draft);
+    await settle(fixture);
+    const routeReview = {
+      previous: 'Previous client',
+      next: null,
+      origin: 'scheduled',
+      mode: 'driving',
+      districtMatches: 1,
+      straightLineMeters: 800,
+      travelSeconds: 600,
+      addedSeconds: null,
+      travelRisk: false,
+      legs: [
+        {
+          direction: 'incoming',
+          state: 'estimated',
+          availableSeconds: 1800,
+          durationSeconds: 600,
+          distanceMeters: 1100,
+        },
+      ],
+    };
+    request.mockResolvedValueOnce({
+      company_id: 'north',
+      visit_id: 'visit',
+      routingAvailable: true,
+      candidates: [
+        { id: 'near', name: 'Nearby carer', hours: 1, available: true, issues: [], routeReview },
+        {
+          id: 'far',
+          name: 'Other carer',
+          hours: 1,
+          available: true,
+          issues: [],
+          routeReview: { ...routeReview, travelRisk: true },
+        },
+      ],
+    });
+    component.routeMode.set('driving');
+    await component.reviewRoutes();
+    await settle(fixture);
+    const preview = request.mock.calls.find(([path]) => path.includes('/candidates?'))!;
+    const query = new URLSearchParams(preview[0].split('?')[1]);
+    expect(query.get('routing')).toBe('true');
+    expect(query.get('mode')).toBe('driving');
+    const cover = fixture.nativeElement.querySelector('[aria-label="Cover candidates"]');
+    expect(cover.textContent).toContain('10 min · 1.1 km · 30 min between visits');
+    expect(cover.textContent).toContain(
+      'The route could not be confirmed within the scheduled gaps.',
+    );
+    const buttons = Array.from(cover.querySelectorAll('button')) as HTMLButtonElement[];
+    expect(buttons.some((button) => button.textContent?.includes('Add Other carer'))).toBe(false);
+    buttons.find((button) => button.textContent?.includes('Add Nearby carer'))!.click();
+    expect(component.draft.staffIds).toEqual(['near']);
+    expect(component.draft.start).toBe(rosterVisit().start);
+    expect(request.mock.calls.some((call) => call[2] === 'PATCH')).toBe(false);
+  });
+  it('shows each double-up carer with their own check-in status', async () => {
+    workspace.attendance_available = true;
+    workspace.staff = ['First carer', 'Second carer'].map((name) => ({
+      id: name.split(' ')[0],
+      name,
+      gender: null,
+      driver: null,
+      hours: null,
+      training: [],
+      availabilityRecorded: null,
+      availableDays: null,
+    }));
+    const visit = {
+      ...rosterVisit(),
+      state: 'Published',
+      carers: 2,
+      staffIds: ['First', 'Second'],
+      attendance: [{ personId: 'Second', start: '2026-11-11T08:03:00Z', end: null }],
+    };
+    const fixture = await openOverview(),
+      component = fixture.componentInstance as any;
+    request.mockResolvedValueOnce(visit);
+    await component.edit(visit);
+    await settle(fixture);
+    const attendance = fixture.nativeElement.querySelector(
+      '[aria-label="Assigned carers and attendance"]',
+    );
+    expect(attendance.querySelector('h3').textContent).toContain('Double-up (2:1)');
+    const [first, second] = Array.from(attendance.querySelectorAll('p')) as HTMLElement[];
+    expect(first.textContent).toMatch(/First carer.*No check-in recorded/s);
+    expect(second.textContent).toMatch(/Second carer.*08:03.*Awaiting check-out/s);
+  });
+  it('filters cover candidates by availability and suitability independently', async () => {
+    const fixture = await openOverview(),
+      component = fixture.componentInstance as any;
+    await component.edit(rosterVisit());
+    request.mockResolvedValueOnce({
+      company_id: 'north',
+      visit_id: 'visit',
+      candidates: [
+        { id: 'first', name: 'First carer', hours: 0, available: true, issues: [] },
+        {
+          id: 'second',
+          name: 'Second carer',
+          hours: 0,
+          available: true,
+          issues: ['Training required'],
+        },
+      ],
+    });
+    await component.service.loadCandidates(component.draft);
+    component.candidateFilter.set('Available');
+    await settle(fixture);
+    const cover = fixture.nativeElement.querySelector('[aria-label="Cover candidates"]');
+    expect(cover.textContent).toContain('Second carer');
+    component.candidateFilter.set('Suitable');
+    await settle(fixture);
+    expect(cover.textContent).toContain('First carer');
+    expect(cover.textContent).not.toContain('Second carer');
+  });
   it('prunes hidden selections when filters reload the source', async () => {
     const fixture = await openOverview(),
       component = fixture.componentInstance as any;
@@ -182,7 +316,7 @@ describe('Visits overview source integration', () => {
     const fixture = await openOverview(),
       component = fixture.componentInstance as any;
     expect(fixture.nativeElement.textContent).toContain('Add Visit');
-    expect(fixture.nativeElement.textContent).not.toContain('Auto Allocate');
+    expect(fixture.nativeElement.textContent).not.toContain('Suggest allocations');
     await component.prepareAuto();
     expect(component.modal()).toBe('');
     actions.delete('create');
