@@ -15,6 +15,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
 import { LocationMap, MapLocation } from '../locations/location-map';
 import { ModuleDesign } from '../shared/module-design';
+import { EcmNavigation } from './ecm-navigation';
 import { OperationalDetails } from './operational-details';
 import { locationClock } from './location-clock';
 import { postcodeDistrict, postcodeDistrictOptions } from '../rota/postcode-districts';
@@ -53,7 +54,7 @@ type GeoSnapshot = { company_id: string; asOf: string; subjects: GeoSubject[] };
 
 @Component({
   selector: 'cv-live-geomap',
-  imports: [FormsModule, RouterLink, LocationMap, ModuleDesign, OperationalDetails],
+  imports: [FormsModule, RouterLink, LocationMap, ModuleDesign, EcmNavigation, OperationalDetails],
   host: { class: 'module-page operations-page geo-page' },
   templateUrl: './live-geomap.html',
   styleUrl: './live-geomap.css',

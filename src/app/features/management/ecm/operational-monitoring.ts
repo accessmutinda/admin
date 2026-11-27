@@ -14,13 +14,14 @@ import { ApiError } from '../../../core/auth/auth-api';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
 import { ModuleDesign } from '../shared/module-design';
+import { EcmNavigation } from './ecm-navigation';
 
 const categories = [
-  { key: 'late', label: 'Late visits', icon: 'schedule' },
-  { key: 'missed', label: 'Missed visits', icon: 'warning' },
-  { key: 'shortage', label: 'Staff shortages', icon: 'group_off' },
-  { key: 'overlap', label: 'Overlapping allocations', icon: 'event_busy' },
-  { key: 'uncovered', label: 'Uncovered care packages', icon: 'assignment_late' },
+  { key: 'late', label: 'Late visits', icon: 'schedule', tone: 'amber' },
+  { key: 'missed', label: 'Missed visits', icon: 'warning', tone: 'red' },
+  { key: 'shortage', label: 'Staff shortages', icon: 'group_off', tone: 'purple' },
+  { key: 'overlap', label: 'Overlapping allocations', icon: 'event_busy', tone: 'blue' },
+  { key: 'uncovered', label: 'Uncovered care packages', icon: 'assignment_late', tone: 'teal' },
 ] as const;
 type Kind = (typeof categories)[number]['key'];
 type Warning = {
@@ -45,7 +46,7 @@ type Board = {
 
 @Component({
   selector: 'cv-operational-monitoring',
-  imports: [FormsModule, RouterLink, ModuleDesign],
+  imports: [FormsModule, RouterLink, ModuleDesign, EcmNavigation],
   host: { class: 'module-page operations-page geo-page monitor-page' },
   templateUrl: './operational-monitoring.html',
   styleUrls: ['./live-geomap.css', './operational-monitoring.css'],

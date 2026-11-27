@@ -12,13 +12,15 @@
   </div>
   @if (allowed()) {
     <div class="row">
-      <a class="button" routerLink="/manage/ecm/geomap">Live GeoMap</a>
       <button class="button" type="button" [disabled]="loading()" (click)="refresh()">
         <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Refresh
       </button>
     </div>
   }
 </header>
+@if (allowed()) {
+  <cv-ecm-navigation />
+}
 @if (!allowed()) {
   <p class="panel geo-message">Coordinator access to Live Visits is required.</p>
 } @else {
@@ -32,15 +34,19 @@
     <div class="monitor-summary" role="group" aria-label="Warning categories">
       @for (category of summary(); track category.key) {
         <button
-          class="panel monitor-category"
+          class="metric co-stat monitor-category"
+          [attr.data-tone]="category.tone"
           type="button"
           [attr.aria-pressed]="filter() === category.key"
           (click)="filter.set(filter() === category.key ? '' : category.key); page.set(0)"
         >
-          <span class="material-symbols-outlined" aria-hidden="true">{{ category.icon }}</span>
-          <span
-            ><strong>{{ category.count }}</strong
-            ><span>{{ category.label }}</span></span
+          <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">{{
+            category.icon
+          }}</span>
+          <div>
+            <h2>{{ category.label }}</h2>
+            <strong>{{ category.count }}</strong>
+          </div>
           >
         </button>
       }
@@ -79,9 +85,12 @@
         ) {
           <li>
             <div>
-              <span class="monitor-kind" [class.monitor-critical]="row.kind === 'missed'">{{
-                kindLabel(row.kind)
-              }}</span>
+              <span
+                class="badge monitor-kind"
+                [class.warning]="row.kind !== 'missed'"
+                [class.monitor-critical]="row.kind === 'missed'"
+                >{{ kindLabel(row.kind) }}</span
+              >
               <h3>{{ row.title }}</h3>
               @if (row.clientName) {
                 <p>

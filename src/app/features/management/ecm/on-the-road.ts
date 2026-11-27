@@ -15,6 +15,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
 import { LocationMap, MapLocation, MapPoint } from '../locations/location-map';
 import { ModuleDesign } from '../shared/module-design';
+import { EcmNavigation } from './ecm-navigation';
 
 import { locationClock } from './location-clock';
 
@@ -75,7 +76,7 @@ type Estimate = { company_id: string; journeyKey: string } & (
 
 @Component({
   selector: 'cv-on-the-road',
-  imports: [FormsModule, RouterLink, LocationMap, ModuleDesign],
+  imports: [FormsModule, RouterLink, LocationMap, ModuleDesign, EcmNavigation],
   host: { class: 'module-page operations-page geo-page road-page' },
   templateUrl: './on-the-road.html',
   styleUrls: ['./live-geomap.css', './on-the-road.css'],

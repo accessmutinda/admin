@@ -9,18 +9,16 @@
     <p>See service-user locations, reported care-worker positions and ECM check-ins.</p>
   </div>
   @if (allowed()) {
-    <a class="button" routerLink="/manage/ecm/operations">Operational Monitoring</a>
-    <a class="button" routerLink="/manage/ecm/on-duty">
-      <span class="material-symbols-outlined" aria-hidden="true">work</span>On Duty
-    </a>
-    <a class="button" routerLink="/manage/ecm/on-the-road">
-      <span class="material-symbols-outlined" aria-hidden="true">directions_car</span>On the Road
-    </a>
-    <button class="button" type="button" [disabled]="loading() || !!draft()" (click)="refresh()">
-      <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Refresh
-    </button>
+    <div class="row">
+      <button class="button" type="button" [disabled]="loading() || !!draft()" (click)="refresh()">
+        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Refresh
+      </button>
+    </div>
   }
 </header>
+@if (allowed()) {
+  <cv-ecm-navigation />
+}
 
 @if (!allowed()) {
   <p class="panel geo-message">Coordinator access to Live Visits is required to open the map.</p>

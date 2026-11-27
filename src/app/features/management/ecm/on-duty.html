@@ -9,15 +9,16 @@
     <p>See scheduled shifts, visit check-ins and workers available for allocation.</p>
   </div>
   @if (allowed()) {
-    <div class="row duty-actions">
-      <a class="button" routerLink="/manage/ecm/geomap">Live GeoMap</a>
-      <a class="button" routerLink="/manage/ecm/on-the-road">On the Road</a>
+    <div class="row">
       <button class="button" type="button" [disabled]="loading() || editing()" (click)="refresh()">
         <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Refresh
       </button>
     </div>
   }
 </header>
+@if (allowed()) {
+  <cv-ecm-navigation />
+}
 
 @if (!allowed()) {
   <p class="panel geo-message">Coordinator access to Live Visits is required.</p>
@@ -32,11 +33,11 @@
     <p class="geo-message" role="status">Loading duty roster…</p>
   }
   @if (data(); as snapshot) {
-    <div class="row duty-views" role="group" aria-label="On Duty views">
+    <div class="tabs duty-views" role="group" aria-label="On Duty views">
       <button
         type="button"
         class="button"
-        [class.primary]="!scheduleView()"
+        [class.active]="!scheduleView()"
         [attr.aria-pressed]="!scheduleView()"
         (click)="scheduleView.set(false)"
       >
@@ -45,7 +46,7 @@
       <button
         type="button"
         class="button"
-        [class.primary]="scheduleView()"
+        [class.active]="scheduleView()"
         [attr.aria-pressed]="scheduleView()"
         (click)="scheduleView.set(true)"
       >
@@ -57,14 +58,18 @@
         @for (item of counts(); track item.key) {
           <button
             type="button"
-            class="panel duty-filter"
+            class="metric co-stat duty-filter"
+            [attr.data-tone]="item.tone"
             [attr.aria-pressed]="filter() === item.key"
             (click)="filter.set(filter() === item.key ? '' : item.key)"
           >
-            <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
-            <span
-              ><strong>{{ item.count }}</strong
-              ><span>{{ item.label }}</span></span
+            <span class="co-stat-icon material-symbols-outlined" aria-hidden="true">{{
+              item.icon
+            }}</span>
+            <div>
+              <h2>{{ item.label }}</h2>
+              <strong>{{ item.count }}</strong>
+            </div>
             >
           </button>
         }
@@ -99,20 +104,20 @@
             role="region"
             aria-label="Worker status table"
           >
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">Care worker</th>
-                  <th scope="col">Scheduled shift</th>
-                  <th scope="col">Visit check-in</th>
-                  <th scope="col">Travel and break</th>
-                  <th scope="col">Further allocation</th>
+            <table class="ecm-responsive-table" role="table">
+              <thead role="rowgroup">
+                <tr role="row">
+                  <th scope="col" role="columnheader">Care worker</th>
+                  <th scope="col" role="columnheader">Scheduled shift</th>
+                  <th scope="col" role="columnheader">Visit check-in</th>
+                  <th scope="col" role="columnheader">Travel and break</th>
+                  <th scope="col" role="columnheader">Further allocation</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup">
                 @for (worker of rows(); track worker.id) {
-                  <tr>
-                    <th scope="row">
+                  <tr role="row">
+                    <th scope="row" role="rowheader">
                       <a
                         class="duty-worker"
                         routerLink="/manage/ecm/geomap"
@@ -122,11 +127,12 @@
                         >{{ worker.name }}
                       </a>
                     </th>
-                    <td>
+                    <td role="cell">
+                      <span class="ecm-mobile-label" aria-hidden="true">Scheduled shift</span>
                       @if (worker.shift; as shift) {
-                        <span class="duty-chip duty-positive">On duty</span>
+                        <span class="badge duty-chip success">On duty</span>
                         @if (worker.endingSoon) {
-                          <span class="duty-chip duty-attention">Ending soon</span>
+                          <span class="badge duty-chip warning">Ending soon</span>
                         }
                         <small>{{ time(shift.startsAt) }} to {{ time(shift.endsAt) }}</small>
                         @if (canManage()) {
@@ -140,23 +146,25 @@
                           </button>
                         }
                       } @else {
-                        <span class="duty-chip">No active scheduled shift</span>
+                        <span class="badge duty-chip">No active scheduled shift</span>
                       }
                     </td>
-                    <td>
+                    <td role="cell">
+                      <span class="ecm-mobile-label" aria-hidden="true">Visit check-in</span>
                       @if (worker.checkIn; as entry) {
-                        <span class="duty-chip duty-positive">Checked in</span>
+                        <span class="badge duty-chip success">Checked in</span>
                         <small
                           ><span class="geo-swatch geo-user" aria-hidden="true"></span
                           >{{ entry.serviceUser }} · {{ time(entry.at) }}</small
                         >
                       } @else {
-                        <span class="duty-chip">No open visit check-in</span>
+                        <span class="badge duty-chip">No open visit check-in</span>
                       }
                     </td>
-                    <td>
+                    <td role="cell">
+                      <span class="ecm-mobile-label" aria-hidden="true">Travel and break</span>
                       @if (worker.travelling) {
-                        <a class="duty-chip duty-positive" routerLink="/manage/ecm/on-the-road"
+                        <a class="badge duty-chip success" routerLink="/manage/ecm/on-the-road"
                           >Travelling</a
                         >
                         <small>{{
@@ -164,18 +172,19 @@
                         }}</small>
                       }
                       @if (worker.activeBreak; as entry) {
-                        <span class="duty-chip duty-attention">Authorised break</span>
+                        <span class="badge duty-chip warning">Authorised break</span>
                         <small>Until {{ time(entry.endsAt) }}</small>
                       }
                       @if (!worker.travelling && !worker.activeBreak) {
                         <span>—</span>
                       }
                     </td>
-                    <td>
+                    <td role="cell">
+                      <span class="ecm-mobile-label" aria-hidden="true">Further allocation</span>
                       @if (worker.allocationStatus === 'available') {
-                        <span class="duty-chip duty-positive">Available now</span>
+                        <span class="badge duty-chip success">Available now</span>
                       } @else {
-                        <span class="duty-chip">{{
+                        <span class="badge duty-chip">{{
                           worker.allocationStatus === 'unverified' ? 'Unverified' : 'Unavailable'
                         }}</span>
                         <small>{{ worker.allocationReason }}</small>
@@ -232,23 +241,27 @@
             role="region"
             aria-label="Shift schedule table"
           >
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">Care worker</th>
-                  <th scope="col">Shift</th>
-                  <th scope="col">Authorised breaks</th>
+            <table class="ecm-responsive-table" role="table">
+              <thead role="rowgroup">
+                <tr role="row">
+                  <th scope="col" role="columnheader">Care worker</th>
+                  <th scope="col" role="columnheader">Shift</th>
+                  <th scope="col" role="columnheader">Authorised breaks</th>
                   @if (canManage()) {
-                    <th scope="col">Actions</th>
+                    <th scope="col" role="columnheader">Actions</th>
                   }
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup">
                 @for (shift of snapshot.schedule; track shift.id) {
-                  <tr>
-                    <th scope="row">{{ shift.workerName }}</th>
-                    <td>{{ time(shift.startsAt) }} to {{ time(shift.endsAt) }}</td>
-                    <td>
+                  <tr role="row">
+                    <th scope="row" role="rowheader">{{ shift.workerName }}</th>
+                    <td role="cell">
+                      <span class="ecm-mobile-label" aria-hidden="true">Shift</span
+                      >{{ time(shift.startsAt) }} to {{ time(shift.endsAt) }}
+                    </td>
+                    <td role="cell">
+                      <span class="ecm-mobile-label" aria-hidden="true">Authorised breaks</span>
                       @for (entry of shift.breaks; track entry.startsAt) {
                         <small>{{ time(entry.startsAt) }} to {{ time(entry.endsAt) }}</small>
                       } @empty {
@@ -256,7 +269,8 @@
                       }
                     </td>
                     @if (canManage()) {
-                      <td>
+                      <td role="cell">
+                        <span class="ecm-mobile-label" aria-hidden="true">Actions</span>
                         <button
                           class="button"
                           type="button"

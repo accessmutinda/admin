@@ -1,5 +1,6 @@
 import { ApprovedCareInstructions } from '../care/approved-care-instructions';
 import { ModuleDesign } from '../shared/module-design';
+import { EcmNavigation } from './ecm-navigation';
 import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
@@ -31,6 +32,7 @@ import {
   imports: [
     ApprovedCareInstructions,
     ModuleDesign,
+    EcmNavigation,
     FormsModule,
     MatSelectModule,
     RouterLink,

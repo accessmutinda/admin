@@ -9,11 +9,7 @@
     <p>Follow travelling care workers and check whether they can reach their next visit on time.</p>
   </div>
   @if (allowed()) {
-    <div class="row road-actions">
-      <a class="button" routerLink="/manage/ecm/on-duty">On Duty</a>
-      <a class="button" routerLink="/manage/ecm/geomap">
-        <span class="material-symbols-outlined" aria-hidden="true">map</span>Live GeoMap
-      </a>
+    <div class="row">
       <button
         class="button"
         type="button"
@@ -25,6 +21,9 @@
     </div>
   }
 </header>
+@if (allowed()) {
+  <cv-ecm-navigation />
+}
 
 @if (!allowed()) {
   <p class="panel geo-message">Coordinator access to Live Visits is required.</p>
@@ -68,21 +67,21 @@
           role="region"
           aria-label="Travelling care workers table"
         >
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Care worker</th>
-                <th scope="col">Current journey</th>
-                <th scope="col">Travel mode</th>
-                <th scope="col">ETA and distance</th>
-                <th scope="col">Delay</th>
+          <table class="ecm-responsive-table" role="table">
+            <thead role="rowgroup">
+              <tr role="row">
+                <th scope="col" role="columnheader">Care worker</th>
+                <th scope="col" role="columnheader">Current journey</th>
+                <th scope="col" role="columnheader">Travel mode</th>
+                <th scope="col" role="columnheader">ETA and distance</th>
+                <th scope="col" role="columnheader">Delay</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               @for (journey of rows(); track journey.workerId) {
                 @let routeEstimate = estimate(journey);
-                <tr [class.road-selected]="active()?.workerId === journey.workerId">
-                  <th scope="row">
+                <tr role="row" [class.road-selected]="active()?.workerId === journey.workerId">
+                  <th scope="row" role="rowheader">
                     <button
                       class="road-worker"
                       type="button"
@@ -94,7 +93,8 @@
                     </button>
                     <small>Travelling reported {{ time(journey.travellingReportedAt) }}</small>
                   </th>
-                  <td>
+                  <td role="cell">
+                    <span class="ecm-mobile-label" aria-hidden="true">Current journey</span>
                     <small
                       >Previous · {{ journey.previousVisit?.serviceUser ?? 'Unavailable' }}</small
                     >
@@ -105,7 +105,8 @@
                       <strong>No upcoming published visit</strong>
                     }
                   </td>
-                  <td>
+                  <td role="cell">
+                    <span class="ecm-mobile-label" aria-hidden="true">Travel mode</span>
                     <select
                       [attr.aria-label]="'Travel mode for ' + journey.workerName"
                       [ngModel]="
@@ -120,7 +121,8 @@
                       }
                     </select>
                   </td>
-                  <td>
+                  <td role="cell">
+                    <span class="ecm-mobile-label" aria-hidden="true">ETA and distance</span>
                     @if (routeEstimate?.state === 'estimated') {
                       <strong>{{ time(routeEstimate!.arrivalAt) }}</strong>
                       <small>{{ (routeEstimate!.distanceMeters / 1000).toFixed(1) }} km</small>
@@ -128,10 +130,11 @@
                       <span class="road-unavailable">{{ estimateMessage(journey) }}</span>
                     }
                   </td>
-                  <td>
+                  <td role="cell">
+                    <span class="ecm-mobile-label" aria-hidden="true">Delay</span>
                     <span
-                      class="road-delay"
-                      [class.road-delay-alert]="
+                      class="badge road-delay"
+                      [class.warning]="
                         journey.startPassed ||
                         (routeEstimate?.state === 'estimated' && routeEstimate!.lateMinutes)
                       "

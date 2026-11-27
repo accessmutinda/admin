@@ -15,6 +15,7 @@ import { ApiError } from '../../../core/auth/auth-api';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ServiceUsersApi } from '../clients/service-users-api.service';
 import { ModuleDesign } from '../shared/module-design';
+import { EcmNavigation } from './ecm-navigation';
 
 type Interval = { startsAt: string; endsAt: string };
 type Break = Interval & { authorisedAt: string };
@@ -55,43 +56,49 @@ const statuses = [
     key: 'on-duty',
     label: 'On duty',
     icon: 'work',
+    tone: 'blue',
     matches: (row: Worker) => row.dutyStatus === 'on-duty',
   },
   {
     key: 'checked-in',
     label: 'Checked in',
     icon: 'how_to_reg',
+    tone: 'teal',
     matches: (row: Worker) => !!row.checkIn,
   },
   {
     key: 'travelling',
     label: 'Travelling',
     icon: 'directions_car',
+    tone: 'purple',
     matches: (row: Worker) => row.travelling,
   },
   {
     key: 'on-break',
     label: 'Authorised break',
     icon: 'pause_circle',
+    tone: 'amber',
     matches: (row: Worker) => !!row.activeBreak,
   },
   {
     key: 'available',
     label: 'Available',
     icon: 'person_check',
+    tone: 'green',
     matches: (row: Worker) => row.allocationStatus === 'available',
   },
   {
     key: 'ending-soon',
     label: 'Shift ending soon',
     icon: 'schedule',
+    tone: 'amber',
     matches: (row: Worker) => row.endingSoon,
   },
 ];
 
 @Component({
   selector: 'cv-on-duty',
-  imports: [FormsModule, RouterLink, A11yModule, ModuleDesign],
+  imports: [FormsModule, RouterLink, A11yModule, ModuleDesign, EcmNavigation],
   host: { class: 'module-page operations-page geo-page duty-page' },
   templateUrl: './on-duty.html',
   styleUrls: ['./live-geomap.css', './on-duty.css'],
