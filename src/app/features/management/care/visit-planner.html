@@ -1058,7 +1058,7 @@
                 </label>
               }
               @if ((modal() === 'visit' || modal() === 'view') && draft; as visit) {
-                <section class="care-wide" aria-label="Assigned carers and attendance">
+                <section class="care-wide planner-review" aria-label="Assigned carers and attendance">
                   <h3>{{ staffingLabel(visit) }}</h3>
                   @let canReadAttendance =
                     service.raw()?.attendance_available !== false &&
@@ -1089,7 +1089,7 @@
                   }
                 </section>
                 @if (canReviewCover(visit)) {
-                  <section class="care-wide" aria-label="Cover candidates">
+                  <section class="care-wide planner-review" aria-label="Cover candidates">
                     <h3>Smart allocation</h3>
                     <p>
                       Review eligible carers and compare travel within the visit times shown above.
@@ -1162,28 +1162,27 @@
                       @let suggested = suggestedCarer();
                       @for (candidate of filteredCandidates(); track candidate.id) {
                         <div class="planner-candidate">
-                          <p>
+                          <div class="planner-candidate-heading">
                             <strong>{{ candidate.name }}</strong>
                             @if (candidate.id === suggested) {
-                              · Suggested carer
+                              <span class="care-tag" data-tone="blue">Suggested carer</span>
                             }
                             @if (candidate.assigned) {
-                              · Assigned to this visit
+                              <span class="care-tag" data-tone="blue">Assigned to this visit</span>
                             }
                             @if (candidate.preferred) {
-                              · Preferred
+                              <span class="care-tag" data-tone="purple">Preferred</span>
                             }
                             @if (candidate.available === true) {
-                              · Available
+                              <span class="care-tag" data-tone="green">Available</span>
                             }
                             @if (suitable(candidate)) {
-                              · Suitable for this visit
-                            } @else if (candidate.issues.length) {
-                              <br /><span class="planner-alert">{{
-                                candidate.issues.join(' ')
-                              }}</span>
+                              <span class="care-tag" data-tone="green">Suitable for this visit</span>
                             }
-                          </p>
+                          </div>
+                          @if (!suitable(candidate) && candidate.issues.length) {
+                            <p class="planner-alert">{{ candidate.issues.join(' ') }}</p>
+                          }
                           @if (candidate.routeReview; as route) {
                             @if (route.districtMatches) {
                               <p>

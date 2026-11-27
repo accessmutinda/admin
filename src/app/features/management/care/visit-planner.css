@@ -236,7 +236,7 @@
 }
 .planner-candidate {
   padding: 10px 0;
-  border-bottom: 1px solid #dbe5ef;
+  border-bottom: 1px solid var(--color-line);
 }
 .planner-candidate p {
   margin: 6px 0;
@@ -247,4 +247,19 @@
 }
 .planner-route-legs strong {
   display: block;
+}
+
+
+.planner-review {
+  padding: 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 9px;
+  background: var(--color-cloud);
+}
+.planner-review h3 { margin-top: 0; }
+.planner-candidate-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
 }
