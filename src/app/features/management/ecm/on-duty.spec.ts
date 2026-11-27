@@ -43,18 +43,19 @@ describe('On Duty', () => {
   };
   let request: ReturnType<typeof vi.fn>;
 
+  const snapshot = () => ({
+    company_id: 'north',
+    timezone: 'Europe/London',
+    asOf: at,
+    scheduleDate: '2026-11-27',
+    canManage: true,
+    workers: [checkedIn, travelling],
+    schedule: [shift],
+    scheduleWorkers: [{ id: shift.workerId, name: shift.workerName }],
+  });
+
   beforeEach(() => {
-    const snapshot = {
-      company_id: 'north',
-      timezone: 'Europe/London',
-      asOf: at,
-      scheduleDate: '2026-11-27',
-      canManage: true,
-      workers: [checkedIn, travelling],
-      schedule: [shift],
-      scheduleWorkers: [{ id: shift.workerId, name: shift.workerName }],
-    };
-    request = vi.fn(async () => snapshot);
+    request = vi.fn(async () => snapshot());
     TestBed.configureTestingModule({
       imports: [OnDuty],
       providers: [
@@ -97,6 +98,48 @@ describe('On Duty', () => {
     checkedInFilter.click();
     fixture.detectChanges();
     expect(element.querySelectorAll('tbody tr')).toHaveLength(1);
+  });
+
+  it('distinguishes a verified working pattern from an unverified on-duty shift', async () => {
+    request.mockResolvedValueOnce({
+      ...snapshot(),
+      workers: [
+        {
+          ...checkedIn,
+          checkIn: null,
+          allocationStatus: 'unverified',
+          allocationReason: 'No recurring working pattern is recorded for this time.',
+        },
+        {
+          ...checkedIn,
+          id: 'verified',
+          name: 'Verified carer',
+          checkIn: null,
+          allocationStatus: 'available',
+          allocationReason: 'Recorded workforce availability covers this time.',
+        },
+      ],
+    });
+    const fixture = await open();
+    const element = fixture.nativeElement as HTMLElement;
+    const [unverified, verified] = Array.from(element.querySelectorAll('tbody tr'));
+    expect(unverified.children[1].textContent).toContain('On duty');
+    expect(unverified.children[4].textContent).toContain('Unverified');
+    expect(unverified.children[4].textContent).toContain('No recurring working pattern');
+    expect(verified.children[4].textContent).toContain('Verified at this time');
+    expect(verified.children[4].textContent).toContain(
+      'Recorded workforce availability covers this time',
+    );
+    expect(element.querySelector('a[href="/manage/rota/planner"]')?.textContent).toContain(
+      'Visit Planner',
+    );
+    const filter = [...element.querySelectorAll<HTMLButtonElement>('.duty-filter')].find((button) =>
+      button.textContent?.includes('Verified availability'),
+    )!;
+    filter.click();
+    fixture.detectChanges();
+    expect(element.querySelectorAll('tbody tr')).toHaveLength(1);
+    expect(element.querySelector('tbody')?.textContent).toContain('Verified carer');
   });
 
   it('edits authorised breaks with the shift version and keeps the schedule date scoped', async () => {

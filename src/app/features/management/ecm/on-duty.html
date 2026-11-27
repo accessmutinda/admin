@@ -6,7 +6,7 @@
 <header class="page-heading duty-heading">
   <div>
     <h1>On Duty</h1>
-    <p>See scheduled shifts, visit check-ins and workers available for allocation.</p>
+    <p>See scheduled shifts, visit check-ins and verified workforce availability.</p>
   </div>
   @if (allowed()) {
     <div class="row">
@@ -79,6 +79,12 @@
           <div>
             <h2 id="duty-workers">Worker status</h2>
             <p>Updated {{ time(snapshot.asOf) }} · Ending soon means 30 minutes or less.</p>
+            <p>
+              For a proposed visit, use the
+              <a class="text-link" routerLink="/manage/rota/planner">Visit Planner</a>
+              to check the full time slot, commitments, travel, training, competency and care
+              requirements.
+            </p>
           </div>
           <div class="row duty-actions">
             @if (filter()) {
@@ -182,13 +188,13 @@
                     <td role="cell">
                       <span class="ecm-mobile-label" aria-hidden="true">Further allocation</span>
                       @if (worker.allocationStatus === 'available') {
-                        <span class="badge duty-chip success">Available now</span>
+                        <span class="badge duty-chip success">Verified at this time</span>
                       } @else {
                         <span class="badge duty-chip">{{
                           worker.allocationStatus === 'unverified' ? 'Unverified' : 'Unavailable'
                         }}</span>
-                        <small>{{ worker.allocationReason }}</small>
                       }
+                      <small>{{ worker.allocationReason }}</small>
                     </td>
                   </tr>
                 }

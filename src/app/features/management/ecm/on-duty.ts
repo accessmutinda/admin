@@ -82,7 +82,7 @@ const statuses = [
   },
   {
     key: 'available',
-    label: 'Available',
+    label: 'Verified availability',
     icon: 'person_check',
     tone: 'green',
     matches: (row: Worker) => row.allocationStatus === 'available',
