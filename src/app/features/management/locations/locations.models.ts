@@ -80,7 +80,7 @@ export function locationAddress(location: ServiceLocation): string {
     .filter(Boolean)
     .join(', ');
 }
-export function hasCoordinates(location: ServiceLocation): boolean {
+export function hasCoordinates(location: Pick<ServiceLocation, 'latitude' | 'longitude'>): boolean {
   return (
     location.latitude !== null &&
     location.longitude !== null &&

@@ -1,0 +1,406 @@
+<cv-module-design />
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/ecm">Live Visits / ECM</a><span aria-hidden="true">›</span>
+  <span>On Duty</span>
+</nav>
+<header class="page-heading duty-heading">
+  <div>
+    <h1>On Duty</h1>
+    <p>See scheduled shifts, visit check-ins and workers available for allocation.</p>
+  </div>
+  @if (allowed()) {
+    <div class="row duty-actions">
+      <a class="button" routerLink="/manage/ecm/geomap">Live GeoMap</a>
+      <a class="button" routerLink="/manage/ecm/on-the-road">On the Road</a>
+      <button class="button" type="button" [disabled]="loading() || editing()" (click)="refresh()">
+        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Refresh
+      </button>
+    </div>
+  }
+</header>
+
+@if (!allowed()) {
+  <p class="panel geo-message">Coordinator access to Live Visits is required.</p>
+} @else {
+  @if (error()) {
+    <p class="geo-message" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p class="geo-message" role="status">{{ notice() }}</p>
+  }
+  @if (loading() && !data()) {
+    <p class="geo-message" role="status">Loading duty roster…</p>
+  }
+  @if (data(); as snapshot) {
+    <div class="row duty-views" role="group" aria-label="On Duty views">
+      <button
+        type="button"
+        class="button"
+        [class.primary]="!scheduleView()"
+        [attr.aria-pressed]="!scheduleView()"
+        (click)="scheduleView.set(false)"
+      >
+        Live status
+      </button>
+      <button
+        type="button"
+        class="button"
+        [class.primary]="scheduleView()"
+        [attr.aria-pressed]="scheduleView()"
+        (click)="scheduleView.set(true)"
+      >
+        Shift schedule
+      </button>
+    </div>
+    @if (!scheduleView()) {
+      <div class="duty-filters" role="group" aria-label="Filter by worker status">
+        @for (item of counts(); track item.key) {
+          <button
+            type="button"
+            class="panel duty-filter"
+            [attr.aria-pressed]="filter() === item.key"
+            (click)="filter.set(filter() === item.key ? '' : item.key)"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
+            <span
+              ><strong>{{ item.count }}</strong
+              ><span>{{ item.label }}</span></span
+            >
+          </button>
+        }
+      </div>
+      <section class="panel" aria-labelledby="duty-workers">
+        <div class="duty-panel-heading">
+          <div>
+            <h2 id="duty-workers">Worker status</h2>
+            <p>Updated {{ time(snapshot.asOf) }} · Ending soon means 30 minutes or less.</p>
+          </div>
+          <div class="row duty-actions">
+            @if (filter()) {
+              <button class="button" type="button" (click)="filter.set('')">
+                Clear status filter
+              </button>
+            }
+            <label
+              >Search workers
+              <input
+                type="search"
+                placeholder="Care worker or service user"
+                [ngModel]="search()"
+                (ngModelChange)="search.set($event)"
+              />
+            </label>
+          </div>
+        </div>
+        @if (rows().length) {
+          <div
+            class="duty-table-scroll"
+            tabindex="0"
+            role="region"
+            aria-label="Worker status table"
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Care worker</th>
+                  <th scope="col">Scheduled shift</th>
+                  <th scope="col">Visit check-in</th>
+                  <th scope="col">Travel and break</th>
+                  <th scope="col">Further allocation</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (worker of rows(); track worker.id) {
+                  <tr>
+                    <th scope="row">
+                      <a
+                        class="duty-worker"
+                        routerLink="/manage/ecm/geomap"
+                        [queryParams]="{ worker: worker.id }"
+                      >
+                        <span class="geo-swatch geo-worker" aria-hidden="true"></span
+                        >{{ worker.name }}
+                      </a>
+                    </th>
+                    <td>
+                      @if (worker.shift; as shift) {
+                        <span class="duty-chip duty-positive">On duty</span>
+                        @if (worker.endingSoon) {
+                          <span class="duty-chip duty-attention">Ending soon</span>
+                        }
+                        <small>{{ time(shift.startsAt) }} to {{ time(shift.endsAt) }}</small>
+                        @if (canManage()) {
+                          <button
+                            type="button"
+                            class="duty-link"
+                            [disabled]="loading()"
+                            (click)="edit(shift)"
+                          >
+                            Edit shift and breaks
+                          </button>
+                        }
+                      } @else {
+                        <span class="duty-chip">No active scheduled shift</span>
+                      }
+                    </td>
+                    <td>
+                      @if (worker.checkIn; as entry) {
+                        <span class="duty-chip duty-positive">Checked in</span>
+                        <small
+                          ><span class="geo-swatch geo-user" aria-hidden="true"></span
+                          >{{ entry.serviceUser }} · {{ time(entry.at) }}</small
+                        >
+                      } @else {
+                        <span class="duty-chip">No open visit check-in</span>
+                      }
+                    </td>
+                    <td>
+                      @if (worker.travelling) {
+                        <a class="duty-chip duty-positive" routerLink="/manage/ecm/on-the-road"
+                          >Travelling</a
+                        >
+                        <small>{{
+                          worker.nextVisit ? 'Next · ' + worker.nextVisit : 'Next visit unavailable'
+                        }}</small>
+                      }
+                      @if (worker.activeBreak; as entry) {
+                        <span class="duty-chip duty-attention">Authorised break</span>
+                        <small>Until {{ time(entry.endsAt) }}</small>
+                      }
+                      @if (!worker.travelling && !worker.activeBreak) {
+                        <span>—</span>
+                      }
+                    </td>
+                    <td>
+                      @if (worker.allocationStatus === 'available') {
+                        <span class="duty-chip duty-positive">Available now</span>
+                      } @else {
+                        <span class="duty-chip">{{
+                          worker.allocationStatus === 'unverified' ? 'Unverified' : 'Unavailable'
+                        }}</span>
+                        <small>{{ worker.allocationReason }}</small>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="geo-message">
+            {{
+              active().length
+                ? 'No workers match these filters.'
+                : 'No active scheduled shifts, visit check-ins or travelling workers.'
+            }}
+          </p>
+        }
+      </section>
+    } @else {
+      <section class="panel" aria-labelledby="duty-schedule">
+        <div class="duty-panel-heading">
+          <div>
+            <h2 id="duty-schedule">Shift schedule</h2>
+            <p>Scheduled shifts and authorised breaks · {{ snapshot.timezone }}</p>
+          </div>
+          <div class="row duty-actions">
+            <label
+              >Schedule date
+              <input
+                type="date"
+                [ngModel]="requestedDate() || snapshot.scheduleDate"
+                [disabled]="loading()"
+                (ngModelChange)="changeDate($event)"
+              />
+            </label>
+            @if (canManage()) {
+              <button
+                class="button primary"
+                type="button"
+                [disabled]="loading()"
+                (click)="edit(null)"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">add</span>Schedule shift
+              </button>
+            }
+          </div>
+        </div>
+        @if (snapshot.schedule.length) {
+          <div
+            class="duty-table-scroll"
+            tabindex="0"
+            role="region"
+            aria-label="Shift schedule table"
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Care worker</th>
+                  <th scope="col">Shift</th>
+                  <th scope="col">Authorised breaks</th>
+                  @if (canManage()) {
+                    <th scope="col">Actions</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (shift of snapshot.schedule; track shift.id) {
+                  <tr>
+                    <th scope="row">{{ shift.workerName }}</th>
+                    <td>{{ time(shift.startsAt) }} to {{ time(shift.endsAt) }}</td>
+                    <td>
+                      @for (entry of shift.breaks; track entry.startsAt) {
+                        <small>{{ time(entry.startsAt) }} to {{ time(entry.endsAt) }}</small>
+                      } @empty {
+                        <span>None scheduled</span>
+                      }
+                    </td>
+                    @if (canManage()) {
+                      <td>
+                        <button
+                          class="button"
+                          type="button"
+                          [disabled]="loading()"
+                          (click)="edit(shift)"
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="geo-message">No shifts scheduled for this date.</p>
+        }
+      </section>
+    }
+    @if (editing() && canManage()) {
+      <div class="duty-overlay">
+        <section
+          class="panel duty-editor"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="duty-edit-title"
+          cdkTrapFocus
+          [cdkTrapFocusAutoCapture]="true"
+          (keydown.escape)="!saving() && editing.set(false)"
+        >
+          <h2 id="duty-edit-title">
+            {{ selectedShift() ? 'Edit scheduled shift' : 'Schedule shift' }}
+          </h2>
+          <p>
+            Enter times in {{ snapshot.timezone }}. Saving authorises the break intervals below.
+          </p>
+          <form class="duty-form" (ngSubmit)="save()">
+            @if (selectedShift(); as shift) {
+              <strong>{{ shift.workerName }}</strong>
+            } @else {
+              <label
+                >Care worker
+                <select name="workerId" [(ngModel)]="form.workerId" [disabled]="saving()" required>
+                  <option value="">Choose a care worker</option>
+                  @for (worker of snapshot.scheduleWorkers; track worker.id) {
+                    <option [value]="worker.id">{{ worker.name }}</option>
+                  }
+                </select>
+              </label>
+            }
+            <div class="duty-interval">
+              <label
+                >Shift starts
+                <input
+                  type="datetime-local"
+                  step="1"
+                  name="startsAt"
+                  [(ngModel)]="form.startsAt"
+                  [disabled]="saving()"
+                  required
+              /></label>
+              <label
+                >Shift ends
+                <input
+                  type="datetime-local"
+                  step="1"
+                  name="endsAt"
+                  [(ngModel)]="form.endsAt"
+                  [disabled]="saving()"
+                  required
+              /></label>
+            </div>
+            <fieldset>
+              <legend>Authorised breaks</legend>
+              @for (entry of form.breaks; track entry; let i = $index) {
+                <div class="duty-interval duty-break-row">
+                  <label
+                    >Break starts
+                    <input
+                      type="datetime-local"
+                      step="1"
+                      [name]="'breakStart' + i"
+                      [(ngModel)]="entry.startsAt"
+                      [disabled]="saving()"
+                      required
+                  /></label>
+                  <label
+                    >Break ends
+                    <input
+                      type="datetime-local"
+                      step="1"
+                      [name]="'breakEnd' + i"
+                      [(ngModel)]="entry.endsAt"
+                      [disabled]="saving()"
+                      required
+                  /></label>
+                  <button
+                    type="button"
+                    class="button"
+                    [attr.aria-label]="'Remove break ' + (i + 1)"
+                    [disabled]="saving()"
+                    (click)="form.breaks.splice(i, 1)"
+                  >
+                    Remove
+                  </button>
+                </div>
+              }
+              <button
+                class="button"
+                type="button"
+                [disabled]="saving() || form.breaks.length >= 20"
+                (click)="addBreak()"
+              >
+                Add break
+              </button>
+            </fieldset>
+            @if (formError()) {
+              <p class="duty-form-error" role="alert">{{ formError() }}</p>
+            }
+            <div class="row duty-actions">
+              <button class="button primary" type="submit" [disabled]="saving()">Save shift</button>
+              <button
+                class="button"
+                type="button"
+                [disabled]="saving()"
+                (click)="editing.set(false)"
+              >
+                Close
+              </button>
+              @if (selectedShift()) {
+                <button
+                  class="button duty-form-error"
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="save(true)"
+                >
+                  Cancel shift
+                </button>
+              }
+            </div>
+          </form>
+        </section>
+      </div>
+    }
+  }
+}

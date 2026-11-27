@@ -1,0 +1,164 @@
+<cv-module-design />
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/ecm">Live Visits / ECM</a><span aria-hidden="true">›</span>
+  <span>Operational Monitoring</span>
+</nav>
+<header class="page-heading">
+  <div>
+    <h1>Operational Monitoring</h1>
+    <p>
+      Review today’s visit and coverage warnings, including overnight visits that carry into today.
+    </p>
+  </div>
+  @if (allowed()) {
+    <div class="row">
+      <a class="button" routerLink="/manage/ecm/geomap">Live GeoMap</a>
+      <button class="button" type="button" [disabled]="loading()" (click)="refresh()">
+        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Refresh
+      </button>
+    </div>
+  }
+</header>
+@if (!allowed()) {
+  <p class="panel geo-message">Coordinator access to Live Visits is required.</p>
+} @else {
+  @if (error()) {
+    <p class="geo-message" role="alert">{{ error() }}</p>
+  }
+  @if (loading() && !board()) {
+    <p class="geo-message" role="status">Loading operational warnings…</p>
+  }
+  @if (board(); as data) {
+    <div class="monitor-summary" role="group" aria-label="Warning categories">
+      @for (category of summary(); track category.key) {
+        <button
+          class="panel monitor-category"
+          type="button"
+          [attr.aria-pressed]="filter() === category.key"
+          (click)="filter.set(filter() === category.key ? '' : category.key); page.set(0)"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">{{ category.icon }}</span>
+          <span
+            ><strong>{{ category.count }}</strong
+            ><span>{{ category.label }}</span></span
+          >
+        </button>
+      }
+    </div>
+    <section class="panel" aria-labelledby="monitor-warnings">
+      <div class="monitor-toolbar">
+        <div>
+          <h2 id="monitor-warnings">Warnings</h2>
+          <p>{{ results().length }} matching · Updated {{ time(data.asOf) }}</p>
+        </div>
+        <div class="row">
+          @if (filter()) {
+            <button class="button" type="button" (click)="filter.set(''); page.set(0)">
+              Clear status filter
+            </button>
+          }
+          <label
+            >Search warnings
+            <input
+              type="search"
+              placeholder="Service user, worker or warning"
+              [ngModel]="search()"
+              (ngModelChange)="search.set($event); page.set(0)"
+            />
+          </label>
+        </div>
+      </div>
+      <ul class="monitor-warnings">
+        @for (
+          row of rows();
+          track row.kind +
+            (row.visitId ?? '') +
+            (row.packageId ?? '') +
+            (row.workerId ?? '') +
+            (row.date ?? '')
+        ) {
+          <li>
+            <div>
+              <span class="monitor-kind" [class.monitor-critical]="row.kind === 'missed'">{{
+                kindLabel(row.kind)
+              }}</span>
+              <h3>{{ row.title }}</h3>
+              @if (row.clientName) {
+                <p>
+                  <strong>{{ row.clientName }}</strong>
+                  @if (row.startsAt; as start) {
+                    · {{ time(start) }}
+                  } @else if (row.date) {
+                    · {{ row.date }}
+                  }
+                </p>
+              }
+              <p>{{ row.message }}</p>
+            </div>
+            <div class="row">
+              @if (row.visitId) {
+                <a
+                  class="button"
+                  routerLink="/manage/rota/planner"
+                  [queryParams]="{ visit: row.visitId, from: row.date }"
+                  >Open visit</a
+                >
+              } @else if (row.packageId) {
+                <a
+                  class="button"
+                  routerLink="/manage/rota/call-packages"
+                  [queryParams]="{ client: row.clientId }"
+                  >Review call packages</a
+                >
+              }
+              @if (row.workerId) {
+                <a
+                  class="button"
+                  routerLink="/manage/ecm/geomap"
+                  [queryParams]="{ worker: row.workerId }"
+                  >Worker schedule</a
+                >
+              } @else if (row.clientId) {
+                <a
+                  class="button"
+                  routerLink="/manage/ecm/geomap"
+                  [queryParams]="{ client: row.clientId }"
+                  >Service-user details</a
+                >
+              }
+            </div>
+          </li>
+        } @empty {
+          <li>
+            {{
+              data.warnings.length
+                ? 'No warnings match these filters.'
+                : 'No operational warnings for the current schedule.'
+            }}
+          </li>
+        }
+      </ul>
+      @if (pages() > 1) {
+        <div class="row monitor-pages">
+          <button
+            class="button"
+            type="button"
+            [disabled]="currentPage() === 0"
+            (click)="page.set(currentPage() - 1)"
+          >
+            Previous
+          </button>
+          <span>Page {{ currentPage() + 1 }} of {{ pages() }}</span>
+          <button
+            class="button"
+            type="button"
+            [disabled]="currentPage() + 1 >= pages()"
+            (click)="page.set(currentPage() + 1)"
+          >
+            Next
+          </button>
+        </div>
+      }
+    </section>
+  }
+}

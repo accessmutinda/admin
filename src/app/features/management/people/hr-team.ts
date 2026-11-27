@@ -1,6 +1,7 @@
 import { MatSelectModule } from '@angular/material/select';
 import { CvSelect } from '../../../shared/ui/select';
 import { Component, computed, effect, untracked, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HrService } from './hr.service';
@@ -58,6 +59,9 @@ import { CompanyUnavailable } from '../shared/company-unavailable';
       <p class="hr-notice" role="status">{{ notice() }}</p>
     }
     <section class="hr-panel">
+      @if (worker()) {
+        <a class="hr-button" routerLink="/manage/leave">View leave for all staff</a>
+      }
       <div class="hr-filters">
         <label
           >Search records<input
@@ -145,21 +149,31 @@ export class HrTeam {
   protected readonly leaveApi = inject(AvailabilityLeaveApi);
   protected readonly reviewApi = inject(StaffReviewsApi);
   private readonly dialog = inject(MatDialog);
+  private readonly route = inject(ActivatedRoute);
+  private readonly params = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+  protected readonly worker = computed(() =>
+    this.mode === 'leave' ? (this.params()?.get('worker') ?? '') : '',
+  );
   protected readonly notice = signal('');
   constructor() {
     effect(() => {
       const q = this.query(),
         status = this.status(),
+        worker = this.worker(),
         api = this.mode === 'leave' ? this.leaveApi : this.reviewApi;
       api.scope();
       untracked(() => {
         this.notice.set('');
-        void api.load(q, status);
+        if (this.mode === 'leave') void this.leaveApi.load(q, status, worker);
+        else void this.reviewApi.load(q, status);
       });
     });
   }
   protected reload(): void {
-    void (this.mode === 'leave' ? this.leaveApi : this.reviewApi).load(this.query(), this.status());
+    if (this.mode === 'leave') void this.leaveApi.load(this.query(), this.status(), this.worker());
+    else void this.reviewApi.load(this.query(), this.status());
   }
   protected addReview(): void {
     this.dialog
@@ -196,7 +210,7 @@ export class HrTeam {
       });
   }
 
-  protected readonly mode = inject(ActivatedRoute).snapshot.data['section'] as string;
+  protected readonly mode = this.route.snapshot.data['section'] as string;
   protected readonly title =
     this.mode === 'leave' ? 'Availability & Leave' : 'Supervision & Appraisals';
   protected readonly statuses =

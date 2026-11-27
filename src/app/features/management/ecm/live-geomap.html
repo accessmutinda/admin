@@ -1,0 +1,238 @@
+<cv-module-design />
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/ecm">Live Visits / ECM</a><span aria-hidden="true">›</span>
+  <span>Live GeoMap</span>
+</nav>
+<header class="page-heading geo-heading">
+  <div>
+    <h1>Live GeoMap</h1>
+    <p>See service-user locations, reported care-worker positions and ECM check-ins.</p>
+  </div>
+  @if (allowed()) {
+    <a class="button" routerLink="/manage/ecm/operations">Operational Monitoring</a>
+    <a class="button" routerLink="/manage/ecm/on-duty">
+      <span class="material-symbols-outlined" aria-hidden="true">work</span>On Duty
+    </a>
+    <a class="button" routerLink="/manage/ecm/on-the-road">
+      <span class="material-symbols-outlined" aria-hidden="true">directions_car</span>On the Road
+    </a>
+    <button class="button" type="button" [disabled]="loading() || !!draft()" (click)="refresh()">
+      <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Refresh
+    </button>
+  }
+</header>
+
+@if (!allowed()) {
+  <p class="panel geo-message">Coordinator access to Live Visits is required to open the map.</p>
+} @else {
+  @if (error()) {
+    <p class="geo-message" role="alert">{{ error() }}</p>
+  }
+  @if (loading() && !snapshot()) {
+    <p class="geo-message" role="status">Loading the Live GeoMap…</p>
+  }
+  @if (snapshot(); as data) {
+    <section class="panel geo-controls" aria-label="Map filters and legend">
+      <div class="geo-filters">
+        <label>
+          Search
+          <input
+            type="search"
+            placeholder="Service user or care worker"
+            [ngModel]="search()"
+            (ngModelChange)="search.set($event)"
+            [disabled]="!!draft()"
+          />
+        </label>
+        <label>
+          Show
+          <select
+            [ngModel]="kindFilter()"
+            (ngModelChange)="kindFilter.set($event)"
+            [disabled]="!!draft()"
+          >
+            <option value="">Everyone</option>
+            <option value="service-user">Service users</option>
+            <option value="care-worker">Care workers</option>
+          </select>
+        </label>
+        <label>
+          Service-user postcode
+          <select
+            [ngModel]="postcodeFilter()"
+            (ngModelChange)="postcodeFilter.set($event)"
+            [disabled]="kindFilter() === 'care-worker' || !!draft()"
+          >
+            <option value="">All districts</option>
+            @for (district of districts(); track district) {
+              <option [value]="district">{{ district }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          Worker status
+          <select
+            [ngModel]="statusFilter()"
+            (ngModelChange)="statusFilter.set($event)"
+            [disabled]="kindFilter() === 'service-user' || !!draft()"
+          >
+            <option value="">All worker statuses</option>
+            @for (item of statuses; track item[0]) {
+              <option [value]="item[0]">{{ item[1].label }}</option>
+            }
+          </select>
+        </label>
+      </div>
+      <ul class="geo-legend" aria-label="Marker colours">
+        <li><span class="geo-swatch geo-user" aria-hidden="true"></span>Red · Service users</li>
+        <li><span class="geo-swatch geo-worker" aria-hidden="true"></span>Blue · Care workers</li>
+      </ul>
+      <ul class="geo-status-legend" aria-label="Worker status symbols">
+        @for (item of statuses; track item[0]) {
+          <li>
+            <span class="material-symbols-outlined" aria-hidden="true">{{ item[1].icon }}</span
+            >{{ item[1].label }}
+          </li>
+        }
+      </ul>
+    </section>
+    <div class="geo-workspace">
+      <section class="panel geo-map-panel" aria-label="Locations">
+        <cv-location-map
+          [locations]="pins()"
+          [selectedId]="selected()"
+          (select)="select($event)"
+          mapLabel="Service user and care worker locations"
+          emptyMessage="Select a person in the results to add their coordinates."
+        />
+        <p class="geo-meta">
+          Updated {{ time(data.asOf) }} UK · Worker positions come from reports or the saved visit
+          location during an ECM check-in.
+        </p>
+      </section>
+      <section class="panel geo-results" aria-labelledby="geo-results-title">
+        <div class="geo-results-header">
+          <h2 id="geo-results-title">Map results</h2>
+          <span>{{ visible().length }} people</span>
+        </div>
+        @if (active(); as subject) {
+          <div class="geo-details">
+            <strong>{{ subject.name }}</strong>
+            @if (state(subject); as status) {
+              <p class="geo-status">
+                <span class="material-symbols-outlined" aria-hidden="true">{{ status.icon }}</span>
+                {{ status.label
+                }}{{ subject.statusAt ? ' · ' + time(subject.statusAt) + ' UK' : '' }}
+              </p>
+            }
+            @if (visiblePosition(subject); as position) {
+              <p>{{ source(position) }} · {{ time(position.at) }} UK</p>
+            } @else {
+              <p>{{ locationLabel(subject) }}</p>
+            }
+            @if (notice()) {
+              <p role="status">{{ notice() }}</p>
+            }
+            @if (!draft() && (subject.kind === 'care-worker' || canEditUsers())) {
+              <button class="button" type="button" [disabled]="loading()" (click)="edit(subject)">
+                {{ subject.kind === 'care-worker' ? 'Update worker report' : 'Edit location' }}
+              </button>
+            }
+            @if (draft()) {
+              <form class="geo-form" (ngSubmit)="save()">
+                @if (subject.kind === 'care-worker') {
+                  <label>
+                    Reported status
+                    <select name="reportedStatus" [(ngModel)]="form.status" [disabled]="saving()">
+                      <option value="">Status unknown</option>
+                      @for (item of reportable; track item[0]) {
+                        <option [value]="item[0]">{{ item[1].label }}</option>
+                      }
+                    </select>
+                  </label>
+                }
+                @if (canEditCoordinates(subject)) {
+                  <div class="geo-coordinates">
+                    <label
+                      >Latitude
+                      <input
+                        type="number"
+                        step="any"
+                        min="-90"
+                        max="90"
+                        name="latitude"
+                        [(ngModel)]="form.latitude"
+                        [disabled]="saving()"
+                    /></label>
+                    <label
+                      >Longitude
+                      <input
+                        type="number"
+                        step="any"
+                        min="-180"
+                        max="180"
+                        name="longitude"
+                        [(ngModel)]="form.longitude"
+                        [disabled]="saving()"
+                    /></label>
+                  </div>
+                  <small>Clear both coordinates to remove a saved position.</small>
+                } @else {
+                  <small>Worker positions can be recorded during authorised working hours.</small>
+                }
+                @if (formError()) {
+                  <p class="geo-form-error" role="alert">{{ formError() }}</p>
+                }
+                <div class="row">
+                  <button class="button primary" type="submit" [disabled]="saving()">Save</button>
+                  <button
+                    class="button"
+                    type="button"
+                    [disabled]="saving()"
+                    (click)="draft.set(null)"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            }
+            @if (!draft()) {
+              <cv-operational-details
+                [subjectId]="subject.id"
+                [kind]="subject.kind === 'care-worker' ? 'care-workers' : 'service-users'"
+              />
+            }
+          </div>
+        }
+        <ul class="geo-people">
+          @for (subject of visible(); track key(subject)) {
+            <li>
+              <button
+                type="button"
+                [attr.aria-pressed]="selected() === key(subject)"
+                [disabled]="!!draft()"
+                (click)="select(key(subject))"
+              >
+                <span
+                  class="geo-swatch"
+                  [class.geo-user]="subject.kind === 'service-user'"
+                  [class.geo-worker]="subject.kind === 'care-worker'"
+                  aria-hidden="true"
+                ></span>
+                <span>
+                  <strong>{{ subject.name }}</strong>
+                  <small
+                    >{{ state(subject)?.label ?? 'Service user'
+                    }}{{ visiblePosition(subject) ? '' : ' · ' + locationLabel(subject) }}</small
+                  >
+                </span>
+              </button>
+            </li>
+          } @empty {
+            <li class="geo-message">No people match these filters.</li>
+          }
+        </ul>
+      </section>
+    </div>
+  }
+}

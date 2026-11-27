@@ -502,6 +502,30 @@ export const routes: Routes = [
           import('./features/management/care/care.routes').then((m) => m.CARE_ROUTES),
       },
       {
+        path: 'ecm/operations',
+        data: { module: 'Care delivery' },
+        title: 'Operational Monitoring · CareVerity',
+        loadComponent: () => import('./features/management/ecm/operational-monitoring').then((m) => m.OperationalMonitoring),
+      },
+      {
+        path: 'ecm/on-duty',
+        data: { module: 'Care delivery' },
+        title: 'On Duty · CareVerity',
+        loadComponent: () => import('./features/management/ecm/on-duty').then((m) => m.OnDuty),
+      },
+      {
+        path: 'ecm/on-the-road',
+        data: { module: 'Care delivery' },
+        title: 'On the Road · CareVerity',
+        loadComponent: () => import('./features/management/ecm/on-the-road').then((m) => m.OnTheRoad),
+      },
+      {
+        path: 'ecm/geomap',
+        data: { module: 'Care delivery' },
+        title: 'Live GeoMap · CareVerity',
+        loadComponent: () => import('./features/management/ecm/live-geomap').then((m) => m.LiveGeoMap),
+      },
+      {
         path: 'ecm/workflows',
         providers: ECM_PROVIDERS,
         data: { module: 'Care delivery' },

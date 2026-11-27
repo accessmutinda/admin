@@ -1,0 +1,73 @@
+.monitor-page .page-heading,
+.monitor-page .row {
+  flex-wrap: wrap;
+}
+.monitor-page .monitor-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin-bottom: 16px;
+  gap: 10px;
+}
+.monitor-page .monitor-category {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 14px;
+  text-align: left;
+  color: #204a78;
+  cursor: pointer;
+  font: inherit;
+}
+.monitor-page .monitor-category[aria-pressed='true'] {
+  border-color: #2564ad;
+  background: #eaf3ff;
+}
+.monitor-page .monitor-category strong,
+.monitor-page .monitor-category span span {
+  display: block;
+}
+.monitor-page .monitor-category strong {
+  font-size: 1.35rem;
+}
+.monitor-page .monitor-toolbar,
+.monitor-page .monitor-warnings > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.monitor-page .monitor-toolbar h2,
+.monitor-page .monitor-warnings h3 {
+  margin: 3px 0;
+  font-size: 1.05rem;
+}
+.monitor-page .monitor-toolbar p,
+.monitor-page .monitor-warnings p {
+  margin: 4px 0 0;
+  color: #455d75;
+}
+.monitor-page .monitor-warnings {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.monitor-page .monitor-warnings > li {
+  border-top: 1px solid var(--geo-line);
+}
+.monitor-page .monitor-kind {
+  display: inline-block;
+  border-radius: 5px;
+  padding: 3px 7px;
+  background: #fff2d6;
+  color: #73430b;
+}
+.monitor-page .monitor-critical {
+  background: #fbe6e9;
+  color: #9a2637;
+}
+.monitor-page .monitor-pages {
+  padding: 12px 16px;
+  justify-content: flex-end;
+}

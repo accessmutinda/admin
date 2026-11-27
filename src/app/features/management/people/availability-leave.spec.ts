@@ -97,6 +97,13 @@ describe('Connected availability and leave', () => {
       ),
     ).not.toBeNull();
   });
+  it('opens holiday management for the exact worker from GeoMap', async () => {
+    const harness = await RouterTestingHarness.create('/manage/leave?worker=staff-1');
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(request.mock.calls[0][0]).toContain('staff_id=staff-1');
+    expect(harness.routeNativeElement?.textContent).toContain('View leave for all staff');
+  });
   it('opens an accessible popup and sends real draft and submit commands', async () => {
     request.mockImplementation((path: string) => {
       if (path.includes('/hr/leave-options'))

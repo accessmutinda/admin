@@ -1,0 +1,107 @@
+.road-page .road-actions,
+.road-page .road-board-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.road-page .road-board,
+.road-page .road-map {
+  margin-bottom: 16px;
+}
+.road-page .road-board-heading {
+  padding: 14px 16px;
+}
+.road-page .road-board-heading h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.road-page .road-board-heading p {
+  margin: 4px 0 0;
+  color: #475c72;
+}
+.road-page .road-board-heading label {
+  min-width: min(100%, 240px);
+}
+.road-page .road-table-scroll {
+  overflow: auto;
+}
+.road-page table {
+  width: 100%;
+  min-width: 750px;
+  border-collapse: collapse;
+}
+.road-page th,
+.road-page td {
+  text-align: left;
+  padding: 12px 14px;
+  border-top: 1px solid #dbe5ef;
+  vertical-align: top;
+}
+.road-page thead th {
+  background: #f2f7fb;
+  color: #254565;
+}
+.road-page .road-selected {
+  background: #f3f8ff;
+}
+.road-page table small {
+  display: block;
+  margin: 3px 0;
+  color: #475c72;
+}
+.road-page table select {
+  min-width: 142px;
+}
+.road-page .road-worker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #18569b;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.road-page .road-unavailable {
+  color: #475c72;
+}
+.road-page .road-delay {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: #eef4f9;
+  color: #254565;
+}
+.road-page .road-delay-alert {
+  background: #fff1ce;
+  color: #713c08;
+}
+.road-page .road-notice {
+  background: #edf5fc;
+  margin: 0;
+  padding: 8px 16px;
+}
+.road-page .road-pages {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 16px;
+}
+.road-page .road-map {
+  padding: 0 16px 12px;
+}
+.road-page .road-map .road-board-heading {
+  padding: 14px 0;
+}
+.road-page .road-map .loc-map {
+  height: clamp(340px, 52vh, 630px);
+}
+.road-page .road-map .road-origin-alert {
+  color: #713c08;
+}

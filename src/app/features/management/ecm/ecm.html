@@ -28,6 +28,20 @@
             <span class="material-symbols-outlined" aria-hidden="true">connected_tv</span>Wallboard
           </button>
           @if (service.rota.can('manage')) {
+            @if (api) {
+              <a class="button" routerLink="/manage/ecm/geomap">
+                <span class="material-symbols-outlined" aria-hidden="true">map</span>Live GeoMap
+              </a>
+              <a class="button" routerLink="/manage/ecm/operations">
+                <span class="material-symbols-outlined" aria-hidden="true">monitor_heart</span>Operational Monitoring
+              </a>
+              <a class="button" routerLink="/manage/ecm/on-the-road">
+                <span class="material-symbols-outlined" aria-hidden="true">directions_car</span>On the Road
+              </a>
+              <a class="button" routerLink="/manage/ecm/on-duty">
+                <span class="material-symbols-outlined" aria-hidden="true">work</span>On Duty
+              </a>
+            }
             <button
               class="button"
               [disabled]="!!api && (api.loading() || !api.loadedAt())"

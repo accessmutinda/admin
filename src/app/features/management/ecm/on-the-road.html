@@ -1,0 +1,227 @@
+<cv-module-design />
+<nav class="co-breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/manage/ecm">Live Visits / ECM</a><span aria-hidden="true">›</span>
+  <span>On the Road</span>
+</nav>
+<header class="page-heading geo-heading">
+  <div>
+    <h1>On the Road</h1>
+    <p>Follow travelling care workers and check whether they can reach their next visit on time.</p>
+  </div>
+  @if (allowed()) {
+    <div class="row road-actions">
+      <a class="button" routerLink="/manage/ecm/on-duty">On Duty</a>
+      <a class="button" routerLink="/manage/ecm/geomap">
+        <span class="material-symbols-outlined" aria-hidden="true">map</span>Live GeoMap
+      </a>
+      <button
+        class="button"
+        type="button"
+        [disabled]="loading() || !!savingId()"
+        (click)="refresh()"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>Refresh
+      </button>
+    </div>
+  }
+</header>
+
+@if (!allowed()) {
+  <p class="panel geo-message">Coordinator access to Live Visits is required.</p>
+} @else {
+  @if (error()) {
+    <p class="geo-message" role="alert">{{ error() }}</p>
+  }
+  @if (modeError()) {
+    <p class="geo-message" role="alert">{{ modeError() }}</p>
+  }
+  @if (loading() && !data()) {
+    <p class="geo-message" role="status">Loading journeys…</p>
+  }
+  @if (data(); as snapshot) {
+    <section class="panel road-board" aria-labelledby="road-journeys-title">
+      <div class="road-board-heading">
+        <div>
+          <h2 id="road-journeys-title">Travelling care workers</h2>
+          <p>{{ snapshot.journeys.length }} travelling · Updated {{ time(snapshot.asOf) }}</p>
+        </div>
+        <label>
+          Search journeys
+          <input
+            type="search"
+            placeholder="Care worker or service user"
+            [ngModel]="search()"
+            (ngModelChange)="setSearch($event)"
+          />
+        </label>
+      </div>
+      @if (snapshot.journeys.length && !snapshot.routingAvailable) {
+        <p class="road-notice" role="status">
+          Journey details are available. A routing service is required to calculate ETAs and
+          distances.
+        </p>
+      }
+      @if (rows().length) {
+        <div
+          class="road-table-scroll"
+          tabindex="0"
+          role="region"
+          aria-label="Travelling care workers table"
+        >
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Care worker</th>
+                <th scope="col">Current journey</th>
+                <th scope="col">Travel mode</th>
+                <th scope="col">ETA and distance</th>
+                <th scope="col">Delay</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (journey of rows(); track journey.workerId) {
+                @let routeEstimate = estimate(journey);
+                <tr [class.road-selected]="active()?.workerId === journey.workerId">
+                  <th scope="row">
+                    <button
+                      class="road-worker"
+                      type="button"
+                      [attr.aria-pressed]="active()?.workerId === journey.workerId"
+                      (click)="selected.set(journey.workerId)"
+                    >
+                      <span class="geo-swatch geo-worker" aria-hidden="true"></span
+                      >{{ journey.workerName }}
+                    </button>
+                    <small>Travelling reported {{ time(journey.travellingReportedAt) }}</small>
+                  </th>
+                  <td>
+                    <small
+                      >Previous · {{ journey.previousVisit?.serviceUser ?? 'Unavailable' }}</small
+                    >
+                    @if (journey.nextVisit; as visit) {
+                      <strong>{{ visit.serviceUser }}</strong>
+                      <small>{{ visit.callName }} · Scheduled {{ time(visit.startsAt) }}</small>
+                    } @else {
+                      <strong>No upcoming published visit</strong>
+                    }
+                  </td>
+                  <td>
+                    <select
+                      [attr.aria-label]="'Travel mode for ' + journey.workerName"
+                      [ngModel]="
+                        savingId() === journey.workerId ? pendingMode() : journey.travelMode
+                      "
+                      (ngModelChange)="changeMode(journey, $event)"
+                      [disabled]="!!savingId() || loading()"
+                    >
+                      <option value="">Choose mode</option>
+                      @for (mode of modes; track mode.value) {
+                        <option [value]="mode.value">{{ mode.label }}</option>
+                      }
+                    </select>
+                  </td>
+                  <td>
+                    @if (routeEstimate?.state === 'estimated') {
+                      <strong>{{ time(routeEstimate!.arrivalAt) }}</strong>
+                      <small>{{ (routeEstimate!.distanceMeters / 1000).toFixed(1) }} km</small>
+                    } @else {
+                      <span class="road-unavailable">{{ estimateMessage(journey) }}</span>
+                    }
+                  </td>
+                  <td>
+                    <span
+                      class="road-delay"
+                      [class.road-delay-alert]="
+                        journey.startPassed ||
+                        (routeEstimate?.state === 'estimated' && routeEstimate!.lateMinutes)
+                      "
+                    >
+                      {{ delay(journey) }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (pages() > 1) {
+          <div class="road-pages">
+            <button
+              class="button"
+              type="button"
+              [disabled]="currentPage() === 0"
+              (click)="page.set(currentPage() - 1)"
+            >
+              Previous
+            </button>
+            <span>Page {{ currentPage() + 1 }} of {{ pages() }}</span>
+            <button
+              class="button"
+              type="button"
+              [disabled]="currentPage() + 1 >= pages()"
+              (click)="page.set(currentPage() + 1)"
+            >
+              Next
+            </button>
+          </div>
+        }
+      } @else {
+        <p class="geo-message">
+          {{
+            snapshot.journeys.length
+              ? 'No journeys match this search.'
+              : 'No care workers are currently reported as travelling.'
+          }}
+        </p>
+      }
+    </section>
+
+    @if (active(); as journey) {
+      <section class="panel road-map" aria-labelledby="road-map-title">
+        <div class="road-board-heading">
+          <div>
+            <h2 id="road-map-title">{{ journey.workerName }}’s journey</h2>
+            @if (visibleOrigin(journey); as origin) {
+              <p>
+                {{
+                  origin.source === 'visit'
+                    ? 'Estimate starts from the last checked-out visit'
+                    : 'Estimate starts from the last reported position'
+                }}
+                · {{ time(origin.at) }}
+              </p>
+            } @else {
+              <p class="road-origin-alert">{{ locationMessage(journey) }}</p>
+            }
+          </div>
+          <a
+            class="button"
+            routerLink="/manage/ecm/geomap"
+            [queryParams]="{ worker: journey.workerId }"
+            >Update in GeoMap</a
+          >
+        </div>
+        <cv-location-map
+          [locations]="pins()"
+          [route]="route()"
+          mapLabel="Selected care worker journey"
+          emptyMessage="Add coordinates for the worker or visit in Live GeoMap."
+        />
+        <ul class="geo-legend" aria-label="Journey marker colours">
+          <li><span class="geo-swatch geo-user" aria-hidden="true"></span>Service-user visit</li>
+          <li>
+            <span class="geo-swatch geo-worker" aria-hidden="true"></span>Care-worker journey origin
+          </li>
+        </ul>
+        @if (estimate(journey); as result) {
+          @if (result.state === 'estimated') {
+            <p class="geo-meta">
+              Route calculated {{ time(result.calculatedAt) }} · Estimated journey time
+              {{ (result.durationSeconds / 60).toFixed(0) }} min
+            </p>
+          }
+        }
+      </section>
+    }
+  }
+}

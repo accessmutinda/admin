@@ -15,6 +15,14 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import * as L from 'leaflet';
 import { ServiceLocation, hasCoordinates } from './locations.models';
 
+export type MapLocation = Pick<ServiceLocation, 'id' | 'name' | 'latitude' | 'longitude'> & {
+  kind?: 'service-user' | 'care-worker';
+  badge?: string;
+  label?: string;
+  offset?: readonly [number, number];
+};
+export type MapPoint = readonly [number, number];
+
 export const LOCATION_MAP_TILES = new InjectionToken('Location map tiles', {
   providedIn: 'root',
   factory: () => ({
@@ -32,14 +40,13 @@ export const LOCATION_MAP_TILES = new InjectionToken('Location map tiles', {
         #canvas
         class="loc-map-canvas"
         role="region"
-        aria-label="Service locations map"
+        [attr.aria-label]="mapLabel()"
         [hidden]="!mapped().length"
       ></div>
       @if (!mapped().length) {
         <div class="loc-map-empty">
           <span class="material-symbols-outlined" aria-hidden="true">map</span
-          ><strong>No coordinates recorded</strong
-          ><span>Add latitude and longitude to show locations here.</span>
+          ><strong>No coordinates recorded</strong><span>{{ emptyMessage() }}</span>
         </div>
       }
     </div>
@@ -51,7 +58,10 @@ export const LOCATION_MAP_TILES = new InjectionToken('Location map tiles', {
     </p>`,
 })
 export class LocationMap {
-  readonly locations = input.required<ServiceLocation[]>();
+  readonly locations = input.required<MapLocation[]>();
+  readonly route = input<readonly MapPoint[]>([]);
+  readonly mapLabel = input('Service locations map');
+  readonly emptyMessage = input('Add latitude and longitude to show locations here.');
   readonly selectedId = input<string>();
   readonly select = output<string>();
   protected readonly mapped = computed(() => this.locations().filter(hasCoordinates));
@@ -61,14 +71,19 @@ export class LocationMap {
   private map?: L.Map;
   private observer?: ResizeObserver;
   private markers = new Map<string, L.Marker>();
+  private routeLine?: L.Polyline;
   private extent = '';
 
   constructor() {
-    afterRenderEffect(() => this.renderMap(this.mapped(), this.selectedId()));
+    afterRenderEffect(() => this.renderMap(this.mapped(), this.selectedId(), this.route()));
     inject(DestroyRef).onDestroy(() => this.removeMap());
   }
 
-  private renderMap(locations: ServiceLocation[], selectedId: string | undefined): void {
+  private renderMap(
+    locations: MapLocation[],
+    selectedId: string | undefined,
+    route: readonly MapPoint[],
+  ): void {
     if (!locations.length) {
       this.removeMap();
       this.tilesUnavailable.set(false);
@@ -95,6 +110,16 @@ export class LocationMap {
       }
     }
     const map = this.map;
+    const routePoints = route.map(([latitude, longitude]) => L.latLng(latitude, longitude));
+    if (routePoints.length > 1) {
+      this.routeLine ??= L.polyline([], { color: '#26467a', weight: 5, interactive: false }).addTo(
+        map,
+      );
+      this.routeLine.setLatLngs(routePoints);
+    } else {
+      this.routeLine?.remove();
+      this.routeLine = undefined;
+    }
     const ids = new Set(locations.map((location) => location.id));
     for (const [id, marker] of this.markers) {
       if (!ids.has(id)) {
@@ -104,12 +129,32 @@ export class LocationMap {
     }
     for (const location of locations) {
       const selected = location.id === selectedId;
+      const [x, y] = location.offset ?? [0, 0];
+      const pin = document.createElement('div');
+      const symbol = document.createElement('span');
+      symbol.className = 'material-symbols-outlined loc-map-marker-symbol';
+      symbol.setAttribute('aria-hidden', 'true');
+      symbol.textContent = 'location_on';
+      if (location.badge) {
+        const badge = document.createElement('span');
+        badge.className = 'material-symbols-outlined loc-map-marker-badge';
+        badge.setAttribute('aria-hidden', 'true');
+        badge.textContent = location.badge;
+        pin.append(symbol, badge);
+      } else pin.append(symbol);
+      const label = location.label ?? location.name;
       const icon = L.divIcon({
-        className: 'loc-map-pin' + (selected ? ' loc-map-selected' : ''),
-        html: '<span class="material-symbols-outlined" aria-hidden="true">location_on</span>',
+        className: [
+          'loc-map-pin',
+          location.kind && 'loc-map-' + location.kind,
+          selected && 'loc-map-selected',
+        ]
+          .filter(Boolean)
+          .join(' '),
+        html: pin.childNodes.length === 1 ? symbol : pin,
         iconSize: [36, 36],
-        iconAnchor: [18, 30],
-        tooltipAnchor: [0, -26],
+        iconAnchor: [18 - x, 30 - y],
+        tooltipAnchor: [x, y - 26],
       });
       let marker = this.markers.get(location.id);
       if (!marker) {
@@ -130,20 +175,22 @@ export class LocationMap {
             this.select.emit(location.id);
           }
         };
-      element?.setAttribute('aria-label', 'Select ' + location.name);
+      element?.setAttribute('aria-label', 'Select ' + label);
       element?.setAttribute('aria-pressed', String(selected));
-      element?.setAttribute('title', location.name);
+      element?.setAttribute('title', label);
       const tooltip = document.createElement('span');
-      tooltip.textContent = location.name;
+      tooltip.textContent = label;
       if (marker.getTooltip()) marker.setTooltipContent(tooltip);
       else marker.bindTooltip(tooltip);
     }
-    const extent = JSON.stringify(
+    const extent = JSON.stringify([
       locations.map((row) => [row.id, row.latitude, row.longitude]).sort(),
-    );
+      route,
+    ]);
     if (extent !== this.extent) {
       map.invalidateSize({ pan: false });
-      map.fitBounds(L.latLngBounds(locations.map((row) => [row.latitude!, row.longitude!])), {
+      const points = locations.map((row) => L.latLng(row.latitude!, row.longitude!));
+      map.fitBounds(L.latLngBounds(points.concat(routePoints)), {
         padding: [32, 32],
         maxZoom: 15,
         animate: false,
@@ -157,6 +204,7 @@ export class LocationMap {
     this.observer = undefined;
     this.map?.remove();
     this.map = undefined;
+    this.routeLine = undefined;
     this.markers.clear();
     this.extent = '';
   }
