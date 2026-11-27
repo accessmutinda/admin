@@ -101,7 +101,8 @@
           [selectedId]="selected()"
           (select)="select($event)"
           mapLabel="Service user and care worker locations"
-          emptyMessage="Select a person in the results to add their coordinates."
+          [emptyTitle]="emptyMap().title"
+          [emptyMessage]="emptyMap().message"
         />
         <p class="geo-meta">
           Updated {{ time(data.asOf) }} UK · Worker positions come from reports or the saved visit

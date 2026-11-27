@@ -48,9 +48,11 @@ describe('Live GeoMap', () => {
   };
   let request: ReturnType<typeof vi.fn>;
   let permitted = signal(true);
+  let canEditServiceUsers = signal(true);
 
   beforeEach(() => {
     permitted = signal(true);
+    canEditServiceUsers = signal(true);
     request = vi.fn(async () => ({
       company_id: 'north',
       asOf: at,
@@ -68,7 +70,11 @@ describe('Live GeoMap', () => {
             allowed: permitted,
             companyId: signal('north'),
             scope: signal('north:actor'),
-            access: { can: () => permitted() },
+            access: {
+              can: (_module: string, submodule: string, action: string) =>
+                permitted() &&
+                (submodule !== 'records' || action !== 'edit' || canEditServiceUsers()),
+            },
           },
         },
       ],
@@ -91,6 +97,9 @@ describe('Live GeoMap', () => {
     expect(serviceUser.getAttribute('aria-label')).toContain('Service user A');
     expect(carer.getAttribute('aria-label')).toContain('Checked in');
     expect(carer.querySelector('.loc-map-marker-badge')?.textContent).toBe('check');
+    const palette = getComputedStyle(element);
+    expect(palette.getPropertyValue('--geo-worker').trim()).toBe('#165ac5');
+    expect(palette.getPropertyValue('--geo-user').trim()).toBe('#c52234');
     expect(carer.style.marginTop).not.toBe(serviceUser.style.marginTop);
     expect(element.textContent).toContain('On break · Coordinates unavailable');
     carer.click();
@@ -223,6 +232,94 @@ describe('Live GeoMap', () => {
       'Service user B',
     );
     expect(element.querySelector('.loc-map-care-worker')).not.toBeNull();
+  });
+
+  async function showResults(subjects: object[], kind: string, search = '') {
+    request.mockResolvedValueOnce({ company_id: 'north', asOf: at, subjects });
+    const fixture = await open();
+    (fixture.componentInstance as any).kindFilter.set(kind);
+    (fixture.componentInstance as any).search.set(search);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function emptyState(element: HTMLElement) {
+    return element.querySelector('.loc-map-empty')!.textContent!;
+  }
+
+  it('explains the working hours restriction for all filtered workers and offers no coordinate editing', async () => {
+    const restricted = {
+      ...worker,
+      status: 'off-duty',
+      reportedStatus: 'off-duty',
+      position: null,
+      positionExpiresAt: null,
+      canReportPosition: false,
+      workingWindowEndsAt: null,
+      locationState: 'outside-working-hours',
+    };
+    const fixture = await showResults(
+      [
+        { ...client, position: null },
+        restricted,
+        { ...restricted, id: 'second', name: 'Care worker B' },
+      ],
+      'care-worker',
+    );
+    const element = fixture.nativeElement as HTMLElement;
+    expect(emptyState(element)).toContain(
+      'Worker locations are restricted to authorised working hours',
+    );
+    expect(emptyState(element)).not.toContain('coordinates');
+    expect(element.querySelector('.loc-map-care-worker')).toBeNull();
+
+    (fixture.componentInstance as any).select('care-worker:worker');
+    fixture.detectChanges();
+    (fixture.componentInstance as any).edit(restricted);
+    fixture.detectChanges();
+    expect(element.querySelector('input[name="latitude"]')).toBeNull();
+    expect(element.querySelector('input[name="longitude"]')).toBeNull();
+  });
+
+  it('explains stale reports and only suggests updates when the worker can edit their position', async () => {
+    const stale = { ...worker, positionExpiresAt: at };
+    const fixture = await showResults([stale], 'care-worker');
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('.loc-map-care-worker')).toBeNull();
+    expect(emptyState(element)).toContain('Locations are outdated');
+    expect(emptyState(element)).toContain('Update worker report');
+  });
+
+  it('offers coordinate entry for a missing editable service-user position', async () => {
+    const fixture = await showResults(
+      [{ ...client, position: null, savedPosition: null }],
+      'service-user',
+    );
+    expect(emptyState(fixture.nativeElement)).toContain('locations are unavailable');
+    expect(emptyState(fixture.nativeElement)).toContain('choose Edit location to add coordinates');
+  });
+
+  it('explains a missing service-user position without offering coordinate entry to a read-only user', async () => {
+    canEditServiceUsers.set(false);
+    const fixture = await showResults(
+      [{ ...client, position: null, savedPosition: null }],
+      'service-user',
+    );
+    const element = fixture.nativeElement as HTMLElement;
+    expect(emptyState(element)).toContain('locations are unavailable');
+    expect(emptyState(element)).not.toContain('Edit location');
+    (fixture.componentInstance as any).select('service-user:client');
+    fixture.detectChanges();
+    expect(element.querySelector('.geo-details')?.textContent).not.toContain('Edit location');
+  });
+
+  it('suggests changing the filters when no results match', async () => {
+    const fixture = await showResults([client, worker], 'care-worker', 'no matching name');
+    expect(emptyState(fixture.nativeElement)).toContain('No people match these filters');
+    expect(emptyState(fixture.nativeElement)).toContain('Change the filters or search');
+    expect(emptyState(fixture.nativeElement)).not.toContain('coordinates');
   });
 
   it('records a status update without resaving position data', async () => {

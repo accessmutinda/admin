@@ -46,7 +46,8 @@ export const LOCATION_MAP_TILES = new InjectionToken('Location map tiles', {
       @if (!mapped().length) {
         <div class="loc-map-empty">
           <span class="material-symbols-outlined" aria-hidden="true">map</span
-          ><strong>No coordinates recorded</strong><span>{{ emptyMessage() }}</span>
+          ><strong>{{ emptyTitle() }}</strong
+          ><span>{{ emptyMessage() }}</span>
         </div>
       }
     </div>
@@ -61,6 +62,7 @@ export class LocationMap {
   readonly locations = input.required<MapLocation[]>();
   readonly route = input<readonly MapPoint[]>([]);
   readonly mapLabel = input('Service locations map');
+  readonly emptyTitle = input('No coordinates recorded');
   readonly emptyMessage = input('Add latitude and longitude to show locations here.');
   readonly selectedId = input<string>();
   readonly select = output<string>();

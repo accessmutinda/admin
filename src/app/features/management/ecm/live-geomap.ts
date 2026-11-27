@@ -127,6 +127,51 @@ export class LiveGeoMap {
         subject.name.toLocaleLowerCase().includes(query),
     );
   });
+  protected readonly emptyMap = computed(() => {
+    const results = this.visible();
+    if (!results.length) {
+      return {
+        title: 'No people match these filters',
+        message: 'Change the filters or search to see more results.',
+      };
+    }
+
+    const states = new Set(results.map((subject) => this.locationIssue(subject)));
+    const reasons = [];
+    if (states.has('restricted')) {
+      reasons.push('Worker locations are restricted to authorised working hours.');
+    }
+    if (states.has('outdated'))
+      reasons.push('Outdated locations are hidden until a fresh position is available.');
+    if (states.has('unavailable')) reasons.push('Some locations are unavailable.');
+    if (states.has('updates-unavailable')) reasons.push('Live location updates are unavailable.');
+
+    const canEditWorker = results.some(
+      (subject) => subject.kind === 'care-worker' && this.canEditPosition(subject),
+    );
+    const canEditUser = results.some(
+      (subject) => subject.kind === 'service-user' && this.canEditPosition(subject),
+    );
+    if (canEditWorker && canEditUser) {
+      reasons.push('Select an editable result to add or update its coordinates.');
+    } else if (canEditWorker) {
+      reasons.push(
+        'Select a worker whose location can be edited and choose Update worker report to add or update coordinates.',
+      );
+    } else if (canEditUser) {
+      reasons.push(
+        'Select a service user in the results and choose Edit location to add coordinates.',
+      );
+    }
+
+    const title =
+      states.size === 1 && states.has('restricted')
+        ? 'Worker locations are restricted'
+        : states.size === 1 && states.has('outdated')
+          ? 'Locations are outdated'
+          : 'No locations to show';
+    return { title, message: reasons.join(' ') };
+  });
   protected readonly active = computed(() =>
     this.visible().find((s) => this.key(s) === this.selected()),
   );
@@ -223,25 +268,37 @@ export class LiveGeoMap {
       : null;
   }
   protected locationLabel(subject: GeoSubject): string {
-    if (
-      subject.kind === 'care-worker' &&
-      (subject.locationState === 'outside-working-hours' ||
-        (subject.workingWindowEndsAt && !this.clock.before(subject.workingWindowEndsAt)))
-    )
-      return 'Location restricted to authorised working hours';
-    if (subject.kind === 'care-worker' && !this.clock.fresh())
-      return 'Location updates unavailable';
-    if (subject.locationState === 'outdated' || subject.position) return 'Location outdated';
-    return 'Coordinates unavailable';
+    return {
+      restricted: 'Location restricted to authorised working hours',
+      'updates-unavailable': 'Location updates unavailable',
+      outdated: 'Location outdated',
+      unavailable: 'Coordinates unavailable',
+    }[this.locationIssue(subject)];
+  }
+  private locationIssue(subject: GeoSubject) {
+    if (subject.kind === 'care-worker') {
+      if (
+        subject.locationState === 'outside-working-hours' ||
+        (subject.workingWindowEndsAt && !this.clock.before(subject.workingWindowEndsAt))
+      ) {
+        return 'restricted';
+      }
+      if (!this.clock.fresh()) return 'updates-unavailable';
+    }
+    return subject.locationState === 'outdated' || subject.position ? 'outdated' : 'unavailable';
   }
   protected canEditCoordinates(subject: GeoSubject): boolean {
-    if (subject.kind === 'service-user') return this.canEditUsers();
     const current = this.snapshot()?.subjects.find((row) => this.key(row) === this.key(subject));
+    return !!current && this.canEditPosition(current, this.form.status);
+  }
+  private canEditPosition(subject: GeoSubject, status = subject.reportedStatus): boolean {
+    if (!this.allowed()) return false;
+    if (subject.kind === 'service-user') return this.canEditUsers();
     return (
       this.clock.fresh() &&
-      !!current?.canReportPosition &&
-      this.clock.before(current.workingWindowEndsAt) &&
-      !['on-break', 'off-duty'].includes(this.form.status)
+      subject.canReportPosition &&
+      this.clock.before(subject.workingWindowEndsAt) &&
+      !['on-break', 'off-duty'].includes(status)
     );
   }
   protected time(instant: string): string {
