@@ -1114,26 +1114,30 @@ export class VisitPlanner {
   }
   protected async save(): Promise<void> {
     if (this.service.saving() || this.preparing() || this.service.candidateLoading()) return;
+    const action = this.modal();
     if (
-      !this.service.can(this.modal() === 'plan' ? 'create' : 'edit') ||
-      !['plan', 'visit', 'bulk', 'auto'].includes(this.modal())
+      !this.service.can(action === 'plan' ? 'create' : 'edit') ||
+      !['plan', 'visit', 'bulk', 'auto'].includes(action)
     )
       return;
-    if (['auto', 'bulk'].includes(this.modal()) && !this.plans.length) return;
+    if (['auto', 'bulk'].includes(action) && !this.plans.length) return;
     const scope = this.service.scope();
+    const generation = this.editorGeneration;
+    this.error.set('');
+    this.notice.set('');
     if (this.sourceId !== this.clientId()) {
       this.error.set('Selected service user changed. Reopen the planner.');
       return;
     }
     let error: string | null = null;
-    if (this.modal() === 'visit')
+    if (action === 'visit')
       error = await this.service.updateVisit(
         this.draft!,
         this.workspace,
         this.original,
         this.reason,
       );
-    else if (this.modal() === 'plan') {
+    else if (action === 'plan') {
       if (this.workspace !== this.store.companyId()) {
         this.error.set('Workspace changed. Reopen the planner.');
         return;
@@ -1160,15 +1164,16 @@ export class VisitPlanner {
         this.plan.allocation,
       );
     } else {
-      if (this.modal() === 'bulk')
+      if (action === 'bulk')
         this.plans = this.plans.map((p) => ({ ...p, staffIds: [...this.bulkStaff] }));
       error = await this.service.bulkAllocate(this.plans, this.workspace, this.reason);
     }
-    if (scope !== this.service.scope()) return;
+    if (scope !== this.service.scope() || generation !== this.editorGeneration) return;
     if (error) {
       this.error.set(error);
       return;
     }
+    this.error.set('');
     this.modal.set('');
     this.selected.set([]);
     this.notice.set('Visit allocations saved. Drafts require publishing before delivery.');

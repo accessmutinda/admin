@@ -350,6 +350,79 @@ describe('Visits overview source integration', () => {
     expect(component.plans).toEqual([]);
     expect(component.preparing()).toBe(false);
   });
+  it('clears the rejected plan alert after retrying successfully in the same modal', async () => {
+    const rejected = 'One carer is unavailable and another has no recorded availability.';
+    const saved = 'Visit allocations saved. Drafts require publishing before delivery.';
+    const newDrafts = ['2026-11-11', '2026-11-12'].map((date, index) => ({
+      ...rosterVisit(),
+      id: 'lunch-' + index,
+      date,
+      start: '12:40',
+      end: '13:10',
+      callName: 'Lunch care',
+      carers: 2,
+      staffIds: ['first', 'second'],
+    }));
+    workspace.calls = [{ ...workspace.calls[0], name: 'Lunch care', carers: 2 }];
+    let attempts = 0;
+    request.mockImplementation(async (path: string, _body?: unknown, method?: string) => {
+      if (path.endsWith('/generate') && method === 'POST') {
+        if (++attempts === 1) throw new Error(rejected);
+        workspace.visits.push(...newDrafts);
+        workspace.matching_visit_ids.push(...newDrafts.map((draft) => draft.id));
+        return { company_id: 'north', ids: newDrafts.map((draft) => draft.id) };
+      }
+      return structuredClone(workspace);
+    });
+    const fixture = await openOverview();
+    const element = fixture.nativeElement as HTMLElement;
+    const component = fixture.componentInstance as any;
+    component.create();
+    const plan = {
+      clientId: 'client',
+      callIds: ['call'],
+      from: '2026-11-11',
+      to: '2026-11-12',
+      staffIds: ['first', 'second'],
+      allocation: 'Regular',
+    };
+    component.plan = structuredClone(plan);
+    await settle(fixture);
+    const modal = element.querySelector('[role="dialog"]')!;
+    const modalChanges = vi.spyOn(component.modal, 'set');
+    await component.save();
+    await settle(fixture);
+
+    expect(element.querySelector('[role="dialog"]')).toBe(modal);
+    expect(modal.querySelector('[role="alert"]')?.textContent).toContain(rejected);
+    expect(component.plan).toEqual(plan);
+    expect(modal.querySelector<HTMLInputElement>('input[name="to"]')?.value).toBe(plan.to);
+    expect(component.visits().map((visit: { id: string }) => visit.id)).toEqual(['visit']);
+    expect(modalChanges).not.toHaveBeenCalled();
+
+    await component.save();
+    await settle(fixture);
+    expect(element.querySelector('[role="dialog"]')).toBeNull();
+    expect(modalChanges).toHaveBeenCalledExactlyOnceWith('');
+    expect(element.textContent).not.toContain(rejected);
+    expect(
+      [...element.querySelectorAll('[role="status"]')].filter(
+        (item) => item.textContent?.trim() === saved,
+      ),
+    ).toHaveLength(1);
+    expect(component.visits().map((visit: { id: string }) => visit.id)).toEqual([
+      'visit',
+      'lunch-0',
+      'lunch-1',
+    ]);
+    const writes = request.mock.calls.filter(
+      ([path, , method]) => path.endsWith('/generate') && method === 'POST',
+    );
+    expect(writes).toHaveLength(2);
+    expect(writes[1]).toEqual(writes[0]);
+    expect(writes[1][3]['Idempotency-Key']).toEqual(expect.any(String));
+  });
+
   it('keeps the newest visit editor when detail responses arrive out of order', async () => {
     const fixture = await openOverview(),
       component = fixture.componentInstance as any;
