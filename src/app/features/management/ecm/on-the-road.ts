@@ -22,9 +22,8 @@ import { locationClock } from './location-clock';
 const travelModes = [
   { value: 'driving', label: 'Driving' },
   { value: 'walking', label: 'Walking' },
-  { value: 'transit', label: 'Public transport' },
 ] as const;
-type TravelMode = (typeof travelModes)[number]['value'] | '';
+type TravelMode = (typeof travelModes)[number]['value'];
 type Position = {
   latitude: number;
   longitude: number;
@@ -99,7 +98,7 @@ export class OnTheRoad {
   protected readonly selected = signal('');
   protected readonly loading = signal(false);
   protected readonly savingId = signal('');
-  protected readonly pendingMode = signal<TravelMode>('');
+  protected readonly pendingMode = signal<TravelMode>('driving');
   protected readonly error = signal('');
   protected readonly modeError = signal('');
   private readonly estimates = signal<Record<string, { result: Estimate; fetched: number }>>({});
@@ -239,16 +238,11 @@ export class OnTheRoad {
   }
   protected estimateMessage(journey: Journey): string {
     if (!journey.nextVisit) return 'No upcoming published visit';
-    if (!journey.travelMode) return 'Choose a travel mode';
     if (!this.visibleOrigin(journey)) return this.locationMessage(journey);
     if (!journey.nextVisit.position) return 'Next visit coordinates unavailable';
     if (!this.data()?.routingAvailable) return 'Routing service is not configured';
     const estimate = this.estimate(journey);
-    if (estimate?.state === 'no-route') {
-      return journey.travelMode === 'transit'
-        ? 'No public transport route for these stops and departure time'
-        : 'No route available for this travel mode';
-    }
+    if (estimate?.state === 'no-route') return 'No route available for this travel mode';
     if (estimate?.state === 'unavailable') return 'Routing provider temporarily unavailable';
     if (estimate?.state === 'request-failed') return 'Could not refresh the route estimate';
     return 'Calculating route…';
@@ -298,7 +292,6 @@ export class OnTheRoad {
   ): Promise<void> {
     const due = rows.filter(
       (row) =>
-        row.travelMode &&
         this.visibleOrigin(row) &&
         row.nextVisit?.position &&
         Date.now() - (this.estimates()[row.journeyKey]?.fetched ?? 0) >= 60000,

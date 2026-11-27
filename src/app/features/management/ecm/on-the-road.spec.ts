@@ -15,7 +15,7 @@ describe('On the Road', () => {
     workerName: 'Travelling carer',
     journeyKey: 'journey-key',
     version: 2,
-    travelMode: 'walking',
+    travelMode: 'driving',
     travellingReportedAt: at,
     origin: position,
     positionStale: false,
@@ -124,10 +124,9 @@ describe('On the Road', () => {
   });
 
   it.each([
-    ['no-route', 'No public transport route'],
+    ['no-route', 'No route available for this travel mode'],
     ['unavailable', 'Routing provider temporarily unavailable'],
-  ])('retains the next visit when the transit estimate is %s', async (state, message) => {
-    data.journeys = [{ ...journey, travelMode: 'transit' }];
+  ])('retains the next visit when the route estimate is %s', async (state, message) => {
     request.mockImplementation(async (path: string) =>
       path.includes('/estimate?')
         ? { company_id: 'north', journeyKey: 'journey-key', state }
@@ -142,18 +141,42 @@ describe('On the Road', () => {
     expect(element.querySelector('.road-map .leaflet-overlay-pane svg path')).toBeNull();
   });
 
-  it('keeps journey details available without a routing provider and saves the chosen mode', async () => {
+  it('keeps journey details available without a routing provider', async () => {
     data.routingAvailable = false;
     const fixture = await open();
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('tbody')?.textContent).toContain('Next service user');
     expect(element.querySelector('.road-unavailable')?.textContent).toContain('not configured');
     expect(request.mock.calls.some(([path]) => path.includes('/estimate?'))).toBe(false);
-    await (fixture.componentInstance as any).changeMode(journey, 'transit');
+  });
+
+  it('offers only Driving and Walking and saves the walking selection', async () => {
+    data.routingAvailable = false;
+    request.mockImplementation(async (_path: string, _body: unknown, method: string) => {
+      if (method !== 'PATCH') return data;
+      data.journeys = [{ ...journey, version: 3, travelMode: 'walking' }];
+      return { company_id: 'north' };
+    });
+    const fixture = await open();
+    const element = fixture.nativeElement as HTMLElement;
+    const selector = element.querySelector<HTMLSelectElement>('tbody select')!;
+    expect(Array.from(selector.options, (option) => option.textContent?.trim())).toEqual([
+      'Driving',
+      'Walking',
+    ]);
+    expect(selector.value).toBe('driving');
+
+    selector.value = 'walking';
+    selector.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
     expect(request).toHaveBeenCalledWith(
       '/companies/north/ecm/geomap/care-workers/worker',
-      { version: 2, travelMode: 'transit' },
+      { version: 2, travelMode: 'walking' },
       'PATCH',
     );
+    expect(selector.value).toBe('walking');
   });
 });

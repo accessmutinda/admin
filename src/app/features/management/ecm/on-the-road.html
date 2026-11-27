@@ -115,7 +115,6 @@
                       (ngModelChange)="changeMode(journey, $event)"
                       [disabled]="!!savingId() || loading()"
                     >
-                      <option value="">Choose mode</option>
                       @for (mode of modes; track mode.value) {
                         <option [value]="mode.value">{{ mode.label }}</option>
                       }
